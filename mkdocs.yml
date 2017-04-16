@@ -1,0 +1,7 @@
+site_name: Zou - An API for CG Production data
+repo_url: https://github.com/cgwire/zou/
+repo_name: Zou
+edit_uri: edit/docs/docs
+site_author: CGWire 
+site_description: Documentation to install, configure and use the Zou API.
+theme: readthedocs
