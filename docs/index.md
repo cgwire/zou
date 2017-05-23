@@ -185,6 +185,12 @@ server {
 
 *NB: We use the 80 port here to make things simpler but the 443 port and https connection are highly recommended.*
 
+Make sure too that default configuration is removed: 
+
+```bash
+sudo rm /etc/nginx/sites-enabled/default
+```
+
 
 We enable that Nginx configuration with this command:
 
