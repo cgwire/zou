@@ -64,18 +64,24 @@ The following command will install Zou components on your machine:
 
 Create zou user:
 
-```
+```bash
 sudo useradd --disabled-password --home /opt/zou zou 
 ```
+
+Get sources:
 
 ```bash
 cd /opt/
 sudo git clone https://github.com/cgwire/cgwire-api.git
+```
+
+Install dependencies:
+
+```
 cd zou
 virtualenv zouenv
 . zouenv/bin/activate
 sudo zouenv/bin/python3 setup.py install
-sudo pip install uwsgi
 sudo chown -R zou:www-data .
 ```
 
@@ -89,10 +95,15 @@ sudo su -l postgres
 psql -c 'create database zoudb;' -U postgres
 ```
 
-Set a password for your postgres user:
+Set a password for your postgres user. For that start the Postgres CLI:
 
+```bash
+psql
 ```
-$ psql
+
+Then set the password (*mysecretpassword* if you want to do some tests).
+
+```bash
 psql (9.4.12)
 Type "help" for help.
 
@@ -101,7 +112,8 @@ Enter new password:
 Enter it again: 
 ```
 
-Create database tables:
+Finally, create database tables (it is required to activate the Zou virtual
+environment first):
 
 ```
 zou init_db
@@ -137,7 +149,7 @@ Then we daemonize `uwsgi` via Systemd:
 
 ```
 [Unit]
-Description=uWSGI instance to serve the Zou�API
+Description=uWSGI instance to serve the Zou API
 After=network.target
 
 [Service]
