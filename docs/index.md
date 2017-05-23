@@ -36,16 +36,22 @@ Zou can:
 The installation requires:
 
 * An up and running Postgres instance (version >= 9.2)
-* Python (version >= 2.7)
+* Python (version >= 2.7, version 3 is prefered)
 * A Nginx instance
 * Uwsgi
 
 ## Setup
 
+
+### Dependecies
+
 First let's install third parties software:
 
 ```bash
-sudo apt-get install postgres python nginx uwsgi
+sudo apt-get install postgresql postgresql-client libpq-dev
+sudo apt-get install python3 python3-pip python3-dev
+sudo apt-get install libffi-dev libjpeg-dev git
+sudo apt-get install nginx uwsgi
 ```
 
 *NB: We recommend to install postgres in a separate machine.*
@@ -53,13 +59,59 @@ sudo apt-get install postgres python nginx uwsgi
 
 The following command will install Zou components on your machine:
 
-```bash
-pip install git+https://github.com/cgwire/cgwire-api.git
+
+### Get sources
+
+Create zou user:
+
+```
+sudo useradd --disabled-password --home /opt/zou zou 
 ```
 
-Then, we need to start a daemon with `uwsgi` and to redirect incoming traffic to that
-server.
+```bash
+cd /opt/
+sudo git clone https://github.com/cgwire/cgwire-api.git
+cd zou
+virtualenv zouenv
+. zouenv/bin/activate
+sudo zouenv/bin/python3 setup.py install
+sudo pip install uwsgi
+sudo chown -R zou:www-data .
+```
 
+
+### Prepare database
+
+Create Zou database in postgres:
+
+```
+sudo su -l postgres
+psql -c 'create database zoudb;' -U postgres
+```
+
+Set a password for your postgres user:
+
+```
+$ psql
+psql (9.4.12)
+Type "help" for help.
+
+postgres=# \password postgres
+Enter new password: 
+Enter it again: 
+```
+
+Create database tables:
+
+```
+zou init_db
+```
+
+
+### Configure Uwsgi
+
+Then, we need to start a daemon with `uwsgi` and to redirect incoming traffic
+to that server.
 
 Let's write the `uwsgi` configuration:
 
@@ -79,24 +131,28 @@ vacuum = true
 die-on-term = true
 ```
 
-Then we demonize `uwsgi` via upstart:
+Then we daemonize `uwsgi` via Systemd:
 
-*Path: /etc/init/zou.conf*
+*Path: /etc/systemd/system/zou.service*
 
 ```
-description "uWSGI server instance configured to serve the Zou API"
+[Unit]
+Description=uWSGI instance to serve the Zou�API
+After=network.target
 
-start on runlevel [2345]
-stop on runlevel [!2345]
+[Service]
+User=zou
+Group=www-data
+WorkingDirectory=/opt/zou
+Environment="PATH=/opt/zou/zouenv/bin"
+ExecStart=/opt/zou/zouenv/bin/uwsgi --ini /etc/zou/uwsgi.ini
 
-setuid zou
-setgid www-data
-
-env PATH=/home/user/myproject/myprojectenv/bin
-chdir /home/user/myproject
-exec uwsgi --ini myproject.ini
+[Install]
+WantedBy=multi-user.target
 ```
 
+
+### Configure Nginx
 
 Finally we serve the API through a Nginx server. For that, add this
 configuration file to Nginx:
@@ -131,10 +187,12 @@ sudo service zou start
 sudo service nginx restart
 ```
 
+
 # Configuration 
 
 To run properly, Zou requires a bunch of parameters you can give through
-environment variables. All variables are listed in the [configuration
+environment variables. These variables can be set in your systemd script. 
+All variables are listed in the [configuration
 section](configuration).
 
 # Available actions
