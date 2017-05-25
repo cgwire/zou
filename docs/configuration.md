@@ -10,7 +10,7 @@ the list of all expected parameters.
 * `DB_USERNAME` (default: postgres): The username used to access the database.
 * `DB_PASSWORD` (default: mysecretpassword): The password used to access the
   database.
-* `DB_DATABASE` (default: zou): The name of the database to use.
+* `DB_DATABASE` (default: zoudb): The name of the database to use.
 
 ## File trees
 
