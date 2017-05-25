@@ -43,7 +43,7 @@ The installation requires:
 ## Setup
 
 
-### Dependecies
+### Dependecies
 
 First let's install third parties software:
 
@@ -57,7 +57,7 @@ sudo apt-get install nginx uwsgi
 *NB: We recommend to install postgres in a separate machine.*
 
 
-### Get sources
+### Get sources
 
 Create zou user:
 
@@ -83,7 +83,7 @@ sudo chown -R zou:www-data .
 ```
 
 
-### Prepare database
+### Prepare database
 
 Create Zou database in postgres:
 
@@ -117,7 +117,7 @@ zou init_db
 ```
 
 
-### Configure Uwsgi
+### Configure Uwsgi
 
 We need to run the application through `uwsgi`. So, let's write the `uwsgi` configuration:
 
@@ -158,10 +158,10 @@ WantedBy=multi-user.target
 ```
 
 
-### Configure Nginx
+### Configure Nginx
 
 Finally we serve the API through a Nginx server. For that, add this
-configuration file to Nginx:
+configuration file to Nginx to redirect the traffic to the *uwsgi* daemon:
 
 *Path: /etc/nginx/sites-available/zou*
 
