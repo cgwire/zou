@@ -57,9 +57,6 @@ sudo apt-get install nginx uwsgi
 *NB: We recommend to install postgres in a separate machine.*
 
 
-The following command will install Zou components on your machine:
-
-
 ### Get sources
 
 Create zou user:
@@ -75,7 +72,7 @@ cd /opt/
 sudo git clone https://github.com/cgwire/cgwire-api.git
 ```
 
-Install dependencies:
+Install Python dependencies:
 
 ```
 cd zou
@@ -122,10 +119,7 @@ zou init_db
 
 ### Configure Uwsgi
 
-Then, we need to start a daemon with `uwsgi` and to redirect incoming traffic
-to that server.
-
-Let's write the `uwsgi` configuration:
+We need to run the application through `uwsgi`. So, let's write the `uwsgi` configuration:
 
 *Path: /etc/zou/uwsgi.ini*
 
@@ -183,7 +177,7 @@ server {
 }
 ```
 
-*NB: We use the 80 port here to make things simpler but the 443 port and https connection are highly recommended.*
+*NB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
 
 Make sure too that default configuration is removed: 
 
