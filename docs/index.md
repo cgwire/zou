@@ -199,6 +199,22 @@ sudo service zou start
 sudo service nginx restart
 ```
 
+## Admin users
+
+To start with Zou you need to add an admin user. This user will be able to to
+log in and to create other users. For that go into the terminal and run the
+`zou` binary:
+
+```
+zou create_admin
+```
+
+It will ask for an email and a password. Then your user will be created with
+the name "Super Admin".
+
+
+Another option is to disable logins by setting the environment variable `LOGIN_DISABLED` to
+    `True`. Then you will be able to perform user creations. But we discourage doing it.
 
 # Configuration 
 
