@@ -69,12 +69,13 @@ Get sources:
 
 ```bash
 cd /opt/
-sudo git clone https://github.com/cgwire/cgwire-api.git
+sudo git clone https://github.com/cgwire/zou.git
 ```
 
 Install Python dependencies:
 
 ```
+sudo pip3 install virtualenv
 cd zou
 virtualenv zouenv
 . zouenv/bin/activate
