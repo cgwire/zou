@@ -110,10 +110,13 @@ Enter new password:
 Enter it again: 
 ```
 
-Finally, create database tables (it is required to activate the Zou virtual
-environment first):
+Then exit from the postgres client console.
+
+Finally, create database tables (it is required to leave the posgres console
+and to activate the Zou virtual environment):
 
 ```
+# Run it in your bash console.
 zou init_db
 ```
 
@@ -138,7 +141,8 @@ vacuum = true
 die-on-term = true
 ```
 
-Then we daemonize `uwsgi` via Systemd:
+Then we daemonize `uwsgi` via Systemd. For that we add a new 
+file that will add a new daemon to be managed by Systemd:
 
 *Path: /etc/systemd/system/zou.service*
 
