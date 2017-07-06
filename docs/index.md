@@ -77,7 +77,7 @@ Install Python dependencies:
 ```
 sudo pip3 install virtualenv
 cd zou
-virtualenv zouenv
+sudo virtualenv zouenv
 . zouenv/bin/activate
 sudo zouenv/bin/python3 setup.py install
 sudo chown -R zou:www-data .
@@ -177,7 +177,7 @@ server {
 
     location / {
         include uwsgi_params;
-        uwsgi_pass unix:/tmp/zou.sock;
+        uwsgi_pass unix:/opt/zou/zou.sock;
     }
 }
 ```
