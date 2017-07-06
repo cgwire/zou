@@ -1,0 +1,5 @@
+language: python
+install:
+    - pip install mkdocs
+script:
+    - mkdocs build --verbose --clean --strict
