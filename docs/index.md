@@ -51,7 +51,7 @@ First let's install third parties software:
 sudo apt-get install postgresql postgresql-client libpq-dev
 sudo apt-get install python3 python3-pip python3-dev
 sudo apt-get install libffi-dev libjpeg-dev git
-sudo apt-get install nginx uwsgi
+sudo apt-get install nginx
 ```
 
 *NB: We recommend to install postgres in a separate machine.*
@@ -81,6 +81,8 @@ sudo virtualenv zouenv
 . zouenv/bin/activate
 sudo zouenv/bin/python3 setup.py install
 sudo chown -R zou:www-data .
+sudo zouenv/bin/pip3 install gunicorn
+sudo zouenv/bin/pip3 install gevent
 ```
 
 
@@ -121,34 +123,34 @@ zou init_db
 ```
 
 
-### Configure Uwsgi
+### Configure Gunicorn
 
-We need to run the application through `uwsgi`. So, let's write the `uwsgi` configuration:
+We need to run the application through *gunicorn*, a WSGI server that will run zou as a daemon. Let's write the *gunicorn* configuration:
 
-*Path: /etc/zou/uwsgi.ini*
+*Path: /etc/zou/gunicorn.conf*
 
 ```
-[uwsgi]
-module = wsgi
-
-master = true
-processes = 5
-
-socket = zou.sock
-chmod-socket = 660
-vacuum = true
-
-die-on-term = true
+accesslog = "/opt/zou/logs/gunicorn_access.log"
+errorlog = "/opt/zou/logs/gunicorn_error.log"
+workers = 3
+worker_class = "gevent"
 ```
 
-Then we daemonize `uwsgi` via Systemd. For that we add a new 
+Let's create the log folder:
+
+```
+sudo mkdir /opt/zou/logs
+sudo chown zou: /opt/zou/logs
+```
+
+Then we daemonize the *gunicorn* process via Systemd. For that we add a new
 file that will add a new daemon to be managed by Systemd:
 
 *Path: /etc/systemd/system/zou.service*
 
 ```
 [Unit]
-Description=uWSGI instance to serve the Zou API
+Description=Gunicorn instance to serve the Zou API
 After=network.target
 
 [Service]
@@ -156,7 +158,7 @@ User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
 Environment="PATH=/opt/zou/zouenv/bin"
-ExecStart=/opt/zou/zouenv/bin/uwsgi --ini /etc/zou/uwsgi.ini
+ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 wsgi:application
 
 [Install]
 WantedBy=multi-user.target
@@ -170,14 +172,15 @@ configuration file to Nginx to redirect the traffic to the *uwsgi* daemon:
 
 *Path: /etc/nginx/sites-available/zou*
 
-```
+```nginx
 server {
     listen 80;
     server_name server_domain_or_IP;
 
-    location / {
-        include uwsgi_params;
-        uwsgi_pass unix:/opt/zou/zou.sock;
+    location /api {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass http://localhost:5000/;
     }
 }
 ```
@@ -203,6 +206,14 @@ Finally we can start our daemon and restart Nginx:
 sudo service zou start
 sudo service nginx restart
 ```
+
+## Update
+
+To update the application simply update the Zou sources and run the setup.py
+command again. Once done, restart the zou service.
+
+*NB: More details coming soon.*
+
 
 ## Admin users
 
