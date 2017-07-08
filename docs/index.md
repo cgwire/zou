@@ -214,6 +214,50 @@ command again. Once done, restart the zou service.
 
 *NB: More details coming soon.*
 
+## Deploying Kitsu 
+
+[Kitsu](https://kitsu.cg-wire.com) is a javascript UI that allows to manage Zou
+data from the browser.
+
+Deploying Kitsu requires to retrieve the built version. For that let's grab it
+from Github: 
+
+```
+sudo mkdir /opt/kitsu
+cd /opt/kitsu
+sudo git clone https://github.com/cgwire/kitsu.git@build
+chowm -R zou:www-data /opt/kitsu
+```
+
+Then we need to adapt the Nginx configuration to allow it to serve it properly:
+
+```nginx
+server {
+    listen 80;
+    server_name server_domain_or_IP;
+
+    location /api {
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_pass http://localhost:5000/;
+    }
+
+    location / {
+        autoindex on;
+        root  /opt/kitsu/kitsu/dist;
+    }
+}
+```
+
+Restart your Nginx server:
+
+```bash
+sudo service nginx restart
+```
+
+You can now connect directly to your server IP through your browser and enjoy
+Kitsu!
+
 
 ## Admin users
 
