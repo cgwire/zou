@@ -272,10 +272,6 @@ zou create_admin
 It will ask for an email and a password. Then your user will be created with
 the name "Super Admin".
 
-
-Another option is to disable logins by setting the environment variable `LOGIN_DISABLED` to
-    `True`. Then you will be able to perform user creations. But we discourage doing it.
-
 # Configuration 
 
 To run properly, Zou requires a bunch of parameters you can give through
