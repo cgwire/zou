@@ -297,4 +297,4 @@ more on the artistic work.
 
 Visit [cg-wire.com](https://cg-wire.com) for more information.
 
-[![CGWire Logo](cgwire.png)](https://cgwire.com)
+[![CGWire Logo](cgwire.png)](https://cg-wire.com)
