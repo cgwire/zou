@@ -259,7 +259,6 @@ sudo service nginx restart
 You can now connect directly to your server IP through your browser and enjoy
 Kitsu!
 
-
 ## Admin users
 
 To start with Zou you need to add an admin user. This user will be able to to
@@ -272,6 +271,15 @@ zou create_admin
 
 It will ask for an email and a password. Then your user will be created with
 the name "Super Admin".
+
+## Initialise data:
+
+Some basic data are required by Kitsu to work properly (like project status) :
+
+``
+zou init_data
+```
+
 
 # Configuration 
 
