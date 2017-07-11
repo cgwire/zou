@@ -276,10 +276,9 @@ the name "Super Admin".
 
 Some basic data are required by Kitsu to work properly (like project status) :
 
-``
+```
 zou init_data
 ```
-
 
 # Configuration 
 
