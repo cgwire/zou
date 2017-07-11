@@ -225,8 +225,7 @@ from Github:
 ```
 sudo mkdir /opt/kitsu
 cd /opt/kitsu
-sudo git clone https://github.com/cgwire/kitsu.git
-cd kitsu
+sudo git clone -b build https://github.com/cgwire/kitsu
 sudo git checkout build
 chowm -R zou:www-data /opt/kitsu
 ```
