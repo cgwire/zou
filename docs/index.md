@@ -36,6 +36,7 @@ Zou can:
 The installation requires:
 
 * An up and running Postgres instance (version >= 9.2)
+* An up and running Redis server instance (version >= 2.0)
 * Python (version >= 2.7, version 3 is prefered)
 * A Nginx instance
 * Uwsgi
@@ -49,6 +50,7 @@ First let's install third parties software:
 
 ```bash
 sudo apt-get install postgresql postgresql-client libpq-dev
+sudo apt-get install redis-server
 sudo apt-get install python3 python3-pip python3-dev
 sudo apt-get install libffi-dev libjpeg-dev git
 sudo apt-get install nginx
@@ -122,6 +124,19 @@ and to activate the Zou virtual environment):
 zou init_db
 ```
 
+### Prepare key value store
+
+Currently Redis require no extra configuration. 
+
+To remove warnings in Redis logs and improve background saving success rate,
+you can add this to `/etc/systcl.conf`:
+
+```
+vm.overcommit_memory = 1
+```
+
+If you want to do performance tuning, have a look at [this
+article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
 
 ### Configure Gunicorn
 
@@ -266,11 +281,12 @@ log in and to create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
-zou create_admin
+zou create_admin adminemail@yourstudio.com
 ```
 
-It will ask for an email and a password. Then your user will be created with
-the name "Super Admin".
+It expects the password as first argument. Then your user will be created with
+the email as login, `default` as password and "Super Admin" as first name and
+last name.
 
 ## Initialise data:
 
@@ -291,7 +307,6 @@ section](configuration).
 
 To know more about what is possible to do with the CGWire API, refer to the
 [API section](api).
-
 
 # About authors
 

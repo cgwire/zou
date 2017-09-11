@@ -12,6 +12,16 @@ the list of all expected parameters.
   database.
 * `DB_DATABASE` (default: zoudb): The name of the database to use.
 
+## Key Value store
+
+* `KV_HOST` (default: localhost): The Redis server host.
+* `KV_PORT` (default: 6379): The Redis server port.
+
+## Authentication
+
+`AUTH_STRATEGY` (default: auth\_local\_classic): Allow to chose between
+traditional auth and Active Directory auth (auth\_remote\_active\_directory).
+
 ## File trees
 
 * `DEFAULT_FILE_TREE` (default: standard): The file tree to set by default on a
@@ -23,7 +33,6 @@ the list of all expected parameters.
 
 * `EVENT_HANDLERS_FOLDER` (default: /usr/local/share/zou/thumbnails): The
   folder to put custom event handlers.
-
 
 ## Thumbnails
 
