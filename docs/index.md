@@ -276,7 +276,7 @@ import sqlalchemy_utils
 And run the following command:
 
 ```
-sed -i 's/length=16/binary=false/g' alembic/versions/*
+sed -i 's/length=16/binary=False/g' alembic/versions/*
 ```
 
 Then run the upgrade script.
