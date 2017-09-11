@@ -2,18 +2,18 @@
 
 # Welcome to the Zou documentation
 
-Zou is an API that allows to store and manage the data of your CG production.
+Zou is an API that allows to store and manage the data of your CG production.
 Through it you can link all the tools of your pipeline and make sure they are
-all synchronized. 
+all synchronized. 
 
 To integrate it quickly in your tools you can rely on the dedicated Python client 
-named [Gazu](https://gazu.cg-wire.com). 
+named [Gazu](https://gazu.cg-wire.com). 
 
 The source is available on [Github](https://github.com/cgwire/cgwire-api).
 
 # Who is it for?
 
-The audience for Zou is made of Technical Directors, ITs and
+The audience for Zou is made of Technical Directors, ITs and
 Software Engineers from CG studios. With Zou they can enhance the
 tools they provide to all departments.
 
@@ -21,11 +21,11 @@ tools they provide to all departments.
 
 Zou can:
 
-* Store production data: projects, shots, assets, tasks, files
+* Store production data: projects, shots, assets, tasks, files
   metadata and validations.
 * Provide folder and file paths for any task.
 * Data import from Shotgun or CSV files.
-* Export main data to CSV files.
+* Export main data to CSV files.
 * Provide helpers to manage task workflow (start, publish, retake).
 * Provide an event system to plug external modules on it.
 
@@ -97,7 +97,7 @@ sudo su -l postgres
 psql -c 'create database zoudb;' -U postgres
 ```
 
-Set a password for your postgres user. For that start the Postgres CLI:
+Set a password for your postgres user. For that start the Postgres CLI:
 
 ```bash
 psql
@@ -120,7 +120,7 @@ Finally, create database tables (it is required to leave the posgres console
 and to activate the Zou virtual environment):
 
 ```
-# Run it in your bash console.
+# Run it in your bash console.
 zou init_db
 ```
 
@@ -140,7 +140,7 @@ article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
 
 ### Configure Gunicorn
 
-We need to run the application through *gunicorn*, a WSGI server that will run zou as a daemon. Let's write the *gunicorn* configuration:
+We need to run the application through *gunicorn*, a WSGI server that will run zou as a daemon. Let's write the *gunicorn* configuration:
 
 *Path: /etc/zou/gunicorn.conf*
 
@@ -182,7 +182,7 @@ WantedBy=multi-user.target
 
 ### Configure Nginx
 
-Finally we serve the API through a Nginx server. For that, add this
+Finally we serve the API through a Nginx server. For that, add this
 configuration file to Nginx to redirect the traffic to the *uwsgi* daemon:
 
 *Path: /etc/nginx/sites-available/zou*
@@ -224,14 +224,88 @@ sudo service nginx restart
 
 ## Update
 
-To update the application simply update the Zou sources and run the setup.py
-command again. Once done, restart the zou service.
 
-*NB: More details coming soon.*
+### Update database schema
+
+#### Actions to run only the first time
+
+This operation can break things, so backup your database before doing
+this. 
+
+First we need to install alembic, an utilitary that manages schema upgrade:
+
+```
+cd /opt/zou
+. zouenv/bin/activate
+pip install alembic
+alembic init alembic
+```
+
+Then edit the `alembic.ini` file generated and add this line (modify it,
+depending on your postgres database location):
+
+```
+sqlalchemy.url = postgres://postgres:mysecretpassword@localhost:5432/zoudb
+```
+
+And modify the `alembic/env.py` file to include this (replace the corresponding
+lines):
+
+```
+from zou.app import db
+target_metadata = db.Model.metadata
+```
+
+
+#### Actions to run each time
+
+Then we need to generate the upgrade script. Each script require a new name,
+so add a date each time you run this command. 
+
+```
+alembic revision --autogenerate -m "Release 2017-09-12"
+```
+
+Unique ids are not well supported by alembic so add this line to your alembic
+script (the file generated through the previous command):
+
+```
+import sqlalchemy_utils
+```
+
+And run the following command:
+
+```
+sed -i 's/length=16/binary=false/g' alembic/versions/*
+```
+
+Then run the upgrade script.
+
+```
+alembic upgrade head
+```
+
+Your database is now ready to accept the new code.
+
+### Update sources and dependencies
+
+To update the application simply update the Zou sources and run the setup.py
+command again. Once done, restart the Zou service.
+
+```
+cd /opt/zou
+. zouenv/bin/activate
+sudo zouenv/bin/python3 setup.py install
+sudo chown -R zou:www-data .
+sudo service zou restart
+```
+
+That's it! Your Zou instance should be up to date.
+
 
 ## Deploying Kitsu 
 
-[Kitsu](https://kitsu.cg-wire.com) is a javascript UI that allows to manage Zou
+[Kitsu](https://kitsu.cg-wire.com) is a javascript UI that allows to manage Zou
 data from the browser.
 
 Deploying Kitsu requires to retrieve the built version. For that let's grab it
@@ -271,13 +345,25 @@ Restart your Nginx server:
 sudo service nginx restart
 ```
 
-You can now connect directly to your server IP through your browser and enjoy
+You can now connect directly to your server IP through your browser and enjoy
 Kitsu!
+
+
+### Upgrade Kitsu 
+
+To upgrade Kitsu, update the files through Git:
+
+```
+cd /opt/kitsu
+git reset --hard
+git pull origin build
+```
+
 
 ## Admin users
 
 To start with Zou you need to add an admin user. This user will be able to to
-log in and to create other users. For that go into the terminal and run the
+log in and to create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
@@ -311,7 +397,7 @@ To know more about what is possible to do with the CGWire API, refer to the
 # About authors
 
 Zou is written by CG Wire, a company based in France. We help small to
-midsize CG studios to manage their production and build pipeline efficiently.
+midsize CG studios to manage their production and build pipeline efficiently.
 
 We apply software craftmanship principles as much as possible. We love
 coding and consider that strong quality and good developer experience matter a lot.
