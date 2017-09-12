@@ -140,6 +140,8 @@ article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
 
 ### Configure Gunicorn
 
+#### Configure main API server
+
 We need to run the application through *gunicorn*, a WSGI server that will run zou as a daemon. Let's write the *gunicorn* configuration:
 
 *Path: /etc/zou/gunicorn.conf*
@@ -179,11 +181,45 @@ ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5
 WantedBy=multi-user.target
 ```
 
+#### Configure Events Stream API server
+
+
+Let's write the *gunicorn* configuration:
+
+*Path: /etc/zou/gunicorn-events.conf*
+
+```
+accesslog = "/opt/zou/logs/gunicorn_events_access.log"
+errorlog = "/opt/zou/logs/gunicorn_events_error.log"
+workers = 3
+worker_class = "gevent"
+```
+
+Then we daemonize the *gunicorn* process via Systemd:
+
+*Path: /etc/systemd/system/zou-events.service*
+
+```
+[Unit]
+Description=Gunicorn instance to serve the Zou Events API
+After=network.target
+
+[Service]
+User=zou
+Group=www-data
+WorkingDirectory=/opt/zou
+Environment="PATH=/opt/zou/zouenv/bin"
+ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.conf -b 127.0.0.1:5001 wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+```
+
 
 ### Configure Nginx
 
 Finally we serve the API through a Nginx server. For that, add this
-configuration file to Nginx to redirect the traffic to the *uwsgi* daemon:
+configuration file to Nginx to redirect the traffic to the Gunicorn servers:
 
 *Path: /etc/nginx/sites-available/zou*
 
@@ -197,12 +233,19 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_pass http://localhost:5000/;
     }
+
+    location /events {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass http://localhost:5001/;
+    }
+
 }
 ```
 
 *NB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
 
-Make sure too that default configuration is removed: 
+Finally, make sure that default configuration is removed: 
 
 ```bash
 sudo rm /etc/nginx/sites-enabled/default
@@ -219,6 +262,7 @@ Finally we can start our daemon and restart Nginx:
 
 ```bash
 sudo service zou start
+sudo service zou-events start
 sudo service nginx restart
 ```
 
@@ -298,6 +342,7 @@ cd /opt/zou
 sudo zouenv/bin/python3 setup.py install
 sudo chown -R zou:www-data .
 sudo service zou restart
+sudo service zou-events restart
 ```
 
 That's it! Your Zou instance should be up to date.
