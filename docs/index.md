@@ -209,7 +209,7 @@ User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
 Environment="PATH=/opt/zou/zouenv/bin"
-ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.conf -b 127.0.0.1:5001 wsgi:application
+ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.conf -b 127.0.0.1:5001 zou.event_stream:app
 
 [Install]
 WantedBy=multi-user.target
