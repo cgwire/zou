@@ -377,9 +377,16 @@ server {
         proxy_pass http://localhost:5000/;
     }
 
+    location /events {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass http://localhost:5001/;
+    }
+
     location / {
         autoindex on;
         root  /opt/kitsu/kitsu/dist;
+        try_files $uri $uri/ /index.html;
     }
 }
 ```
