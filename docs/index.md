@@ -357,11 +357,10 @@ Deploying Kitsu requires to retrieve the built version. For that let's grab it
 from Github: 
 
 ```
-sudo mkdir /opt/kitsu
-cd /opt/kitsu
+cd /opt/
 sudo git clone -b build https://github.com/cgwire/kitsu
 sudo git checkout build
-chowm -R zou:www-data /opt/kitsu
+chown -R zou:www-data /opt/kitsu
 ```
 
 Then we need to adapt the Nginx configuration to allow it to serve it properly:
@@ -385,7 +384,7 @@ server {
 
     location / {
         autoindex on;
-        root  /opt/kitsu/kitsu/dist;
+        root  /opt/kitsu/dist;
         try_files $uri $uri/ /index.html;
     }
 }
