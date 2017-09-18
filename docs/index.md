@@ -243,7 +243,7 @@ server {
     location /events {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_pass http://localhost:5001/;
+        proxy_pass http://localhost:5001/events;
     }
 
 }
@@ -391,7 +391,7 @@ server {
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_pass http://localhost:5001/;
+        proxy_pass http://localhost:5001/events;
     }
 
     location / {
