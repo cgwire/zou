@@ -10,7 +10,23 @@ your local system):
 
 ```bash
 sudo docker pull postgres
-sudo docker start postgres
+sudo docker run postgres \
+    --name postgres \
+    -p 5432:5432 \
+    -e POSTGRES_PASSWORD=mysecretpassword \
+    -d postgres
+```
+
+## Key-value store
+
+To run Redis we recommend to use Docker again:
+
+```bash
+sudo docker pull redis
+sudo docker run \
+    --name unit-redis \
+    -p 6379:6379 \
+    -d redis
 ```
 
 ## Source and dependencies
@@ -49,7 +65,7 @@ bin/zou init_data
 Create a first user:
 
 ```bash
-bin/zou create_admin
+bin/zou create_admin super.user@mycgstudio.com
 ```
 
 Run server:
