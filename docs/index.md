@@ -44,7 +44,7 @@ The installation requires:
 ## Setup
 
 
-### Dependecies
+### Dependencies
 
 First let's install third parties software:
 
