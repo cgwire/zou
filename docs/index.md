@@ -49,10 +49,10 @@ The installation requires:
 First let's install third parties software:
 
 ```bash
-sudo apt-get install postgresql postgresql-client libpq-dev
+sudo apt-get install postgresql postgresql-client
 sudo apt-get install redis-server
-sudo apt-get install python3 python3-pip python3-dev
-sudo apt-get install libffi-dev libjpeg-dev git
+sudo apt-get install python3 python3-pip
+sudo apt-get install git
 sudo apt-get install nginx
 ```
 
@@ -81,6 +81,7 @@ sudo pip3 install virtualenv
 cd zou
 sudo virtualenv zouenv
 . zouenv/bin/activate
+sudo zouenv/bin/pip3 install -r requirements.txt
 sudo zouenv/bin/python3 setup.py install
 sudo chown -R zou:www-data .
 ```
