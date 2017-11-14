@@ -174,7 +174,8 @@ After=network.target
 User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
-Environment="PATH=/opt/zou/zouenv/bin"
+# ffmpeg must be in PATH
+Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 wsgi:application
 
 [Install]
