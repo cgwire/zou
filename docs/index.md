@@ -83,8 +83,6 @@ sudo virtualenv zouenv
 . zouenv/bin/activate
 sudo zouenv/bin/python3 setup.py install
 sudo chown -R zou:www-data .
-sudo zouenv/bin/pip3 install gunicorn
-sudo zouenv/bin/pip3 install gevent
 ```
 
 
