@@ -29,6 +29,22 @@ Zou can:
 * Provide helpers to manage task workflow (start, publish, retake).
 * Provide an event system to plug external modules on it.
 
+# Quickstart (Docker Image)
+
+To try Zou and Kitsu on your local machine you can use Docker to run a local
+instance of the CGWire suite. For that, install docker and run this command:
+
+*Warning: This image is not aimed at production usage.*
+
+
+```
+docker run -d -p 80:80 --name cgwire cgwire/cgwire
+```
+
+Then you can access to the Zou API through `http://localhost/api` and enjoy the Kitsu
+web UI at `http://localhost`.
+
+
 # Install 
 
 ## Pre-requisites
