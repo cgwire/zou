@@ -35,3 +35,22 @@ event_map = {
     "task:to-review": shogun_pending_review
 }
 ```
+
+## Listen to events through http
+
+
+You can listen to events by connecting to
+`http://your.zouserver.domain/events`.
+
+You can use the `sseclient-py` for that:
+
+```python
+    import requests
+            
+url = 'http://your.zou-domain.name/events'
+response = requests.get(url, stream=True)
+client = sseclient.SSEClient(response)
+for event in client.events():
+    data = json.loads(event.data)
+    print(data)
+```
