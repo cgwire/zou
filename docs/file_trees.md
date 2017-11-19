@@ -42,12 +42,14 @@ Folder path section requires three fields:
 
 * Path for tasks related to assets.
 * Path for tasks related to shots.
+* Path for tasks related to sequences.
 * Style (uppercase or lowercase)
 
 ```json
 "folder_path": {
   "shot": "<Project>/shots/<Sequence>/<Shot>/<TaskType>",
   "asset": "<Project>/assets/<AssetType>/<Asset>/<TaskType>",
+  "sequence": "<Project>/sequences/<Sequence>>/<TaskType>",
   "style": "lowercase"
 }
 ```
@@ -64,6 +66,7 @@ File name templates are written the same way than folder templates.
 "file_name": {
     "shot": "<Project>_<Sequence>_<Shot>_<TaskType>",
     "asset": "<Project>_<AssetType>_<Asset>_<TaskType>",
+    "sequence": "<Project>_<Sequence>_<TaskType>",
     "style": "lowercase"
 }
 ```
