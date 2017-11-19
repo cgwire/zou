@@ -19,8 +19,9 @@ the list of all expected parameters.
 
 ## Authentication
 
-`AUTH_STRATEGY` (default: auth\_local\_classic): Allow to chose between
+* `AUTH_STRATEGY` (default: auth\_local\_classic): Allow to chose between
 traditional auth and Active Directory auth (auth\_remote\_active\_directory).
+* `SECRET_KEY` (default: mysecretkey) complex key used for auth token encryption.
 
 ## File trees
 
@@ -42,3 +43,4 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 ## Misc 
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
+* `DEBUG` (default: False): Activate the debug mode for development purpose.
