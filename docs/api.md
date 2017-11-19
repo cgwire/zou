@@ -9,18 +9,23 @@ Data you can store and retrieve are from the following type :
 * project\_status
 * tasks 
 * task\_status
-* departments
 * task\_types
+* departments
+* time\ spents
 * episodes
 * sequences
 * shots
 * assets
-* comments
+* asset\_types
 * file\_status
 * working\_files
 * output\_files
-* asset\_types
+* preview\_files
+* output\_types
+* softwares
 
+
+*Warning: below documentation is a bit outdated and incomplete.*
 
 ## HTTP routes
 
