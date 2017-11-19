@@ -231,18 +231,18 @@ server {
     server_name server_domain_or_IP;
 
     location /api {
-        chunked_transfer_encoding off;
-
-        proxy_set_header Connection '';
-        proxy_http_version 1.1;
-        proxy_buffering off;
-        proxy_cache off;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_pass http://localhost:5000/;
     }
 
     location /events {
+        chunked_transfer_encoding off;
+
+        proxy_set_header Connection '';
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_cache off;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_pass http://localhost:5001/events;
