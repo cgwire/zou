@@ -29,6 +29,15 @@ sudo docker run \
     -d redis
 ```
 
+## FFMPEG
+
+For video operations, it is required to have FFMPEG installed. For that, simply install it through your OS package manager: 
+
+```
+sudo apt-get install ffmpeg
+```
+
+
 ## Source and dependencies
 
 Then get Zou sources:
