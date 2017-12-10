@@ -83,24 +83,26 @@ Create zou user:
 sudo useradd --disabled-password --home /opt/zou zou 
 ```
 
-Get sources:
-
-```bash
-cd /opt/
-sudo git clone https://github.com/cgwire/zou.git
-```
-
-Install Python dependencies:
+Install Zou and its dependencies:
 
 ```
 sudo pip3 install virtualenv
-cd zou
+cd /opt/zou
 sudo virtualenv zouenv
 . zouenv/bin/activate
-sudo zouenv/bin/pip3 install -r requirements.txt
-sudo zouenv/bin/python3 setup.py install
+sudo zouenv/bin/pip3 install zou
 sudo chown -R zou:www-data .
 ```
+
+Then create a folder to store the previews:
+
+```
+mkdir /opt/zou/previews
+sudo chown -R zou:www-data /opt/zou
+```
+
+If it complains about missing ffmpeg binary set properly the `FFMPEG_BINARY`
+env variable (= the ffmpeg binary path).
 
 
 ### Prepare database
@@ -192,7 +194,8 @@ WorkingDirectory=/opt/zou
 # Append DB_USERNAME=username DB_HOST=server when default values aren't used
 # ffmpeg must be in PATH
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
-ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 wsgi:application
+Environment="THUMBNAIL_FOLDER=/opt/zou/previews"
+ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -475,6 +478,19 @@ section](configuration).
 
 To know more about what is possible to do with the CGWire API, refer to the
 [API section](api).
+
+# Packaging
+
+Get the sources, increment the version located in the `zou/__init__.py` file.
+Tag the repository with the new version and run the following commands:
+
+```bash
+pip install wheel twine
+python setup.py bdist_wheel
+twine upload dist/<package>.whl
+```
+
+*NB: It requires access to Pypi CGWire repository.*
 
 # About authors
 
