@@ -80,7 +80,7 @@ sudo apt-get install nginx
 Create zou user:
 
 ```bash
-sudo useradd --disabled-password --home /opt/zou zou 
+sudo useradd --home /opt/zou zou 
 ```
 
 Install Zou and its dependencies:
@@ -97,7 +97,7 @@ sudo chown -R zou:www-data .
 Then create a folder to store the previews:
 
 ```
-mkdir /opt/zou/previews
+sudo mkdir /opt/zou/previews
 sudo chown -R zou:www-data /opt/zou
 ```
 
@@ -138,7 +138,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-zou init_db
+DB_PASSWORD=yourpassword zou init_db
 ```
 
 ### Prepare key value store
@@ -158,6 +158,12 @@ article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
 ### Configure Gunicorn
 
 #### Configure main API server
+
+First, create configuration folder:
+
+```
+sudo mkdir /etc/zou
+```
 
 We need to run the application through *gunicorn*, a WSGI server that will run zou as a daemon. Let's write the *gunicorn* configuration:
 
@@ -464,7 +470,7 @@ last name.
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-zou init_data
+DB_PASSWORD=mydbpassword zou init_data
 ```
 
 # Configuration 
