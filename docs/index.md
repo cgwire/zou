@@ -336,6 +336,14 @@ target_metadata = db.Model.metadata
 
 #### Actions to run each time
 
+Note that prior to do these actions, the zou package should be updated:
+
+```
+cd /opt/zou
+. zouenv/bin/activate
+sudo zouenv/bin/pip3 install --upgrade zou
+```
+
 Then we need to generate the upgrade script. Each script require a new name,
 so add a date each time you run this command. 
 
@@ -372,7 +380,7 @@ command again. Once done, restart the Zou service.
 ```
 cd /opt/zou
 . zouenv/bin/activate
-sudo zouenv/bin/python3 setup.py install
+sudo zouenv/bin/pip3 install --upgrade zou
 sudo chown -R zou:www-data .
 sudo service zou restart
 sudo service zou-events restart
