@@ -259,6 +259,7 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_pass http://localhost:5000/;
+        client_max_body_size 500M;
     }
 
     location /events {
