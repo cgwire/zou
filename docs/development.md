@@ -80,11 +80,20 @@ python zou/cli.py create_admin super.user@mycgstudio.com
 Run server:
 
 ```bash
-python zou/cli.py runserver
+FLASK_DEBUG=1 FLASK_APP=zou.app flask run
 ```
 
 You can now use the API by requesting `http://localhost:5000`.
 
+
+### Event server
+
+To run the Server Events server used to update the web GUI in realtime, use the
+following command.
+
+```bash
+gunicorn --worker-class gevent -b 127.0.0.1:5001 -w 3 zou.event_stream:app
+```
 
 ## Tests
 
