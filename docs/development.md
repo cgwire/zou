@@ -66,20 +66,21 @@ Create a database in postgres named `zou` with user `postgres` and password
 `mysecretpassword`. Then init db:
 
 ```bash
-bin/zou reset_db
-bin/zou init_data
+python zou/cli.py clear_db
+python zou/cli.py init_db
+python zou/cli.py init_data
 ```
 
 Create a first user:
 
 ```bash
-bin/zou create_admin super.user@mycgstudio.com
+python zou/cli.py create_admin super.user@mycgstudio.com
 ```
 
 Run server:
 
 ```bash
-bin/zou runserver
+python zou/cli.py runserver
 ```
 
 You can now use the API by requesting `http://localhost:5000`.
