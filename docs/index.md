@@ -138,7 +138,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-DB_PASSWORD=yourpassword zou init_db
+DB_PASSWORD=yourdbpassword zou init_db
 ```
 
 ### Prepare key value store
@@ -188,6 +188,10 @@ file that will add a new daemon to be managed by Systemd:
 
 *Path: /etc/systemd/system/zou.service*
 
+Please note that environment variables are positioned here. `DB_PASSWORD` must
+be set with your database password. `SECRET_KEY` must be generated randomly
+(use `pwgen 16` command for that).
+
 ```
 [Unit]
 Description=Gunicorn instance to serve the Zou API
@@ -199,6 +203,8 @@ Group=www-data
 WorkingDirectory=/opt/zou
 # Append DB_USERNAME=username DB_HOST=server when default values aren't used
 # ffmpeg must be in PATH
+Environment="DB_PASSWORD=yourdbpassword"
+Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 Environment="THUMBNAIL_FOLDER=/opt/zou/previews"
 ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
@@ -479,7 +485,7 @@ last name.
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-DB_PASSWORD=mydbpassword zou init_data
+DB_PASSWORD=yourdbpassword zou init_data
 ```
 
 # Configuration 
