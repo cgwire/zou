@@ -310,9 +310,9 @@ sudo service nginx restart
 
 ### Update package
 
-The first action to perform is to upgrade the zou package:
+First, you have to upgrade the zou package:
 
-```
+```bash
 cd /opt/zou
 . zouenv/bin/activate
 sudo zouenv/bin/pip3 install --upgrade zou
@@ -321,25 +321,26 @@ sudo zouenv/bin/pip3 install --upgrade zou
 
 ### Update database schema
 
-Then we need to upgrade the database schema.
+Then, you need to upgrade the database schema:
 
-```
+```bash
 DB_PASSWORD=yourdbpassword zou upgrade_db
 ```
 
 
-### Update sources and dependencies
+### Restart the Zou service
 
-Finally, we restart the Zou service.
+Finally, restart the Zou service:
 
-```
+```bash
 sudo chown -R zou:www-data .
 sudo service zou restart
 sudo service zou-events restart
 ```
 
-That's it! Your Zou instance is now up to date. Make it sure by getting the API 
-version number from `https://myzoudomain.com/api`.
+That's it! Your Zou instance is now up to date. 
+
+*NB: Make it sure by getting the API version number from `https://myzoudomain.com/api`.*
 
 
 ## Deploying Kitsu 
