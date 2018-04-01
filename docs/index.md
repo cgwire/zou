@@ -308,92 +308,38 @@ sudo service nginx restart
 
 ## Update
 
+### Update package
+
+The first action to perform is to upgrade the zou package:
+
+```
+cd /opt/zou
+. zouenv/bin/activate
+sudo zouenv/bin/pip3 install --upgrade zou
+```
+
 
 ### Update database schema
 
-#### Actions to run only the first time
-
-This operation can break things, so backup your database before doing
-this. 
-
-First we need to install alembic, an utilitary that manages schema upgrade:
+Then we need to upgrade the database schema.
 
 ```
-cd /opt/zou
-. zouenv/bin/activate
-pip install alembic
-alembic init alembic
+DB_PASSWORD=yourdbpassword zou upgrade_db
 ```
 
-Then edit the `alembic.ini` file generated and add this line (modify it,
-depending on your postgres database location):
-
-```
-sqlalchemy.url = postgres://postgres:mysecretpassword@localhost:5432/zoudb
-```
-
-And modify the `alembic/env.py` file to include this (replace the corresponding
-lines):
-
-```
-from zou.app import db
-target_metadata = db.Model.metadata
-```
-
-
-#### Actions to run each time
-
-Note that prior to do these actions, the zou package should be updated:
-
-```
-cd /opt/zou
-. zouenv/bin/activate
-sudo zouenv/bin/pip3 install --upgrade zou
-```
-
-Then we need to generate the upgrade script. Each script require a new name,
-so add a date each time you run this command. 
-
-```
-alembic revision --autogenerate -m "Release 2017-09-12"
-```
-
-Unique ids are not well supported by alembic so add this line to your alembic
-script (the file generated through the previous command):
-
-```
-import sqlalchemy_utils
-```
-
-And run the following command:
-
-```
-sed -i 's/length=16/binary=False/g' alembic/versions/*
-```
-
-Then run the upgrade script.
-
-```
-alembic upgrade head
-```
-
-Your database is now ready to accept the new code.
 
 ### Update sources and dependencies
 
-To update the application simply update the Zou sources and run the setup.py
-command again. Once done, restart the Zou service.
+Finally, we restart the Zou service.
 
 ```
-cd /opt/zou
-. zouenv/bin/activate
-sudo zouenv/bin/pip3 install --upgrade zou
 sudo chown -R zou:www-data .
 sudo service zou restart
 sudo service zou-events restart
 ```
 
-That's it! Your Zou instance should be up to date.
+That's it! Your Zou instance is now up to date. Make it sure by getting the API 
+version number from `https://myzoudomain.com/api`.
 
 
 ## Deploying Kitsu 
@@ -455,14 +401,14 @@ You can now connect directly to your server IP through your browser and enjoy
 Kitsu!
 
 
-### Upgrade Kitsu 
+### Update Kitsu 
 
-To upgrade Kitsu, update the files through Git:
+To update Kitsu, update the files through Git:
 
 ```
 cd /opt/kitsu
 git reset --hard
-git pull origin build
+git pull --rebase origin build
 ```
 
 
