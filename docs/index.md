@@ -223,8 +223,8 @@ Let's write the *gunicorn* configuration:
 ```
 accesslog = "/opt/zou/logs/gunicorn_events_access.log"
 errorlog = "/opt/zou/logs/gunicorn_events_error.log"
-workers = 3
-worker_class = "gevent"
+workers = 1
+worker_class = "geventwebsocket.gunicorn.workers.GeventWebSocketWorker"
 ```
 
 Then we daemonize the *gunicorn* process via Systemd:
@@ -268,18 +268,14 @@ server {
         client_max_body_size 500M;
     }
 
-    location /events {
-        chunked_transfer_encoding off;
-
-        proxy_set_header Connection '';
-        proxy_http_version 1.1;
-        proxy_buffering off;
-        proxy_cache off;
+    location /socket.io {
+		proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_pass http://localhost:5001/events;
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "Upgrade";
+        proxy_pass http://localhost:5001;
     }
-
 }
 ```
 
@@ -371,16 +367,13 @@ server {
         proxy_pass http://localhost:5000/;
     }
 
-    location /events {
-        proxy_set_header Connection '';
-        proxy_http_version 1.1;
-        chunked_transfer_encoding off;
-        proxy_buffering off;
-        proxy_cache off;
-
+    location /socket.io {
+		proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_pass http://localhost:5001/events;
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "Upgrade";
+        proxy_pass http://localhost:500s;
     }
 
     location / {
