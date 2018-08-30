@@ -139,14 +139,12 @@ supported.
 
 ### Thumbnails
 
-* POST `/thumbnails/shots/<instance_id>`: Set a thumbnail on given shot.
+* POST `/pictures/thumbnails/persons/<person_id>`: Set a thumbnail on given person.
     * Expect thumbnail file in his body
-* POST `/thumbnails/working-files/<instance_id>`: Set a thumbnail on given
-  working file.
+* POST `/pictures/thumbnails/projects/<project_id>`: Set a thumbnail on given project.
     * Expect thumbnail file in his body
-* GET `/thumbnails/shots/<instance_id>.png`: Get thumbnail bound to given shot.
-* GET `/thumbnails/working-files/<instance_id>.png`: Get thumbnail bound to 
-  given working file.
+* GET `/pictures/thumbnails/persons/<person_id>.png`: Get thumbnail bound to given shot.
+* GET `/pictures/thumbnails/projects/<project_id>.png`: Get thumbnail bound to given project.
 
 
 ### Shotgun import

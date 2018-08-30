@@ -35,10 +35,21 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 * `EVENT_HANDLERS_FOLDER` (default: /usr/local/share/zou/thumbnails): The
   folder to put custom event handlers.
 
-## Thumbnails
+## Previews
 
-* `THUMBNAIL_FOLDER` (default: /usr/local/share/zou/standard): The folder where
+* `PREVIEW_FOLDER` (default: /usr/local/share/zou/standard): The folder where
   thumbnails will be stored.
+
+If you want to store you previews in a Swift backend, add the following
+variables (Only Auth 2.0 and 3.0 is supported).
+
+* `FS_BACKEND`: Set this variable with "swift"
+* `FS_BUCKET_PREFIX`: A prefix for your bucket/container names.
+* `FS_SWIFT_AUTH_URL`: Authentication URL of your swift backend.
+* `FS_SWIFT_USER`: Your Swift login. 
+* `FS_SWIFT_TENANT_NAME`: The Swift tenant name. 
+* `FS_SWIFT_KEY`: Your Swift password. 
+* `FS_SWIFT_REGION_NAME`: Your Swift region name. 
 
 ## Misc 
 

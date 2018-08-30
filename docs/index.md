@@ -206,7 +206,7 @@ WorkingDirectory=/opt/zou
 Environment="DB_PASSWORD=yourdbpassword"
 Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
-Environment="THUMBNAIL_FOLDER=/opt/zou/previews"
+Environment="PREVIEW_FOLDER=/opt/zou/previews"
 ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
 
 [Install]
