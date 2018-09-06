@@ -51,6 +51,26 @@ variables (Only Auth 2.0 and 3.0 is supported).
 * `FS_SWIFT_KEY`: Your Swift password. 
 * `FS_SWIFT_REGION_NAME`: Your Swift region name. 
 
+## Emails
+
+Email configuration is required for mail sents after a password reset. In the
+future, we expect to propose email notifications too.
+
+* `MAIL_SERVER` (default: "localhost"): the host of your email server
+* `MAIL_PORT` (default: "25"): the port of your email server
+* `MAIL_USERNAME` (default: ""): the username to access to your mail server
+* `MAIL_PASSWORD` (default: ""): the password to access to your mail server
+* `MAIL_DEBUG` (default: "0"): set 1 if you are in a development environment
+  (emails are printed in the console instead of being sent).
+* `MAIL_USE_TLS` (default: "False"): To use TLS to communicate with the email
+  server. 
+* `MAIL_USE_SSL` (default: "False"): To use SSL to communicate with the email
+  server.
+* `MAIL_DEFAULT_SENDER` (default: "no-reply@cg-wire.com"): to set the sender
+  email. 
+* `DOMAIN_NAME` (default: "localhost:8080"): To build URLs (for password reset
+  for instance).
+
 ## Misc 
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
