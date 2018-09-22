@@ -65,7 +65,7 @@ The installation requires:
 First let's install third parties software:
 
 ```bash
-sudo apt-get install postgresql postgresql-client
+sudo apt-get install postgresql postgresql-client postgresql-server-dev-all
 sudo apt-get install redis-server
 sudo apt-get install python3 python3-pip
 sudo apt-get install git
@@ -140,6 +140,8 @@ and to activate the Zou virtual environment):
 # Run it in your bash console.
 DB_PASSWORD=yourdbpassword zou init_db
 ```
+
+*NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
 
 ### Prepare key value store
 
