@@ -49,7 +49,7 @@ git clone git@github.com:cgwire/zou.git
 Create a virtual environment with `mkvirtualenv`:
 
 ```bash
-pip install mkvirtualenv
+pip install virtualenvwrapper
 mkvirtualenv zou
 workon zou
 ```
