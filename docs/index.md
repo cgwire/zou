@@ -135,6 +135,11 @@ Enter it again:
 
 Then exit from the postgres client console.
 
+Alternatively, if you want to set the password avoiding interactive prompts use : 
+```bash
+psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
+```
+
 Finally, create database tables (it is required to leave the posgres console
 and to activate the Zou virtual environment):
 
