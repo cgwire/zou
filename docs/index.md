@@ -423,7 +423,7 @@ log in and to create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
-zou create_admin adminemail@yourstudio.com
+DB_PASSWORD=yourdbpassword zou create_admin adminemail@yourstudio.com
 ```
 
 It expects the password as first argument. Then your user will be created with
