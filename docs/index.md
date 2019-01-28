@@ -81,6 +81,8 @@ Create zou user:
 
 ```bash
 sudo useradd --home /opt/zou zou 
+mkdir /opt/zou
+chown zou: /opt/zou
 ```
 
 Install Zou and its dependencies:
@@ -133,6 +135,11 @@ Enter it again:
 
 Then exit from the postgres client console.
 
+Alternatively, if you want to set the password avoiding interactive prompts use : 
+```bash
+psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
+```
+
 Finally, create database tables (it is required to leave the posgres console
 and to activate the Zou virtual environment):
 
@@ -148,7 +155,7 @@ DB_PASSWORD=yourdbpassword zou init_db
 Currently Redis require no extra configuration. 
 
 To remove warnings in Redis logs and improve background saving success rate,
-you can add this to `/etc/systcl.conf`:
+you can add this to `/etc/sysctl.conf`:
 
 ```
 vm.overcommit_memory = 1
@@ -352,8 +359,9 @@ from Github:
 ```
 cd /opt/
 sudo git clone -b build https://github.com/cgwire/kitsu
+cd kitsu
 sudo git checkout build
-chown -R zou:www-data /opt/kitsu
+sudo chown -R zou:www-data /opt/kitsu
 ```
 
 Then we need to adapt the Nginx configuration to allow it to serve it properly:
@@ -415,7 +423,7 @@ log in and to create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
-zou create_admin adminemail@yourstudio.com
+DB_PASSWORD=yourdbpassword zou create_admin adminemail@yourstudio.com
 ```
 
 It expects the password as first argument. Then your user will be created with
