@@ -81,6 +81,8 @@ Create zou user:
 
 ```bash
 sudo useradd --home /opt/zou zou 
+mkdir /opt/zou
+chown zou: /opt/zou
 ```
 
 Install Zou and its dependencies:
