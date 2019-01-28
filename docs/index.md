@@ -359,8 +359,9 @@ from Github:
 ```
 cd /opt/
 sudo git clone -b build https://github.com/cgwire/kitsu
+cd kitsu
 sudo git checkout build
-chown -R zou:www-data /opt/kitsu
+sudo chown -R zou:www-data /opt/kitsu
 ```
 
 Then we need to adapt the Nginx configuration to allow it to serve it properly:
