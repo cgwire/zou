@@ -150,7 +150,7 @@ DB_PASSWORD=yourdbpassword zou init_db
 Currently Redis require no extra configuration. 
 
 To remove warnings in Redis logs and improve background saving success rate,
-you can add this to `/etc/systcl.conf`:
+you can add this to `/etc/sysctl.conf`:
 
 ```
 vm.overcommit_memory = 1
