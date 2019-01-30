@@ -71,6 +71,19 @@ future, we expect to propose email notifications too.
 * `DOMAIN_NAME` (default: "localhost:8080"): To build URLs (for password reset
   for instance).
 
+## LDAP 
+
+These variables are active only if auth\_remote\_ldap strategy is selected.
+
+* `LDAP_HOST` (default: "127.0.0.1"): the IP address of your LDAP server.
+* `LDAP_PORT` (default: "389"): the listening port of your LDAP server.
+* `LDAP_BASE_DN` (default: "CN=Users,DC=studio,DC=local"): the base domain of your 
+   LDAP configuration.
+* `LDAP_DOMAIN` (default: "studio.local"): the domain used for your LDAP
+  authentication (NTLM).
+* `LDAP_FALLBACK` (default: "False"): Set to True if you want to allow admins
+  to fallback on default auth strategy when the LDAP server is down.
+
 ## Misc 
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
