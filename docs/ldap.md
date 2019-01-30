@@ -63,6 +63,7 @@ zou sync_with_ldap_server
 ```
 
 Variable descriptions:
+
 * `LDAP_USER`: Username of a LDAP user that can lists all LDAP users.
 * `LDAP_PASSWORD`: Password of a LDAP user that can lists all LDAP users.
 * `LDAP_EMAIL_DOMAIN`: User email will be built with username + @ + email domain.
