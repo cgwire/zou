@@ -40,10 +40,18 @@ LDAP_FALLBACK=True
 
 ## User list synchronization
 
-You will have to synchronize the user list with users from the LDAP. You can do
-it via a Python script. But to help you we added a command in zou to run it.
+You will have to synchronize the user list with users from the LDAP. A good
+option is to handle it via a Python script. But, to makes things simpler, 
+we added a command in `zou` binary to do it for you. 
 It's a one way sync. We consider that Zou should not alter your LDAP user list.
-This command requires many environment variables.
+
+This command requires additional environment variables:
+
+* `LDAP_USER`: Username of a LDAP user that can lists all LDAP users.
+* `LDAP_PASSWORD`: Password of a LDAP user that can lists all LDAP users.
+* `LDAP_EMAIL_DOMAIN`: User email will be built with username + @ + email domain.
+* `LDAP_EXCLUDED_ACCOUNTS`: Set the list of people that should not be created
+  in Kitsu API (Zou).
 
 Example:
 
@@ -62,19 +70,11 @@ LDAP_EXCLUDED_ACCOUNTS=Administrator,TestAccount \
 zou sync_with_ldap_server
 ```
 
-Variable descriptions:
-
-* `LDAP_USER`: Username of a LDAP user that can lists all LDAP users.
-* `LDAP_PASSWORD`: Password of a LDAP user that can lists all LDAP users.
-* `LDAP_EMAIL_DOMAIN`: User email will be built with username + @ + email domain.
-* `LDAP_EXCLUDED_ACCOUNTS`: Set the list of people that should not be created
-  in Kitsu API (Zou).
-
 
 ## Note about Kitsu
 
 When LDAP is activated, it is not possible anymore to change following user
-information through the UI:
+information through the Kitsu web UI:
 
 * email
 * first name
