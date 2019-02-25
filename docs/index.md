@@ -70,9 +70,18 @@ sudo apt-get install redis-server
 sudo apt-get install python3 python3-pip
 sudo apt-get install git
 sudo apt-get install nginx
+sudo apt-get install ffmpeg
 ```
 
 *NB: We recommend to install postgres in a separate machine.*
+
+If you run the installation under Ubuntu 16.04:
+
+```
+sudo add-apt-repository ppa:jonathonf/ffmpeg-4
+sudo apt-get update
+sudo apt-get apt install ffmpeg
+```
 
 
 ### Get sources
