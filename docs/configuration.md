@@ -83,6 +83,7 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
   authentication (NTLM).
 * `LDAP_FALLBACK` (default: "False"): Set to True if you want to allow admins
   to fallback on default auth strategy when the LDAP server is down.
+* `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with active directory.
 
 ## Misc 
 

@@ -13,6 +13,8 @@ the following value:
 AUTH_STRATEGY=auth_remote_ldap
 ```
 
+*NB: If you are using Active directory you must set the `IS_LDAP` flag to true.* 
+
 
 ## Required environment variables
 
@@ -23,9 +25,10 @@ Once this authentication scheme selected, you must set the following variables:
 * `LDAP_BASE_DN` (default: "CN=Users,DC=studio,DC=local"): the base domain of
   your LDAP configuration.
 * `LDAP_DOMAIN` (default: "studio.local"): the domain used for your LDAP
-  authentication (NTLM).
+  authentication.
 * `LDAP_FALLBACK` (default: "False"): Set to True if you want to allow admins
   to fallback on default auth strategy when the LDAP server is down.
+* `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with active directory.
 
 Example:
 
