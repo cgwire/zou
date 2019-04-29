@@ -1,13 +1,13 @@
 [![Zou Logo](zou.png)](https://github.com/cgwire/zou)
 
-# Welcome to the Zou documentation
+# Welcome to the Zou (Kitsu API) documentation
 
 Zou is an API that allows to store and manage the data of your CG production.
 Through it you can link all the tools of your pipeline and make sure they are
 all synchronized. 
 
-To integrate it quickly in your tools you can rely on the dedicated Python client 
-named [Gazu](https://gazu.cg-wire.com). 
+To integrate it in your tools you can rely on the dedicated Python
+client named [Gazu](https://gazu.cg-wire.com). 
 
 The source is available on [Github](https://github.com/cgwire/cgwire-api).
 
@@ -16,6 +16,8 @@ The source is available on [Github](https://github.com/cgwire/cgwire-api).
 The audience for Zou is made of Technical Directors, ITs and
 Software Engineers from CG studios. With Zou they can enhance the
 tools they provide to all departments.
+
+On top of it, you can deploy Kitsu, the production tracker developed by CGWire.
 
 # Features 
 
@@ -41,8 +43,13 @@ instance of the CGWire suite. For that, install docker and run this command:
 docker run -d -p 80:80 --name cgwire cgwire/cgwire
 ```
 
-Then you can access to the Zou API through `http://localhost/api` and enjoy the Kitsu
-web UI at `http://localhost`.
+Then you can access to Zou, the Kitsu API, through `http://localhost/api` and
+enjoy the Kitsu web UI at `http://localhost`.
+
+The credentials are:
+
+* login: admin@example.com
+* password: mysecretpassword
 
 
 # Install 
