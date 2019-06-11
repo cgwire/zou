@@ -30,7 +30,7 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 * `FILE_TREE_FOLDER` (default: /usr/local/share/zou/file_trees): The folder
   where your file tree definitions are stored.
 
-## Event handlers 
+## Event handlers
 
 * `EVENT_HANDLERS_FOLDER` (default: /usr/local/share/zou/thumbnails): The
   folder to put custom event handlers.
@@ -46,10 +46,10 @@ variables (Only Auth 2.0 and 3.0 is supported).
 * `FS_BACKEND`: Set this variable with "swift"
 * `FS_BUCKET_PREFIX`: A prefix for your bucket/container names.
 * `FS_SWIFT_AUTH_URL`: Authentication URL of your swift backend.
-* `FS_SWIFT_USER`: Your Swift login. 
-* `FS_SWIFT_TENANT_NAME`: The Swift tenant name. 
-* `FS_SWIFT_KEY`: Your Swift password. 
-* `FS_SWIFT_REGION_NAME`: Your Swift region name. 
+* `FS_SWIFT_USER`: Your Swift login.
+* `FS_SWIFT_TENANT_NAME`: The Swift tenant name.
+* `FS_SWIFT_KEY`: Your Swift password.
+* `FS_SWIFT_REGION_NAME`: Your Swift region name.
 
 ## Emails
 
@@ -63,21 +63,23 @@ future, we expect to propose email notifications too.
 * `MAIL_DEBUG` (default: "0"): set 1 if you are in a development environment
   (emails are printed in the console instead of being sent).
 * `MAIL_USE_TLS` (default: "False"): To use TLS to communicate with the email
-  server. 
+  server.
 * `MAIL_USE_SSL` (default: "False"): To use SSL to communicate with the email
   server.
 * `MAIL_DEFAULT_SENDER` (default: "no-reply@cg-wire.com"): to set the sender
-  email. 
+  email.
 * `DOMAIN_NAME` (default: "localhost:8080"): To build URLs (for password reset
   for instance).
+* `DOMAIN_PROTOCOL` (default: "https"): To build URLs (for password reset
+  for instance).
 
-## LDAP 
+## LDAP
 
 These variables are active only if auth\_remote\_ldap strategy is selected.
 
 * `LDAP_HOST` (default: "127.0.0.1"): the IP address of your LDAP server.
 * `LDAP_PORT` (default: "389"): the listening port of your LDAP server.
-* `LDAP_BASE_DN` (default: "CN=Users,DC=studio,DC=local"): the base domain of your 
+* `LDAP_BASE_DN` (default: "CN=Users,DC=studio,DC=local"): the base domain of your
    LDAP configuration.
 * `LDAP_DOMAIN` (default: "studio.local"): the domain used for your LDAP
   authentication (NTLM).
@@ -85,7 +87,7 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
   to fallback on default auth strategy when the LDAP server is down.
 * `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with active directory.
 
-## Misc 
+## Misc
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
 * `DEBUG` (default: False): Activate the debug mode for development purpose.
