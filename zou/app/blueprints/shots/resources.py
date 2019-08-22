@@ -347,6 +347,30 @@ class EpisodeSequencesResource(Resource):
         return shots_service.get_sequences(criterions)
 
 
+class EpisodeTaskTypesResource(Resource):
+
+    @jwt_required
+    def get(self, episode_id):
+        """
+        Retrieve all task types related to a given episode.
+        """
+        episode = shots_service.get_episode(episode_id)
+        user_service.check_project_access(episode["project_id"])
+        return tasks_service.get_task_types_for_episode(episode_id)
+
+
+class EpisodeTasksResource(Resource):
+
+    @jwt_required
+    def get(self, episode_id):
+        """
+        Retrieve all tasks related to a given episode.
+        """
+        episode = shots_service.get_episode(episode_id)
+        user_service.check_project_access(episode["project_id"])
+        return tasks_service.get_tasks_for_episode(episode_id)
+
+
 class SequenceResource(Resource):
 
     @jwt_required
