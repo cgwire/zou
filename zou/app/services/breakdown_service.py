@@ -27,7 +27,8 @@ Warning: These two representations are not linked. Data are not synchronized.
 
 def get_casting(shot_id):
     """
-    Return all assets and their number of occurences listed in given shot.
+    Return all assets and their number of occurences listed in given shot
+    (or asset for set dressing).
     """
     casting = []
     links = EntityLink.query \
@@ -54,24 +55,40 @@ def update_casting(shot_id, casting):
     Update casting for given shot. Casting is an array of dictionaries made of
     two fields: `asset_id` and `nb_occurences`.
     """
-    shot = shots_service.get_shot_raw(shot_id)
-    shot.update({"entities_out": []})
+    entity = entities_service.get_entity_raw(shot_id)
+    entity.update({"entities_out": []})
     casting_ids = []
     for cast in casting:
         if "asset_id" in cast and "nb_occurences" in cast:
             create_casting_link(
-                shot.id,
+                entity.id,
                 cast["asset_id"],
                 cast["nb_occurences"]
             )
-    events.emit("shot:casting-update", {
-        "shot": shot_id,
-        "casting": casting_ids
-    })
+    entity_id = str(entity.id)
+    if shots_service.is_shot(entity.serialize()):
+        events.emit("shot:casting-update", {
+            "shot": entity_id,
+            "casting": casting_ids
+        })
+        events.emit("shot:update", {
+            "shot_id": entity_id,
+        })
+    else:
+        events.emit("asset:casting-update", {
+            "asset": entity_id,
+            "casting": casting_ids
+        })
+        events.emit("asset:update", {
+            "asset_id": entity_id
+        })
     return casting
 
 
 def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
+    """
+    Add a link between given entity and given asset.
+    """
     link = EntityLink.get_by(
         entity_in_id=entity_in_id,
         entity_out_id=asset_id
@@ -132,6 +149,37 @@ def get_cast_in(asset_id):
             "nb_occurences": link.nb_occurences
         }
         cast_in.append(shot)
+
+    links = EntityLink.query \
+        .filter_by(entity_out_id=asset_id) \
+        .filter(Entity.canceled != True) \
+        .join(Entity, EntityLink.entity_in_id == Entity.id) \
+        .join(EntityType, EntityType.id == Entity.entity_type_id) \
+        .add_columns(
+            Entity.name,
+            EntityType.name,
+            Entity.preview_file_id
+        ) \
+        .order_by(
+            EntityType.name,
+            Entity.name
+        )
+
+    for (
+        link,
+        entity_name,
+        entity_type_name,
+        entity_preview_file_id
+    ) in links:
+        shot = {
+            "asset_id": fields.serialize_value(link.entity_in_id),
+            "asset_name": entity_name,
+            "asset_type_name": entity_type_name,
+            "preview_file_id": fields.serialize_value(entity_preview_file_id),
+            "nb_occurences": link.nb_occurences
+        }
+        cast_in.append(shot)
+
     return cast_in
 
 

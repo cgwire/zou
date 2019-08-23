@@ -1,5 +1,6 @@
 import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy_utils import UUIDType
 from zou.app import db
 from zou.app.utils import fields
@@ -93,7 +94,9 @@ class BaseMixin(object):
         """
         Shorthand to delete data by using filters.
         """
-        return cls.query.filter_by(**kw).delete()
+        result = cls.query.filter_by(**kw).delete()
+        db.session.commit()
+        return result
 
     @classmethod
     def get_id_map(cls, field="shotgun_id"):
@@ -106,6 +109,39 @@ class BaseMixin(object):
         for entry in entries:
             entry_map[getattr(entry, field)] = entry.id
         return entry_map
+
+    @classmethod
+    def create_from_import(cls, data):
+        """
+        Create a new instance of the model based on data that comes from the Zou
+        API.
+        """
+        del data["type"]
+        previous_data = cls.get(data["id"])
+        if previous_data is None:
+            return cls.create(**data)
+        else:
+            previous_data.update(data)
+            return previous_data
+
+    @classmethod
+    def create_from_import_list(cls, data_list):
+        """
+        Create a list of instances of the model based on data that comes from
+        the Zou API.
+        """
+        for data in data_list:
+            cls.create_from_import(data)
+
+    @classmethod
+    def delete_from_import(cls, instance_id):
+        """
+        Delete an entry and its related base on the entry id.
+        """
+        instance = cls.get(instance_id)
+        if instance is not None:
+            instance.delete()
+        return instance_id
 
     def save(self):
         """

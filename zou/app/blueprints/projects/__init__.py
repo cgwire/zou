@@ -8,7 +8,11 @@ from .resources import (
     ProductionTeamRemoveResource,
     ProductionMetadataDescriptorResource,
     ProductionMetadataDescriptorsResource,
-    ProductionScheduleItemsResource
+    ProductionMilestonesResource,
+    ProductionScheduleItemsResource,
+    ProductionAssetTypesScheduleItemsResource,
+    ProductionEpisodesScheduleItemsResource,
+    ProductionSequencesScheduleItemsResource
 )
 
 routes = [
@@ -29,8 +33,24 @@ routes = [
         ProductionMetadataDescriptorResource
     ),
     (
+        "/data/projects/<project_id>/milestones",
+        ProductionMilestonesResource
+    ),
+    (
         "/data/projects/<project_id>/schedule-items",
         ProductionScheduleItemsResource
+    ),
+    (
+        "/data/projects/<project_id>/schedule-items/<task_type_id>/asset-types",
+        ProductionAssetTypesScheduleItemsResource,
+    ),
+    (
+        "/data/projects/<project_id>/schedule-items/<task_type_id>/episodes",
+        ProductionEpisodesScheduleItemsResource,
+    ),
+    (
+        "/data/projects/<project_id>/schedule-items/<task_type_id>/sequences",
+        ProductionSequencesScheduleItemsResource,
     )
 ]
 

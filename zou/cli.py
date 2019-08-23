@@ -6,7 +6,7 @@ import click
 
 from sqlalchemy.exc import IntegrityError
 
-from zou.app.utils import dbhelpers, auth, commands
+from zou.app.utils import dbhelpers, auth, commands, sync
 from zou.app.services import (
     persons_service,
     tasks_service
@@ -35,7 +35,10 @@ def init_db():
 
 @cli.command()
 def migrate_db():
-    "Upgrade database schema."
+    """
+    Generate migration files to describe a new revision of the database schema
+    (for development only).
+    """
 
     from zou.app import app
     with app.app_context():
@@ -78,7 +81,7 @@ def upgrade_db():
 
 @cli.command()
 def stamp_db():
-    "Upgrade database schema."
+    "Set the database schema revision to current one."
 
     from zou.app import app
     with app.app_context():
@@ -140,6 +143,7 @@ def clear_all_auth_tokens():
 
 @cli.command('init_data')
 def init_data():
+    "Generates minimal data set required to run Kitsu."
     commands.init_data()
 
 
@@ -327,6 +331,40 @@ def patch_task_data():
         for task in Task.get_all_by(project_id=project["id"]):
             deletion_service.reset_task_data(task.id)
     print("Task cleaning done.")
+
+
+@cli.command()
+@click.option("--target", default="http://localhost:5000")
+def run_sync(target):
+    """
+    Retrieve all data from target instance.
+    """
+    print("Start syncing.")
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    sync.init(login, password)
+    sync.run_main_data_sync()
+    sync.run_open_project_data_sync()
+    sync.run_other_sync()
+    print("Syncing ended.")
+
+
+@cli.command()
+@click.option("--event-target", default="http://localhost:8080")
+@click.option("--target", default="http://localhost:8080/api")
+def sync_changes(event_target, target):
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    event_client = sync.init_events_listener(
+        target,
+        event_target,
+        login,
+        password
+    )
+    sync.add_main_sync_listeners(event_client)
+    sync.add_project_sync_listeners(event_client)
+    print("Start listening.")
+    sync.run_listeners(event_client)
 
 
 if __name__ == '__main__':
