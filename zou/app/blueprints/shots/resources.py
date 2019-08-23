@@ -194,6 +194,48 @@ class ShotsAndTasksResource(Resource):
         return shots_service.get_shots_and_tasks(criterions)
 
 
+class SceneAndTasksResource(Resource):
+
+    @jwt_required
+    def get(self):
+        """
+        Retrieve all scene, adds project name and asset type name and all
+        related tasks.
+        """
+        criterions = query.get_query_criterions_from_request(request)
+        user_service.check_project_access(criterions.get("project_id", None))
+        criterions['entity_type_id'] = shots_service.get_scene_type()['id']
+        return shots_service.get_entities_and_tasks(criterions)
+
+
+class SequenceAndTasksResource(Resource):
+
+    @jwt_required
+    def get(self):
+        """
+        Retrieve all sequence, adds project name and asset type name and all
+        related tasks.
+        """
+        criterions = query.get_query_criterions_from_request(request)
+        user_service.check_project_access(criterions.get("project_id", None))
+        criterions['entity_type_id'] = shots_service.get_sequence_type()['id']
+        return shots_service.get_entities_and_tasks(criterions)
+
+
+class EpisodeAndTasksResource(Resource):
+
+    @jwt_required
+    def get(self):
+        """
+        Retrieve all episode, adds project name and asset type name and all
+        related tasks.
+        """
+        criterions = query.get_query_criterions_from_request(request)
+        user_service.check_project_access(criterions.get("project_id", None))
+        criterions['entity_type_id'] = shots_service.get_episode_type()['id']
+        return shots_service.get_entities_and_tasks(criterions)
+
+
 class ProjectShotsResource(Resource):
 
     @jwt_required
