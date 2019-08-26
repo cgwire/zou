@@ -5,7 +5,7 @@ from zou.app.utils import fields
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.task import association_table as assignees_table
+from zou.app.models.task import assignees_table
 from zou.app.models.task import Task
 
 from zou.app.services.exception import (
