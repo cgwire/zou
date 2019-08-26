@@ -205,25 +205,24 @@ def get_task_dicts_for_entity(entity_id):
     Return all tasks related to given entity. Add extra information like
     project name, task type name, etc.
     """
-    query = (
-        Task.query.order_by(Task.name)
-        .filter_by(entity_id=entity_id)
-        .join(Project)
-        .join(TaskType)
-        .join(TaskStatus)
-        .join(Entity, Task.entity_id == Entity.id)
-        .join(EntityType)
-        .add_columns(Project.name)
-        .add_columns(TaskType.name)
-        .add_columns(TaskStatus.name)
-        .add_columns(EntityType.name)
-        .add_columns(Entity.name)
+    query = Task.query.order_by(Task.name) \
+        .filter_by(entity_id=entity_id) \
+        .join(Project) \
+        .join(TaskType) \
+        .join(TaskStatus) \
+        .join(Entity, Task.entity_id == Entity.id) \
+        .join(EntityType) \
+        .add_columns(Project.name) \
+        .add_columns(TaskType.name) \
+        .add_columns(TaskStatus.name) \
+        .add_columns(EntityType.name) \
+        .add_columns(Entity.name) \
         .order_by(
             Project.name,
             TaskType.name,
             EntityType.name,
-            Entity.name
-        ))
+            Entity.name)
+
     results = []
 
     for entry in query.all():
