@@ -62,6 +62,17 @@ class SceneTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(scene_id)
 
 
+class SequenceTaskTypesResource(Resource):
+    """
+    Return task types related to given sequence for current user.
+    """
+
+    @jwt_required
+    def get(self, sequence_id):
+        shots_service.get_sequence(sequence_id)
+        return user_service.get_task_types_for_entity(sequence_id)
+
+
 class AssetTypeAssetsResource(Resource):
     """
     Return assets of which type is given asset type and are listed in given
@@ -166,6 +177,17 @@ class SceneTasksResource(Resource):
     def get(self, scene_id):
         shots_service.get_scene(scene_id)
         return user_service.get_tasks_for_entity(scene_id)
+
+
+class SequenceTasksResource(Resource):
+    """
+    Return tasks related to given sequence for current user.
+    """
+
+    @jwt_required
+    def get(self, sequence_id):
+        shots_service.get_sequence(sequence_id)
+        return user_service.get_tasks_for_entity(sequence_id)
 
 
 class TodosResource(Resource):
