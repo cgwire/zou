@@ -42,7 +42,7 @@ DATABASE = {
     "database": os.getenv("DB_DATABASE", "zoudb"),
 }
 SQLALCHEMY_DATABASE_URI = str(dbhelpers.get_db_uri())
-SQLALCHEMY_TRACK_MODIFICATIONS = True
+SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENGINE_OPTIONS = {
     "pool_size": os.getenv("DB_POOL_SIZE", 30),
     "max_overflow": os.getenv("DB_MAX_OVERFLOW", 60),
