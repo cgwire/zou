@@ -179,13 +179,10 @@ def sync_with_ldap_server():
                 "email": clean_value(entry.mail),
                 "desktop_login": clean_value(entry.sAMAccountName),
                 "thumbnail": entry.thumbnailPhoto.raw_values,
+                "active": clean_value(entry.userAccountControl) in ['512', '66048'],
             }
             for entry in conn.entries
-            # Only return active normal accounts
-            # 512 = Normal account (512)
-            # 66048 = Normal account + dont expire password (65536 + 512)
-            # for more information https://support.microsoft.com/en-us/help/305144/how-to-use-useraccountcontrol-to-manipulate-user-account-properties
-            if clean_value(entry.sAMAccountName) not in excluded_accounts and clean_value(entry.userAccountControl) in ['512', '66048']
+            if clean_value(entry.sAMAccountName) not in excluded_accounts
         ]
 
     def search_ldap_users(conn, excluded_accounts):
@@ -233,6 +230,7 @@ def sync_with_ldap_server():
             last_name = user["last_name"]
             desktop_login = user["desktop_login"]
             email = user["email"]
+            active = user.get("active", True)
             if "thumbnail" in user and len(user["thumbnail"]) > 0:
                 thumbnail = user["thumbnail"][0]
             else:
@@ -248,7 +246,7 @@ def sync_with_ldap_server():
             if len(email) == 0 or email == "[]" or type(email) != str:
                 email = "%s@%s" % (desktop_login, EMAIL_DOMAIN)
 
-            if person is None:
+            if person is None and active is True:
                 person = persons_service.create_person(
                     email,
                     "default".encode("utf-8"),
@@ -258,21 +256,19 @@ def sync_with_ldap_server():
                 )
                 print("User %s created." % desktop_login)
 
-            else:
-                person = persons_service.get_person_by_desktop_login(
-                    desktop_login
-                )
+            elif person is not None:
                 persons_service.update_person(
                     person["id"],
                     {
                         "email": email,
                         "first_name": first_name,
                         "last_name": last_name,
+                        "active": active,
                     },
                 )
                 print("User %s updated." % desktop_login)
 
-            if len(thumbnail) > 0:
+            if person is not None and len(thumbnail) > 0:
                 save_thumbnail(person, thumbnail)
 
     def save_thumbnail(person, thumbnail):
