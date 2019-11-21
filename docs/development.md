@@ -10,7 +10,7 @@ your local system):
 
 ```bash
 sudo docker pull postgres
-sudo docker run postgres \
+sudo docker run \
     --name postgres \
     -p 5432:5432 \
     -e POSTGRES_PASSWORD=mysecretpassword \
