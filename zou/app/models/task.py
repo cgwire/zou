@@ -1,4 +1,5 @@
 from sqlalchemy_utils import UUIDType
+from sqlalchemy.dialects.postgresql import JSONB
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
@@ -42,6 +43,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     due_date = db.Column(db.DateTime)
     real_start_date = db.Column(db.DateTime)
     last_comment_date = db.Column(db.DateTime)
+    data = db.Column(JSONB)
     shotgun_id = db.Column(db.Integer)
 
     project_id = db.Column(
