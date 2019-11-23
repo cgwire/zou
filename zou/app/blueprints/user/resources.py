@@ -401,3 +401,14 @@ class TimeSpentsResource(Resource):
             return time_spents_service.get_time_spents(current_user["id"], date)
         except WrongDateFormatException:
             abort(404)
+
+
+class ContextResource(Resource):
+    """
+    Return context required to run properly a full app connected to
+    the API (like the Kitsu web client).
+    """
+
+    @jwt_required
+    def get(self):
+        return user_service.get_context()

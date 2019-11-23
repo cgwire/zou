@@ -1,14 +1,16 @@
 from sqlalchemy.orm import aliased
 
+from zou.app.models.comment import Comment
+from zou.app.models.custom_action import CustomAction
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.models.notification import Notification
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.search_filter import SearchFilter
-from zou.app.models.notification import Notification
 from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
-from zou.app.models.comment import Comment
 
 from zou.app.services import (
     assets_service,
@@ -600,3 +602,25 @@ def get_sequence_subscriptions(project_id, task_type_id):
     return notifications_service.get_all_sequence_subscriptions(
         current_user["id"], project_id, task_type_id
     )
+
+
+def get_context():
+    project_status_list = ProjectStatus.get_all()
+    task_types = TaskType.get_all()
+    task_status_list = TaskStatus.get_all()
+    asset_types = assets_service.get_asset_types()
+    persons = persons_service.get_active_persons()
+    projects = projects_service.open_projects()
+    notifications = get_last_notifications()
+    custom_actions = CustomAction.get_all()
+
+    return {
+        "asset_types": asset_types,
+        "custom_actions": custom_actions,
+        "notifications": notifications,
+        "persons": persons,
+        "project_status": project_status_list,
+        "projects": projects,
+        "task_types": task_types,
+        "task_status": task_status_list,
+    }
