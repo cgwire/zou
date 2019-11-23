@@ -1,6 +1,14 @@
+from flask_jwt_extended import jwt_required
+from flask_restful import reqparse
+
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
-from zou.app.services import user_service, projects_service, shots_service
+from zou.app.services import (
+    deletion_service,
+    projects_service,
+    shots_service,
+    user_service,
+)
 from zou.app.utils import permissions, fields
 
 from .base import BaseModelResource, BaseModelsResource
@@ -62,3 +70,16 @@ class ProjectResource(BaseModelResource):
 
     def post_delete(self, project_dict):
         projects_service.clear_project_cache(project_dict["id"])
+
+    @jwt_required
+    def delete(self, instance_id):
+        parser = reqparse.RequestParser()
+        parser.add_argument("force", default=False, type=bool)
+        args = parser.parse_args()
+
+        project = self.get_model_or_404(instance_id)
+        project_dict = project.serialize()
+        self.check_delete_permissions(project_dict)
+        deletion_service.remove_project(instance_id, force=args["force"])
+        self.post_delete(project_dict)
+        return '', 204
