@@ -327,3 +327,7 @@ def remove_metadata_descriptor(metadata_descriptor_id):
         {"metadata_descriptor_id": str(descriptor.id)},
     )
     return descriptor.serialize()
+
+
+def is_tv_show(project):
+    return project["production_type"] == "tvshow"

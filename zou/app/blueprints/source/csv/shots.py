@@ -1,6 +1,6 @@
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
-from zou.app.services import shots_service
+from zou.app.services import shots_service, projects_service
 from zou.app.models.entity import Entity
 
 from sqlalchemy.exc import IntegrityError
@@ -13,34 +13,56 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         self.descriptor_fields = self.get_descriptor_field_map(
             project_id, "Shot"
         )
+        project = projects_service.get_project(project_id)
+        self.is_tv_show = projects_service.is_tv_show(project)
 
     def import_row(self, row, project_id):
-        episode_name = row["Episode"]
+        if self.is_tv_show:
+            episode_name = row["Episode"]
         sequence_name = row["Sequence"]
         shot_name = row["Name"]
         description = row["Description"]
         nb_frames = row.get("Nb Frames", None)
         data = {
-            "frame_in": row["Frame In"],
-            "frame_out": row["Frame Out"],
+            "frame_in": row.get("Frame In"),
+            "frame_out": row.get("Frame Out"),
             "fps": row.get("FPS", None),
         }
         for name, field_name in self.descriptor_fields.items():
             if name in row:
                 data[field_name] = row[name]
 
-        episode_key = "%s-%s" % (project_id, episode_name)
-        if episode_key not in self.episodes:
-            self.episodes[episode_key] = shots_service.get_or_create_episode(
-                project_id, episode_name
-            )
+        if self.is_tv_show:
+            episode_key = "%s-%s" % (project_id, episode_name)
+            if episode_key not in self.episodes:
+                self.episodes[
+                    episode_key
+                ] = shots_service.get_or_create_episode(
+                    project_id, episode_name
+                )
 
-        sequence_key = "%s-%s-%s" % (project_id, episode_name, sequence_name)
-        if sequence_key not in self.sequences:
-            episode = self.episodes[episode_key]
-            self.sequences[sequence_key] = shots_service.get_or_create_sequence(
-                project_id, episode["id"], sequence_name
+            sequence_key = "%s-%s-%s" % (
+                project_id,
+                episode_name,
+                sequence_name,
             )
+        else:
+            sequence_key = "%s-%s" % (project_id, sequence_name)
+
+        if sequence_key not in self.sequences:
+            if self.is_tv_show:
+                episode = self.episodes[episode_key]
+                self.sequences[
+                    sequence_key
+                ] = shots_service.get_or_create_sequence(
+                    project_id, episode["id"], sequence_name
+                )
+            else:
+                self.sequences[
+                    sequence_key
+                ] = shots_service.get_or_create_sequence(
+                    project_id, None, sequence_name
+                )
         sequence_id = self.get_id_from_cache(self.sequences, sequence_key)
 
         shot_type = shots_service.get_shot_type()
