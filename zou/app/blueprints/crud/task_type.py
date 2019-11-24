@@ -21,6 +21,9 @@ class TaskTypesResource(BaseModelsResource):
             )
         return data
 
+    def post_creation(self, instance):
+        tasks_service.clear_task_type_cache(str(instance.id))
+
 
 class TaskTypeResource(BaseModelResource):
     def __init__(self):

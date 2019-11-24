@@ -23,6 +23,7 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_person_by_email)
     cache.cache.delete_memoized(get_person_by_email_username)
     cache.cache.delete_memoized(get_person_by_desktop_login)
+    cache.cache.delete_memoized(get_active_persons)
 
 
 def get_persons():
@@ -32,6 +33,7 @@ def get_persons():
     return fields.serialize_models(Person.query.all())
 
 
+@cache.memoize_function(120)
 def get_active_persons():
     """
     Return all person with flag active set to True.

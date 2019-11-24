@@ -1,5 +1,6 @@
 import slugify
 
+from zou.app.models.custom_action import CustomAction
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -100,6 +101,11 @@ def get_projects():
         result.append(data)
 
     return result
+
+
+@cache.memoize_function(480)
+def get_project_statuses():
+    return fields.serialize_models(ProjectStatus.get_all())
 
 
 def get_or_create_open_status():
@@ -331,3 +337,8 @@ def remove_metadata_descriptor(metadata_descriptor_id):
 
 def is_tv_show(project):
     return project["production_type"] == "tvshow"
+
+
+@cache.memoize_function(120)
+def get_custom_actions():
+    return fields.serialize_models(CustomAction.get_all())

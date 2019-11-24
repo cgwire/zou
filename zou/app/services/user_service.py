@@ -9,7 +9,6 @@ from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.task import Task
-from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
@@ -25,7 +24,11 @@ from zou.app.services.exception import (
     SearchFilterNotFoundException,
     NotificationNotFoundException,
 )
-from zou.app.utils import fields, permissions
+from zou.app.utils import cache, fields, permissions
+
+
+def clear_filter_cache():
+    cache.cache.delete_memoized(get_filters)
 
 
 def build_assignee_filter():
@@ -354,6 +357,7 @@ def check_playlist_access(playlist):
     return True
 
 
+@cache.memoize_function(120)
 def get_filters():
     """
     Retrieve search filters used by current user. It groups them by
@@ -409,6 +413,7 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
         entity_type=entity_type,
     )
     search_filter.serialize()
+    clear_filter_cache()
     return search_filter.serialize()
 
 
@@ -423,6 +428,7 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
+    clear_filter_cache()
     return search_filter.serialize()
 
 
@@ -605,14 +611,15 @@ def get_sequence_subscriptions(project_id, task_type_id):
 
 
 def get_context():
-    project_status_list = ProjectStatus.get_all()
-    task_types = TaskType.get_all()
-    task_status_list = TaskStatus.get_all()
     asset_types = assets_service.get_asset_types()
+    custom_actions = projects_service.get_custom_actions()
     persons = persons_service.get_active_persons()
-    projects = projects_service.open_projects()
     notifications = get_last_notifications()
-    custom_actions = CustomAction.get_all()
+    project_status_list = projects_service.get_project_statuses()
+    projects = projects_service.open_projects()
+    task_types = tasks_service.get_task_types()
+    task_status_list = tasks_service.get_task_statuses()
+    search_filters = get_filters()
 
     return {
         "asset_types": asset_types,
@@ -623,4 +630,5 @@ def get_context():
         "projects": projects,
         "task_types": task_types,
         "task_status": task_status_list,
+        "search_filters": search_filters,
     }

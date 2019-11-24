@@ -29,6 +29,10 @@ def clear_asset_cache(asset_id):
     cache.cache.delete_memoized(get_full_asset, asset_id)
 
 
+def clear_asset_type_cache():
+    cache.cache.delete_memoized(get_asset_types)
+
+
 def get_temporal_type_ids():
     shot_type = shots_service.get_shot_type()
     if shot_type is None:
@@ -217,6 +221,7 @@ def get_assets_and_tasks(criterions={}, page=1):
     return list(asset_map.values())
 
 
+@cache.memoize_function(240)
 def get_asset_types(criterions={}):
     """
     Retrieve all asset types available.
@@ -312,9 +317,6 @@ def get_full_asset(asset_id):
         asset = get_asset(asset_id)
         asset_type_id = asset["entity_type_id"]
         asset_type = get_asset_type(asset_type_id)
-        if asset_type is None:
-            cache.cache.delete_memoized(get_asset_type, asset_type_id)
-            asset_type = get_asset_type(asset_type_id)
         project = Project.get(asset["project_id"])
 
         asset["project_name"] = project.name
@@ -362,6 +364,7 @@ def get_asset_type_raw(asset_type_id):
     return asset_type
 
 
+@cache.memoize_function(240)
 def get_asset_type(asset_type_id):
     """
     Return given asset type instance as a dict.
@@ -376,6 +379,7 @@ def get_or_create_asset_type(name):
     asset_type = EntityType.get_by(name=name)
     if asset_type is None:
         asset_type = EntityType.create(name=name)
+        clear_asset_type_cache()
     return asset_type.serialize(obj_type="AssetType")
 
 

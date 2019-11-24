@@ -45,11 +45,12 @@ from zou.app.services import (
 
 
 def clear_task_status_cache(task_status_id):
-    cache.cache.delete_memoized(get_task_status, task_status_id)
+    cache.cache.delete_memoized(get_task_statuses)
 
 
 def clear_task_type_cache(task_type_id):
     cache.cache.delete_memoized(get_task_type, task_type_id)
+    cache.cache.delete_memoized(get_task_types)
 
 
 def clear_task_cache(task_id):
@@ -57,24 +58,39 @@ def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_full_task, task_id)
 
 
+@cache.memoize_function(120)
 def clear_comment_cache(comment_id):
     cache.cache.delete_memoized(get_comment, comment_id)
 
 
+@cache.memoize_function(120)
+def get_task_types():
+    return fields.serialize_models(TaskType.get_all())
+
+
+@cache.memoize_function(120)
+def get_task_statuses():
+    return fields.serialize_models(TaskStatus.get_all())
+
+
+@cache.memoize_function(120)
 def get_done_status():
     return get_or_create_status(
         app.config["DONE_TASK_STATUS"], "done", is_done=True
     )
 
 
+@cache.memoize_function(120)
 def get_wip_status():
     return get_or_create_status(app.config["WIP_TASK_STATUS"], "wip")
 
 
+@cache.memoize_function(120)
 def get_to_review_status():
     return get_or_create_status(app.config["TO_REVIEW_TASK_STATUS"], "pndng")
 
 
+@cache.memoize_function(120)
 def get_todo_status():
     return get_or_create_status("Todo")
 

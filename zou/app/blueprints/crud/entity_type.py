@@ -2,7 +2,7 @@ from .base import BaseModelResource, BaseModelsResource
 
 from zou.app.models.entity_type import EntityType
 from zou.app.utils import events
-from zou.app.services import entities_service
+from zou.app.services import entities_service, assets_service
 
 
 class EntityTypesResource(BaseModelsResource):
@@ -14,6 +14,10 @@ class EntityTypesResource(BaseModelsResource):
 
     def emit_create_event(self, instance_dict):
         events.emit("asset-type:new", {"asset_type_id": instance_dict["id"]})
+
+    def post_creation(self, instance):
+        assets_service.clear_asset_type_cache()
+        return instance.serialize()
 
 
 class EntityTypeResource(BaseModelResource):
@@ -31,6 +35,8 @@ class EntityTypeResource(BaseModelResource):
 
     def post_update(self, instance_dict):
         entities_service.clear_entity_type_cache(instance_dict["id"])
+        assets_service.clear_asset_type_cache()
 
     def post_delete(self, instance_dict):
         entities_service.clear_entity_type_cache(instance_dict["id"])
+        assets_service.clear_asset_type_cache()

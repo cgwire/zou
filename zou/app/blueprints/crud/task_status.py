@@ -10,6 +10,9 @@ class TaskStatusesResource(BaseModelsResource):
     def check_read_permissions(self):
         return True
 
+    def post_creation(self, instance):
+        tasks_service.clear_task_status_cache(instance.id)
+
 
 class TaskStatusResource(BaseModelResource):
     def __init__(self):
