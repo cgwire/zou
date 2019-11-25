@@ -1,6 +1,5 @@
 import datetime
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy_utils import UUIDType
 from zou.app import db
 from zou.app.utils import fields
@@ -141,6 +140,10 @@ class BaseMixin(object):
         if instance is not None:
             instance.delete()
         return instance_id
+
+    @classmethod
+    def commit(cls):
+        db.session.commit()
 
     def save(self):
         """

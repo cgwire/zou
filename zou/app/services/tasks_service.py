@@ -11,15 +11,15 @@ from zou.app.utils import events
 from zou.app.models.comment import Comment
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
 from zou.app.models.news import News
 from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
-from zou.app.models.project import Project
-from zou.app.models.entity_type import EntityType
-from zou.app.models.preview_file import PreviewFile
 
 from zou.app.utils import cache, fields, query as query_utils
 

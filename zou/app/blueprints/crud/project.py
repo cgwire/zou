@@ -79,7 +79,13 @@ class ProjectResource(BaseModelResource):
 
         project = self.get_model_or_404(instance_id)
         project_dict = project.serialize()
-        self.check_delete_permissions(project_dict)
-        deletion_service.remove_project(instance_id, force=args["force"])
-        self.post_delete(project_dict)
-        return '', 204
+        if projects_service.is_open(project_dict):
+            return {"error": "Only closed projects can be deleted"}, 400
+        else:
+            if args["force"] == True:
+                self.check_delete_permissions(project_dict)
+                deletion_service.remove_project(instance_id)
+            else:
+                project.delete()
+            self.post_delete(project_dict)
+            return '', 204

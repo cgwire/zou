@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import fields
+from zou.app.models.project import Project
 
 
 class ProjectTestCase(ApiDBTestCase):
@@ -53,10 +54,11 @@ class ProjectTestCase(ApiDBTestCase):
         projects = self.get("data/projects")
         self.assertEqual(len(projects), 3)
         project = projects[0]
-        self.delete("data/projects/%s" % project["id"])
-        projects = self.get("data/projects")
-        self.assertEqual(len(projects), 2)
-        self.delete_404("data/projects/%s" % fields.gen_uuid())
+        self.delete("data/projects/%s" % project["id"], 400)
+        self.generate_fixture_project_closed_status()
+        self.generate_fixture_project_closed()
+        self.delete("data/projects/%s" % self.project_closed.id)
+        self.assertIsNone(Project.get(self.project_closed.id))
 
     def test_project_status(self):
         data = {

@@ -1,6 +1,5 @@
 import slugify
 
-from zou.app.models.custom_action import CustomAction
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -115,12 +114,12 @@ def get_or_create_open_status():
     return get_or_create_status("Open")
 
 
-@cache.memoize_function(120)
+@cache.memoize_function(480)
 def get_open_status():
     """
     Return open status. If it does not exist, it creates it.
     """
-    get_or_create_status("Open")
+    return get_or_create_status("Open")
 
 
 @cache.memoize_function(120)
@@ -128,7 +127,7 @@ def get_closed_status():
     """
     Return closed status. If it does not exist, it creates it.
     """
-    get_or_create_status("Closed")
+    return get_or_create_status("Closed")
 
 
 def get_or_create_status(name):
@@ -339,6 +338,6 @@ def is_tv_show(project):
     return project["production_type"] == "tvshow"
 
 
-@cache.memoize_function(120)
-def get_custom_actions():
-    return fields.serialize_models(CustomAction.get_all())
+def is_open(project):
+    open_status = get_open_status()
+    return project["project_status_id"] == open_status["id"]

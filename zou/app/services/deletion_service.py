@@ -1,15 +1,15 @@
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
-from zou.app.models.subscription import Subscription
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.notification import Notification
 from zou.app.models.milestone import Milestone
 from zou.app.models.news import News
 from zou.app.models.output_file import OutputFile
+from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
-from zou.app.models.subscription import Subscription
 from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
@@ -246,23 +246,30 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
     )
     task_ids = []
     for task in tasks:
-        remove_task(tetadataDescriptorask.id, force=True)
+        remove_task(task.id, force=True)
         task_ids.append(str(task.id))
     return task_ids
 
 
-def remove_project(project_id, force=True):
+def remove_project(project_id):
+    from zou.app.services import playlists_service
     tasks = Task.query.filter_by(project_id=project_id)
     for task in tasks:
         remove_task(task.id, force=True)
-    News.delete_all_by(project_id=project_id)
+
     Entity.delete_all_by(project_id=project_id)
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
+
+    for news in News.query.join(Task).filter_by(project_id=project_id).all():
+        news.delete_no_commit()
+    News.commit()
+
     playlists = Playlist.query.filter_by(project_id=project_id)
     for playlist in playlists:
         playlists_service.remove_playlist(playlist.id)
+
     project = Project.get(project_id)
     project.delete()
     return project_id

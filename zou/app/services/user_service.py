@@ -13,6 +13,7 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
     assets_service,
+    custom_actions_service,
     notifications_service,
     names_service,
     persons_service,
@@ -612,7 +613,7 @@ def get_sequence_subscriptions(project_id, task_type_id):
 
 def get_context():
     asset_types = assets_service.get_asset_types()
-    custom_actions = projects_service.get_custom_actions()
+    custom_actions = custom_actions_service.get_custom_actions()
     persons = persons_service.get_active_persons()
     notifications = get_last_notifications()
     project_status_list = projects_service.get_project_statuses()

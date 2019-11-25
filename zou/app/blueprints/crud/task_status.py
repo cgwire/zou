@@ -11,7 +11,8 @@ class TaskStatusesResource(BaseModelsResource):
         return True
 
     def post_creation(self, instance):
-        tasks_service.clear_task_status_cache(instance.id)
+        tasks_service.clear_task_status_cache(str(instance.id))
+        return instance.serialize()
 
 
 class TaskStatusResource(BaseModelResource):

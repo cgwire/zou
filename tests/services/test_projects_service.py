@@ -1,9 +1,10 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
+from zou.app.models.project import Project
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.project_status import ProjectStatus
-from zou.app.services import projects_service
+from zou.app.services import deletion_service, projects_service
 from zou.app.services.exception import ProjectNotFoundException
 
 
@@ -163,3 +164,24 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(descriptors), 0)
         asset = Entity.get(asset.id)
         self.assertFalse("contractor" in asset.data)
+
+    def test_delete_project(self):
+        self.generate_fixture_asset_type()
+        self.generate_fixture_asset_types()
+        self.generate_assigned_task()
+        project_id = str(self.project.id)
+        deletion_service.remove_project(project_id)
+        self.assertIsNone(Project.get(project_id))
+
+    def test_is_tv_show(self):
+        self.assertFalse(projects_service.is_tv_show(self.project.serialize()))
+        self.project.update({
+            "production_type": "tvshow"
+        })
+        self.assertTrue(projects_service.is_tv_show(self.project.serialize()))
+
+    def test_is_open(self):
+        self.assertTrue(projects_service.is_open(self.project.serialize()))
+        self.assertFalse(
+            projects_service.is_open(self.project_closed.serialize())
+        )
