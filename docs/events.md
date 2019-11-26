@@ -36,21 +36,7 @@ event_map = {
 }
 ```
 
-## Listen to events through http
+## Listen to events through websocket
 
-
-You can listen to events by connecting to
-`http://your.zouserver.domain/events`.
-
-You can use the `sseclient-py` for that:
-
-```python
-    import requests
-            
-url = 'http://your.zou-domain.name/events'
-response = requests.get(url, stream=True)
-client = sseclient.SSEClient(response)
-for event in client.events():
-    data = json.loads(event.data)
-    print(data)
-```
+You can list to events externally. For that, please read the 
+[events documentation](https://gazu.cg-wire.com/events.html) of the Python client.
