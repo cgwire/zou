@@ -28,7 +28,6 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     The task has a state and assigned to people. It handles notion of time like
     duration, start date and end date.
     """
-
     name = db.Column(db.String(80), nullable=False)
     description = db.Column(db.String(200))
 
@@ -50,15 +49,17 @@ class Task(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False), db.ForeignKey("project.id"), index=True
     )
     task_type_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("task_type.id")
+        UUIDType(binary=False), db.ForeignKey("task_type.id"), index=True
     )
     task_status_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("task_status.id")
+        UUIDType(binary=False), db.ForeignKey("task_status.id"), index=True
     )
     entity_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
     )
-    assigner_id = db.Column(UUIDType(binary=False), db.ForeignKey("person.id"))
+    assigner_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("person.id"), index=True
+    )
     assignees = db.relationship("Person", secondary=assignees_table)
 
     __table_args__ = (
