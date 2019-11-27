@@ -227,7 +227,7 @@ class BaseModelResource(Resource):
         return data
 
     def serialize_instance(self, data):
-        return data.serialize()
+        return data.serialize(relations=True)
 
     def clean_get_result(self, data):
         return data

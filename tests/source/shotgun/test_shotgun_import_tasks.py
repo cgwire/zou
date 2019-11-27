@@ -5,7 +5,7 @@ from zou.app.models.person import Person
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 
-from zou.app.services import assets_service, shots_service
+from zou.app.services import assets_service, shots_service, tasks_service
 
 
 class ImportShotgunTaskTestCase(ShotgunTestCase):
@@ -163,6 +163,7 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         self.assertEqual(len(self.tasks), 1)
 
         task = self.tasks[0]
+        task = tasks_service.get_task_with_relations(task["id"])
         project = Project.get_by(name=self.sg_task["project"]["name"])
         task_type = \
             TaskType.get_by(name=self.sg_task["step"]["name"])

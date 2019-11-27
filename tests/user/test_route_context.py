@@ -27,11 +27,12 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
         self.project_id = self.project.id
 
-        self.task_dict = self.generate_fixture_task().serialize()
+        self.task_dict = self.generate_fixture_task().serialize(relations=True)
         self.task_id = self.task.id
         self.sequence_dict = self.sequence.serialize()
 
-        self.shot_task_dict = self.generate_fixture_shot_task().serialize()
+        self.shot_task_dict = \
+            self.generate_fixture_shot_task().serialize(relations=True)
         self.task_type_dict = self.task_type_animation.serialize()
         self.shot_task_id = self.task.id
 
@@ -337,7 +338,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
     def test_get_notifications(self):
         person_id = str(self.person.id)
         tasks_service.assign_task(self.task.id, self.user_id)
-        self.task_dict = self.task.serialize()
+        self.task_dict = self.task.serialize(relations=True)
         self.generate_fixture_comment()
         notifications_service.create_notifications_for_task_and_comment(
             self.task_dict,
@@ -351,7 +352,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
     def test_get_notification(self):
         tasks_service.assign_task(self.task.id, self.user_id)
         self.generate_fixture_comment()
-        self.task_dict = self.task.serialize()
+        self.task_dict = self.task.serialize(relations=True)
         notifications_service.create_notifications_for_task_and_comment(
             self.task_dict,
             self.comment

@@ -29,6 +29,7 @@ from zou.app.services.exception import (
 
 def clear_shot_cache(shot_id):
     cache.cache.delete_memoized(get_shot, shot_id)
+    cache.cache.delete_memoized(get_shot_with_relations, shot_id)
     cache.cache.delete_memoized(get_full_shot, shot_id)
 
 
@@ -319,12 +320,20 @@ def get_shot_raw(shot_id):
     return shot
 
 
-@cache.memoize_function(10)
+@cache.memoize_function(30)
 def get_shot(shot_id):
     """
     Return given shot as a dictionary.
     """
     return get_shot_raw(shot_id).serialize(obj_type="Shot")
+
+
+@cache.memoize_function(30)
+def get_shot_with_relations(shot_id):
+    """
+    Return given shot as a dictionary.
+    """
+    return get_shot_raw(shot_id).serialize(obj_type="Shot", relations=True)
 
 
 @cache.memoize_function(3)

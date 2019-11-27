@@ -320,7 +320,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         task_id = self.task.id
         tasks_service.assign_task(self.task.id, self.person.id)
         tasks_service.clear_assignation(task_id)
-        task = tasks_service.get_task(task_id)
+        task = tasks_service.get_task_with_relations(task_id)
         self.assertEqual(len(task["assignees"]), 0)
 
     def test_get_tasks_for_person(self):

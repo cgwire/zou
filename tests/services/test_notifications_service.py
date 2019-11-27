@@ -26,7 +26,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         self.task_type_dict = self.task_type_animation.serialize()
         self.generate_fixture_task_status()
         self.task = self.generate_fixture_shot_task()
-        self.task_dict = self.task.serialize()
+        self.task_dict = self.task.serialize(relations=True)
         self.person_dict = self.generate_fixture_person(
             first_name="Jane",
             email="jane.doe@gmail.com"
