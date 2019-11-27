@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from zou.app.models.entity import Entity
+from zou.app.models.subscription import Subscription
 from zou.app.services import assets_service, shots_service, user_service
 from zou.app.utils import events
 
@@ -73,6 +74,11 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def check_delete_permissions(self, entity):
         return user_service.check_manager_project_access(entity["project_id"])
+
+    def pre_delete(self, entity):
+        if shots_service.is_sequence(entity):
+            Subscription.delete_all_by(entity_id=entity["id"])
+        return entity
 
     @jwt_required
     def put(self, instance_id):
