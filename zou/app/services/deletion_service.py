@@ -9,6 +9,7 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
+from zou.app.models.search_filter import SearchFilter
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
@@ -261,6 +262,7 @@ def remove_project(project_id):
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
+    SearchFilter.delete_all_by(project_id=project_id)
 
     for news in News.query.join(Task).filter_by(project_id=project_id).all():
         news.delete_no_commit()
