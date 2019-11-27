@@ -16,9 +16,13 @@ class Playlist(db.Model, BaseMixin, SerializerMixin):
     name = db.Column(db.String(80), nullable=False)
     shots = db.Column(JSONB)
 
-    project_id = db.Column(UUIDType(binary=False), db.ForeignKey("project.id"))
-    episode_id = db.Column(UUIDType(binary=False), db.ForeignKey("entity.id"))
-    for_client = db.Column(db.Boolean(), default=False)
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), index=True
+    )
+    episode_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
+    )
+    for_client = db.Column(db.Boolean(), default=False, index=True)
 
     build_jobs = relationship("BuildJob")
 
