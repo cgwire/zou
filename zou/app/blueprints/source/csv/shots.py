@@ -15,7 +15,6 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
-        print(self.is_tv_show, project["production_type"])
 
     def import_row(self, row, project_id):
         if self.is_tv_show:
@@ -41,7 +40,6 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 ] = shots_service.get_or_create_episode(
                     project_id, episode_name
                 )
-            print(episode_key)
 
             sequence_key = "%s-%s-%s" % (
                 project_id,

@@ -2,7 +2,7 @@ import uuid
 import os
 import csv
 
-from flask import request
+from flask import request, current_app
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
@@ -31,7 +31,7 @@ class BaseCsvImportResource(Resource):
                 result = self.run_import(file_path, ";")
                 return result, 201
             except KeyError as e:
-                print(e)
+                current_app.logger.error("A column is missing: " % e)
                 return (
                     {"error": True, "message": "A column is missing: %s" % e},
                     400,
@@ -82,11 +82,11 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
             result = self.run_import(project_id, file_path, ",")
             return result, 201
         except KeyError as e:
-            print(e)
             try:
                 result = self.run_import(project_id, file_path, ";")
                 return result, 201
             except KeyError as e:
+                current_app.logger.error("A column is missing: " % e)
                 return (
                     {"error": True, "message": "A column is missing: %s" % e},
                     400,
