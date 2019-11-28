@@ -1,7 +1,6 @@
 from sqlalchemy.orm import aliased
 
 from zou.app.models.comment import Comment
-from zou.app.models.custom_action import CustomAction
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.notification import Notification
@@ -611,7 +610,7 @@ def get_sequence_subscriptions(project_id, task_type_id):
 def get_context():
     asset_types = assets_service.get_asset_types()
     custom_actions = custom_actions_service.get_custom_actions()
-    persons = persons_service.get_active_persons()
+    persons = persons_service.get_persons()
     notifications = get_last_notifications()
     project_status_list = projects_service.get_project_statuses()
     projects = projects_service.open_projects()
