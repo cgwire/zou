@@ -14,7 +14,7 @@ class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
 
-    def all_entries(self, query=None):
+    def all_entries(self, query=None, relations=False):
         if query is None:
             query = self.model.query
 
