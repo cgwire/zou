@@ -56,6 +56,7 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.assertEqual(len(self.shots), 1)
 
         shot = self.shots[0]
+        shot = shots_service.get_shot_with_relations(shot["id"])
         sequence = Entity.get_by(
             shotgun_id=self.sg_shot["sg_sequence"]["id"],
             entity_type_id=shots_service.get_sequence_type()["id"]

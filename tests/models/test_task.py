@@ -36,7 +36,7 @@ class TaskTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 3)
 
     def test_get_task(self):
-        task = self.get_first("data/tasks")
+        task = self.get_first("data/tasks?relations=true")
         task_again = self.get("data/tasks/%s" % task["id"])
         self.assertEqual(task, task_again)
         self.get_404("data/tasks/%s" % fields.gen_uuid())

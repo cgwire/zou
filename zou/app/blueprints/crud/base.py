@@ -17,13 +17,13 @@ class BaseModelsResource(Resource):
         Resource.__init__(self)
         self.model = model
 
-    def all_entries(self, query=None):
+    def all_entries(self, query=None, relations=False):
         if query is None:
             query = self.model.query
 
-        return self.model.serialize_list(query.all())
+        return self.model.serialize_list(query.all(), relations=relations)
 
-    def paginated_entries(self, query, page):
+    def paginated_entries(self, query, page, relations=False):
         total = query.count()
         limit = current_app.config["NB_RECORDS_PER_PAGE"]
         offset = (page - 1) * limit
@@ -44,7 +44,7 @@ class BaseModelsResource(Resource):
             }
         else:
             result = {
-                "data": self.all_entries(query),
+                "data": self.all_entries(query, relations=relations),
                 "total": total,
                 "nb_pages": nb_pages,
                 "limit": limit,
@@ -61,7 +61,7 @@ class BaseModelsResource(Resource):
 
         column_names = [column.name for column in self.model.__table__.columns]
         for key, value in options.items():
-            if key != "page" and key in column_names:
+            if key not in ["page", "relations"] and key in column_names:
                 field_key = getattr(self.model, key)
                 expr = field_key.property
 
@@ -137,12 +137,15 @@ class BaseModelsResource(Resource):
                 options = request.args
                 query = self.apply_filters(options)
                 page = int(options.get("page", "-1"))
+                relations = options.get("relations", "false") == "true"
                 is_paginated = page > -1
 
                 if is_paginated:
-                    return self.paginated_entries(query, page)
+                    return self.paginated_entries(
+                        query, page, relations=relations
+                    )
                 else:
-                    return self.all_entries(query)
+                    return self.all_entries(query, relations=relations)
         except StatementError as exception:
             if hasattr(exception, "message"):
                 return (
@@ -227,7 +230,7 @@ class BaseModelResource(Resource):
         return data
 
     def serialize_instance(self, data):
-        return data.serialize()
+        return data.serialize(relations=True)
 
     def clean_get_result(self, data):
         return data

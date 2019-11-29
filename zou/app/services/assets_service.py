@@ -26,6 +26,7 @@ from zou.app.services.exception import (
 
 def clear_asset_cache(asset_id):
     cache.cache.delete_memoized(get_asset, asset_id)
+    cache.cache.delete_memoized(get_asset_with_relations, asset_id)
     cache.cache.delete_memoized(get_full_asset, asset_id)
 
 
@@ -287,6 +288,14 @@ def get_asset(entity_id):
     return get_asset_raw(entity_id).serialize(obj_type="Asset")
 
 
+@cache.memoize_function(30)
+def get_asset_with_relations(entity_id):
+    """
+    Return a given asset as a dict.
+    """
+    return get_asset_raw(entity_id).serialize(obj_type="Asset", relations=True)
+
+
 def get_asset_by_shotgun_id(shotgun_id):
     """
     Return asset matching given shotgun ID as a dict.
@@ -314,7 +323,7 @@ def get_full_asset(asset_id):
     """
     assets = get_assets_and_tasks({"id": asset_id})
     if len(assets) > 0:
-        asset = get_asset(asset_id)
+        asset = get_asset_with_relations(asset_id)
         asset_type_id = asset["entity_type_id"]
         asset_type = get_asset_type(asset_type_id)
         project = Project.get(asset["project_id"])

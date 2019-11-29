@@ -39,6 +39,7 @@ class WorkingFileTestCase(ApiDBTestCase):
         self.generate_fixture_user_cg_artist()
         user_cg_artist_id = self.user_cg_artist["id"]
         working_file = self.get_first("data/working-files")
+        working_file["outputs"] = []
         working_file_again = self.get(
             "data/working-files/%s" % working_file["id"])
         self.assertEqual(working_file, working_file_again)
@@ -96,6 +97,6 @@ class WorkingFileTestCase(ApiDBTestCase):
         output_file.source_file_id = working_file.id
         output_file.save()
         self.assertEqual(
-            working_file.serialize()["outputs"],
+            working_file.serialize(relations=True)["outputs"],
             [str(output_file.id)]
         )

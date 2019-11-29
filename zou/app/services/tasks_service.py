@@ -55,6 +55,7 @@ def clear_task_type_cache(task_type_id):
 
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
+    cache.cache.delete_memoized(get_task_with_relations, task_id)
     cache.cache.delete_memoized(get_full_task, task_id)
 
 
@@ -180,6 +181,14 @@ def get_task(task_id):
     Get task matching given id as a dictionary.
     """
     return get_task_raw(task_id).serialize()
+
+
+@cache.memoize_function(120)
+def get_task_with_relations(task_id):
+    """
+    Get task matching given id as a dictionary.
+    """
+    return get_task_raw(task_id).serialize(relations=True)
 
 
 def get_task_by_shotgun_id(shotgun_id):
@@ -500,7 +509,7 @@ def create_comment(
         text=text,
     )
     events.emit("comment:new", {"comment_id": comment.id})
-    return comment.serialize()
+    return comment.serialize(relations=True)
 
 
 def get_comment_mentions(object_id, text):
@@ -634,7 +643,7 @@ def get_person_tasks(person_id, projects, is_done=None):
         if episode_id is None:
             episode_id = entity_source_id
 
-        task_dict = task.serialize()
+        task_dict = task.serialize(relations=True)
         task_dict.update(
             {
                 "project_name": project_name,
@@ -715,7 +724,7 @@ def create_task(task_type, entity, name="main"):
             assigner_id=current_user_id,
             assignees=[],
         )
-        task_dict = task.serialize()
+        task_dict = task.serialize(relations=True)
         task_dict.update(
             {
                 "task_status_id": task_status["id"],
@@ -1019,7 +1028,7 @@ def reset_mentions(comment):
     comment_to_update = Comment.get(comment["id"])
     comment_to_update.mentions = mentions
     comment_to_update.save()
-    return comment_to_update.serialize()
+    return comment_to_update.serialize(relations=True)
 
 
 def get_comments_for_project(project_id, page=0):
@@ -1054,7 +1063,7 @@ def get_tasks_for_project(project_id, page=0):
 
 @cache.memoize_function(120)
 def get_full_task(task_id):
-    task = get_task(task_id)
+    task = get_task_with_relations(task_id)
     task_type = get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
     task_status = get_task_status(task["task_status_id"])

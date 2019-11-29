@@ -20,6 +20,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 def clear_project_cache(project_id):
     cache.cache.delete_memoized(get_project, project_id)
+    cache.cache.delete_memoized(get_project_with_relations, project_id)
     cache.cache.delete_memoized(get_project_by_name)
     cache.cache.delete_memoized(open_projects)
 
@@ -50,8 +51,7 @@ def get_projects_with_extra_data(query):
     """
     projects = []
     for project in query.all():
-        project_dict = project.serialize()
-
+        project_dict = project.serialize(relations=True)
         descriptors = MetadataDescriptor.get_all_by(project_id=project.id)
         project_dict["descriptors"] = []
         for descriptor in descriptors:
@@ -182,13 +182,22 @@ def get_project_raw(project_id):
     return project
 
 
-@cache.memoize_function(120)
+@cache.memoize_function(240)
 def get_project(project_id):
     """
     Get project matching given id, as a dict. Raises an exception if project is
     not found.
     """
     return get_project_raw(project_id).serialize()
+
+
+@cache.memoize_function(240)
+def get_project_with_relations(project_id):
+    """
+    Get project matching given id, as a dict. Raises an exception if project is
+    not found.
+    """
+    return get_project_raw(project_id).serialize(relations=True)
 
 
 @cache.memoize_function(120)

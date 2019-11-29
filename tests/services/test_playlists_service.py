@@ -71,7 +71,8 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         playlists = playlists_service.all_playlists_for_episode(
             self.episode_2.id)
         self.assertEqual(len(playlists), 2)
-        self.assertEqual(playlists[0]["name"], "Playlist 3")
+        print(playlists)
+        self.assertEqual(playlists[0]["name"], "Playlist 4")
         self.playlist.update({"for_client": True})
         playlists = playlists_service.all_playlists_for_project(
             self.project.id, True

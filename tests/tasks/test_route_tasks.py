@@ -106,9 +106,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         data = {"task_ids": [task_id, shot_task_id]}
         self.put("/actions/persons/%s/assign" % person_id, data)
 
-        task = tasks_service.get_task(task_id)
+        task = tasks_service.get_task_with_relations(task_id)
         self.assertEqual(len(task["assignees"]), 1)
-        task = tasks_service.get_task(shot_task_id)
+        task = tasks_service.get_task_with_relations(shot_task_id)
         self.assertEqual(len(task["assignees"]), 1)
         notifications = notifications_service.get_last_notifications()
         self.assertEqual(len(notifications), 2)
@@ -123,9 +123,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         data = {"task_ids": [task_id, shot_task_id]}
         self.put("/actions/tasks/clear-assignation", data)
 
-        task = tasks_service.get_task(task_id)
+        task = tasks_service.get_task_with_relations(task_id)
         self.assertEqual(len(task["assignees"]), 0)
-        task = tasks_service.get_task(shot_task_id)
+        task = tasks_service.get_task_with_relations(shot_task_id)
         self.assertEqual(len(task["assignees"]), 0)
 
     def test_comment_task(self):

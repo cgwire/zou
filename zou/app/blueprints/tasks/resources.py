@@ -41,11 +41,7 @@ class CommentTaskResource(Resource):
         (task_status_id, comment, person_id) = self.get_arguments()
 
         task = tasks_service.get_task(task_id)
-        if task is None:
-            tasks_service.clear_task_cache(task_id)
-            task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
-
         task_status = tasks_service.get_task_status(task_status_id)
 
         if person_id:
@@ -84,7 +80,8 @@ class CommentTaskResource(Resource):
             ):
                 new_data["real_start_date"] = datetime.datetime.now()
 
-        task = tasks_service.update_task(task_id, new_data)
+        tasks_service.update_task(task_id, new_data)
+        task = tasks_service.get_task_with_relations(task_id)
 
         notifications_service.create_notifications_for_task_and_comment(
             task, comment, change=status_changed

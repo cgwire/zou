@@ -67,6 +67,7 @@ class UserServiceTestCase(ApiDBTestCase):
                 str(self.project.id),
                 str(self.get_current_user_raw().id)
             )
+            project = projects_service.get_project_with_relations(self.project_id)
             self.assertTrue(
                 user_service.check_project_access(str(self.project_id)))
 

@@ -189,7 +189,7 @@ class AssetServiceTestCase(ApiDBTestCase):
             self.asset.id,
             self.asset_character.id
         )
-        asset = assets_service.get_asset(self.asset.id)
+        asset = assets_service.get_asset_with_relations(self.asset.id)
         self.assertEqual(
             asset["entities_out"][0],
             str(self.asset_character.id)
@@ -206,5 +206,5 @@ class AssetServiceTestCase(ApiDBTestCase):
             self.asset.id,
             self.asset_character.id
         )
-        asset = assets_service.get_asset(self.asset.id)
+        asset = assets_service.get_asset_with_relations(self.asset.id)
         self.assertEqual(len(asset["entities_out"]), 0)

@@ -4,6 +4,8 @@ from tests.source.shotgun.base import ShotgunTestCase
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
 
+from zou.app.services import assets_service
+
 
 class ImportShotgunAssetTestCase(ShotgunTestCase):
 
@@ -60,6 +62,7 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
 
         assets = sorted(self.assets, key=lambda x: x["name"])
         asset = assets[0]
+        asset = assets_service.get_asset_with_relations(asset["id"])
         project = Project.get_by(shotgun_id=sg_asset["project"]["id"])
         self.assertEqual(asset["description"], sg_asset["description"])
         self.assertEqual(asset["shotgun_id"], sg_asset["id"])
