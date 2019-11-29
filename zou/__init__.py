@@ -1,1 +1,1 @@
-__version__ = "$release_number"
+__version__ = "0.11.2"
