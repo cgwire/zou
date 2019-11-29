@@ -19,7 +19,7 @@ class EntityTestCase(ApiDBTestCase):
         self.assertEqual(len(entities), 3)
 
     def test_get_entity(self):
-        entity = self.get_first("data/entities")
+        entity = self.get_first("data/entities?relations=true")
         entity_again = self.get("data/entities/%s" % entity["id"])
         self.assertEqual(entity, entity_again)
         self.get_404("data/entities/%s" % fields.gen_uuid())

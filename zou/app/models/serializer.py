@@ -32,5 +32,8 @@ class SerializerMixin(object):
         return obj_dict
 
     @staticmethod
-    def serialize_list(models, obj_type=None):
-        return [model.serialize(obj_type=obj_type) for model in models]
+    def serialize_list(models, obj_type=None, relations=False):
+        return [
+            model.serialize(obj_type=obj_type, relations=relations)
+            for model in models
+        ]

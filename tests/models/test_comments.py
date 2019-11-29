@@ -30,7 +30,7 @@ class CommentTestCase(ApiDBTestCase):
         self.assertEqual(len(comments), 3)
 
     def test_get_comment(self):
-        comment = self.get_first("data/comments")
+        comment = self.get_first("data/comments?relations=true")
         comment_again = self.get("data/comments/%s" % comment["id"])
         self.assertEqual(comment, comment_again)
         self.get_404("data/comments/%s/" % fields.gen_uuid())

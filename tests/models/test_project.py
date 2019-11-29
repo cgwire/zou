@@ -19,7 +19,7 @@ class ProjectTestCase(ApiDBTestCase):
         self.assertEqual(len(projects), 3)
 
     def test_get_project(self):
-        project = self.get_first("data/projects")
+        project = self.get_first("data/projects?relations=true")
         project_again = self.get("data/projects/%s" % project["id"])
         project["project_status_name"] = "Open"
         self.assertEqual(project, project_again)

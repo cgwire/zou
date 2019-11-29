@@ -31,7 +31,7 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.assertEqual(len(preview_files), 3)
 
     def test_get_preview_file(self):
-        preview_file = self.get_first("data/preview-files")
+        preview_file = self.get_first("data/preview-files?relations=true")
         preview_file_again = self.get(
             "data/preview-files/%s" % preview_file["id"])
         self.assertEqual(preview_file, preview_file_again)
