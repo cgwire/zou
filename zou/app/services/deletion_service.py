@@ -266,6 +266,13 @@ def remove_project(project_id):
     for task in tasks:
         remove_task(task.id, force=True)
 
+    query = EntityLink.query \
+        .join(Entity, EntityLink.entity_in_id == Entity.id) \
+        .filter(Entity.project_id == project_id)
+    for link in query:
+        link.delete_no_commit()
+    EntityLink.commit()
+
     Entity.delete_all_by(project_id=project_id)
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
