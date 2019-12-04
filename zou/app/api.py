@@ -70,11 +70,11 @@ def register_event_handlers(app):
     try:
         import event_handlers
 
-        events.register_all(event_handlers.event_map)
+        events.register_all(event_handlers.event_map, app)
     except ImportError:
         # Event handlers folder is not properly configured.
         # Handlers are optional, that's why this error is ignored.
-        pass
+        app.logger.info("No event handlers folder is configured.")
     return app
 
 
