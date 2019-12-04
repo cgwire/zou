@@ -29,3 +29,10 @@ class ArgsMixin(object):
         """
         options = request.args
         return int(options.get("page", "-1"))
+
+    def get_force(self):
+        """
+        Returns force parameter.
+        """
+        options = request.args
+        return options.get("force", "false") == "true"
