@@ -16,8 +16,9 @@ class SequenceTestCase(ApiDBTestCase):
 
         self.generate_fixture_episode()
         self.generate_fixture_sequence()
+        self.generate_fixture_shot()
         self.serialized_sequence = self.sequence.serialize(obj_type="Sequence")
-        self.sequence_id = str(self.serialized_sequence["id"])
+        self.sequence_id = self.serialized_sequence["id"]
         sequence_02 = self.generate_fixture_sequence("SE02")
         self.sequence_02_id = str(sequence_02.id)
         self.generate_fixture_sequence("SE03")
@@ -90,3 +91,9 @@ class SequenceTestCase(ApiDBTestCase):
         sequences = self.get(
             "data/sequences?project_id=%s&name=SE01" % self.project_id, 403
         )
+
+    def test_delete_sequence(self):
+        self.get("data/sequences/%s" % self.sequence_id)
+        self.delete("data/sequences/%s" % self.sequence_id, 400)
+        self.delete("data/sequences/%s?force=true" % self.sequence_id)
+        self.get("data/sequences/%s" % self.sequence_id, 404)
