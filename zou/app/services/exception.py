@@ -159,3 +159,7 @@ class WrongIdFormatException(Exception):
 
 class WrongParameterException(Exception):
     pass
+
+
+class ModelWithRelationsDeletionException(Exception):
+    pass
