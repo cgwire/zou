@@ -523,13 +523,15 @@ class ApiDBTestCase(ApiTestCase):
         desktop_login="john.doe",
         email="john.doe@gmail.com"
     ):
-        self.person = Person.create(
-            first_name=first_name,
-            last_name=last_name,
-            desktop_login=desktop_login,
-            email=email,
-            password=auth.encrypt_password("mypassword")
-        )
+        self.person = Person.get_by(email=email)
+        if self.person is None:
+            self.person = Person.create(
+                first_name=first_name,
+                last_name=last_name,
+                desktop_login=desktop_login,
+                email=email,
+                password=auth.encrypt_password("mypassword")
+            )
         return self.person
 
     def generate_fixture_asset_type(self):
