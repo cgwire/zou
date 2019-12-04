@@ -103,10 +103,8 @@ class PersonServiceTestCase(ApiDBTestCase):
     def test_add_destktop_login_logs(self):
         person = self.person.serialize()
         date_1 = self.now()
-
         logs = persons_service.get_desktop_login_logs(person["id"])
         self.assertEqual(len(logs), 0)
-
         persons_service.create_desktop_login_logs(person["id"], date_1)
         date_2 = self.now()
         persons_service.create_desktop_login_logs(person["id"], date_2)

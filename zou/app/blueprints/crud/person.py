@@ -1,13 +1,13 @@
 from flask import abort
+from flask_jwt_extended import jwt_required
 
-from zou.app.models.login_log import LoginLog
 from zou.app.models.person import Person
-from zou.app.models.notification import Notification
-from zou.app.models.search_filter import SearchFilter
-from zou.app.services import persons_service
+from zou.app.services import persons_service, deletion_service
 from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
+
+from zou.app.mixin import ArgsMixin
 
 
 class PersonsResource(BaseModelsResource):
@@ -30,7 +30,7 @@ class PersonsResource(BaseModelsResource):
         return True
 
 
-class PersonResource(BaseModelResource):
+class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
         self.protected_fields += ["password"]
@@ -38,14 +38,20 @@ class PersonResource(BaseModelResource):
     def check_read_permissions(self, instance):
         return True
 
-    def check_update_permissions(self, instance, data):
-        if instance["id"] != persons_service.get_current_user()["id"]:
-            self.check_escalation_permissions(instance, data)
+    def check_update_permissions(self, instance_dict, data):
+        if instance_dict["id"] != persons_service.get_current_user()["id"]:
+            self.check_escalation_permissions(instance_dict, data)
+        else:
+            data.pop("role", None)
+        return instance_dict
 
-    def check_delete_permissions(self, instance):
-        self.check_escalation_permissions(instance)
+    def check_delete_permissions(self, instance_dict):
+        if instance_dict["id"] == persons_service.get_current_user()["id"]:
+            raise permissions.PermissionDenied
+        self.check_escalation_permissions(instance_dict)
+        return instance_dict
 
-    def check_escalation_permissions(self, instance, data=None):
+    def check_escalation_permissions(self, instance_dict, data=None):
         if permissions.admin_permission.can():
             return True
         else:
@@ -61,12 +67,6 @@ class PersonResource(BaseModelResource):
         persons_service.clear_person_cache()
         return instance_dict
 
-    def pre_delete(self, instance_dict):
-        Notification.delete_all_by(person_id=instance_dict["id"])
-        SearchFilter.delete_all_by(person_id=instance_dict["id"])
-        LoginLog.delete_all_by(person_id=instance_dict["id"])
-        return instance_dict
-
     def post_delete(self, instance_dict):
         persons_service.clear_person_cache()
         return instance_dict
@@ -75,3 +75,19 @@ class PersonResource(BaseModelResource):
         if "password" in data:
             del data["password"]
         return data
+
+    @jwt_required
+    def delete(self, instance_id):
+        """
+        Delete a person corresponding at given ID and return it as a JSON
+        object.
+        """
+        force = self.get_force()
+        person = self.get_model_or_404(instance_id)
+        person_dict = person.serialize()
+        self.check_delete_permissions(person_dict)
+        self.pre_delete(person_dict)
+        deletion_service.remove_person(person_dict["id"], force=force)
+        self.emit_delete_event(person_dict)
+        self.post_delete(person_dict)
+        return "", 204
