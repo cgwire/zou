@@ -16,14 +16,14 @@ chown zou: /var/run/zou
 Add this line to Zou gunicorn configuration file (`/etc/zou/gunicorn.conf`):
 
 ```
-PIDFile=/var/run/zou/zou.pid
+PIDFile = "/var/run/zou/zou.pid"
 ```
 
 Add this line to Zou Events gunicorn configuration file 
 (`/etc/zou/gunicorn-events.conf`):
 
 ```
-PIDFile=/var/run/zou/zou-events.pid
+PIDFile = "/var/run/zou/zou-events.pid"
 ```
 
 PIDs are now stored in mentioned files. 
