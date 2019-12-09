@@ -23,6 +23,8 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
+        self.generate_fixture_task_status_wip()
+        self.generate_fixture_task_status_to_review()
         self.generate_fixture_assigner()
 
         self.project_id = self.project.id
@@ -414,3 +416,15 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             self.shot_task_dict
         )
         self.assertFalse(self.user_id in recipients)
+
+    def test_get_context(self):
+        context = self.get("/data/user/context")
+        self.assertEqual(len(context["projects"]), 1)
+        self.assertEqual(len(context["asset_types"]), 1)
+        self.assertEqual(len(context["task_types"]), 3)
+        self.assertEqual(len(context["task_status"]), 3)
+        self.assertEqual(len(context["project_status"]), 2)
+        self.assertEqual(len(context["persons"]), 3)
+        self.assertEqual(len(context["notifications"]), 0)
+        self.assertEqual(len(context["search_filters"]), 0)
+        self.assertEqual(len(context["custom_actions"]), 0)

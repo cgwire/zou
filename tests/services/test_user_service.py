@@ -67,7 +67,9 @@ class UserServiceTestCase(ApiDBTestCase):
                 str(self.project.id),
                 str(self.get_current_user_raw().id)
             )
-            project = projects_service.get_project_with_relations(self.project_id)
+            project = projects_service.get_project_with_relations(
+                self.project_id
+            )
             self.assertTrue(
                 user_service.check_project_access(str(self.project_id)))
 
@@ -81,15 +83,3 @@ class UserServiceTestCase(ApiDBTestCase):
         projects = user_service.related_projects()
         self.assertEqual(len(projects), 1)
         self.assertEqual(projects[0]["id"], str(self.project_id))
-
-    def test_get_context(self):
-        context = user_service.get_context()
-        self.assertEqual(len(context["projects"]), 1)
-        self.assertEqual(len(context["asset_types"]), 1)
-        self.assertEqual(len(context["task_types"]), 3)
-        self.assertEqual(len(context["task_status"]), 3)
-        self.assertEqual(len(context["project_status"]), 1)
-        self.assertEqual(len(context["persons"]), 3)
-        self.assertEqual(len(context["notifications"]), 0)
-        self.assertEqual(len(context["search_filters"]), 0)
-        self.assertEqual(len(context["custom_actions"]), 0)
