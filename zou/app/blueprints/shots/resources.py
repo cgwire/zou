@@ -1,4 +1,4 @@
-from flask import request, abort
+from flask import request
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
@@ -14,12 +14,14 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import query, permissions
+from zou.app.utils import query
 
-from zou.app.services.exception import ShotNotFoundException
+from zou.app.services.exception import (
+    ModelWithRelationsDeletionException,
+)
 
 
-class ShotResource(Resource):
+class ShotResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, shot_id):
         """
@@ -37,21 +39,10 @@ class ShotResource(Resource):
         """
         Delete given shot.
         """
-        try:
-            parser = reqparse.RequestParser()
-            parser.add_argument("force", default=False, type=bool)
-            args = parser.parse_args()
-            force = args["force"]
-
-            shot = shots_service.get_shot(shot_id)
-            user_service.check_manager_project_access(shot["project_id"])
-
-            shots_service.remove_shot(shot_id, force=force)
-        except ShotNotFoundException:
-            abort(404)
-        except permissions.PermissionDenied:
-            abort(403)
-
+        force = self.get_force()
+        shot = shots_service.get_shot(shot_id)
+        user_service.check_manager_project_access(shot["project_id"])
+        shots_service.remove_shot(shot_id, force=force)
         return "", 204
 
 
@@ -267,7 +258,6 @@ class ProjectShotsResource(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", required=True)
         parser.add_argument("sequence_id", default=None)
-
         parser.add_argument("data", type=dict)
         args = parser.parse_args()
         return (args["sequence_id"], args["name"], args["data"])
@@ -341,7 +331,7 @@ class ProjectEpisodeStatsResource(Resource):
         return shots_service.get_episode_stats_for_project(project_id)
 
 
-class EpisodeResource(Resource):
+class EpisodeResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
         """
@@ -350,6 +340,17 @@ class EpisodeResource(Resource):
         episode = shots_service.get_full_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
         return episode
+
+    @jwt_required
+    def delete(self, episode_id):
+        """
+        Retrieve given episode.
+        """
+        force = self.get_force()
+        episode = shots_service.get_episode(episode_id)
+        user_service.check_manager_project_access(episode["project_id"])
+        shots_service.remove_episode(episode_id, force=force)
+        return "", 204
 
 
 class EpisodesResource(Resource):
@@ -400,7 +401,7 @@ class EpisodeTasksResource(Resource):
         return tasks_service.get_tasks_for_episode(episode_id)
 
 
-class SequenceResource(Resource):
+class SequenceResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, sequence_id):
         """
@@ -409,6 +410,17 @@ class SequenceResource(Resource):
         sequence = shots_service.get_full_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
         return sequence
+
+    @jwt_required
+    def delete(self, sequence_id):
+        """
+        Delete given sequence.
+        """
+        force = self.get_force()
+        sequence = shots_service.get_sequence(sequence_id)
+        user_service.check_manager_project_access(sequence["project_id"])
+        shots_service.remove_sequence(sequence_id, force=force)
+        return "", 204
 
 
 class SequencesResource(Resource):

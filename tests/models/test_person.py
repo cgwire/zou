@@ -84,3 +84,14 @@ class PersonTestCase(ApiDBTestCase):
         self.delete_404("data/persons/%s" % fields.gen_uuid())
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 3)
+
+    def test_force_delete(self):
+        self.generate_fixture_task_status_todo()
+        self.generate_shot_suite()
+        self.generate_assigned_task()
+        self.generate_fixture_comment()
+        self.person_id = str(self.person.id)
+        self.get("data/persons/%s" % self.person_id)
+        self.delete("data/persons/%s" % self.person_id, 400)
+        self.delete("data/persons/%s?force=true" % self.person_id)
+        self.get("data/persons/%s" % self.person_id, 404)

@@ -608,12 +608,16 @@ def get_sequence_subscriptions(project_id, task_type_id):
 
 
 def get_context():
+    if permissions.has_admin_permissions():
+        projects = projects_service.open_projects()
+    else:
+        projects = get_open_projects()
+
     asset_types = assets_service.get_asset_types()
     custom_actions = custom_actions_service.get_custom_actions()
     persons = persons_service.get_persons()
     notifications = get_last_notifications()
     project_status_list = projects_service.get_project_statuses()
-    projects = projects_service.open_projects()
     task_types = tasks_service.get_task_types()
     task_status_list = tasks_service.get_task_statuses()
     search_filters = get_filters()

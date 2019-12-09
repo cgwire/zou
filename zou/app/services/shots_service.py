@@ -20,6 +20,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     EpisodeNotFoundException,
+    ModelWithRelationsDeletionException,
     SequenceNotFoundException,
     SceneNotFoundException,
     ShotNotFoundException,
@@ -708,10 +709,7 @@ def remove_shot(shot_id, force=False):
             deletion_service.remove_task(task.id, force=True)
             tasks_service.clear_task_cache(str(task.id))
 
-        subscriptions = Subscription.query.filter_by(entity_id=shot_id).all()
-        for subscription in subscriptions:
-            subscription.delete()
-
+        Subscription.delete_all_by(entity_id=shot_id)
         shot.delete()
         clear_shot_cache(shot_id)
         events.emit("shot:delete", {"shot_id": shot_id})
@@ -733,6 +731,41 @@ def remove_scene(scene_id):
     deleted_scene = scene.serialize(obj_type="Scene")
     events.emit("scene:delete", {"scene_id": scene_id})
     return deleted_scene
+
+
+def remove_sequence(sequence_id, force=False):
+    """
+    Remove a sequence and all related shots.
+    """
+    sequence = get_sequence_raw(sequence_id)
+    if force:
+        for shot in Entity.get_all_by(parent_id=sequence_id):
+            remove_shot(shot.id, force=True)
+        Subscription.delete_all_by(entity_id=sequence_id)
+    try:
+        sequence.delete()
+    except IntegrityError:
+        raise ModelWithRelationsDeletionException(
+            "Some data are still linked to this sequence."
+        )
+    return sequence.serialize(obj_type="Sequence")
+
+
+def remove_episode(episode_id, force=False):
+    """
+    Remove an episode and all related sequences and shots.
+    """
+    episode = get_episode_raw(episode_id)
+    if force:
+        for sequence in Entity.get_all_by(parent_id=episode_id):
+            remove_sequence(sequence.id, force=True)
+    try:
+        episode.delete()
+    except IntegrityError:
+        raise ModelWithRelationsDeletionException(
+            "Some data are still linked to this episode."
+        )
+    return episode.serialize(obj_type="Episode")
 
 
 def create_episode(project_id, name):

@@ -1,10 +1,15 @@
+from sqlalchemy.exc import IntegrityError
+
 from zou.app.models.comment import Comment
-from zou.app.models.entity import Entity
+from zou.app.models.desktop_login_log import DesktopLoginLog
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.login_log import LoginLog
 from zou.app.models.notification import Notification
 from zou.app.models.milestone import Milestone
 from zou.app.models.news import News
 from zou.app.models.output_file import OutputFile
+from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
@@ -19,7 +24,10 @@ from zou.app.models.working_file import WorkingFile
 from zou.app.utils import events
 from zou.app.stores import file_store
 
-from zou.app.services.exception import CommentNotFoundException
+from zou.app.services.exception import (
+    CommentNotFoundException,
+    ModelWithRelationsDeletionException
+)
 
 
 def remove_comment(comment_id):
@@ -258,6 +266,13 @@ def remove_project(project_id):
     for task in tasks:
         remove_task(task.id, force=True)
 
+    query = EntityLink.query \
+        .join(Entity, EntityLink.entity_in_id == Entity.id) \
+        .filter(Entity.project_id == project_id)
+    for link in query:
+        link.delete_no_commit()
+    EntityLink.commit()
+
     Entity.delete_all_by(project_id=project_id)
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
@@ -275,3 +290,45 @@ def remove_project(project_id):
     project = Project.get(project_id)
     project.delete()
     return project_id
+
+
+def remove_person(person_id, force=True):
+    person = Person.get(person_id)
+    if force:
+        for comment in Comment.get_all_by(person_id=person_id):
+            remove_comment(comment.id)
+        Notification.delete_all_by(person_id=person_id)
+        SearchFilter.delete_all_by(person_id=person_id)
+        DesktopLoginLog.delete_all_by(person_id=person_id)
+        LoginLog.delete_all_by(person_id=person_id)
+        Subscription.delete_all_by(person_id=person_id)
+        TimeSpent.delete_all_by(person_id=person_id)
+        for project in Project.query.filter(Project.team.contains(person)):
+            project.team = [
+                member for member in project.team
+                if str(member.id) != person_id
+            ]
+            project.save()
+        for task in Task.query.filter(Task.assignees.contains(person)):
+            task.assignees = [
+                assignee for assignee in task.assignees
+                if str(assignee.id) != person_id
+            ]
+            task.save()
+        for task in Task.get_all_by(assigner_id=person_id):
+            task.update({"assigner_id": None})
+        for output_file in OutputFile.get_all_by(person_id=person_id):
+            output_file.update({"person_id": None})
+        for working_file in WorkingFile.get_all_by(person_id=person_id):
+            output_file.update({"person_id": None})
+        for task in WorkingFile.get_all_by(person_id=person_id):
+            output_file.update({"person_id": None})
+
+    try:
+        person.delete()
+    except IntegrityError:
+        raise ModelWithRelationsDeletionException(
+            "Some data are still linked to given person.ttt"
+        )
+
+    return person.serialize_safe()

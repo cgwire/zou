@@ -14,6 +14,7 @@ from jwt import ExpiredSignatureError
 from . import config
 from .stores import auth_tokens_store
 from .services.exception import (
+    ModelWithRelationsDeletionException,
     PersonNotFoundException,
     WrongIdFormatException,
     WrongParameterException,
@@ -76,6 +77,11 @@ def wrong_parameter(error):
 @app.errorhandler(ExpiredSignatureError)
 def wrong_token_signature(error):
     return jsonify(error=True, message=str(error)), 401
+
+
+@app.errorhandler(ModelWithRelationsDeletionException)
+def try_delete_model_with_relations(error):
+    return jsonify(error=True, message=str(error)), 400
 
 
 if not config.DEBUG:
