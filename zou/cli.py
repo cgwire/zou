@@ -400,5 +400,15 @@ def upload_files_to_cloud_storage(days):
     commands.upload_files_to_cloud_storage(days)
 
 
+@cli.command()
+@click.option("--projectid")
+def clean_tasks_data(projectid):
+    """
+    Reset task models data (retake count, wip start date and end date)
+    """
+    if projectid is not None:
+        commands.reset_tasks_data(projectid)
+
+
 if __name__ == "__main__":
     cli()

@@ -10,6 +10,7 @@ from zou.app.utils import thumbnail as thumbnail_utils
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
+    deletion_service,
     persons_service,
     projects_service,
     shots_service,
@@ -351,3 +352,7 @@ def dump_database():
 def upload_files_to_cloud_storage(days):
     sync_service.upload_entity_thumbnails_to_storage(days)
     sync_service.upload_preview_files_to_storage(days)
+
+
+def reset_tasks_data(project_id):
+    deletion_service.reset_tasks_data(project_id)
