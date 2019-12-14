@@ -142,7 +142,7 @@ def update_casting(entity_id, casting):
                 entity.id,
                 cast["asset_id"],
                 nb_occurences=cast["nb_occurences"],
-                label=cast["label"]
+                label=cast.get("label", "")
             )
     entity_id = str(entity.id)
     if shots_service.is_shot(entity.serialize()):
