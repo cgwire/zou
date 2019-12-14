@@ -204,3 +204,11 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             data["entity_type_id"] = entity_type.id
 
         return (data, entity_ids)
+
+
+class EntityVersion(db.Model, BaseMixin, SerializerMixin):
+    name = db.Column(db.String(160), nullable=False)
+    data = db.Column(JSONB)
+    entity_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
+    )

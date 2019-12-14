@@ -5,7 +5,7 @@ from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.subscription import Subscription
 from zou.app.services import assets_service, shots_service, user_service
 from zou.app.utils import events
@@ -98,12 +98,16 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             extra_data.update(data["data"])
             data["data"] = extra_data
 
+            previous_version = entity.serialize()
             data = self.update_data(data, instance_id)
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
             entity.update(data)
 
             entity_dict = entity.serialize()
+
+            if shots_service.is_shot(entity_dict):
+                self.save_version_if_needed(entity_dict, previous_version)
             self.emit_update_event(entity_dict)
             return entity_dict, 200
 
@@ -124,6 +128,23 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         except Exception as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"error": True, "message": str(exception)}, 400
+
+    def save_version_if_needed(self, shot, previous_shot):
+        frame_in = shot["data"].get("frame_in", 0)
+        pframe_in = previous_shot["data"].get("frame_in", 0)
+        frame_out = shot["data"].get("frame_in", 0)
+        pframe_out = previous_shot["data"].get("frame_in", 0)
+        name = shot["data"].get("name", "")
+        pname = previous_shot["name"]
+        version = None
+        if frame_in != pframe_in or frame_out != pframe_out or name != pname:
+            version = EntityVersion.create(
+                entity_id=shot["id"],
+                name=pname,
+                data=previous_shot["data"]
+            )
+        return version
+
 
     def emit_update_event(self, entity_dict):
         self.emit_event("update", entity_dict)

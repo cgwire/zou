@@ -546,3 +546,15 @@ class RemoveShotFromSceneResource(Resource):
         shot = shots_service.get_shot(shot_id)
         scenes_service.remove_shot_from_scene(scene, shot)
         return "", 204
+
+
+class ShotVersionsResource(Resource):
+    """
+    Retrieve data versions of given shot.
+    """
+
+    @jwt_required
+    def get(self, shot_id):
+        shot = shots_service.get_shot(shot_id)
+        user_service.check_project_access(shot["project_id"])
+        return shots_service.get_shot_versions(shot_id)

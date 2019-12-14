@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError, StatementError
 
 from zou.app.utils import events, fields, cache, query as query_utils
 
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
@@ -1039,3 +1039,18 @@ def get_preview_fps(project):
     if project["fps"] is not None:
         fps = "%.2f" % float(project["fps"].replace(",", "."))
     return fps
+
+
+def get_shot_versions(shot_id):
+    """
+    Shot metadata changes are versioned. This function returns all versions
+    of a given shot.
+    """
+    versions = (
+        EntityVersion
+        .query
+        .filter_by(entity_id=shot_id)
+        .order_by(EntityVersion.created_at.desc())
+        .all()
+    )
+    return EntityVersion.serialize_list(versions, obj_type="ShotVersion")
