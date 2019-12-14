@@ -1,5 +1,5 @@
 language: python
-dist: xenial
+dist: bionic
 sudo: required
 python:
   - "3.5"
@@ -10,8 +10,6 @@ services:
 addons:
   postgresql: "9.4"
   apt:
-    sources:
-      - sourceline: 'ppa:jonathonf/ffmpeg-3'
     packages: 
       - ffmpeg
 install: 
