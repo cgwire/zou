@@ -31,7 +31,7 @@ class BaseCsvImportResource(Resource):
                 result = self.run_import(file_path, ";")
                 return result, 201
             except KeyError as e:
-                current_app.logger.error("A column is missing: " % e)
+                current_app.logger.error("A column is missing: %s" % e)
                 return (
                     {"error": True, "message": "A column is missing: %s" % e},
                     400,
@@ -86,7 +86,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
                 result = self.run_import(project_id, file_path, ";")
                 return result, 201
             except KeyError as e:
-                current_app.logger.error("A column is missing: " % e)
+                current_app.logger.error("A column is missing: %s" % e)
                 return (
                     {"error": True, "message": "A column is missing: %s" % e},
                     400,
