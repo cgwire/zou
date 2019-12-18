@@ -314,7 +314,7 @@ def import_data_from_another_instance(target, login, password):
 
 def run_sync_change_daemon(event_target, target, login, password, logs_dir):
     """
-    Listen to event websocket. Each time a change occurs, it retreves the
+    Listen to event websocket. Each time a change occurs, it retrieves the
     related data and save it in the current instance.
     """
     event_client = sync_service.init_events_listener(
@@ -327,14 +327,42 @@ def run_sync_change_daemon(event_target, target, login, password, logs_dir):
     sync_service.run_listeners(event_client)
 
 
-def import_last_changes_from_another_instance(target, login, password):
+def run_sync_file_change_daemon(event_target, target, login, password, logs_dir):
+    """
+    Listen to event websocket. Each time a change occurs, it retrieves the
+    related file and save it in the current instance.
+    """
+    event_client = sync_service.init_events_listener(
+        target, event_target, login, password, logs_dir
+    )
+    sync_service.add_file_listeners(event_client)
+    print("Start listening.")
+    sync_service.run_listeners(event_client)
+
+
+def import_last_changes_from_another_instance(
+    target, login, password, minutes=0
+):
     """
     Retrieve and save all the data related most recent events from another API
     instance. It doesn't change the IDs.
     """
     sync_service.init(target, login, password)
     print("Syncing started.")
-    sync_service.run_last_events_sync()
+    sync_service.run_last_events_sync(minutes=minutes)
+    print("Syncing ended.")
+
+
+def import_last_file_changes_from_another_instance(
+    target, login, password, minutes=20
+):
+    """
+    Retrieve and save all the data related most recent events from another API
+    instance. It doesn't change the IDs.
+    """
+    sync_service.init(target, login, password)
+    print("Syncing started.")
+    sync_service.run_last_file_events_sync(minutes=minutes)
     print("Syncing ended.")
 
 

@@ -361,8 +361,26 @@ def sync_changes(event_target, target, logs_directory):
 
 
 @cli.command()
+@click.option("--event-target", default="http://localhost:8080")
 @click.option("--target", default="http://localhost:8080/api")
-def sync_last_events(target):
+@click.option("--logs-directory", default=None)
+def sync_file_changes(event_target, target, logs_directory):
+    """
+    Run a daemon that download files related to any change happening on target
+    instance. It expects that credentials to connect to target instance are
+    given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
+    """
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.run_sync_file_change_daemon(
+        event_target, target, login, password, logs_directory
+    )
+
+
+@cli.command()
+@click.option("--target", default="http://localhost:8080/api")
+@click.option("--minutes", default=0)
+def sync_last_events(target, minutes):
     """
     Retrieve last events that occured on target instance and import data related
     to them. It expects that credentials to connect to target instance are
@@ -370,7 +388,25 @@ def sync_last_events(target):
     """
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    commands.import_last_changes_from_another_instance(target, login, password)
+    commands.import_last_changes_from_another_instance(
+        target, login, password, minutes=minutes
+    )
+
+
+@cli.command()
+@click.option("--target", default="http://localhost:8080/api")
+@click.option("--minutes", default=20)
+def sync_last_preview_files(target, minutes):
+    """
+    Retrieve last preview files updloaded on target instance.
+    It expects that credentials to connect to target instance are
+    given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
+    """
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.import_last_file_changes_from_another_instance(
+        target, login, password, minutes=minutes
+    )
 
 
 @cli.command()

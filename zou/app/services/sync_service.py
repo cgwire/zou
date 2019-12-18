@@ -45,6 +45,19 @@ formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
+
+preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
+local_picture = LocalBackend(
+    "local", {"root": os.path.join(preview_folder, "pictures")}
+)
+local_movie = LocalBackend(
+    "local", {"root": os.path.join(preview_folder, "movies")}
+)
+local_file = LocalBackend(
+    "local", {"root": os.path.join(preview_folder, "files")}
+)
+
+
 event_name_model_map = {
     "asset": Entity,
     "asset-type": EntityType,
@@ -224,19 +237,74 @@ def run_other_sync():
     sync_entries("events", ApiEvent)
 
 
-def run_last_events_sync():
+def run_last_events_sync(minutes=0):
     """
     Retrieve last events from target instance and import related data and
     action.
     """
-    events = gazu.client.fetch_all("events/last")
+    if minutes > 0:
+        path = "events/last?page=300"
+        min_before = \
+            datetime.datetime.now() - datetime.timedelta(minutes=minutes)
+        before = min_before.strftime("%Y-%m-%d")
+        path = "events/last?before=%s&page=300" % before
+    else:
+        path = "events/last?page=300"
+    events = gazu.client.fetch_all(path)
     for event in events.reverse():
         event_name = event["name"]
         if event_name in event_name_model_map:
             sync_event(event)
 
 
+def run_last_file_events_sync(minutes=20):
+    """
+    Retrieve last file events from target instance and import related data and
+    action.
+    """
+    if minutes > 0:
+        after = datetime.datetime.now() - datetime.timedelta(minutes=minutes)
+        preview_files = PreviewFile.filter(PreviewFile.created_at > after)
+        for preview_file in preview_files:
+            file_key = "previews-%s" % preview_file.id
+
+            is_movie = preview_file.extension == "mp4"
+            is_picture = preview_file.extension == "png"
+            is_file = not is_movie and not is_picture
+            if is_file:
+                file_path = local_file.path(file_key)
+            elif is_movie:
+                file_path = local_movie.path(file_key)
+            else:
+                file_path = local_picture.path(file_key)
+
+            if not os.path.exists(file_path):
+                download_preview(preview_file)
+
+
 def sync_event(event):
+    """
+    From information given by an event, retrieve related data and apply it.
+    """
+    event_name = event["name"]
+    [event_name, action] = event_name.split(":")
+
+    model = event_name_model_map[event_name]
+    path = event_name_model_path_map[event_name]
+
+    if event_name == "metadata-descriptor":  # Backward compatibility
+        if "metadata_descriptor_id" not in event["data"]:
+            event_name = "descriptor"
+    instance_id = event["data"]["%s_id" % event_name.replace("-", "_")]
+
+    if action in ["update", "new"]:
+        instance = gazu.client.fetch_one(path, instance_id)
+        model.create_from_import(instance)
+    elif action in ["delete"]:
+        model.delete_from_import(instance_id)
+
+
+def sync_files_event(event):
     """
     From information given by an event, retrieve related data and apply it.
     """
@@ -396,6 +464,30 @@ def add_sync_listeners(event_client, model_name, event_name, model):
     )
 
 
+def add_file_listeners(event_client):
+    """
+    Add new preview event listener.
+    """
+    gazu.events.add_listener(
+        event_client,
+        "preview-file:add-file",
+        add_file_event
+    )
+
+
+def add_file_event(data):
+    if data.get("sync", False):
+        return
+    try:
+        preview_file_id = data["preview_file_id"]
+        preview_file = PreviewFile.get(preview_file_id)
+        download_preview(preview_file)
+        logger.info("Preview file and related downloaded: %s" % preview_file_id)
+    except gazu.exception.RouteNotFoundException as e:
+        logger.error("Route not found: %s" % e)
+        logger.error("Fail to dowonload preview file: %s" % (preview_file_id))
+
+
 def create_entry(model_name, event_name, model, event_type):
     """
     Generate a function that creates a model each time a related creation event
@@ -495,7 +587,6 @@ def download_entity_thumbnail(entity):
     Download thumbnail file for given entity from object storage and store it
     locally.
     """
-    preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
     local = LocalBackend(
         "local", {"root": os.path.join(preview_folder, "pictures")}
     )
@@ -536,15 +627,6 @@ def download_preview(preview_file):
     )
 
     preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
-    local_picture = LocalBackend(
-        "local", {"root": os.path.join(preview_folder, "pictures")}
-    )
-    local_movie = LocalBackend(
-        "local", {"root": os.path.join(preview_folder, "movies")}
-    )
-    local_file = LocalBackend(
-        "local", {"root": os.path.join(preview_folder, "files")}
-    )
 
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"

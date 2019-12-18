@@ -39,11 +39,12 @@ def all_playlists_for_project(project_id, for_client=False):
     """
     result = []
     if for_client:
-        print("toto")
         playlists = Playlist.get_all_by(project_id=project_id, for_client=True)
     else:
         playlists = Playlist.get_all_by(project_id=project_id)
-    for playlist in fields.serialize_value(playlists):
+    for playlist in playlists:
+        playlist.shots = []
+        fields.serialize_value(playlists)
         del playlist["shots"]
         result.append(playlist)
     return result
