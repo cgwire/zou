@@ -21,7 +21,7 @@ MEMOIZE_DB_INDEX = 1
 KV_EVENTS_DB_INDEX = 2
 KV_JOB_DB_INDEX = 3
 
-ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", False)
+ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
 
 JWT_BLACKLIST_ENABLED = True
 JWT_BLACKLIST_TOKEN_CHECKS = ["access", "refresh"]
@@ -66,8 +66,8 @@ MAIL_PORT = os.getenv("MAIL_PORT", 25)
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
 MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0)
-MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", False)
-MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", False)
+MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "False").lower() == "true"
+MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "no-reply@cg-wire.com")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
@@ -94,8 +94,8 @@ LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
 LDAP_PORT = os.getenv("LDAP_PORT", "389")
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "cn=Users,dc=zou,dc=local")
 LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "zou.local")
-LDAP_FALLBACK = os.getenv("LDAP_FALLBACK", False)
-LDAP_IS_AD = os.getenv("LDAP_IS_AD", False)
+LDAP_FALLBACK = os.getenv("LDAP_FALLBACK", "False").lower() == "true"
+LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
 
 LOGS_MODE = os.getenv("LOGS_MODE", "default")
 LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
