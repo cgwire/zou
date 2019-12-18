@@ -243,7 +243,13 @@ def sync_with_ldap_server():
                     desktop_login
                 )
             except PersonNotFoundException:
-                pass
+                try:
+                    person = persons_service.get_person_by_email(
+                        email
+                    )
+                except PersonNotFoundException:
+                    pass
+
             if len(email) == 0 or email == "[]" or type(email) != str:
                 email = "%s@%s" % (desktop_login, EMAIL_DOMAIN)
 
