@@ -44,7 +44,7 @@ def all_playlists_for_project(project_id, for_client=False):
         playlists = Playlist.get_all_by(project_id=project_id)
     for playlist in playlists:
         playlist.shots = []
-        playlist_dict = fields.serialize_value(playlists)
+        playlist_dict = fields.serialize_value(playlist)
         del playlist_dict["shots"]
         result.append(playlist_dict)
     return result
@@ -59,9 +59,11 @@ def all_playlists_for_episode(episode_id, for_client=False):
         playlists = Playlist.get_all_by(episode_id=episode_id, for_client=True)
     else:
         playlists = Playlist.get_all_by(episode_id=episode_id)
-    for playlist in fields.serialize_value(playlists):
-        del playlist["shots"]
-        result.append(playlist)
+    for playlist in playlists:
+        playlist.shots = []
+        playlist_dict = fields.serialize_value(playlist)
+        del playlist_dict["shots"]
+        result.append(playlist_dict)
     return result
 
 
