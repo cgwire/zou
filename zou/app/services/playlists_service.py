@@ -17,6 +17,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.app.utils import fields, movie_utils, events
+from zou.app.utils import query as query_utils
 
 from zou.app.services import (
     base_service,
@@ -496,3 +497,11 @@ def get_build_jobs_for_project(project_id):
         Playlist.project_id == project_id
     )
     return fields.serialize_list(build_jobs)
+
+
+def get_playlists_for_project(project_id, page=0):
+    """
+    Return all time spents for given project.
+    """
+    query = Playlist.query.filter(Playlist.project_id == project_id)
+    return query_utils.get_paginated_results(query, page, relations=True)

@@ -50,7 +50,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     @classmethod
     def create_from_import(cls, data):
         del data["type"]
-        del data["comments"]
+        if "comments" in data:
+            del data["comments"]
         previous_data = cls.get(data["id"])
         if previous_data is None:
             return cls.create(**data)

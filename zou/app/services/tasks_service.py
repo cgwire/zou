@@ -1040,7 +1040,7 @@ def get_comments_for_project(project_id, page=0):
         .filter(Task.project_id == project_id)
         .order_by(Comment.updated_at.desc())
     )
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(query, page, relations=True)
 
 
 def get_time_spents_for_project(project_id, page=0):
@@ -1058,7 +1058,7 @@ def get_tasks_for_project(project_id, page=0):
     query = Task.query.filter(Task.project_id == project_id).order_by(
         Task.updated_at.desc()
     )
-    return query_utils.get_paginated_results(query, page)
+    return query_utils.get_paginated_results(query, page, relations=True)
 
 
 @cache.memoize_function(120)

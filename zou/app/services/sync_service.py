@@ -170,6 +170,7 @@ def init(target, login, password):
     Set parameters for the client that will retrieve data from the target.
     """
     gazu.set_host(target)
+    print(target, login, password)
     gazu.log_in(login, password)
 
 
@@ -333,14 +334,14 @@ def sync_entries(model_name, model):
     instances = []
 
     if model_name in ["organisations", "persons"]:
-        instances = gazu.client.fetch_all(model_name)
+        instances = gazu.client.fetch_all(model_name + "?relations=true")
         model.create_from_import_list(instances)
     else:
         page = 1
         init = True
         results = {"nb_pages": 2}
         while init or results["nb_pages"] >= page:
-            results = gazu.client.fetch_all("%s?page=%d" % (model_name, page))
+            results = gazu.client.fetch_all("%s?relations=true&page=%d" % (model_name, page))
             instances += results["data"]
             page += 1
             init = False
@@ -362,6 +363,7 @@ def sync_project_entries(project, model_name, model):
         "tasks",
         "comments",
         "notifications",
+        "playlists",
         "preview-files",
     ]:
         results = gazu.client.fetch_all(
@@ -375,9 +377,12 @@ def sync_project_entries(project, model_name, model):
 
     else:
         while init or results["nb_pages"] >= page:
-            results = gazu.client.fetch_all(
-                "projects/%s/%s?page=%d" % (project["id"], model_name, page)
-            )
+            path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
+            if model_name == "playlists":
+                path = "projects/%s/playlists/all?page=%d" % (
+                    project["id"], page
+                )
+            results = gazu.client.fetch_all(path)
             instances += results["data"]
             try:
                 model.create_from_import_list(results["data"])

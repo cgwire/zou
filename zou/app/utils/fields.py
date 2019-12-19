@@ -80,11 +80,14 @@ def serialize_orm_arrays(array_value):
     return result
 
 
-def serialize_models(models):
+def serialize_models(models, relations=False):
     """
     Serialize a list of models (useful for json dumping)
     """
-    return [model.serialize() for model in models if model is not None]
+    return [
+        model.serialize(relations=relations)
+        for model in models if model is not None
+    ]
 
 
 def gen_uuid():

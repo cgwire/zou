@@ -59,13 +59,13 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     def full_name(self):
         return "%s %s" % (self.first_name, self.last_name)
 
-    def serialize(self, obj_type="Person"):
-        data = SerializerMixin.serialize(self, "Person")
+    def serialize(self, obj_type="Person", relations=False):
+        data = SerializerMixin.serialize(self, "Person", relations=relations)
         data["full_name"] = self.full_name()
         return data
 
-    def serialize_safe(self):
-        data = SerializerMixin.serialize(self, "Person")
+    def serialize_safe(self, relations=False):
+        data = SerializerMixin.serialize(self, "Person", relations=relations)
         data["full_name"] = self.full_name()
         del data["password"]
         return data

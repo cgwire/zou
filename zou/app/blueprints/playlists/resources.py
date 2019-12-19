@@ -5,6 +5,7 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
+from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions
 
 from zou.app.services import (
@@ -176,3 +177,17 @@ class ProjectBuildJobsResource(Resource):
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         return playlists_service.get_build_jobs_for_project(project_id)
+
+
+class ProjectAllPlaylistsResource(Resource, ArgsMixin):
+    """
+    Retrieve all playlists related to given project.
+    It's mainly used for synchronisation purpose.
+    """
+
+    @jwt_required
+    def get(self, project_id):
+        permissions.check_admin_permissions()
+        projects_service.get_project(project_id)
+        page = self.get_page()
+        return playlists_service.get_playlists_for_project(project_id, page)

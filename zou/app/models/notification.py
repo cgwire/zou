@@ -56,7 +56,7 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
         ),
     )
 
-    def serialize(self, obj_type=None):
+    def serialize(self, obj_type=None, relations=False):
         attrs = inspect(self).attrs.keys()
         obj_dict = {
             attr: serialize_value(getattr(self, attr)) for attr in attrs

@@ -8,6 +8,7 @@ from .resources import (
     EntityPreviewsResource,
     EpisodePlaylistsResource,
     ProjectPlaylistsResource,
+    ProjectAllPlaylistsResource,
     ProjectBuildJobsResource,
     ProjectPlaylistResource,
     PlaylistDownloadResource,
@@ -17,6 +18,7 @@ from .resources import (
 
 routes = [
     ("/data/projects/<project_id>/playlists", ProjectPlaylistsResource),
+    ("/data/projects/<project_id>/playlists/all", ProjectAllPlaylistsResource),
     (
         "/data/projects/<project_id>/episodes/<episode_id>/playlists",
         EpisodePlaylistsResource,
