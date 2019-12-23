@@ -119,9 +119,6 @@ sudo mkdir /opt/zou/previews
 sudo chown -R zou:www-data /opt/zou
 ```
 
-If it complains about missing ffmpeg binary set properly the `FFMPEG_BINARY`
-env variable (= the ffmpeg binary path).
-
 
 ### Prepare database
 
@@ -294,11 +291,11 @@ server {
     }
 
     location /socket.io {
-		proxy_http_version 1.1;
+	proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-		proxy_set_header Upgrade $http_upgrade;
-		proxy_set_header Connection "Upgrade";
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "Upgrade";
         proxy_pass http://localhost:5001;
     }
 }
