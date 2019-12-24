@@ -465,6 +465,7 @@ def create_asset(
         name=name,
         description=description,
         data=data,
+        source_id=source_id
     )
     asset_dict = asset.serialize(obj_type="Asset")
     events.emit(
