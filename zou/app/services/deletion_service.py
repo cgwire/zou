@@ -61,9 +61,7 @@ def remove_comment(comment_id):
 
 
 def reset_tasks_data(project_id):
-    print(len(Task.get_all_by(project_id=project_id)), "tasks to reset")
     for task in Task.get_all_by(project_id=project_id):
-        print(str(task.id), "reseted")
         reset_task_data(str(task.id))
 
 

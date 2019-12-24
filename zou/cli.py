@@ -339,7 +339,6 @@ def sync_full(target):
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    #password = "=aJ)NJ$^5ElD)#x;iYe9"
     commands.import_data_from_another_instance(target, login, password)
     print("Syncing ended.")
 

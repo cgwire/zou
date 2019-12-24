@@ -170,7 +170,6 @@ def init(target, login, password):
     Set parameters for the client that will retrieve data from the target.
     """
     gazu.set_host(target)
-    print(target, login, password)
     gazu.log_in(login, password)
 
 
