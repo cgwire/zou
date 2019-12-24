@@ -10,17 +10,13 @@ class SerializerMixin(object):
     """
 
     def is_join(self, attr):
-        return isinstance(
-            getattr(self, attr),
-            orm.collections.InstrumentedList
-        )
+        return isinstance(getattr(self, attr), orm.collections.InstrumentedList)
 
     def serialize(self, obj_type=None, relations=False):
         attrs = inspect(self).attrs.keys()
         if relations:
             obj_dict = {
-                attr: serialize_value(getattr(self, attr))
-                for attr in attrs
+                attr: serialize_value(getattr(self, attr)) for attr in attrs
             }
         else:
             obj_dict = {

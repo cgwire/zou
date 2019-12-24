@@ -198,13 +198,13 @@ class NewAssetResource(Resource):
         )
         parser.add_argument("description")
         parser.add_argument("data", type=dict, default={})
-        parser.add_argument("source_id", default=None)
+        parser.add_argument("episode_id", default=None)
         args = parser.parse_args()
         return (
             args["name"],
             args.get("description", ""),
             args["data"],
-            args["source_id"],
+            args["episode_id"],
         )
 
 

@@ -170,7 +170,6 @@ def init(target, login, password):
     Set parameters for the client that will retrieve data from the target.
     """
     gazu.set_host(target)
-    print(target, login, password)
     gazu.log_in(login, password)
 
 
@@ -245,8 +244,9 @@ def run_last_events_sync(minutes=0):
     """
     if minutes > 0:
         path = "events/last?page=300"
-        min_before = \
-            datetime.datetime.now() - datetime.timedelta(minutes=minutes)
+        min_before = datetime.datetime.now() - datetime.timedelta(
+            minutes=minutes
+        )
         before = min_before.strftime("%Y-%m-%d")
         path = "events/last?before=%s&page=300" % before
     else:
@@ -341,7 +341,9 @@ def sync_entries(model_name, model):
         init = True
         results = {"nb_pages": 2}
         while init or results["nb_pages"] >= page:
-            results = gazu.client.fetch_all("%s?relations=true&page=%d" % (model_name, page))
+            results = gazu.client.fetch_all(
+                "%s?relations=true&page=%d" % (model_name, page)
+            )
             instances += results["data"]
             page += 1
             init = False
@@ -380,7 +382,8 @@ def sync_project_entries(project, model_name, model):
             path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
             if model_name == "playlists":
                 path = "projects/%s/playlists/all?page=%d" % (
-                    project["id"], page
+                    project["id"],
+                    page,
                 )
             results = gazu.client.fetch_all(path)
             instances += results["data"]
@@ -474,9 +477,7 @@ def add_file_listeners(event_client):
     Add new preview event listener.
     """
     gazu.events.add_listener(
-        event_client,
-        "preview-file:add-file",
-        add_file_event
+        event_client, "preview-file:add-file", add_file_event
     )
 
 

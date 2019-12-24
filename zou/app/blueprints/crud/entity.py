@@ -139,12 +139,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
             version = EntityVersion.create(
-                entity_id=shot["id"],
-                name=pname,
-                data=previous_shot["data"]
+                entity_id=shot["id"], name=pname, data=previous_shot["data"]
             )
         return version
-
 
     def emit_update_event(self, entity_dict):
         self.emit_event("update", entity_dict)

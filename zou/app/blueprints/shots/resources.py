@@ -16,9 +16,7 @@ from zou.app.services import (
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import query
 
-from zou.app.services.exception import (
-    ModelWithRelationsDeletionException,
-)
+from zou.app.services.exception import ModelWithRelationsDeletionException
 
 
 class ShotResource(Resource, ArgsMixin):

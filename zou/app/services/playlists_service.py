@@ -264,9 +264,9 @@ def retrieve_playlist_tmp_files(playlist):
     preview_file_ids = []
     for shot in playlist["shots"]:
         if (
-            "preview_file_id" in shot and
-            shot["preview_file_id"] is not None and
-            len(shot["preview_file_id"]) > 0
+            "preview_file_id" in shot
+            and shot["preview_file_id"] is not None
+            and len(shot["preview_file_id"]) > 0
         ):
             preview_file = files_service.get_preview_file(
                 shot["preview_file_id"]

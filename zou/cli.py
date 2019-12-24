@@ -339,8 +339,22 @@ def sync_full(target):
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    #password = "=aJ)NJ$^5ElD)#x;iYe9"
     commands.import_data_from_another_instance(target, login, password)
+    print("Syncing ended.")
+
+
+@cli.command()
+@click.option("--target", default="http://localhost:5000")
+def sync_full_files(target):
+    """
+    Retrieve all files from target instance. It expects that credentials to
+    connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
+    environment variables.
+    """
+    print("Start syncing.")
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.import_files_from_another_instance(target, login, password)
     print("Syncing ended.")
 
 

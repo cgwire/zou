@@ -37,7 +37,6 @@ from .resources import (
 
 routes = [
     ("/data/user/context", ContextResource),
-
     ("/data/user/assets/<asset_id>/tasks", AssetTasksResource),
     ("/data/user/shots/<shot_id>/tasks", ShotTasksResource),
     ("/data/user/scenes/<scene_id>/tasks", SceneTasksResource),
@@ -45,7 +44,10 @@ routes = [
     ("/data/user/assets/<asset_id>/task-types", AssetTaskTypesResource),
     ("/data/user/shots/<shot_id>/task-types", ShotTaskTypesResource),
     ("/data/user/scenes/<scene_id>/task-types", SceneTaskTypesResource),
-    ("/data/user/sequences/<sequence_id>/task-types", SequenceTaskTypesResource),
+    (
+        "/data/user/sequences/<sequence_id>/task-types",
+        SequenceTaskTypesResource,
+    ),
     ("/data/user/projects/open", OpenProjectsResource),
     ("/data/user/projects/<project_id>/asset-types", ProjectAssetTypesResource),
     (

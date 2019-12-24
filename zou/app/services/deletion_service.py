@@ -26,7 +26,7 @@ from zou.app.stores import file_store
 
 from zou.app.services.exception import (
     CommentNotFoundException,
-    ModelWithRelationsDeletionException
+    ModelWithRelationsDeletionException,
 )
 
 
@@ -61,9 +61,7 @@ def remove_comment(comment_id):
 
 
 def reset_tasks_data(project_id):
-    print(len(Task.get_all_by(project_id=project_id)), "tasks to reset")
     for task in Task.get_all_by(project_id=project_id):
-        print(str(task.id), "reseted")
         reset_task_data(str(task.id))
 
 
@@ -269,13 +267,14 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
 
 def remove_project(project_id):
     from zou.app.services import playlists_service
+
     tasks = Task.query.filter_by(project_id=project_id)
     for task in tasks:
         remove_task(task.id, force=True)
 
-    query = EntityLink.query \
-        .join(Entity, EntityLink.entity_in_id == Entity.id) \
-        .filter(Entity.project_id == project_id)
+    query = EntityLink.query.join(
+        Entity, EntityLink.entity_in_id == Entity.id
+    ).filter(Entity.project_id == project_id)
     for link in query:
         link.delete_no_commit()
     EntityLink.commit()
@@ -312,13 +311,13 @@ def remove_person(person_id, force=True):
         TimeSpent.delete_all_by(person_id=person_id)
         for project in Project.query.filter(Project.team.contains(person)):
             project.team = [
-                member for member in project.team
-                if str(member.id) != person_id
+                member for member in project.team if str(member.id) != person_id
             ]
             project.save()
         for task in Task.query.filter(Task.assignees.contains(person)):
             task.assignees = [
-                assignee for assignee in task.assignees
+                assignee
+                for assignee in task.assignees
                 if str(assignee.id) != person_id
             ]
             task.save()

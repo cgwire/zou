@@ -1047,9 +1047,7 @@ def get_shot_versions(shot_id):
     of a given shot.
     """
     versions = (
-        EntityVersion
-        .query
-        .filter_by(entity_id=shot_id)
+        EntityVersion.query.filter_by(entity_id=shot_id)
         .order_by(EntityVersion.created_at.desc())
         .all()
     )

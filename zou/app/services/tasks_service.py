@@ -40,7 +40,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
-    entities_service
+    entities_service,
 )
 
 
@@ -1074,15 +1074,17 @@ def get_full_task(task_id):
         for assignee_id in task["assignees"]
     ]
 
-    task.update({
-        "entity": entity,
-        "task_type": task_type,
-        "task_status": task_status,
-        "project": project,
-        "entity_type": entity_type,
-        "persons": assignees,
-        "type": "Task",
-    })
+    task.update(
+        {
+            "entity": entity,
+            "task_type": task_type,
+            "task_status": task_status,
+            "project": project,
+            "entity_type": entity_type,
+            "persons": assignees,
+            "type": "Task",
+        }
+    )
 
     try:
         assigner = persons_service.get_person(task["assigner_id"])

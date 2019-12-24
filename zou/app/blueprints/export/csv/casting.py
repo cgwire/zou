@@ -23,7 +23,6 @@ class CastingCsvExport(Resource):
         for result in results:
             csv_content.append(self.build_row(result))
 
-        print(csv_content)
         file_name = "%s casting" % project["name"]
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
 

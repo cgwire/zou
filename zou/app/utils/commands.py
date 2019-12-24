@@ -170,9 +170,11 @@ def sync_with_ldap_server():
             "sAMAccountName",
             "mail",
             "thumbnailPhoto",
-            "userAccountControl"
+            "userAccountControl",
         ]
-        conn.search(LDAP_BASE_DN, "(objectCategory=person)", attributes=attributes)
+        conn.search(
+            LDAP_BASE_DN, "(objectCategory=person)", attributes=attributes
+        )
         return [
             {
                 "first_name": clean_value(entry.givenName),
@@ -180,7 +182,8 @@ def sync_with_ldap_server():
                 "email": clean_value(entry.mail),
                 "desktop_login": clean_value(entry.sAMAccountName),
                 "thumbnail": entry.thumbnailPhoto.raw_values,
-                "active": clean_value(entry.userAccountControl) in ['512', '66048'],
+                "active": clean_value(entry.userAccountControl)
+                in ["512", "66048"],
             }
             for entry in conn.entries
             if clean_value(entry.sAMAccountName) not in excluded_accounts
@@ -244,9 +247,7 @@ def sync_with_ldap_server():
                 )
             except PersonNotFoundException:
                 try:
-                    person = persons_service.get_person_by_email(
-                        email
-                    )
+                    person = persons_service.get_person_by_email(email)
                 except PersonNotFoundException:
                     pass
 
@@ -327,7 +328,9 @@ def run_sync_change_daemon(event_target, target, login, password, logs_dir):
     sync_service.run_listeners(event_client)
 
 
-def run_sync_file_change_daemon(event_target, target, login, password, logs_dir):
+def run_sync_file_change_daemon(
+    event_target, target, login, password, logs_dir
+):
     """
     Listen to event websocket. Each time a change occurs, it retrieves the
     related file and save it in the current instance.

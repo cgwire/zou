@@ -88,4 +88,4 @@ class ProjectResource(BaseModelResource):
             else:
                 project.delete()
             self.post_delete(project_dict)
-            return '', 204
+            return "", 204

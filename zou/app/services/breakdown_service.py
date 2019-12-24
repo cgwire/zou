@@ -46,7 +46,7 @@ def get_casting(shot_id):
                     entity_preview_file_id
                 ),
                 "nb_occurences": link.nb_occurences,
-                "label": link.label
+                "label": link.label,
             }
         )
     return casting
@@ -84,7 +84,7 @@ def get_sequence_casting(sequence_id):
                     entity_preview_file_id
                 ),
                 "nb_occurences": link.nb_occurences,
-                "label": link.label
+                "label": link.label,
             }
         )
     return castings
@@ -142,7 +142,7 @@ def update_casting(entity_id, casting):
                 entity.id,
                 cast["asset_id"],
                 nb_occurences=cast["nb_occurences"],
-                label=cast.get("label", "")
+                label=cast.get("label", ""),
             )
     entity_id = str(entity.id)
     if shots_service.is_shot(entity.serialize()):
