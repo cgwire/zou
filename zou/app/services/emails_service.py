@@ -97,7 +97,7 @@ _%s_
             )
         messages = {
             "email_message": email_message,
-            "slack_message": slack_message
+            "slack_message": slack_message,
         }
         send_notification(person_id, subject, messages)
 
@@ -137,7 +137,7 @@ _%s_
 
         messages = {
             "email_message": email_message,
-            "slack_message": slack_message
+            "slack_message": slack_message,
         }
         return send_notification(person_id, subject, messages)
     else:
@@ -153,23 +153,21 @@ def send_assignation_notification(person_id, author_id, task):
     if person.notifications_enabled or person.notifications_slack_enabled:
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
         subject = "[Kitsu] You were assigned to %s" % task_name
-        email_message = \
-            """<strong>%s</strong> assigned you to <a href="%s">%s</a>.
+        email_message = """<strong>%s</strong> assigned you to <a href="%s">%s</a>.
 """ % (
-                author["full_name"],
-                task_url,
-                task_name,
-            )
-        slack_message = \
-            """*%s* assigned you to <%s|%s>.
+            author["full_name"],
+            task_url,
+            task_name,
+        )
+        slack_message = """*%s* assigned you to <%s|%s>.
 """ % (
-                author["full_name"],
-                task_url,
-                task_name,
-            )
+            author["full_name"],
+            task_url,
+            task_name,
+        )
         messages = {
             "email_message": email_message,
-            "slack_message": slack_message
+            "slack_message": slack_message,
         }
         return send_notification(person_id, subject, messages)
     return True

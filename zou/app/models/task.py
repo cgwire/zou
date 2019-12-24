@@ -28,6 +28,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     The task has a state and assigned to people. It handles notion of time like
     duration, start date and end date.
     """
+
     name = db.Column(db.String(80), nullable=False)
     description = db.Column(db.String(200))
 

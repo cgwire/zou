@@ -86,7 +86,8 @@ def serialize_models(models, relations=False):
     """
     return [
         model.serialize(relations=relations)
-        for model in models if model is not None
+        for model in models
+        if model is not None
     ]
 
 

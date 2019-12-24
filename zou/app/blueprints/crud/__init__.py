@@ -12,7 +12,7 @@ from .event import EventsResource, EventResource
 from .file_status import FileStatusesResource, FileStatusResource
 from .metadata_descriptor import (
     MetadataDescriptorsResource,
-    MetadataDescriptorResource
+    MetadataDescriptorResource,
 )
 from .milestone import MilestonesResource, MilestoneResource
 from .notification import NotificationsResource, NotificationResource
