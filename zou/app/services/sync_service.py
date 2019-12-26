@@ -280,7 +280,7 @@ def run_last_file_events_sync(minutes=20):
                 file_path = local_picture.path(file_key)
 
             if not os.path.exists(file_path):
-                download_preview(preview_file)
+                download_preview_from_another_instance(preview_file)
 
 
 def sync_event(event):
@@ -307,24 +307,9 @@ def sync_event(event):
 
 def sync_files_event(event):
     """
-    From information given by an event, retrieve related data and apply it.
+    From information given by an event, retrieve related files.
     """
-    event_name = event["name"]
-    [event_name, action] = event_name.split(":")
-
-    model = event_name_model_map[event_name]
-    path = event_name_model_path_map[event_name]
-
-    if event_name == "metadata-descriptor":  # Backward compatibility
-        if "metadata_descriptor_id" not in event["data"]:
-            event_name = "descriptor"
-    instance_id = event["data"]["%s_id" % event_name.replace("-", "_")]
-
-    if action in ["update", "new"]:
-        instance = gazu.client.fetch_one(path, instance_id)
-        model.create_from_import(instance)
-    elif action in ["delete"]:
-        model.delete_from_import(instance_id)
+    pass
 
 
 def sync_entries(model_name, model):
@@ -487,7 +472,7 @@ def add_file_event(data):
     try:
         preview_file_id = data["preview_file_id"]
         preview_file = PreviewFile.get(preview_file_id)
-        download_preview(preview_file)
+        download_preview_from_another_instance(preview_file)
         logger.info("Preview file and related downloaded: %s" % preview_file_id)
     except gazu.exception.RouteNotFoundException as e:
         logger.error("Route not found: %s" % e)
@@ -607,6 +592,40 @@ def download_entity_thumbnail(entity):
                 tmp_file.write(chunk)
 
 
+def download_file_from_another_instance(
+    file_path, prefix, preview_file_id, extension
+):
+    """
+    Download preview file for given preview from object storage and store it
+    locally.
+    """
+    dirname = os.path.dirname(file_path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    if prefix == "previews":
+        if extension == "mp4":
+            path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+        else:
+            path = "/pictures/originals/preview-files/%s.%s" % (
+                preview_file_id,
+                extension
+            )
+    else:
+        path_prefix = prefix
+        if prefix == "original":
+            path_prefix = prefix + "s"
+        path = "/pictures/%s/preview-files/%s.png" % (
+            path_prefix,
+            preview_file_id
+        )
+    try:
+        gazu.client.download(path, file_path)
+        print("%s downloaded" % file_path)
+    except Exception as e:
+        print(e)
+        print("%s download failed" % file_path)
+
+
 def download_file(file_path, prefix, dl_func, preview_file_id):
     """
     Download preview file for given preview from object storage and store it
@@ -631,9 +650,6 @@ def download_preview(preview_file):
     print(
         "download preview %s (%s)" % (preview_file.id, preview_file.extension)
     )
-
-    preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
-
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"
     is_file = not is_movie and not is_picture
@@ -659,6 +675,53 @@ def download_preview(preview_file):
             download_file(pic_file_path, prefix, pic_dl_func, preview_file_id)
 
     download_file(file_path, "previews", dl_func, preview_file_id)
+
+
+def download_preview_from_another_instance(preview_file):
+    """
+    Download all files link to preview file entry: orginal file and variants.
+    """
+    from zou.app import app
+
+    print(
+        "download preview %s (%s)" % (preview_file.id, preview_file.extension)
+    )
+    is_movie = preview_file.extension == "mp4"
+    is_picture = preview_file.extension == "png"
+    is_file = not is_movie and not is_picture
+
+    preview_file_id = str(preview_file.id)
+    file_key = "previews-%s" % preview_file_id
+    with app.app_context():
+        if is_file:
+            file_path = local_file.path(file_key)
+            exists_func = file_store.exists_file
+        elif is_movie:
+            file_path = local_movie.path(file_key)
+            exists_func = file_store.exists_picture
+        else:
+            file_path = local_picture.path(file_key)
+            exists_func = file_store.exists_movie
+
+        if is_movie or is_picture:
+            for prefix in ["thumbnails", "thumbnails-square", "original"]:
+                pic_file_path = local_picture.path(
+                    "%s-%s" % (prefix, str(preview_file.id))
+                )
+                if not exists_func(prefix, preview_file_id):
+                    download_file_from_another_instance(
+                        pic_file_path,
+                        prefix,
+                        preview_file_id,
+                        preview_file.extension
+                    )
+        if not exists_func("previews", preview_file_id):
+            download_file_from_another_instance(
+                file_path,
+                "previews",
+                preview_file_id,
+                preview_file.extension
+            )
 
 
 def generate_db_backup(host, port, user, password, database):
@@ -791,3 +854,8 @@ def upload_preview(preview_file):
     if os.path.exists(file_path) and not exists_func(prefix, preview_file_id):
         ul_func(prefix, preview_file_id, file_path)
     print("%s uploaded" % file_path)
+
+
+def download_files_from_another_instance():
+    for preview_file in PreviewFile.query.all():
+        download_preview_from_another_instance(preview_file)
