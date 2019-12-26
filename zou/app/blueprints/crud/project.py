@@ -80,7 +80,10 @@ class ProjectResource(BaseModelResource):
         project = self.get_model_or_404(instance_id)
         project_dict = project.serialize()
         if projects_service.is_open(project_dict):
-            return {"error": "Only closed projects can be deleted"}, 400
+            return {
+                "error": True,
+                "message": "Only closed projects can be deleted"
+            }, 400
         else:
             if args["force"] == True:
                 self.check_delete_permissions(project_dict)
