@@ -369,6 +369,15 @@ def import_last_file_changes_from_another_instance(
     print("Syncing ended.")
 
 
+def import_files_from_another_instance(target, login, password):
+    """
+    Retrieve and save all the data related most recent events from another API
+    instance. It doesn't change the IDs.
+    """
+    sync_service.init(target, login, password)
+    sync_service.download_files_from_another_instance()
+
+
 def download_file_from_storage():
     sync_service.download_entity_thumbnails_from_storage()
     sync_service.download_preview_files_from_storage()

@@ -264,6 +264,7 @@ def add_metadata_descriptor(project_id, entity_type, name, choices):
         "metadata-descriptor:new",
         {"metadata_descriptor_id": str(descriptor.id)},
     )
+    clear_project_cache(project_id)
     return descriptor.serialize()
 
 
@@ -318,6 +319,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
         "metadata-descriptor:update",
         {"metadata_descriptor_id": str(descriptor.id)},
     )
+    clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()
 
 
@@ -340,6 +342,7 @@ def remove_metadata_descriptor(metadata_descriptor_id):
         "metadata-descriptor:delete",
         {"metadata_descriptor_id": str(descriptor.id)},
     )
+    clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()
 
 
