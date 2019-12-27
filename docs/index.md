@@ -288,6 +288,10 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_pass http://localhost:5000/;
         client_max_body_size 500M;
+	proxy_connect_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+        send_timeout 600s;
     }
 
     location /socket.io {
