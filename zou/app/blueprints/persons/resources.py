@@ -116,6 +116,20 @@ class TimeSpentsResource(Resource):
             abort(404)
 
 
+class PersonYearTimeSpentsResource(Resource):
+    """
+    Get aggregated time spents for given person and year.
+    """
+
+    @jwt_required
+    def get(self, person_id, year):
+        permissions.check_admin_permissions()
+        try:
+            return time_spents_service.get_year_time_spents(person_id, year)
+        except WrongDateFormatException:
+            abort(404)
+
+
 class PersonMonthTimeSpentsResource(Resource):
     """
     Get aggregated time spents for given person and month.
@@ -164,6 +178,17 @@ class PersonDayTimeSpentsResource(Resource):
             abort(404)
 
 
+class TimeSpentYearResource(Resource):
+    """
+    Return a table giving time spent by user and by month for given year.
+    """
+
+    @jwt_required
+    def get(self):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_year_table()
+
+
 class TimeSpentMonthResource(Resource):
     """
     Return a table giving time spent by user and by day for given year and
@@ -176,7 +201,18 @@ class TimeSpentMonthResource(Resource):
         return time_spents_service.get_day_table(year, month)
 
 
-class TimeSpentYearResource(Resource):
+class TimeSpentYearsResource(Resource):
+    """
+    Return a table giving time spent by user and by month for given year.
+    """
+
+    @jwt_required
+    def get(self):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_year_table()
+
+
+class TimeSpentMonthsResource(Resource):
     """
     Return a table giving time spent by user and by month for given year.
     """

@@ -18,6 +18,13 @@ from zou.app.utils import fields
 from zou.app.services.exception import WrongDateFormatException
 
 
+def get_year_table():
+    """
+    Return a table giving time spent by user and by month for given year.
+    """
+    return get_yearly_table(None, detail_level="year")
+
+
 def get_month_table(year):
     """
     Return a table giving time spent by user and by month for given year.
@@ -41,23 +48,26 @@ def get_day_table(year, month):
     return get_table_from_time_spents(time_spents, "day")
 
 
-def get_yearly_table(year, detail_level="month"):
+def get_yearly_table(year=None, detail_level="month"):
     """
     Return a table giving time spent by user and by week or month for given
     year. Week or month detail level can be selected through *detail_level*
     argument.
     """
-    time_spents = get_time_spents_for_year(year)
+    time_spents = get_time_spents_for_year(year=year)
     return get_table_from_time_spents(time_spents, detail_level)
 
 
-def get_time_spents_for_year(year):
+def get_time_spents_for_year(year=None):
     """
     Return all time spents for given year.
     """
-    return TimeSpent.query.filter(
-        TimeSpent.date.between("%s-01-01" % year, "%s-12-31" % year)
-    ).all()
+    if year is None:
+        return TimeSpent.query.all()
+    else:
+        return TimeSpent.query.filter(
+            TimeSpent.date.between("%s-01-01" % year, "%s-12-31" % year)
+        ).all()
 
 
 def get_time_spents_for_month(year, month):
@@ -84,6 +94,8 @@ def get_table_from_time_spents(time_spents, detail_level="month"):
             unit = str(time_spent.date.isocalendar()[1])
         elif detail_level is "day":
             unit = str(time_spent.date.day)
+        elif detail_level is "year":
+            unit = str(time_spent.date.year)
         else:
             unit = str(time_spent.date.month)
 
@@ -107,6 +119,26 @@ def get_time_spents(person_id, date):
     except DataError:
         raise WrongDateFormatException
     return fields.serialize_list(time_spents)
+
+
+def get_year_time_spents(person_id, year):
+    """
+    Return aggregated time spents at task level for given person and month.
+    """
+    year = int(year)
+    if year > datetime.datetime.now().year or year < 2010:
+        raise WrongDateFormatException
+
+    date = datetime.datetime(year, 1, 1)
+    next_year = date + relativedelta.relativedelta(years=1)
+
+    entries = get_person_time_spent_entries(
+        person_id,
+        TimeSpent.date >= date.strftime("%Y-%m-%d"),
+        TimeSpent.date < next_year.strftime("%Y-%m-%d"),
+    )
+
+    return build_results(entries)
 
 
 def get_month_time_spents(person_id, year, month):
