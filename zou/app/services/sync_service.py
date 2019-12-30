@@ -592,40 +592,6 @@ def download_entity_thumbnail(entity):
                 tmp_file.write(chunk)
 
 
-def download_file_from_another_instance(
-    file_path, prefix, preview_file_id, extension
-):
-    """
-    Download preview file for given preview from object storage and store it
-    locally.
-    """
-    dirname = os.path.dirname(file_path)
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-    if prefix == "previews":
-        if extension == "mp4":
-            path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
-        else:
-            path = "/pictures/originals/preview-files/%s.%s" % (
-                preview_file_id,
-                extension
-            )
-    else:
-        path_prefix = prefix
-        if prefix == "original":
-            path_prefix = prefix + "s"
-        path = "/pictures/%s/preview-files/%s.png" % (
-            path_prefix,
-            preview_file_id
-        )
-    try:
-        gazu.client.download(path, file_path)
-        print("%s downloaded" % file_path)
-    except Exception as e:
-        print(e)
-        print("%s download failed" % file_path)
-
-
 def download_file(file_path, prefix, dl_func, preview_file_id):
     """
     Download preview file for given preview from object storage and store it
@@ -675,53 +641,6 @@ def download_preview(preview_file):
             download_file(pic_file_path, prefix, pic_dl_func, preview_file_id)
 
     download_file(file_path, "previews", dl_func, preview_file_id)
-
-
-def download_preview_from_another_instance(preview_file):
-    """
-    Download all files link to preview file entry: orginal file and variants.
-    """
-    from zou.app import app
-
-    print(
-        "download preview %s (%s)" % (preview_file.id, preview_file.extension)
-    )
-    is_movie = preview_file.extension == "mp4"
-    is_picture = preview_file.extension == "png"
-    is_file = not is_movie and not is_picture
-
-    preview_file_id = str(preview_file.id)
-    file_key = "previews-%s" % preview_file_id
-    with app.app_context():
-        if is_file:
-            file_path = local_file.path(file_key)
-            exists_func = file_store.exists_file
-        elif is_movie:
-            file_path = local_movie.path(file_key)
-            exists_func = file_store.exists_picture
-        else:
-            file_path = local_picture.path(file_key)
-            exists_func = file_store.exists_movie
-
-        if is_movie or is_picture:
-            for prefix in ["thumbnails", "thumbnails-square", "original"]:
-                pic_file_path = local_picture.path(
-                    "%s-%s" % (prefix, str(preview_file.id))
-                )
-                if not exists_func(prefix, preview_file_id):
-                    download_file_from_another_instance(
-                        pic_file_path,
-                        prefix,
-                        preview_file_id,
-                        preview_file.extension
-                    )
-        if not exists_func("previews", preview_file_id):
-            download_file_from_another_instance(
-                file_path,
-                "previews",
-                preview_file_id,
-                preview_file.extension
-            )
 
 
 def generate_db_backup(host, port, user, password, database):
@@ -857,5 +776,113 @@ def upload_preview(preview_file):
 
 
 def download_files_from_another_instance():
+    download_thumbnails_from_another_instance("person")
+    download_thumbnails_from_another_instance("organisation")
+    download_thumbnails_from_another_instance("project")
     for preview_file in PreviewFile.query.all():
         download_preview_from_another_instance(preview_file)
+
+
+def download_thumbnails_from_another_instance(model_name):
+    model = event_name_model_map[model_name]
+    for instance in model.query.all():
+        if instance.has_avatar:
+            download_thumbnail_from_another_instance(model_name, instance.id)
+
+
+def download_thumbnail_from_another_instance(model_name, model_id):
+    file_path = local_picture.path("thumbnails-%s" % str(model_id))
+    dirname = os.path.dirname(file_path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+    path = "/pictures/thumbnails/%ss/%s.png" % (model_name, model_id)
+    try:
+        if not local_picture.exists_picture("thumbnails", model_id):
+            gazu.client.download(path, file_path)
+        print("%s downloaded" % file_path)
+    except Exception as e:
+        print(e)
+        print("%s download failed" % file_path)
+    return path
+
+
+def download_preview_from_another_instance(preview_file):
+    """
+    Download all files link to preview file entry: orginal file and variants.
+    """
+    from zou.app import app
+
+    print(
+        "download preview %s (%s)" % (preview_file.id, preview_file.extension)
+    )
+    is_movie = preview_file.extension == "mp4"
+    is_picture = preview_file.extension == "png"
+    is_file = not is_movie and not is_picture
+
+    preview_file_id = str(preview_file.id)
+    file_key = "previews-%s" % preview_file_id
+    with app.app_context():
+        if is_file:
+            file_path = local_file.path(file_key)
+            exists_func = file_store.exists_file
+        elif is_movie:
+            file_path = local_movie.path(file_key)
+            exists_func = file_store.exists_picture
+        else:
+            file_path = local_picture.path(file_key)
+            exists_func = file_store.exists_movie
+
+        if is_movie or is_picture:
+            for prefix in ["thumbnails", "thumbnails-square", "original"]:
+                pic_file_path = local_picture.path(
+                    "%s-%s" % (prefix, str(preview_file.id))
+                )
+                if not exists_func(prefix, preview_file_id):
+                    download_file_from_another_instance(
+                        pic_file_path,
+                        prefix,
+                        preview_file_id,
+                        preview_file.extension
+                    )
+        if not exists_func("previews", preview_file_id):
+            download_file_from_another_instance(
+                file_path,
+                "previews",
+                preview_file_id,
+                preview_file.extension
+            )
+
+
+def download_file_from_another_instance(
+    file_path, prefix, preview_file_id, extension
+):
+    """
+    Download preview file for given preview from object storage and store it
+    locally.
+    """
+    dirname = os.path.dirname(file_path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+    if prefix == "previews":
+        if extension == "mp4":
+            path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+        else:
+            path = "/pictures/originals/preview-files/%s.%s" % (
+                preview_file_id,
+                extension
+            )
+    else:
+        path_prefix = prefix
+        if prefix == "original":
+            path_prefix = prefix + "s"
+        path = "/pictures/%s/preview-files/%s.png" % (
+            path_prefix,
+            preview_file_id
+        )
+    try:
+        gazu.client.download(path, file_path)
+        print("%s downloaded" % file_path)
+    except Exception as e:
+        print(e)
+        print("%s download failed" % file_path)
