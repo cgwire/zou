@@ -659,6 +659,7 @@ def get_person_tasks(person_id, projects, is_done=None):
                 "episode_id": str(episode_id),
                 "episode_name": episode_name,
                 "task_estimation": task.estimation,
+                "task_duration": task.duration,
                 "task_due_date": fields.serialize_value(task.due_date),
                 "task_type_name": task_type_name,
                 "task_status_name": task_status_name,
