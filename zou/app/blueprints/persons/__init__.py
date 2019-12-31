@@ -11,15 +11,23 @@ from .resources import (
     PresenceLogsResource,
     TimeSpentsResource,
     TimeSpentMonthResource,
+    TimeSpentMonthsResource,
     TimeSpentWeekResource,
     TimeSpentYearResource,
+    TimeSpentYearsResource,
+    PersonYearTimeSpentsResource
 )
 
 routes = [
     ("/data/persons/new", NewPersonResource),
     ("/data/persons/<person_id>/desktop-login-logs", DesktopLoginsResource),
     ("/data/persons/presence-logs/<month_date>", PresenceLogsResource),
+
     ("/data/persons/<person_id>/time-spents/<date>", TimeSpentsResource),
+    (
+        "/data/persons/<person_id>/time-spents/year/<year>",
+        PersonYearTimeSpentsResource,
+    ),
     (
         "/data/persons/<person_id>/time-spents/month/<year>/<month>",
         PersonMonthTimeSpentsResource,
@@ -32,12 +40,14 @@ routes = [
         "/data/persons/<person_id>/time-spents/day/<year>/<month>/<day>",
         PersonDayTimeSpentsResource,
     ),
-    ("/data/persons/time-spents/month-table/<year>", TimeSpentYearResource),
+    ("/data/persons/time-spents/year-table/", TimeSpentYearsResource),
+    ("/data/persons/time-spents/month-table/<year>", TimeSpentMonthsResource),
     ("/data/persons/time-spents/week-table/<year>", TimeSpentWeekResource),
     (
         "/data/persons/time-spents/day-table/<year>/<month>",
         TimeSpentMonthResource,
     ),
+
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
 ]
 
