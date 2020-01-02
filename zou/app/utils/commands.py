@@ -10,6 +10,7 @@ from zou.app.utils import thumbnail as thumbnail_utils
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
+    backup_service,
     deletion_service,
     persons_service,
     projects_service,
@@ -389,15 +390,15 @@ def dump_database():
     DB_USERNAME = os.getenv("DB_USERNAME", "postgres")
     DB_PASSWORD = os.getenv("DB_PASSWORD", "mysecretpassword")
     DB_DATABASE = os.getenv("DB_DATABASE", "zoudb")
-    filename = sync_service.generate_db_backup(
+    filename = backup_service.generate_db_backup(
         DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE
     )
-    sync_service.store_db_backup(filename)
+    backup_service.store_db_backup(filename)
 
 
 def upload_files_to_cloud_storage(days):
-    sync_service.upload_entity_thumbnails_to_storage(days)
-    sync_service.upload_preview_files_to_storage(days)
+    backup_service.upload_entity_thumbnails_to_storage(days)
+    backup_service.upload_preview_files_to_storage(days)
 
 
 def reset_tasks_data(project_id):
