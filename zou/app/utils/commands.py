@@ -345,7 +345,7 @@ def run_sync_file_change_daemon(
 
 
 def import_last_changes_from_another_instance(
-    target, login, password, minutes=0
+    target, login, password, minutes=0, page_size=300
 ):
     """
     Retrieve and save all the data related most recent events from another API
@@ -353,12 +353,12 @@ def import_last_changes_from_another_instance(
     """
     sync_service.init(target, login, password)
     print("Syncing started.")
-    sync_service.run_last_events_sync(minutes=minutes)
+    sync_service.run_last_events_sync(minutes=minutes, page_size=300)
     print("Syncing ended.")
 
 
 def import_last_file_changes_from_another_instance(
-    target, login, password, minutes=20
+    target, login, password, minutes=20, page_size=150, force=False
 ):
     """
     Retrieve and save all the data related most recent events from another API
@@ -366,7 +366,11 @@ def import_last_file_changes_from_another_instance(
     """
     sync_service.init(target, login, password)
     print("Syncing started.")
-    sync_service.run_last_file_events_sync(minutes=minutes)
+    sync_service.run_last_file_events_sync(
+        minutes=minutes,
+        page_size=300,
+        force=False
+    )
     print("Syncing ended.")
 
 
