@@ -10,15 +10,18 @@ from zou.app.services import events_service
 class EventsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
-        args = self.get_args(
-            [("before", None, None), ("page_size", 100, False)]
-        )
+        args = self.get_args([
+            ("before", None, None),
+            ("only_files", False, False),
+            ("page_size", 100, False)
+        ])
         permissions.check_manager_permissions()
         before = None
         if args["before"] is not None:
             before = fields.get_date_object(args["before"], "%Y-%m-%dT%H:%M:%S")
         page_size = args["page_size"]
-        return events_service.get_last_events(before, page_size)
+        only_files = args["only_files"]
+        return events_service.get_last_events(before, page_size, only_files)
 
 
 class LoginLogsResource(Resource, ArgsMixin):
