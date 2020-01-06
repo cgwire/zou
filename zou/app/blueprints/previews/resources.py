@@ -551,6 +551,13 @@ class BaseCreatePictureResource(Resource):
                 os.remove(file_path)
         return preview_file_id
 
+    def emit_event(self, instance_id):
+        model_name = self.data_type[:-1]
+        events.emit(
+            "%s:set-thumbnail" % model_name,
+            {"%s_id" % model_name: instance_id}
+        )
+
     @jwt_required
     def post(self, instance_id):
         if not self.is_exist(instance_id):
@@ -574,6 +581,7 @@ class BaseCreatePictureResource(Resource):
         thumbnail_url_path = thumbnail_utils.url_path(
             self.data_type, instance_id
         )
+        self.emit_event(instance_id)
 
         return {"thumbnail_path": thumbnail_url_path}, 201
 
