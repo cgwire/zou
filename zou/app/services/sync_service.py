@@ -1,13 +1,10 @@
 import datetime
-import gzip
 import logging
 import os
 import sys
 
 import gazu
 import sqlalchemy
-
-from sh import pg_dump
 
 from zou.app.models.build_job import BuildJob
 from zou.app.models.custom_action import CustomAction
@@ -36,7 +33,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.stores import file_store
 from flask_fs.backends.local import LocalBackend
-from zou.app.utils import events, date_helpers
+from zou.app.utils import events
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -156,13 +153,26 @@ main_events = [
     "project",
 ]
 
-special_events = [
+thumbnail_events = [
+    "organisation",
+    "person",
+    "project",
+]
+
+file_events = [
     "preview-file:add-file",
+    "organisation:set-thumbnail",
+    "person:set-thumbnail",
+    "project:set-thumbnail",
+]
+
+special_events = [
     "preview-file:set-main",
     "shot:casting-update",
     "task:unassign",
     "task:assign",
-]
+] + file_events
+
 
 
 def init(target, login, password):
@@ -182,7 +192,7 @@ def init_events_listener(target, event_target, login, password, logs_dir=None):
     gazu.log_in(login, password)
     if logs_dir is not None:
         file_name = os.path.join(logs_dir, "zou_sync_changes.log")
-        file_handler = logging.TimedRotatingFileHandler(file_name, when="D")
+        file_handler = logging.handlers.TimedRotatingFileHandler(file_name, when="D")
 
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
@@ -237,50 +247,53 @@ def run_other_sync():
     sync_entries("events", ApiEvent)
 
 
-def run_last_events_sync(minutes=0):
+def run_last_events_sync(minutes=0, page_size=300):
     """
     Retrieve last events from target instance and import related data and
     action.
     """
+    path = "events/last?page_size=%s" % page_size
     if minutes > 0:
-        path = "events/last?page=300"
-        min_before = datetime.datetime.now() - datetime.timedelta(
-            minutes=minutes
-        )
-        before = min_before.strftime("%Y-%m-%d")
-        path = "events/last?before=%s&page=300" % before
-    else:
-        path = "events/last?page=300"
+        now = datetime.datetime.now()
+        min_before = now - datetime.timedelta(minutes=minutes)
+        after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
+        path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
+        path += "&after=%s" % after
     events = gazu.client.fetch_all(path)
-    for event in events.reverse():
-        event_name = event["name"]
+    events.reverse()
+    for event in events:
+        event_name = event["name"].split(":")[0]
         if event_name in event_name_model_map:
-            sync_event(event)
+            try:
+                sync_event(event)
+            except Exception:
+                pass
 
 
-def run_last_file_events_sync(minutes=20):
+def run_last_events_files(minutes=0, page_size=300):
     """
-    Retrieve last file events from target instance and import related data and
+    Retrieve last events from target instance and import related data and
     action.
     """
+    path = "events/last?only_files=true&page_size=%s" % page_size
     if minutes > 0:
-        after = datetime.datetime.now() - datetime.timedelta(minutes=minutes)
-        preview_files = PreviewFile.filter(PreviewFile.created_at > after)
-        for preview_file in preview_files:
-            file_key = "previews-%s" % preview_file.id
-
-            is_movie = preview_file.extension == "mp4"
-            is_picture = preview_file.extension == "png"
-            is_file = not is_movie and not is_picture
-            if is_file:
-                file_path = local_file.path(file_key)
-            elif is_movie:
-                file_path = local_movie.path(file_key)
-            else:
-                file_path = local_picture.path(file_key)
-
-            if not os.path.exists(file_path):
-                download_preview_from_another_instance(preview_file)
+        now = datetime.datetime.now()
+        min_before = now - datetime.timedelta(minutes=minutes)
+        after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
+        path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
+        path += "&after=%s" % after
+    events = gazu.client.fetch_all(path)
+    events.reverse()
+    for event in file_events:
+        event_name = event["name"].split(":")[0]
+        if event_name == "preview-file":
+            preview_file = PreviewFile.get(event["data"]["preview_file_id"])
+            download_preview_from_another_instance(preview_file, force=False)
+        else:
+            download_thumbnail_from_another_instance(
+                event_name,
+                event["data"]["%s_id" % event_name]
+            )
 
 
 def sync_event(event):
@@ -303,13 +316,6 @@ def sync_event(event):
         model.create_from_import(instance)
     elif action in ["delete"]:
         model.delete_from_import(instance_id)
-
-
-def sync_files_event(event):
-    """
-    From information given by an event, retrieve related files.
-    """
-    pass
 
 
 def sync_entries(model_name, model):
@@ -534,11 +540,17 @@ def add_file_listeners(event_client):
     Add new preview event listener.
     """
     gazu.events.add_listener(
-        event_client, "preview-file:add-file", add_file_event
+        event_client, "preview-file:add-file", retrieve_file
     )
+    for model_name in thumbnail_events:
+        gazu.events.add_listener(
+            event_client,
+            "%s:set-thumbnail" % model_name,
+            get_retrieve_thumbnail(model_name)
+        )
 
 
-def add_file_event(data):
+def retrieve_file(data):
     if data.get("sync", False):
         return
     try:
@@ -550,6 +562,23 @@ def add_file_event(data):
         logger.error("Route not found: %s" % e)
         logger.error("Fail to dowonload preview file: %s" % (preview_file_id))
 
+
+def get_retrieve_thumbnail(model_name):
+    def retrieve_thumbnail(data):
+        if data.get("sync", False):
+            return
+        try:
+            instance_id = data["preview_file_id"]
+            download_thumbnail_from_another_instance(model_name, instance_id)
+            logger.info(
+                "Thumbnail downloaded: %s %s" % (model_name, instance_id)
+            )
+        except gazu.exception.RouteNotFoundException as e:
+            logger.error("Route not found: %s" % e)
+            logger.error(
+                "Fail to dowonload thunbnail: %s %s" % (model_name, instance_id)
+            )
+    return retrieve_thumbnail
 
 
 def download_entity_thumbnails_from_storage():
@@ -676,8 +705,7 @@ def download_thumbnail_from_another_instance(model_name, model_id):
 
     path = "/pictures/thumbnails/%ss/%s.png" % (model_name, model_id)
     try:
-        if not local_picture.exists_picture("thumbnails", model_id):
-            gazu.client.download(path, file_path)
+        gazu.client.download(path, file_path)
         print("%s downloaded" % file_path)
     except Exception as e:
         print(e)
