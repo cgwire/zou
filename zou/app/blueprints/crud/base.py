@@ -251,6 +251,10 @@ class BaseModelResource(Resource):
         except StatementError as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
+
+        except ValueError:
+            abort(404)
+
         return result, 200
 
     def post_update(self, instance_dict):

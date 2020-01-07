@@ -130,16 +130,18 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return {"error": True, "message": str(exception)}, 400
 
     def save_version_if_needed(self, shot, previous_shot):
-        frame_in = shot["data"].get("frame_in", 0)
-        pframe_in = previous_shot["data"].get("frame_in", 0)
-        frame_out = shot["data"].get("frame_in", 0)
-        pframe_out = previous_shot["data"].get("frame_in", 0)
-        name = shot["data"].get("name", "")
+        previous_data = previous_shot.get("data", {})
+        data = shot.get("data", {})
+        frame_in = data.get("frame_in", 0)
+        pframe_in = previous_data.get("frame_in", 0)
+        frame_out = data.get("frame_in", 0)
+        pframe_out = previous_data.get("frame_in", 0)
+        name = data.get("name", "")
         pname = previous_shot["name"]
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
             version = EntityVersion.create(
-                entity_id=shot["id"], name=pname, data=previous_shot["data"]
+                entity_id=shot["id"], name=pname, data=previous_data
             )
         return version
 
