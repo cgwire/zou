@@ -3,7 +3,7 @@ from zou.app.models.login_log import LoginLog
 from zou.app.utils import fields
 
 
-def get_last_events(before=None, page_size=100, only_files=False):
+def get_last_events(after=None, before=None, page_size=100, only_files=False):
     """
     Return last 100 events published. If before parameter is set, it returns
     last 100 events before this date.
@@ -11,6 +11,9 @@ def get_last_events(before=None, page_size=100, only_files=False):
     query = ApiEvent.query.order_by(ApiEvent.created_at.desc()).with_entities(
         ApiEvent.created_at, ApiEvent.name, ApiEvent.user_id, ApiEvent.data
     )
+
+    if after is not None:
+        query = query.filter(ApiEvent.created_at > after)
 
     if before is not None:
         query = query.filter(ApiEvent.created_at < before)

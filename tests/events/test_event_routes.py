@@ -1,9 +1,8 @@
 import time
 from tests.base import ApiDBTestCase
+from zou.app.models.event import ApiEvent
 
-from zou.app.utils import fields
 from zou.app.services import (
-    events_service,
     assets_service
 )
 
@@ -25,7 +24,7 @@ class EventsRoutesTestCase(ApiDBTestCase):
             "",
             {}
         )
-        date = fields.get_date_object(asset["created_at"], "%Y-%m-%dT%H:%M:%S")
+        after = asset["created_at"]
         time.sleep(1)
         asset = assets_service.create_asset(
             self.project.id,
@@ -42,10 +41,29 @@ class EventsRoutesTestCase(ApiDBTestCase):
             "",
             {}
         )
+        before = asset["created_at"]
+        time.sleep(1)
+        asset = assets_service.create_asset(
+            self.project.id,
+            self.asset_type.id,
+            "test 4",
+            "",
+            {}
+        )
+
         events = self.get("/data/events/last")
-        self.assertEqual(len(events), 3)
+        self.assertEqual(len(events), 4)
         events = self.get("/data/events/last?page_size=2")
         self.assertEqual(len(events), 2)
-        date = asset["created_at"]
-        events = self.get("/data/events/last?before=%s" % date)
+        events = self.get("/data/events/last?before=%s" % before)
+        self.assertEqual(len(events), 2)
+        events = self.get(
+            "/data/events/last?before=%s&after=%s" % (before, after))
+        self.assertEqual(len(events), 2)
+
+        ApiEvent.create(name="preview-file:add-file")
+        ApiEvent.create(name="person:set-thumbnail")
+        events = self.get("/data/events/last")
+        self.assertEqual(len(events), 6)
+        events = self.get("/data/events/last?only_files=true")
         self.assertEqual(len(events), 2)
