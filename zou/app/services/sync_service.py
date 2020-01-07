@@ -325,7 +325,10 @@ def sync_entries(model_name, model):
     instances = []
 
     if model_name in ["organisations", "persons"]:
-        instances = gazu.client.fetch_all(model_name + "?relations=true")
+        path = model_name + "?relations=true"
+        if model_name == "persons":
+            path += "&with_pass_hash=true"
+        instances = gazu.client.fetch_all(path)
         model.create_from_import_list(instances)
     else:
         page = 1

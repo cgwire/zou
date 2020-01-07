@@ -83,10 +83,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         del person["full_name"]
         previous_person = cls.get(person["id"])
         if previous_person is None:
-            # password = auth.encrypt_password("default")
-            # person["password"] = password
+            person["password"] = person["password"].encode()
             return cls.create(**person)
         else:
-            print(person["password"])
+            person["password"] = person["password"].encode()
             previous_person.update(person)
             return previous_person
