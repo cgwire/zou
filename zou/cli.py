@@ -255,10 +255,10 @@ def sync_last_events(target, minutes, page_size):
 @cli.command()
 @click.option("--target", default="http://localhost:8080/api")
 @click.option("--minutes", default=20)
-@click.option("--page-size", default=300)
-def sync_last_preview_files(target, minutes, page_size):
+@click.option("--page-size", default=50)
+def sync_last_files(target, minutes, page_size):
     """
-    Retrieve last preview files updloaded on target instance.
+    Retrieve last preview files and thumbnails updloaded on target instance.
     It expects that credentials to connect to target instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """

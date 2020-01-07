@@ -31,6 +31,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 
+from zou.app.services import deletion_service
 from zou.app.stores import file_store
 from flask_fs.backends.local import LocalBackend
 from zou.app.utils import events
@@ -270,7 +271,7 @@ def run_last_events_sync(minutes=0, page_size=300):
                 pass
 
 
-def run_last_events_files(minutes=0, page_size=300):
+def run_last_events_files(minutes=0, page_size=50):
     """
     Retrieve last events from target instance and import related data and
     action.
@@ -284,11 +285,12 @@ def run_last_events_files(minutes=0, page_size=300):
         path += "&after=%s" % after
     events = gazu.client.fetch_all(path)
     events.reverse()
-    for event in file_events:
+    for event in events:
         event_name = event["name"].split(":")[0]
         if event_name == "preview-file":
             preview_file = PreviewFile.get(event["data"]["preview_file_id"])
-            download_preview_from_another_instance(preview_file, force=False)
+            if preview_file is not None:
+                download_preview_from_another_instance(preview_file)
         else:
             download_thumbnail_from_another_instance(
                 event_name,
@@ -505,7 +507,10 @@ def delete_entry(model_name, event_name, model):
         if data.get("sync", False):
             return
         model_id = data[event_name.replace("-", "_") + "_id"]
-        model.delete_all_by(id=model_id)
+        if event_name == "comment":
+            deletion_service.remove_comment(model_id)
+        else:
+            model.delete_all_by(id=model_id)
         forward_base_event(event_name, "delete", data)
         logger.info("Deletion: %s %s" % (model_name, model_id))
 

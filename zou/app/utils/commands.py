@@ -352,26 +352,25 @@ def import_last_changes_from_another_instance(
     instance. It doesn't change the IDs.
     """
     sync_service.init(target, login, password)
-    print("Syncing started.")
+    print("Last events syncing started.")
     sync_service.run_last_events_sync(minutes=minutes, page_size=300)
-    print("Syncing ended.")
+    print("Last events syncing ended.")
 
 
 def import_last_file_changes_from_another_instance(
-    target, login, password, minutes=20, page_size=150, force=False
+    target, login, password, minutes=20, page_size=50, force=False
 ):
     """
     Retrieve and save all the data related most recent events from another API
     instance. It doesn't change the IDs.
     """
     sync_service.init(target, login, password)
-    print("Syncing started.")
-    sync_service.run_last_file_events_sync(
+    print("Last files syncing started.")
+    sync_service.run_last_events_files(
         minutes=minutes,
-        page_size=300,
-        force=False
+        page_size=50
     )
-    print("Syncing ended.")
+    print("Last files syncing ended.")
 
 
 def import_files_from_another_instance(target, login, password):
