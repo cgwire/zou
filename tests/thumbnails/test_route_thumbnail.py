@@ -5,7 +5,6 @@ from tests.base import ApiDBTestCase
 from zou.app.utils import fs, thumbnail
 from zou.app.services import assets_service
 from zou.app.models.entity import Entity
-from zou.app.models.project import Project
 
 from PIL import Image
 
@@ -36,6 +35,7 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file()
         self.asset_id = self.asset.id
         self.preview_file_id = self.preview_file.id
+        self.person_id = self.person.id
 
     def tearDown(self):
         super(RouteThumbnailTestCase, self).tearDown()
@@ -46,13 +46,13 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         fs.rm_rf(TEST_FOLDER)
 
     def test_add_thumbnail(self):
-        path = "/pictures/thumbnails/persons/%s" % self.person.id
+        path = "/pictures/thumbnails/persons/%s" % self.person_id
 
         file_path_fixture = self.get_fixture_file_path(
                 os.path.join("thumbnails", "th01.png"))
         self.upload_file(path, file_path_fixture)
 
-        path = "/pictures/thumbnails/persons/%s.png" % self.person.id
+        path = "/pictures/thumbnails/persons/%s.png" % self.person_id
         current_path = os.path.dirname(__file__)
         result_file_path = os.path.join(TEST_FOLDER, "th01.png")
         result_file_path = os.path.join(
