@@ -1,4 +1,4 @@
-from flask import abort
+from flask import abort, request
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.person import Person
@@ -19,7 +19,10 @@ class PersonsResource(BaseModelsResource):
             query = self.model.query
 
         if permissions.has_manager_permissions():
-            return [person.serialize_safe() for person in query.all()]
+            if request.args.get("with_pass_hash") == "true":
+                return [person.serialize() for person in query.all()]
+            else:
+                return [person.serialize_safe() for person in query.all()]
         else:
             return [person.serialize_without_info() for person in query.all()]
 
