@@ -6,13 +6,13 @@ into the API data.
 ## Define a location for your event handlers
 
 
-Set `EVENT_HANDLERS_FOLDER` (= `/opt/zou/plugins`) environment variable with this folder.
-
-Then create the events folder:
+Create the events folder:
 
 ```
 mkdir /opt/zou/plugins/event_handlers
 ```
+
+Then set `EVENT_HANDLERS_FOLDER` environment variable with the folder that will contain the event handler module: `/opt/zou/plugins`.
 
 
 ## Write an event handler
