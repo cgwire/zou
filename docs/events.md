@@ -3,17 +3,31 @@
 Events are a mechanism to allow other programs to react to the change happening
 into the API data. 
 
+## Define a location for your event handlers
+
+
+Set `EVENT_HANDLERS_FOLDER` (= `/opt/zou/plugins`) environment variable with this folder.
+
+Then create the events folder:
+
+```
+mkdir /opt/zou/plugins/event_handlers
+```
+
+
 ## Write an event handler
 
-Your event definition should be located at the root of you event handlers
+Your event definition should be located at the root of your event handlers
 folder.
 
 Your handler should only implement one function named `handle_event`. It takes
 data sent with the event as parameter.
 
 ```python
+from flask import current_app
+
 def handle_event(data):
-    print("Event occured!", data)
+    current_app.logger.info("Event occured!")
 ```
 
 
@@ -34,6 +48,15 @@ event_map = {
     "task:start": shotgun_wip,
     "task:to-review": shogun_pending_review
 }
+```
+
+This is how your folder should look like:
+
+```
+ls /opt/zou/plugins/event_handlers
+__init__.py
+shotgun_wip.py
+shotgun_pending_review.py
 ```
 
 ## Listen to events through websocket
