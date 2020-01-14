@@ -18,7 +18,7 @@ class ImportShotgunTasksResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.project_ids = Project.get_id_map()
         self.person_ids = Person.get_id_map()
-        self.task_type_ids = TaskType.get_id_map(field="name")
+        self.task_type_ids = TaskType.get_id_map(field="shotgun_id")
         self.task_status_ids = TaskStatus.get_id_map(field="short_name")
 
     def filtered_entries(self):
@@ -32,10 +32,10 @@ class ImportShotgunTasksResource(BaseImportShotgunResource):
         task_status_id = self.task_status_ids.get(
             sg_task["sg_status_list"], None
         )
-        step_name = sg_task["step"]["name"]
+        step_shotgun_id = sg_task["step"]["id"]
         assigner_id = self.person_ids.get(sg_task["created_by"]["id"], None)
         project_id = self.project_ids.get(sg_task["project"]["id"], None)
-        task_type_id = self.task_type_ids.get(step_name, None)
+        task_type_id = self.task_type_ids.get(step_shotgun_id, None)
         assignees = self.extract_assignees(sg_task, self.person_ids)
 
         return {
