@@ -2,7 +2,7 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
-from zou.app.models.entity import Entity, EntityLink
+from zou.app.models.entity import Entity, EntityLink, EntityVersion
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.login_log import LoginLog
 from zou.app.models.notification import Notification
@@ -279,6 +279,17 @@ def remove_project(project_id):
         link.delete_no_commit()
     EntityLink.commit()
 
+    query = EntityVersion.query.join(
+        Entity, EntityVersion.entity_id == Entity.id
+    ).filter(Entity.project_id == project_id)
+    for version in query:
+        version.delete_no_commit()
+    EntityLink.commit()
+
+    playlists = Playlist.query.filter_by(project_id=project_id)
+    for playlist in playlists:
+        playlists_service.remove_playlist(playlist.id)
+
     Entity.delete_all_by(project_id=project_id)
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
@@ -288,11 +299,6 @@ def remove_project(project_id):
     for news in News.query.join(Task).filter_by(project_id=project_id).all():
         news.delete_no_commit()
     News.commit()
-
-    playlists = Playlist.query.filter_by(project_id=project_id)
-    for playlist in playlists:
-        playlists_service.remove_playlist(playlist.id)
-
     project = Project.get(project_id)
     project.delete()
     return project_id
