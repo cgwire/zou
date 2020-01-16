@@ -709,6 +709,7 @@ def remove_shot(shot_id, force=False):
             deletion_service.remove_task(task.id, force=True)
             tasks_service.clear_task_cache(str(task.id))
 
+        EntityVersion.delete_all_by(entity_id=shot_id)
         Subscription.delete_all_by(entity_id=shot_id)
         shot.delete()
         clear_shot_cache(shot_id)
