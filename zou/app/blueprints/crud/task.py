@@ -4,11 +4,12 @@ from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError
 
-from zou.app.models.task import Task
 from zou.app.models.person import Person
+from zou.app.models.project import Project
+from zou.app.models.task import Task
 
 from zou.app.services import user_service, tasks_service, deletion_service
-from zou.app.utils import permissions, events
+from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
 
@@ -16,6 +17,15 @@ from .base import BaseModelsResource, BaseModelResource
 class TasksResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Task)
+
+    def check_read_permissions(self):
+        return True
+
+    def add_project_permission_filter(self, query):
+        if not permissions.has_admin_permissions():
+            query = query.join(Project) \
+                .filter(user_service.build_related_projects_filter())
+        return query
 
     def post(self):
         """
@@ -47,7 +57,6 @@ class TasksResource(BaseModelsResource):
         except IntegrityError as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": "Task already exists."}, 400
-
 
 class TaskResource(BaseModelResource):
     def __init__(self):
