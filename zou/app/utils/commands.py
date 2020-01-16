@@ -334,7 +334,7 @@ def run_sync_file_change_daemon(
 ):
     """
     Listen to event websocket. Each time a change occurs, it retrieves the
-    related file and save it in the current instance.
+    related file and save it in the current instance storage.
     """
     event_client = sync_service.init_events_listener(
         target, event_target, login, password, logs_dir
@@ -348,8 +348,8 @@ def import_last_changes_from_another_instance(
     target, login, password, minutes=0, page_size=300
 ):
     """
-    Retrieve and save all the data related most recent events from another API
-    instance. It doesn't change the IDs.
+    Retrieve and save all the data related to most recent events from another
+    API instance. It doesn't change the IDs.
     """
     sync_service.init(target, login, password)
     print("Last events syncing started.")
@@ -361,8 +361,9 @@ def import_last_file_changes_from_another_instance(
     target, login, password, minutes=20, page_size=50, force=False
 ):
     """
-    Retrieve and save all the data related most recent events from another API
-    instance. It doesn't change the IDs.
+    Retrieve and save all the data related most to recent file events
+    from another API instance (new previews and thumbnails).
+    It doesn't change the IDs.
     """
     sync_service.init(target, login, password)
     print("Last files syncing started.")

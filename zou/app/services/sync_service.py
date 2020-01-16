@@ -172,8 +172,7 @@ special_events = [
     "shot:casting-update",
     "task:unassign",
     "task:assign",
-] + file_events
-
+]
 
 
 def init(target, login, password):
@@ -192,13 +191,21 @@ def init_events_listener(target, event_target, login, password, logs_dir=None):
     gazu.set_host(target)
     gazu.log_in(login, password)
     if logs_dir is not None:
-        file_name = os.path.join(logs_dir, "zou_sync_changes.log")
-        file_handler = logging.handlers.TimedRotatingFileHandler(file_name, when="D")
-
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        set_logger(logs_dir)
 
     return gazu.events.init()
+
+
+def set_logger(logs_dir):
+    """
+    Configure so that it logs results to a file stored in a given folder.
+    """
+    file_name = os.path.join(logs_dir, "zou_sync_changes.log")
+    file_handler = logging.handlers.TimedRotatingFileHandler(file_name,
+                                                             when="D")
+
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 
 def run_listeners(event_client):
@@ -363,7 +370,7 @@ def sync_project_entries(project, model_name, model):
         "notifications",
         "playlists",
         "preview-files",
-    ]:
+    ]:  # not much data we retrieve all in a single request.
         results = gazu.client.fetch_all(
             "projects/%s/%s" % (project["id"], model_name)
         )
@@ -373,7 +380,7 @@ def sync_project_entries(project, model_name, model):
         except sqlalchemy.exc.IntegrityError:
             logger.error("An error occured", exc_info=1)
 
-    else:
+    else:  # Lot of data, we retrieve all through paginated requests.
         while init or results["nb_pages"] >= page:
             path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
             if model_name == "playlists":
@@ -395,8 +402,8 @@ def sync_project_entries(project, model_name, model):
 def sync_entity_thumbnails(project, model_name):
     """
     Once every preview files and entities has been imported, this function
-    allows you to import project entities again to set thumbnails (link to
-    a preview file) all entities.
+    allows you to import project entities again to set thumbnails id (link to
+    a preview file) for all entities.
     """
     results = gazu.client.fetch_all(
         "projects/%s/%s" % (project["id"], model_name)
@@ -565,6 +572,10 @@ def retrieve_file(data):
         preview_file_id = data["preview_file_id"]
         preview_file = PreviewFile.get(preview_file_id)
         download_preview_from_another_instance(preview_file)
+        forward_event({
+            "name": "preview-file:add-file",
+            "data": data
+        })
         logger.info("Preview file and related downloaded: %s" % preview_file_id)
     except gazu.exception.RouteNotFoundException as e:
         logger.error("Route not found: %s" % e)
@@ -578,6 +589,10 @@ def get_retrieve_thumbnail(model_name):
         try:
             instance_id = data["preview_file_id"]
             download_thumbnail_from_another_instance(model_name, instance_id)
+            forward_event({
+                "name": "%s:set-thumbnail" % model_name,
+                "data": data
+            })
             logger.info(
                 "Thumbnail downloaded: %s %s" % (model_name, instance_id)
             )
