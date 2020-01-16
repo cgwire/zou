@@ -814,7 +814,7 @@ def create_sequence(project_id, episode_id, name):
     return sequence.serialize(obj_type="Sequence")
 
 
-def create_shot(project_id, sequence_id, name, data={}):
+def create_shot(project_id, sequence_id, name, data={}, nb_frames=0):
     """
     Create shot for given project and sequence.
     """
@@ -836,6 +836,7 @@ def create_shot(project_id, sequence_id, name, data={}):
             parent_id=sequence_id,
             name=name,
             data=data,
+            nb_frames=nb_frames,
         )
     events.emit("shot:new", {"shot_id": shot.id, "project_id": project_id})
     return shot.serialize(obj_type="Shot")

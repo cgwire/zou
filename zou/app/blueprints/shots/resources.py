@@ -243,12 +243,12 @@ class ProjectShotsResource(Resource):
         """
         Create a shot for given project.
         """
-        (sequence_id, name, data) = self.get_arguments()
+        (sequence_id, name, data, nb_frames) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
 
         shot = shots_service.create_shot(
-            project_id, sequence_id, name, data=data
+            project_id, sequence_id, name, data=data, nb_frames=nb_frames
         )
         return shot, 201
 
@@ -257,8 +257,11 @@ class ProjectShotsResource(Resource):
         parser.add_argument("name", required=True)
         parser.add_argument("sequence_id", default=None)
         parser.add_argument("data", type=dict)
+        parser.add_argument("nb_frames", default=0, type=int)
         args = parser.parse_args()
-        return (args["sequence_id"], args["name"], args["data"])
+        return (
+            args["sequence_id"], args["name"], args["data"], args["nb_frames"]
+        )
 
 
 class ProjectSequencesResource(Resource):
