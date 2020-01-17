@@ -9,7 +9,6 @@ from babel import Locale
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from zou.app.utils import auth
 
 
 department_link = db.Table(
@@ -82,10 +81,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         del person["type"]
         del person["full_name"]
         previous_person = cls.get(person["id"])
-        if previous_person is None:
+        if "password" in person:
             person["password"] = person["password"].encode()
+        if previous_person is None:
             return cls.create(**person)
         else:
-            person["password"] = person["password"].encode()
             previous_person.update(person)
             return previous_person
