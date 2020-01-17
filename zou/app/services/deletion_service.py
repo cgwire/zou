@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
+from zou.app.models.event import ApiEvent
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.login_log import LoginLog
 from zou.app.models.notification import Notification
@@ -309,6 +310,7 @@ def remove_person(person_id, force=True):
     if force:
         for comment in Comment.get_all_by(person_id=person_id):
             remove_comment(comment.id)
+        ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
         SearchFilter.delete_all_by(person_id=person_id)
         DesktopLoginLog.delete_all_by(person_id=person_id)
@@ -338,9 +340,10 @@ def remove_person(person_id, force=True):
 
     try:
         person.delete()
+        events.emit("person:delete", {"person_id": person.id})
     except IntegrityError:
         raise ModelWithRelationsDeletionException(
-            "Some data are still linked to given person.ttt"
+            "Some data are still linked to given person."
         )
 
     return person.serialize_safe()
