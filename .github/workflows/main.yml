@@ -17,7 +17,8 @@ jobs:
        username: ${{ secrets.USERNAME }}
        key: ${{ secrets.KEY }}
        port: ${{ secrets.PORT }}
-       script: 
+       script_stop: true
+       script: |
          cd /opt/zou
          . zouenv/bin/activate
          source /etc/zou/zou.env
