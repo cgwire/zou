@@ -1,0 +1,26 @@
+name: Deploy Zou to staging environment
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Update Zou on staging server
+      uses: appleboy/ssh-action@master
+      with:
+       host: ${{ secrets.HOST }}
+       username: ${{ secrets.USERNAME }}
+       key: ${{ secrets.KEY }}
+       port: ${{ secrets.PORT }}
+       script: 
+         cd /opt/zou
+         . zouenv/bin/activate
+         source /etc/zou/zou.env
+         pip install --upgrade git+https://github.com/cgwire/zou.git
+         zou upgrade_db
+         service restart zou
