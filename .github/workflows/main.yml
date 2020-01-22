@@ -24,4 +24,4 @@ jobs:
          source /etc/zou/zou.env
          pip install --upgrade git+https://github.com/cgwire/zou.git
          zou upgrade_db
-         sudo service restart zou
+         sudo service zou restart
