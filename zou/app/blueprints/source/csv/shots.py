@@ -22,10 +22,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         sequence_name = row["Sequence"]
         shot_name = row["Name"]
         description = row["Description"]
-        nb_frames = row.get("Nb Frames", None)
+        nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
         data = {
-            "frame_in": row.get("Frame In"),
-            "frame_out": row.get("Frame Out"),
+            "frame_in": row.get("Frame In", None) or row.get("In", None),
+            "frame_out": row.get("Frame Out", None) or row.get("In", None),
             "fps": row.get("FPS", None),
         }
         for name, field_name in self.descriptor_fields.items():
