@@ -130,7 +130,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             return {"error": True, "message": str(exception)}, 400
 
     def save_version_if_needed(self, shot, previous_shot):
-        previous_data = previous_shot.get("data", {})
+        previous_data = previous_shot.get("data", {}) or {}
         data = shot.get("data", {})
         frame_in = data.get("frame_in", 0)
         pframe_in = previous_data.get("frame_in", 0)
