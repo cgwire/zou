@@ -8,6 +8,7 @@ from zou.app.utils import events, fields, cache, query as query_utils
 
 from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.project import Project
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task import assignees_table
@@ -743,6 +744,7 @@ def remove_sequence(sequence_id, force=False):
         for shot in Entity.get_all_by(parent_id=sequence_id):
             remove_shot(shot.id, force=True)
         Subscription.delete_all_by(entity_id=sequence_id)
+        ScheduleItem.delete_all_by(object_id=sequence_id)
     try:
         sequence.delete()
     except IntegrityError:
@@ -760,6 +762,8 @@ def remove_episode(episode_id, force=False):
     if force:
         for sequence in Entity.get_all_by(parent_id=episode_id):
             remove_sequence(sequence.id, force=True)
+        Playlist.delete_all_by(episode_id=episode_id)
+        ScheduleItem.delete_all_by(object_id=episode_id)
     try:
         episode.delete()
     except IntegrityError:
