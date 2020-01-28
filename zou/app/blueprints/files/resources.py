@@ -56,7 +56,8 @@ class WorkingFilePathResource(Resource):
                     task_id, name
                 )
             file_path = file_tree_service.get_working_folder_path(
-                task, mode=mode, software=software, name=name, sep=separator
+                task, mode=mode, software=software, name=name, sep=separator,
+                revision=revision
             )
             file_name = file_tree_service.get_working_file_name(
                 task, mode=mode, revision=revision, software=software, name=name
@@ -306,7 +307,8 @@ class NewWorkingFileResource(Resource):
 
     def build_path(self, task, name, revision, software, sep, mode):
         folder_path = file_tree_service.get_working_folder_path(
-            task, name=name, software=software, mode=mode
+            task, name=name, software=software, mode=mode,
+            revision=revision
         )
         file_name = file_tree_service.get_working_file_name(
             task, name=name, software=software, revision=revision, mode=mode
