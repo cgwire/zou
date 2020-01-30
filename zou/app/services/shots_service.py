@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from zou.app.utils import events, fields, cache, query as query_utils
 
 from zou.app.models.entity import Entity, EntityVersion
+from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
