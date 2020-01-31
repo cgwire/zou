@@ -1,6 +1,6 @@
 from flask_mail import Message
 
-from zou.app import mail
+from zou.app import mail, app
 
 
 def send_email(subject, body, recipient_email, html=None):
@@ -9,10 +9,11 @@ def send_email(subject, body, recipient_email, html=None):
     """
     if html is None:
         html = body
-    message = Message(
-        body=body,
-        html=html,
-        subject=subject,
-        recipients=[recipient_email]
-    )
-    mail.send(message)
+    with app.app_context():
+        message = Message(
+            body=body,
+            html=html,
+            subject=subject,
+            recipients=[recipient_email]
+        )
+        mail.send(message)
