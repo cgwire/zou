@@ -59,9 +59,9 @@ def send_comment_notification(person_id, author_id, comment, task):
             task_name,
         )
         if len(comment["text"]) > 0:
-            email_message = """<strong>%s</strong> wrote a comment on <a href="%s">%s</a> and set the status to <strong>%s</strong>.
+            email_message = """<p><strong>%s</strong> wrote a comment on <a href="%s">%s</a> and set the status to <strong>%s</strong>.</p>
 
-<em>%s</em>
+<p><em>%s</em></p>
 """ % (
                 author["full_name"],
                 task_url,
@@ -81,14 +81,14 @@ _%s_
             )
 
         else:
-            email_message = """<strong>%s</strong> set changed status of <a href="%s">%s</a> to <strong>%s</strong>.
+            email_message = """<p><strong>%s</strong> changed status of <a href="%s">%s</a> to <strong>%s</strong>.</p>
 """ % (
                 author["full_name"],
                 task_url,
                 task_name,
                 task_status["short_name"],
             )
-            slack_message = """*%s* set changed status of <%s|%s> to *%s*.
+            slack_message = """*%s* changed status of <%s|%s> to *%s*.
 """ % (
                 author["full_name"],
                 task_url,
@@ -116,9 +116,9 @@ def send_mention_notification(person_id, author_id, comment, task):
             author["first_name"],
             task_name,
         )
-        email_message = """<strong>%s</strong> mentioned you in a comment on <a href="%s">%s</a>:
+        email_message = """<p><strong>%s</strong> mentioned you in a comment on <a href="%s">%s</a>:</p>
 
-<em>%s</em>
+<p><em>%s</em></p>
 """ % (
             author["full_name"],
             task_url,
@@ -153,7 +153,7 @@ def send_assignation_notification(person_id, author_id, task):
     if person.notifications_enabled or person.notifications_slack_enabled:
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
         subject = "[Kitsu] You were assigned to %s" % task_name
-        email_message = """<strong>%s</strong> assigned you to <a href="%s">%s</a>.
+        email_message = """<p><strong>%s</strong> assigned you to <a href="%s">%s</a>.</p>
 """ % (
             author["full_name"],
             task_url,
@@ -180,9 +180,9 @@ def get_signature():
     organisation = persons_service.get_organisation()
     return (
         """
-Best,
+<p>Best</p>,
 
-%s Team"""
+<p>%s Team</p>"""
         % organisation["name"]
     )
 

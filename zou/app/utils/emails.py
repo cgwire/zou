@@ -11,6 +11,7 @@ def send_email(subject, body, recipient_email, html=None):
         html = body
     with app.app_context():
         message = Message(
+            sender="Kitsu Bot <no-reply@cg-wire.com>"
             body=body,
             html=html,
             subject=subject,
