@@ -14,9 +14,9 @@ class EmailsServiceTestCase(ApiDBTestCase):
     def test_get_signature(self):
         signature = emails_service.get_signature()
         self.assertEqual(signature, """
-Best,
+<p>Best,</p>
 
-Kitsu Team""")
+<p>Kitsu Team</p>""")
 
     def test_get_task_descriptors(self):
         (
