@@ -44,9 +44,7 @@ def all_playlists_for_project(project_id, for_client=False):
     else:
         playlists = Playlist.get_all_by(project_id=project_id)
     for playlist in playlists:
-        playlist.shots = []
-        playlist_dict = fields.serialize_value(playlist)
-        del playlist_dict["shots"]
+        playlist_dict = build_playlist_dict(playlist)
         result.append(playlist_dict)
     return result
 
@@ -61,11 +59,25 @@ def all_playlists_for_episode(episode_id, for_client=False):
     else:
         playlists = Playlist.get_all_by(episode_id=episode_id)
     for playlist in playlists:
-        playlist.shots = []
-        playlist_dict = fields.serialize_value(playlist)
-        del playlist_dict["shots"]
+        playlist_dict = build_playlist_dict(playlist)
         result.append(playlist_dict)
     return result
+
+
+def build_playlist_dict(playlist):
+    first_shot_preview_file_id = None
+    if playlist.shots is not None \
+       and len(playlist.shots) > 0 \
+       and "preview_file_id" in playlist.shots[0]:
+        first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
+    updated_at = fields.serialize_value(playlist.updated_at)
+    playlist.shots = []
+    playlist_dict = fields.serialize_value(playlist)
+    del playlist_dict["shots"]
+    playlist_dict["updated_at"] = updated_at
+    if first_shot_preview_file_id is not None:
+        playlist_dict["first_preview_file_id"] = first_shot_preview_file_id
+    return playlist_dict
 
 
 def get_playlist_with_preview_file_revisions(playlist_id=False):
