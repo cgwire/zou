@@ -298,7 +298,36 @@ Thank you and see you soon on Kitsu,
         person.email,
         organisation["name"],
     )
-    emails.send_email(subject, body, person.email)
+    html = """<p>Hello %s,</p>
+<p>
+Your are invited by %s to collaborate on their Kitsu production tracker.
+You can connect here to start using it:
+</p>
+<p>
+https://%s
+</p>
+<p>
+Your login is: <strong>%s</strong>
+Your password is: <em>default</em>
+</p>
+<p>
+You will be invited to modify your password on first connection.
+</p>
+<p>
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+%s Team
+</p>
+""" % (
+        person.first_name,
+        organisation["name"],
+        config.DOMAIN_NAME,
+        person.email,
+        organisation["name"],
+    )
+
+    emails.send_email(subject, body, person.email, html=html)
 
 
 def get_organisation():
