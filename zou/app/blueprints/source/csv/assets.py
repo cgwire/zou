@@ -1,6 +1,6 @@
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
-from zou.app.services import assets_service
+from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
 
 from sqlalchemy.exc import IntegrityError
@@ -8,15 +8,28 @@ from sqlalchemy.exc import IntegrityError
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
     def prepare_import(self, project_id):
+        self.episodes = {}
         self.entity_types = {}
         self.descriptor_fields = self.get_descriptor_field_map(
             project_id, "Asset"
         )
+        project = projects_service.get_project(project_id)
+        self.is_tv_show = projects_service.is_tv_show(project)
+        if self.is_tv_show:
+            episodes = shots_service.get_episodes_for_project(project_id)
+            self.episodes = {
+                episode["name"]: episode["id"]
+                for episode in episodes
+            }
 
     def import_row(self, row, project_id):
         asset_name = row["Name"]
         entity_type_name = row["Type"]
         description = row["Description"]
+        episode_name = row.get("Episode", None)
+        episode_id = None
+        if episode_name is not None:
+            episode_id = self.episodes.get(episode_name, None)
 
         self.add_to_cache_if_absent(
             self.entity_types,
@@ -37,6 +50,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 name=asset_name,
                 project_id=project_id,
                 entity_type_id=entity_type_id,
+                source_id=episode_id
             )
             if entity is None:
                 entity = Entity.create(
@@ -44,6 +58,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     description=description,
                     project_id=project_id,
                     entity_type_id=entity_type_id,
+                    source_id=episode_id,
                     data=data,
                 )
             else:
