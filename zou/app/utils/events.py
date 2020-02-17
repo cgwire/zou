@@ -73,9 +73,9 @@ def emit(event, data={}, persist=True):
 
     for func in event_handlers.values():
         if ENABLE_JOB_QUEUE:
-            from zou.app.stores.queue_store.job_queue import enqueue
+            from zou.app.stores.queue_store import job_queue
 
-            enqueue(func.handle_event, data)
+            job_queue.enqueue(func.handle_event, data)
         else:
             try:
                 func.handle_event(data)
