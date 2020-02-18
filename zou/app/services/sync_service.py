@@ -231,11 +231,14 @@ def run_main_data_sync():
         sync_entries(path, model)
 
 
-def run_open_project_data_sync():
+def run_project_data_sync(project=None):
     """
     Retrieve and import all data related to projects from target instance.
     """
-    projects = gazu.project.all_open_projects()
+    if project:
+        projects = [gazu.project.get_project_by_name(project)]
+    else:
+        projects = gazu.project.all_open_projects()
     for project in projects:
         logger.info("Syncing %s..." % project["name"])
         for event in project_events:
