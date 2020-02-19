@@ -221,14 +221,14 @@ def run_listeners(event_client):
         run_listeners(event_client)
 
 
-def run_main_data_sync():
+def run_main_data_sync(project=None):
     """
     Retrieve and import all cross-projects data from target instance.
     """
     for event in main_events:
         path = event_name_model_path_map[event]
         model = event_name_model_map[event]
-        sync_entries(path, model)
+        sync_entries(path, model, project=project)
 
 
 def run_project_data_sync(project=None):
@@ -330,7 +330,7 @@ def sync_event(event):
         model.delete_from_import(instance_id)
 
 
-def sync_entries(model_name, model):
+def sync_entries(model_name, model, project=None):
     """
     Retrieve cross-projects data from target instance.
     """
@@ -341,6 +341,10 @@ def sync_entries(model_name, model):
         if model_name == "persons":
             path += "&with_pass_hash=true"
         instances = gazu.client.fetch_all(path)
+        model.create_from_import_list(instances)
+    elif model_name == "projects" and project:
+        project = gazu.project.get_project_by_name(project)
+        instances = [gazu.client.fetch_one(model_name, project.get('id'))]
         model.create_from_import_list(instances)
     else:
         page = 1
@@ -699,23 +703,39 @@ def download_preview(preview_file):
     download_file(file_path, "previews", dl_func, preview_file_id)
 
 
-def download_files_from_another_instance():
+def download_files_from_another_instance(project=None):
     """
     Download all files from target instance.
     """
     download_thumbnails_from_another_instance("person")
     download_thumbnails_from_another_instance("organisation")
-    download_thumbnails_from_another_instance("project")
-    for preview_file in PreviewFile.query.all():
+    download_thumbnails_from_another_instance("project", project=project)
+
+    if project:
+        project = gazu.project.get_project_by_name(project)
+        preview_files = []
+        for task in gazu.client.get('/data/projects/%s/tasks' % project.get('id')):
+            preview_files += PreviewFile.query.filter_by(task_id=task.get('id'))
+    else:
+        preview_files = PreviewFile.query.all()
+
+    for preview_file in preview_files:
         download_preview_from_another_instance(preview_file)
 
 
-def download_thumbnails_from_another_instance(model_name):
+def download_thumbnails_from_another_instance(model_name, project=None):
     """
     Download all thumbnails from target instance for given model.
     """
     model = event_name_model_map[model_name]
-    for instance in model.query.all():
+    
+    if project is None:
+        instances = model.query.all()
+    else:
+        project = gazu.project.get_project_by_name(project)
+        instances = model.query.filter_by(id=project.get('id'))
+
+    for instance in instances:
         if instance.has_avatar:
             download_thumbnail_from_another_instance(model_name, instance.id)
 

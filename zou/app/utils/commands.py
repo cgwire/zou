@@ -309,7 +309,7 @@ def import_data_from_another_instance(target, login, password, project=None):
     change the IDs.
     """
     sync_service.init(target, login, password)
-    sync_service.run_main_data_sync()
+    sync_service.run_main_data_sync(project=project)
     sync_service.run_project_data_sync(project=project)
     sync_service.run_other_sync()
 
@@ -374,13 +374,13 @@ def import_last_file_changes_from_another_instance(
     print("Last files syncing ended.")
 
 
-def import_files_from_another_instance(target, login, password):
+def import_files_from_another_instance(target, login, password, project=None):
     """
     Retrieve and save all the data related most recent events from another API
     instance. It doesn't change the IDs.
     """
     sync_service.init(target, login, password)
-    sync_service.download_files_from_another_instance()
+    sync_service.download_files_from_another_instance(project=project)
 
 
 def download_file_from_storage():
