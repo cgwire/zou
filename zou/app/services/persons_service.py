@@ -281,7 +281,7 @@ def invite_person(person_id):
 Your are invited by %s to collaborate on their Kitsu production tracker.
 You can connect here to start using it:
 
-https://%s
+%s://%s
 
 Your login is: %s
 Your password is: default
@@ -294,6 +294,7 @@ Thank you and see you soon on Kitsu,
 """ % (
         person.first_name,
         organisation["name"],
+        config.DOMAIN_PROTOCOL,
         config.DOMAIN_NAME,
         person.email,
         organisation["name"],
@@ -304,7 +305,7 @@ Your are invited by %s to collaborate on their Kitsu production tracker.
 You can connect here to start using it:
 </p>
 <p>
-https://%s
+%s://%s
 </p>
 <p>
 Your login is: <strong>%s</strong>
@@ -322,6 +323,7 @@ Thank you and see you soon on Kitsu,
 """ % (
         person.first_name,
         organisation["name"],
+        config.DOMAIN_PROTOCOL,
         config.DOMAIN_NAME,
         person.email,
         organisation["name"],

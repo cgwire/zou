@@ -173,7 +173,8 @@ def sync_with_ldap_server():
 
 @cli.command()
 @click.option("--target", default="http://localhost:5000")
-def sync_full(target):
+@click.option("--project")
+def sync_full(target, project=None):
     """
     Retrieve all data from target instance. It expects that credentials to
     connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
@@ -182,13 +183,14 @@ def sync_full(target):
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    commands.import_data_from_another_instance(target, login, password)
+    commands.import_data_from_another_instance(target, login, password, project=project)
     print("Syncing ended.")
 
 
 @cli.command()
 @click.option("--target", default="http://localhost:5000")
-def sync_full_files(target):
+@click.option("--project")
+def sync_full_files(target, project=None):
     """
     Retrieve all files from target instance. It expects that credentials to
     connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
@@ -197,7 +199,7 @@ def sync_full_files(target):
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    commands.import_files_from_another_instance(target, login, password)
+    commands.import_files_from_another_instance(target, login, password, project=project)
     print("Syncing ended.")
 
 
