@@ -250,12 +250,12 @@ def run_project_data_sync(project=None):
         logger.info("Sync of %s complete." % project["name"])
 
 
-def run_other_sync():
+def run_other_sync(project=None):
     """
     Retrieve and import all search filters and events from target instance.
     """
-    sync_entries("search-filters", SearchFilter)
-    sync_entries("events", ApiEvent)
+    sync_entries("search-filters", SearchFilter, project=project)
+    sync_entries("events", ApiEvent, project=project)
 
 
 def run_last_events_sync(minutes=0, page_size=300):
@@ -342,9 +342,14 @@ def sync_entries(model_name, model, project=None):
             path += "&with_pass_hash=true"
         instances = gazu.client.fetch_all(path)
         model.create_from_import_list(instances)
-    elif model_name == "projects" and project:
+    elif project:
         project = gazu.project.get_project_by_name(project)
-        instances = [gazu.client.fetch_one(model_name, project.get('id'))]
+        if model_name == 'projects':
+            instances = [gazu.client.fetch_one(model_name, project.get('id'))]
+        elif model_name in 'search-filters':
+            instances = gazu.client.fetch_all(model_name, params=dict(project_id=project.get('id')))
+        else:
+            instances = gazu.client.fetch_all(model_name)
         model.create_from_import_list(instances)
     else:
         page = 1

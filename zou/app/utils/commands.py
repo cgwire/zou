@@ -311,7 +311,7 @@ def import_data_from_another_instance(target, login, password, project=None):
     sync_service.init(target, login, password)
     sync_service.run_main_data_sync(project=project)
     sync_service.run_project_data_sync(project=project)
-    sync_service.run_other_sync()
+    sync_service.run_other_sync(project=project)
 
 
 def run_sync_change_daemon(event_target, target, login, password, logs_dir):
