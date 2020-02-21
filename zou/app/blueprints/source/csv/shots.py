@@ -1,3 +1,5 @@
+from flask import request, current_app
+
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.services import shots_service, projects_service
@@ -25,7 +27,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
         data = {
             "frame_in": row.get("Frame In", None) or row.get("In", None),
-            "frame_out": row.get("Frame Out", None) or row.get("In", None),
+            "frame_out": row.get("Frame Out", None) or row.get("Out", None),
             "fps": row.get("FPS", None),
         }
         for name, field_name in self.descriptor_fields.items():
@@ -66,33 +68,41 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         sequence_id = self.get_id_from_cache(self.sequences, sequence_key)
 
         shot_type = shots_service.get_shot_type()
-        try:
-            if nb_frames is None or len(nb_frames) == 0:
-                entity = Entity.create(
-                    name=shot_name,
-                    description=description,
-                    project_id=project_id,
-                    parent_id=sequence_id,
-                    entity_type_id=shot_type["id"],
-                    data=data,
-                )
-            else:
-                entity = Entity.create(
-                    name=shot_name,
-                    description=description,
-                    project_id=project_id,
-                    parent_id=sequence_id,
-                    entity_type_id=shot_type["id"],
-                    nb_frames=nb_frames,
-                    data=data,
-                )
+        entity = Entity.get_by(
+            name=shot_name,
+            project_id=project_id,
+            parent_id=sequence_id,
+            entity_type_id=shot_type["id"],
+        )
+        if entity is None:
+            try:
+                if nb_frames is None or len(nb_frames) == 0:
+                    entity = Entity.create(
+                        name=shot_name,
+                        description=description,
+                        project_id=project_id,
+                        parent_id=sequence_id,
+                        entity_type_id=shot_type["id"],
+                        data=data,
+                    )
+                else:
+                    entity = Entity.create(
+                        name=shot_name,
+                        description=description,
+                        project_id=project_id,
+                        parent_id=sequence_id,
+                        entity_type_id=shot_type["id"],
+                        nb_frames=nb_frames,
+                        data=data,
+                    )
+            except IntegrityError:
+                current_app.logger.error("Row import failed", exc_info=1)
 
-        except IntegrityError:
-            entity = Entity.get_by(
-                name=shot_name,
-                project_id=project_id,
-                parent_id=sequence_id,
-                entity_type_id=shot_type["id"],
-            )
+        elif self.is_update:
+            entity.update({
+                "description": description,
+                "nb_frames": nb_frames,
+                "data": data
+            })
 
         return entity.serialize()

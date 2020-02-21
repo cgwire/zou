@@ -25,10 +25,7 @@ def build_csv_file_name(file_name):
     """
     Add application name as prefix of the file name.
     """
-    return "%s_%s" % (
-        slugify(config.APP_NAME, separator="_"),
-        slugify(file_name, separator="_"),
-    )
+    return "kitsu_%s" % slugify(file_name, separator="_")
 
 
 def build_csv_string(csv_content):

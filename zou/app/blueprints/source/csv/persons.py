@@ -32,10 +32,12 @@ class PersonsCsvImportResource(BaseCsvImportResource):
             role = "user"
 
         try:
-            password = auth.encrypt_password("default")
             person = Person.get_by(email=email)
 
             if person is None:
+                if role is None:
+                    role = "user"
+                password = auth.encrypt_password("default")
                 person = Person.create(
                     email=email,
                     password=password,
@@ -44,7 +46,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
                     phone=phone,
                     role=role,
                 )
-            else:
+            elif self.is_update:
                 data = {
                     "first_name": first_name,
                     "last_name": last_name,

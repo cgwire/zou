@@ -1,3 +1,4 @@
+from flask import current_app, request
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.services import assets_service, projects_service, shots_service
@@ -44,15 +45,16 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         for name, field_name in self.descriptor_fields.items():
             if name in row:
                 data[field_name] = row[name]
+        print(data)
 
-        try:
-            entity = Entity.get_by(
-                name=asset_name,
-                project_id=project_id,
-                entity_type_id=entity_type_id,
-                source_id=episode_id
-            )
-            if entity is None:
+        entity = Entity.get_by(
+            name=asset_name,
+            project_id=project_id,
+            entity_type_id=entity_type_id,
+            source_id=episode_id
+        )
+        if entity is None:
+            try:
                 entity = Entity.create(
                     name=asset_name,
                     description=description,
@@ -61,9 +63,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     source_id=episode_id,
                     data=data,
                 )
-            else:
-                entity.update({"description": description, "data": data})
-        except IntegrityError:
-            pass
+            except IntegrityError:
+                current_app.logger.error("Row import failed", exc_info=1)
+
+        elif self.is_update:
+            entity.update({"description": description, "data": data})
 
         return entity.serialize()
