@@ -22,6 +22,7 @@ class BaseCsvImportResource(Resource):
 
         file_path = os.path.join(app.config["TMP_DIR"], file_name)
         uploaded_file.save(file_path)
+        self.is_update = request.args.get("update", "false") == "true"
 
         try:
             result = self.run_import(file_path, ",")
@@ -77,6 +78,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
         file_name = "%s.csv" % uuid.uuid4()
         file_path = os.path.join(app.config["TMP_DIR"], file_name)
         uploaded_file.save(file_path)
+        self.is_update = request.args.get("update", "false") == "true"
 
         try:
             result = self.run_import(project_id, file_path, ",")
