@@ -13,6 +13,7 @@ from .resources import (
     ProjectPlaylistResource,
     PlaylistDownloadResource,
     PlaylistZipDownloadResource,
+    TempPlaylistResource
 )
 
 
@@ -39,6 +40,7 @@ routes = [
         PlaylistDownloadResource,
     ),
     ("/data/playlists/<playlist_id>/download/zip", PlaylistZipDownloadResource),
+    ("/data/projects/<project_id>/playlists/temp", TempPlaylistResource),
 ]
 
 blueprint = Blueprint("playlists", "playlists")

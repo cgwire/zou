@@ -1,6 +1,6 @@
 import slugify
 
-from flask import send_file as flask_send_file
+from flask import request, send_file as flask_send_file
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
@@ -189,3 +189,16 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
         projects_service.get_project(project_id)
         page = self.get_page()
         return playlists_service.get_playlists_for_project(project_id, page)
+
+
+class TempPlaylistResource(Resource, ArgsMixin):
+    """
+    Retrieve all playlists related to given project.
+    It's mainly used for synchronisation purpose.
+    """
+
+    @jwt_required
+    def post(self, project_id):
+        user_service.check_project_access(project_id)
+        task_ids = request.json.get("task_ids", [])
+        return playlists_service.generate_temp_playlist(task_ids) or []

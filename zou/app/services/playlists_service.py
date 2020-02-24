@@ -1,4 +1,5 @@
 import os
+from operator import itemgetter
 from slugify import slugify
 
 from shutil import copyfile
@@ -51,7 +52,7 @@ def all_playlists_for_project(project_id, for_client=False):
 
 def all_playlists_for_episode(episode_id, for_client=False):
     """
-    Return all playlists created for given project.
+    Return all playlists created for given episode.
     """
     result = []
     if for_client:
@@ -517,3 +518,56 @@ def get_playlists_for_project(project_id, page=0):
     """
     query = Playlist.query.filter(Playlist.project_id == project_id)
     return query_utils.get_paginated_results(query, page, relations=True)
+
+
+def generate_temp_playlist(task_ids):
+    shots = []
+    for task_id in task_ids:
+        shot = generate_playlisted_shot_from_task(task_id)
+        shots.append(shot)
+    return sorted(shots, key=itemgetter('sequence_name', 'name'))
+
+
+def generate_playlisted_shot_from_task(task_id):
+    previews = {}
+    task = tasks_service.get_task(task_id)
+    shot = shots_service.get_shot(task["entity_id"])
+    sequence = shots_service.get_sequence(shot["parent_id"])
+    preview_files = get_preview_files_for_task(task_id)
+    task_type_id = task["task_type_id"]
+    shot["preview_file_task_id"] = task_id
+    shot["sequence_id"] = sequence["id"]
+    shot["sequence_name"] = sequence["name"]
+    if len(preview_files) > 0:
+        previews[task_type_id] = get_playlist_preview_file_list(preview_files)
+        shot["preview_file_id"] = previews[task_type_id][0]["id"]
+        shot["preview_file_extension"] = previews[task_type_id][0]["extension"]
+        shot["preview_file_annotations"] = previews[task_type_id][0]["annotations"]
+    shot["preview_files"] = previews
+    return shot
+
+
+def get_preview_files_for_task(task_id):
+    return (
+        PreviewFile.query.filter_by(task_id=task_id)
+        .filter_by(extension="mp4")
+        .join(Task)
+        .order_by(PreviewFile.revision.desc())
+        .all()
+    )
+
+
+def get_playlist_preview_file_list(preview_files):
+    return [
+        {
+            "id": str(preview_file.id),
+            "revision": preview_file.revision,
+            "extension": preview_file.extension,
+            "annotations": preview_file.annotations,
+            "created_at": fields.serialize_value(
+                preview_file.created_at
+            ),
+            "task_id": str(preview_file.task_id),
+        }
+        for preview_file in preview_files
+    ]
