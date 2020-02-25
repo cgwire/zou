@@ -546,13 +546,6 @@ def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
     return Task.serialize_list(tasks)
 
 
-def get_task_statuses():
-    """
-    Get all available task status.
-    """
-    return fields.serialize_list(TaskStatus.query.all())
-
-
 def get_task_status_map():
     """
     Return a dict of which keys are task status ids and values are task
