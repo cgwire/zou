@@ -25,6 +25,16 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.sequence_dict = self.sequence.serialize()
         self.project_dict = self.sequence.serialize()
 
+    def generate_fixture_preview_files(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.task = self.generate_fixture_shot_task()
+        self.generate_fixture_preview_file(revision=1)
+        self.generate_fixture_preview_file(revision=2)
+
     def generate_fixture_playlist(self):
         Playlist.create(
             name="Playlist 1",
@@ -79,19 +89,26 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(playlists), 1)
 
-    """
-    def test_get_playlist(self):
-    def test_retrieve_playlist_tmp_files(self):
-    def test_get_playlist_with_preview_file_revisions(self):
-    def test_set_preview_files_for_shots(self):
-    def test_build_playlist_zip_file(self):
-    def test_build_playlist_movie_file(self):
-    def test_start_build_job(self):
-    def test_end_build_job(self):
-    def test_build_playlist_job(self):
-    def test_get_playlist_file_name(self):
-    def test_get_playlist_movie_file_path(self):
-    def test_get_playlist_zip_file_path(self):
-    def test_get_build_job(self):
-    def test_remove_build_job(self):
-    """
+    def test_generate_temp_playlist(self):
+        self.generate_fixture_preview_files()
+        task_id = self.task.id
+        task_type_id = str(self.task.task_type_id)
+        shots = playlists_service.generate_temp_playlist([task_id])
+        self.assertEqual(len(shots), 1)
+        self.assertEqual(str(self.shot.id), shots[0]["id"])
+        self.assertEqual(len(shots[0]["preview_files"][task_type_id]), 2)
+
+    def test_generate_playlisted_shot_from_task(self):
+        self.generate_fixture_preview_files()
+        task_id = self.task.id
+        task_type_id = str(self.task.task_type_id)
+        shot = playlists_service.generate_playlisted_shot_from_task(task_id)
+        self.assertEqual(str(self.shot.id), shot["id"])
+        self.assertEqual(len(shot["preview_files"][task_type_id]), 2)
+
+    def test_get_preview_files_for_task(self):
+        self.generate_fixture_preview_files()
+        task_id = self.task.id
+        preview_files = playlists_service.get_preview_files_for_task(task_id)
+        self.assertEqual(len(preview_files), 2)
+        self.assertEqual(preview_files[0]["revision"], 2)

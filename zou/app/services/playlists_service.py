@@ -521,6 +521,11 @@ def get_playlists_for_project(project_id, page=0):
 
 
 def generate_temp_playlist(task_ids):
+    """
+    Generate the data structure of a playlist for a given task list. It doesn't
+    persist anything. The goal is to build a temporary playlist used to see
+    a quick preview of several shots.
+    """
     shots = []
     for task_id in task_ids:
         shot = generate_playlisted_shot_from_task(task_id)
@@ -529,44 +534,60 @@ def generate_temp_playlist(task_ids):
 
 
 def generate_playlisted_shot_from_task(task_id):
+    """
+    Generate the data structure of a playlisted shot for a given task. It
+    doesn't persist anything.
+    """
     previews = {}
     task = tasks_service.get_task(task_id)
     shot = shots_service.get_shot(task["entity_id"])
     sequence = shots_service.get_sequence(shot["parent_id"])
     preview_files = get_preview_files_for_task(task_id)
     task_type_id = task["task_type_id"]
-    shot["preview_file_task_id"] = task_id
-    shot["sequence_id"] = sequence["id"]
-    shot["sequence_name"] = sequence["name"]
+    playlisted_shot = {
+        "id": shot["id"],
+        "name": shot["name"],
+        "preview_file_task_id": task_id,
+        "sequence_id": sequence["id"],
+        "sequence_name": sequence["name"]
+    }
     if len(preview_files) > 0:
-        previews[task_type_id] = get_playlist_preview_file_list(preview_files)
-        shot["preview_file_id"] = previews[task_type_id][0]["id"]
-        shot["preview_file_extension"] = previews[task_type_id][0]["extension"]
-        shot["preview_file_annotations"] = previews[task_type_id][0]["annotations"]
-    shot["preview_files"] = previews
-    return shot
+        previews[task_type_id] = preview_files
+        preview_file = previews[task_type_id][0]
+        playlisted_shot.update({
+            "preview_file_id": preview_file["id"],
+            "preview_file_extension": preview_file["extension"],
+            "preview_file_annotations": preview_file["annotations"]
+        })
+    playlisted_shot["preview_files"] = previews
+    return playlisted_shot
 
 
 def get_preview_files_for_task(task_id):
-    return (
+    """
+    Return all preview file active records for given task.
+    """
+    preview_files = (
         PreviewFile.query.filter_by(task_id=task_id)
         .filter_by(extension="mp4")
-        .join(Task)
         .order_by(PreviewFile.revision.desc())
         .all()
     )
+    return _get_playlist_preview_file_list(preview_files)
 
 
-def get_playlist_preview_file_list(preview_files):
+def _get_playlist_preview_file_list(preview_files):
+    """
+    Turn preview file active records into preview file dict that match the
+    playlist data structure.
+    """
     return [
         {
             "id": str(preview_file.id),
             "revision": preview_file.revision,
             "extension": preview_file.extension,
             "annotations": preview_file.annotations,
-            "created_at": fields.serialize_value(
-                preview_file.created_at
-            ),
+            "created_at": fields.serialize_value(preview_file.created_at),
             "task_id": str(preview_file.task_id),
         }
         for preview_file in preview_files

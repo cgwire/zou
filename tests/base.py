@@ -856,6 +856,7 @@ class ApiDBTestCase(ApiTestCase):
             description="test description",
             source="pytest",
             task_id=self.task.id,
+            extension="mp4",
             person_id=self.person.id
         )
         return self.preview_file
