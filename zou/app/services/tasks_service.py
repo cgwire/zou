@@ -1014,7 +1014,10 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     preview_file = files_service.create_preview_file_raw(
         str(uuid.uuid4())[:13], revision, task_id, person_id
     )
-    events.emit("preview-file:create", {"preview_file_id": preview_file.id})
+    events.emit("preview-file:create", {
+        "preview_file_id": preview_file.id,
+        "comment_id": comment_id,
+    })
     comment.previews.append(preview_file)
     comment.save()
     if news is not None:
