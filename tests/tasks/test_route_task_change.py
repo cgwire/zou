@@ -5,6 +5,7 @@ from tests.base import ApiDBTestCase
 from zou.app.utils import events
 
 from zou.app.models.task import Task
+from zou.app.services import tasks_service
 
 
 class RouteTaskChangeTestCase(ApiDBTestCase):
@@ -24,14 +25,15 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         self.generate_fixture_task_status_wip()
         self.generate_fixture_task_status_retake()
         self.generate_fixture_task_status_done()
+        self.generate_fixture_task_status_todo()
         self.generate_fixture_person()
         self.generate_fixture_assigner()
         self.generate_fixture_task()
 
         self.open_status_id = str(self.task_status.id)
         self.wip_status_id = str(self.task_status_wip.id)
-        self.retake_status_id = str(self.task_status_wip.id)
-        self.done_status_id = str(self.task_status_wip.id)
+        self.retake_status_id = str(self.task_status_retake.id)
+        self.done_status_id = str(self.task_status_done.id)
 
         self.is_event_fired = False
         events.unregister_all()
@@ -74,3 +76,34 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
             real_start_date.replace(microsecond=0).isoformat(),
             task["real_start_date"]
         )
+
+    def test_retake_count(self):
+        task_id = str(self.task.id)
+        self.post("/actions/tasks/%s/comment" % task_id, {
+            "task_status_id": self.retake_status_id,
+            "comment": "retake 1"
+        })
+        task = self.get("data/tasks/%s" % task_id)
+        self.assertEqual(task["retake_count"], 1)
+        self.post("/actions/tasks/%s/comment" % task_id, {
+            "task_status_id": self.wip_status_id,
+            "comment": "wip 1"
+        })
+        comment = self.post("/actions/tasks/%s/comment" % task_id, {
+            "task_status_id": self.retake_status_id,
+            "comment": "retake 2"
+        })
+        task = self.get("data/tasks/%s" % task_id)
+        self.assertEqual(task["retake_count"], 2)
+        comment = self.delete("/data/tasks/%s/comments/%s" % (
+            task_id,
+            comment["id"]
+        ))
+        task = self.get("data/tasks/%s" % task_id)
+        self.assertEqual(task["retake_count"], 1)
+        comment = self.post("/actions/tasks/%s/comment" % task_id, {
+            "task_status_id": self.retake_status_id,
+            "comment": "retake 2"
+        })
+        task = self.get("data/tasks/%s" % task_id)
+        self.assertEqual(task["retake_count"], 2)

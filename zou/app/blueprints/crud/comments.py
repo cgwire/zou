@@ -58,5 +58,6 @@ class CommentResource(BaseModelResource):
         task = tasks_service.get_task(comment["object_id"])
         user_service.check_project_access(task["project_id"])
         deletion_service.remove_comment(comment["id"])
+        tasks_service.reset_task_data(comment["object_id"])
         tasks_service.clear_comment_cache(comment["id"])
         return "", 204

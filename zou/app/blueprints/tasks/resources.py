@@ -189,7 +189,8 @@ class TaskCommentResource(Resource):
     def delete(self, task_id, comment_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
-        deletion_service.remove_comment(comment_id)
+        comment = deletion_service.remove_comment(comment_id)
+        tasks_service.reset_task_data(comment["object_id"])
         tasks_service.clear_comment_cache(comment_id)
         return "", 204
 

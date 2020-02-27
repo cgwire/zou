@@ -527,7 +527,8 @@ def delete_entry(model_name, event_name, model):
             return
         model_id = data[event_name.replace("-", "_") + "_id"]
         if event_name == "comment":
-            deletion_service.remove_comment(model_id)
+            comment = deletion_service.remove_comment(model_id)
+            tasks_service.reset_task_data(comment["object_id"])
         else:
             model.delete_all_by(id=model_id)
         forward_base_event(event_name, "delete", data)
@@ -733,7 +734,7 @@ def download_thumbnails_from_another_instance(model_name, project=None):
     Download all thumbnails from target instance for given model.
     """
     model = event_name_model_map[model_name]
-    
+
     if project is None:
         instances = model.query.all()
     else:
