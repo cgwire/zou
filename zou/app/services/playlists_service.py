@@ -542,7 +542,7 @@ def generate_playlisted_shot_from_task(task_id):
     task = tasks_service.get_task(task_id)
     shot = shots_service.get_shot(task["entity_id"])
     sequence = shots_service.get_sequence(shot["parent_id"])
-    preview_files = get_preview_files_for_task(task_id)
+    preview_files = get_preview_files_for_shot(shot["id"])
     task_type_id = task["task_type_id"]
     playlisted_shot = {
         "id": shot["id"],
@@ -551,15 +551,14 @@ def generate_playlisted_shot_from_task(task_id):
         "sequence_id": sequence["id"],
         "sequence_name": sequence["name"]
     }
-    if len(preview_files) > 0:
-        previews[task_type_id] = preview_files
-        preview_file = previews[task_type_id][0]
+    if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
+        preview_file = preview_files[task_type_id][0]
         playlisted_shot.update({
             "preview_file_id": preview_file["id"],
             "preview_file_extension": preview_file["extension"],
             "preview_file_annotations": preview_file["annotations"]
         })
-    playlisted_shot["preview_files"] = previews
+    playlisted_shot["preview_files"] = preview_files
     return playlisted_shot
 
 
