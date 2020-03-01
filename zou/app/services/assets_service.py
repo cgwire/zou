@@ -332,10 +332,7 @@ def get_full_asset(asset_id):
         asset["asset_type_id"] = asset_type["id"]
         asset["asset_type_name"] = asset_type["name"]
         del asset["source_id"]
-        del asset["shotgun_id"]
         del asset["nb_frames"]
-        del asset["parent_id"]
-        del asset["entities_in"]
         asset.update(assets[0])
         return asset
     else:
