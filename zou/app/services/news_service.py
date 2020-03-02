@@ -77,7 +77,7 @@ def get_last_news_for_project(
     page_size=50,
 ):
     """
-    Return last 100 user notifications. Add related information to make it
+    Return last 50 news for given project. Add related information to make it
     displayable.
     """
     offset = (page - 1) * page_size

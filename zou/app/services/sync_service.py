@@ -31,7 +31,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.services import deletion_service
+from zou.app.services import deletion_service, tasks_service
 from zou.app.stores import file_store
 from flask_fs.backends.local import LocalBackend
 from zou.app.utils import events
@@ -250,12 +250,13 @@ def run_project_data_sync(project=None):
         logger.info("Sync of %s complete." % project["name"])
 
 
-def run_other_sync(project=None):
+def run_other_sync(project=None, with_events=False):
     """
     Retrieve and import all search filters and events from target instance.
     """
     sync_entries("search-filters", SearchFilter, project=project)
-    sync_entries("events", ApiEvent, project=project)
+    if with_events:
+        sync_entries("events", ApiEvent, project=project)
 
 
 def run_last_events_sync(minutes=0, page_size=300):
@@ -347,7 +348,9 @@ def sync_entries(model_name, model, project=None):
         if model_name == 'projects':
             instances = [gazu.client.fetch_one(model_name, project.get('id'))]
         elif model_name in 'search-filters':
-            instances = gazu.client.fetch_all(model_name, params=dict(project_id=project.get('id')))
+            instances = gazu.client.fetch_all(
+                model_name, params=dict(project_id=project.get('id'))
+            )
         else:
             instances = gazu.client.fetch_all(model_name)
         model.create_from_import_list(instances)
@@ -375,22 +378,35 @@ def sync_project_entries(project, model_name, model):
     page = 1
     init = True
     results = {"nb_pages": 2}
-
+    result_length = 1
     if model_name not in [
         "tasks",
         "comments",
+        "news",
         "notifications",
         "playlists",
         "preview-files",
     ]:  # not much data we retrieve all in a single request.
-        results = gazu.client.fetch_all(
-            "projects/%s/%s" % (project["id"], model_name)
-        )
+        path = "projects/%s/%s" % (project["id"], model_name)
+        results = gazu.client.fetch_all(path)
         instances += results
         try:
             model.create_from_import_list(instances)
         except sqlalchemy.exc.IntegrityError:
             logger.error("An error occured", exc_info=1)
+
+    elif model_name == "news":
+        while init or result_length > 0:
+            path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
+            results = gazu.client.fetch_all(path)
+            instances += results
+            try:
+                model.create_from_import_list(results)
+            except sqlalchemy.exc.IntegrityError:
+                logger.error("An error occured", exc_info=1)
+            result_length = len(results)
+            page += 1
+            init = False
 
     else:  # Lot of data, we retrieve all through paginated requests.
         while init or results["nb_pages"] >= page:
@@ -720,7 +736,8 @@ def download_files_from_another_instance(project=None):
     if project:
         project = gazu.project.get_project_by_name(project)
         preview_files = []
-        for task in gazu.client.get('/data/projects/%s/tasks' % project.get('id')):
+        path = '/data/projects/%s/tasks' % project.get('id')
+        for task in gazu.client.get(path):
             preview_files += PreviewFile.query.filter_by(task_id=task.get('id'))
     else:
         preview_files = PreviewFile.query.all()
@@ -769,8 +786,8 @@ def download_preview_from_another_instance(preview_file):
     """
     Download all files link to preview file entry: orginal file and variants.
     """
-    from zou.app import app
 
+    from zou.app import app
     print(
         "download preview %s (%s)" % (preview_file.id, preview_file.extension)
     )
