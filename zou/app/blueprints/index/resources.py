@@ -3,12 +3,15 @@ import requests
 
 from datetime import datetime
 
-from flask import Response
+from flask import Response, abort
 from flask_restful import Resource
 from zou import __version__
 
 from zou.app import app, config
-from zou.app.services import projects_service
+from zou.app.utils import permissions
+from zou.app.services import projects_service, stats_service
+
+from flask_jwt_extended import jwt_required
 
 
 class IndexResource(Resource):
@@ -95,3 +98,12 @@ class InfluxStatusResource(BaseStatusResource):
             "event-stream-up": int(is_es_up),
             "time": datetime.timestamp(datetime.now()),
         }
+
+
+class StatsResource(Resource):
+
+    @jwt_required
+    def get(self):
+        if not permissions.has_admin_permissions():
+            abort(403)
+        return stats_service.get_main_stats()
