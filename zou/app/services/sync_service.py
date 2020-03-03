@@ -815,7 +815,7 @@ def download_preview_from_another_instance(preview_file):
             for prefix in ["thumbnails", "thumbnails-square", "original"]:
                 if not exists_func(prefix, preview_file_id):
                     download_file_from_another_instance(
-                        save_func,
+                        file_store.add_picture,
                         prefix,
                         preview_file_id,
                         preview_file.extension
