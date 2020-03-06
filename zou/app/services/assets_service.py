@@ -386,6 +386,11 @@ def get_or_create_asset_type(name):
     if asset_type is None:
         asset_type = EntityType.create(name=name)
         clear_asset_type_cache()
+
+        events.emit(
+            "asset-type:new", {"name": asset_type.name, "id": asset_type.id}
+        )
+
     return asset_type.serialize(obj_type="AssetType")
 
 
@@ -442,9 +447,6 @@ def create_asset_types(asset_type_names):
         asset_type = get_or_create_asset_type(asset_type_name)
         asset_types.append(asset_type)
 
-        events.emit(
-            "asset-type:new", {"name": asset_type_name, "id": asset_type["id"]}
-        )
     return asset_types
 
 
