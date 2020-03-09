@@ -102,10 +102,9 @@ class RouteThumbnailTestCase(ApiDBTestCase):
                 os.path.join("thumbnails", "th01.png"))
         self.upload_file(path, file_path_fixture)
 
-        self.put("/actions/entities/%s/set-main-preview/%s" % (
-            self.asset_id,
-            self.preview_file_id
-        ), {})
+        path = \
+            "/actions/preview-files/%s/set-main-preview" % self.preview_file_id
+        self.put(path, {})
 
         asset = assets_service.get_asset(self.asset_id)
         self.assertEqual(
