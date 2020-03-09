@@ -82,9 +82,20 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
     return file_target_path
 
 
+def _HasAudioStreams(file_path):
+    """
+    This handy function that returns True if an audiotrack is found, was found at:
+    https://github.com/kkroening/ffmpeg-python/issues/204#issuecomment-593448324
+    """
+    streams = ffmpeg.probe(file_path)["streams"]
+    for stream in streams:
+        if stream["codec_type"] == "audio":
+            return True
+    return False
+
+
 def build_playlist_movie(
-    tmp_file_paths, movie_file_path, width=None, height=1080, fps="24.00"
-):
+    tmp_file_paths, movie_file_path, width=None, height=1080, fps="24.00"):
     """
     Build a single movie file from a playlist.
     """
@@ -101,11 +112,14 @@ def build_playlist_movie(
                 .filter("setsar", "1/1")
                 .filter("scale", width, height)
             )
+            if not _HasAudioStreams(tmp_file_path):
+                in_file = ffmpeg.input('anullsrc', format='lavfi', t=0.01)
+
             in_files.append(in_file["a"])
+
         joined = ffmpeg.concat(*in_files, v=1, a=1).node
         video = joined[0]
         audio = joined[1]
-
         try:
             ffmpeg.output(
                 audio, video, movie_file_path

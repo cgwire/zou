@@ -3,10 +3,11 @@ import datetime
 import unittest
 import uuid
 
+
 from babel import Locale
 from pytz import timezone
 
-from zou.app.utils import colors, fields, query, fs
+from zou.app.utils import colors, fields, query, fs, movie_utils
 from zou.app.models.person import Person
 from zou.app.models.task import Task
 
@@ -104,3 +105,17 @@ class UtilsTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(folder))
         fs.rm_rf("one")
         self.assertTrue(not os.path.exists(folder))
+
+
+    def test_movie_utils(self):
+        movie_file_path = 'test_data/testresult.mp4'
+        if os.path.exists(movie_file_path):
+            os.unlink(movie_file_path)
+
+        tmp_file_paths = [['test_data/with_audio.mp4', 'with_audio'],
+                         ['test_data/without_audio.mp4', 'without_audio']]
+        result = movie_utils.build_playlist_movie(tmp_file_paths, movie_file_path)
+        self.assertTrue(result['success'])
+        self.assertTrue(os.path.exists(movie_file_path))
+
+
