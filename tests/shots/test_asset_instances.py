@@ -58,7 +58,7 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.assertEqual(instances[self.asset_id][1]["number"], 2)
         self.assertEqual(
             instances[self.asset_id][1]["name"],
-            "tree_0002"
+            "Tree_0002"
         )
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
 
@@ -118,7 +118,7 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.assertEqual(instances[self.asset_id][1]["number"], 2)
         self.assertEqual(
             instances[self.asset_id][1]["name"],
-            "tree_0002"
+            "Tree_0002"
         )
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
 
@@ -178,6 +178,6 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.assertEqual(instances[self.asset_character_id][1]["number"], 2)
         self.assertEqual(
             instances[self.asset_character_id][1]["name"],
-            "rabbit_0002"
+            "Rabbit_0002"
         )
         self.assertEqual(instances[self.asset_character_2_id][0]["number"], 1)
