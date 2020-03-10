@@ -103,7 +103,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(casting[self.forest_id]), 2)
         self.assertEqual(len(casting[str(self.asset.id)]), 1)
 
-
     def new_shot_instance(self, asset_instance_id):
         return breakdown_service.add_asset_instance_to_shot(
             self.shot_id, asset_instance_id
@@ -177,7 +176,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(instances[self.asset_id][1]["number"], 2)
         self.assertEqual(
             instances[self.asset_id][1]["name"],
-            "tree_0002"
+            "Tree_0002"
         )
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
 
@@ -190,10 +189,10 @@ class BreakdownServiceTestCase(ApiDBTestCase):
     def test_build_asset_instance_name(self):
         name = breakdown_service.build_asset_instance_name(
             self.asset_id, 3)
-        self.assertEqual(name, "tree_0003")
+        self.assertEqual(name, "Tree_0003")
         name = breakdown_service.build_asset_instance_name(
             self.asset_character_id, 5)
-        self.assertEqual(name, "rabbit_0005")
+        self.assertEqual(name, "Rabbit_0005")
 
     def test_get_shot_asset_instances_for_asset(self):
         instances = breakdown_service.get_shot_asset_instances_for_asset(
