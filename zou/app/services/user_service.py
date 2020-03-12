@@ -258,7 +258,7 @@ def get_scenes_for_sequence(sequence_id):
     return Entity.serialize_list(query.all(), obj_type="Scene")
 
 
-def get_open_projects(name=None):
+def get_open_projects(name=None, for_client=False):
     """
     Get all open projects for which current user has a task assigned.
     """
@@ -271,7 +271,9 @@ def get_open_projects(name=None):
     if name is not None:
         query = query.filter(Project.name == name)
 
-    return projects_service.get_projects_with_extra_data(query)
+    for_client = permissions.has_client_permissions()
+
+    return projects_service.get_projects_with_extra_data(query, for_client)
 
 
 def get_projects(name=None):

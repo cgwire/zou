@@ -1,6 +1,10 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import tasks_service, notifications_service
+from zou.app.services import (
+    tasks_service,
+    notifications_service,
+    projects_service
+)
 
 from zou.app.models.project import Project
 from zou.app.models.person import Person
@@ -428,3 +432,31 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(context["notifications"]), 0)
         self.assertEqual(len(context["search_filters"]), 0)
         self.assertEqual(len(context["custom_actions"]), 0)
+
+    def test_get_metadata_columns(self):
+        projects_service.add_metadata_descriptor(
+            self.project_id,
+            "asset",
+            "test client",
+            [],
+            True
+        )
+        projects_service.add_metadata_descriptor(
+            self.project_id,
+            "asset",
+            "test",
+            [],
+            False
+        )
+        self.generate_fixture_user_client()
+        self.log_in_client()
+        projects_service.add_team_member(
+            self.project_id,
+            self.user_client["id"]
+        )
+        context = self.get("/data/user/context")
+        self.assertEqual(len(context["projects"]), 1)
+        self.assertEqual(len(context["projects"][0]["descriptors"]), 1)
+        self.assertEqual(
+            context["projects"][0]["descriptors"][0]["name"], "test client"
+        )

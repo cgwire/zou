@@ -22,6 +22,7 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     name = db.Column(db.String(120), nullable=False)
     field_name = db.Column(db.String(120), nullable=False)
     choices = db.Column(JSONB)
+    for_client = db.Column(db.Boolean(), default=False, index=True)
 
     __table_args__ = (
         db.UniqueConstraint(

@@ -106,20 +106,28 @@ class ProjectServiceTestCase(ApiDBTestCase):
             self.project.id,
             "Asset",
             "Is Outdoor",
-            []
+            [],
+            False
         )
         self.assertIsNotNone(MetadataDescriptor.get(descriptor["id"]))
         descriptor = projects_service.add_metadata_descriptor(
             self.project.id,
             "Asset",
             "Contractor",
-            ["contractor 1", "contractor 2"]
+            ["contractor 1", "contractor 2"],
+            False
         )
         descriptors = projects_service.get_metadata_descriptors(self.project.id)
         self.assertEqual(len(descriptors), 2)
         self.assertEqual(descriptors[0]["id"], descriptor["id"])
         self.assertEqual(descriptors[0]["field_name"], "contractor")
         self.assertEqual(descriptors[1]["field_name"], "is_outdoor")
+
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id,
+            for_client=True
+        )
+        self.assertEqual(len(descriptors), 0)
 
     def test_update_metadata_descriptor(self):
         asset = self.generate_fixture_asset_type()
@@ -128,7 +136,8 @@ class ProjectServiceTestCase(ApiDBTestCase):
             self.project.id,
             "Asset",
             "Contractor",
-            []
+            [],
+            False
         )
         asset.update({
             "data": {
@@ -138,10 +147,11 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertTrue("contractor" in asset.data)
         projects_service.update_metadata_descriptor(
             descriptor["id"],
-            {"name": "Team"}
+            {"name": "Team", "for_client": True}
         )
         descriptors = projects_service.get_metadata_descriptors(self.project.id)
         self.assertEqual(len(descriptors), 1)
+        self.assertTrue(descriptors[0]["for_client"])
         asset = Entity.get(asset.id)
         self.assertEqual(asset.data.get("team"), "contractor 1")
 
@@ -152,7 +162,8 @@ class ProjectServiceTestCase(ApiDBTestCase):
             self.project.id,
             "Asset",
             "Contractor",
-            []
+            [],
+            False
         )
         asset.update({
             "data": {
