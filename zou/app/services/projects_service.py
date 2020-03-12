@@ -26,7 +26,7 @@ def clear_project_cache(project_id):
 
 
 @cache.memoize_function(120)
-def open_projects(name=None):
+def open_projects(name=None, for_client=False):
     """
     Return all open projects. Allow to filter projects by name.
     """
@@ -40,10 +40,10 @@ def open_projects(name=None):
     if name is not None:
         query = query.filter(Project.name == name)
 
-    return get_projects_with_extra_data(query)
+    return get_projects_with_extra_data(query, for_client)
 
 
-def get_projects_with_extra_data(query):
+def get_projects_with_extra_data(query, for_client=False):
     """
     Helpers function to attach:
     * First episode name to current project when it's a TV Show.
@@ -52,7 +52,13 @@ def get_projects_with_extra_data(query):
     projects = []
     for project in query.all():
         project_dict = project.serialize(relations=True)
-        descriptors = MetadataDescriptor.get_all_by(project_id=project.id)
+        if for_client:
+            descriptors = MetadataDescriptor.get_all_by(
+                project_id=project.id,
+                for_client=True
+            )
+        else:
+            descriptors = MetadataDescriptor.get_all_by(project_id=project.id)
         project_dict["descriptors"] = []
         for descriptor in descriptors:
             project_dict["descriptors"].append(
@@ -61,6 +67,7 @@ def get_projects_with_extra_data(query):
                     "name": descriptor.name,
                     "field_name": descriptor.field_name,
                     "choices": descriptor.choices,
+                    "for_client": descriptor.for_client or False,
                     "entity_type": descriptor.entity_type,
                 }
             )
@@ -251,15 +258,15 @@ def remove_team_member(project_id, person_id):
     return project.serialize()
 
 
-def add_metadata_descriptor(project_id, entity_type, name, choices):
+def add_metadata_descriptor(project_id, entity_type, name, choices, for_client):
     descriptor = MetadataDescriptor.create(
         project_id=project_id,
         entity_type=entity_type,
         name=name,
         choices=choices,
+        for_client=for_client,
         field_name=slugify.slugify(name, separator="_"),
     )
-
     events.emit(
         "metadata-descriptor:new",
         {"metadata_descriptor_id": str(descriptor.id)},
@@ -268,17 +275,20 @@ def add_metadata_descriptor(project_id, entity_type, name, choices):
     return descriptor.serialize()
 
 
-def get_metadata_descriptors(project_id):
+def get_metadata_descriptors(project_id, for_client=False):
     """
     Get all metadata descriptors for given project and entity type.
     """
-    descriptors = (
+    query = (
         MetadataDescriptor.query.filter(
             MetadataDescriptor.project_id == project_id
         )
         .order_by(MetadataDescriptor.name)
-        .all()
     )
+    if for_client:
+        query = query.filter(MetadataDescriptor.for_client == True)
+
+    descriptors = query.all()
     return fields.serialize_models(descriptors)
 
 
