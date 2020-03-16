@@ -25,6 +25,7 @@ from .resources import (
     InstanceOutputFilesResource,
     SetTreeResource,
     FileResource,
+    WorkingFileFileResource,
 )
 
 routes = [
@@ -94,12 +95,16 @@ routes = [
         "/data/entities/<entity_id>/output-file-path",
         EntityOutputFilePathResource,
     ),
+    (
+        "/data/working-files/<working_file_id>/file",
+        WorkingFileFileResource,
+    ),
     ("/actions/projects/<project_id>/set-file-tree", SetTreeResource),
     (
         "/actions/working-files/<working_file_id>/comment",
         CommentWorkingFileResource,
     ),
-    ("/actions/working-files/<working_file_id>/modified", ModifiedFileResource),
+    ("/actions/working-files/<working_file_id>/modified", ModifiedFileResource)
 ]
 
 blueprint = Blueprint("files", "files")
