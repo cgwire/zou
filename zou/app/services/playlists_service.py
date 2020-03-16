@@ -78,6 +78,8 @@ def build_playlist_dict(playlist):
     playlist_dict["updated_at"] = updated_at
     if first_shot_preview_file_id is not None:
         playlist_dict["first_preview_file_id"] = first_shot_preview_file_id
+    if playlist.for_entity is None:
+        playlist_dict["for_entity"] = "shot"
     return playlist_dict
 
 

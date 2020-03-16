@@ -9,8 +9,7 @@ from zou.app.models.base import BaseMixin
 
 class Playlist(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a playlist. The goal is to discuss around a defined set of
-    shipped materials in a meeting.
+    Describes a playlist. The goal is to review a set of shipped materials.
     """
 
     name = db.Column(db.String(80), nullable=False)
@@ -23,6 +22,7 @@ class Playlist(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
     )
     for_client = db.Column(db.Boolean(), default=False, index=True)
+    for_entity = db.Column(db.String(10), default="shot", index=True)
 
     build_jobs = relationship("BuildJob")
 
