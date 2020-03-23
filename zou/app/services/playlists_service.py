@@ -21,7 +21,9 @@ from zou.app.utils import fields, movie_utils, events
 from zou.app.utils import query as query_utils
 
 from zou.app.services import (
+    assets_service,
     base_service,
+    entities_service,
     files_service,
     projects_service,
     shots_service,
@@ -110,7 +112,7 @@ def get_playlist_with_preview_file_revisions(playlist_id=False):
     if playlist_dict["shots"] is None:
         playlist_dict["shots"] = []
 
-    (playlist_dict, preview_file_map) = set_preview_files_for_shots(
+    (playlist_dict, preview_file_map) = set_preview_files_for_entities(
         playlist_dict
     )
 
@@ -130,10 +132,18 @@ def get_playlist_with_preview_file_revisions(playlist_id=False):
     return playlist_dict
 
 
-def set_preview_files_for_shots(playlist_dict):
+def set_preview_files_for_entities(playlist_dict):
     """
     """
-    shot_ids = [shot["shot_id"] for shot in playlist_dict["shots"]]
+    entity_ids = []
+    for entity in playlist_dict["shots"]:
+        if "id" not in entity:
+            entity_id = entity.get("shot_id", entity.get("entity_id", None))
+            if entity_id is not None:
+                entity_ids.append(entity_id)
+                entity["id"] = entity_id
+        else:
+            entity_ids.append(entity["id"])
     previews = {}
     preview_file_map = {}
 
@@ -141,7 +151,7 @@ def set_preview_files_for_shots(playlist_dict):
         PreviewFile.query.filter_by(extension="mp4")
         .join(Task)
         .join(TaskType)
-        .filter(Task.entity_id.in_(shot_ids))
+        .filter(Task.entity_id.in_(entity_ids))
         .order_by(TaskType.priority.desc())
         .order_by(TaskType.name)
         .order_by(PreviewFile.revision.desc())
@@ -150,19 +160,19 @@ def set_preview_files_for_shots(playlist_dict):
         .all()
     )
 
-    for (preview_file, task_type_id, shot_id) in preview_files:
-        shot_id = str(shot_id)
+    for (preview_file, task_type_id, entity_id) in preview_files:
+        entity_id = str(entity_id)
         task_type_id = str(task_type_id)
-        if shot_id not in previews:
-            previews[shot_id] = {}
+        if entity_id not in previews:
+            previews[entity_id] = {}
 
-        if task_type_id not in previews[shot_id]:
-            previews[shot_id][task_type_id] = []
+        if task_type_id not in previews[entity_id]:
+            previews[entity_id][task_type_id] = []
 
         task_id = str(preview_file.task_id)
         preview_file_id = str(preview_file.id)
 
-        previews[shot_id][task_type_id].append(
+        previews[entity_id][task_type_id].append(
             {
                 "id": preview_file_id,
                 "revision": preview_file.revision,
@@ -175,20 +185,20 @@ def set_preview_files_for_shots(playlist_dict):
 
         preview_file_map[preview_file_id] = preview_file
 
-    for shot in playlist_dict["shots"]:
-        if str(shot["shot_id"]) in previews:
-            shot["preview_files"] = previews[str(shot["shot_id"])]
+    for entity in playlist_dict["shots"]:
+        if str(entity["id"]) in previews:
+            entity["preview_files"] = previews[str(entity["id"])]
         else:
-            shot["preview_files"] = []
+            entity["preview_files"] = []
 
     return (fields.serialize_value(playlist_dict), preview_file_map)
 
 
-def get_preview_files_for_shot(shot_id):
+def get_preview_files_for_entity(entity_id):
     """
     Get all preview files available for given shot.
     """
-    tasks = tasks_service.get_tasks_for_shot(shot_id)
+    tasks = tasks_service.get_task_dicts_for_entity(entity_id)
     previews = {}
 
     for task in tasks:
@@ -222,40 +232,6 @@ def get_preview_files_for_shot(shot_id):
     return previews
 
 
-def get_preview_files_for_entity(entity_id):
-    """
-    Get all preview files available for given entity.
-    """
-    tasks = tasks_service.get_task_dicts_for_entity(entity_id)
-    previews = {}
-
-    for task in tasks:
-        preview_files = (
-            PreviewFile.query.filter_by(task_id=task["id"])
-            .filter_by(extension="mp4")
-            .join(Task)
-            .join(TaskType)
-            .order_by(TaskType.priority.desc())
-            .order_by(TaskType.name)
-            .order_by(PreviewFile.revision.desc())
-            .all()
-        )
-        task_type_id = task["task_type_id"]
-
-        if len(preview_files) > 0:
-            previews[task_type_id] = [
-                {
-                    "id": str(preview_file.id),
-                    "revision": preview_file.revision,
-                    "extension": preview_file.extension,
-                    "task_id": str(preview_file.task_id),
-                }
-                for preview_file in preview_files
-            ]  # Do not add too much field to avoid building too big responses
-
-    return previews
-
-
 def get_playlist_raw(playlist_id):
     """
     Return given playlist as active record.
@@ -277,14 +253,14 @@ def retrieve_playlist_tmp_files(playlist):
     Retrieve all files for a given playlist into the temporary folder.
     """
     preview_file_ids = []
-    for shot in playlist["shots"]:
+    for entity in playlist["shots"]:
         if (
-            "preview_file_id" in shot
-            and shot["preview_file_id"] is not None
-            and len(shot["preview_file_id"]) > 0
+            "preview_file_id" in entity
+            and entity["preview_file_id"] is not None
+            and len(entity["preview_file_id"]) > 0
         ):
             preview_file = files_service.get_preview_file(
-                shot["preview_file_id"]
+                entity["preview_file_id"]
             )
             if preview_file is not None and preview_file["extension"] == "mp4":
                 preview_file_ids.append(preview_file["id"])
@@ -528,40 +504,70 @@ def generate_temp_playlist(task_ids):
     persist anything. The goal is to build a temporary playlist used to see
     a quick preview of several shots.
     """
-    shots = []
+    entities = []
     for task_id in task_ids:
-        shot = generate_playlisted_shot_from_task(task_id)
-        shots.append(shot)
-    return sorted(shots, key=itemgetter('sequence_name', 'name'))
+        entity = generate_playlisted_entity_from_task(task_id)
+        entities.append(entity)
+    if len(entities) > 0:
+        if "sequence_name" in entities[0]:
+            return sorted(entities, key=itemgetter('sequence_name', 'name'))
+        else:
+            return sorted(entities, key=itemgetter('asset_type_name', 'name'))
+    else:
+        return []
 
 
-def generate_playlisted_shot_from_task(task_id):
+def generate_playlisted_entity_from_task(task_id):
     """
     Generate the data structure of a playlisted shot for a given task. It
     doesn't persist anything.
     """
-    previews = {}
     task = tasks_service.get_task(task_id)
-    shot = shots_service.get_shot(task["entity_id"])
-    sequence = shots_service.get_sequence(shot["parent_id"])
-    preview_files = get_preview_files_for_shot(shot["id"])
+    entity = entities_service.get_entity(task["entity_id"])
+    if shots_service.is_shot(entity):
+        playlisted_entity = get_base_shot_for_playlist(entity, task_id)
+    else:
+        playlisted_entity = get_base_asset_for_playlist(entity, task_id)
+
     task_type_id = task["task_type_id"]
-    playlisted_shot = {
-        "id": shot["id"],
-        "name": shot["name"],
-        "preview_file_task_id": task_id,
-        "sequence_id": sequence["id"],
-        "sequence_name": sequence["name"]
-    }
+    preview_files = get_preview_files_for_entity(entity["id"])
     if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
         preview_file = preview_files[task_type_id][0]
-        playlisted_shot.update({
+        playlisted_entity.update({
             "preview_file_id": preview_file["id"],
             "preview_file_extension": preview_file["extension"],
             "preview_file_annotations": preview_file["annotations"]
         })
-    playlisted_shot["preview_files"] = preview_files
-    return playlisted_shot
+    playlisted_entity["preview_files"] = preview_files
+    return playlisted_entity
+
+
+def get_base_shot_for_playlist(entity, task_id):
+    shot = shots_service.get_shot(entity["id"])
+    sequence = shots_service.get_sequence(shot["parent_id"])
+    playlisted_entity = {
+        "id": shot["id"],
+        "name": shot["name"],
+        "preview_file_task_id": task_id,
+        "sequence_id": sequence["id"],
+        "sequence_name": sequence["name"],
+        "parent_name": sequence["name"]
+    }
+    return playlisted_entity
+
+
+def get_base_asset_for_playlist(entity, task_id):
+    asset = assets_service.get_asset(entity["id"])
+    asset_type = assets_service.get_asset_type(asset["entity_type_id"])
+    playlisted_entity = {
+        "id": asset["id"],
+        "name": asset["name"],
+        "preview_file_task_id": task_id,
+        "asset_type_id": asset_type["id"],
+        "asset_type_name": asset_type["name"],
+        "parent_name": asset_type["name"]
+    }
+    return playlisted_entity
 
 
 def get_preview_files_for_task(task_id):
