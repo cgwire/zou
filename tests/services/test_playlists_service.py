@@ -98,13 +98,21 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(self.shot.id), shots[0]["id"])
         self.assertEqual(len(shots[0]["preview_files"][task_type_id]), 2)
 
-    def test_generate_playlisted_shot_from_task(self):
+    def test_generate_playlisted_entity_from_task(self):
         self.generate_fixture_preview_files()
         task_id = self.task.id
         task_type_id = str(self.task.task_type_id)
-        shot = playlists_service.generate_playlisted_shot_from_task(task_id)
+        shot = playlists_service.generate_playlisted_entity_from_task(task_id)
         self.assertEqual(str(self.shot.id), shot["id"])
+        self.assertEqual(shot["parent_name"], "S01")
         self.assertEqual(len(shot["preview_files"][task_type_id]), 2)
+
+        self.task = self.generate_fixture_task()
+        task_id = self.task.id
+        asset = playlists_service.generate_playlisted_entity_from_task(task_id)
+        self.assertEqual(str(self.asset.id), asset["id"])
+        self.assertEqual(asset["parent_name"], "Props")
+        self.assertEqual(asset["preview_files"], {})
 
     def test_get_preview_files_for_task(self):
         self.generate_fixture_preview_files()

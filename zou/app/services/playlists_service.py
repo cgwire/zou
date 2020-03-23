@@ -21,7 +21,9 @@ from zou.app.utils import fields, movie_utils, events
 from zou.app.utils import query as query_utils
 
 from zou.app.services import (
+    assets_service,
     base_service,
+    entities_service,
     files_service,
     projects_service,
     shots_service,
@@ -135,10 +137,13 @@ def set_preview_files_for_entities(playlist_dict):
     """
     entity_ids = []
     for entity in playlist_dict["shots"]:
-        print(entity)
         if "id" not in entity:
-            entity["id"] = entity.get("shot_id", entity["entity_id"])
-        entity_ids.append(entity["id"])
+            entity_id = entity.get("shot_id", entity.get("entity_id", None))
+            if entity_id is not None:
+                entity_ids.append(entity_id)
+                entity["id"] = entity_id
+        else:
+            entity_ids.append(entity["id"])
     previews = {}
     preview_file_map = {}
 
@@ -499,40 +504,70 @@ def generate_temp_playlist(task_ids):
     persist anything. The goal is to build a temporary playlist used to see
     a quick preview of several shots.
     """
-    shots = []
+    entities = []
     for task_id in task_ids:
-        shot = generate_playlisted_shot_from_task(task_id)
-        shots.append(shot)
-    return sorted(shots, key=itemgetter('sequence_name', 'name'))
+        entity = generate_playlisted_entity_from_task(task_id)
+        entities.append(entity)
+    if len(entities) > 0:
+        if "sequence_name" in entities[0]:
+            return sorted(entities, key=itemgetter('sequence_name', 'name'))
+        else:
+            return sorted(entities, key=itemgetter('asset_type_name', 'name'))
+    else:
+        return []
 
 
-def generate_playlisted_shot_from_task(task_id):
+def generate_playlisted_entity_from_task(task_id):
     """
     Generate the data structure of a playlisted shot for a given task. It
     doesn't persist anything.
     """
-    previews = {}
     task = tasks_service.get_task(task_id)
-    shot = shots_service.get_shot(task["entity_id"])
-    sequence = shots_service.get_sequence(shot["parent_id"])
-    preview_files = get_preview_files_for_entity(shot["id"])
+    entity = entities_service.get_entity(task["entity_id"])
+    if shots_service.is_shot(entity):
+        playlisted_entity = get_base_shot_for_playlist(entity, task_id)
+    else:
+        playlisted_entity = get_base_asset_for_playlist(entity, task_id)
+
     task_type_id = task["task_type_id"]
-    playlisted_shot = {
-        "id": shot["id"],
-        "name": shot["name"],
-        "preview_file_task_id": task_id,
-        "sequence_id": sequence["id"],
-        "sequence_name": sequence["name"]
-    }
+    preview_files = get_preview_files_for_entity(entity["id"])
     if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
         preview_file = preview_files[task_type_id][0]
-        playlisted_shot.update({
+        playlisted_entity.update({
             "preview_file_id": preview_file["id"],
             "preview_file_extension": preview_file["extension"],
             "preview_file_annotations": preview_file["annotations"]
         })
-    playlisted_shot["preview_files"] = preview_files
-    return playlisted_shot
+    playlisted_entity["preview_files"] = preview_files
+    return playlisted_entity
+
+
+def get_base_shot_for_playlist(entity, task_id):
+    shot = shots_service.get_shot(entity["id"])
+    sequence = shots_service.get_sequence(shot["parent_id"])
+    playlisted_entity = {
+        "id": shot["id"],
+        "name": shot["name"],
+        "preview_file_task_id": task_id,
+        "sequence_id": sequence["id"],
+        "sequence_name": sequence["name"],
+        "parent_name": sequence["name"]
+    }
+    return playlisted_entity
+
+
+def get_base_asset_for_playlist(entity, task_id):
+    asset = assets_service.get_asset(entity["id"])
+    asset_type = assets_service.get_asset_type(asset["entity_type_id"])
+    playlisted_entity = {
+        "id": asset["id"],
+        "name": asset["name"],
+        "preview_file_task_id": task_id,
+        "asset_type_id": asset_type["id"],
+        "asset_type_name": asset_type["name"],
+        "parent_name": asset_type["name"]
+    }
+    return playlisted_entity
 
 
 def get_preview_files_for_task(task_id):
