@@ -46,6 +46,7 @@ ALLOWED_FILE_EXTENSION = [
     ".mb",
     ".ai",
     ".rar",
+    ".gif",
     ".zip",
     ".blend",
     ".OBJ",
@@ -63,6 +64,10 @@ ALLOWED_FILE_EXTENSION = [
     ".COMP",
     ".PSD",
     ".HIP",
+    ".ae",
+    ".fla",
+    ".flv",
+    ".swf",
     ".EXR",
 ]
 
