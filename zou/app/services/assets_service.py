@@ -151,7 +151,10 @@ def get_assets_and_tasks(criterions={}, page=1):
         query = query.filter(Entity.project_id == criterions["project_id"])
 
     if "episode_id" in criterions:
-        query = query.filter(Entity.source_id == criterions["episode_id"])
+        if criterions["episode_id"] == "main":
+            query = query.filter(Entity.source_id == None)
+        elif criterions["episode_id"] != "all":
+            query = query.filter(Entity.source_id == criterions["episode_id"])
 
     for (
         asset,
