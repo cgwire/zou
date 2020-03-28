@@ -33,9 +33,10 @@ class EpisodePlaylistsResource(Resource):
     @jwt_required
     def get(self, project_id, episode_id):
         user_service.check_project_access(project_id)
-        shots_service.get_episode(episode_id)
+        if episode_id != "main":
+            shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
-            episode_id, permissions.has_client_permissions()
+            project_id, episode_id, permissions.has_client_permissions()
         )
 
 
