@@ -52,15 +52,23 @@ def all_playlists_for_project(project_id, for_client=False):
     return result
 
 
-def all_playlists_for_episode(episode_id, for_client=False):
+def all_playlists_for_episode(project_id, episode_id, for_client=False):
     """
     Return all playlists created for given episode.
     """
     result = []
+    query = Playlist.query
     if for_client:
-        playlists = Playlist.get_all_by(episode_id=episode_id, for_client=True)
+        query = query.filter(Playlist.for_client == True)
+
+    if episode_id == "main":
+        query = query \
+            .filter(Playlist.episode_id == None) \
+            .filter(Playlist.project_id == project_id)
     else:
-        playlists = Playlist.get_all_by(episode_id=episode_id)
+        query = query.filter(Playlist.episode_id == episode_id)
+
+    playlists = query.all()
     for playlist in playlists:
         playlist_dict = build_playlist_dict(playlist)
         result.append(playlist_dict)

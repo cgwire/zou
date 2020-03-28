@@ -14,6 +14,11 @@ class PlaylistsResource(BaseModelsResource):
     def check_create_permissions(self, playlist):
         user_service.check_manager_project_access(playlist["project_id"])
 
+    def update_data(self, data):
+        if ("episode_id" in data and data["episode_id"] == "main"):
+            data["episode_id"] = None
+        return data
+
 
 class PlaylistResource(BaseModelResource):
     def __init__(self):
