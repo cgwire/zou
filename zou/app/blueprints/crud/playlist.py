@@ -15,7 +15,7 @@ class PlaylistsResource(BaseModelsResource):
         user_service.check_manager_project_access(playlist["project_id"])
 
     def update_data(self, data):
-        if ("episode_id" in data and data["episode_id"] == "main"):
+        if "episode_id" in data and data["episode_id"] in ["all", "main"]:
             data["episode_id"] = None
         return data
 

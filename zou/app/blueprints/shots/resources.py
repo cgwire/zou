@@ -131,7 +131,8 @@ class ShotTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_shot(shot_id)
 
 
-class ShotTasksResource(Resource):
+class ShotTasksResource(Resource, ArgsMixin):
+
     @jwt_required
     def get(self, shot_id):
         """
@@ -139,7 +140,8 @@ class ShotTasksResource(Resource):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
-        return tasks_service.get_tasks_for_shot(shot_id)
+        relations = self.get_relations()
+        return tasks_service.get_tasks_for_shot(shot_id, relations=relations)
 
 
 class ShotPreviewsResource(Resource):
@@ -152,10 +154,10 @@ class ShotPreviewsResource(Resource):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
-        return playlists_service.get_preview_files_for_shot(shot_id)
+        return playlists_service.get_preview_files_for_entity(shot_id)
 
 
-class SequenceTasksResource(Resource):
+class SequenceTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, sequence_id):
         """
@@ -163,7 +165,11 @@ class SequenceTasksResource(Resource):
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
-        return tasks_service.get_tasks_for_sequence(sequence_id)
+        relations = self.get_relations()
+        return tasks_service.get_tasks_for_sequence(
+            sequence_id,
+            relations=relations
+        )
 
 
 class SequenceTaskTypesResource(Resource):

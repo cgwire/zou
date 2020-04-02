@@ -7,6 +7,7 @@ from zipfile import ZipFile
 
 from flask import current_app
 from flask_mail import Message
+from sqlalchemy import or_
 
 from zou.app import config
 from zou.app.stores import file_store
@@ -64,7 +65,18 @@ def all_playlists_for_episode(project_id, episode_id, for_client=False):
     if episode_id == "main":
         query = query \
             .filter(Playlist.episode_id == None) \
-            .filter(Playlist.project_id == project_id)
+            .filter(Playlist.project_id == project_id) \
+            .filter(
+                or_(
+                    Playlist.is_for_all == None,
+                    Playlist.is_for_all == False
+                )
+            )
+    elif episode_id == "all":
+        query = query \
+            .filter(Playlist.episode_id == None) \
+            .filter(Playlist.project_id == project_id) \
+            .filter(Playlist.is_for_all == True)
     else:
         query = query.filter(Playlist.episode_id == episode_id)
 

@@ -201,47 +201,47 @@ def get_task_by_shotgun_id(shotgun_id):
     return task.serialize()
 
 
-def get_tasks_for_shot(shot_id):
+def get_tasks_for_shot(shot_id, relations=False):
     """
     Get all tasks for given shot.
     """
     shot = shots_service.get_shot(shot_id)
-    return get_task_dicts_for_entity(shot["id"])
+    return get_task_dicts_for_entity(shot["id"], relations=relations)
 
 
-def get_tasks_for_scene(scene_id):
+def get_tasks_for_scene(scene_id, relations=False):
     """
     Get all tasks for given scene.
     """
     scene = shots_service.get_scene(scene_id)
-    return get_task_dicts_for_entity(scene["id"])
+    return get_task_dicts_for_entity(scene["id"], relations=relations)
 
 
-def get_tasks_for_sequence(sequence_id):
+def get_tasks_for_sequence(sequence_id, relations=False):
     """
     Get all tasks for given sequence.
     """
     sequence = shots_service.get_sequence(sequence_id)
-    return get_task_dicts_for_entity(sequence["id"])
+    return get_task_dicts_for_entity(sequence["id"], relations=relations)
 
 
-def get_tasks_for_asset(asset_id):
+def get_tasks_for_asset(asset_id, relations=False):
     """
     Get all tasks for given asset.
     """
     asset = assets_service.get_asset_raw(asset_id)
-    return get_task_dicts_for_entity(asset.id)
+    return get_task_dicts_for_entity(asset.id, relations=relations)
 
 
-def get_tasks_for_episode(episode_id):
+def get_tasks_for_episode(episode_id, relations=False):
     """
     Get all tasks for given episode.
     """
     episode = shots_service.get_episode_raw(episode_id)
-    return get_task_dicts_for_entity(episode.id)
+    return get_task_dicts_for_entity(episode.id, relations=relations)
 
 
-def get_task_dicts_for_entity(entity_id):
+def get_task_dicts_for_entity(entity_id, relations=False):
     """
     Return all tasks related to given entity. Add extra information like
     project name, task type name, etc.
@@ -274,7 +274,7 @@ def get_task_dicts_for_entity(entity_id):
             entity_name,
         ) = entry
 
-        task = task_object.serialize()
+        task = task_object.serialize(relations=relations)
         task["project_name"] = project_name
         task["task_type_name"] = task_type_name
         task["task_status_name"] = task_status_name
