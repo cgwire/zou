@@ -33,7 +33,7 @@ class EpisodePlaylistsResource(Resource):
     @jwt_required
     def get(self, project_id, episode_id):
         user_service.check_project_access(project_id)
-        if episode_id != "main":
+        if episode_id not in ["main", "all"]:
             shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
             project_id, episode_id, permissions.has_client_permissions()
@@ -54,7 +54,7 @@ class EntityPreviewsResource(Resource):
     def get(self, entity_id):
         """
         Retrieve all previews related to a given entity. It sends them
-        as a dict. Keys are related task type ids and values are arrays
+        ]as a dict. Keys are related task type ids and values are arrays
         of preview for this task type.
         """
         entity = entities_service.get_entity(entity_id)
