@@ -68,7 +68,7 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
             pix_fmt="yuv420p",
             format="mp4",
             r=fps,
-            b="28M",
+            crf="15",
             preset="medium",
             vcodec="libx264",
             s="%sx%s" % (width, height),
