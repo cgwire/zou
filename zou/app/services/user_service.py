@@ -27,8 +27,8 @@ from zou.app.services.exception import (
 from zou.app.utils import cache, fields, permissions
 
 
-def clear_filter_cache():
-    cache.cache.delete_memoized(get_filters)
+def clear_filter_cache(user_id):
+    cache.cache.delete_memoized(get_user_filters, user_id)
 
 
 def build_assignee_filter():
@@ -356,31 +356,42 @@ def check_playlist_access(playlist):
     return True
 
 
-@cache.memoize_function(120)
 def get_filters():
     """
     Retrieve search filters used by current user. It groups them by
     list type and project_id. If the filter is not related to a project,
     the project_id is all.
     """
-    result = {}
     current_user = persons_service.get_current_user_raw()
+    return get_user_filters(str(current_user.id))
+
+
+@cache.memoize_function(120)
+def get_user_filters(current_user_id):
+    """
+    Retrieve search filters used for given user. It groups them by
+    list type and project_id. If the filter is not related to a project,
+    the project_id is all.
+    """
+
+    result = {}
 
     filters = (
         SearchFilter.query.join(Project, ProjectStatus)
-        .filter(SearchFilter.person_id == current_user.id)
+        .filter(SearchFilter.person_id == current_user_id)
         .filter(build_open_project_filter())
         .all()
     )
 
     filters = (
         filters
-        + SearchFilter.query.filter(SearchFilter.person_id == current_user.id)
+        + SearchFilter.query.filter(SearchFilter.person_id == current_user_id)
         .filter(SearchFilter.project_id == None)
         .all()
     )
 
     for search_filter in filters:
+
         if search_filter.list_type not in result:
             result[search_filter.list_type] = {}
         subresult = result[search_filter.list_type]
@@ -412,7 +423,7 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
         entity_type=entity_type,
     )
     search_filter.serialize()
-    clear_filter_cache()
+    clear_filter_cache(str(current_user.id))
     return search_filter.serialize()
 
 
@@ -427,7 +438,7 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    clear_filter_cache()
+    clear_filter_cache(str(current_user.id))
     return search_filter.serialize()
 
 
