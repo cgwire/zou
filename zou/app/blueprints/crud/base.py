@@ -257,7 +257,7 @@ class BaseModelResource(Resource):
 
         return result, 200
 
-    def pre_update(self, instance_dict):
+    def pre_update(self, instance_dict, data):
         pass
 
     def post_update(self, instance_dict):
