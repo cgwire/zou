@@ -23,8 +23,15 @@ class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
 
+    def pre_update(self, instance_dict, data):
+        self.task_status_change = False
+        if instance_dict["task_status_id"] != data.get("task_status_id", None):
+            self.task_status_change = True
+
     def post_update(self, instance_dict):
         comment = tasks_service.reset_mentions(instance_dict)
+        if self.task_status_change:
+            tasks_service.reset_task_data(comment["object_id"])
         tasks_service.clear_comment_cache(comment["id"])
         notifications_service.reset_notifications_for_mentions(comment)
         return comment

@@ -461,6 +461,8 @@ def create_asset(
     """
     project = projects_service.get_project_raw(project_id)
     asset_type = get_asset_type_raw(asset_type_id)
+    if source_id is not None and len(source_id) < 36:
+        source_id = None
     asset = Entity.create(
         project_id=project_id,
         entity_type_id=asset_type_id,

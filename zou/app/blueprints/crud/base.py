@@ -257,6 +257,9 @@ class BaseModelResource(Resource):
 
         return result, 200
 
+    def pre_update(self, instance_dict, data):
+        pass
+
     def post_update(self, instance_dict):
         pass
 
@@ -276,7 +279,9 @@ class BaseModelResource(Resource):
         try:
             data = self.get_arguments()
             instance = self.get_model_or_404(instance_id)
-            self.check_update_permissions(instance.serialize(), data)
+            instance_dict = instance.serialize()
+            self.check_update_permissions(instance_dict, data)
+            self.pre_update(instance_dict, data)
             data = self.update_data(data, instance_id)
             instance.update(data)
             instance_dict = instance.serialize()
