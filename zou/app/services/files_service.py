@@ -1,3 +1,6 @@
+import itertools
+from operator import itemgetter
+
 from zou.app.models.file_status import FileStatus
 from zou.app import app
 
@@ -125,16 +128,37 @@ def get_last_working_files_for_task(task_id):
     """
     Get last revisions for given task grouped by file name.
     """
-    result = {}
-    max_revisions = {}
-    working_files = get_working_files_for_task(task_id)
-    for working_file in working_files:
-        name = working_file["name"]
-        revision = working_file["revision"]
-        if name not in result:
-            max_revisions[name] = revision
-            result[name] = working_file
-    return result
+    query = WorkingFile.query.with_entities(
+        WorkingFile.name,
+        WorkingFile.task_id,
+        func.max(WorkingFile.revision).label("MAX"),
+    ).group_by(
+        WorkingFile.name,
+        WorkingFile.task_id,
+    )
+
+    query = query.filter(WorkingFile.task_id == task_id)
+    statement = query.subquery()
+
+    query = WorkingFile.query.join(
+        statement,
+        and_(
+            WorkingFile.task_id == statement.c.task_id,
+            WorkingFile.name == statement.c.name,
+            WorkingFile.revision == statement.c.MAX,
+        ),
+    )
+
+    # query
+    working_files = fields.serialize_models(query.all())
+
+    # group by name
+    working_files_by_name = {
+        k: list(v)[0]
+        for k, v
+        in itertools.groupby(working_files, key=itemgetter('name'))}
+
+    return working_files_by_name
 
 
 def get_next_working_revision(task_id, name):
