@@ -195,6 +195,19 @@ class TaskCommentResource(Resource):
         return "", 204
 
 
+class AckCommentResource(Resource):
+    """
+    Acknowledge given comment. If it's already acknowledged, remove
+    acknowledgement.
+    """
+
+    @jwt_required
+    def post(self, task_id, comment_id):
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        return tasks_service.acknowledge_comment(comment_id)
+
+
 class PersonTasksResource(Resource):
     """
     Return task assigned to given user of which status has is_done flag sets

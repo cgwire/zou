@@ -40,6 +40,23 @@ mentions_table = db.Table(
 )
 
 
+acknowledgements_table = db.Table(
+    "comment_acknoledgments",
+    db.Column(
+        "comment",
+        UUIDType(binary=False),
+        db.ForeignKey("comment.id"),
+        primary_key=True,
+    ),
+    db.Column(
+        "person",
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        primary_key=True,
+    ),
+)
+
+
 class Comment(db.Model, BaseMixin, SerializerMixin):
     """
     Comment can occurs on any object but they are mainly used on tasks.
@@ -71,6 +88,9 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         "PreviewFile", secondary=preview_link_table, backref="comments"
     )
     mentions = db.relationship("Person", secondary=mentions_table)
+    acknowledgements = db.relationship(
+        "Person", secondary=acknowledgements_table
+    )
 
     def __repr__(self):
         return "<Comment of %s>" % self.object_id
