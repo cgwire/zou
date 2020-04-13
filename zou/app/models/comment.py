@@ -91,6 +91,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     acknowledgements = db.relationship(
         "Person", secondary=acknowledgements_table
     )
+    attachment_files = db.relationship("AttachmentFile", backref="comment")
 
     def __repr__(self):
         return "<Comment of %s>" % self.object_id

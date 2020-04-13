@@ -1,6 +1,6 @@
 import datetime
 
-from flask import abort, request
+from flask import abort, request, current_app
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
@@ -56,6 +56,7 @@ class CommentTaskResource(Resource):
             person_id=person["id"],
             text=comment,
         )
+        self.handle_attachment(comment)
 
         status_changed = task_status_id != task["task_status_id"]
         new_data = {
@@ -93,6 +94,12 @@ class CommentTaskResource(Resource):
         comment["task_status"] = task_status
         comment["person"] = person
         return comment, 201
+
+    def handle_attachment(self, comment):
+        if "file" in request.files:
+            uploaded_file = request.files["file"]
+            tasks_service.create_attachment(comment, uploaded_file)
+        return request
 
     def get_arguments(self):
         parser = reqparse.RequestParser()

@@ -2,12 +2,15 @@ import datetime
 import re
 import uuid
 
+from flask import current_app, request
+
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.orm import aliased
 
 from zou.app import app
 from zou.app.utils import events
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
@@ -21,7 +24,8 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.utils import cache, fields, query as query_utils
+from zou.app.utils import cache, fields, fs, query as query_utils
+from zou.app.stores import file_store
 
 from zou.app.services.exception import (
     CommentNotFoundException,
@@ -455,6 +459,15 @@ def get_comments(task_id, is_client=False, is_manager=False):
                         "annotations": preview.annotations,
                     }
                 )
+        comment_dict["attachment_files"] = []
+        for attachment_file in comment.attachment_files:
+            comment_dict["attachment_files"].append({
+                "id": str(attachment_file.id),
+                "name": attachment_file.name,
+                "extension": attachment_file.extension,
+                "size": attachment_file.size
+            })
+
         comments.append(comment_dict)
     return comments
 
@@ -1191,3 +1204,26 @@ def reset_task_data(task_id):
     )
     events.emit("task:update", {"task_id": task.id})
     return task.serialize()
+
+
+def create_attachment(comment, uploaded_file):
+    tmp_folder = current_app.config["TMP_DIR"]
+    uploaded_file = request.files["file"]
+    filename = uploaded_file.filename
+    mimetype = uploaded_file.mimetype
+    extension = fs.get_file_extension(filename)
+
+    attachment_file = AttachmentFile.create(
+        name=filename,
+        size=0,
+        extension=extension,
+        mimetype=mimetype,
+        comment_id=comment["id"]
+    )
+    attachment_file_id = str(attachment_file.id)
+
+    tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
+    size = fs.get_file_size(tmp_file_path)
+    attachment_file.update({"size": size})
+    file_store.add_file("attachments", attachment_file_id, tmp_file_path)
+    return attachment_file.serialize()
