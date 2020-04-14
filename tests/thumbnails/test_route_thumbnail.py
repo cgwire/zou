@@ -49,16 +49,14 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         path = "/pictures/thumbnails/persons/%s" % self.person_id
 
         file_path_fixture = self.get_fixture_file_path(
-                os.path.join("thumbnails", "th01.png"))
+            os.path.join("thumbnails", "th01.png")
+        )
         self.upload_file(path, file_path_fixture)
 
         path = "/pictures/thumbnails/persons/%s.png" % self.person_id
-        current_path = os.path.dirname(__file__)
-        result_file_path = os.path.join(TEST_FOLDER, "th01.png")
-        result_file_path = os.path.join(
-            current_path, "..", "..", result_file_path)
+        result_file_path = self.get_file_path("th01.png")
 
-        os.mkdir(TEST_FOLDER)
+        self.create_test_folder()
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
 
