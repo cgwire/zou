@@ -3,6 +3,7 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from .asset_instance import AssetInstanceResource, AssetInstancesResource
+from .attachment_file import AttachmentFilesResource, AttachmentFileResource
 from .comments import CommentsResource, CommentResource
 from .custom_action import CustomActionsResource, CustomActionResource
 from .department import DepartmentsResource, DepartmentResource
@@ -69,6 +70,8 @@ routes = [
     ("/data/preview-files/<instance_id>", PreviewFileResource),
     ("/data/working-files", WorkingFilesResource),
     ("/data/working-files/<instance_id>", WorkingFileResource),
+    ("/data/attachment-files", AttachmentFilesResource),
+    ("/data/attachment-files/<instance_id>", AttachmentFileResource),
     ("/data/comments", CommentsResource),
     ("/data/comments/<instance_id>", CommentResource),
     ("/data/time-spents/", TimeSpentsResource),

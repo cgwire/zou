@@ -15,6 +15,7 @@ from .resources import (
     CommentTaskResource,
     TaskCommentsResource,
     TaskCommentResource,
+    AckCommentResource,
     TaskPreviewsResource,
     AddPreviewResource,
     AddExtraPreviewResource,
@@ -34,6 +35,7 @@ from .resources import (
 routes = [
     ("/data/tasks/<task_id>/comments", TaskCommentsResource),
     ("/data/tasks/<task_id>/comments/<comment_id>", TaskCommentResource),
+    ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
     ("/data/tasks/<task_id>/previews", TaskPreviewsResource),
     ("/data/tasks/<task_id>/full", TaskFullResource),
     ("/data/persons/<person_id>/tasks", PersonTasksResource),

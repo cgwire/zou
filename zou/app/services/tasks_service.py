@@ -2,12 +2,15 @@ import datetime
 import re
 import uuid
 
+from flask import current_app, request
+
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.orm import aliased
 
 from zou.app import app
 from zou.app.utils import events
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
@@ -21,7 +24,8 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.utils import cache, fields, query as query_utils
+from zou.app.utils import cache, fields, fs, query as query_utils
+from zou.app.stores import file_store
 
 from zou.app.services.exception import (
     CommentNotFoundException,
@@ -428,6 +432,9 @@ def get_comments(task_id, is_client=False, is_manager=False):
             "color": task_status_color,
             "id": str(comment.task_status_id),
         }
+        comment_dict["acknowledgements"] = []
+        for person in comment.acknowledgements:
+            comment_dict["acknowledgements"].append(str(person.id))
 
         if comment.preview_file_id is not None:
             # Legacy stuff, should not be used anymore.
@@ -452,6 +459,15 @@ def get_comments(task_id, is_client=False, is_manager=False):
                         "annotations": preview.annotations,
                     }
                 )
+        comment_dict["attachment_files"] = []
+        for attachment_file in comment.attachment_files:
+            comment_dict["attachment_files"].append({
+                "id": str(attachment_file.id),
+                "name": attachment_file.name,
+                "extension": attachment_file.extension,
+                "size": attachment_file.size
+            })
+
         comments.append(comment_dict)
     return comments
 
@@ -494,7 +510,7 @@ def get_comment_by_preview_file_id(preview_file_id):
 
 
 def create_comment(
-    object_id, task_status_id, person_id, text, object_type="Task"
+    object_id, task_status_id, person_id, text, object_type="Task", files={}
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -508,8 +524,14 @@ def create_comment(
         mentions=get_comment_mentions(object_id, text),
         text=text,
     )
-    events.emit("comment:new", {"comment_id": comment.id})
-    return comment.serialize(relations=True)
+    comment = comment.serialize(relations=True)
+    if "file" in request.files:
+        uploaded_file = request.files["file"]
+        attachment_file = create_attachment(comment, uploaded_file)
+        comment["attachment_files"] = [attachment_file]
+
+    events.emit("comment:new", {"comment_id": comment["id"]})
+    return comment
 
 
 def get_comment_mentions(object_id, text):
@@ -532,6 +554,33 @@ def delete_comment(comment_id):
     clear_comment_cache(comment_id)
     events.emit("comment:delete", {"comment_id": comment_id})
     return comment.serialize()
+
+
+def acknowledge_comment(comment_id):
+    """
+    Add current user to the list of people who acknowledged given comment.
+    If he's already present, remove it.
+    """
+    comment = get_comment_raw(comment_id)
+    current_user = persons_service.get_current_user_raw()
+    current_user_id = str(current_user.id)
+
+    is_already_ack = False
+    for ack in comment.acknowledgements:
+        if str(ack.id) == current_user_id:
+            is_already_ack = True
+
+    if is_already_ack:
+        comment.acknowledgements = [
+            person
+            for person in comment.acknowledgements
+            if str(ack.id) != current_user_id
+        ]
+    else:
+        comment.acknowledgements.append(current_user)
+
+    comment.save()
+    return comment.serialize(relations=True)
 
 
 def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
@@ -1161,3 +1210,26 @@ def reset_task_data(task_id):
     )
     events.emit("task:update", {"task_id": task.id})
     return task.serialize()
+
+
+def create_attachment(comment, uploaded_file):
+    tmp_folder = current_app.config["TMP_DIR"]
+    uploaded_file = request.files["file"]
+    filename = uploaded_file.filename
+    mimetype = uploaded_file.mimetype
+    extension = fs.get_file_extension(filename)
+
+    attachment_file = AttachmentFile.create(
+        name=filename,
+        size=0,
+        extension=extension,
+        mimetype=mimetype,
+        comment_id=comment["id"]
+    )
+    attachment_file_id = str(attachment_file.id)
+
+    tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
+    size = fs.get_file_size(tmp_file_path)
+    attachment_file.update({"size": size})
+    file_store.add_file("attachments", attachment_file_id, tmp_file_path)
+    return attachment_file.present()

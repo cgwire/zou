@@ -24,7 +24,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import query, permissions
+from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
 
@@ -55,6 +55,7 @@ class CommentTaskResource(Resource):
             task_status_id=task_status_id,
             person_id=person["id"],
             text=comment,
+            files=request.files
         )
 
         status_changed = task_status_id != task["task_status_id"]
@@ -75,8 +76,8 @@ class CommentTaskResource(Resource):
                 new_data["end_date"] = None
 
             if (
-                task_status["short_name"] == "wip"
-                and task["real_start_date"] is None
+                task_status["short_name"] == "wip" and
+                task["real_start_date"] is None
             ):
                 new_data["real_start_date"] = datetime.datetime.now()
 
@@ -193,6 +194,19 @@ class TaskCommentResource(Resource):
         tasks_service.reset_task_data(comment["object_id"])
         tasks_service.clear_comment_cache(comment_id)
         return "", 204
+
+
+class AckCommentResource(Resource):
+    """
+    Acknowledge given comment. If it's already acknowledged, remove
+    acknowledgement.
+    """
+
+    @jwt_required
+    def post(self, task_id, comment_id):
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        return tasks_service.acknowledge_comment(comment_id)
 
 
 class PersonTasksResource(Resource):

@@ -1,6 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.comment import Comment
+from zou.app.models.attachment_file import AttachmentFile
 
 from zou.app.services import (
     deletion_service,
@@ -22,6 +23,15 @@ class CommentsResource(BaseModelsResource):
 class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
+
+    def clean_get_result(self, result):
+        attachment_files = []
+        if len(result["attachment_files"]) > 0:
+            for attachment_file_id in result["attachment_files"]:
+                attachment_file = AttachmentFile.get(attachment_file_id)
+                attachment_files.append(attachment_file.present())
+            result["attachment_files"] = attachment_files
+        return result
 
     def pre_update(self, instance_dict, data):
         self.task_status_change = False

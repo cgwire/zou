@@ -29,6 +29,10 @@ class AssetTypeNotFoundException(NotFound):
     pass
 
 
+class AttachmentFileNotFoundException(NotFound):
+    pass
+
+
 class TaskNotFoundException(NotFound):
     pass
 
