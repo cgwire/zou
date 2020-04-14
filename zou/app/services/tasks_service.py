@@ -525,8 +525,8 @@ def create_comment(
         text=text,
     )
     comment = comment.serialize(relations=True)
-    if "file" in request.files:
-        uploaded_file = request.files["file"]
+    if "file" in files:
+        uploaded_file = files["file"]
         attachment_file = create_attachment(comment, uploaded_file)
         comment["attachment_files"] = [attachment_file]
 
