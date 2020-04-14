@@ -1,6 +1,6 @@
 import datetime
 
-from flask import abort, request, current_app
+from flask import abort, request
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
@@ -24,7 +24,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import query, permissions
+from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
 
@@ -55,8 +55,8 @@ class CommentTaskResource(Resource):
             task_status_id=task_status_id,
             person_id=person["id"],
             text=comment,
+            files=request.files
         )
-        self.handle_attachment(comment)
 
         status_changed = task_status_id != task["task_status_id"]
         new_data = {
@@ -76,8 +76,8 @@ class CommentTaskResource(Resource):
                 new_data["end_date"] = None
 
             if (
-                task_status["short_name"] == "wip"
-                and task["real_start_date"] is None
+                task_status["short_name"] == "wip" and
+                task["real_start_date"] is None
             ):
                 new_data["real_start_date"] = datetime.datetime.now()
 
@@ -94,12 +94,6 @@ class CommentTaskResource(Resource):
         comment["task_status"] = task_status
         comment["person"] = person
         return comment, 201
-
-    def handle_attachment(self, comment):
-        if "file" in request.files:
-            uploaded_file = request.files["file"]
-            tasks_service.create_attachment(comment, uploaded_file)
-        return request
 
     def get_arguments(self):
         parser = reqparse.RequestParser()

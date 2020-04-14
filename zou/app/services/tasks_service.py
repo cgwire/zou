@@ -510,7 +510,7 @@ def get_comment_by_preview_file_id(preview_file_id):
 
 
 def create_comment(
-    object_id, task_status_id, person_id, text, object_type="Task"
+    object_id, task_status_id, person_id, text, object_type="Task", files={}
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -524,8 +524,14 @@ def create_comment(
         mentions=get_comment_mentions(object_id, text),
         text=text,
     )
-    events.emit("comment:new", {"comment_id": comment.id})
-    return comment.serialize(relations=True)
+    comment = comment.serialize(relations=True)
+    if "file" in request.files:
+        uploaded_file = request.files["file"]
+        attachment_file = create_attachment(comment, uploaded_file)
+        comment["attachment_files"] = [attachment_file]
+
+    events.emit("comment:new", {"comment_id": comment["id"]})
+    return comment
 
 
 def get_comment_mentions(object_id, text):
@@ -1226,4 +1232,4 @@ def create_attachment(comment, uploaded_file):
     size = fs.get_file_size(tmp_file_path)
     attachment_file.update({"size": size})
     file_store.add_file("attachments", attachment_file_id, tmp_file_path)
-    return attachment_file.serialize()
+    return attachment_file.present()
