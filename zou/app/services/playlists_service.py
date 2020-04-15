@@ -168,7 +168,7 @@ def set_preview_files_for_entities(playlist_dict):
     preview_file_map = {}
 
     preview_files = (
-        PreviewFile.query.filter_by(extension="mp4")
+        PreviewFile.query
         .join(Task)
         .join(TaskType)
         .filter(Task.entity_id.in_(entity_ids))
@@ -224,7 +224,6 @@ def get_preview_files_for_entity(entity_id):
     for task in tasks:
         preview_files = (
             PreviewFile.query.filter_by(task_id=task["id"])
-            .filter_by(extension="mp4")
             .join(Task)
             .join(TaskType)
             .order_by(TaskType.priority.desc())
@@ -268,7 +267,7 @@ def get_playlist(playlist_id):
     return get_playlist_raw(playlist_id).serialize()
 
 
-def retrieve_playlist_tmp_files(playlist):
+def retrieve_playlist_tmp_files(playlist, only_movies=False):
     """
     Retrieve all files for a given playlist into the temporary folder.
     """
@@ -282,7 +281,10 @@ def retrieve_playlist_tmp_files(playlist):
             preview_file = files_service.get_preview_file(
                 entity["preview_file_id"]
             )
-            if preview_file is not None and preview_file["extension"] == "mp4":
+            if preview_file is not None and (
+                (only_movies and preview_file["extension"] == "mp4") or
+                not only_movies
+            ):
                 preview_file_ids.append(preview_file["id"])
 
     file_paths = []
@@ -330,7 +332,7 @@ def build_playlist_movie_file(playlist, app=None):
     """
     job = start_build_job(playlist)
     project = projects_service.get_project(playlist["project_id"])
-    tmp_file_paths = retrieve_playlist_tmp_files(playlist)
+    tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
     movie_file_path = get_playlist_movie_file_path(playlist, job)
     (width, height) = shots_service.get_preview_dimensions(project)
     fps = shots_service.get_preview_fps(project)
@@ -596,7 +598,6 @@ def get_preview_files_for_task(task_id):
     """
     preview_files = (
         PreviewFile.query.filter_by(task_id=task_id)
-        .filter_by(extension="mp4")
         .order_by(PreviewFile.revision.desc())
         .all()
     )
