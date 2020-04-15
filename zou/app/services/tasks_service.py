@@ -556,33 +556,6 @@ def delete_comment(comment_id):
     return comment.serialize()
 
 
-def acknowledge_comment(comment_id):
-    """
-    Add current user to the list of people who acknowledged given comment.
-    If he's already present, remove it.
-    """
-    comment = get_comment_raw(comment_id)
-    current_user = persons_service.get_current_user_raw()
-    current_user_id = str(current_user.id)
-
-    is_already_ack = False
-    for ack in comment.acknowledgements:
-        if str(ack.id) == current_user_id:
-            is_already_ack = True
-
-    if is_already_ack:
-        comment.acknowledgements = [
-            person
-            for person in comment.acknowledgements
-            if str(ack.id) != current_user_id
-        ]
-    else:
-        comment.acknowledgements.append(current_user)
-
-    comment.save()
-    return comment.serialize(relations=True)
-
-
 def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
     """
     For a task type, returns all tasks related to given entity.
