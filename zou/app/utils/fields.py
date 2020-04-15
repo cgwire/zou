@@ -74,10 +74,7 @@ def serialize_orm_arrays(array_value):
     """
     Serialize a orm array into simple data structures (useful for json dumping).
     """
-    result = []
-    for val in array_value:
-        result.append(serialize_value(val.id))
-    return result
+    return [serialize_value(val.id) for val in array_value]
 
 
 def serialize_models(models, relations=False):
