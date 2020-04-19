@@ -5,6 +5,7 @@ from sqlalchemy_utils import UUIDType, ChoiceType
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.utils import fields
 
 STATUSES = [
     ("running", "Running"),
@@ -36,3 +37,10 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
         self.update(
             {"status": "succeeded", "ended_at": datetime.datetime.now()}
         )
+
+    def present(self):
+        return fields.serialize_dict({
+            "id": self.id,
+            "status": self.status,
+            "created_at": self.created_at,
+        })
