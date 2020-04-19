@@ -83,9 +83,16 @@ class PlaylistDownloadResource(Resource):
             )
             context_name = slugify.slugify(project["name"], separator="_")
             if project["production_type"] == "tvshow":
-                episode = shots_service.get_episode(playlist["episode_id"])
+                episode_id = playlist["episode_id"]
+                if episode_id is not None:
+                    episode = shots_service.get_episode(playlist["episode_id"])
+                    episode_name = episode["name"]
+                elif playlist["is_for_all"]:
+                    episode_name = "all assets"
+                else:
+                    episode_name = "main pack"
                 context_name += "_%s" % slugify.slugify(
-                    episode["name"], separator="_"
+                    episode_name, separator="_"
                 )
             attachment_filename = "%s_%s_%s.mp4" % (
                 slugify.slugify(build_job["created_at"], separator="").replace(
@@ -132,9 +139,16 @@ class PlaylistZipDownloadResource(Resource):
 
         context_name = slugify.slugify(project["name"], separator="_")
         if project["production_type"] == "tvshow":
-            episode = shots_service.get_episode(playlist["episode_id"])
+            episode_id = playlist["episode_id"]
+            if episode_id is not None:
+                episode = shots_service.get_episode(playlist["episode_id"])
+                episode_name = episode["name"]
+            elif playlist["is_for_all"]:
+                episode_name = "all assets"
+            else:
+                episode_name = "main pack"
             context_name += "_%s" % slugify.slugify(
-                episode["name"], separator="_"
+                episode_name, separator="_"
             )
         attachment_filename = "%s_%s.zip" % (
             context_name,
