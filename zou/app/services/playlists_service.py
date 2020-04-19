@@ -88,11 +88,7 @@ def all_playlists_for_episode(project_id, episode_id, for_client=False):
 
 
 def build_playlist_dict(playlist):
-    first_shot_preview_file_id = None
-    if playlist.shots is not None \
-       and len(playlist.shots) > 0 \
-       and "preview_file_id" in playlist.shots[0]:
-        first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
+    first_shot_preview_file_id = get_first_shot_preview_file_id(playlist)
     updated_at = fields.serialize_value(playlist.updated_at)
     playlist.shots = []
     playlist_dict = fields.serialize_value(playlist)
@@ -105,33 +101,29 @@ def build_playlist_dict(playlist):
     return playlist_dict
 
 
-def get_playlist_with_preview_file_revisions(playlist_id=False):
+def get_first_shot_preview_file_id(playlist):
+    first_shot_preview_file_id = None
+    if playlist.shots is not None \
+       and len(playlist.shots) > 0 \
+       and "preview_file_id" in playlist.shots[0]:
+        first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
+    return first_shot_preview_file_id
+
+
+def get_playlist_with_preview_file_revisions(playlist_id):
     """
     Return given playlist. Shot list is augmented with all previews available
     for a given shot.
     """
-    playlist = Playlist.get(playlist_id)
-
-    if playlist is None:
-        raise PlaylistNotFoundException()
-
+    playlist = get_playlist_raw(playlist_id)
     playlist_dict = playlist.serialize()
-
-    playlist_dict["build_jobs"] = []
-    for build_job in reversed(playlist.build_jobs):
-        playlist_dict["build_jobs"].append(
-            fields.serialize_dict(
-                {
-                    "id": build_job.id,
-                    "status": build_job.status,
-                    "created_at": build_job.created_at,
-                }
-            )
-        )
+    playlist_dict = _add_build_job_infos_to_playlist_dict(
+        playlist,
+        playlist_dict
+    )
 
     if playlist_dict["shots"] is None:
         playlist_dict["shots"] = []
-
     (playlist_dict, preview_file_map) = set_preview_files_for_entities(
         playlist_dict
     )
@@ -140,15 +132,22 @@ def get_playlist_with_preview_file_revisions(playlist_id=False):
         try:
             preview_file = preview_file_map.get(shot["preview_file_id"], None)
             if preview_file is not None:
-                shot["preview_file_id"] = str(preview_file.id)
-                shot["extension"] = preview_file.extension
-                shot["annotations"] = preview_file.annotations
-                shot["task_id"] = fields.serialize_value(preview_file.task_id)
+                shot["preview_file_id"] = preview_file["id"]
+                shot["preview_file_extension"] = preview_file["extension"]
+                shot["preview_file_annotations"] = preview_file["annotations"]
+                shot["preview_file_task_id"] = preview_file["task_id"]
+                shot["preview_file_previews"] = preview_file["previews"]
             else:
                 del shot["preview_file_id"]
         except Exception as e:
             print(e)
+    return playlist_dict
 
+
+def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
+    playlist_dict["build_jobs"] = []
+    for build_job in reversed(playlist.build_jobs):
+        playlist_dict["build_jobs"].append(build_job.present())
     return playlist_dict
 
 
@@ -168,18 +167,20 @@ def set_preview_files_for_entities(playlist_dict):
     preview_file_map = {}
 
     preview_files = (
-        PreviewFile.query.filter_by(extension="mp4")
+        PreviewFile.query
         .join(Task)
         .join(TaskType)
         .filter(Task.entity_id.in_(entity_ids))
         .order_by(TaskType.priority.desc())
         .order_by(TaskType.name)
         .order_by(PreviewFile.revision.desc())
+        .order_by(PreviewFile.created_at)
         .add_column(Task.task_type_id)
         .add_column(Task.entity_id)
         .all()
     )
 
+    is_pictures = False
     for (preview_file, task_type_id, entity_id) in preview_files:
         entity_id = str(entity_id)
         task_type_id = str(task_type_id)
@@ -189,21 +190,29 @@ def set_preview_files_for_entities(playlist_dict):
         if task_type_id not in previews[entity_id]:
             previews[entity_id][task_type_id] = []
 
+        if preview_file.extension == "png":
+            is_pictures = True
+
         task_id = str(preview_file.task_id)
         preview_file_id = str(preview_file.id)
 
-        previews[entity_id][task_type_id].append(
-            {
-                "id": preview_file_id,
-                "revision": preview_file.revision,
-                "extension": preview_file.extension,
-                "annotations": preview_file.annotations,
-                "created_at": fields.serialize_value(preview_file.created_at),
-                "task_id": task_id,
-            }
-        )  # Do not add too much field to avoid building too big responses
+        light_preview_file = {
+            "id": preview_file_id,
+            "revision": preview_file.revision,
+            "extension": preview_file.extension,
+            "annotations": preview_file.annotations,
+            "created_at": fields.serialize_value(preview_file.created_at),
+            "task_id": task_id,
+        } # Do not add too much field to avoid building too big responses
+        previews[entity_id][task_type_id].append(light_preview_file)
+        preview_file_map[preview_file_id] = light_preview_file
 
-        preview_file_map[preview_file_id] = preview_file
+    if is_pictures:
+        for entity_id in previews.keys():
+            for task_type_id in previews[entity_id].keys():
+                previews[entity_id][task_type_id] = mix_preview_file_revisions(
+                    previews[entity_id][task_type_id]
+                )
 
     for entity in playlist_dict["shots"]:
         if str(entity["id"]) in previews:
@@ -224,32 +233,52 @@ def get_preview_files_for_entity(entity_id):
     for task in tasks:
         preview_files = (
             PreviewFile.query.filter_by(task_id=task["id"])
-            .filter_by(extension="mp4")
             .join(Task)
             .join(TaskType)
             .order_by(TaskType.priority.desc())
             .order_by(TaskType.name)
             .order_by(PreviewFile.revision.desc())
+            .order_by(PreviewFile.created_at)
             .all()
         )
         task_type_id = task["task_type_id"]
 
         if len(preview_files) > 0:
+            preview_files = fields.serialize_models(preview_files)
+            preview_files = mix_preview_file_revisions(preview_files)
             previews[task_type_id] = [
                 {
-                    "id": str(preview_file.id),
-                    "revision": preview_file.revision,
-                    "extension": preview_file.extension,
-                    "annotations": preview_file.annotations,
-                    "created_at": fields.serialize_value(
-                        preview_file.created_at
-                    ),
-                    "task_id": str(preview_file.task_id),
+                    "id": preview_file["id"],
+                    "revision": preview_file["revision"],
+                    "extension": preview_file["extension"],
+                    "annotations": preview_file["annotations"],
+                    "previews": preview_file["previews"],
+                    "created_at": preview_file["created_at"],
+                    "task_id": preview_file["task_id"]
                 }
                 for preview_file in preview_files
             ]  # Do not add too much field to avoid building too big responses
 
     return previews
+
+
+def mix_preview_file_revisions(preview_files):
+    """
+    The goal here is to group preview files with same revision in a single
+    preview file, which encapsulates other preview_files.
+    """
+    revision_map = {}
+    result = []
+    for preview_file in preview_files:
+        revision = preview_file["revision"]
+        if revision not in revision_map:
+            preview_file["previews"] = []
+            revision_map[revision] = preview_file
+            result.append(preview_file)
+        else:
+            parent_preview_file = revision_map[revision]
+            parent_preview_file["previews"].append(preview_file)
+    return result
 
 
 def get_playlist_raw(playlist_id):
@@ -268,11 +297,11 @@ def get_playlist(playlist_id):
     return get_playlist_raw(playlist_id).serialize()
 
 
-def retrieve_playlist_tmp_files(playlist):
+def retrieve_playlist_tmp_files(playlist, only_movies=False):
     """
     Retrieve all files for a given playlist into the temporary folder.
     """
-    preview_file_ids = []
+    preview_files = []
     for entity in playlist["shots"]:
         if (
             "preview_file_id" in entity
@@ -282,28 +311,42 @@ def retrieve_playlist_tmp_files(playlist):
             preview_file = files_service.get_preview_file(
                 entity["preview_file_id"]
             )
-            if preview_file is not None and preview_file["extension"] == "mp4":
-                preview_file_ids.append(preview_file["id"])
+            if preview_file is not None and (
+                (only_movies and preview_file["extension"] == "mp4") or
+                not only_movies
+            ):
+                preview_files.append(preview_file)
 
     file_paths = []
-    for preview_file_id in preview_file_ids:
+    for preview_file in preview_files:
+        if preview_file["extension"] == "mp4":
+            get_path_func = file_store.get_local_movie_path
+            open_func = file_store.open_movie
+        elif preview_file["extension"] == "png":
+            get_path_func = file_store.get_local_picture_path
+            open_func = file_store.open_picture
+        else:
+            get_path_func = file_store.get_local_file_path
+            open_func = file_store.open_file
+
         if config.FS_BACKEND == "local":
-            file_path = file_store.get_local_movie_path(
-                "previews", preview_file_id
+            file_path = get_path_func(
+                "previews", preview_file["id"]
             )
         else:
             file_path = os.path.join(
                 config.TMP_DIR,
-                "cache-previews-%s.%s" % (preview_file_id, "mp4"),
+                "cache-previews-%s.%s" % (
+                    preview_file["id"],
+                    preview_file["mp4"]
+                ),
             )
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
                 with open(file_path, "wb") as tmp_file:
-                    for chunk in file_store.open_movie(
-                        "previews", preview_file_id
-                    ):
+                    for chunk in open_func("previews", preview_file["id"]):
                         tmp_file.write(chunk)
 
-        file_name = names_service.get_preview_file_name(preview_file_id)
+        file_name = names_service.get_preview_file_name(preview_file["id"])
         tmp_file_path = os.path.join(config.TMP_DIR, file_name)
         copyfile(file_path, tmp_file_path)
         file_paths.append((tmp_file_path, file_name))
@@ -330,7 +373,7 @@ def build_playlist_movie_file(playlist, app=None):
     """
     job = start_build_job(playlist)
     project = projects_service.get_project(playlist["project_id"])
-    tmp_file_paths = retrieve_playlist_tmp_files(playlist)
+    tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
     movie_file_path = get_playlist_movie_file_path(playlist, job)
     (width, height) = shots_service.get_preview_dimensions(project)
     fps = shots_service.get_preview_fps(project)
@@ -556,7 +599,8 @@ def generate_playlisted_entity_from_task(task_id):
         playlisted_entity.update({
             "preview_file_id": preview_file["id"],
             "preview_file_extension": preview_file["extension"],
-            "preview_file_annotations": preview_file["annotations"]
+            "preview_file_annotations": preview_file["annotations"],
+            "preview_file_previews": preview_file["previews"]
         })
     playlisted_entity["preview_files"] = preview_files
     return playlisted_entity
@@ -596,7 +640,6 @@ def get_preview_files_for_task(task_id):
     """
     preview_files = (
         PreviewFile.query.filter_by(task_id=task_id)
-        .filter_by(extension="mp4")
         .order_by(PreviewFile.revision.desc())
         .all()
     )
