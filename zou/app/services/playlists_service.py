@@ -338,7 +338,7 @@ def retrieve_playlist_tmp_files(playlist, only_movies=False):
                 config.TMP_DIR,
                 "cache-previews-%s.%s" % (
                     preview_file["id"],
-                    preview_file["mp4"]
+                    preview_file["extension"]
                 ),
             )
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
