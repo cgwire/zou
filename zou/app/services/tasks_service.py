@@ -510,7 +510,8 @@ def get_comment_by_preview_file_id(preview_file_id):
 
 
 def create_comment(
-    object_id, task_status_id, person_id, text, object_type="Task", files={}
+    object_id, task_status_id, person_id, text,
+    object_type="Task", files={}, checklist=[]
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -522,6 +523,7 @@ def create_comment(
         task_status_id=task_status_id,
         person_id=person_id,
         mentions=get_comment_mentions(object_id, text),
+        checklist=checklist,
         text=text,
     )
     comment = comment.serialize(relations=True)
