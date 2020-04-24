@@ -1,5 +1,5 @@
 from zou.app import config
-from zou.app.utils import emails, chats
+from zou.app.utils import emails, telegram
 
 from zou.app.services import (
     entities_service,
@@ -36,10 +36,10 @@ def send_notification(person_id, subject, messages):
         token = organisation.get("chat_token_slack", "")
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
-                chats.send_to_slack, args=(token, userid, slack_message)
+                telegram.send_to_telegram, args=(token, userid, slack_message)
             )
         else:
-            chats.send_to_slack(token, userid, slack_message)
+            telegram.send_to_telegram(token, userid, slack_message)
 
     return True
 
@@ -69,13 +69,13 @@ def send_comment_notification(person_id, author_id, comment, task):
                 task_status["short_name"],
                 comment["text"],
             )
-            slack_message = """*%s* wrote a comment on <%s|%s> and set the status to *%s*.
+            slack_message = """*%s* wrote a comment on [%s](%s) and set the status to *%s*.
 
 _%s_
 """ % (
                 author["full_name"],
-                task_url,
                 task_name,
+                task_url,
                 task_status["short_name"],
                 comment["text"],
             )
@@ -88,11 +88,11 @@ _%s_
                 task_name,
                 task_status["short_name"],
             )
-            slack_message = """*%s* changed status of <%s|%s> to *%s*.
+            slack_message = """*%s* changed status of [%s](%s) to *%s*.
 """ % (
                 author["full_name"],
-                task_url,
                 task_name,
+                task_url,
                 task_status["short_name"],
             )
         messages = {
@@ -125,13 +125,13 @@ def send_mention_notification(person_id, author_id, comment, task):
             task_name,
             comment["text"],
         )
-        slack_message = """*%s* mentioned you in a comment on <%s|%s>.
+        slack_message = """*%s* mentioned you in a comment on [%s](%s).
 
 _%s_
 """ % (
             author["full_name"],
-            task_url,
             task_name,
+            task_url,
             comment["text"],
         )
 
@@ -159,11 +159,11 @@ def send_assignation_notification(person_id, author_id, task):
             task_url,
             task_name,
         )
-        slack_message = """*%s* assigned you to <%s|%s>.
+        slack_message = """*%s* assigned you to [%s](%s).
 """ % (
             author["full_name"],
-            task_url,
             task_name,
+            task_url,
         )
         messages = {
             "email_message": email_message,
