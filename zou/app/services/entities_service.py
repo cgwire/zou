@@ -9,6 +9,7 @@ from zou.app.models.task import Task
 
 from zou.app.services.exception import (
     PreviewFileNotFoundException,
+    EntityLinkNotFoundException,
     EntityNotFoundException,
     EntityTypeNotFoundException,
 )
@@ -187,3 +188,12 @@ def get_entities_and_tasks(criterions={}):
                 task_map[task_id]["assignees"].append(str(person_id))
 
     return list(entity_map.values())
+
+
+def remove_entity_link(link_id):
+    try:
+        link = EntityLink.get_by(id=link_id)
+        link.delete()
+        return link.serialize()
+    except:
+        raise EntityLinkNotFoundException

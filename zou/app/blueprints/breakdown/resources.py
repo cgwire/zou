@@ -143,3 +143,11 @@ class ProjectEntityLinksResource(Resource):
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         return entities_service.get_entity_links_for_project(project_id)
+
+    @jwt_required
+    def delete(self, project_id, entity_link_id):
+        """
+        Delete given entity link.
+        """
+        permissions.check_admin_permissions()
+        return entities_service.remove_(entity_link_id)
