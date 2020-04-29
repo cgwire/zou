@@ -150,7 +150,7 @@ def clear_picture_files(preview_file_id):
     was a picture.
     """
     for image_type in [
-        "originals",
+        "original",
         "thumbnails",
         "thumbnails-square",
         "previews",

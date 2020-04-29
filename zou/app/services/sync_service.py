@@ -838,9 +838,9 @@ def download_file_from_another_instance(
     """
     if prefix == "previews":
         if extension == "mp4":
-            path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+            path = "/movies/original/preview-files/%s.mp4" % preview_file_id
         else:
-            path = "/pictures/originals/preview-files/%s.%s" % (
+            path = "/pictures/original/preview-files/%s.%s" % (
                 preview_file_id,
                 extension
             )
