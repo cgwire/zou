@@ -31,7 +31,6 @@ class CommentResource(BaseModelResource):
                 attachment_file = AttachmentFile.get(attachment_file_id)
                 attachment_files.append(attachment_file.present())
             result["attachment_files"] = attachment_files
-        print(result)
         return result
 
     def pre_update(self, instance_dict, data):

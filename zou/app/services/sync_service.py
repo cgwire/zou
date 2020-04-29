@@ -740,10 +740,8 @@ def download_files_from_another_instance(project=None):
             .join(Task) \
             .filter(Task.project_id == project_dict["id"]) \
             .all()
-        print("project query")
     else:
         preview_files = PreviewFile.query.all()
-        print("all query")
 
     for preview_file in preview_files:
         download_preview_from_another_instance(preview_file)

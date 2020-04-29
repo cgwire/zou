@@ -43,7 +43,6 @@ class BaseModelsResource(Resource):
                 "page": page,
             }
         else:
-            print(relations)
             result = {
                 "data": self.all_entries(query=query, relations=relations),
                 "total": total,

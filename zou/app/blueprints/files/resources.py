@@ -104,7 +104,6 @@ class WorkingFileFileResource(Resource):
 
     @jwt_required
     def post(self, working_file_id):
-        print("ok")
         working_file = self.check_access(working_file_id)
         file_path = self.save_uploaded_file_in_temporary_folder(working_file_id)
         file_store.add_file("working", working_file_id, file_path)
