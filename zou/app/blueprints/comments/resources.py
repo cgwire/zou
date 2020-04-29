@@ -1,4 +1,5 @@
 import datetime
+import json
 
 from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
@@ -124,12 +125,19 @@ class CommentTaskResource(Resource):
         )
         parser.add_argument("comment", default="")
         parser.add_argument("person_id", default="")
-        parser.add_argument("checklist", type=dict, action="append", default=[])
-        args = parser.parse_args()
+        if request.json is None:
+            parser.add_argument("checklist", default="[]")
+            args = parser.parse_args()
+            checklist = args["checklist"]
+            checklist = json.loads(checklist)
+        else:
+            parser.add_argument("checklist", type=dict, action="append", default=[])
+            args = parser.parse_args()
+            checklist = args["checklist"]
 
         return (
             args["task_status_id"],
             args["comment"],
             args["person_id"],
-            args["checklist"]
+            checklist
         )
