@@ -6,6 +6,7 @@ from zou.app.utils import fs
 
 from PIL import Image
 
+Image.MAX_IMAGE_PIXELS = 20000 * 20000
 RECTANGLE_SIZE = 150, 100
 SQUARE_SIZE = 100, 100
 PREVIEW_SIZE = 1200, 0
