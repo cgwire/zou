@@ -747,11 +747,13 @@ class LastEntityOutputFilesResource(Resource):
     def get(self, entity_id):
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
+
         return files_service.get_last_output_files_for_entity(
             entity["id"],
             output_type_id=request.args.get("output_type_id", None),
             task_type_id=request.args.get("task_type_id", None),
             representation=request.args.get("representation", None),
+            file_status_id=request.args.get("file_status_id", None)
         )
 
 
@@ -766,8 +768,14 @@ class LastInstanceOutputFilesResource(Resource):
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
+
         return files_service.get_last_output_files_for_instance(
-            asset_instance["id"], temporal_entity_id
+            asset_instance["id"],
+            temporal_entity_id,
+            output_type_id=request.args.get("output_type_id", None),
+            task_type_id=request.args.get("task_type_id", None),
+            representation=request.args.get("representation", None),
+            file_status_id=request.args.get("file_status_id", None)
         )
 
 
@@ -853,6 +861,7 @@ class EntityOutputFilesResource(Resource):
         output_type_id = request.args.get("output_type_id")
         name = request.args.get("name")
         representation = request.args.get("representation")
+        file_status_id = request.args.get("file_status_id")
 
         return files_service.get_output_files_for_entity(
             entity["id"],
@@ -860,6 +869,7 @@ class EntityOutputFilesResource(Resource):
             output_type_id=output_type_id,
             name=name,
             representation=representation,
+            file_status_id=file_status_id,
         )
 
 
@@ -879,6 +889,7 @@ class InstanceOutputFilesResource(Resource):
         output_type_id = request.args.get("output_type_id")
         name = request.args.get("name")
         representation = request.args.get("representation")
+        file_status_id = request.args.get("file_status_id")
 
         return files_service.get_output_files_for_instance(
             asset_instance["id"],
@@ -887,6 +898,7 @@ class InstanceOutputFilesResource(Resource):
             output_type_id=output_type_id,
             name=name,
             representation=representation,
+            file_status_id=file_status_id,
         )
 
 

@@ -393,6 +393,7 @@ def get_output_files_for_entity(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Return output files for given entity ordered by revision.
@@ -407,6 +408,8 @@ def get_output_files_for_entity(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     query = query.filter(OutputFile.asset_instance_id == None)
     query = query.filter(OutputFile.temporal_entity_id == None)
@@ -426,6 +429,7 @@ def get_output_files_for_instance(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Return output files for given instance ordered by revision.
@@ -444,6 +448,8 @@ def get_output_files_for_instance(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     output_files = (
         query.filter(OutputFile.revision >= 0)
@@ -459,6 +465,7 @@ def get_last_output_files_for_entity(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Get last output files for given parameters.
@@ -472,12 +479,14 @@ def get_last_output_files_for_entity(
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
+        OutputFile.file_status_id,
         func.max(OutputFile.revision).label("MAX"),
     ).group_by(
         OutputFile.task_type_id,
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
+        OutputFile.file_status_id,
     )
     query = query.filter(OutputFile.entity_id == entity_id)
     query = query.filter(OutputFile.asset_instance_id == None)
@@ -492,6 +501,7 @@ def get_last_output_files_for_entity(
             OutputFile.output_type_id == statement.c.output_type_id,
             OutputFile.name == statement.c.name,
             OutputFile.representation == statement.c.representation,
+            OutputFile.file_status_id == statement.c.file_status_id,
             OutputFile.revision == statement.c.MAX,
         ),
     )
@@ -505,6 +515,8 @@ def get_last_output_files_for_entity(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     query = query.filter(OutputFile.entity_id == entity_id)
     query = query.filter(OutputFile.asset_instance_id == None)
@@ -521,6 +533,7 @@ def get_last_output_files_for_instance(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Get last output files for given entity grouped by output type and name.
@@ -532,6 +545,7 @@ def get_last_output_files_for_instance(
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
+        OutputFile.file_status_id,
         func.max(OutputFile.revision).label("MAX"),
     ).group_by(
         OutputFile.temporal_entity_id,
@@ -539,6 +553,7 @@ def get_last_output_files_for_instance(
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
+        OutputFile.file_status_id,
     )
     query = query.filter(OutputFile.asset_instance_id == asset_instance_id)
     query = query.filter(OutputFile.temporal_entity_id == temporal_entity_id)
@@ -553,6 +568,7 @@ def get_last_output_files_for_instance(
             OutputFile.output_type_id == statement.c.output_type_id,
             OutputFile.name == statement.c.name,
             OutputFile.representation == statement.c.representation,
+            OutputFile.file_status_id == statement.c.file_status_id,
             OutputFile.revision == statement.c.MAX,
         ),
     )
@@ -568,6 +584,8 @@ def get_last_output_files_for_instance(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if representation:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     output_files = query.all()
     return fields.serialize_models(output_files)
