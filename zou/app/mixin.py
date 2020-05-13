@@ -36,3 +36,10 @@ class ArgsMixin(object):
         """
         options = request.args
         return options.get("force", "false") == "true"
+
+    def get_relations(self):
+        """
+        Returns force parameter.
+        """
+        options = request.args
+        return options.get("relations", "false") == "true"

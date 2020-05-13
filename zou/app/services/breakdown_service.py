@@ -407,7 +407,7 @@ def build_asset_instance_name(asset_id, number):
     default instance names.
     """
     asset = Entity.get(asset_id)
-    asset_name = slugify(asset.name, separator="_")
+    asset_name = slugify(asset.name, separator="_", lowercase=False)
     number = str(number).zfill(4)
     return "%s_%s" % (asset_name, number)
 

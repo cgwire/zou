@@ -2,6 +2,7 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from .resources import (
+    ProjectEntityLinkResource,
     ProjectEntityLinksResource,
     ShotAssetInstancesResource,
     RemoveShotAssetInstanceResource,
@@ -27,6 +28,7 @@ routes = [
         SequenceCastingResource,
     ),
     ("/data/projects/<project_id>/entity-links", ProjectEntityLinksResource),
+    ("/data/projects/<project_id>/entity-links/<entity_link_id>", ProjectEntityLinkResource),
     ("/data/scenes/<scene_id>/asset-instances", SceneAssetInstancesResource),
     ("/data/scenes/<scene_id>/camera-instances", SceneCameraInstancesResource),
     ("/data/shots/<shot_id>/asset-instances", ShotAssetInstancesResource),

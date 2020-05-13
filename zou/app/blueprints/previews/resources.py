@@ -46,6 +46,7 @@ ALLOWED_FILE_EXTENSION = [
     ".mb",
     ".ai",
     ".rar",
+    ".gif",
     ".zip",
     ".blend",
     ".OBJ",
@@ -63,6 +64,10 @@ ALLOWED_FILE_EXTENSION = [
     ".COMP",
     ".PSD",
     ".HIP",
+    ".ae",
+    ".fla",
+    ".flv",
+    ".swf",
     ".EXR",
 ]
 
@@ -701,7 +706,7 @@ class ProjectThumbnailResource(BasePictureResource):
             return False
 
 
-class SetMainPreviewResource(Resource):
+class LegacySetMainPreviewResource(Resource):
     @jwt_required
     def put(self, entity_id, preview_file_id):
         preview_file = files_service.get_preview_file(preview_file_id)
@@ -709,4 +714,20 @@ class SetMainPreviewResource(Resource):
         user_service.check_project_access(task["project_id"])
         return entities_service.update_entity_preview(
             entity_id, preview_file_id
+        )
+
+
+class SetMainPreviewResource(Resource):
+    """
+    Set given preview as main preview of the related entity. This preview will
+    be used to illustrate the entity.
+    """
+
+    @jwt_required
+    def put(self, preview_file_id):
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_project_access(task["project_id"])
+        return entities_service.update_entity_preview(
+            task["entity_id"], preview_file_id
         )

@@ -27,8 +27,8 @@ from zou.app.services.exception import (
 from zou.app.utils import cache, fields, permissions
 
 
-def clear_filter_cache():
-    cache.cache.delete_memoized(get_filters)
+def clear_filter_cache(user_id):
+    cache.cache.delete_memoized(get_user_filters, user_id)
 
 
 def build_assignee_filter():
@@ -258,7 +258,7 @@ def get_scenes_for_sequence(sequence_id):
     return Entity.serialize_list(query.all(), obj_type="Scene")
 
 
-def get_open_projects(name=None):
+def get_open_projects(name=None, for_client=False):
     """
     Get all open projects for which current user has a task assigned.
     """
@@ -271,7 +271,9 @@ def get_open_projects(name=None):
     if name is not None:
         query = query.filter(Project.name == name)
 
-    return projects_service.get_projects_with_extra_data(query)
+    for_client = permissions.has_client_permissions()
+
+    return projects_service.get_projects_with_extra_data(query, for_client)
 
 
 def get_projects(name=None):
@@ -347,38 +349,49 @@ def check_manager_project_access(project_id):
 def check_playlist_access(playlist):
     check_project_access(playlist["project_id"])
     is_manager = permissions.has_manager_permissions()
-    is_client = permissions.has_manager_permissions()
+    is_client = permissions.has_client_permissions()
     has_client_access = is_client and playlist["for_client"]
     if not is_manager and not has_client_access:
         raise permissions.PermissionDenied
     return True
 
 
-@cache.memoize_function(120)
 def get_filters():
     """
     Retrieve search filters used by current user. It groups them by
     list type and project_id. If the filter is not related to a project,
     the project_id is all.
     """
-    result = {}
     current_user = persons_service.get_current_user_raw()
+    return get_user_filters(str(current_user.id))
+
+
+@cache.memoize_function(120)
+def get_user_filters(current_user_id):
+    """
+    Retrieve search filters used for given user. It groups them by
+    list type and project_id. If the filter is not related to a project,
+    the project_id is all.
+    """
+
+    result = {}
 
     filters = (
         SearchFilter.query.join(Project, ProjectStatus)
-        .filter(SearchFilter.person_id == current_user.id)
+        .filter(SearchFilter.person_id == current_user_id)
         .filter(build_open_project_filter())
         .all()
     )
 
     filters = (
         filters
-        + SearchFilter.query.filter(SearchFilter.person_id == current_user.id)
+        + SearchFilter.query.filter(SearchFilter.person_id == current_user_id)
         .filter(SearchFilter.project_id == None)
         .all()
     )
 
     for search_filter in filters:
+
         if search_filter.list_type not in result:
             result[search_filter.list_type] = {}
         subresult = result[search_filter.list_type]
@@ -410,7 +423,7 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
         entity_type=entity_type,
     )
     search_filter.serialize()
-    clear_filter_cache()
+    clear_filter_cache(str(current_user.id))
     return search_filter.serialize()
 
 
@@ -425,7 +438,7 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    clear_filter_cache()
+    clear_filter_cache(str(current_user.id))
     return search_filter.serialize()
 
 

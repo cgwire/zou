@@ -10,8 +10,9 @@ def send_email(subject, body, recipient_email, html=None):
     if html is None:
         html = body
     with app.app_context():
+        mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
         message = Message(
-            sender="Kitsu Bot <no-reply@cg-wire.com>",
+            sender="Kitsu Bot <%s>" % mail_default_sender,
             body=body,
             html=html,
             subject=subject,

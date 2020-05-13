@@ -1,7 +1,11 @@
+import ffmpeg
 import os
 import math
-import ffmpeg
+import subprocess
+
 from PIL import Image
+
+from . import fs
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -63,16 +67,20 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
         width = width + 1
 
     try:
-        ffmpeg.input(movie_path).output(
+        stream = ffmpeg.input(movie_path)
+        stream = stream.output(
             file_target_path,
             pix_fmt="yuv420p",
             format="mp4",
             r=fps,
-            b="28M",
+            crf="15",
             preset="medium",
             vcodec="libx264",
             s="%sx%s" % (width, height),
-        ).run(quiet=False, capture_stderr=True)
+        )
+        stream.run(quiet=False, capture_stderr=True)
+        if not has_soundtrack(file_target_path):
+            add_empty_soundtrack(file_target_path)
     except ffmpeg.Error as exc:
         from flask import current_app
 
@@ -104,6 +112,10 @@ def build_playlist_movie(
         (first_movie_file_path, _) = tmp_file_paths[0]
         if width is None:
             (width, height) = get_movie_size(first_movie_file_path)
+
+        for tmp_file_path, file_name in tmp_file_paths:
+            if not has_soundtrack(tmp_file_path):
+                add_empty_soundtrack(tmp_file_path)
 
         for tmp_file_path, file_name in tmp_file_paths:
             in_file = ffmpeg.input(tmp_file_path)

@@ -3,11 +3,13 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from .asset_instance import AssetInstanceResource, AssetInstancesResource
+from .attachment_file import AttachmentFilesResource, AttachmentFileResource
 from .comments import CommentsResource, CommentResource
 from .custom_action import CustomActionsResource, CustomActionResource
 from .department import DepartmentsResource, DepartmentResource
 from .entity import EntityResource, EntitiesResource
 from .entity_type import EntityTypesResource, EntityTypeResource
+from .entity_link import EntityLinksResource, EntityLinkResource
 from .event import EventsResource, EventResource
 from .file_status import FileStatusesResource, FileStatusResource
 from .metadata_descriptor import (
@@ -69,6 +71,8 @@ routes = [
     ("/data/preview-files/<instance_id>", PreviewFileResource),
     ("/data/working-files", WorkingFilesResource),
     ("/data/working-files/<instance_id>", WorkingFileResource),
+    ("/data/attachment-files", AttachmentFilesResource),
+    ("/data/attachment-files/<instance_id>", AttachmentFileResource),
     ("/data/comments", CommentsResource),
     ("/data/comments/<instance_id>", CommentResource),
     ("/data/time-spents/", TimeSpentsResource),
@@ -95,6 +99,8 @@ routes = [
     ("/data/metadata-descriptors/<instance_id>", MetadataDescriptorResource),
     ("/data/subscriptions/", SubscriptionsResource),
     ("/data/subscriptions/<instance_id>", SubscriptionResource),
+    ("/data/entity-links/", EntityLinksResource),
+    ("/data/entity-links/<instance_id>", EntityLinkResource),
 ]
 
 blueprint = Blueprint("/data", "data")

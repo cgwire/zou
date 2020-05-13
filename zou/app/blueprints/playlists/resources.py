@@ -33,9 +33,10 @@ class EpisodePlaylistsResource(Resource):
     @jwt_required
     def get(self, project_id, episode_id):
         user_service.check_project_access(project_id)
-        shots_service.get_episode(episode_id)
+        if episode_id not in ["main", "all"]:
+            shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
-            episode_id, permissions.has_client_permissions()
+            project_id, episode_id, permissions.has_client_permissions()
         )
 
 
@@ -53,7 +54,7 @@ class EntityPreviewsResource(Resource):
     def get(self, entity_id):
         """
         Retrieve all previews related to a given entity. It sends them
-        as a dict. Keys are related task type ids and values are arrays
+        ]as a dict. Keys are related task type ids and values are arrays
         of preview for this task type.
         """
         entity = entities_service.get_entity(entity_id)
@@ -82,9 +83,16 @@ class PlaylistDownloadResource(Resource):
             )
             context_name = slugify.slugify(project["name"], separator="_")
             if project["production_type"] == "tvshow":
-                episode = shots_service.get_episode(playlist["episode_id"])
+                episode_id = playlist["episode_id"]
+                if episode_id is not None:
+                    episode = shots_service.get_episode(playlist["episode_id"])
+                    episode_name = episode["name"]
+                elif playlist["is_for_all"]:
+                    episode_name = "all assets"
+                else:
+                    episode_name = "main pack"
                 context_name += "_%s" % slugify.slugify(
-                    episode["name"], separator="_"
+                    episode_name, separator="_"
                 )
             attachment_filename = "%s_%s_%s.mp4" % (
                 slugify.slugify(build_job["created_at"], separator="").replace(
@@ -131,9 +139,16 @@ class PlaylistZipDownloadResource(Resource):
 
         context_name = slugify.slugify(project["name"], separator="_")
         if project["production_type"] == "tvshow":
-            episode = shots_service.get_episode(playlist["episode_id"])
+            episode_id = playlist["episode_id"]
+            if episode_id is not None:
+                episode = shots_service.get_episode(playlist["episode_id"])
+                episode_name = episode["name"]
+            elif playlist["is_for_all"]:
+                episode_name = "all assets"
+            else:
+                episode_name = "main pack"
             context_name += "_%s" % slugify.slugify(
-                episode["name"], separator="_"
+                episode_name, separator="_"
             )
         attachment_filename = "%s_%s.zip" % (
             context_name,

@@ -73,12 +73,7 @@ class AssetsAndTasksResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         page = query.get_page_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
-        assets = assets_service.get_assets_and_tasks(criterions, page)
-        if "episode_id" in criterions:
-            criterions["episode_id"] = None
-            assets += assets_service.get_assets_and_tasks(criterions, page)
-
-        return assets
+        return assets_service.get_assets_and_tasks(criterions, page)
 
 
 class AssetTypeResource(Resource):

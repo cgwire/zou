@@ -102,7 +102,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.project_id,
             "Asset",
             "Contractor",
-            []
+            [],
+            False
         )
         self.generate_fixture_user_manager()
         self.log_in_manager()
@@ -122,7 +123,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.project_id,
             "Asset",
             "Contractor",
-            []
+            [],
+            False
         )
         self.asset.update({
             "data": {
@@ -147,7 +149,8 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             self.project_id,
             "Asset",
             "Contractor",
-            []
+            [],
+            False
         )
         self.generate_fixture_user_manager()
         self.log_in_manager()

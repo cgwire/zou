@@ -740,10 +740,8 @@ def download_files_from_another_instance(project=None):
             .join(Task) \
             .filter(Task.project_id == project_dict["id"]) \
             .all()
-        print("project query")
     else:
         preview_files = PreviewFile.query.all()
-        print("all query")
 
     for preview_file in preview_files:
         download_preview_from_another_instance(preview_file)
@@ -838,9 +836,9 @@ def download_file_from_another_instance(
     """
     if prefix == "previews":
         if extension == "mp4":
-            path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+            path = "/movies/original/preview-files/%s.mp4" % preview_file_id
         else:
-            path = "/pictures/originals/preview-files/%s.%s" % (
+            path = "/pictures/original/preview-files/%s.%s" % (
                 preview_file_id,
                 extension
             )

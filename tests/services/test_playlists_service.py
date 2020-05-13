@@ -3,8 +3,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.playlist import Playlist
 from zou.app.services import (
     files_service,
-    playlists_service,
-    tasks_service
+    playlists_service
 )
 
 
@@ -35,7 +34,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file(revision=1)
         self.generate_fixture_preview_file(revision=2)
 
-    def generate_fixture_playlist(self):
+    def generate_fixture_playlists(self):
         Playlist.create(
             name="Playlist 1",
             shots={},
@@ -62,7 +61,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         return self.playlist.serialize()
 
     def test_get_playlists_for_project(self):
-        self.generate_fixture_playlist()
+        self.generate_fixture_playlists()
         playlists = playlists_service.all_playlists_for_project(self.project.id)
         self.assertEqual(len(playlists), 3)
         self.assertTrue(
@@ -77,15 +76,36 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(playlists), 1)
 
     def test_get_playlist_for_episode(self):
-        self.generate_fixture_playlist()
+        self.generate_fixture_playlists()
         playlists = playlists_service.all_playlists_for_episode(
-            self.episode_2.id)
+            self.project.id,
+            self.episode_2.id
+        )
         self.assertEqual(len(playlists), 2)
-        print(playlists)
         self.assertEqual(playlists[0]["name"], "Playlist 4")
         self.playlist.update({"for_client": True})
         playlists = playlists_service.all_playlists_for_project(
             self.project.id, True
+        )
+        self.assertEqual(len(playlists), 1)
+
+        self.generate_fixture_playlist(
+            "Test main pack",
+            for_entity="asset"
+        )
+        self.generate_fixture_playlist(
+            "Test all playlist",
+            for_entity="asset",
+            is_for_all=True
+        )
+        playlists = playlists_service.all_playlists_for_episode(
+            self.project.id,
+            "main"
+        )
+        self.assertEqual(len(playlists), 1)
+        playlists = playlists_service.all_playlists_for_episode(
+            self.project.id,
+            "all"
         )
         self.assertEqual(len(playlists), 1)
 
@@ -98,13 +118,21 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.assertEqual(str(self.shot.id), shots[0]["id"])
         self.assertEqual(len(shots[0]["preview_files"][task_type_id]), 2)
 
-    def test_generate_playlisted_shot_from_task(self):
+    def test_generate_playlisted_entity_from_task(self):
         self.generate_fixture_preview_files()
         task_id = self.task.id
         task_type_id = str(self.task.task_type_id)
-        shot = playlists_service.generate_playlisted_shot_from_task(task_id)
+        shot = playlists_service.generate_playlisted_entity_from_task(task_id)
         self.assertEqual(str(self.shot.id), shot["id"])
+        self.assertEqual(shot["parent_name"], "S01")
         self.assertEqual(len(shot["preview_files"][task_type_id]), 2)
+
+        self.task = self.generate_fixture_task()
+        task_id = self.task.id
+        asset = playlists_service.generate_playlisted_entity_from_task(task_id)
+        self.assertEqual(str(self.asset.id), asset["id"])
+        self.assertEqual(asset["parent_name"], "Props")
+        self.assertEqual(asset["preview_files"], {})
 
     def test_get_preview_files_for_task(self):
         self.generate_fixture_preview_files()
@@ -112,3 +140,14 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         preview_files = playlists_service.get_preview_files_for_task(task_id)
         self.assertEqual(len(preview_files), 2)
         self.assertEqual(preview_files[0]["revision"], 2)
+
+    def test_build_playlist_dict(self):
+        playlist = Playlist.create(
+            name="Playlist 1",
+            shots={},
+            project_id=self.project.id,
+            episode_id=self.episode.id
+        )
+        playlist_dict = playlists_service.build_playlist_dict(playlist)
+        self.assertTrue("shots" not in playlist_dict)
+        self.assertEqual(playlist_dict["for_entity"], "shot")

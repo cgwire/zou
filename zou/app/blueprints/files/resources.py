@@ -1,11 +1,16 @@
 import datetime
+import os
 
-from flask import request, abort
+from flask import request, abort, current_app
+from flask import send_file as flask_send_file
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
+from flask_fs.errors import FileNotFound
+from zou.app import config
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions
+from zou.app.utils import fs
+from zou.app.stores import file_store
 from zou.app.services import (
     file_tree_service,
     files_service,
@@ -25,6 +30,85 @@ from zou.app.services.exception import (
     MalformedFileTreeException,
     EntryAlreadyExistsException,
 )
+
+
+def send_storage_file(working_file_id, as_attachment=False):
+    """
+    Send file from storage. If it's not a local storage, cache the file in
+    a temporary folder before sending it. It accepts conditional headers.
+    """
+    prefix = "working"
+    extension = "tmp"
+    get_local_path = file_store.get_local_file_path
+    open_file = file_store.open_file
+    mimetype = "application/octet-stream"
+
+    file_path = fs.get_file_path(
+        config, get_local_path, open_file, prefix, working_file_id, extension
+    )
+
+    attachment_filename = ""
+    if as_attachment:
+        attachment_filename = working_file_id
+
+    try:
+        return flask_send_file(
+            file_path,
+            conditional=True,
+            mimetype=mimetype,
+            as_attachment=as_attachment,
+            attachment_filename=attachment_filename,
+        )
+    except IOError as e:
+        current_app.logger.error(e)
+        return (
+            {
+                "error": True,
+                "message": "Working file not found for: %s" % working_file_id,
+            },
+            404,
+        )
+    except FileNotFound:
+        return (
+            {
+                "error": True,
+                "message": "Working file not found for: %s" % working_file_id,
+            },
+            404,
+        )
+
+
+class WorkingFileFileResource(Resource):
+    """
+    Allow to download and store a working file.
+    """
+
+    def check_access(self, working_file_id):
+        working_file = files_service.get_working_file(working_file_id)
+        task = tasks_service.get_task(working_file["task_id"])
+        user_service.check_project_access(task["project_id"])
+        return working_file
+
+    def save_uploaded_file_in_temporary_folder(self, working_file_id):
+        uploaded_file = request.files["file"]
+        tmp_folder = current_app.config["TMP_DIR"]
+        file_name = "working-file-%s" % working_file_id
+        file_path = os.path.join(tmp_folder, file_name)
+        uploaded_file.save(file_path)
+        return file_path
+
+    @jwt_required
+    def get(self, working_file_id):
+        self.check_access(working_file_id)
+        return send_storage_file(working_file_id)
+
+    @jwt_required
+    def post(self, working_file_id):
+        working_file = self.check_access(working_file_id)
+        file_path = self.save_uploaded_file_in_temporary_folder(working_file_id)
+        file_store.add_file("working", working_file_id, file_path)
+        os.remove(file_path)
+        return working_file, 201
 
 
 class WorkingFilePathResource(Resource):
@@ -747,11 +831,13 @@ class LastEntityOutputFilesResource(Resource):
     def get(self, entity_id):
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
+
         return files_service.get_last_output_files_for_entity(
             entity["id"],
             output_type_id=request.args.get("output_type_id", None),
             task_type_id=request.args.get("task_type_id", None),
             representation=request.args.get("representation", None),
+            file_status_id=request.args.get("file_status_id", None)
         )
 
 
@@ -766,8 +852,14 @@ class LastInstanceOutputFilesResource(Resource):
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
+
         return files_service.get_last_output_files_for_instance(
-            asset_instance["id"], temporal_entity_id
+            asset_instance["id"],
+            temporal_entity_id,
+            output_type_id=request.args.get("output_type_id", None),
+            task_type_id=request.args.get("task_type_id", None),
+            representation=request.args.get("representation", None),
+            file_status_id=request.args.get("file_status_id", None)
         )
 
 
@@ -853,6 +945,7 @@ class EntityOutputFilesResource(Resource):
         output_type_id = request.args.get("output_type_id")
         name = request.args.get("name")
         representation = request.args.get("representation")
+        file_status_id = request.args.get("file_status_id")
 
         return files_service.get_output_files_for_entity(
             entity["id"],
@@ -860,6 +953,7 @@ class EntityOutputFilesResource(Resource):
             output_type_id=output_type_id,
             name=name,
             representation=representation,
+            file_status_id=file_status_id,
         )
 
 
@@ -879,6 +973,7 @@ class InstanceOutputFilesResource(Resource):
         output_type_id = request.args.get("output_type_id")
         name = request.args.get("name")
         representation = request.args.get("representation")
+        file_status_id = request.args.get("file_status_id")
 
         return files_service.get_output_files_for_instance(
             asset_instance["id"],
@@ -887,6 +982,7 @@ class InstanceOutputFilesResource(Resource):
             output_type_id=output_type_id,
             name=name,
             representation=representation,
+            file_status_id=file_status_id,
         )
 
 

@@ -17,6 +17,7 @@ from .resources import (
     ProjectThumbnailResource,
     CreatePersonThumbnailResource,
     PersonThumbnailResource,
+    LegacySetMainPreviewResource,
     SetMainPreviewResource,
 )
 
@@ -77,6 +78,10 @@ routes = [
     ),
     (
         "/actions/entities/<entity_id>/set-main-preview/<preview_file_id>",
+        LegacySetMainPreviewResource,
+    ),
+    (
+        "/actions/preview-files/<preview_file_id>/set-main-preview",
         SetMainPreviewResource,
     ),
 ]

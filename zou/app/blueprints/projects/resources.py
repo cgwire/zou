@@ -25,7 +25,11 @@ class OpenProjectsResource(Resource):
         name = request.args.get("name", None)
         try:
             permissions.check_admin_permissions()
-            return projects_service.open_projects(name=name)
+            for_client = permissions.has_client_permissions()
+            return projects_service.open_projects(
+                name=name,
+                for_client=for_client
+            )
         except permissions.PermissionDenied:
             return user_service.get_open_projects(name=name)
 
@@ -95,7 +99,8 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, project_id):
         user_service.check_manager_project_access(project_id)
-        return projects_service.get_metadata_descriptors(project_id)
+        for_client = permissions.has_client_permissions()
+        return projects_service.get_metadata_descriptors(project_id, for_client)
 
     @jwt_required
     def post(self, project_id):
@@ -103,10 +108,13 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             [
                 ("entity_type", "Asset", False),
                 ("name", "", True),
+                ("for_client", "False", False),
                 ("choices", [], False, "append"),
             ]
         )
         permissions.check_admin_permissions()
+
+        args["for_client"] = args["for_client"] == "True"
 
         if args["entity_type"] not in ["Asset", "Shot"]:
             raise WrongParameterException(
@@ -118,7 +126,11 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
 
         return (
             projects_service.add_metadata_descriptor(
-                project_id, args["entity_type"], args["name"], args["choices"]
+                project_id,
+                args["entity_type"],
+                args["name"],
+                args["choices"],
+                args["for_client"]
             ),
             201,
         )
@@ -132,18 +144,22 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id, descriptor_id):
-        user_service.check_manager_project_access(project_id)
+        user_service.check_project_access(project_id)
         return projects_service.get_metadata_descriptor(descriptor_id)
 
     @jwt_required
     def put(self, project_id, descriptor_id):
-        args = self.get_args(
-            [("name", "", False), ("choices", [], False, "append")]
-        )
+        args = self.get_args([
+            ("name", "", False),
+            ("for_client", "False", False),
+            ("choices", [], False, "append")
+        ])
         permissions.check_admin_permissions()
 
         if len(args["name"]) == 0:
             raise WrongParameterException("Name cannot be empty.")
+
+        args["for_client"] = args["for_client"] == "True"
 
         return projects_service.update_metadata_descriptor(descriptor_id, args)
 

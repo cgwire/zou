@@ -42,3 +42,29 @@ def get_file_path(
                 for chunk in open_file(prefix, instance_id):
                     tmp_file.write(chunk)
     return file_path
+
+
+def save_file(tmp_folder, instance_id, file_to_save):
+    """
+    Save file in given folder. The file must only be temporary saved via
+    this function.
+    """
+    extension = "." + file_to_save.filename.split(".")[-1].lower()
+    file_name = instance_id + extension.lower()
+    file_path = os.path.join(tmp_folder, file_name)
+    file_to_save.save(file_path)
+    return file_path
+
+
+def get_file_extension(filename):
+    """
+    Return extension of given file name in lower case.
+    """
+    return filename.split(".")[-1].lower()
+
+
+def get_file_size(file_path):
+    """
+    Return in bytes the file size of the file located at given path.
+    """
+    return os.path.getsize(file_path)

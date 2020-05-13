@@ -151,7 +151,10 @@ def get_assets_and_tasks(criterions={}, page=1):
         query = query.filter(Entity.project_id == criterions["project_id"])
 
     if "episode_id" in criterions:
-        query = query.filter(Entity.source_id == criterions["episode_id"])
+        if criterions["episode_id"] == "main":
+            query = query.filter(Entity.source_id == None)
+        elif criterions["episode_id"] != "all":
+            query = query.filter(Entity.source_id == criterions["episode_id"])
 
     for (
         asset,
@@ -386,6 +389,11 @@ def get_or_create_asset_type(name):
     if asset_type is None:
         asset_type = EntityType.create(name=name)
         clear_asset_type_cache()
+
+        events.emit(
+            "asset-type:new", {"name": asset_type.name, "id": asset_type.id}
+        )
+
     return asset_type.serialize(obj_type="AssetType")
 
 
@@ -442,9 +450,6 @@ def create_asset_types(asset_type_names):
         asset_type = get_or_create_asset_type(asset_type_name)
         asset_types.append(asset_type)
 
-        events.emit(
-            "asset-type:new", {"name": asset_type_name, "id": asset_type["id"]}
-        )
     return asset_types
 
 
@@ -456,6 +461,8 @@ def create_asset(
     """
     project = projects_service.get_project_raw(project_id)
     asset_type = get_asset_type_raw(asset_type_id)
+    if source_id is not None and len(source_id) < 36:
+        source_id = None
     asset = Entity.create(
         project_id=project_id,
         entity_type_id=asset_type_id,
