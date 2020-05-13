@@ -68,7 +68,7 @@ class PlaylistDownloadResource(Resource):
         playlist = playlists_service.get_playlist(playlist_id)
         project = projects_service.get_project(playlist["project_id"])
         build_job = playlists_service.get_build_job(build_job_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        user_service.check_project_access(playlist["project_id"])
 
         if build_job["status"] != "succeeded":
             return {"error": True, "message": "Build is not finished"}, 400
