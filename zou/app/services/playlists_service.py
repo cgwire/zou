@@ -384,7 +384,14 @@ def build_playlist_movie_file(playlist, app=None):
         tmp_file_paths, movie_file_path, width, height, fps
     )
     if result["success"] == True:
-        file_store.add_movie("playlists", job["id"], movie_file_path)
+        if os.path.exists(movie_file_path):
+            file_store.add_movie("playlists", job["id"], movie_file_path)
+        else:
+            if app is not None:
+                current_app.logger.error("No playlist was created")
+            result["success"] = False
+            result["message"] = "No playlist was created"
+
     elif app is not None:
         current_app.logger.error(result["message"])
     end_build_job(playlist, job, result)
