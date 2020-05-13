@@ -123,7 +123,7 @@ def build_playlist_movie(
         try:
             ffmpeg.output(
                 audio, video, movie_file_path
-            ).overwrite_output().run()
+            ).overwrite_output().run(quiet=True)
         except Exception as e:
             print(e)
             return {"success": False, "message": str(e)}

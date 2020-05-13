@@ -108,12 +108,12 @@ class UtilsTestCase(unittest.TestCase):
 
 
     def test_movie_utils(self):
-        movie_file_path = 'test_data/testresult.mp4'
+        movie_file_path = 'tests/test_data/testresult.mp4'
         if os.path.exists(movie_file_path):
             os.unlink(movie_file_path)
 
-        tmp_file_paths = [['test_data/with_audio.mp4', 'with_audio'],
-                         ['test_data/without_audio.mp4', 'without_audio']]
+        tmp_file_paths = [['tests/test_data/with_audio.mp4', 'with_audio'],
+                         ['tests/test_data/without_audio.mp4', 'without_audio']]
         result = movie_utils.build_playlist_movie(tmp_file_paths, movie_file_path)
         self.assertTrue(result['success'])
         self.assertTrue(os.path.exists(movie_file_path))
