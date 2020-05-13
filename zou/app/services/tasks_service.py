@@ -808,7 +808,7 @@ def update_task_status(task_status_id, data):
     task_status = get_task_status_raw(task_status_id)
     task_status.update(data)
     clear_task_status_cache(task_status_id)
-    events.emit("task_status:update", {"task_status_id": task_status_id})
+    events.emit("task-status:update", {"task_status_id": task_status_id})
     return task_status.serialize()
 
 

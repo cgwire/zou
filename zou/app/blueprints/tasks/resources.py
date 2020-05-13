@@ -24,7 +24,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import query, permissions
+from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
 
@@ -104,16 +104,37 @@ class TaskCommentsResource(Resource):
 class TaskCommentResource(Resource):
     """
     Remove given comment and update linked task accordingly.
-    TODO: make deletion authorization stronger
     """
+
+    def pre_delete(self, comment):
+        task = tasks_service.get_task(comment["object_id"])
+        self.previous_task_status_id = task["task_status_id"]
+        return comment
+
+    def post_delete(self, comment):
+        task = tasks_service.get_task(comment["object_id"])
+        self.new_task_status_id = task["task_status_id"]
+        if self.previous_task_status_id != self.new_task_status_id:
+            events.emit("task:status-changed", {
+                "task_id": task["id"],
+                "new_task_status_id": self.new_task_status_id,
+                "previous_task_status_id": self.previous_task_status_id
+            })
+        return comment
 
     @jwt_required
     def delete(self, task_id, comment_id):
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        comment = deletion_service.remove_comment(comment_id)
+        """
+        Delete a comment corresponding at given ID.
+        """
+        comment = tasks_service.get_comment(comment_id)
+        task = tasks_service.get_task(comment["object_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        self.pre_delete(comment)
+        deletion_service.remove_comment(comment_id)
         tasks_service.reset_task_data(comment["object_id"])
         tasks_service.clear_comment_cache(comment_id)
+        self.post_delete(comment)
         return "", 204
 
 

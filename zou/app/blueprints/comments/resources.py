@@ -5,6 +5,8 @@ from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
+from zou.app.utils import events
+
 from zou.app.services import (
     comments_service,
     notifications_service,
@@ -105,6 +107,13 @@ class CommentTaskResource(Resource):
                 new_data["real_start_date"] = datetime.datetime.now()
 
         tasks_service.update_task(task_id, new_data)
+        if status_changed:
+            events.emit("task:status-changed", {
+                "task_id": task_id,
+                "new_task_status_id": new_data["task_status_id"],
+                "previous_task_status_id": task["task_status_id"]
+            })
+
         task = tasks_service.get_task_with_relations(task_id)
 
         notifications_service.create_notifications_for_task_and_comment(
