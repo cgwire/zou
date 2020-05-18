@@ -62,7 +62,8 @@ def get_preview_file_name(preview_file_id):
             task_type["name"],
             preview_file["revision"],
         )
+        name = slugify.slugify(name, separator="_")
     return "%s.%s" % (
-        slugify.slugify(name, separator="_"),
-        preview_file["extension"],
+        name,
+        preview_file["extension"]
     )
