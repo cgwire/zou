@@ -4,7 +4,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.utils import events, fields, cache, query as query_utils
+from zou.app.utils import (
+    cache,
+    events,
+    fields,
+    permissions,
+    query as query_utils
+)
 
 from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.playlist import Playlist
@@ -19,6 +25,7 @@ from zou.app.services import (
     deletion_service,
     entities_service,
     projects_service,
+    user_service
 )
 from zou.app.services.exception import (
     EpisodeNotFoundException,
@@ -117,6 +124,12 @@ def get_shots(criterions={}):
         .add_columns(Sequence.name)
         .order_by(Entity.name)
     )
+
+    if "assigned_to" in criterions:
+        query = query.outerjoin(Task)
+        query = query.filter(user_service.build_assignee_filter())
+        del criterions["assigned_to"]
+
     try:
         data = query.all()
     except StatementError:  # Occurs when an id is not properly formatted
@@ -139,6 +152,11 @@ def get_scenes(criterions={}):
     scene_type = get_scene_type()
     criterions["entity_type_id"] = scene_type["id"]
     Sequence = aliased(Entity, name="sequence")
+
+    if "assigned_to" in criterions:
+        query = query.outerjoin(Task)
+        query = query.filter(user_service.build_assignee_filter())
+        del criterions["assigned_to"]
 
     query = Entity.query
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
@@ -222,6 +240,9 @@ def get_shots_and_tasks(criterions={}):
 
     if "episode_id" in criterions:
         query = query.filter(Sequence.parent_id == criterions["episode_id"])
+
+    if "assigned_to" in criterions:
+        query = query.filter(user_service.build_assignee_filter())
 
     for (
         shot,
@@ -633,46 +654,81 @@ def get_or_create_sequence(project_id, episode_id, name):
     return sequence.serialize()
 
 
-def get_episodes_for_project(project_id):
+def get_episodes_for_project(project_id, only_assigned=False):
     """
     Retrieve all episodes related to given project.
     """
-    return entities_service.get_entities_for_project(
-        project_id, get_episode_type()["id"], "Episode"
-    )
+    if only_assigned:
+        Sequence = aliased(Entity, name="sequence")
+        Shot = aliased(Entity, name="shot")
+        query = (
+            Entity.query
+            .join(Sequence, Entity.id == Sequence.parent_id)
+            .join(Shot, Sequence.id == Shot.parent_id)
+            .join(Task, Shot.id == Task.entity_id)
+            .filter(Entity.project_id == project_id)
+            .filter(user_service.build_assignee_filter())
+        )
+        return fields.serialize_models(query.all())
+    else:
+        return entities_service.get_entities_for_project(
+            project_id, get_episode_type()["id"], "Episode"
+        )
 
 
-def get_sequences_for_project(project_id):
+def get_sequences_for_project(project_id, only_assigned=False):
     """
     Retrieve all sequences related to given project.
     """
-    return entities_service.get_entities_for_project(
-        project_id, get_sequence_type()["id"], "Sequence"
-    )
+    if only_assigned:
+        Shot = aliased(Entity, name="shot")
+        query = (
+            Entity.query
+            .join(Shot, Entity.id == Shot.parent_id)
+            .join(Task, Shot.id == Task.entity_id)
+            .filter(Entity.project_id == project_id)
+            .filter(user_service.build_assignee_filter())
+        )
+        return fields.serialize_models(query.all())
+    else:
+        return entities_service.get_entities_for_project(
+            project_id, get_sequence_type()["id"], "Sequence"
+        )
 
 
-def get_sequences_for_episode(episode_id):
+def get_sequences_for_episode(episode_id, only_assigned=False):
     """
     Retrieve all sequences related to given episode.
     """
-    return get_episodes({"parent_id": episode_id})
+    if only_assigned:
+        Shot = aliased(Entity, name="shot")
+        query = (
+            Entity.query
+            .join(Shot, Entity.id == Shot.parent_id)
+            .join(Task, Shot.id == Task.entity_id)
+            .filter(Entity.parent_id == episode_id)
+            .filter(user_service.build_assignee_filter())
+        )
+        return fields.serialize_models(query.all())
+    else:
+        return get_episodes({"parent_id": episode_id})
 
 
-def get_shots_for_project(project_id):
+def get_shots_for_project(project_id, only_assigned=False):
     """
     Retrieve all shots related to given project.
     """
     return entities_service.get_entities_for_project(
-        project_id, get_shot_type()["id"], "Shot"
+        project_id, get_shot_type()["id"], "Shot", only_assigned=only_assigned
     )
 
 
-def get_scenes_for_project(project_id):
+def get_scenes_for_project(project_id, only_assigned=False):
     """
     Retrieve all scenes related to given project.
     """
     return entities_service.get_entities_for_project(
-        project_id, get_scene_type()["id"], "Scene"
+        project_id, get_scene_type()["id"], "Scene", only_assigned=only_assigned
     )
 
 
@@ -889,7 +945,7 @@ def update_shot(shot_id, data_dict):
     return shot.serialize()
 
 
-def get_episode_stats_for_project(project_id):
+def get_episode_stats_for_project(project_id, only_assigned=False):
     """
     Retrieve number of tasks by status, task_types and episodes
     for given project.
@@ -922,6 +978,9 @@ def get_episode_stats_for_project(project_id):
         .add_columns(func.count(Task.id))
         .add_columns(func.sum(Entity.nb_frames))
     )
+
+    if only_assigned:
+        query = query.filter(user_service.build_assignee_filter())
 
     results = {}
     for data in query.all():

@@ -26,6 +26,7 @@ class DownloadAttachmentResource(Resource):
         comment = tasks_service.get_comment(attachment_file["comment_id"])
         task = tasks_service.get_task(comment["object_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         file_path = comments_service.get_attachment_file_path(attachment_file)
         try:
             return flask_send_file(
@@ -49,6 +50,7 @@ class AckCommentResource(Resource):
     def post(self, task_id, comment_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return comments_service.acknowledge_comment(comment_id)
 
 
@@ -66,6 +68,7 @@ class CommentTaskResource(Resource):
 
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         task_status = tasks_service.get_task_status(task_status_id)
 
         if person_id:

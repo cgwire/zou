@@ -22,11 +22,15 @@ class AssetInstanceResource(BaseModelResource):
         else:
             asset_instance = self.get_model_or_404(instance["id"])
             asset = assets_service.get_asset(asset_instance.asset_id)
-            return user_service.check_project_access(asset["project_id"])
+            user_service.check_project_access(asset["project_id"])
+            user_service.check_entity_access(asset["id"])
+            return True
 
     def check_update_permissions(self, asset_instance, data):
         if permissions.has_admin_permissions():
             return True
         else:
             asset = assets_service.get_asset(asset_instance["asset_id"])
-            return user_service.check_project_access(asset["project_id"])
+            user_service.check_project_access(asset["project_id"])
+            user_service.check_entity_access(asset["id"])
+            return True

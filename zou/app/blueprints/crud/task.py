@@ -18,9 +18,6 @@ class TasksResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Task)
 
-    def check_read_permissions(self):
-        return True
-
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
             query = query.join(Project) \
@@ -64,6 +61,7 @@ class TaskResource(BaseModelResource):
 
     def check_read_permissions(self, task):
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
 
     def check_update_permissions(self, task, data):
         user_service.check_manager_project_access(task["project_id"])

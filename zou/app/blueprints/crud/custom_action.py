@@ -2,7 +2,7 @@ from zou.app.models.custom_action import CustomAction
 
 from .base import BaseModelsResource, BaseModelResource
 
-from zou.app.services import custom_actions_service
+from zou.app.services import custom_actions_service, user_service
 
 
 class CustomActionsResource(BaseModelsResource):
@@ -10,6 +10,7 @@ class CustomActionsResource(BaseModelsResource):
         BaseModelsResource.__init__(self, CustomAction)
 
     def check_read_permissions(self):
+        user_service.block_access_to_vendor()
         return True
 
     def post_creation(self, custom_action):

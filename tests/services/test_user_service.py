@@ -2,7 +2,12 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.person import Person
-from zou.app.services import user_service, persons_service, projects_service
+from zou.app.services import (
+    user_service,
+    persons_service,
+    projects_service,
+    tasks_service
+)
 
 from zou.app.utils import permissions
 
@@ -67,7 +72,7 @@ class UserServiceTestCase(ApiDBTestCase):
                 str(self.project.id),
                 str(self.get_current_user_raw().id)
             )
-            project = projects_service.get_project_with_relations(
+            projects_service.get_project_with_relations(
                 self.project_id
             )
             self.assertTrue(
@@ -83,3 +88,18 @@ class UserServiceTestCase(ApiDBTestCase):
         projects = user_service.related_projects()
         self.assertEqual(len(projects), 1)
         self.assertEqual(projects[0]["id"], str(self.project_id))
+
+    def test_check_entity_access(self):
+        from zou.app import app
+        self.asset_id = str(self.asset.id)
+        with app.app_context():
+            self.generate_fixture_user_vendor()
+            self.log_in_vendor()
+            person_id = str(self.get_current_user_raw().id)
+            projects_service.add_team_member(self.project_id, person_id)
+            with self.assertRaises(permissions.PermissionDenied):
+                user_service.check_entity_access(str(self.asset_id))
+            tasks_service.assign_task(self.task_id, person_id)
+            self.assertTrue(
+                user_service.check_entity_access(str(self.asset_id))
+            )

@@ -102,6 +102,9 @@ def on_identity_loaded(sender, identity):
             if identity.user["role"] == "client":
                 identity.provides.add(RoleNeed("client"))
 
+            if identity.user["role"] == "vendor":
+                identity.provides.add(RoleNeed("vendor"))
+
             if not identity.user["active"]:
                 current_app.logger.error("Current user is not active anymore")
                 logout()

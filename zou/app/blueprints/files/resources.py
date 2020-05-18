@@ -87,6 +87,7 @@ class WorkingFileFileResource(Resource):
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return working_file
 
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
@@ -132,6 +133,7 @@ class WorkingFilePathResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
 
             software = files_service.get_software(software_id)
             is_revision_set_by_user = revision != 0
@@ -190,6 +192,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         try:
             entity = entities_service.get_entity(entity_id)
             user_service.check_project_access(entity["project_id"])
+            user_service.check_entity_access(entity_id)
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
             entity = entities_service.get_entity(entity_id)
@@ -264,6 +267,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
             user_service.check_project_access(asset["project_id"])
+            user_service.check_entity_access(asset["id"])
 
             folder_path = file_tree_service.get_instance_folder_path(
                 asset_instance,
@@ -318,6 +322,7 @@ class LastWorkingFilesResource(Resource):
         result = {}
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         result = files_service.get_last_working_files_for_task(task["id"])
 
         return result
@@ -333,6 +338,7 @@ class TaskWorkingFilesResource(Resource):
         result = {}
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         result = files_service.get_working_files_for_task(task["id"])
 
         return result
@@ -363,6 +369,7 @@ class NewWorkingFileResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             software = files_service.get_software(software_id)
             tasks_service.assign_task(
                 task_id, persons_service.get_current_user()["id"]
@@ -437,6 +444,7 @@ class ModifiedFileResource(Resource):
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         working_file = files_service.update_working_file(
             working_file_id, {"updated_at": datetime.datetime.utcnow()}
         )
@@ -454,6 +462,7 @@ class CommentWorkingFileResource(Resource):
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         working_file = self.update_comment(working_file_id, comment)
         return working_file
 

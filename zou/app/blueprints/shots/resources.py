@@ -5,6 +5,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.services import (
     breakdown_service,
     entities_service,
+    persons_service,
     projects_service,
     playlists_service,
     scenes_service,
@@ -14,9 +15,7 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import query
-
-from zou.app.services.exception import ModelWithRelationsDeletionException
+from zou.app.utils import permissions, query
 
 
 class ShotResource(Resource, ArgsMixin):
@@ -30,6 +29,7 @@ class ShotResource(Resource, ArgsMixin):
             shots_service.clear_shot_cache(shot_id)
             shot = shots_service.get_full_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot["id"])
         return shot
 
     @jwt_required
@@ -52,6 +52,7 @@ class SceneResource(Resource):
         """
         scene = shots_service.get_full_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
+        user_service.check_entity_access(scene["id"])
         return scene
 
     @jwt_required
@@ -78,6 +79,8 @@ class ShotsResource(Resource):
             criterions["parent_id"] = sequence["id"]
             del criterions["sequence_id"]
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return shots_service.get_shots(criterions)
 
 
@@ -93,6 +96,8 @@ class AllShotsResource(Resource):
             criterions["project_id"] = sequence["project_id"]
             criterions["parent_id"] = sequence["id"]
             del criterions["sequence_id"]
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         user_service.check_project_access(criterions.get("project_id", None))
         return shots_service.get_shots(criterions)
 
@@ -117,6 +122,7 @@ class ShotAssetsResource(Resource):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot["id"])
         return breakdown_service.get_entity_casting(shot_id)
 
 
@@ -128,6 +134,7 @@ class ShotTaskTypesResource(Resource):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot["id"])
         return tasks_service.get_task_types_for_shot(shot_id)
 
 
@@ -140,6 +147,7 @@ class ShotTasksResource(Resource, ArgsMixin):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot["id"])
         relations = self.get_relations()
         return tasks_service.get_tasks_for_shot(shot_id, relations=relations)
 
@@ -154,6 +162,7 @@ class ShotPreviewsResource(Resource):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot["id"])
         return playlists_service.get_preview_files_for_entity(shot_id)
 
 
@@ -192,6 +201,8 @@ class ShotsAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return shots_service.get_shots_and_tasks(criterions)
 
 
@@ -242,7 +253,10 @@ class ProjectShotsResource(Resource):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        return shots_service.get_shots_for_project(project_id)
+        return shots_service.get_shots_for_project(
+            project_id,
+            only_assigned=permissions.has_vendor_permissions()
+        )
 
     @jwt_required
     def post(self, project_id):
@@ -278,7 +292,10 @@ class ProjectSequencesResource(Resource):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        return shots_service.get_sequences_for_project(project_id)
+        return shots_service.get_sequences_for_project(
+            project_id,
+            only_assigned=permissions.has_vendor_permissions()
+        )
 
     @jwt_required
     def post(self, project_id):
@@ -307,7 +324,10 @@ class ProjectEpisodesResource(Resource):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        return shots_service.get_episodes_for_project(project_id)
+        return shots_service.get_episodes_for_project(
+            project_id,
+            only_assigned=permissions.has_vendor_permissions()
+        )
 
     @jwt_required
     def post(self, project_id):
@@ -335,7 +355,10 @@ class ProjectEpisodeStatsResource(Resource):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        return shots_service.get_episode_stats_for_project(project_id)
+        return shots_service.get_episode_stats_for_project(
+            project_id,
+            only_assigned=permissions.has_vendor_permissions()
+        )
 
 
 class EpisodeResource(Resource, ArgsMixin):
@@ -383,7 +406,13 @@ class EpisodeSequencesResource(Resource):
         user_service.check_project_access(episode["project_id"])
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = episode_id
-        return shots_service.get_sequences(criterions)
+        if permissions.has_vendor_permissions():
+            return shots_service.get_sequences_for_episode(
+                episode_id,
+                only_assigned=True
+            )
+        else:
+            return shots_service.get_sequences(criterions)
 
 
 class EpisodeTaskTypesResource(Resource):
@@ -458,6 +487,8 @@ class SequenceShotsResource(Resource):
         user_service.check_project_access(sequence["project_id"])
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = sequence_id
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return shots_service.get_shots(criterions)
 
 
@@ -509,6 +540,7 @@ class SceneTaskTypesResource(Resource):
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
+        user_service.check_entity_access(scene["id"])
         return tasks_service.get_task_types_for_scene(scene_id)
 
 
@@ -519,7 +551,7 @@ class SceneTasksResource(Resource):
         Retrieve all tasks related to a given scene.
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
+        user_service.check_entity_access(scene["id"])
         return tasks_service.get_tasks_for_scene(scene_id)
 
 
@@ -530,7 +562,7 @@ class SceneShotsResource(Resource, ArgsMixin):
         Retrieve all shots that comes from given scene.
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_project_access(scene["project_id"])
+        user_service.check_entity_access(scene["id"])
         return scenes_service.get_shots_by_scene(scene_id)
 
     @jwt_required
@@ -564,4 +596,5 @@ class ShotVersionsResource(Resource):
     def get(self, shot_id):
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot["_id"])
         return shots_service.get_shot_versions(shot_id)
