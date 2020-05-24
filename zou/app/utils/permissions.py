@@ -28,8 +28,8 @@ def has_admin_permissions():
 def has_client_permissions():
     """
     Return True if user is client.
-    return client_permission.can()
     """
+    return client_permission.can()
 
 
 def has_vendor_permissions():

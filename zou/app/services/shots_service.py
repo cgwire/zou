@@ -243,6 +243,7 @@ def get_shots_and_tasks(criterions={}):
 
     if "assigned_to" in criterions:
         query = query.filter(user_service.build_assignee_filter())
+        del criterions["assigned_to"]
 
     for (
         shot,
