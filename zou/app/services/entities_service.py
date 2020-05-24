@@ -104,15 +104,20 @@ def get_entities_for_project(project_id, entity_type_id, obj_type="Entity"):
     return Entity.serialize_list(result, obj_type=obj_type)
 
 
-def get_entity_links_for_project(project_id):
+def get_entity_links_for_project(project_id, only_assigned=False):
     """
     Retrieve entity links for
     """
-    result = (
+    from zou.app.services import user_service
+    query = (
         EntityLink.query.join(Entity, EntityLink.entity_in_id == Entity.id)
         .filter(Entity.project_id == project_id)
-        .all()
     )
+    if only_assigned:
+        query = query \
+            .outerjoin(Task) \
+            .filter(user_service.build_assignee_filter())
+    result = query.all()
     return Entity.serialize_list(result)
 
 

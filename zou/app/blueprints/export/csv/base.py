@@ -11,7 +11,8 @@ class BaseCsvExport(BaseModelResource):
         self.file_name = "export"
 
     def check_permissions(self):
-        pass
+        permissions.check_manager_permissions()
+        return True
 
     @jwt_required
     def get(self):

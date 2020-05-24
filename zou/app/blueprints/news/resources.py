@@ -16,6 +16,7 @@ class ProjectNewsResource(Resource):
         ) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return news_service.get_last_news_for_project(
             project_id,
             only_preview=only_preview,
@@ -48,4 +49,5 @@ class ProjectSingleNewsResource(Resource):
     def get(self, project_id, news_id):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return news_service.get_news(project_id, news_id)

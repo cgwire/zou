@@ -10,7 +10,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import permissions, fields
+from zou.app.utils import permissions
 from zou.app.services.exception import WrongParameterException
 
 
@@ -66,7 +66,13 @@ class ProductionTeamResource(Resource, ArgsMixin):
     def get(self, project_id):
         user_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
-        return fields.serialize_value(project.team)
+        persons = []
+        for person in project.team:
+            if permissions.has_manager_permissions:
+                persons.append(person.serialize_safe())
+            else:
+                persons.append(person.present_minimal())
+        return persons
 
     @jwt_required
     def post(self, project_id):
@@ -200,6 +206,7 @@ class ProductionScheduleItemsResource(Resource):
     @jwt_required
     def get(self, project_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return schedule_service.get_schedule_items(project_id)
 
 
@@ -211,6 +218,7 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
     @jwt_required
     def get(self, project_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return schedule_service.get_task_types_schedule_items(project_id)
 
 
@@ -222,6 +230,7 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
     @jwt_required
     def get(self, project_id, task_type_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return schedule_service.get_asset_types_schedule_items(
             project_id, task_type_id
         )
@@ -235,6 +244,7 @@ class ProductionEpisodesScheduleItemsResource(Resource):
     @jwt_required
     def get(self, project_id, task_type_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return schedule_service.get_episodes_schedule_items(
             project_id, task_type_id
         )
@@ -248,6 +258,7 @@ class ProductionSequencesScheduleItemsResource(Resource):
     @jwt_required
     def get(self, project_id, task_type_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return schedule_service.get_sequences_schedule_items(
             project_id, task_type_id
         )

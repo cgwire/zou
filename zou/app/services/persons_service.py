@@ -28,11 +28,17 @@ def clear_person_cache():
 
 
 @cache.memoize_function(120)
-def get_persons():
+def get_persons(minimal=False):
     """
     Return all person stored in database.
     """
-    return fields.serialize_models(Person.query.all())
+    persons = []
+    for person in Person.query.all():
+        if not minimal:
+            persons.append(person.serialize_safe())
+        else:
+            persons.append(person.present_minimal())
+    return persons
 
 
 @cache.memoize_function(120)

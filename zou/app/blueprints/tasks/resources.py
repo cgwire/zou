@@ -38,6 +38,7 @@ class AddPreviewResource(Resource):
     def post(self, task_id, comment_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
 
         comment = tasks_service.get_comment(comment_id)
         tasks_service.get_task_status(comment["task_status_id"])
@@ -57,6 +58,7 @@ class AddExtraPreviewResource(Resource):
     def post(self, task_id, comment_id, preview_file_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         tasks_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
@@ -84,6 +86,7 @@ class TaskPreviewsResource(Resource):
     def get(self, task_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return files_service.get_preview_files_for_task(task_id)
 
 
@@ -96,6 +99,7 @@ class TaskCommentsResource(Resource):
     def get(self, task_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         return tasks_service.get_comments(task_id, is_client, is_manager)
@@ -150,6 +154,10 @@ class PersonTasksResource(Resource):
             projects = user_service.related_projects()
         else:
             projects = projects_service.open_projects()
+        if permissions.has_vendor_permissions():
+            person = persons_service.get(person_id)
+            if person["role"] == "vendor":
+                return []
         return tasks_service.get_person_tasks(person_id, projects)
 
 
@@ -165,6 +173,10 @@ class PersonDoneTasksResource(Resource):
             projects = user_service.related_projects()
         else:
             projects = projects_service.open_projects()
+        if permissions.has_vendor_permissions():
+            person = persons_service.get(person_id)
+            if person["role"] == "vendor":
+                return []
         return tasks_service.get_person_done_tasks(person_id, projects)
 
 
@@ -225,6 +237,7 @@ class ToReviewResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["project_id"])
 
             if person_id is not None:
                 person = persons_service.get_person(person_id)
@@ -398,6 +411,7 @@ class TaskFullResource(Resource):
     def get(self, task_id):
         task = tasks_service.get_full_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return task
 
 
@@ -440,6 +454,7 @@ class SetTimeSpentResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             persons_service.get_person(person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
@@ -472,6 +487,7 @@ class AddTimeSpentResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
 
             persons_service.get_person(person_id)
             time_spent = tasks_service.create_or_update_time_spent(
@@ -500,6 +516,7 @@ class GetTimeSpentResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             return tasks_service.get_time_spents(task_id)
         except WrongDateFormatException:
             abort(404)

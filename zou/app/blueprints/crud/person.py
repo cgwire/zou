@@ -24,7 +24,7 @@ class PersonsResource(BaseModelsResource):
             else:
                 return [person.serialize_safe() for person in query.all()]
         else:
-            return [person.serialize_without_info() for person in query.all()]
+            return [person.present_minimal() for person in query.all()]
 
     def post(self):
         abort(405)

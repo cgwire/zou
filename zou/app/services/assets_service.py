@@ -15,6 +15,7 @@ from zou.app.services import (
     deletion_service,
     projects_service,
     shots_service,
+    user_service
 )
 
 from zou.app.services.exception import (
@@ -86,6 +87,9 @@ def get_assets(criterions={}):
     """
     query = Entity.query.filter(build_asset_type_filter())
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
+    if "assigned_to" in criterions:
+        query = query.outerjoin(Task)
+        query = query.filter(user_service.build_assignee_filter())
     result = query.all()
     return EntityType.serialize_list(result, obj_type="Asset")
 
@@ -102,6 +106,9 @@ def get_full_assets(criterions={}):
         .add_columns(Project.name, EntityType.name)
         .order_by(Project.name, EntityType.name, Entity.name)
     )
+    if "assigned_to" in criterions:
+        query = query.outerjoin(Task)
+        query = query.filter(user_service.build_assignee_filter())
 
     data = query.all()
     assets = []
@@ -155,6 +162,9 @@ def get_assets_and_tasks(criterions={}, page=1):
             query = query.filter(Entity.source_id == None)
         elif criterions["episode_id"] != "all":
             query = query.filter(Entity.source_id == criterions["episode_id"])
+
+    if "assigned_to" in criterions:
+        query = query.filter(user_service.build_assignee_filter())
 
     for (
         asset,

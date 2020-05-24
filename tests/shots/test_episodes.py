@@ -1,5 +1,7 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.services import projects_service, tasks_service
+
 
 class EpisodeTestCase(ApiDBTestCase):
 
@@ -34,6 +36,26 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertEqual(len(sequences), 4)
         self.assertDictEqual(sequences[0], self.serialized_sequence)
 
+    def test_get_sequences_for_episode_with_vendor(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_task_type()
+        self.generate_fixture_shot_task(name="Secondary")
+        self.generate_fixture_user_vendor()
+        task_id = self.shot_task.id
+        project_id = self.project_id
+        person_id = self.user_vendor["id"]
+        projects_service.add_team_member(project_id, person_id)
+        projects_service.clear_project_cache(str(project_id))
+        self.log_in_vendor()
+        sequences = self.get("data/episodes/%s/sequences" % self.episode_id)
+        self.assertEqual(len(sequences), 0)
+        tasks_service.assign_task(task_id, person_id)
+        sequences = self.get("data/episodes/%s/sequences" % self.episode_id)
+        self.assertEqual(len(sequences), 1)
+
     def test_get_episodes(self):
         episodes = self.get("data/episodes")
         self.assertEqual(len(episodes), 3)
@@ -63,6 +85,25 @@ class EpisodeTestCase(ApiDBTestCase):
         episodes = self.get("data/projects/%s/episodes" % self.project.id)
         self.assertEqual(len(episodes), 3)
         self.assertEqual(episodes[0], self.serialized_episode)
+
+    def test_get_episodes_for_project_with_vendor(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_task_type()
+        self.generate_fixture_shot_task(name="Secondary")
+        self.generate_fixture_user_vendor()
+        task_id = self.shot_task.id
+        project_id = self.project_id
+        person_id = self.user_vendor["id"]
+        projects_service.add_team_member(project_id, person_id)
+        self.log_in_vendor()
+        episodes = self.get("data/projects/%s/episodes" % project_id)
+        self.assertEqual(len(episodes), 0)
+        tasks_service.assign_task(task_id, person_id)
+        episodes = self.get("data/projects/%s/episodes" % project_id)
+        self.assertEqual(len(episodes), 1)
 
     def test_get_episodes_for_project_404(self):
         self.get("data/projects/unknown/episodes", 404)

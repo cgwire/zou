@@ -16,9 +16,13 @@ class WorkingFileResource(BaseModelResource):
     def check_read_permissions(self, instance):
         working_file = files_service.get_working_file(instance["id"])
         task = tasks_service.get_task(working_file["task_id"])
-        return user_service.check_project_access(task["project_id"])
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return True
 
     def check_update_permissions(self, instance, data):
         working_file = files_service.get_working_file(instance["id"])
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return True
