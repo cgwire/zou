@@ -83,6 +83,9 @@ class ApiTestCase(unittest.TestCase):
     def log_in_client(self):
         self.log_in(self.user_client["email"])
 
+    def log_in_vendor(self):
+        self.log_in(self.user_vendor["email"])
+
     def log_out(self):
         try:
             self.get("auth/logout")
@@ -517,6 +520,15 @@ class ApiDBTestCase(ApiTestCase):
         ).serialize()
         return self.user_client
 
+    def generate_fixture_user_vendor(self):
+        self.user_vendor = Person.create(
+            first_name="John",
+            last_name="Did5",
+            role="vendor",
+            email=u"john.did.vendor@gmail.com",
+            password=auth.encrypt_password("mypassword")
+        ).serialize()
+        return self.user_vendor
 
     def generate_fixture_person(
         self,

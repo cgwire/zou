@@ -324,6 +324,7 @@ class CreatePreviewFilePictureResource(Resource):
         task = tasks_service.get_task(preview_file["task_id"])
         try:
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             return True
         except permissions.PermissionDenied:
             return False
@@ -351,6 +352,7 @@ class PreviewFileMovieResource(Resource):
         task = tasks_service.get_task(preview_file["task_id"])
         try:
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             return True
         except permissions.PermissionDenied:
             return False
@@ -406,6 +408,7 @@ class PreviewFileResource(Resource):
             task = tasks_service.get_task(preview_file["task_id"])
             try:
                 user_service.check_project_access(task["project_id"])
+                user_service.check_entity_access(task["entity_id"])
                 return True
             except permissions.PermissionDenied:
                 return False
@@ -487,6 +490,7 @@ class BasePreviewPictureResource(Resource):
             task = tasks_service.get_task(preview_file["task_id"])
             try:
                 user_service.check_project_access(task["project_id"])
+                user_service.check_entity_access(task["entity_id"])
                 return True
             except permissions.PermissionDenied:
                 return False
@@ -728,6 +732,7 @@ class SetMainPreviewResource(Resource):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return entities_service.update_entity_preview(
             task["entity_id"], preview_file_id
         )

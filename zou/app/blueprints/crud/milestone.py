@@ -18,6 +18,7 @@ class MilestoneResource(BaseModelResource):
 
     def check_read_permissions(self, milestone):
         user_service.check_project_access(milestone["project_id"])
+        user_service.block_access_to_vendor()
 
     def check_update_permissions(self, milestone, data):
         user_service.check_manager_project_access(milestone["project_id"])

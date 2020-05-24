@@ -1,5 +1,3 @@
-import sys
-
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 from slugify import slugify
@@ -40,6 +38,7 @@ class ShotsCsvExport(Resource):
 
     def check_permissions(self, project_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
 
     def build_headers(self, metadata_infos, validation_columns):
         headers = [

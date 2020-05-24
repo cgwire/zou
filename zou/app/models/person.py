@@ -70,11 +70,14 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         del data["password"]
         return data
 
-    def serialize_without_info(self):
-        data = self.serialize_safe()
-        del data["phone"]
-        del data["email"]
-        return data
+    def present_minimal(self, relations=False):
+        data = SerializerMixin.serialize(self, "Person", relations=relations)
+        return {
+            "id": data["id"],
+            "first_name": data["first_name"],
+            "last_name": data["last_name"],
+            "full_name": self.full_name()
+        }
 
     @classmethod
     def create_from_import(cls, person):

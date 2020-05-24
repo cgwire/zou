@@ -85,8 +85,8 @@ class ProjectResource(BaseModelResource):
                 "message": "Only closed projects can be deleted"
             }, 400
         else:
+            self.check_delete_permissions(project_dict)
             if args["force"] == True:
-                self.check_delete_permissions(project_dict)
                 deletion_service.remove_project(instance_id)
             else:
                 project.delete()

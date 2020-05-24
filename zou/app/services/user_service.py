@@ -332,14 +332,45 @@ def check_project_access(project_id):
     return is_allowed
 
 
+def block_access_to_vendor():
+    """
+    Raise PermissionDenied if current user has a vendor role.
+    """
+    if permissions.has_vendor_permissions():
+        raise permissions.PermissionDenied
+    return True
+
+
+def check_entity_access(entity_id):
+    """
+    Return true if current user is not vendor or has a task assigned for this
+    project.
+    """
+    is_allowed = not permissions.has_vendor_permissions()
+    if not is_allowed:
+        nb_tasks = (
+            Task
+            .query
+            .filter(Task.entity_id == entity_id)
+            .filter(build_assignee_filter())
+            .count()
+        )
+        if nb_tasks == 0:
+            raise permissions.PermissionDenied
+        is_allowed = True
+    return is_allowed
+
+
 def check_manager_project_access(project_id):
     """
     Return true if current user is manager or has a task assigned for this
     project.
     """
-    is_allowed = permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
-        and check_belong_to_project(project_id)
+    is_allowed = (
+        permissions.has_admin_permissions() or (
+            permissions.has_manager_permissions() and
+            check_belong_to_project(project_id)
+        )
     )
     if not is_allowed:
         raise permissions.PermissionDenied
@@ -626,9 +657,12 @@ def get_context():
     else:
         projects = get_open_projects()
 
+    persons_service.clear_person_cache()
     asset_types = assets_service.get_asset_types()
     custom_actions = custom_actions_service.get_custom_actions()
-    persons = persons_service.get_persons()
+    persons = persons_service.get_persons(
+        minimal=not permissions.has_manager_permissions()
+    )
     notifications = get_last_notifications()
     project_status_list = projects_service.get_project_statuses()
     task_types = tasks_service.get_task_types()

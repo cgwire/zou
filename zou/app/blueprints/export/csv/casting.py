@@ -28,6 +28,7 @@ class CastingCsvExport(Resource):
 
     def check_permissions(self, project_id):
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
 
     def build_headers(self):
         return [
