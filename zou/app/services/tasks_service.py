@@ -1,3 +1,4 @@
+import collections
 import datetime
 import re
 import uuid
@@ -375,10 +376,11 @@ def get_time_spents(task_id):
     """
     Return time spents for given task.
     """
-    result = {"total": 0}
+    result = collections.defaultdict(list)
+    result["total"] = 0
     time_spents = TimeSpent.query.filter_by(task_id=task_id).all()
     for time_spent in time_spents:
-        result[str(time_spent.person_id)] = time_spent.serialize()
+        result[str(time_spent.person_id)].append(time_spent.serialize())
         result["total"] += time_spent.duration
     return result
 
