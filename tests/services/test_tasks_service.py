@@ -297,24 +297,32 @@ class TaskServiceTestCase(ApiDBTestCase):
         person_id = self.person.id
         user_id = self.user["id"]
         task_id = self.task.id
-        TimeSpent.create(
+        ts1 = TimeSpent.create(
             person_id=person_id,
             task_id=task_id,
             date=datetime.date(2017, 9, 23),
             duration=3600
         )
-        TimeSpent.create(
+        ts2 = TimeSpent.create(
             person_id=user_id,
             task_id=task_id,
             date=datetime.date(2017, 9, 23),
             duration=7200
         )
-        time_spents = self.get(
-            "/actions/tasks/%s/time-spents/2017-09-23/" % task_id
+        ts3 = TimeSpent.create(
+            person_id=user_id,
+            task_id=task_id,
+            date=datetime.date(2017, 9, 24),
+            duration=7200
         )
-        self.assertEqual(time_spents["total"], 10800)
-        self.assertEqual(time_spents[str(user_id)]["duration"], 7200)
-        self.assertEqual(time_spents[str(person_id)]["duration"], 3600)
+        time_spents = self.get(
+            "/actions/tasks/%s/time-spents/" % task_id
+        )
+        self.assertEqual(
+            time_spents["total"],
+            sum([ts['duration'] for ts in [ts1, ts2, ts3]]))
+        self.assertEqual(len(time_spents[str(user_id)]), 1)
+        self.assertEqual(len(time_spents[str(person_id)]), 2)
 
     def test_clear_assignation(self):
         task_id = self.task.id
