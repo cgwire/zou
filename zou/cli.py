@@ -311,5 +311,15 @@ def clean_tasks_data(projectid):
         commands.reset_tasks_data(projectid)
 
 
+@cli.command()
+@click.option("--days", default=90)
+def remove_old_data(days):
+    """
+    Remove old events, notifications and login logs older than 90 days
+    (by deafult).t
+    """
+    commands.remove_old_data(days)
+
+
 if __name__ == "__main__":
     cli()

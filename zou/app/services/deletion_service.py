@@ -1,4 +1,6 @@
+import datetime
 from sqlalchemy.exc import IntegrityError
+
 
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
@@ -6,8 +8,8 @@ from zou.app.models.entity import Entity, EntityLink, EntityVersion
 from zou.app.models.event import ApiEvent
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.login_log import LoginLog
-from zou.app.models.notification import Notification
 from zou.app.models.milestone import Milestone
+from zou.app.models.notification import Notification
 from zou.app.models.news import News
 from zou.app.models.output_file import OutputFile
 from zou.app.models.person import Person
@@ -18,7 +20,6 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
-from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
 
@@ -283,3 +284,30 @@ def remove_person(person_id, force=True):
         )
 
     return person.serialize_safe()
+
+
+def remove_old_events(days_old=90):
+    """
+    Remove events older than *days_old*.
+    """
+    limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    ApiEvent.query.filter(ApiEvent.created_at < limit_date).delete()
+    ApiEvent.commit()
+
+
+def remove_old_login_logs(days_old=90):
+    """
+    Remove login logs older than *days_old*.
+    """
+    limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    LoginLog.query.filter(LoginLog.created_at < limit_date).delete()
+    LoginLog.commit()
+
+
+def remove_old_notifications(days_old=90):
+    """
+    Remove notifications older than *days_old*.
+    """
+    limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    Notification.query.filter(Notification.created_at < limit_date).delete()
+    Notification.commit()
