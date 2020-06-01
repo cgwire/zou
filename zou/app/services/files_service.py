@@ -503,14 +503,12 @@ def get_last_output_files_for_entity(
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
-        OutputFile.file_status_id,
         func.max(OutputFile.revision).label("MAX"),
     ).group_by(
         OutputFile.task_type_id,
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
-        OutputFile.file_status_id,
     )
     query = query.filter(OutputFile.entity_id == entity_id)
     query = query.filter(OutputFile.asset_instance_id == None)
@@ -525,7 +523,6 @@ def get_last_output_files_for_entity(
             OutputFile.output_type_id == statement.c.output_type_id,
             OutputFile.name == statement.c.name,
             OutputFile.representation == statement.c.representation,
-            OutputFile.file_status_id == statement.c.file_status_id,
             OutputFile.revision == statement.c.MAX,
         ),
     )
@@ -569,7 +566,6 @@ def get_last_output_files_for_instance(
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
-        OutputFile.file_status_id,
         func.max(OutputFile.revision).label("MAX"),
     ).group_by(
         OutputFile.temporal_entity_id,
@@ -577,7 +573,6 @@ def get_last_output_files_for_instance(
         OutputFile.output_type_id,
         OutputFile.name,
         OutputFile.representation,
-        OutputFile.file_status_id,
     )
     query = query.filter(OutputFile.asset_instance_id == asset_instance_id)
     query = query.filter(OutputFile.temporal_entity_id == temporal_entity_id)
@@ -592,7 +587,6 @@ def get_last_output_files_for_instance(
             OutputFile.output_type_id == statement.c.output_type_id,
             OutputFile.name == statement.c.name,
             OutputFile.representation == statement.c.representation,
-            OutputFile.file_status_id == statement.c.file_status_id,
             OutputFile.revision == statement.c.MAX,
         ),
     )
