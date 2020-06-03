@@ -532,6 +532,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                 representation=args["representation"],
                 extension=args["extension"],
                 nb_elements=int(args["nb_elements"]),
+                file_status_id=args['file_status_id'],
             )
 
             output_file_dict = self.add_path_info(
@@ -570,6 +571,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                 ("representation", "", False),
                 ("nb_elements", 1, False),
                 ("sep", "/", False),
+                ("file_status_id", None, False),
             ]
         )
 
@@ -674,6 +676,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                 comment=args["comment"],
                 nb_elements=int(args["nb_elements"]),
                 extension=args["extension"],
+                file_status_id=args['file_status_id'],
             )
 
             output_file_dict = self.add_path_info(
@@ -714,6 +717,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                 ("is_sequence", False, False),
                 ("nb_elements", 1, False),
                 ("sep", "/", False),
+                ("file_status_id", None, False),
             ]
         )
 
