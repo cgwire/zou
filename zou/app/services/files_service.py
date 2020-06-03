@@ -226,6 +226,7 @@ def create_new_output_revision(
     nb_elements=1,
     asset_instance_id=None,
     temporal_entity_id=None,
+    file_status_id=None
 ):
     """
     Create a new ouput file for given entity. Output type, task type, author
@@ -257,7 +258,7 @@ def create_new_output_revision(
         except NoOutputFileException:
             revision = 1
 
-    file_status_id = get_default_status()["id"]
+    file_status_id = file_status_id or get_default_status()["id"]
 
     try:
         output_file = OutputFile.get_by(
