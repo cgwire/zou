@@ -76,7 +76,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "id": data["id"],
             "first_name": data["first_name"],
             "last_name": data["last_name"],
-            "full_name": self.full_name()
+            "full_name": self.full_name(),
+            "has_avatar": data["has_avatar"],
+            "active": data["active"]
         }
 
     @classmethod

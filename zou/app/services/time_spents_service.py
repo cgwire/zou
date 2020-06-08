@@ -18,69 +18,79 @@ from zou.app.utils import fields
 from zou.app.services.exception import WrongDateFormatException
 
 
-def get_year_table():
+def get_year_table(person_id=None):
     """
     Return a table giving time spent by user and by month for given year.
     """
-    return get_yearly_table(None, detail_level="year")
+    return get_yearly_table(None, detail_level="year", person_id=person_id)
 
 
-def get_month_table(year):
+def get_month_table(year, person_id=None):
     """
     Return a table giving time spent by user and by month for given year.
     """
-    return get_yearly_table(year)
+    return get_yearly_table(year, person_id=person_id)
 
 
-def get_week_table(year):
+def get_week_table(year, person_id=None):
     """
     Return a table giving time spent by user and by week for given year.
     """
-    return get_yearly_table(year, "week")
+    return get_yearly_table(year, "week", person_id=person_id)
 
 
-def get_day_table(year, month):
+def get_day_table(year, month, person_id=None):
     """
     Return a table giving time spent by user and by day for given year and
     month.
     """
-    time_spents = get_time_spents_for_month(year, month)
+    time_spents = get_time_spents_for_month(year, month, person_id=person_id)
     return get_table_from_time_spents(time_spents, "day")
 
 
-def get_yearly_table(year=None, detail_level="month"):
+def get_yearly_table(year=None, detail_level="month", person_id=None):
     """
     Return a table giving time spent by user and by week or month for given
     year. Week or month detail level can be selected through *detail_level*
     argument.
     """
-    time_spents = get_time_spents_for_year(year=year)
+    time_spents = get_time_spents_for_year(year=year, person_id=person_id)
     return get_table_from_time_spents(time_spents, detail_level)
 
 
-def get_time_spents_for_year(year=None):
+def get_time_spents_for_year(year=None, person_id=None):
     """
     Return all time spents for given year.
     """
-    if year is None:
-        return TimeSpent.query.all()
-    else:
-        return TimeSpent.query.filter(
+    query = TimeSpent.query
+
+    if person_id is not None:
+        query = query.filter(TimeSpent.person_id == person_id)
+
+    if year is not None:
+        query = query.filter(
             TimeSpent.date.between("%s-01-01" % year, "%s-12-31" % year)
-        ).all()
+        )
+
+    return query.all()
 
 
-def get_time_spents_for_month(year, month):
+def get_time_spents_for_month(year, month, person_id=None):
     """
     Return all time spents for given month.
     """
     date = datetime.datetime(int(year), int(month), 1)
     next_month = date + relativedelta.relativedelta(months=1)
-    return (
-        TimeSpent.query.filter(TimeSpent.date >= date.strftime("%Y-%m-%d"))
+    query = (
+        TimeSpent.query
+        .filter(TimeSpent.date >= date.strftime("%Y-%m-%d"))
         .filter(TimeSpent.date < next_month.strftime("%Y-%m-%d"))
-        .all()
     )
+
+    if person_id is not None:
+        query = query.filter(TimeSpent.person_id == person_id)
+
+    return query.all()
 
 
 def get_table_from_time_spents(time_spents, detail_level="month"):

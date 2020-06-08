@@ -92,18 +92,18 @@ def get_todos():
     """
     Get all unfinished tasks assigned to current user.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = persons_service.get_current_user()
     projects = related_projects()
-    return tasks_service.get_person_tasks(current_user.id, projects)
+    return tasks_service.get_person_tasks(current_user["id"], projects)
 
 
 def get_done_tasks():
     """
     Get all finished tasks assigned to current user for open projects.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = persons_service.get_current_user()
     projects = related_projects()
-    return tasks_service.get_person_done_tasks(current_user.id, projects)
+    return tasks_service.get_person_done_tasks(current_user["id"], projects)
 
 
 def get_tasks_for_entity(entity_id):
@@ -303,6 +303,17 @@ def check_working_on_entity(entity_id):
     return True
 
 
+def check_person_access(person_id):
+    """
+    Return True if user is admin or is matching given person id.
+    """
+    current_user = persons_service.get_current_user()
+    if permissions.has_admin_permissions() or current_user["id"] == person_id:
+        return True
+    else:
+        raise permissions.PermissionDenied
+
+
 def check_belong_to_project(project_id):
     """
     Return true if current user is assigned to a task of the given project or
@@ -393,8 +404,8 @@ def get_filters():
     list type and project_id. If the filter is not related to a project,
     the project_id is all.
     """
-    current_user = persons_service.get_current_user_raw()
-    return get_user_filters(str(current_user.id))
+    current_user = persons_service.get_current_user()
+    return get_user_filters(current_user["id"])
 
 
 @cache.memoize_function(120)
@@ -444,17 +455,17 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
     """
     Add a new search filter to the database.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = persons_service.get_current_user()
     search_filter = SearchFilter.create(
         list_type=list_type,
         name=name,
         search_query=query,
         project_id=project_id,
-        person_id=current_user.id,
+        person_id=current_user["id"],
         entity_type=entity_type,
     )
     search_filter.serialize()
-    clear_filter_cache(str(current_user.id))
+    clear_filter_cache(current_user["id"])
     return search_filter.serialize()
 
 
@@ -462,14 +473,14 @@ def remove_filter(search_filter_id):
     """
     Remove given filter from database.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = persons_service.get_current_user()
     search_filter = SearchFilter.get_by(
-        id=search_filter_id, person_id=current_user.id
+        id=search_filter_id, person_id=current_user["id"]
     )
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    clear_filter_cache(str(current_user.id))
+    clear_filter_cache(current_user["id"])
     return search_filter.serialize()
 
 
@@ -489,10 +500,10 @@ def get_last_notifications(notification_id=None):
     """
     Return last 100 user notifications.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = persons_service.get_current_user()
     result = []
     query = (
-        Notification.query.filter_by(person_id=current_user.id)
+        Notification.query.filter_by(person_id=current_user["id"])
         .order_by(Notification.created_at.desc())
         .join(Task, Project)
         .outerjoin(Comment)
@@ -566,9 +577,9 @@ def mark_notifications_as_read():
     Mark all recent notifications for current_user as read. It is useful
     to mark a list of notifications as read after an user retrieved them.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = persons_service.get_current_user()
     notifications = (
-        Notification.query.filter_by(person_id=current_user.id, read=False)
+        Notification.query.filter_by(person_id=current_user["id"], read=False)
         .order_by(Notification.created_at)
         .limit(100)
         .all()

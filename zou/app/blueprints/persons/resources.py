@@ -4,7 +4,7 @@ from flask import abort
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
-from zou.app.services import persons_service, time_spents_service
+from zou.app.services import persons_service, user_service, time_spents_service
 from zou.app.utils import auth, permissions, csv_utils
 from zou.app.services.exception import WrongDateFormatException
 
@@ -123,7 +123,7 @@ class PersonYearTimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, person_id, year):
-        permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_year_time_spents(person_id, year)
         except WrongDateFormatException:
@@ -137,7 +137,7 @@ class PersonMonthTimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, person_id, year, month):
-        permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_month_time_spents(
                 person_id, year, month
@@ -153,7 +153,7 @@ class PersonWeekTimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, person_id, year, week):
-        permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_week_time_spents(
                 person_id, year, week
@@ -169,24 +169,13 @@ class PersonDayTimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, person_id, year, month, day):
-        permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_day_time_spents(
                 person_id, year, month, day
             )
         except WrongDateFormatException:
             abort(404)
-
-
-class TimeSpentYearResource(Resource):
-    """
-    Return a table giving time spent by user and by month for given year.
-    """
-
-    @jwt_required
-    def get(self):
-        permissions.check_admin_permissions()
-        return time_spents_service.get_year_table()
 
 
 class TimeSpentMonthResource(Resource):
@@ -197,8 +186,13 @@ class TimeSpentMonthResource(Resource):
 
     @jwt_required
     def get(self, year, month):
-        permissions.check_admin_permissions()
-        return time_spents_service.get_day_table(year, month)
+        if permissions.has_admin_permissions():
+            return time_spents_service.get_day_table(year, month)
+        else:
+            current_user = persons_service.get_current_user()
+            return time_spents_service.get_day_table(
+                year, month, person_id=current_user["id"]
+            )
 
 
 class TimeSpentYearsResource(Resource):
@@ -208,8 +202,13 @@ class TimeSpentYearsResource(Resource):
 
     @jwt_required
     def get(self):
-        permissions.check_admin_permissions()
-        return time_spents_service.get_year_table()
+        if permissions.has_admin_permissions():
+            return time_spents_service.get_year_table()
+        else:
+            current_user = persons_service.get_current_user()
+            return time_spents_service.get_year_table(
+                person_id=current_user["id"]
+            )
 
 
 class TimeSpentMonthsResource(Resource):
@@ -219,8 +218,14 @@ class TimeSpentMonthsResource(Resource):
 
     @jwt_required
     def get(self, year):
-        permissions.check_admin_permissions()
-        return time_spents_service.get_month_table(year)
+        if permissions.has_admin_permissions():
+            return time_spents_service.get_month_table(year)
+        else:
+            current_user = persons_service.get_current_user()
+            return time_spents_service.get_month_table(
+                year,
+                person_id=current_user["id"]
+            )
 
 
 class TimeSpentWeekResource(Resource):
@@ -230,8 +235,14 @@ class TimeSpentWeekResource(Resource):
 
     @jwt_required
     def get(self, year):
-        permissions.check_admin_permissions()
-        return time_spents_service.get_week_table(year)
+        if permissions.has_admin_permissions():
+            return time_spents_service.get_week_table(year)
+        else:
+            current_user = persons_service.get_current_user()
+            return time_spents_service.get_week_table(
+                year,
+                person_id=current_user["id"]
+            )
 
 
 class InvitePersonResource(Resource):

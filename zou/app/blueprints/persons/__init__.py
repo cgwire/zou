@@ -13,7 +13,6 @@ from .resources import (
     TimeSpentMonthResource,
     TimeSpentMonthsResource,
     TimeSpentWeekResource,
-    TimeSpentYearResource,
     TimeSpentYearsResource,
     PersonYearTimeSpentsResource
 )
