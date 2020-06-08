@@ -102,8 +102,8 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
             "/actions/tasks/%s/time-spents/2017-09-23/" % task_id
         )
         self.assertEqual(time_spents["total"], 10800)
-        self.assertEqual(time_spents[user_id]["duration"], 7200)
-        self.assertEqual(time_spents[person_id]["duration"], 3600)
+        self.assertEqual(time_spents[user_id][0]["duration"], 7200)
+        self.assertEqual(time_spents[person_id][0]["duration"], 3600)
 
     def test_add_time_spent(self):
         person_id = str(self.person.id)
