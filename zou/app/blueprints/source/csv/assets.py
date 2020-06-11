@@ -41,18 +41,20 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.entity_types, entity_type_name
         )
 
-        data = {}
-        for name, field_name in self.descriptor_fields.items():
-            if name in row:
-                data[field_name] = row[name]
-        print(data)
-
         entity = Entity.get_by(
             name=asset_name,
             project_id=project_id,
             entity_type_id=entity_type_id,
             source_id=episode_id
         )
+
+        data = {}
+        for name, field_name in self.descriptor_fields.items():
+            if name in row:
+                data[field_name] = row[name]
+            elif entity.data is not None and field_name in entity.data:
+                data[field_name] = entity.data[field_name]
+
         if entity is None:
             try:
                 entity = Entity.create(

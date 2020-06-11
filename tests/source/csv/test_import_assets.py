@@ -32,6 +32,17 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         asset = entities[0]
         self.assertEqual(asset.data.get("contractor", None), "contractor 1")
 
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_no_metadata.csv")
+        )
+        self.upload_file("%s?update=true" % path, file_path_fixture)
+
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 3)
+
+        asset = entities[0]
+        self.assertEqual(asset.data.get("contractor", None), "contractor 1")
+
     def test_import_assets_duplicates(self):
         path = "/import/csv/projects/%s/assets" % self.project.id
 
