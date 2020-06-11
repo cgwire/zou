@@ -27,7 +27,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
         elif permission_group == "Admin":
             role = "admin"
 
-        if sg_person['department']:
+        if sg_person.get('department', None) is not None:
             department = tasks_service.get_or_create_department(
                 sg_person['department']['name']
             )
