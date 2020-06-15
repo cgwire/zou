@@ -1,3 +1,4 @@
+from functools import wraps
 from flask_principal import RoleNeed, Permission
 from werkzeug.exceptions import Forbidden
 
@@ -59,3 +60,11 @@ def check_admin_permissions():
         return True
     else:
         raise PermissionDenied
+
+
+def require_admin(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        check_admin_permissions()
+        return function(*args, **kwargs)
+    return decorated_function

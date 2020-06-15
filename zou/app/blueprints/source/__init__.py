@@ -1,5 +1,5 @@
 """
-This module is named source instead of import because import is a Python
+    This module is named source instead of import because import is a Python
 keyword.
 """
 from flask import Blueprint
@@ -66,6 +66,12 @@ from .csv.persons import PersonsCsvImportResource
 from .csv.assets import AssetsCsvImportResource
 from .csv.shots import ShotsCsvImportResource
 from .csv.casting import CastingCsvImportResource
+from .kitsu import (
+    ImportKitsuCommentsResource,
+    ImportKitsuEntitiesResource,
+    ImportKitsuProjectsResource,
+    ImportKitsuTasksResource
+)
 
 routes = [
     ("/import/shotgun/persons", ImportShotgunPersonsResource),
@@ -106,6 +112,10 @@ routes = [
     ("/import/csv/projects/<project_id>/assets", AssetsCsvImportResource),
     ("/import/csv/projects/<project_id>/shots", ShotsCsvImportResource),
     ("/import/csv/projects/<project_id>/casting", CastingCsvImportResource),
+    ("/import/kitsu/comments", ImportKitsuCommentsResource),
+    ("/import/kitsu/entities", ImportKitsuEntitiesResource),
+    ("/import/kitsu/projects", ImportKitsuProjectsResource),
+    ("/import/kitsu/tasks", ImportKitsuTasksResource),
 ]
 
 blueprint = Blueprint("/import", "import")

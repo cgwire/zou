@@ -66,6 +66,9 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
     if width % 2 == 1:
         width = width + 1
 
+    if height % 2 == 1:
+        width = height + 1
+
     try:
         stream = ffmpeg.input(movie_path)
         stream = stream.output(

@@ -1,4 +1,4 @@
-from flask import request, current_app
+from flask import current_app
 
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
@@ -30,9 +30,6 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             "frame_out": row.get("Frame Out", None) or row.get("Out", None),
             "fps": row.get("FPS", None),
         }
-        for name, field_name in self.descriptor_fields.items():
-            if name in row:
-                data[field_name] = row[name]
 
         if self.is_tv_show:
             episode_key = "%s-%s" % (project_id, episode_name)
@@ -74,6 +71,13 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             parent_id=sequence_id,
             entity_type_id=shot_type["id"],
         )
+
+        for name, field_name in self.descriptor_fields.items():
+            if name in row:
+                data[field_name] = row[name]
+            elif entity.data is not None and field_name in entity.data:
+                data[field_name] = entity.data[field_name]
+
         if entity is None:
             try:
                 if nb_frames is None or len(nb_frames) == 0:
