@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
+from zou.app.models.task import Task
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, permissions
 
@@ -50,4 +51,4 @@ class ImportKitsuProjectsResource(BaseImportKitsuResource):
 class ImportKitsuTasksResource(BaseImportKitsuResource):
 
     def __init__(self):
-        BaseImportKitsuResource.__init__(self, Entity)
+        BaseImportKitsuResource.__init__(self, Task)
