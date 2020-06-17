@@ -31,6 +31,10 @@ def clear_filter_cache(user_id):
     cache.cache.delete_memoized(get_user_filters, user_id)
 
 
+def clear_project_cache():
+    cache.cache.delete_memoized(get_open_projects)
+
+
 def build_assignee_filter():
     """
     Query filter for task to retrieve only tasks assigned to current user.
@@ -258,6 +262,7 @@ def get_scenes_for_sequence(sequence_id):
     return Entity.serialize_list(query.all(), obj_type="Scene")
 
 
+@cache.memoize_function(120)
 def get_open_projects(name=None, for_client=False):
     """
     Get all open projects for which current user has a task assigned.
