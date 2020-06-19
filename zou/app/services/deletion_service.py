@@ -247,6 +247,15 @@ def remove_person(person_id, force=True):
     if force:
         for comment in Comment.get_all_by(person_id=person_id):
             remove_comment(comment.id)
+        comments = Comment.query.filter(
+            Comment.acknowledgements.contains(person)
+        )
+        for comment in comments:
+            comment.acknowledgements = [
+                member for member in comment.acknowledgements
+                if str(member.id) != person_id
+            ]
+            comment.save()
         ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
         SearchFilter.delete_all_by(person_id=person_id)
