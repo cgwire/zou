@@ -262,7 +262,6 @@ def get_scenes_for_sequence(sequence_id):
     return Entity.serialize_list(query.all(), obj_type="Scene")
 
 
-@cache.memoize_function(120)
 def get_open_projects(name=None, for_client=False):
     """
     Get all open projects for which current user has a task assigned.
@@ -673,7 +672,6 @@ def get_context():
     else:
         projects = get_open_projects()
 
-    persons_service.clear_person_cache()
     asset_types = assets_service.get_asset_types()
     custom_actions = custom_actions_service.get_custom_actions()
     persons = persons_service.get_persons(
