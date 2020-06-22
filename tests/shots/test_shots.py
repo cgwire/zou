@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import shots_service
+from zou.app.services import projects_service, shots_service, tasks_service
 
 
 class ShotTestCase(ApiDBTestCase):
@@ -66,6 +66,37 @@ class ShotTestCase(ApiDBTestCase):
     def test_get_shot_by_name(self):
         shots = self.get("data/shots/all?name=%s" % self.shot.name.lower())
         self.assertEqual(shots[0]["id"], str(self.shot.id))
+
+    def test_get_shot_by_name_with_vendor(self):
+        shot_name = self.shot.name.lower()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_shot_task()
+        self.generate_fixture_user_vendor()
+        sequence_id = str(self.sequence.id)
+        project_id = str(self.shot_task.project_id)
+        task_id = str(self.shot_task.id)
+        shot_id = str(self.shot.id)
+        vendor_id = str(self.user_vendor["id"])
+        self.log_in_vendor()
+        self.get(
+            "data/shots?sequence_id=%s&name=%s" % (sequence_id, shot_name), 403
+        )
+        projects_service.add_team_member(project_id, vendor_id)
+        shots = self.get("data/shots?sequence_id=%s&name=%s" % (
+            sequence_id,
+            shot_name
+        ))
+        self.assertEqual(len(shots), 0)
+        tasks_service.assign_task(task_id, vendor_id)
+        shots = self.get("data/shots?sequence_id=%s&name=%s" % (
+            sequence_id,
+            shot_name
+        ))
+        self.assertEqual(shots[0]["id"], shot_id)
 
     def test_remove_shot_with_tasks(self):
         self.generate_fixture_person()
