@@ -64,7 +64,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         if permissions.has_manager_permissions():
             return instance.serialize_safe()
         else:
-            return instance.present_mimimal()
+            return instance.present_minimal()
 
     def post_update(self, instance_dict):
         persons_service.clear_person_cache()
