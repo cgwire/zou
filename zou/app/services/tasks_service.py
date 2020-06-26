@@ -529,10 +529,10 @@ def create_comment(
         text=text,
     )
     comment = comment.serialize(relations=True)
-    if "file" in files:
-        uploaded_file = files["file"]
+    comment["attachment_files"] = []
+    for uploaded_file in files.values():
         attachment_file = create_attachment(comment, uploaded_file)
-        comment["attachment_files"] = [attachment_file]
+        comment["attachment_files"].append(attachment_file)
 
     events.emit("comment:new", {"comment_id": comment["id"]})
     return comment
@@ -1191,7 +1191,6 @@ def reset_task_data(task_id):
 
 def create_attachment(comment, uploaded_file):
     tmp_folder = current_app.config["TMP_DIR"]
-    uploaded_file = request.files["file"]
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)
