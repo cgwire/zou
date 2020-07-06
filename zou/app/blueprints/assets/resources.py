@@ -78,7 +78,6 @@ class AssetsAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         page = query.get_page_from_request(request)
-        print(criterions)
         user_service.check_project_access(criterions.get("project_id", None))
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()["id"]
