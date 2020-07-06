@@ -13,12 +13,12 @@ The response is a JSON object, specifically you'll need to provide the `access_t
  
 Here is a complete authentication process as an example (again using `curl`):
 
-    $ curl -X POST <server_address>/auth/login -d "email=<youremail>&password=<yourpassword>
+    $ curl -X POST <server_address>/api/auth/login -d "email=<youremail>&password=<yourpassword>
     {"login": true", "access_token": "eyJ0e...", ...}
     
     $ jwt=eyJ0e...  # Store the access token for easier use
     
-    $ curl -H "Authorization: Bearer $jwt" <server_address>/data/projects
+    $ curl -H "Authorization: Bearer $jwt" <server_address>/api/data/projects
     [{...},
      {...}]
 
