@@ -8,11 +8,10 @@ from zou.app.utils import (
     cache,
     events,
     fields,
-    permissions,
     query as query_utils
 )
 
-from zou.app.models.entity import Entity, EntityVersion
+from zou.app.models.entity import Entity, EntityLink, EntityVersion
 from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
@@ -777,6 +776,7 @@ def remove_shot(shot_id, force=False):
 
         EntityVersion.delete_all_by(entity_id=shot_id)
         Subscription.delete_all_by(entity_id=shot_id)
+        EntityLink.delete_all_by(entity_in_id=shot_id)
         shot.delete()
         clear_shot_cache(shot_id)
         events.emit("shot:delete", {"shot_id": shot_id})
