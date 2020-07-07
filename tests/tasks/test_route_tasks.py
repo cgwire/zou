@@ -1,10 +1,11 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
-    tasks_service,
     news_service,
     notifications_service,
-    persons_service
+    persons_service,
+    projects_service,
+    tasks_service,
 )
 
 
@@ -31,6 +32,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.asset_id = str(self.asset.id)
         self.shot_id = str(self.shot.id)
         self.task_type_id = str(self.task_type.id)
+        self.project_id = str(self.project.id)
 
         self.wip_status_id = self.task_status_wip.id
         self.retake_status_id = self.task_status_retake.id
@@ -414,3 +416,31 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.get("/data/tasks/%s" % task_2_id, 404)
         self.get("/data/tasks/%s" % task_3_id)
         self.get("/data/tasks/%s" % task_4_id)
+
+    def test_get_tasks_permissions(self):
+        self.generate_fixture_user_vendor()
+        self.generate_fixture_user_cg_artist()
+        task_1_id = str(self.generate_fixture_task().id)
+        str(self.generate_fixture_task(name="second task").id)
+        str(self.generate_fixture_shot_task().id)
+
+        user_id = self.user_cg_artist["id"]
+        tasks = self.get("/data/tasks/")
+        self.assertEqual(len(tasks), 3)
+        self.log_in_cg_artist()
+        tasks = self.get("/data/tasks/")
+        self.assertEqual(len(tasks), 0)
+        projects_service.add_team_member(self.project_id, user_id)
+        tasks = self.get("/data/tasks/")
+        self.assertEqual(len(tasks), 3)
+
+        user_id = str(self.user_vendor["id"])
+        self.log_in_vendor()
+        tasks = self.get("/data/tasks/")
+        self.assertEqual(len(tasks), 0)
+        projects_service.add_team_member(self.project_id, user_id)
+        tasks = self.get("/data/tasks/")
+        self.assertEqual(len(tasks), 0)
+        tasks_service.assign_task(task_1_id, user_id)
+        tasks = self.get("/data/tasks/")
+        self.assertEqual(len(tasks), 1)
