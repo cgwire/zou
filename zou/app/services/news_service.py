@@ -73,6 +73,7 @@ def get_last_news_for_project(
     only_preview=False,
     task_type_id=None,
     task_status_id=None,
+    author_id=None,
     page=1,
     page_size=50,
 ):
@@ -110,6 +111,9 @@ def get_last_news_for_project(
 
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
+
+    if author_id is not None:
+        query = query.filter(News.author_id == author_id)
 
     if only_preview:
         query = query.filter(News.preview_file_id != None)
