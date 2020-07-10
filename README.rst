@@ -11,8 +11,6 @@ A dedicated Python client, `Gazu <https://gazu.cg-wire.com>`_, allows users to i
 
 |Build badge|
 
-|Gitter badge|
-
 Features
 ~~~~~~~~
 
