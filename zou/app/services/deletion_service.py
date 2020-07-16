@@ -320,3 +320,25 @@ def remove_old_notifications(days_old=90):
     limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
     Notification.query.filter(Notification.created_at < limit_date).delete()
     Notification.commit()
+
+
+def remove_episode(episode_id, force=False):
+    """
+    Remove an episode and all related sequences and shots.
+    """
+    from zou.app.services import shots_service, assets_service
+    episode = shots_service.get_episode_raw(episode_id)
+    if force:
+        for sequence in Entity.get_all_by(parent_id=episode_id):
+            shots_service.remove_sequence(sequence.id, force=True)
+        for asset in Entity.get_all_by(source_id=episode_id):
+            assets_service.remove_asset(asset.id, force=True)
+        Playlist.delete_all_by(episode_id=episode_id)
+        ScheduleItem.delete_all_by(object_id=episode_id)
+    try:
+        episode.delete()
+    except IntegrityError:
+        raise ModelWithRelationsDeletionException(
+            "Some data are still linked to this episode."
+        )
+    return episode.serialize(obj_type="Episode")

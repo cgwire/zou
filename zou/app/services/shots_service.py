@@ -819,25 +819,6 @@ def remove_sequence(sequence_id, force=False):
     return sequence.serialize(obj_type="Sequence")
 
 
-def remove_episode(episode_id, force=False):
-    """
-    Remove an episode and all related sequences and shots.
-    """
-    episode = get_episode_raw(episode_id)
-    if force:
-        for sequence in Entity.get_all_by(parent_id=episode_id):
-            remove_sequence(sequence.id, force=True)
-        Playlist.delete_all_by(episode_id=episode_id)
-        ScheduleItem.delete_all_by(object_id=episode_id)
-    try:
-        episode.delete()
-    except IntegrityError:
-        raise ModelWithRelationsDeletionException(
-            "Some data are still linked to this episode."
-        )
-    return episode.serialize(obj_type="Episode")
-
-
 def create_episode(project_id, name):
     """
     Create episode for given project.

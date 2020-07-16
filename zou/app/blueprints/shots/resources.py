@@ -4,6 +4,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
     breakdown_service,
+    deletion_service,
     entities_service,
     persons_service,
     projects_service,
@@ -152,6 +153,44 @@ class ShotTasksResource(Resource, ArgsMixin):
         return tasks_service.get_tasks_for_shot(shot_id, relations=relations)
 
 
+class SequenceShotTasksResource(Resource, ArgsMixin):
+
+    @jwt_required
+    def get(self, sequence_id):
+        """
+        Retrieve all tasks related to a given sequence.
+        """
+        sequence = shots_service.get_sequence(sequence_id)
+        user_service.check_project_access(sequence["project_id"])
+        user_service.check_entity_access(sequence["id"])
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
+        relations = self.get_relations()
+        return tasks_service.get_shot_tasks_for_sequence(
+            sequence_id,
+            relations=relations
+        )
+
+
+class EpisodeShotTasksResource(Resource, ArgsMixin):
+
+    @jwt_required
+    def get(self, episode_id):
+        """
+        Retrieve all tasks related to a given episode.
+        """
+        episode = shots_service.get_episode(episode_id)
+        user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
+        relations = self.get_relations()
+        return tasks_service.get_shot_tasks_for_episode(
+            episode_id,
+            relations=relations
+        )
+
+
 class ShotPreviewsResource(Resource):
     @jwt_required
     def get(self, shot_id):
@@ -277,7 +316,7 @@ class ProjectShotsResource(Resource):
         parser.add_argument("name", required=True)
         parser.add_argument("sequence_id", default=None)
         parser.add_argument("data", type=dict)
-        parser.add_argument("nb_frames", default=0, type=int)
+        parser.add_argument("nb_frames", default=None, type=int)
         args = parser.parse_args()
         return (
             args["sequence_id"], args["name"], args["data"], args["nb_frames"]
@@ -379,7 +418,7 @@ class EpisodeResource(Resource, ArgsMixin):
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
         user_service.check_manager_project_access(episode["project_id"])
-        shots_service.remove_episode(episode_id, force=force)
+        deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
 
