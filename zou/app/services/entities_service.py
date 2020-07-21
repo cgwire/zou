@@ -9,6 +9,7 @@ from zou.app.models.task import Task
 
 from zou.app.services.exception import (
     PreviewFileNotFoundException,
+    EntityLinkNotFoundException,
     EntityNotFoundException,
     EntityTypeNotFoundException,
 )
@@ -89,17 +90,27 @@ def update_entity_preview(entity_id, preview_file_id):
     return entity.serialize()
 
 
-def get_entities_for_project(project_id, entity_type_id, obj_type="Entity"):
+def get_entities_for_project(
+    project_id,
+    entity_type_id,
+    obj_type="Entity",
+    only_assigned=False
+):
     """
     Retrieve all entities related to given project of which entity is entity
     type.
     """
-    result = (
+    from zou.app.services import user_service
+    query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
         .filter(Entity.project_id == project_id)
         .order_by(Entity.name)
-        .all()
     )
+    if only_assigned:
+        query = query \
+            .outerjoin(Task) \
+            .filter(user_service.build_assignee_filter())
+    result = query.all()
     return Entity.serialize_list(result, obj_type=obj_type)
 
 
@@ -107,11 +118,11 @@ def get_entity_links_for_project(project_id):
     """
     Retrieve entity links for
     """
-    result = (
+    query = (
         EntityLink.query.join(Entity, EntityLink.entity_in_id == Entity.id)
         .filter(Entity.project_id == project_id)
-        .all()
     )
+    result = query.all()
     return Entity.serialize_list(result)
 
 
@@ -187,3 +198,12 @@ def get_entities_and_tasks(criterions={}):
                 task_map[task_id]["assignees"].append(str(person_id))
 
     return list(entity_map.values())
+
+
+def remove_entity_link(link_id):
+    try:
+        link = EntityLink.get_by(id=link_id)
+        link.delete()
+        return link.serialize()
+    except:
+        raise EntityLinkNotFoundException

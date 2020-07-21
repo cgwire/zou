@@ -1,4 +1,6 @@
+import datetime
 from sqlalchemy.exc import IntegrityError
+
 
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
@@ -6,8 +8,8 @@ from zou.app.models.entity import Entity, EntityLink, EntityVersion
 from zou.app.models.event import ApiEvent
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.login_log import LoginLog
-from zou.app.models.notification import Notification
 from zou.app.models.milestone import Milestone
+from zou.app.models.notification import Notification
 from zou.app.models.news import News
 from zou.app.models.output_file import OutputFile
 from zou.app.models.person import Person
@@ -18,7 +20,6 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
-from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
 
@@ -150,7 +151,7 @@ def clear_picture_files(preview_file_id):
     was a picture.
     """
     for image_type in [
-        "originals",
+        "original",
         "thumbnails",
         "thumbnails-square",
         "previews",
@@ -246,6 +247,15 @@ def remove_person(person_id, force=True):
     if force:
         for comment in Comment.get_all_by(person_id=person_id):
             remove_comment(comment.id)
+        comments = Comment.query.filter(
+            Comment.acknowledgements.contains(person)
+        )
+        for comment in comments:
+            comment.acknowledgements = [
+                member for member in comment.acknowledgements
+                if str(member.id) != person_id
+            ]
+            comment.save()
         ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
         SearchFilter.delete_all_by(person_id=person_id)
@@ -283,3 +293,52 @@ def remove_person(person_id, force=True):
         )
 
     return person.serialize_safe()
+
+
+def remove_old_events(days_old=90):
+    """
+    Remove events older than *days_old*.
+    """
+    limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    ApiEvent.query.filter(ApiEvent.created_at < limit_date).delete()
+    ApiEvent.commit()
+
+
+def remove_old_login_logs(days_old=90):
+    """
+    Remove login logs older than *days_old*.
+    """
+    limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    LoginLog.query.filter(LoginLog.created_at < limit_date).delete()
+    LoginLog.commit()
+
+
+def remove_old_notifications(days_old=90):
+    """
+    Remove notifications older than *days_old*.
+    """
+    limit_date = datetime.datetime.now() - datetime.timedelta(days=90)
+    Notification.query.filter(Notification.created_at < limit_date).delete()
+    Notification.commit()
+
+
+def remove_episode(episode_id, force=False):
+    """
+    Remove an episode and all related sequences and shots.
+    """
+    from zou.app.services import shots_service, assets_service
+    episode = shots_service.get_episode_raw(episode_id)
+    if force:
+        for sequence in Entity.get_all_by(parent_id=episode_id):
+            shots_service.remove_sequence(sequence.id, force=True)
+        for asset in Entity.get_all_by(source_id=episode_id):
+            assets_service.remove_asset(asset.id, force=True)
+        Playlist.delete_all_by(episode_id=episode_id)
+        ScheduleItem.delete_all_by(object_id=episode_id)
+    try:
+        episode.delete()
+    except IntegrityError:
+        raise ModelWithRelationsDeletionException(
+            "Some data are still linked to this episode."
+        )
+    return episode.serialize(obj_type="Episode")

@@ -1,4 +1,4 @@
-from flask import current_app, request
+from flask import current_app
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.services import assets_service, projects_service, shots_service
@@ -30,6 +30,12 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         episode_name = row.get("Episode", None)
         episode_id = None
         if episode_name is not None:
+            if episode_name != "MP" and episode_name not in self.episodes:
+                self.episodes[
+                    episode_name
+                ] = shots_service.get_or_create_episode(
+                    project_id, episode_name
+                )["id"]
             episode_id = self.episodes.get(episode_name, None)
 
         self.add_to_cache_if_absent(
@@ -41,18 +47,22 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.entity_types, entity_type_name
         )
 
-        data = {}
-        for name, field_name in self.descriptor_fields.items():
-            if name in row:
-                data[field_name] = row[name]
-        print(data)
-
         entity = Entity.get_by(
             name=asset_name,
             project_id=project_id,
             entity_type_id=entity_type_id,
             source_id=episode_id
         )
+
+        data = {}
+        for name, field_name in self.descriptor_fields.items():
+            if name in row:
+                data[field_name] = row[name]
+            elif entity is not None \
+            and entity.data is not None \
+            and field_name in entity.data:
+                data[field_name] = entity.data[field_name]
+
         if entity is None:
             try:
                 entity = Entity.create(

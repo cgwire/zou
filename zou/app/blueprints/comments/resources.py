@@ -1,8 +1,11 @@
 import datetime
+import json
 
 from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
+
+from zou.app.utils import events
 
 from zou.app.services import (
     comments_service,
@@ -23,6 +26,7 @@ class DownloadAttachmentResource(Resource):
         comment = tasks_service.get_comment(attachment_file["comment_id"])
         task = tasks_service.get_task(comment["object_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         file_path = comments_service.get_attachment_file_path(attachment_file)
         try:
             return flask_send_file(
@@ -46,6 +50,7 @@ class AckCommentResource(Resource):
     def post(self, task_id, comment_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return comments_service.acknowledge_comment(comment_id)
 
 
@@ -63,6 +68,7 @@ class CommentTaskResource(Resource):
 
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         task_status = tasks_service.get_task_status(task_status_id)
 
         if person_id:
@@ -104,6 +110,13 @@ class CommentTaskResource(Resource):
                 new_data["real_start_date"] = datetime.datetime.now()
 
         tasks_service.update_task(task_id, new_data)
+        if status_changed:
+            events.emit("task:status-changed", {
+                "task_id": task_id,
+                "new_task_status_id": new_data["task_status_id"],
+                "previous_task_status_id": task["task_status_id"]
+            })
+
         task = tasks_service.get_task_with_relations(task_id)
 
         notifications_service.create_notifications_for_task_and_comment(
@@ -124,12 +137,19 @@ class CommentTaskResource(Resource):
         )
         parser.add_argument("comment", default="")
         parser.add_argument("person_id", default="")
-        parser.add_argument("checklist", type=dict, action="append", default=[])
-        args = parser.parse_args()
+        if request.json is None:
+            parser.add_argument("checklist", default="[]")
+            args = parser.parse_args()
+            checklist = args["checklist"]
+            checklist = json.loads(checklist)
+        else:
+            parser.add_argument("checklist", type=dict, action="append", default=[])
+            args = parser.parse_args()
+            checklist = args["checklist"]
 
         return (
             args["task_status_id"],
             args["comment"],
             args["person_id"],
-            args["checklist"]
+            checklist
         )

@@ -36,3 +36,17 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "shots_no_metadata.csv")
+        )
+        self.upload_file("%s?update=true" % path, file_path_fixture)
+
+        shots = shots_service.get_shots()
+        self.assertEqual(len(shots), 4)
+
+        entity_types = EntityType.query.all()
+        self.assertEqual(len(entity_types), 3)
+
+        shot = shots[0]
+        self.assertEqual(shot["data"].get("contractor", None), "contractor 1")

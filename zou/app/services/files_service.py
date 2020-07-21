@@ -226,6 +226,7 @@ def create_new_output_revision(
     nb_elements=1,
     asset_instance_id=None,
     temporal_entity_id=None,
+    file_status_id=None
 ):
     """
     Create a new ouput file for given entity. Output type, task type, author
@@ -257,7 +258,7 @@ def create_new_output_revision(
         except NoOutputFileException:
             revision = 1
 
-    file_status_id = get_default_status()["id"]
+    file_status_id = file_status_id or get_default_status()["id"]
 
     try:
         output_file = OutputFile.get_by(
@@ -417,6 +418,7 @@ def get_output_files_for_entity(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Return output files for given entity ordered by revision.
@@ -431,6 +433,8 @@ def get_output_files_for_entity(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     query = query.filter(OutputFile.asset_instance_id == None)
     query = query.filter(OutputFile.temporal_entity_id == None)
@@ -450,6 +454,7 @@ def get_output_files_for_instance(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Return output files for given instance ordered by revision.
@@ -468,6 +473,8 @@ def get_output_files_for_instance(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     output_files = (
         query.filter(OutputFile.revision >= 0)
@@ -483,6 +490,7 @@ def get_last_output_files_for_entity(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Get last output files for given parameters.
@@ -490,21 +498,44 @@ def get_last_output_files_for_entity(
     We use a subquery to get maximum revision and then filter with given
     params.
     """
-    # Query maximum revision for each possible arguments
-    query = OutputFile.query.with_entities(
-        OutputFile.task_type_id,
-        OutputFile.output_type_id,
-        OutputFile.name,
-        OutputFile.representation,
-        func.max(OutputFile.revision).label("MAX"),
-    ).group_by(
-        OutputFile.task_type_id,
-        OutputFile.output_type_id,
-        OutputFile.name,
-        OutputFile.representation,
-    )
+    # Query maximum revision for each possible arguments.
+    # Only group and filter by file status if specified. Otherwise this could
+    # lead to different groups of files sharing the same history but with
+    # different status.
+    # This could be very misleading when the user would want to get the last.
+    if file_status_id:
+        query = OutputFile.query.with_entities(
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+            OutputFile.file_status_id,
+            func.max(OutputFile.revision).label("MAX"),
+        ).group_by(
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+            OutputFile.file_status_id,
+        )
+    else:
+        query = OutputFile.query.with_entities(
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+            func.max(OutputFile.revision).label("MAX"),
+        ).group_by(
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+        )
+
     query = query.filter(OutputFile.entity_id == entity_id)
     query = query.filter(OutputFile.asset_instance_id == None)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
     statement = query.subquery()
 
     # Create a join query to retrieve maximum revision and filter by
@@ -545,27 +576,52 @@ def get_last_output_files_for_instance(
     output_type_id=None,
     name=None,
     representation=None,
+    file_status_id=None,
 ):
     """
     Get last output files for given entity grouped by output type and name.
     """
     # Query maximum revision for each possible arguments
-    query = OutputFile.query.with_entities(
-        OutputFile.temporal_entity_id,
-        OutputFile.task_type_id,
-        OutputFile.output_type_id,
-        OutputFile.name,
-        OutputFile.representation,
-        func.max(OutputFile.revision).label("MAX"),
-    ).group_by(
-        OutputFile.temporal_entity_id,
-        OutputFile.task_type_id,
-        OutputFile.output_type_id,
-        OutputFile.name,
-        OutputFile.representation,
-    )
+    # Only group and filter by file status if specified. Otherwise this could
+    # lead to different groups of files sharing the same history but with
+    # different status.
+    # This could be very misleading when the user would want to get the last.
+    if file_status_id:
+        query = OutputFile.query.with_entities(
+            OutputFile.temporal_entity_id,
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+            OutputFile.file_status_id,
+            func.max(OutputFile.revision).label("MAX"),
+        ).group_by(
+            OutputFile.temporal_entity_id,
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+            OutputFile.file_status_id,
+        )
+    else:
+        query = OutputFile.query.with_entities(
+            OutputFile.temporal_entity_id,
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+            func.max(OutputFile.revision).label("MAX"),
+        ).group_by(
+            OutputFile.temporal_entity_id,
+            OutputFile.task_type_id,
+            OutputFile.output_type_id,
+            OutputFile.name,
+            OutputFile.representation,
+        )
     query = query.filter(OutputFile.asset_instance_id == asset_instance_id)
     query = query.filter(OutputFile.temporal_entity_id == temporal_entity_id)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
     statement = query.subquery()
 
     # Create a join query to retrieve maximum revision
@@ -592,6 +648,8 @@ def get_last_output_files_for_instance(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
+    if representation:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
 
     output_files = query.all()
     return fields.serialize_models(output_files)

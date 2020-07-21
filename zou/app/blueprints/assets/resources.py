@@ -2,12 +2,13 @@ from flask import request
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import query
+from zou.app.utils import permissions, query
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     assets_service,
-    shots_service,
     breakdown_service,
+    persons_service,
+    shots_service,
     tasks_service,
     user_service,
 )
@@ -21,6 +22,7 @@ class AssetResource(Resource):
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset["id"])
         return asset
 
     @jwt_required
@@ -46,6 +48,8 @@ class AllAssetsResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets(criterions)
 
 
@@ -58,6 +62,8 @@ class AllAssetsAliasResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets(criterions)
 
 
@@ -73,6 +79,8 @@ class AssetsAndTasksResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         page = query.get_page_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets_and_tasks(criterions, page)
 
 
@@ -126,6 +134,8 @@ class ProjectAssetsResource(Resource):
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets(criterions)
 
 
@@ -139,6 +149,8 @@ class ProjectAssetTypeAssetsResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
+        if permissions.has_vendor_permissions():
+            criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets(criterions)
 
 
@@ -146,10 +158,11 @@ class AssetAssetsResource(Resource):
     @jwt_required
     def get(self, asset_id):
         """
-        Retrieve all assets for a given shot.
+        Retrieve all assets for a given asset.
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset_id)
         return breakdown_service.get_entity_casting(asset_id)
 
 
@@ -211,6 +224,7 @@ class AssetCastingResource(Resource):
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset_id)
         return breakdown_service.get_casting(asset_id)
 
     @jwt_required
@@ -220,7 +234,7 @@ class AssetCastingResource(Resource):
         """
         casting = request.json
         asset = assets_service.get_asset(asset_id)
-        user_service.check_project_access(asset["project_id"])
+        user_service.check_manager_project_access(asset["project_id"])
         return breakdown_service.update_casting(asset_id, casting)
 
 
@@ -232,6 +246,7 @@ class AssetCastInResource(Resource):
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset["id"])
         return breakdown_service.get_cast_in(asset_id)
 
 

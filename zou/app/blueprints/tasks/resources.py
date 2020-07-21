@@ -24,7 +24,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import query, permissions
+from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
 
@@ -38,6 +38,7 @@ class AddPreviewResource(Resource):
     def post(self, task_id, comment_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
 
         comment = tasks_service.get_comment(comment_id)
         tasks_service.get_task_status(comment["task_status_id"])
@@ -57,6 +58,7 @@ class AddExtraPreviewResource(Resource):
     def post(self, task_id, comment_id, preview_file_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         tasks_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
@@ -84,6 +86,7 @@ class TaskPreviewsResource(Resource):
     def get(self, task_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return files_service.get_preview_files_for_task(task_id)
 
 
@@ -96,6 +99,7 @@ class TaskCommentsResource(Resource):
     def get(self, task_id):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         return tasks_service.get_comments(task_id, is_client, is_manager)
@@ -104,16 +108,40 @@ class TaskCommentsResource(Resource):
 class TaskCommentResource(Resource):
     """
     Remove given comment and update linked task accordingly.
-    TODO: make deletion authorization stronger
     """
+
+    def pre_delete(self, comment):
+        task = tasks_service.get_task(comment["object_id"])
+        self.previous_task_status_id = task["task_status_id"]
+        return comment
+
+    def post_delete(self, comment):
+        task = tasks_service.get_task(comment["object_id"])
+        self.new_task_status_id = task["task_status_id"]
+        if self.previous_task_status_id != self.new_task_status_id:
+            events.emit("task:status-changed", {
+                "task_id": task["id"],
+                "new_task_status_id": self.new_task_status_id,
+                "previous_task_status_id": self.previous_task_status_id
+            })
+        return comment
 
     @jwt_required
     def delete(self, task_id, comment_id):
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        comment = deletion_service.remove_comment(comment_id)
+        """
+        Delete a comment corresponding at given ID.
+        """
+        comment = tasks_service.get_comment(comment_id)
+        task = tasks_service.get_task(comment["object_id"])
+        if permissions.has_manager_permissions():
+            user_service.check_project_access(task["project_id"])
+        else:
+            user_service.check_working_on_entity(task["entity_id"])
+        self.pre_delete(comment)
+        deletion_service.remove_comment(comment_id)
         tasks_service.reset_task_data(comment["object_id"])
         tasks_service.clear_comment_cache(comment_id)
+        self.post_delete(comment)
         return "", 204
 
 
@@ -129,6 +157,10 @@ class PersonTasksResource(Resource):
             projects = user_service.related_projects()
         else:
             projects = projects_service.open_projects()
+        if permissions.has_vendor_permissions():
+            person = persons_service.get(person_id)
+            if person["role"] == "vendor":
+                return []
         return tasks_service.get_person_tasks(person_id, projects)
 
 
@@ -144,6 +176,10 @@ class PersonDoneTasksResource(Resource):
             projects = user_service.related_projects()
         else:
             projects = projects_service.open_projects()
+        if permissions.has_vendor_permissions():
+            person = persons_service.get(person_id)
+            if person["role"] == "vendor":
+                return []
         return tasks_service.get_person_done_tasks(person_id, projects)
 
 
@@ -204,6 +240,7 @@ class ToReviewResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["project_id"])
 
             if person_id is not None:
                 person = persons_service.get_person(person_id)
@@ -377,6 +414,7 @@ class TaskFullResource(Resource):
     def get(self, task_id):
         task = tasks_service.get_full_task(task_id)
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return task
 
 
@@ -419,6 +457,7 @@ class SetTimeSpentResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             persons_service.get_person(person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
@@ -451,6 +490,7 @@ class AddTimeSpentResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
 
             persons_service.get_person(person_id)
             time_spent = tasks_service.create_or_update_time_spent(
@@ -479,6 +519,7 @@ class GetTimeSpentResource(Resource):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             return tasks_service.get_time_spents(task_id)
         except WrongDateFormatException:
             abort(404)

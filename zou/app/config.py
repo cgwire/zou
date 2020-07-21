@@ -101,3 +101,5 @@ LOGS_MODE = os.getenv("LOGS_MODE", "default")
 LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
 LOGS_PORT = os.getenv("LOGS_PORT", 2202)
 LOGS_TOKEN = os.getenv("LOGS_TOKEN")
+
+CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")

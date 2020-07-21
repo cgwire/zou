@@ -86,8 +86,10 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     def create_from_import(cls, data):
         previous_task = cls.get(data["id"])
         person_ids = data.get("assignees", None)
-        del data["assignees"]
-        del data["type"]
+        if "assignees" in data:
+            data.pop("assignees", None)
+        if "type" in data:
+            data.pop("type", None)
 
         if previous_task is None:
             previous_task = cls.create(**data)

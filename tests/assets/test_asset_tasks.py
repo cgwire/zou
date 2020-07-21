@@ -1,5 +1,7 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.services import projects_service, tasks_service
+
 
 class AssetTasksTestCase(ApiDBTestCase):
 
@@ -34,6 +36,33 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.assertEqual(len(assets[0]["tasks"]), 2)
         self.assertEqual(
             assets[0]["tasks"][0]["assignees"][0], str(self.person_id)
+        )
+
+    def test_get_assets_and_tasks_vendor(self):
+        self.generate_fixture_task(name="Secondary")
+        self.generate_fixture_user_vendor()
+        task_id = self.task.id
+        project_id = self.project.id
+        person_id = self.user_vendor["id"]
+        self.log_in_vendor()
+        assets = self.get(
+            "data/assets/with-tasks?project_id=%s" % project_id,
+            403
+        )
+        projects_service.add_team_member(project_id, person_id)
+        projects_service.clear_project_cache(str(project_id))
+        assets = self.get(
+            "data/assets/with-tasks?project_id=%s" % project_id
+        )
+        self.assertEqual(len(assets), 0)
+        tasks_service.assign_task(task_id, person_id)
+        assets = self.get(
+            "data/assets/with-tasks?project_id=%s" % project_id
+        )
+        self.assertEqual(len(assets), 1)
+        self.assertEqual(len(assets[0]["tasks"]), 1)
+        self.assertTrue(
+            str(person_id) in assets[0]["tasks"][0]["assignees"]
         )
 
     def test_get_task_types_for_asset(self):

@@ -24,7 +24,7 @@ class PersonsResource(BaseModelsResource):
             else:
                 return [person.serialize_safe() for person in query.all()]
         else:
-            return [person.serialize_without_info() for person in query.all()]
+            return [person.present_minimal() for person in query.all()]
 
     def post(self):
         abort(405)
@@ -64,7 +64,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         if permissions.has_manager_permissions():
             return instance.serialize_safe()
         else:
-            return instance.serialize_without_info()
+            return instance.present_minimal()
 
     def post_update(self, instance_dict):
         persons_service.clear_person_cache()

@@ -59,9 +59,9 @@ acknowledgements_table = db.Table(
 
 class Comment(db.Model, BaseMixin, SerializerMixin):
     """
-    Comment can occurs on any object but they are mainly used on tasks.
+    Comment can occur on any object but they are mainly used on tasks.
     In the case of comment tasks, they are linked to a task status and
-    eventually on a preview file.
+    eventually to some preview files.
     The status means that comment leads to task status change. The preview file
     means that the comment relates to this preview in the context of the task.
     """

@@ -85,6 +85,10 @@ class EntityNotFoundException(NotFound):
     pass
 
 
+class EntityLinkNotFoundException(NotFound):
+    pass
+
+
 class EntityTypeNotFoundException(NotFound):
     pass
 

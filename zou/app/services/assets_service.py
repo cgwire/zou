@@ -15,6 +15,7 @@ from zou.app.services import (
     deletion_service,
     projects_service,
     shots_service,
+    user_service
 )
 
 from zou.app.services.exception import (
@@ -85,7 +86,14 @@ def get_assets(criterions={}):
     Get all assets for given criterions.
     """
     query = Entity.query.filter(build_asset_type_filter())
+    assigned_to = False
+    if "assigned_to" in criterions:
+        assigned_to = True
+        del criterions["assigned_to"]
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
+    if assigned_to:
+        query = query.outerjoin(Task)
+        query = query.filter(user_service.build_assignee_filter())
     result = query.all()
     return EntityType.serialize_list(result, obj_type="Asset")
 
@@ -95,14 +103,22 @@ def get_full_assets(criterions={}):
     Get all assets for given criterions with additional informations: project
     name and asset type name.
     """
+    assigned_to = False
+    if "assigned_to" in criterions:
+        assigned_to = True
+        del criterions["assigned_to"]
+
     query = (
-        Entity.query.filter_by(**criterions)
+        Entity.query
+        .filter_by(**criterions)
         .filter(build_asset_type_filter())
         .join(Project, EntityType)
         .add_columns(Project.name, EntityType.name)
         .order_by(Project.name, EntityType.name, Entity.name)
     )
-
+    if assigned_to:
+        query = query.outerjoin(Task)
+        query = query.filter(user_service.build_assignee_filter())
     data = query.all()
     assets = []
     for (asset_model, project_name, asset_type_name) in data:
@@ -155,6 +171,10 @@ def get_assets_and_tasks(criterions={}, page=1):
             query = query.filter(Entity.source_id == None)
         elif criterions["episode_id"] != "all":
             query = query.filter(Entity.source_id == criterions["episode_id"])
+
+    if "assigned_to" in criterions:
+        query = query.filter(user_service.build_assignee_filter())
+        del criterions["assigned_to"]
 
     for (
         asset,

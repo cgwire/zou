@@ -413,3 +413,14 @@ def upload_files_to_cloud_storage(days):
 
 def reset_tasks_data(project_id):
     deletion_service.reset_tasks_data(project_id)
+
+
+def remove_old_data(days_old=90):
+    print("Start removing non critical data older than %s." % days_old)
+    print("Removing old events...")
+    deletion_service.remove_old_events(days_old)
+    print("Removing old login logs...")
+    deletion_service.remove_old_login_logs(days_old)
+    print("Removing old notitfications...")
+    deletion_service.remove_old_notifications(days_old)
+    print("Old data removed.")

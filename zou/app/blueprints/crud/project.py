@@ -31,7 +31,6 @@ class ProjectsResource(BaseModelsResource):
         open_status = projects_service.get_or_create_open_status()
         if "project_status_id" not in data:
             data["project_status_id"] = open_status["id"]
-
         return data
 
     def post_creation(self, project):
@@ -41,6 +40,8 @@ class ProjectsResource(BaseModelsResource):
             project_dict["first_episode_id"] = fields.serialize_value(
                 episode["id"]
             )
+        user_service.clear_project_cache()
+        projects_service.clear_project_cache("")
         return project_dict
 
 
@@ -85,8 +86,8 @@ class ProjectResource(BaseModelResource):
                 "message": "Only closed projects can be deleted"
             }, 400
         else:
+            self.check_delete_permissions(project_dict)
             if args["force"] == True:
-                self.check_delete_permissions(project_dict)
                 deletion_service.remove_project(instance_id)
             else:
                 project.delete()

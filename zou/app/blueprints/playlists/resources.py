@@ -23,6 +23,7 @@ from zou.app.utils import fs
 class ProjectPlaylistsResource(Resource):
     @jwt_required
     def get(self, project_id):
+        user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         return playlists_service.all_playlists_for_project(
             project_id, permissions.has_client_permissions()
@@ -32,6 +33,7 @@ class ProjectPlaylistsResource(Resource):
 class EpisodePlaylistsResource(Resource):
     @jwt_required
     def get(self, project_id, episode_id):
+        user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         if episode_id not in ["main", "all"]:
             shots_service.get_episode(episode_id)
@@ -43,6 +45,7 @@ class EpisodePlaylistsResource(Resource):
 class ProjectPlaylistResource(Resource):
     @jwt_required
     def get(self, project_id, playlist_id):
+        user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         return playlists_service.get_playlist_with_preview_file_revisions(
             playlist_id
@@ -68,7 +71,7 @@ class PlaylistDownloadResource(Resource):
         playlist = playlists_service.get_playlist(playlist_id)
         project = projects_service.get_project(playlist["project_id"])
         build_job = playlists_service.get_build_job(build_job_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        user_service.check_project_access(playlist["project_id"])
 
         if build_job["status"] != "succeeded":
             return {"error": True, "message": "Build is not finished"}, 400
@@ -134,6 +137,7 @@ class PlaylistZipDownloadResource(Resource):
     def get(self, playlist_id):
         playlist = playlists_service.get_playlist(playlist_id)
         project = projects_service.get_project(playlist["project_id"])
+        user_service.block_access_to_vendor()
         user_service.check_playlist_access(playlist)
         zip_file_path = playlists_service.build_playlist_zip_file(playlist)
 
@@ -167,12 +171,14 @@ class PlaylistZipDownloadResource(Resource):
 class BuildJobResource(Resource):
     @jwt_required
     def get(self, playlist_id, build_job_id):
+        user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_playlist_access(playlist)
         return playlists_service.get_build_job(build_job_id)
 
     @jwt_required
     def delete(self, playlist_id, build_job_id):
+        user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_playlist_access(playlist)
         playlists_service.remove_build_job(playlist, build_job_id)

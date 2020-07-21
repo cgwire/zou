@@ -3,9 +3,10 @@ import pytest
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
-from zou.app.services import shots_service
+from zou.app.services import breakdown_service, shots_service
 from zou.app.services.exception import (
     SceneNotFoundException,
+    ShotNotFoundException,
     SequenceNotFoundException
 )
 
@@ -242,6 +243,14 @@ class ShotUtilsTestCase(ApiDBTestCase):
         )
         self.assertEqual(scene["name"], scene_name)
         self.assertEqual(scene["parent_id"], parent_id)
+
+    def test_remove_shot(self):
+        shot_id = str(self.shot.id)
+        asset_id = str(self.asset.id)
+        breakdown_service.create_casting_link(shot_id, asset_id)
+        shots_service.remove_shot(shot_id)
+        with pytest.raises(ShotNotFoundException):
+            shots_service.get_shot(shot_id)
 
     def test_remove_scene(self):
         scene_id = self.scene.id

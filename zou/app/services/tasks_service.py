@@ -1,8 +1,9 @@
+import collections
 import datetime
 import re
 import uuid
 
-from flask import current_app, request
+from flask import current_app
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.orm import aliased
@@ -245,14 +246,42 @@ def get_tasks_for_episode(episode_id, relations=False):
     return get_task_dicts_for_entity(episode.id, relations=relations)
 
 
+def get_shot_tasks_for_sequence(sequence_id, relations=False):
+    """
+    Get all shot tasks for given sequence.
+    """
+    query = _get_entity_task_query()
+    query = query.filter(Entity.parent_id == sequence_id)
+    return _convert_rows_to_detailed_tasks(query.all(), relations)
+
+
+def get_shot_tasks_for_episode(episode_id, relations=False):
+    """
+    Get all shot tasks for given episode.
+    """
+    query = _get_entity_task_query()
+    Sequence = aliased(Entity, name="sequence")
+    query = (
+        query
+        .join(Sequence, Entity.parent_id == Sequence.id)
+        .filter(Sequence.parent_id == episode_id)
+    )
+    return _convert_rows_to_detailed_tasks(query.all(), relations)
+
+
 def get_task_dicts_for_entity(entity_id, relations=False):
     """
     Return all tasks related to given entity. Add extra information like
     project name, task type name, etc.
     """
-    query = (
+    query = _get_entity_task_query()
+    query = query.filter(Task.entity_id == entity_id)
+    return _convert_rows_to_detailed_tasks(query.all(), relations)
+
+
+def _get_entity_task_query():
+    return (
         Task.query.order_by(Task.name)
-        .filter_by(entity_id=entity_id)
         .join(Project)
         .join(TaskType)
         .join(TaskStatus)
@@ -266,9 +295,10 @@ def get_task_dicts_for_entity(entity_id, relations=False):
         .order_by(Project.name, TaskType.name, EntityType.name, Entity.name)
     )
 
-    results = []
 
-    for entry in query.all():
+def _convert_rows_to_detailed_tasks(rows, relations=False):
+    results = []
+    for entry in rows:
         (
             task_object,
             project_name,
@@ -375,10 +405,11 @@ def get_time_spents(task_id):
     """
     Return time spents for given task.
     """
-    result = {"total": 0}
+    result = collections.defaultdict(list)
+    result["total"] = 0
     time_spents = TimeSpent.query.filter_by(task_id=task_id).all()
     for time_spent in time_spents:
-        result[str(time_spent.person_id)] = time_spent.serialize()
+        result[str(time_spent.person_id)].append(time_spent.serialize())
         result["total"] += time_spent.duration
     return result
 
@@ -527,10 +558,10 @@ def create_comment(
         text=text,
     )
     comment = comment.serialize(relations=True)
-    if "file" in files:
-        uploaded_file = files["file"]
+    comment["attachment_files"] = []
+    for uploaded_file in files.values():
         attachment_file = create_attachment(comment, uploaded_file)
-        comment["attachment_files"] = [attachment_file]
+        comment["attachment_files"].append(attachment_file)
 
     events.emit("comment:new", {"comment_id": comment["id"]})
     return comment
@@ -808,7 +839,7 @@ def update_task_status(task_status_id, data):
     task_status = get_task_status_raw(task_status_id)
     task_status.update(data)
     clear_task_status_cache(task_status_id)
-    events.emit("task_status:update", {"task_status_id": task_status_id})
+    events.emit("task-status:update", {"task_status_id": task_status_id})
     return task_status.serialize()
 
 
@@ -1189,7 +1220,6 @@ def reset_task_data(task_id):
 
 def create_attachment(comment, uploaded_file):
     tmp_folder = current_app.config["TMP_DIR"]
-    uploaded_file = request.files["file"]
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)

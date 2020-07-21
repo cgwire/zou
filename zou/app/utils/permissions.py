@@ -1,10 +1,11 @@
+from functools import wraps
 from flask_principal import RoleNeed, Permission
 from werkzeug.exceptions import Forbidden
-from zou.app.services import persons_service
 
 admin_permission = Permission(RoleNeed("admin"))
 manager_permission = Permission(RoleNeed("manager"))
 client_permission = Permission(RoleNeed("client"))
+vendor_permission = Permission(RoleNeed("vendor"))
 
 
 class PermissionDenied(Forbidden):
@@ -32,6 +33,13 @@ def has_client_permissions():
     return client_permission.can()
 
 
+def has_vendor_permissions():
+    """
+    Return True if user is a vendor.
+    """
+    return vendor_permission.can()
+
+
 def check_manager_permissions():
     """
     Return True if user is admin or manager. It raises a PermissionDenied
@@ -52,3 +60,11 @@ def check_admin_permissions():
         return True
     else:
         raise PermissionDenied
+
+
+def require_admin(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        check_admin_permissions()
+        return function(*args, **kwargs)
+    return decorated_function

@@ -9,6 +9,7 @@ from .custom_action import CustomActionsResource, CustomActionResource
 from .department import DepartmentsResource, DepartmentResource
 from .entity import EntityResource, EntitiesResource
 from .entity_type import EntityTypesResource, EntityTypeResource
+from .entity_link import EntityLinksResource, EntityLinkResource
 from .event import EventsResource, EventResource
 from .file_status import FileStatusesResource, FileStatusResource
 from .metadata_descriptor import (
@@ -98,6 +99,8 @@ routes = [
     ("/data/metadata-descriptors/<instance_id>", MetadataDescriptorResource),
     ("/data/subscriptions/", SubscriptionsResource),
     ("/data/subscriptions/<instance_id>", SubscriptionResource),
+    ("/data/entity-links/", EntityLinksResource),
+    ("/data/entity-links/<instance_id>", EntityLinkResource),
 ]
 
 blueprint = Blueprint("/data", "data")

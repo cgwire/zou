@@ -107,7 +107,6 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["duration"], 850)
 
-
     def test_get_day_time_spents(self):
         tasks = time_spents_service.get_day_time_spents(
             self.person_id,

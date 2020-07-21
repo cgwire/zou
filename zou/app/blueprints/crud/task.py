@@ -22,7 +22,9 @@ class TasksResource(BaseModelsResource):
         return True
 
     def add_project_permission_filter(self, query):
-        if not permissions.has_admin_permissions():
+        if permissions.has_vendor_permissions():
+            query = query.filter(user_service.build_assignee_filter())
+        elif not permissions.has_admin_permissions():
             query = query.join(Project) \
                 .filter(user_service.build_related_projects_filter())
         return query
@@ -64,6 +66,7 @@ class TaskResource(BaseModelResource):
 
     def check_read_permissions(self, task):
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
 
     def check_update_permissions(self, task, data):
         user_service.check_manager_project_access(task["project_id"])

@@ -43,7 +43,6 @@ class BaseModelsResource(Resource):
                 "page": page,
             }
         else:
-            print(relations)
             result = {
                 "data": self.all_entries(query=query, relations=relations),
                 "total": total,
@@ -227,7 +226,8 @@ class BaseModelResource(Resource):
 
     def update_data(self, data, instance_id):
         for field in self.protected_fields:
-            data.pop(field, None)
+            if (data is not None) and field in data:
+                data.pop(field, None)
         return data
 
     def serialize_instance(self, data):

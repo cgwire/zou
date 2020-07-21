@@ -7,4 +7,3 @@ def send_to_slack(app_token, userid, message):
     client.api_call(
         "chat.postMessage", channel="@%s" % userid, blocks=blocks, as_user=True
     )
-    return True

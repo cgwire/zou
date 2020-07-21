@@ -11,16 +11,19 @@ class ProjectNewsResource(Resource):
             only_preview,
             task_type_id,
             task_status_id,
+            person_id,
             page,
             page_size,
         ) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return news_service.get_last_news_for_project(
             project_id,
             only_preview=only_preview,
             task_type_id=task_type_id,
             task_status_id=task_status_id,
+            author_id=person_id,
             page=page,
             page_size=page_size,
         )
@@ -30,6 +33,7 @@ class ProjectNewsResource(Resource):
         parser.add_argument("only_preview", default=False, type=bool)
         parser.add_argument("task_type_id", default=None)
         parser.add_argument("task_status_id", default=None)
+        parser.add_argument("person_id", default=None)
         parser.add_argument("page", default=1, type=int)
         parser.add_argument("page_size", default=50, type=int)
         args = parser.parse_args()
@@ -38,6 +42,7 @@ class ProjectNewsResource(Resource):
             args["only_preview"],
             args["task_type_id"],
             args["task_status_id"],
+            args["person_id"],
             args["page"],
             args["page_size"],
         )
@@ -48,4 +53,5 @@ class ProjectSingleNewsResource(Resource):
     def get(self, project_id, news_id):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
+        user_service.block_access_to_vendor()
         return news_service.get_news(project_id, news_id)

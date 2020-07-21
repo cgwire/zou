@@ -107,3 +107,10 @@ class StatsResource(Resource):
         if not permissions.has_admin_permissions():
             abort(403)
         return stats_service.get_main_stats()
+
+
+class ConfigResource(Resource):
+    def get(self):
+        return {
+            "crisp_token": app.config["CRISP_TOKEN"]
+        }

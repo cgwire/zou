@@ -1,7 +1,11 @@
+import ffmpeg
 import os
 import math
-import ffmpeg
+import subprocess
+
 from PIL import Image
+
+from . import fs
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -62,8 +66,12 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
     if width % 2 == 1:
         width = width + 1
 
+    if height % 2 == 1:
+        height = height + 1
+
     try:
-        ffmpeg.input(movie_path).output(
+        stream = ffmpeg.input(movie_path)
+        stream = stream.output(
             file_target_path,
             pix_fmt="yuv420p",
             format="mp4",
@@ -72,7 +80,10 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
             preset="medium",
             vcodec="libx264",
             s="%sx%s" % (width, height),
-        ).run(quiet=False, capture_stderr=True)
+        )
+        stream.run(quiet=False, capture_stderr=True)
+        if not has_soundtrack(file_target_path):
+            add_empty_soundtrack(file_target_path)
     except ffmpeg.Error as exc:
         from flask import current_app
 
@@ -80,6 +91,40 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
         raise
 
     return file_target_path
+
+
+def add_empty_soundtrack(file_path):
+    tmp_file_path = file_path + ".tmp.mp4"
+    fs.rm_file(tmp_file_path)
+    args = [
+        "ffmpeg",
+        "-f", "lavfi",
+        "-i", "anullsrc",
+        "-i", file_path,
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-map", "0:a",
+        "-map", "1:v",
+        "-shortest",
+        tmp_file_path
+    ]
+    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = sp.communicate()
+    if err:
+        from flask import current_app
+        current_app.logger.error(
+            "Fail to add silent audiotrack to: %s" % file_path
+        )
+        current_app.logger.error(err)
+
+    fs.rm_file(file_path)
+    fs.copyfile(tmp_file_path, file_path)
+    return sp.returncode
+
+
+def has_soundtrack(file_path):
+    audio = ffmpeg.probe(file_path, select_streams='a')
+    return audio["streams"]
 
 
 def build_playlist_movie(
@@ -95,6 +140,10 @@ def build_playlist_movie(
             (width, height) = get_movie_size(first_movie_file_path)
 
         for tmp_file_path, file_name in tmp_file_paths:
+            if not has_soundtrack(tmp_file_path):
+                add_empty_soundtrack(tmp_file_path)
+
+        for tmp_file_path, file_name in tmp_file_paths:
             in_file = ffmpeg.input(tmp_file_path)
             in_files.append(
                 in_file["v"]
@@ -102,6 +151,7 @@ def build_playlist_movie(
                 .filter("scale", width, height)
             )
             in_files.append(in_file["a"])
+
         joined = ffmpeg.concat(*in_files, v=1, a=1).node
         video = joined[0]
         audio = joined[1]

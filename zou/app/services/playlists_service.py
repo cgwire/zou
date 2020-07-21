@@ -319,9 +319,11 @@ def retrieve_playlist_tmp_files(playlist, only_movies=False):
 
     file_paths = []
     for preview_file in preview_files:
+        prefix = "original"
         if preview_file["extension"] == "mp4":
             get_path_func = file_store.get_local_movie_path
             open_func = file_store.open_movie
+            prefix = "previews"
         elif preview_file["extension"] == "png":
             get_path_func = file_store.get_local_picture_path
             open_func = file_store.open_picture
@@ -331,7 +333,7 @@ def retrieve_playlist_tmp_files(playlist, only_movies=False):
 
         if config.FS_BACKEND == "local":
             file_path = get_path_func(
-                "previews", preview_file["id"]
+                prefix, preview_file["id"]
             )
         else:
             file_path = os.path.join(
@@ -343,7 +345,7 @@ def retrieve_playlist_tmp_files(playlist, only_movies=False):
             )
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
                 with open(file_path, "wb") as tmp_file:
-                    for chunk in open_func("previews", preview_file["id"]):
+                    for chunk in open_func(prefix, preview_file["id"]):
                         tmp_file.write(chunk)
 
         file_name = names_service.get_preview_file_name(preview_file["id"])
@@ -382,7 +384,14 @@ def build_playlist_movie_file(playlist, app=None):
         tmp_file_paths, movie_file_path, width, height, fps
     )
     if result["success"] == True:
-        file_store.add_movie("playlists", job["id"], movie_file_path)
+        if os.path.exists(movie_file_path):
+            file_store.add_movie("playlists", job["id"], movie_file_path)
+        else:
+            if app is not None:
+                current_app.logger.error("No playlist was created")
+            result["success"] = False
+            result["message"] = "No playlist was created"
+
     elif app is not None:
         current_app.logger.error(result["message"])
     end_build_job(playlist, job, result)

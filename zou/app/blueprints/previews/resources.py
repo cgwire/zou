@@ -324,6 +324,7 @@ class CreatePreviewFilePictureResource(Resource):
         task = tasks_service.get_task(preview_file["task_id"])
         try:
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             return True
         except permissions.PermissionDenied:
             return False
@@ -351,6 +352,7 @@ class PreviewFileMovieResource(Resource):
         task = tasks_service.get_task(preview_file["task_id"])
         try:
             user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
             return True
         except permissions.PermissionDenied:
             return False
@@ -366,7 +368,7 @@ class PreviewFileMovieResource(Resource):
         try:
             return send_movie_file(instance_id)
         except FileNotFound:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Movie file was not found for: %s" % instance_id)
             abort(404)
 
 
@@ -383,7 +385,7 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
         try:
             return send_movie_file(instance_id, as_attachment=True)
         except FileNotFound:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Movie file was not found for: %s" % instance_id)
             abort(404)
 
 
@@ -406,6 +408,7 @@ class PreviewFileResource(Resource):
             task = tasks_service.get_task(preview_file["task_id"])
             try:
                 user_service.check_project_access(task["project_id"])
+                user_service.check_entity_access(task["entity_id"])
                 return True
             except permissions.PermissionDenied:
                 return False
@@ -428,7 +431,7 @@ class PreviewFileResource(Resource):
                 return send_standard_file(instance_id, extension)
 
         except FileNotFound:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Non-movie file was not found for: %s" % instance_id)
             abort(404)
 
 
@@ -463,7 +466,7 @@ class PreviewFileDownloadResource(PreviewFileResource):
                     instance_id, extension, as_attachment=True
                 )
         except FileNotFound:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Standard file was not found for: %s" % instance_id)
             abort(404)
 
 
@@ -487,6 +490,7 @@ class BasePreviewPictureResource(Resource):
             task = tasks_service.get_task(preview_file["task_id"])
             try:
                 user_service.check_project_access(task["project_id"])
+                user_service.check_entity_access(task["entity_id"])
                 return True
             except permissions.PermissionDenied:
                 return False
@@ -502,7 +506,7 @@ class BasePreviewPictureResource(Resource):
         try:
             return send_picture_file(self.picture_type, instance_id)
         except FileNotFound:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Picture file was not found for: %s" % instance_id)
             abort(404)
 
 
@@ -614,10 +618,10 @@ class BasePictureResource(Resource):
         try:
             return send_picture_file("thumbnails", instance_id)
         except FileNotFound:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Thumbnail file was not found for: %s" % instance_id)
             abort(404)
         except IOError:
-            current_app.logger.error("File was not found for: %s" % instance_id)
+            current_app.logger.error("Thumbnail file was not found for: %s" % instance_id)
             abort(404)
 
 
@@ -728,6 +732,7 @@ class SetMainPreviewResource(Resource):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return entities_service.update_entity_preview(
             task["entity_id"], preview_file_id
         )

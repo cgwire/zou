@@ -37,9 +37,9 @@ class BaseImportShotgunResource(Resource):
                 result_entry = self.import_entry(data)
                 results.append(result_entry)
             except ShotgunEntryImportFailed as exception:
-                current_app.logger.warn(exception)
+                current_app.logger.warning(exception)
             except KeyError as exception:
-                current_app.logger.warn(exception)
+                current_app.logger.warning(exception)
                 current_app.logger.error(
                     "Your data is not properly formatted: %s" % sg_entry
                 )
