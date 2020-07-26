@@ -542,12 +542,23 @@ def get_comment_by_preview_file_id(preview_file_id):
 
 def create_comment(
     object_id, task_status_id, person_id, text,
-    object_type="Task", files={}, checklist=[]
+    object_type="Task", files={}, checklist=[], created_at=""
 ):
     """
     Create a new comment for given object (by default, it considers this object
     as a Task).
     """
+    created_at_date = None
+    if len(created_at) > 0:
+        try:
+            created_at_date = fields.get_date_object(
+                created_at,
+                date_format="%Y-%m-%d %H:%M:%S"
+            )
+        except ValueError:
+            pass
+    print(created_at_date)
+
     comment = Comment.create(
         object_id=object_id,
         object_type=object_type,
@@ -556,7 +567,9 @@ def create_comment(
         mentions=get_comment_mentions(object_id, text),
         checklist=checklist,
         text=text,
+        created_at=created_at_date
     )
+
     comment = comment.serialize(relations=True)
     comment["attachment_files"] = []
     for uploaded_file in files.values():

@@ -64,7 +64,13 @@ class CommentTaskResource(Resource):
 
     @jwt_required
     def post(self, task_id):
-        (task_status_id, comment, person_id, checklist) = self.get_arguments()
+        (
+            task_status_id,
+            comment,
+            person_id,
+            created_at,
+            checklist
+        ) = self.get_arguments()
 
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
@@ -83,7 +89,8 @@ class CommentTaskResource(Resource):
             person_id=person["id"],
             task_status_id=task_status_id,
             text=comment,
-            checklist=checklist
+            checklist=checklist,
+            created_at=created_at
         )
 
         status_changed = task_status_id != task["task_status_id"]
@@ -137,6 +144,7 @@ class CommentTaskResource(Resource):
         )
         parser.add_argument("comment", default="")
         parser.add_argument("person_id", default="")
+        parser.add_argument("created_at", default="")
         if request.json is None:
             parser.add_argument("checklist", default="[]")
             args = parser.parse_args()
@@ -151,5 +159,6 @@ class CommentTaskResource(Resource):
             args["task_status_id"],
             args["comment"],
             args["person_id"],
+            args["created_at"],
             checklist
         )
