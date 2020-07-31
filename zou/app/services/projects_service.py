@@ -6,6 +6,8 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
+from zou.app.models.task_type import TaskType
+from zou.app.models.task_status import TaskStatus
 from zou.app.services import base_service
 from zou.app.services.exception import (
     ProjectNotFoundException,
@@ -234,27 +236,89 @@ def update_project(project_id, data):
 
 def add_team_member(project_id, person_id):
     """
-    Add a a person listed in database to the the project team.
+    Add a person listed in database to the the project team.
     """
-    project = get_project_raw(project_id)
-    person = Person.get(person_id)
-    project.team.append(person)
-    project.save()
-    clear_project_cache(str(project_id))
-    events.emit("project:update", {"project_id": project_id})
-    return project.serialize()
+    return _add_to_list_attr(project_id, Person, person_id, 'team')
 
 
 def remove_team_member(project_id, person_id):
     """
-    Remove a a person listed in database from the the project team.
+    Remove a person listed in database from the the project team.
     """
+    return _remove_from_list_attr(project_id, Person, person_id, 'team')
+
+
+def add_asset_type_setting(project_id, asset_type_id):
+    """
+    Add an asset type listed in database to the the project asset types.
+    """
+    print(project_id, asset_type_id)
+    return _add_to_list_attr(
+        project_id, EntityType, asset_type_id, 'asset_types'
+    )
+
+
+def remove_asset_type_setting(project_id, asset_type_id):
+    """
+    Remove an asset type listed in database from the the project asset types.
+    """
+    return _remove_from_list_attr(
+        project_id, EntityType, asset_type_id, 'asset_types'
+    )
+
+
+def add_task_type_setting(project_id, task_type_id):
+    """
+    Add a task type listed in database to the the project task types.
+    """
+    return _add_to_list_attr(project_id, TaskType, task_type_id, 'task_types')
+
+
+def remove_task_type_setting(project_id, task_type_id):
+    """
+    Remove a task status listed in database from the the project task types.
+    """
+    return _remove_from_list_attr(
+        project_id, TaskType, task_type_id, 'task_types'
+    )
+
+
+def add_task_status_setting(project_id, task_status_id):
+    """
+    Add a task status listed in database to the the project task statuses.
+    """
+    return _add_to_list_attr(
+        project_id, TaskStatus, task_status_id, 'task_statuses'
+    )
+
+
+def remove_task_status_setting(project_id, task_status_id):
+    """
+    Remove a task status listed in database from the the project task statuses.
+    """
+    return _remove_from_list_attr(
+        project_id, TaskStatus, task_status_id, 'task_statuses'
+    )
+
+
+def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
-    person = Person.get(person_id)
-    project.team.remove(person)
+    model = model_class.get(model_id)
+    getattr(project, list_attr).append(model)
+    return _save_project(project)
+
+
+def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
+    project = get_project_raw(project_id)
+    model = model_class.get(model_id)
+    getattr(project, list_attr).remove(model)
+    return _save_project(project)
+
+
+def _save_project(project):
     project.save()
-    clear_project_cache(str(project_id))
-    events.emit("project:update", {"project_id": project_id})
+    clear_project_cache(str(project.id))
+    events.emit("project:update", {"project_id": str(project.id)})
     return project.serialize()
 
 

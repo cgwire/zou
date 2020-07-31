@@ -6,6 +6,12 @@ from .resources import (
     OpenProjectsResource,
     ProductionTeamResource,
     ProductionTeamRemoveResource,
+    ProductionAssetTypeResource,
+    ProductionAssetTypeRemoveResource,
+    ProductionTaskTypeResource,
+    ProductionTaskTypeRemoveResource,
+    ProductionTaskStatusResource,
+    ProductionTaskStatusRemoveResource,
     ProductionMetadataDescriptorResource,
     ProductionMetadataDescriptorsResource,
     ProductionMilestonesResource,
@@ -24,6 +30,30 @@ routes = [
     (
         "/data/projects/<project_id>/team/<person_id>",
         ProductionTeamRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/asset-types",
+        ProductionAssetTypeResource
+    ),
+    (
+        "/data/projects/<project_id>/settings/asset-types/<asset_type_id>",
+        ProductionAssetTypeRemoveResource
+    ),
+    (
+        "/data/projects/<project_id>/settings/task-types",
+        ProductionTaskTypeResource
+    ),
+    (
+        "/data/projects/<project_id>/settings/task-types/<task_type_id>",
+        ProductionTaskTypeRemoveResource
+    ),
+    (
+        "/data/projects/<project_id>/settings/task-status",
+        ProductionTaskStatusResource
+    ),
+    (
+        "/data/projects/<project_id>/settings/task-status/<task_status_id>",
+        ProductionTaskStatusRemoveResource
     ),
     (
         "/data/projects/<project_id>/metadata-descriptors",
