@@ -96,6 +96,89 @@ class ProductionTeamRemoveResource(Resource):
         return "", 204
 
 
+class ProductionAssetTypeResource(Resource, ArgsMixin):
+    """
+    Allow to add an asset type linked to a production.
+    """
+
+    @jwt_required
+    def post(self, project_id):
+        args = self.get_args([("asset_type_id", "", True)])
+        user_service.check_manager_project_access(project_id)
+        project = projects_service.add_asset_type_setting(
+            project_id,
+            args["asset_type_id"]
+        )
+        return project, 201
+
+
+class ProductionAssetTypeRemoveResource(Resource):
+    """
+    Allow to remove an asset type linked to a production.
+    """
+
+    @jwt_required
+    def delete(self, project_id, asset_type_id):
+        user_service.check_manager_project_access(project_id)
+        projects_service.remove_asset_type_setting(project_id, asset_type_id)
+        return "", 204
+
+
+class ProductionTaskTypeResource(Resource, ArgsMixin):
+    """
+    Allow to add an task type linked to a production.
+    """
+
+    @jwt_required
+    def post(self, project_id):
+        args = self.get_args([("task_type_id", "", True)])
+        user_service.check_manager_project_access(project_id)
+        project = projects_service.add_task_type_setting(
+            project_id,
+            args["task_type_id"]
+        )
+        return project, 201
+
+
+class ProductionTaskTypeRemoveResource(Resource):
+    """
+    Allow to remove an task type linked to a production.
+    """
+
+    @jwt_required
+    def delete(self, project_id, task_type_id):
+        user_service.check_manager_project_access(project_id)
+        projects_service.remove_task_type_setting(project_id, task_type_id)
+        return "", 204
+
+
+class ProductionTaskStatusResource(Resource, ArgsMixin):
+    """
+    Allow to add an task type linked to a production.
+    """
+
+    @jwt_required
+    def post(self, project_id):
+        args = self.get_args([("task_status_id", "", True)])
+        project = projects_service.add_task_status_setting(
+            project_id,
+            args["task_status_id"]
+        )
+        return project, 201
+
+
+class ProductionTaskStatusRemoveResource(Resource):
+    """
+    Allow to remove an task status linked to a production.
+    """
+
+    @jwt_required
+    def delete(self, project_id, task_status_id):
+        user_service.check_manager_project_access(project_id)
+        projects_service.remove_task_status_setting(project_id, task_status_id)
+        return "", 204
+
+
 class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
     """
     Resource to get and create metadata descriptors. It serves to describe

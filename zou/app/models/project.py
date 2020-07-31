@@ -17,6 +17,40 @@ class ProjectPersonLink(db.Model):
     shotgun_id = db.Column(db.Integer)
 
 
+class ProjectTaskTypeLink(db.Model):
+    __tablename__ = "project_task_type_link"
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+    )
+    task_type_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("task_type.id"), primary_key=True
+    )
+
+
+class ProjectTaskStatusLink(db.Model):
+    __tablename__ = "project_task_status_link"
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+    )
+    task_status_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("task_status.id"),
+        primary_key=True
+    )
+
+
+class ProjectAssetTypeLink(db.Model):
+    __tablename__ = "project_asset_type_link"
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+    )
+    asset_type_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("entity_type.id"),
+        primary_key=True
+    )
+
+
 class Project(db.Model, BaseMixin, SerializerMixin):
     """
     Describes a CG production the studio works on.
@@ -42,6 +76,15 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     )
 
     team = db.relationship("Person", secondary="project_person_link")
+    asset_types = db.relationship(
+        "EntityType", secondary="project_asset_type_link"
+    )
+    task_statuses = db.relationship(
+        "TaskStatus", secondary="project_task_status_link"
+    )
+    task_types = db.relationship(
+        "TaskType", secondary="project_task_type_link"
+    )
 
     def set_team(self, person_ids):
         for person_id in person_ids:
@@ -55,10 +98,36 @@ class Project(db.Model, BaseMixin, SerializerMixin):
                 db.session.add(link)
         db.session.commit()
 
+    def set_task_types(self, task_type_ids):
+        return self.set_links(
+            task_type_ids,
+            ProjectTaskTypeLink,
+            "project_id",
+            "task_type_id"
+        )
+
+    def set_task_statuses(self, task_status_ids):
+        return self.set_links(
+            task_status_ids,
+            ProjectTaskStatusLink,
+            "project_id",
+            "task_status_id"
+        )
+
+    def set_asset_types(self, asset_type_ids):
+        return self.set_links(
+            asset_type_ids,
+            ProjectAssetTypeLink,
+            "project_id",
+            "entity_type_id"
+        )
+
     @classmethod
     def create_from_import(cls, data):
         previous_project = cls.get(data["id"])
         person_ids = data.get("team", None)
+        task_type_ids = data.get("task_types", None)
+        task_status_ids = data.get("task_statuses", None)
         data.pop("team", None)
         data.pop("type", None)
         data.pop("project_status_name", None)
@@ -72,5 +141,11 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
         if person_ids is not None:
             previous_project.set_team(person_ids)
+
+        if task_type_ids is not None:
+            previous_project.set_task_types(task_type_ids)
+
+        if task_status_ids is not None:
+            previous_project.set_task_statuses(task_status_ids)
 
         return previous_project

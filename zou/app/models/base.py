@@ -195,3 +195,15 @@ class BaseMixin(object):
             db.session.rollback()
             db.session.remove()
             raise
+
+    def set_links(self, ids, LinkTable, field_left, field_right):
+        for id in ids:
+            link = LinkTable.query.filter_by(
+                kwargs={field_left: self.id, field_right: id}
+            ).first()
+            if link is None:
+                link = LinkTable(
+                    kwargs={field_left: self.id, field_right: id}
+                )
+                db.session.add(link)
+        db.session.commit()
