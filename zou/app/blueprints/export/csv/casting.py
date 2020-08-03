@@ -9,14 +9,19 @@ from zou.app.models.entity_type import EntityType
 from zou.app.services import projects_service, user_service
 from zou.app.utils import csv_utils
 
+from zou.app.mixin import ArgsMixin
 
-class CastingCsvExport(Resource):
+
+class CastingCsvExport(Resource, ArgsMixin):
+
     @jwt_required
     def get(self, project_id):
         project = projects_service.get_project(project_id)  # Check existence
         self.check_permissions(project_id)
 
-        results = self.build_results(project_id)
+        episode_id = self.get_episode_id()
+
+        results = self.build_results(project_id, episode_id=episode_id)
         headers = self.build_headers()
 
         csv_content = [headers]
@@ -63,7 +68,7 @@ class CastingCsvExport(Resource):
         ]
         return row
 
-    def build_results(self, project_id):
+    def build_results(self, project_id, episode_id=None):
         results = []
 
         Target = aliased(Entity, name="target")
@@ -79,6 +84,12 @@ class CastingCsvExport(Resource):
             .outerjoin(EntityType, Target.entity_type_id == EntityType.id)
             .outerjoin(Episode, Parent.parent_id == Episode.id)
             .filter(Target.project_id == project_id)
+        )
+
+        if episode_id is not None:
+            query = query.filter(Episode.id == episode_id)
+
+        query = query \
             .add_columns(
                 Episode.name,
                 Parent.name,
@@ -86,7 +97,7 @@ class CastingCsvExport(Resource):
                 Target.name,
                 AssetType.name,
                 Asset.name,
-            )
+            ) \
             .order_by(
                 Episode.name,
                 Parent.name,
@@ -95,7 +106,7 @@ class CastingCsvExport(Resource):
                 AssetType.name,
                 Asset.name,
             )
-        )
+
         for (
             entity_link,
             episode_name,

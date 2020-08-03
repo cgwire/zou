@@ -43,3 +43,10 @@ class ArgsMixin(object):
         """
         options = request.args
         return options.get("relations", "false") == "true"
+
+    def get_episode_id(self):
+        """
+        Returns episode ID parameter.
+        """
+        options = request.args
+        return options.get("episode_id", None)

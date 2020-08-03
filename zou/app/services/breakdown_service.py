@@ -135,7 +135,6 @@ def update_casting(entity_id, casting):
     """
     entity = entities_service.get_entity_raw(entity_id)
     entity.update({"entities_out": []})
-    casting_ids = []
     for cast in casting:
         if "asset_id" in cast and "nb_occurences" in cast:
             create_casting_link(
@@ -147,14 +146,12 @@ def update_casting(entity_id, casting):
     entity_id = str(entity.id)
     if shots_service.is_shot(entity.serialize()):
         events.emit(
-            "shot:casting-update", {"shot": entity_id, "casting": casting_ids}
+            "shot:casting-update", {"shot_id": entity_id}
         )
-        events.emit("shot:update", {"shot_id": entity_id})
     else:
         events.emit(
-            "asset:casting-update", {"asset": entity_id, "casting": casting_ids}
+            "asset:casting-update", {"asset_id": entity_id}
         )
-        events.emit("asset:update", {"asset_id": entity_id})
     return casting
 
 
