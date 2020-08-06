@@ -303,7 +303,7 @@ def get_asset_raw(entity_id):
     return entity
 
 
-@cache.memoize_function(10)
+@cache.memoize_function(120)
 def get_asset(entity_id):
     """
     Return a given asset as a dict.
@@ -311,7 +311,7 @@ def get_asset(entity_id):
     return get_asset_raw(entity_id).serialize(obj_type="Asset")
 
 
-@cache.memoize_function(30)
+@cache.memoize_function(120)
 def get_asset_with_relations(entity_id):
     """
     Return a given asset as a dict.
@@ -338,7 +338,7 @@ def get_raw_asset_by_shotgun_id(shotgun_id):
     return get_asset_raw(asset["id"])
 
 
-@cache.memoize_function(3)
+@cache.memoize_function(120)
 def get_full_asset(asset_id):
     """
     Return asset matching given id with additional information (project name,

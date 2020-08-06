@@ -351,7 +351,7 @@ def get_shot_raw(shot_id):
     return shot
 
 
-@cache.memoize_function(30)
+@cache.memoize_function(120)
 def get_shot(shot_id):
     """
     Return given shot as a dictionary.
@@ -359,7 +359,7 @@ def get_shot(shot_id):
     return get_shot_raw(shot_id).serialize(obj_type="Shot")
 
 
-@cache.memoize_function(30)
+@cache.memoize_function(120)
 def get_shot_with_relations(shot_id):
     """
     Return given shot as a dictionary.
@@ -367,7 +367,7 @@ def get_shot_with_relations(shot_id):
     return get_shot_raw(shot_id).serialize(obj_type="Shot", relations=True)
 
 
-@cache.memoize_function(3)
+@cache.memoize_function(120)
 def get_full_shot(shot_id):
     """
     Return given shot as a dictionary with extra data like project and
