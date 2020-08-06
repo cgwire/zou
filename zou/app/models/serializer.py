@@ -1,5 +1,4 @@
 import sqlalchemy.orm as orm
-
 from sqlalchemy.inspection import inspect
 from zou.app.utils.fields import serialize_value
 
@@ -10,7 +9,10 @@ class SerializerMixin(object):
     """
 
     def is_join(self, attr):
-        return isinstance(getattr(self, attr), orm.collections.InstrumentedList)
+        return isinstance(
+            getattr(self.__class__, attr).impl,
+            orm.attributes.CollectionAttributeImpl
+        )
 
     def serialize(self, obj_type=None, relations=False):
         attrs = inspect(self).attrs.keys()
@@ -32,4 +34,4 @@ class SerializerMixin(object):
         return [
             model.serialize(obj_type=obj_type, relations=relations)
             for model in models
-        ]
+    ]
