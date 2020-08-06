@@ -635,5 +635,5 @@ class ShotVersionsResource(Resource):
     def get(self, shot_id):
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
-        user_service.check_entity_access(shot["_id"])
+        user_service.check_entity_access(shot["id"])
         return shots_service.get_shot_versions(shot_id)
