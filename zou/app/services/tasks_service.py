@@ -67,6 +67,7 @@ def clear_task_cache(task_id):
 @cache.memoize_function(120)
 def clear_comment_cache(comment_id):
     cache.cache.delete_memoized(get_comment, comment_id)
+    cache.cache.delete_memoized(get_comment_with_relations, comment_id)
 
 
 @cache.memoize_function(120)
@@ -520,10 +521,19 @@ def get_comment_raw(comment_id):
 @cache.memoize_function(120)
 def get_comment(comment_id):
     """
-    Return comment matching give id as an active record.
+    Return comment matching give id as a dict.
     """
     comment = get_comment_raw(comment_id)
     return comment.serialize()
+
+
+@cache.memoize_function(120)
+def get_comment_with_relations(comment_id):
+    """
+    Return comment matching give id as a dict with joins information.
+    """
+    comment = get_comment_raw(comment_id)
+    return comment.serialize(relations=True)
 
 
 def get_comment_by_preview_file_id(preview_file_id):
@@ -557,7 +567,6 @@ def create_comment(
             )
         except ValueError:
             pass
-    print(created_at_date)
 
     comment = Comment.create(
         object_id=object_id,
