@@ -309,7 +309,7 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
             entity_name,
         ) = entry
 
-        task = task_object.serialize(relations=relations)
+        task = get_task_with_relations(str(task_object.id))
         task["project_name"] = project_name
         task["task_type_name"] = task_type_name
         task["task_status_name"] = task_status_name
@@ -713,7 +713,7 @@ def get_person_tasks(person_id, projects, is_done=None):
         if episode_id is None:
             episode_id = entity_source_id
 
-        task_dict = task.serialize(relations=True)
+        task_dict = get_task_with_relations(str(task.id))
         task_dict.update(
             {
                 "project_name": project_name,
