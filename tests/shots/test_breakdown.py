@@ -92,9 +92,8 @@ class BreakdownTestCase(ApiDBTestCase):
 
         assets = self.get("data/shots/%s/assets" % self.shot.id)
         self.assertEqual(len(assets), 3)
-        self.assertDictEqual(
-            assets[0],
-            self.entities[0].serialize(obj_type="Asset")
+        self.assertTrue(
+            assets[0]["id"] in [str(entity.id) for entity in self.entities]
         )
 
     def test_update_asset_casting(self):
@@ -143,7 +142,6 @@ class BreakdownTestCase(ApiDBTestCase):
 
         assets = self.get("data/assets/%s/assets" % self.asset.id)
         self.assertEqual(len(assets), 3)
-        self.assertDictEqual(
-            assets[0],
-            self.entities[0].serialize(obj_type="Asset")
+        self.assertTrue(
+            assets[0]["id"] in [str(entity.id) for entity in self.entities]
         )

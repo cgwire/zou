@@ -79,10 +79,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             "assignation"
         )
         self.assertEqual(len(notifications), 1)
-        self.assertEqual(
-            str(notifications[0]["person_id"]),
-            str(self.person.id)
-        )
+        self.assertEqual(str(notifications[0]["person_id"]), person_id)
 
     def test_task_assign_404(self):
         person_id = str(self.person.id)

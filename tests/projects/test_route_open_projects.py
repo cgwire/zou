@@ -10,7 +10,7 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
 
         self.generate_fixture_project_status()
         self.generate_fixture_project_closed_status()
-        self.generate_fixture_project()
+        self.project_id = str(self.generate_fixture_project().id)
         self.generate_fixture_project_closed()
 
     def test_open_projects(self):
@@ -20,16 +20,16 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
         self.assertEqual(projects[0]["name"], self.project.name)
 
     def test_add_team_member(self):
-        self.generate_fixture_person()
-        self.post("data/projects/%s/team" % self.project.id, {
-            "person_id": self.person.id
+        self.person_id = str(self.generate_fixture_person().id)
+        self.post("data/projects/%s/team" % self.project_id, {
+            "person_id": self.person_id
         })
-        project = projects_service.get_project_with_relations(self.project.id)
-        self.assertEqual(project["team"], [str(self.person.id)])
+        project = projects_service.get_project_with_relations(self.project_id)
+        self.assertEqual(project["team"], [str(self.person_id)])
 
     def test_remove_team_member(self):
-        self.generate_fixture_person()
-        projects_service.add_team_member(self.project.id, self.person.id)
-        self.delete("data/projects/%s/team/%s" % (self.project.id, self.person.id))
-        project = projects_service.get_project_with_relations(self.project.id)
+        self.person_id = str(self.generate_fixture_person().id)
+        projects_service.add_team_member(self.project_id, self.person_id)
+        self.delete("data/projects/%s/team/%s" % (self.project_id, self.person_id))
+        project = projects_service.get_project_with_relations(self.project_id)
         self.assertEqual(project["team"], [])
