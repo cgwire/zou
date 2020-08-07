@@ -1,4 +1,7 @@
 from flask_jwt_extended import jwt_required
+from flask import current_app
+
+from sqlalchemy.exc import StatementError
 
 from zou.app.models.comment import Comment
 from zou.app.models.attachment_file import AttachmentFile
@@ -14,6 +17,8 @@ from zou.app.utils import events, permissions
 
 from .base import BaseModelResource, BaseModelsResource
 
+from zou.app.services.exception import CommentNotFoundException
+
 
 class CommentsResource(BaseModelsResource):
     def __init__(self):
@@ -24,9 +29,29 @@ class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
 
+    @jwt_required
+    def get(self, instance_id):
+        """
+        Retrieve a model corresponding at given ID and return it as a JSON
+        object.
+        """
+        try:
+            instance = tasks_service.get_comment_with_relations(instance_id)
+            self.check_read_permissions(instance)
+            result = self.clean_get_result(instance)
+
+        except StatementError as exception:
+            current_app.logger.error(str(exception), exc_info=1)
+            return {"message": str(exception)}, 400
+
+        except ValueError:
+            raise CommentNotFoundException
+
+        return result, 200
+
     def clean_get_result(self, result):
         attachment_files = []
-        if len(result["attachment_files"]) > 0:
+        if "attachment_files" in result and len(result["attachment_files"]) > 0:
             for attachment_file_id in result["attachment_files"]:
                 attachment_file = AttachmentFile.get(attachment_file_id)
                 attachment_files.append(attachment_file.present())

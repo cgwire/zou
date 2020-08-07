@@ -23,10 +23,12 @@ class AssetInstanceLink(db.Model):
 class EntityLink(db.Model, BaseMixin, SerializerMixin):
     __tablename__ = "entity_link"
     entity_in_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("entity.id"), primary_key=True
+        UUIDType(binary=False), db.ForeignKey("entity.id"), primary_key=True,
+        index=True
     )
     entity_out_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("entity.id"), primary_key=True
+        UUIDType(binary=False), db.ForeignKey("entity.id"), primary_key=True,
+        index=True
     )
     nb_occurences = db.Column(db.Integer, default=1)
     label = db.Column(db.String(80), default="")

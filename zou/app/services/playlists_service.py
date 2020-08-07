@@ -227,24 +227,54 @@ def get_preview_files_for_entity(entity_id):
     """
     Get all preview files available for given shot.
     """
-    tasks = tasks_service.get_task_dicts_for_entity(entity_id)
     previews = {}
-
-    for task in tasks:
-        preview_files = (
-            PreviewFile.query.filter_by(task_id=task["id"])
-            .join(Task)
-            .join(TaskType)
-            .order_by(TaskType.priority.desc())
-            .order_by(TaskType.name)
-            .order_by(PreviewFile.revision.desc())
-            .order_by(PreviewFile.created_at)
-            .all()
+    query = (
+        Task.query
+        .filter_by(entity_id=entity_id)
+        .add_columns(
+            PreviewFile.id,
+            PreviewFile.revision,
+            PreviewFile.extension,
+            PreviewFile.annotations,
+            PreviewFile.created_at,
+            PreviewFile.task_id
         )
-        task_type_id = task["task_type_id"]
+        .join(PreviewFile)
+        .join(TaskType)
+        .order_by(TaskType.priority.desc())
+        .order_by(TaskType.name)
+        .order_by(PreviewFile.revision.desc())
+        .order_by(PreviewFile.created_at)
+    )
+
+    task_previews = {}
+    for (
+        task,
+        preview_file_id,
+        preview_file_revision,
+        preview_file_extension,
+        preview_file_annotations,
+        preview_file_created_at,
+        preview_file_task_id
+    ) in query.all():
+        task_id = str(task.id)
+        if task_id not in task_previews:
+            task_previews[task_id] = []
+        task_previews[task_id].append(fields.serialize_dict({
+            "id": preview_file_id,
+            "revision": preview_file_revision,
+            "extension": preview_file_extension,
+            "annotations": preview_file_annotations,
+            "created_at": preview_file_created_at,
+            "task_id": task_id,
+            "task_type_id": str(task.task_type_id),
+        }))
+
+    for task_id in task_previews.keys():
+        preview_files = task_previews[task_id]
+        task_type_id = task_previews[task_id][0]["task_type_id"]
 
         if len(preview_files) > 0:
-            preview_files = fields.serialize_models(preview_files)
             preview_files = mix_preview_file_revisions(preview_files)
             previews[task_type_id] = [
                 {
@@ -258,7 +288,6 @@ def get_preview_files_for_entity(entity_id):
                 }
                 for preview_file in preview_files
             ]  # Do not add too much field to avoid building too big responses
-
     return previews
 
 

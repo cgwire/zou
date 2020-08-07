@@ -50,7 +50,7 @@ class TasksResource(BaseModelsResource):
                 instance.assignees = persons
             instance.save()
 
-            return instance.serialize(relations=True), 201
+            return tasks_service.get_task_with_relations(str(instance.id)), 201
 
         except TypeError as exception:
             current_app.logger.error(str(exception), exc_info=1)
