@@ -190,15 +190,18 @@ class ApiTestCase(unittest.TestCase):
         response = self.app.get(path, headers=self.base_headers)
         self.assertEqual(response.status_code, 404)
 
-    def upload_file(self, path, file_path, code=201):
+    def upload_file(self, path, file_path, code=201, extra_fields={}):
         """
         Upload a file at given path. File data are sent in the request body.
         """
         file_content = open(file_path, "rb")
         file_name = ntpath.basename(file_path)
+        data = {"file": (file_content, file_name)}
+        if len(extra_fields.keys()) > 0:
+            data.update(extra_fields)
         response = self.app.post(
             path,
-            data={"file": (file_content, file_name)},
+            data=data,
             headers=self.base_headers
         )
         self.assertEqual(response.status_code, code)

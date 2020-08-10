@@ -35,6 +35,7 @@ class DownloadAttachmentResource(Resource):
                 mimetype=attachment_file["mimetype"],
                 as_attachment=False,
                 attachment_filename=attachment_file["name"],
+
             )
         except:
             abort(404)

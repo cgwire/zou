@@ -1,3 +1,4 @@
+import os
 import time
 
 from tests.base import ApiDBTestCase
@@ -5,7 +6,9 @@ from tests.base import ApiDBTestCase
 from zou.app.utils import events
 
 from zou.app.models.task import Task
-from zou.app.services import tasks_service
+from zou.app.services import projects_service, tasks_service
+
+from PIL import Image
 
 
 class RouteTaskChangeTestCase(ApiDBTestCase):
@@ -107,3 +110,33 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         })
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 2)
+
+    def test_attachments(self):
+        self.delete_test_folder()
+        self.create_test_folder()
+        task_id = str(self.task.id)
+        project_id = str(self.project.id)
+        self.upload_file(
+            "/actions/tasks/%s/comment" % task_id,
+            self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
+            extra_fields={
+                "task_status_id": self.retake_status_id,
+                "comment": "retake 1"
+            }
+        )
+        attachment = self.get("data/attachment-files")[0]
+        attachment = self.get("data/attachment-files/%s" % attachment["id"])
+        path = "/data/attachment-files/%s/file" % attachment["id"]
+        result_file_path = self.get_file_path("th01.png")
+
+        self.download_file(path, result_file_path)
+        result_image = Image.open(result_file_path)
+        self.assertEqual(result_image.size, (180, 101))
+
+        self.generate_fixture_user_vendor()
+        self.log_in_vendor()
+        self.get("data/attachment-files/%s" % attachment["id"], 403)
+        projects_service.add_team_member(project_id, self.user_vendor["id"])
+        tasks_service.assign_task(task_id, self.user_vendor["id"])
+        self.get("data/attachment-files/%s" % attachment["id"])
+        self.delete_test_folder()
