@@ -624,7 +624,7 @@ def create_comment(
     as a Task).
     """
     created_at_date = None
-    if len(created_at) > 0:
+    if created_at is not None and len(created_at) > 0:
         try:
             created_at_date = fields.get_date_object(
                 created_at,
