@@ -5,7 +5,7 @@ from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import events
+from zou.app.utils import events, permissions
 
 from zou.app.services import (
     comments_service,
@@ -77,6 +77,10 @@ class CommentTaskResource(Resource):
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         task_status = tasks_service.get_task_status(task_status_id)
+
+        if not permissions.has_manager_permissions():
+            person_id = None
+            created_at = None
 
         if person_id:
             person = persons_service.get_person(person_id)
