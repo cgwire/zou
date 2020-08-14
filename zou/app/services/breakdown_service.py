@@ -186,7 +186,11 @@ def get_cast_in(asset_id):
         .join(Sequence, Entity.parent_id == Sequence.id)
         .outerjoin(Episode, Sequence.parent_id == Episode.id)
         .add_columns(
-            Entity.name, Sequence.name, Episode.name, Entity.preview_file_id
+            Entity.name,
+            Sequence.name,
+            Episode.id,
+            Episode.name,
+            Entity.preview_file_id
         )
         .order_by(Episode.name, Sequence.name, Entity.name)
     )
@@ -195,6 +199,7 @@ def get_cast_in(asset_id):
         link,
         entity_name,
         sequence_name,
+        episode_id,
         episode_name,
         entity_preview_file_id,
     ) in links:
@@ -202,6 +207,7 @@ def get_cast_in(asset_id):
             "shot_id": fields.serialize_value(link.entity_in_id),
             "shot_name": entity_name,
             "sequence_name": sequence_name,
+            "episode_id": str(episode_id),
             "episode_name": episode_name,
             "preview_file_id": fields.serialize_value(entity_preview_file_id),
             "nb_occurences": link.nb_occurences,
