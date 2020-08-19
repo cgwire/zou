@@ -527,7 +527,6 @@ def _build_mention_map_for_comments(comment_ids):
     return mention_map
 
 
-
 def _build_preview_map_for_comments(comment_ids):
     preview_map = {}
     query = (
@@ -537,9 +536,10 @@ def _build_preview_map_for_comments(comment_ids):
         .add_column(preview_link_table.c.comment)
     )
     for (preview, comment_id) in query.all():
+        comment_id = str(comment_id)
         if comment_id not in preview_map:
-            preview_map[str(comment_id)] = []
-        preview_map[str(comment_id)].append({
+            preview_map[comment_id] = []
+        preview_map[comment_id].append({
             "id": str(preview.id),
             "revision": preview.revision,
             "extension": preview.extension,
