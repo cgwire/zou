@@ -1,4 +1,5 @@
 import datetime
+import re
 import uuid
 import sqlalchemy.orm as orm
 
@@ -100,3 +101,10 @@ def get_date_object(date_string, date_format="%Y-%m-%d"):
     Shortcut for date parsing (useful for json dumping).
     """
     return datetime.datetime.strptime(date_string, date_format)
+
+
+def is_valid_id(uuid):
+    _UUID_RE = re.compile(
+        "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}){1}"
+    )
+    return _UUID_RE.match(uuid)
