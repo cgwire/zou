@@ -23,33 +23,12 @@ the list of all expected parameters.
 traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 * `SECRET_KEY` (default: mysecretkey) complex key used for auth token encryption.
 
-## File trees
-
-* `DEFAULT_FILE_TREE` (default: standard): The file tree to set by default on a
-  project.
-* `FILE_TREE_FOLDER` (default: /usr/local/share/zou/file_trees): The folder
-  where your file tree definitions are stored.
-
-## Event handlers
-
-* `EVENT_HANDLERS_FOLDER` (default: /usr/local/share/zou/thumbnails): The
-  folder to put custom event handlers.
-
 ## Previews
 
 * `PREVIEW_FOLDER` (default: ./previews): The folder where
-  thumbnails will be stored.
-
-If you want to store you previews in a Swift backend, add the following
-variables (Only Auth 2.0 and 3.0 is supported).
-
-* `FS_BACKEND`: Set this variable with "swift"
-* `FS_BUCKET_PREFIX`: A prefix for your bucket/container names.
-* `FS_SWIFT_AUTH_URL`: Authentication URL of your swift backend.
-* `FS_SWIFT_USER`: Your Swift login.
-* `FS_SWIFT_TENANT_NAME`: The Swift tenant name.
-* `FS_SWIFT_KEY`: Your Swift password.
-* `FS_SWIFT_REGION_NAME`: Your Swift region name.
+  thumbnails will be stored. The default value is set for development
+  environments. We encourage you to set an absolute path when you use it in
+  production.
 
 ## Emails
 
@@ -72,6 +51,20 @@ future, we expect to propose email notifications too.
   for instance).
 * `DOMAIN_PROTOCOL` (default: "https"): To build URLs (for password reset
   for instance).
+
+
+## Swift Storage
+
+If you want to store you previews in a Swift backend, add the following
+variables (Only Auth 2.0 and 3.0 is supported).
+
+* `FS_BACKEND`: Set this variable with "swift"
+* `FS_BUCKET_PREFIX`: A prefix for your bucket/container names.
+* `FS_SWIFT_AUTH_URL`: Authentication URL of your swift backend.
+* `FS_SWIFT_USER`: Your Swift login.
+* `FS_SWIFT_TENANT_NAME`: The Swift tenant name.
+* `FS_SWIFT_KEY`: Your Swift password.
+* `FS_SWIFT_REGION_NAME`: Your Swift region name.
 
 ## LDAP
 
