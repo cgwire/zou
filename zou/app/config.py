@@ -3,11 +3,12 @@ import datetime
 
 from zou.app.utils import dbhelpers
 
+PROPAGATE_EXCEPTIONS = True
+RESTFUL_JSON = {"ensure_ascii": False}
+DEBUG = os.getenv("DEBUG", 0)
+
 APP_NAME = "Zou"
 APP_SYSTEM_ERROR_SUBJECT_LINE = "%s system error" % APP_NAME
-PROPAGATE_EXCEPTIONS = True
-
-DEBUG = os.getenv("DEBUG", 0)
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
 
 AUTH_STRATEGY = os.getenv("AUTH_STRATEGY", "auth_local_classic")
@@ -32,7 +33,6 @@ JWT_REFRESH_COOKIE_PATH = "/auth/refresh-token"
 JWT_COOKIE_CSRF_PROTECT = False
 JWT_SESSION_COOKIE = False
 
-RESTFUL_JSON = {"ensure_ascii": False}
 DATABASE = {
     "drivername": os.getenv("DB_DRIVER", "postgresql"),
     "host": os.getenv("DB_HOST", "localhost"),
@@ -50,15 +50,15 @@ SQLALCHEMY_ENGINE_OPTIONS = {
 
 NB_RECORDS_PER_PAGE = 100
 
-DONE_TASK_STATUS = "Done"
-WIP_TASK_STATUS = "WIP"
-TO_REVIEW_TASK_STATUS = "To review"
-DEFAULT_FILE_STATUS = "To review"
-
-DEFAULT_FILE_TREE = os.getenv("DEFAULT_FILE_TREE", "default")
-FILE_TREE_FOLDER = os.getenv("FILE_TREE_FOLDER")
 PREVIEW_FOLDER = os.getenv(
     "PREVIEW_FOLDER", os.getenv("THUMBNAIL_FOLDER", "previews")
+)
+TMP_DIR = os.getenv("TMP_DIR", os.path.join(os.sep, "tmp", "zou"))
+
+EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
+EVENT_STREAM_PORT = os.getenv("EVENT_STREAM_PORT", 5001)
+EVENT_HANDLERS_FOLDER = os.getenv(
+    "EVENT_HANDLERS_FOLDER", os.path.join(os.getcwd(), "event_handlers")
 )
 
 MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
@@ -73,13 +73,6 @@ DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
 
 PLUGIN_FOLDER = os.getenv("PLUGIN_FOLDER", os.path.join(os.getcwd(), "plugins"))
-EVENT_HANDLERS_FOLDER = os.getenv(
-    "EVENT_HANDLERS_FOLDER", os.path.join(os.getcwd(), "event_handlers")
-)
-TMP_DIR = os.getenv("TMP_DIR", os.path.join(os.sep, "tmp", "zou"))
-
-EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
-EVENT_STREAM_PORT = os.getenv("EVENT_STREAM_PORT", 5001)
 
 FS_BACKEND = os.getenv("FS_BACKEND", "local")
 FS_ROOT = PREVIEW_FOLDER
@@ -103,3 +96,11 @@ LOGS_PORT = os.getenv("LOGS_PORT", 2202)
 LOGS_TOKEN = os.getenv("LOGS_TOKEN")
 
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
+
+# Deprecated
+DONE_TASK_STATUS = "Done"
+WIP_TASK_STATUS = "WIP"
+TO_REVIEW_TASK_STATUS = "To review"
+DEFAULT_FILE_STATUS = "To review"
+DEFAULT_FILE_TREE = os.getenv("DEFAULT_FILE_TREE", "default")
+FILE_TREE_FOLDER = os.getenv("FILE_TREE_FOLDER")
