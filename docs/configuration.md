@@ -37,7 +37,7 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 
 ## Previews
 
-* `PREVIEW_FOLDER` (default: /usr/local/share/zou/standard): The folder where
+* `PREVIEW_FOLDER` (default: ./previews): The folder where
   thumbnails will be stored.
 
 If you want to store you previews in a Swift backend, add the following
