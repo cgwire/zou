@@ -1,6 +1,6 @@
 # Development environment
 
-To start with developing on Zou you need Python installed (2 or 3) and a
+To start with developing on Zou you need Python 3 installed and a
 Postgres database instance. 
 
 ## Database
@@ -80,7 +80,7 @@ python zou/cli.py create_admin super.user@mycgstudio.com
 Run server:
 
 ```bash
-FLASK_DEBUG=1 FLASK_APP=zou.app flask run
+PREVIEW_FOLDER=$PWD/previews DEBUG=1 MAIL_DEBUG=1 FLASK_DEBUG=1 FLASK_APP=zou.app python zou/debug.py
 ```
 
 You can now use the API by requesting `http://localhost:5000`.
