@@ -2,7 +2,7 @@ from flask import request
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.mixin import ArgsMixin
@@ -55,3 +55,9 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
 
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Task)
+
+
+class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
+
+    def __init__(self):
+        BaseImportKitsuResource.__init__(self, EntityLink)

@@ -69,6 +69,7 @@ from .csv.casting import CastingCsvImportResource
 from .kitsu import (
     ImportKitsuCommentsResource,
     ImportKitsuEntitiesResource,
+    ImportKitsuEntityLinksResource,
     ImportKitsuProjectsResource,
     ImportKitsuTasksResource
 )
@@ -114,6 +115,7 @@ routes = [
     ("/import/csv/projects/<project_id>/casting", CastingCsvImportResource),
     ("/import/kitsu/comments", ImportKitsuCommentsResource),
     ("/import/kitsu/entities", ImportKitsuEntitiesResource),
+    ("/import/kitsu/entity-links", ImportKitsuEntityLinksResource),
     ("/import/kitsu/projects", ImportKitsuProjectsResource),
     ("/import/kitsu/tasks", ImportKitsuTasksResource),
 ]
