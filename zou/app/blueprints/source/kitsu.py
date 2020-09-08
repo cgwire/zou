@@ -7,6 +7,7 @@ from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, permissions
+from zou.app.services.exception import WrongParameterException
 
 
 class BaseImportKitsuResource(Resource, ArgsMixin):
@@ -19,6 +20,8 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
     @permissions.require_admin
     def post(self):
         kitsu_entries = request.json
+        if type(kitsu_entries) != list:
+            raise WrongParameterException("A list of entities is expected.")
         instances = []
         for entry in kitsu_entries:
             if self.pre_check_entry():
