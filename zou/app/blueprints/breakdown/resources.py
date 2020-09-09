@@ -140,7 +140,7 @@ class ProjectEntityLinksResource(Resource):
         Retrieve all entity links related to given project.
         It's mainly used for synchronisation purpose.
         """
-        permissions.check_admin_permissions()
+        user_service.check_manager_project_access(project_id)
         projects_service.get_project(project_id)
         return entities_service.get_entity_links_for_project(project_id)
 
@@ -151,5 +151,5 @@ class ProjectEntityLinkResource(Resource):
         """
         Delete given entity link.
         """
-        permissions.check_admin_permissions()
+        user_service.check_manager_project_access(project_id)
         return entities_service.remove_entity_link(entity_link_id)

@@ -20,21 +20,36 @@ class EventsResource(Resource, ArgsMixin):
         before = None
         after = None
 
-        try:
-            if args["before"] is not None:
+        if args["before"] is not None:
+            try:
                 before = fields.get_date_object(
                     args["before"], "%Y-%m-%dT%H:%M:%S"
                 )
-            if args["after"] is not None:
+            except Exception:
+                try:
+                    before = fields.get_date_object(args["before"], "%Y-%m-%d")
+                except Exception:
+                    return {
+                        "error": True,
+                        "message": "Wrong date format for before argument."
+                            "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
+                    }, 400
+
+        if args["after"] is not None:
+            try:
                 after = fields.get_date_object(
                     args["after"], "%Y-%m-%dT%H:%M:%S"
                 )
-        except Exception:
-            return {
-                "error": True,
-                "message": "Wrong date format for before or after argument."
-                           "Expected format: 2020-01-05T13:23:10"
-            }, 400
+            except Exception:
+                try:
+                    after = fields.get_date_object(args["after"], "%Y-%m-%d")
+                except Exception:
+                    return {
+                        "error": True,
+                        "message": "Wrong date format for after argument."
+                            "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
+                    }, 400
+
         page_size = args["page_size"]
         only_files = args["only_files"] == "true"
         return events_service.get_last_events(
