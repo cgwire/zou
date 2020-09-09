@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from flask import request
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
@@ -25,7 +27,10 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         instances = []
         for entry in kitsu_entries:
             if self.pre_check_entry():
-                instance = self.model.create_from_import(entry)
+                try:
+                    instance = self.model.create_from_import(entry)
+                except IntegrityError as exc:
+                    raise WrongParameterException(exc.orig)
                 instances.append(instance)
         return fields.serialize_models(instances)
 
