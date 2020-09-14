@@ -30,10 +30,12 @@ from zou.app.utils import (
 
 ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]
 ALLOWED_MOVIE_EXTENSION = [
+    ".avi",
     ".mp4",
+    ".m4v",
     ".mov",
     ".wmv",
-    ".m4v",
+    ".AVI",
     ".MP4",
     ".MOV",
     ".WMV",
