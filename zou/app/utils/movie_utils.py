@@ -115,7 +115,7 @@ def add_empty_soundtrack(file_path):
         current_app.logger.error(
             "Fail to add silent audiotrack to: %s" % file_path
         )
-        current_app.logger.error(err)
+        current_app.logger.error("\n".join(str(err).split("\\n")))
 
     fs.rm_file(file_path)
     fs.copyfile(tmp_file_path, file_path)
@@ -124,7 +124,7 @@ def add_empty_soundtrack(file_path):
 
 def has_soundtrack(file_path):
     audio = ffmpeg.probe(file_path, select_streams='a')
-    return audio["streams"]
+    return len(audio["streams"]) > 0
 
 
 def build_playlist_movie(
