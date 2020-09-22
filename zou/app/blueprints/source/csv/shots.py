@@ -23,7 +23,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             episode_name = row["Episode"]
         sequence_name = row["Sequence"]
         shot_name = row["Name"]
-        description = row["Description"]
+        description = row.get("Description", "")
         nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
         data = {
             "frame_in": row.get("Frame In", None) or row.get("In", None),
