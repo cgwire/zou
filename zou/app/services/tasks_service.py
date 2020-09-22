@@ -1,9 +1,6 @@
 import collections
 import datetime
-import re
 import uuid
-
-from flask import current_app
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.orm import aliased
@@ -30,8 +27,7 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.utils import cache, fields, fs, query as query_utils
-from zou.app.stores import file_store
+from zou.app.utils import cache, fields, query as query_utils
 
 from zou.app.services.exception import (
     CommentNotFoundException,
@@ -615,67 +611,6 @@ def get_comment_by_preview_file_id(preview_file_id):
         return None
 
 
-def create_comment(
-    object_id, task_status_id, person_id, text,
-    object_type="Task", files={}, checklist=[], created_at=""
-):
-    """
-    Create a new comment for given object (by default, it considers this object
-    as a Task).
-    """
-    created_at_date = None
-    if created_at is not None and len(created_at) > 0:
-        try:
-            created_at_date = fields.get_date_object(
-                created_at,
-                date_format="%Y-%m-%d %H:%M:%S"
-            )
-        except ValueError:
-            pass
-
-    comment = Comment.create(
-        object_id=object_id,
-        object_type=object_type,
-        task_status_id=task_status_id,
-        person_id=person_id,
-        mentions=get_comment_mentions(object_id, text),
-        checklist=checklist,
-        text=text,
-        created_at=created_at_date
-    )
-
-    comment = comment.serialize(relations=True)
-    comment["attachment_files"] = []
-    for uploaded_file in files.values():
-        attachment_file = create_attachment(comment, uploaded_file)
-        comment["attachment_files"].append(attachment_file)
-
-    events.emit("comment:new", {"comment_id": comment["id"]})
-    return comment
-
-
-def get_comment_mentions(object_id, text):
-    """
-    Check for people mention (@full name) in text and returns matching person
-    active records.
-    """
-    task = get_task_raw(object_id)
-    project = Project.get(task.project_id)
-    mentions = []
-    for person in project.team:
-        if re.search("@%s( |$)" % person.full_name(), text) is not None:
-            mentions.append(person)
-    return mentions
-
-
-def delete_comment(comment_id):
-    comment = get_comment_raw(comment_id)
-    comment.delete()
-    clear_comment_cache(comment_id)
-    events.emit("comment:delete", {"comment_id": comment_id})
-    return comment.serialize()
-
-
 def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
     """
     For a task type, returns all tasks related to given entity.
@@ -1161,17 +1096,6 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     return preview_file.serialize()
 
 
-def reset_mentions(comment):
-    task = get_task(comment["object_id"])
-    mentions = get_comment_mentions(task["id"], comment["text"])
-    comment_to_update = Comment.get(comment["id"])
-    comment_to_update.mentions = mentions
-    comment_to_update.save()
-    comment_dict = comment_to_update.serialize()
-    comment_dict["mentions"] = [str(mention.id) for mention in mentions]
-    return comment_dict
-
-
 def get_comments_for_project(project_id, page=0):
     """
     Return all comments for given project.
@@ -1303,27 +1227,6 @@ def reset_task_data(task_id):
             "task_status_id": task_status_id,
         }
     )
-    events.emit("task:update", {"task_id": task.id})
+    project_id = str(task.project_id)
+    events.emit("task:update", {"task_id": task.id}, project_id)
     return task.serialize()
-
-
-def create_attachment(comment, uploaded_file):
-    tmp_folder = current_app.config["TMP_DIR"]
-    filename = uploaded_file.filename
-    mimetype = uploaded_file.mimetype
-    extension = fs.get_file_extension(filename)
-
-    attachment_file = AttachmentFile.create(
-        name=filename,
-        size=0,
-        extension=extension,
-        mimetype=mimetype,
-        comment_id=comment["id"]
-    )
-    attachment_file_id = str(attachment_file.id)
-
-    tmp_file_path = fs.save_file(tmp_folder, attachment_file_id, uploaded_file)
-    size = fs.get_file_size(tmp_file_path)
-    attachment_file.update({"size": size})
-    file_store.add_file("attachments", attachment_file_id, tmp_file_path)
-    return attachment_file.present()
