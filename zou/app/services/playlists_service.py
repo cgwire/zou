@@ -442,6 +442,7 @@ def start_build_job(playlist):
             "playlist_id": playlist["id"],
             "created_at": fields.serialize_value(job.created_at),
         },
+        project_id=playlist["project_id"]
     )
     return job.serialize()
 
@@ -463,6 +464,7 @@ def end_build_job(playlist, job, result):
             "playlist_id": playlist["id"],
             "status": status,
         },
+        project_id=playlist["project_id"]
     )
     return build_job.serialize()
 
@@ -554,7 +556,11 @@ def remove_playlist(playlist_id):
     for job in query.all():
         remove_build_job(playlist_dict, job.id)
     playlist.delete()
-    events.emit("playlist:delete", {"playlist_id": playlist_dict["id"]})
+    events.emit(
+        "playlist:delete",
+        {"playlist_id": playlist_dict["id"]},
+        project_id=playlist["project_id"]
+    )
     return playlist_dict
 
 
@@ -577,6 +583,7 @@ def remove_build_job(playlist, build_job_id):
     events.emit(
         "build-job:delete",
         {"build_job_id": build_job_id, "playlist_id": playlist["id"]},
+        project_id=playlist["project_id"]
     )
     return movie_file_path
 

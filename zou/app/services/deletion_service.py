@@ -34,6 +34,7 @@ from zou.app.services.exception import (
 
 def remove_comment(comment_id):
     comment = Comment.get(comment_id)
+    task = Task.get(comment.object_id)
     if comment is not None:
         notifications = Notification.query.filter_by(comment_id=comment.id)
         for notification in notifications:
@@ -55,7 +56,11 @@ def remove_comment(comment_id):
         for preview in previews:
             remove_preview_file(preview)
 
-        events.emit("comment:delete", {"comment_id": comment.id})
+        events.emit(
+            "comment:delete",
+            {"comment_id": comment.id},
+            project_id=str(task.project_id)
+        )
         return comment.serialize()
     else:
         raise CommentNotFoundException
@@ -108,7 +113,11 @@ def remove_task(task_id, force=False):
             news.delete()
 
     task.delete()
-    events.emit("task:delete", {"task_id": task_id})
+    events.emit(
+        "task:delete",
+        {"task_id": task_id},
+        project_id=str(task.project_id)
+    )
     return task.serialize()
 
 

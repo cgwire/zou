@@ -12,6 +12,9 @@ from zou.app.models.project import Project
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 
+from zou.app.services import (
+    entities_service
+)
 from zou.app.services.base_service import (
     get_instance,
     get_or_create_instance_by_name,
@@ -205,7 +208,11 @@ def create_new_working_revision(
             entity_id=task.entity_id,
             person_id=person_id,
         )
-        events.emit("working_file:new", {"working_file_id": working_file.id})
+        events.emit(
+            "working-file:new",
+            {"working_file_id": working_file.id},
+            project_id=str(task.project_id)
+        )
     except IntegrityError:
         raise EntryAlreadyExistsException
 
@@ -289,7 +296,12 @@ def create_new_output_revision(
                 nb_elements=nb_elements,
                 temporal_entity_id=temporal_entity_id,
             )
-            events.emit("output_file:new", {"output_file_id": output_file.id})
+            entity = entities_service.get_entity(entity_id)
+            events.emit(
+                "output-file:new",
+                {"output_file_id": output_file.id},
+                project_id=entity["project_id"]
+            )
         else:
             raise EntryAlreadyExistsException
 
@@ -313,7 +325,9 @@ def get_working_files_for_task(task_id):
     return fields.serialize_models(working_files)
 
 
-def get_working_files_for_entity(entity_id, task_id=None, name=None):
+def get_working_files_for_entity(
+    entity_id, task_id=None, name=None, relations=False
+):
     """
     Retrieve all working files for a given entity and specified parameters
     ordered by revision from biggest to smallest revision.
@@ -330,7 +344,7 @@ def get_working_files_for_entity(entity_id, task_id=None, name=None):
     )
 
     working_files = query.all()
-    return fields.serialize_models(working_files)
+    return fields.serialize_models(working_files, relations=relations)
 
 
 def get_next_working_file_revision(task_id, name):
@@ -726,7 +740,12 @@ def update_preview_file(preview_file_id, data):
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.update(data)
     clear_preview_file_cache(preview_file_id)
-    events.emit("preview-file:update", {"preview_file_id": preview_file_id})
+    task = Task.get(preview_file_id)
+    events.emit(
+        "preview-file:update",
+        {"preview_file_id": preview_file_id},
+        project_id=str(task.project_id)
+    )
     return preview_file.serialize()
 
 
@@ -801,7 +820,12 @@ def get_output_files_for_output_type_and_asset_instance(
 def remove_preview_file(preview_file_id):
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.delete()
-    events.emit("preview_file:delete", {"preview_file_id": preview_file_id})
+    task = Task.get(preview_file_id)
+    events.emit(
+        "preview-file:delete",
+        {"preview_file_id": preview_file_id},
+        project_id=str(task.project_id)
+    )
     return preview_file.serialize()
 
 

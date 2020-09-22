@@ -78,6 +78,7 @@ def update_entity_preview(entity_id, preview_file_id):
     events.emit(
         "preview-file:set-main",
         {"entity_id": entity_id, "preview_file_id": preview_file_id},
+        project_id=str(entity.project_id)
     )
     entity_type = EntityType.get(entity.entity_type_id)
     entity_type_name = "asset"
@@ -86,6 +87,7 @@ def update_entity_preview(entity_id, preview_file_id):
     events.emit(
         "%s:update" % entity_type_name,
         {"%s_id" % entity_type_name: str(entity.id)},
+        project_id=str(entity.project_id)
     )
     return entity.serialize()
 

@@ -146,11 +146,13 @@ def update_casting(entity_id, casting):
     entity_id = str(entity.id)
     if shots_service.is_shot(entity.serialize()):
         events.emit(
-            "shot:casting-update", {"shot_id": entity_id}
+            "shot:casting-update", {"shot_id": entity_id},
+            project_id=str(entity.project_id)
         )
     else:
         events.emit(
-            "asset:casting-update", {"asset_id": entity_id}
+            "asset:casting-update", {"asset_id": entity_id},
+            project_id=str(entity.project_id)
         )
     return casting
 
@@ -368,7 +370,7 @@ def add_asset_instance_to_scene(scene_id, asset_id, description=""):
             "scene_id": scene_id,
             "asset_id": asset_id,
             "asset_instance_id": asset_instance["id"],
-        },
+        }
     )
     return asset_instance
 

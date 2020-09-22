@@ -40,6 +40,7 @@ class EntityEventMixin(object):
                 "%s_id" % type_name: instance_id,
                 "project_id": entity_dict["project_id"],
             },
+            project_id=entity_dict["project_id"]
         )
 
 

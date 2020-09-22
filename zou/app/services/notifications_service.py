@@ -91,6 +91,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
     recipient_ids = get_notification_recipients(task)
     recipient_ids.remove(comment["person_id"])
     author_id = comment["person_id"]
+    task = tasks_service.get_task(comment["object_id"])
 
     for recipient_id in recipient_ids:
         try:
@@ -98,7 +99,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
                 recipient_id,
                 comment_id=comment["id"],
                 author_id=author_id,
-                task_id=comment["object_id"],
+                task_id=task["id"],
                 read=False,
                 change=change,
                 type="comment",
@@ -112,7 +113,8 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
                     "notification_id": notification["id"],
                     "person_id": recipient_id,
                 },
-                persist=False,
+                project_id=task["project_id"],
+                persist=False
             )
         except PersonNotFoundException:
             pass
@@ -135,6 +137,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
                     "notification_id": notification["id"],
                     "person_id": recipient_id,
                 },
+                project_id=task["project_id"],
                 persist=False,
             )
 
@@ -166,6 +169,7 @@ def reset_notifications_for_mentions(comment):
         events.emit(
             "notification:new",
             {"notification_id": notification["id"], "person_id": recipient_id},
+            project_id=task["project_id"],
             persist=False,
         )
     return notifications
@@ -189,6 +193,7 @@ def create_assignation_notification(task_id, person_id, author_id=None):
         events.emit(
             "notification:new",
             {"notification_id": notification["id"], "person_id": person_id},
+            project_id=str(task.project_id),
             persist=False,
         )
         return notification

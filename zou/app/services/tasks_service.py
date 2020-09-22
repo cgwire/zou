@@ -808,7 +808,11 @@ def create_task(task_type, entity, name="main"):
                 "task_type_priority": task_type["priority"],
             }
         )
-        events.emit("task:new", {"task_id": task.id})
+        events.emit(
+            "task:new",
+            {"task_id": task.id},
+            project_id=entity["project_id"]
+        )
         return task_dict
 
     except IntegrityError:
@@ -826,7 +830,11 @@ def update_task(task_id, data):
 
     task.update(data)
     clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id})
+    events.emit(
+        "task:update",
+        {"task_id": task_id},
+        project_id=str(task.project_id)
+    )
     return task.serialize()
 
 
@@ -850,7 +858,7 @@ def get_or_create_status(
             is_done=is_done,
             is_retake=is_retake,
         )
-        events.emit("task_status:new", {"task_status_id": task_status.id})
+        events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
 
 
@@ -903,7 +911,7 @@ def get_or_create_task_type(
             for_shots=for_shots,
             shotgun_id=shotgun_id,
         )
-        events.emit("task_type:new", {"task_type_id": task_type.id})
+        events.emit("task-type:new", {"task_type_id": task_type.id})
     return task_type.serialize()
 
 
@@ -919,6 +927,8 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     except DataError:
         raise WrongDateFormatException
 
+    task = Task.get(task_id)
+    project_id = str(task.project_id)
     if time_spent is not None:
         if duration == 0:
             time_spent.delete()
@@ -926,21 +936,32 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
             time_spent.update({"duration": time_spent.duration + duration})
         else:
             time_spent.update({"duration": duration})
-        events.emit("time-spent:update", {"time_spent_id": str(time_spent.id)})
+        events.emit(
+            "time-spent:update",
+            {"time_spent_id": str(time_spent.id)},
+            project_id=project_id
+        )
     else:
         time_spent = TimeSpent.create(
             task_id=task_id, person_id=person_id, date=date, duration=duration
         )
-        events.emit("time-spent:new", {"time_spent_id": str(time_spent.id)})
+        events.emit(
+            "time-spent:new",
+            {"time_spent_id": str(time_spent.id)},
+            project_id=project_id
+        )
 
-    task = Task.get(task_id)
     task.duration = 0
     time_spents = TimeSpent.get_all_by(task_id=task_id)
     for time_spent in time_spents:
         task.duration += time_spent.duration
     task.save()
     clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id})
+    events.emit(
+        "task:update",
+        {"task_id": task_id},
+        project_id=project_id
+    )
 
     return time_spent.serialize()
 
@@ -962,15 +983,18 @@ def clear_assignation(task_id):
     Clear task assignation and emit a *task:unassign* event.
     """
     task = get_task_raw(task_id)
+    project_id = str(task.project_id)
     assignees = [person.serialize() for person in task.assignees]
     task.update({"assignees": []})
     clear_task_cache(task_id)
     task_dict = task.serialize()
     for assignee in assignees:
         events.emit(
-            "task:unassign", {"person_id": assignee["id"], "task_id": task_id}
+            "task:unassign",
+            {"person_id": assignee["id"], "task_id": task_id},
+            project_id=project_id
         )
-    events.emit("task:update", {"task_id": task_id})
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
     return task_dict
 
 
@@ -979,18 +1003,24 @@ def assign_task(task_id, person_id):
     Assign given person to given task. Emit a *task:assign* event.
     """
     task = get_task_raw(task_id)
+    project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
     task.assignees.append(person)
     task.save()
     task_dict = task.serialize()
-    events.emit("task:assign", {"task_id": task.id, "person_id": person.id})
+    events.emit(
+        "task:assign",
+        {"task_id": task.id, "person_id": person.id},
+        project_id=project_id
+    )
     clear_task_cache(task_id)
-    events.emit("task:update", {"task_id": task_id})
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
     return task_dict
 
 
 def start_task(task_id):
     """
+    Deprecated
     Change the task status to wip if it is not already the case. It emits a
     *task:start* event. Change the real start date time to now.
     """
@@ -1016,7 +1046,7 @@ def start_task(task_id):
                 "previous_task_status_id": task_dict_before["task_status_id"],
                 "real_start_date": task.real_start_date,
                 "shotgun_id": task_dict_before["shotgun_id"],
-            },
+            }
         )
 
     return task.serialize()
@@ -1026,6 +1056,7 @@ def task_to_review(
     task_id, person, comment, preview_path={}, change_status=True
 ):
     """
+    Deprecated
     Change the task status to "waiting for approval" if it is not already the
     case. It emits a *task:to-review* event.
     """
@@ -1076,6 +1107,8 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     """
     comment = get_comment_raw(comment_id)
     news = News.get_by(comment_id=comment_id)
+    task = Task.get(comment["object_id"])
+    project_id = str(task.project_id)
     if revision == 0 and len(comment.previews) == 0:
         revision = get_next_preview_revision(task_id)
     elif revision == 0:
@@ -1084,15 +1117,23 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     preview_file = files_service.create_preview_file_raw(
         str(uuid.uuid4())[:13], revision, task_id, person_id
     )
-    events.emit("preview-file:create", {
-        "preview_file_id": preview_file.id,
-        "comment_id": comment_id,
-    })
+    events.emit(
+        "preview-file:new",
+        {
+            "preview_file_id": preview_file.id,
+            "comment_id": comment_id,
+        },
+        project_id=project_id
+    )
     comment.previews.append(preview_file)
     comment.save()
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
-    events.emit("comment:update", {"comment_id": comment.id})
+    events.emit(
+        "comment:update",
+        {"comment_id": comment.id},
+        project_id=project_id
+    )
     return preview_file.serialize()
 
 

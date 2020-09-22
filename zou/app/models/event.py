@@ -17,4 +17,7 @@ class ApiEvent(db.Model, BaseMixin, SerializerMixin):
     user_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
     )
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), index=True
+    )
     data = db.Column(JSONB)

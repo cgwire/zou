@@ -224,6 +224,8 @@ def acknowledge_comment(comment_id):
     If he's already present, remove it.
     """
     comment = tasks_service.get_comment_raw(comment_id)
+    task = tasks_service.get_task(str(comment.object_id))
+    project_id = task["project_id"]
     current_user = persons_service.get_current_user_raw()
     current_user_id = str(current_user.id)
 
@@ -231,31 +233,36 @@ def acknowledge_comment(comment_id):
     is_already_ack = current_user_id in acknowledgements
 
     if is_already_ack:
-        _unack_comment(comment, current_user)
+        _unack_comment(project_id, comment, current_user)
     else:
-        _ack_comment(comment, current_user)
+        _ack_comment(project_id, comment, current_user)
     comment.save()
     return comment.serialize(relations=True)
 
 
-def _ack_comment(comment, user):
+def _ack_comment(project_id, comment, user):
     user_id = str(user.id)
     comment.acknowledgements.append(user)
     _send_ack_event(comment, user_id, "acknowledge")
 
 
-def _unack_comment(comment, user):
+def _unack_comment(project_id, comment, user):
     user_id = str(user.id)
     comment.acknowledgements = [
         person
         for person in comment.acknowledgements
         if str(person.id) != user_id
     ]
-    _send_ack_event(comment, user_id, "unacknowledge")
+    _send_ack_event(project_id, comment, user_id, "unacknowledge")
 
 
-def _send_ack_event(comment, user_id, name="acknowledge"):
-    events.emit("comment:%s" % name, {
-        "comment_id": str(comment.id),
-        "person_id": user_id
-    }, persist=False)
+def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
+    events.emit(
+        "comment:%s" % name,
+        {
+            "comment_id": str(comment.id),
+            "person_id": user_id
+        },
+        project_id=project_id,
+        persist=False
+    )

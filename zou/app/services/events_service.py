@@ -8,9 +8,7 @@ def get_last_events(after=None, before=None, page_size=100, only_files=False):
     Return last 100 events published. If before parameter is set, it returns
     last 100 events before this date.
     """
-    query = ApiEvent.query.order_by(ApiEvent.created_at.desc()).with_entities(
-        ApiEvent.created_at, ApiEvent.name, ApiEvent.user_id, ApiEvent.data
-    )
+    query = ApiEvent.query.order_by(ApiEvent.created_at.desc())
 
     if after is not None:
         query = query.filter(ApiEvent.created_at > after)
@@ -28,13 +26,14 @@ def get_last_events(after=None, before=None, page_size=100, only_files=False):
 
     events = query.limit(page_size).all()
     return [
-        {
-            "created_at": fields.serialize_value(created_at),
-            "name": fields.serialize_value(name),
-            "user_id": fields.serialize_value(user_id),
-            "data": fields.serialize_value(data),
-        }
-        for (created_at, name, user_id, data) in events
+        fields.serialize_dict({
+            "id": event.id,
+            "created_at": event.created_at,
+            "name": event.name,
+            "user_id": event.user_id,
+            "data": event.data,
+        })
+        for event in events
     ]
 
 

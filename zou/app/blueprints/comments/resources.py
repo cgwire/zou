@@ -76,70 +76,20 @@ class CommentTaskResource(Resource):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
-        task_status = tasks_service.get_task_status(task_status_id)
+        files = request.files
 
         if not permissions.has_manager_permissions():
             person_id = None
             created_at = None
-
-        if person_id:
-            person = persons_service.get_person(person_id)
-        else:
-            person = persons_service.get_current_user()
-
-        comment = tasks_service.create_comment(
-            object_id=task_id,
-            object_type="Task",
-            files=request.files,
-            person_id=person["id"],
-            task_status_id=task_status_id,
-            text=comment,
-            checklist=checklist,
-            created_at=created_at
+        comment = comments_service.create_comment(
+            person_id,
+            task_id,
+            task_status_id,
+            comment,
+            checklist,
+            files,
+            created_at
         )
-
-        status_changed = task_status_id != task["task_status_id"]
-        new_data = {
-            "task_status_id": task_status_id,
-            "last_comment_date": comment["created_at"],
-        }
-        if status_changed:
-            if task_status["is_retake"]:
-                retake_count = task["retake_count"]
-                if retake_count is None or retake_count == "NoneType":
-                    retake_count = 0
-                new_data["retake_count"] = retake_count + 1
-
-            if task_status["is_done"]:
-                new_data["end_date"] = datetime.datetime.now()
-            else:
-                new_data["end_date"] = None
-
-            if (
-                task_status["short_name"] == "wip" and
-                task["real_start_date"] is None
-            ):
-                new_data["real_start_date"] = datetime.datetime.now()
-
-        tasks_service.update_task(task_id, new_data)
-        if status_changed:
-            events.emit("task:status-changed", {
-                "task_id": task_id,
-                "new_task_status_id": new_data["task_status_id"],
-                "previous_task_status_id": task["task_status_id"]
-            })
-
-        task = tasks_service.get_task_with_relations(task_id)
-
-        notifications_service.create_notifications_for_task_and_comment(
-            task, comment, change=status_changed
-        )
-        news_service.create_news_for_task_and_comment(
-            task, comment, change=status_changed
-        )
-
-        comment["task_status"] = task_status
-        comment["person"] = person
         return comment, 201
 
     def get_arguments(self):
