@@ -68,7 +68,7 @@ def create_comment(
         person = persons_service.get_current_user()
 
     comment = new_comment(
-        object_id=task_id,
+        task_id=task_id,
         object_type="Task",
         files=files,
         person_id=person["id"],
@@ -166,7 +166,7 @@ def new_comment(
     events.emit(
         "comment:new",
         {"comment_id": comment["id"]},
-        task["project_id"]
+        project_id=task["project_id"]
     )
     return comment
 

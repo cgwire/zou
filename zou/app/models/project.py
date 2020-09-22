@@ -124,6 +124,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     @classmethod
     def create_from_import(cls, data):
+        is_update = False
         previous_project = cls.get(data["id"])
         person_ids = data.get("team", None)
         task_type_ids = data.get("task_types", None)
@@ -136,6 +137,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             previous_project = cls.create(**data)
             previous_project.save()
         else:
+            is_update = True
             previous_project.update(data)
             previous_project.save()
 
@@ -148,4 +150,4 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         if task_status_ids is not None:
             previous_project.set_task_statuses(task_status_ids)
 
-        return previous_project
+        return (previous_project, is_update)

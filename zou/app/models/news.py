@@ -50,7 +50,7 @@ class News(db.Model, BaseMixin, SerializerMixin):
         }
         previous_data = cls.get(data["id"])
         if previous_data is None:
-            return cls.create(**data)
+            return (cls.create(**data), True)
         else:
             previous_data.update(data)
-            return previous_data
+            return (previous_data, False)

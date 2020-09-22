@@ -16,19 +16,10 @@ from .base import BaseModelResource, BaseModelsResource
 
 
 class EntityEventMixin(object):
-    def get_type_name(self, entity_dict):
-        type_name = "asset"
-        if shots_service.is_shot(entity_dict):
-            type_name = "shot"
-        elif shots_service.is_sequence(entity_dict):
-            type_name = "sequence"
-        elif shots_service.is_episode(entity_dict):
-            type_name = "episode"
-        return type_name
 
     def emit_event(self, event_name, entity_dict):
         instance_id = entity_dict["id"]
-        type_name = self.get_type_name(entity_dict)
+        type_name = shots_service.get_base_entity_type_name(entity_dict)
         if event_name in ["update", "delete"]:
             if type_name == "shot":
                 shots_service.clear_shot_cache(instance_id)
@@ -37,8 +28,7 @@ class EntityEventMixin(object):
         events.emit(
             "%s:%s" % (type_name, event_name),
             {
-                "%s_id" % type_name: instance_id,
-                "project_id": entity_dict["project_id"],
+                "%s_id" % type_name: instance_id
             },
             project_id=entity_dict["project_id"]
         )

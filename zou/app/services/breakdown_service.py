@@ -162,6 +162,8 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     Add a link between given entity and given asset.
     """
     link = EntityLink.get_by(entity_in_id=entity_in_id, entity_out_id=asset_id)
+    entity = entities_service.get(entity_in_id)
+    project_id = str(entity.project_id)
     if link is None:
         link = EntityLink.create(
             entity_in_id=entity_in_id,
@@ -169,8 +171,18 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
             nb_occurences=nb_occurences,
             label=label,
         )
+        events.emit("entity-link:new", {
+            "entity_link_id": link.id,
+            "entity_in_id": link.entity_in_id,
+            "entity_out_id": link.entity_out_id,
+            "nb_occurences": nb_occurences
+        }, project_id=project_id)
     else:
         link.update({"nb_occurences": nb_occurences, "label": label})
+        events.emit("entity-link:update", {
+            "entity_link_id": link.id,
+            "nb_occurences": nb_occurences
+        }, project_id=project_id)
     return link
 
 

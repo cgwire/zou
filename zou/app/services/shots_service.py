@@ -1138,3 +1138,14 @@ def get_shot_versions(shot_id):
         .all()
     )
     return EntityVersion.serialize_list(versions, obj_type="ShotVersion")
+
+
+def get_base_entity_type_name(entity_dict):
+    type_name = "asset"
+    if is_shot(entity_dict):
+        type_name = "shot"
+    elif is_sequence(entity_dict):
+        type_name = "sequence"
+    elif is_episode(entity_dict):
+        type_name = "episode"
+    return type_name

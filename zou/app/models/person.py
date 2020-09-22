@@ -89,7 +89,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         if "password" in person:
             person["password"] = person["password"].encode()
         if previous_person is None:
-            return cls.create(**person)
+            return (cls.create(**person), False)
         else:
             previous_person.update(person)
-            return previous_person
+            return (previous_person, True)
