@@ -103,7 +103,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 events.emit(
                     "shot:new",
                     {"shot_id": str(entity.id)},
-                    project=project_id
+                    project_id=project_id
                 )
             except IntegrityError:
                 current_app.logger.error("Row import failed", exc_info=1)
@@ -117,7 +117,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             events.emit(
                 "shot:update",
                 {"shot_id": str(entity.id)},
-                project=project_id
+                project_id=project_id
             )
 
         return entity.serialize()

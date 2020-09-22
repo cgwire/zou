@@ -5,16 +5,18 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, permissions
 
 from zou.app.services import events_service
+from zou.app.services.exception import WrongParameterException
 
 
 class EventsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
         args = self.get_args([
-            ("after", None, None),
-            ("before", None, None),
+            ("after", None, False),
+            ("before", None, False),
             ("only_files", False, False),
-            ("page_size", 100, False)
+            ("page_size", 100, False),
+            ("project_id", None, False),
         ])
         permissions.check_manager_permissions()
         before = None
@@ -29,11 +31,10 @@ class EventsResource(Resource, ArgsMixin):
                 try:
                     before = fields.get_date_object(args["before"], "%Y-%m-%d")
                 except Exception:
-                    return {
-                        "error": True,
-                        "message": "Wrong date format for before argument."
-                            "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
-                    }, 400
+                    raise WrongParameterException(
+                        "Wrong date format for before argument."
+                        "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
+                    )
 
         if args["after"] is not None:
             try:
@@ -44,20 +45,26 @@ class EventsResource(Resource, ArgsMixin):
                 try:
                     after = fields.get_date_object(args["after"], "%Y-%m-%d")
                 except Exception:
-                    return {
-                        "error": True,
-                        "message": "Wrong date format for after argument."
-                            "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
-                    }, 400
+                    raise WrongParameterException(
+                        "Wrong date format for after argument."
+                        "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
+                    )
 
         page_size = args["page_size"]
         only_files = args["only_files"] == "true"
-        return events_service.get_last_events(
-            after=after,
-            before=before,
-            page_size=page_size,
-            only_files=only_files
-        )
+        project_id = args.get("project_id", None)
+        if project_id is not None and not fields.is_valid_id(project_id):
+            raise WrongParameterException(
+                "The project_id parameter is not a valid id"
+            )
+        else:
+            return events_service.get_last_events(
+                after=after,
+                before=before,
+                page_size=page_size,
+                only_files=only_files,
+                project_id=project_id
+            )
 
 
 class LoginLogsResource(Resource, ArgsMixin):

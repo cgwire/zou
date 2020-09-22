@@ -3,7 +3,13 @@ from zou.app.models.login_log import LoginLog
 from zou.app.utils import fields
 
 
-def get_last_events(after=None, before=None, page_size=100, only_files=False):
+def get_last_events(
+    after=None,
+    before=None,
+    page_size=100,
+    only_files=False,
+    project_id=None
+):
     """
     Return last 100 events published. If before parameter is set, it returns
     last 100 events before this date.
@@ -23,6 +29,9 @@ def get_last_events(after=None, before=None, page_size=100, only_files=False):
             "person:set-thumbnail",
             "project:set-thumbnail",
         )))
+
+    if project_id is not None:
+        query = query.filter(ApiEvent.project_id == project_id)
 
     events = query.limit(page_size).all()
     return [
