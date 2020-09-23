@@ -71,6 +71,7 @@ def remove_task(task_id, force=False):
     Remove given task. Force deletion if the task has some comments and files
     related. This will lead to the deletion of all of them.
     """
+    from zou.app.services import tasks_service
     task = Task.get(task_id)
     if force:
         working_files = WorkingFile.query.filter_by(task_id=task_id)
@@ -113,6 +114,7 @@ def remove_task(task_id, force=False):
             news.delete()
 
     task.delete()
+    tasks_service.clear_task_cache(task_id)
     events.emit(
         "task:delete",
         {"task_id": task_id},
@@ -237,6 +239,7 @@ def remove_project(project_id):
     for playlist in playlists:
         playlists_service.remove_playlist(playlist.id)
 
+    ApiEvent.delete_all_by(project_id=project_id)
     Entity.delete_all_by(project_id=project_id)
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)

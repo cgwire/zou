@@ -64,9 +64,9 @@ def emit(event, data={}, persist=True, project_id=None):
     (like the realtime event daemon).
     """
     event_handlers = handlers.get(event, {})
-    data = fields.serialize_dict(data)
     if project_id is not None:
         data["project_id"] = project_id
+    data = fields.serialize_dict(data)
     publisher_store.publish(event, data)
     if persist:
         save_event(event, data, project_id=project_id)

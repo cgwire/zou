@@ -1107,7 +1107,7 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     """
     comment = get_comment_raw(comment_id)
     news = News.get_by(comment_id=comment_id)
-    task = Task.get(comment["object_id"])
+    task = Task.get(comment.object_id)
     project_id = str(task.project_id)
     if revision == 0 and len(comment.previews) == 0:
         revision = get_next_preview_revision(task_id)

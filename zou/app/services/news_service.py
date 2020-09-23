@@ -60,14 +60,14 @@ def delete_news_for_comment(comment_id):
     comment afterwards.
     """
     news_list = News.get_all_by(comment_id=comment_id)
-    if len(news_list > 0):
-        task = tasks_service.get_task(news_list[0]["task_id"])
+    if len(news_list) > 0:
+        task = tasks_service.get_task(news_list[0].task_id)
         for news in news_list:
             news.delete()
             events.emit(
                 "news:delete",
                 {"news_id": news.id},
-                project=task["project_id"]
+                project_id=task["project_id"]
             )
     return fields.serialize_list(news_list)
 

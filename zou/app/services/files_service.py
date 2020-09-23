@@ -740,7 +740,7 @@ def update_preview_file(preview_file_id, data):
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.update(data)
     clear_preview_file_cache(preview_file_id)
-    task = Task.get(preview_file_id)
+    task = Task.get(preview_file.task_id)
     events.emit(
         "preview-file:update",
         {"preview_file_id": preview_file_id},
@@ -820,7 +820,7 @@ def get_output_files_for_output_type_and_asset_instance(
 def remove_preview_file(preview_file_id):
     preview_file = get_preview_file_raw(preview_file_id)
     preview_file.delete()
-    task = Task.get(preview_file_id)
+    task = Task.get(preview_file.task_id)
     events.emit(
         "preview-file:delete",
         {"preview_file_id": preview_file_id},

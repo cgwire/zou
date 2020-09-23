@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
+    comments_service,
     news_service,
     notifications_service,
     persons_service,
@@ -357,13 +358,13 @@ class TaskRoutesTestCase(ApiDBTestCase):
 
     def test_get_tasks_for_person(self):
         self.generate_fixture_task()
-        tasks_service.create_comment(
+        comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.person.id,
             "first comment"
         )
-        tasks_service.create_comment(
+        comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.person.id,

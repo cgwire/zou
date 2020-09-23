@@ -10,6 +10,7 @@ from zou.app import app
 from zou.app.utils import fields, auth, fs
 from zou.app.services import (
     breakdown_service,
+    comments_service,
     file_tree_service,
     tasks_service
 )
@@ -761,7 +762,7 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_comment(self, person=None):
         if person is None:
             person = self.person.serialize()
-        self.comment = tasks_service.create_comment(
+        self.comment = comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             person["id"],

@@ -393,7 +393,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     events.emit(
         "metadata-descriptor:update",
         {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=descriptor["project_id"]
+        project_id=descriptor.project_id
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()
@@ -417,7 +417,7 @@ def remove_metadata_descriptor(metadata_descriptor_id):
     events.emit(
         "metadata-descriptor:delete",
         {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=descriptor["project_id"]
+        project_id=descriptor.project_id
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()

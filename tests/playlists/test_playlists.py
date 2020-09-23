@@ -3,10 +3,10 @@ from tests.base import ApiDBTestCase
 from zou.app.services import projects_service
 
 
-class EpisodeTestCase(ApiDBTestCase):
+class PlaylistTestCase(ApiDBTestCase):
 
     def setUp(self):
-        super(EpisodeTestCase, self).setUp()
+        super(PlaylistTestCase, self).setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
@@ -23,7 +23,7 @@ class EpisodeTestCase(ApiDBTestCase):
         self.generate_fixture_shot("SE03")
 
     def tearDown(self):
-        super(EpisodeTestCase, self).tearDown()
+        super(PlaylistTestCase, self).tearDown()
         self.delete_test_folder()
 
     def test_get_playlists(self):
