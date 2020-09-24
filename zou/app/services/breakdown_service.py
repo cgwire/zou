@@ -163,7 +163,7 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     """
     link = EntityLink.get_by(entity_in_id=entity_in_id, entity_out_id=asset_id)
     entity = entities_service.get_entity(entity_in_id)
-    project_id = str(entity.project_id)
+    project_id = str(entity["project_id"])
     if link is None:
         link = EntityLink.create(
             entity_in_id=entity_in_id,
