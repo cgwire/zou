@@ -564,7 +564,8 @@ def forward_event(event_name):
         if not data.get("sync", False):
             data["sync"] = True
             logger.info("Forward event: %s" % event_name)
-            events.emit(event_name, data, persist=False)
+            project_id = data.get("project_id", None)
+            events.emit(event_name, data, persist=False, project_id=project_id)
 
     return forward
 
@@ -576,7 +577,8 @@ def forward_base_event(event_name, event_type, data):
     full_event_name = "%s:%s" % (event_name, event_type)
     data["sync"] = True
     logger.info("Forward event: %s" % full_event_name)
-    events.emit(full_event_name, data)
+    project_id = data.get("project_id", None)
+    events.emit(full_event_name, data, project_id=project_id)
 
 
 def add_file_listeners(event_client):

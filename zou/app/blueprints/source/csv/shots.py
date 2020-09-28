@@ -1,11 +1,12 @@
 from flask import current_app
 
+from sqlalchemy.exc import IntegrityError
+
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
-from zou.app.services import shots_service, projects_service
 from zou.app.models.entity import Entity
-
-from sqlalchemy.exc import IntegrityError
+from zou.app.services import shots_service, projects_service
+from zou.app.utils import events
 
 
 class ShotsCsvImportResource(BaseCsvProjectImportResource):
@@ -23,7 +24,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             episode_name = row["Episode"]
         sequence_name = row["Sequence"]
         shot_name = row["Name"]
-        description = row["Description"]
+        description = row.get("Description", "")
         nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
         data = {
             "frame_in": row.get("Frame In", None) or row.get("In", None),
@@ -99,6 +100,11 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         nb_frames=nb_frames,
                         data=data,
                     )
+                events.emit(
+                    "shot:new",
+                    {"shot_id": str(entity.id)},
+                    project_id=project_id
+                )
             except IntegrityError:
                 current_app.logger.error("Row import failed", exc_info=1)
 
@@ -108,5 +114,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 "nb_frames": nb_frames,
                 "data": data
             })
+            events.emit(
+                "shot:update",
+                {"shot_id": str(entity.id)},
+                project_id=project_id
+            )
 
         return entity.serialize()

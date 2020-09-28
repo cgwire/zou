@@ -299,14 +299,20 @@ class CreatePreviewFilePictureResource(Resource):
         """
         preview_file = files_service.get_preview_file(preview_file_id)
         comment = tasks_service.get_comment_by_preview_file_id(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
         comment_id = None
         events.emit(
-            "preview-file:update", {"preview_file_id": preview_file["id"]}
+            "preview-file:update", {"preview_file_id": preview_file["id"]},
+            project_id=task["project_id"]
         )
 
         if comment is not None:
             comment_id = comment["id"]
-            events.emit("comment:update", {"comment_id": comment_id})
+            events.emit(
+                "comment:update",
+                {"comment_id": comment_id},
+                project_id=task["project_id"]
+            )
             events.emit(
                 "preview-file:add-file",
                 {
@@ -316,6 +322,7 @@ class CreatePreviewFilePictureResource(Resource):
                     "revision": preview_file["revision"],
                     "extension": preview_file["extension"],
                 },
+                project_id=task["project_id"]
             )
 
     def is_allowed(self, preview_file_id):

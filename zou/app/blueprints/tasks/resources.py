@@ -119,11 +119,15 @@ class TaskCommentResource(Resource):
         task = tasks_service.get_task(comment["object_id"])
         self.new_task_status_id = task["task_status_id"]
         if self.previous_task_status_id != self.new_task_status_id:
-            events.emit("task:status-changed", {
-                "task_id": task["id"],
-                "new_task_status_id": self.new_task_status_id,
-                "previous_task_status_id": self.previous_task_status_id
-            })
+            events.emit(
+                "task:status-changed",
+                {
+                    "task_id": task["id"],
+                    "new_task_status_id": self.new_task_status_id,
+                    "previous_task_status_id": self.previous_task_status_id
+                },
+                project_id=task["project_id"]
+            )
         return comment
 
     @jwt_required

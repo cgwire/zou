@@ -21,7 +21,7 @@ class SequenceTasksTestCase(ApiDBTestCase):
 
     def test_get_tasks_for_sequence(self):
         tasks = self.get("data/sequences/%s/tasks" % self.sequence.id)
-        self.assertEquals(len(tasks), 1)
+        self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.sequence_task.id))
 
     def test_get_sequences_and_tasks(self):
@@ -34,7 +34,7 @@ class SequenceTasksTestCase(ApiDBTestCase):
 
     def test_get_task_types_for_sequence(self):
         task_types = self.get("/data/sequences/%s/task-types" % self.sequence.id)
-        self.assertEquals(len(task_types), 1)
+        self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
             task_types[0],
             self.task_type_animation.serialize()

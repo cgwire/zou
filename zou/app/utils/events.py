@@ -56,7 +56,7 @@ def unregister_all():
     handlers = {}
 
 
-def emit(event, data={}, persist=True):
+def emit(event, data={}, persist=True, project_id=None):
     """
     Emit an event which leads to the execution of all event handlers registered
     for that event name.
@@ -64,10 +64,12 @@ def emit(event, data={}, persist=True):
     (like the realtime event daemon).
     """
     event_handlers = handlers.get(event, {})
+    if project_id is not None:
+        data["project_id"] = project_id
     data = fields.serialize_dict(data)
     publisher_store.publish(event, data)
     if persist:
-        save_event(event, data)
+        save_event(event, data, project_id=project_id)
 
     from zou.app.config import ENABLE_JOB_QUEUE
 
@@ -83,7 +85,7 @@ def emit(event, data={}, persist=True):
                 current_app.logger.error("Error handling event", exc_info=1)
 
 
-def save_event(event, data):
+def save_event(event, data, project_id=None):
     """
     Store event information in the database.
     """
@@ -95,4 +97,9 @@ def save_event(event, data):
     except:
         person_id = None
 
-    return ApiEvent.create(name=event, data=data, user_id=person_id)
+    if project_id == 'None':
+        project_id = None
+
+    return ApiEvent.create(
+        name=event, data=data, user_id=person_id, project_id=project_id
+    )

@@ -1063,10 +1063,11 @@ class EntityWorkingFilesResource(Resource):
     def get(self, entity_id):
         task_id = request.args.get("task_id", None)
         name = request.args.get("name", None)
+        relations = request.args.get("relations", False)
 
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
         return files_service.get_working_files_for_entity(
-            entity_id, task_id=task_id, name=name
+            entity_id, task_id=task_id, name=name, relations=relations
         )

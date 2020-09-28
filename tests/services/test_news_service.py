@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.news import News
-from zou.app.services import news_service, tasks_service
+from zou.app.services import comments_service, news_service
 
 
 class NewsServiceTestCase(ApiDBTestCase):
@@ -33,7 +33,7 @@ class NewsServiceTestCase(ApiDBTestCase):
             email="jane.doe@gmail.com"
         ).serialize()
 
-        self.comment = tasks_service.create_comment(
+        self.comment = comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.user["id"],
@@ -75,7 +75,7 @@ class NewsServiceTestCase(ApiDBTestCase):
     def test_get_last_news_for_project(self):
         self.generate_fixture_comment()
         for i in range(1, 81):
-            comment = tasks_service.create_comment(
+            comment = comments_service.new_comment(
                 self.task.id,
                 self.task_status.id,
                 self.user["id"],

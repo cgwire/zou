@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.notification import Notification
-from zou.app.services import notifications_service, tasks_service
+from zou.app.services import comments_service, notifications_service
 
 
 class NotificationsServiceTestCase(ApiDBTestCase):
@@ -32,7 +32,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
             email="jane.doe@gmail.com"
         ).serialize()
 
-        self.comment = tasks_service.create_comment(
+        self.comment = comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.user["id"],

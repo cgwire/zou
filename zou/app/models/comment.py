@@ -118,6 +118,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
     @classmethod
     def create_from_import(cls, data):
+        is_update = False
         previous_comment = cls.get(data["id"])
         preview_file_ids = data.get("previews", None)
         mention_ids = data.get("mentions", None)
@@ -129,6 +130,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
             previous_comment = cls.create(**data)
             previous_comment.save()
         else:
+            is_update = True
             previous_comment.update(data)
             previous_comment.save()
 
@@ -138,4 +140,4 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         if mention_ids is not None:
             previous_comment.set_mentions(mention_ids)
 
-        return previous_comment
+        return (previous_comment, is_update)

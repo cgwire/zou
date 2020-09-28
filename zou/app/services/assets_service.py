@@ -496,9 +496,9 @@ def create_asset(
         "asset:new",
         {
             "asset_id": asset.id,
-            "asset_type": asset_type.id,
-            "project_id": project.id,
+            "asset_type": asset_type.id
         },
+        project_id=str(project.id)
     )
     return asset_dict
 
@@ -506,7 +506,11 @@ def create_asset(
 def update_asset(asset_id, data):
     asset = get_asset_raw(asset_id)
     asset.update(data)
-    events.emit("asset:update", {"asset_id": asset_id, "data": data})
+    events.emit(
+        "asset:update",
+        {"asset_id": asset_id, "data": data},
+        project_id=str(asset.project_id)
+    )
     return asset.serialize(obj_type="Asset")
 
 
@@ -517,7 +521,11 @@ def remove_asset(asset_id, force=False):
     if is_tasks_related and not force:
         asset.update({"canceled": True})
         clear_asset_cache(str(asset_id))
-        events.emit("asset:update", {"asset_id": asset_id})
+        events.emit(
+            "asset:update",
+            {"asset_id": asset_id},
+            project_id=str(asset.project_id)
+        )
     else:
         from zou.app.services import tasks_service
 
@@ -527,7 +535,11 @@ def remove_asset(asset_id, force=False):
             tasks_service.clear_task_cache(str(task.id))
         asset.delete()
         clear_asset_cache(str(asset_id))
-        events.emit("asset:delete", {"asset_id": asset_id})
+        events.emit(
+            "asset:delete",
+            {"asset_id": asset_id},
+            project_id=str(asset.project_id)
+        )
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
 
@@ -545,6 +557,7 @@ def add_asset_link(asset_in_id, asset_out_id):
         events.emit(
             "asset:new-link",
             {"asset_in": asset_in.id, "asset_out": asset_out.id},
+            project_id=str(asset_in.project_id)
         )
     return asset_in.serialize(obj_type="Asset")
 
@@ -564,6 +577,7 @@ def remove_asset_link(asset_in_id, asset_out_id):
         events.emit(
             "asset:remove-link",
             {"asset_in": asset_in.id, "asset_out": asset_out.id},
+            project_id=str(asset_in.project_id)
         )
     return asset_in.serialize(obj_type="Asset")
 
@@ -576,5 +590,9 @@ def cancel_asset(asset_id, force=True):
 
     asset.update({"canceled": True})
     asset_dict = asset.serialize(obj_type="Asset")
-    events.emit("asset:delete", {"asset_id": asset_id})
+    events.emit(
+        "asset:delete",
+        {"asset_id": asset_id},
+        project_id=str(asset.project_id)
+    )
     return asset_dict

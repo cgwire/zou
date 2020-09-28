@@ -279,52 +279,48 @@ def get_shots_and_tasks(criterions={}):
 
         if shot_id not in shot_map:
 
-            shot_map[shot_id] = {
+            shot_map[shot_id] = fields.serialize_dict({
                 "canceled": shot.canceled,
-                "data": fields.serialize_value(shot.data),
+                "data": shot.data,
                 "description": shot.description,
-                "entity_type_id": str(shot.entity_type_id),
-                "episode_id": str(episode_id),
+                "entity_type_id": shot.entity_type_id,
+                "episode_id": episode_id,
                 "episode_name": episode_name or "",
                 "fps": shot.data.get("fps", None),
                 "frame_in": shot.data.get("frame_in", None),
                 "frame_out": shot.data.get("frame_out", None),
-                "id": str(shot.id),
+                "id": shot.id,
                 "name": shot.name,
                 "nb_frames": shot.nb_frames,
-                "parent_id": str(shot.parent_id),
-                "preview_file_id": str(shot.preview_file_id or ""),
-                "project_id": str(project_id),
+                "parent_id": shot.parent_id,
+                "preview_file_id": shot.preview_file_id or None,
+                "project_id": project_id,
                 "project_name": project_name,
-                "sequence_id": str(sequence_id),
+                "sequence_id": sequence_id,
                 "sequence_name": sequence_name,
-                "source_id": str(shot.source_id),
+                "source_id": shot.source_id,
                 "tasks": [],
                 "type": "Shot",
-            }
+            })
 
         if task_id is not None:
             if task_id not in task_map:
-                task_dict = {
-                    "id": str(task_id),
+                task_dict = fields.serialize_dict({
+                    "id": task_id,
                     "entity_id": shot_id,
-                    "task_status_id": str(task_status_id),
-                    "task_type_id": str(task_type_id),
+                    "task_status_id": task_status_id,
+                    "task_type_id": task_type_id,
                     "priority": task_priority or 0,
                     "estimation": task_estimation,
                     "duration": task_duration,
                     "retake_count": task_retake_count,
-                    "real_start_date": fields.serialize_value(
-                        task_real_start_date
-                    ),
-                    "end_date": fields.serialize_value(task_end_date),
-                    "start_date": fields.serialize_value(task_start_date),
-                    "due_date": fields.serialize_value(task_due_date),
-                    "last_comment_date": fields.serialize_value(
-                        task_last_comment_date
-                    ),
+                    "real_start_date": task_real_start_date,
+                    "end_date": task_end_date,
+                    "start_date": task_start_date,
+                    "due_date": task_due_date,
+                    "last_comment_date": task_last_comment_date,
                     "assignees": [],
-                }
+                })
                 task_map[task_id] = task_dict
                 shot_dict = shot_map[shot_id]
                 shot_dict["tasks"].append(task_dict)
@@ -780,7 +776,11 @@ def remove_shot(shot_id, force=False):
     if is_tasks_related and not force:
         shot.update({"canceled": True})
         clear_shot_cache(shot_id)
-        events.emit("shot:update", {"shot_id": shot_id})
+        events.emit(
+            "shot:update",
+            {"shot_id": shot_id},
+            project_id=str(shot.project_id)
+        )
     else:
         from zou.app.services import tasks_service
 
@@ -794,7 +794,11 @@ def remove_shot(shot_id, force=False):
         EntityLink.delete_all_by(entity_in_id=shot_id)
         shot.delete()
         clear_shot_cache(shot_id)
-        events.emit("shot:delete", {"shot_id": shot_id})
+        events.emit(
+            "shot:delete",
+            {"shot_id": shot_id},
+            project_id=str(shot.project_id)
+        )
 
     deleted_shot = shot.serialize(obj_type="Shot")
     return deleted_shot
@@ -811,7 +815,11 @@ def remove_scene(scene_id):
     except IntegrityError:
         scene.update({"canceled": True})
     deleted_scene = scene.serialize(obj_type="Scene")
-    events.emit("scene:delete", {"scene_id": scene_id})
+    events.emit(
+        "scene:delete",
+        {"scene_id": scene_id},
+        project_id=str(scene.project_id)
+    )
     return deleted_scene
 
 
@@ -847,7 +855,7 @@ def create_episode(project_id, name):
             entity_type_id=episode_type["id"], project_id=project_id, name=name
         )
     events.emit(
-        "episode:new", {"episode_id": episode.id, "project_id": project_id}
+        "episode:new", {"episode_id": episode.id}, project_id=project_id
     )
     return episode.serialize(obj_type="Episode")
 
@@ -875,7 +883,7 @@ def create_sequence(project_id, episode_id, name):
             name=name,
         )
     events.emit(
-        "sequence:new", {"sequence_id": sequence.id, "project_id": project_id}
+        "sequence:new", {"sequence_id": sequence.id}, project_id=project_id
     )
     return sequence.serialize(obj_type="Sequence")
 
@@ -887,7 +895,8 @@ def create_shot(project_id, sequence_id, name, data={}, nb_frames=0):
     shot_type = get_shot_type()
 
     if sequence_id is not None:
-        get_sequence(sequence_id)  # raises SequenceNotFound if it fails.
+        # raises SequenceNotFound if it fails.
+        sequence = get_sequence(sequence_id)
 
     shot = Entity.get_by(
         entity_type_id=shot_type["id"],
@@ -904,7 +913,10 @@ def create_shot(project_id, sequence_id, name, data={}, nb_frames=0):
             data=data,
             nb_frames=nb_frames,
         )
-    events.emit("shot:new", {"shot_id": shot.id, "project_id": project_id})
+    events.emit("shot:new", {
+        "shot_id": shot.id,
+        "episode_id": sequence["parent_id"],
+    }, project_id=project_id)
     return shot.serialize(obj_type="Shot")
 
 
@@ -934,7 +946,7 @@ def create_scene(project_id, sequence_id, name):
             name=name,
             data={},
         )
-    events.emit("scene:new", {"scene_id": scene.id, "project_id": project_id})
+    events.emit("scene:new", {"scene_id": scene.id}, project_id=project_id)
     return scene.serialize(obj_type="Scene")
 
 
@@ -945,7 +957,11 @@ def update_shot(shot_id, data_dict):
     shot = get_shot_raw(shot_id)
     shot.update(data_dict)
     clear_shot_cache(shot_id)
-    events.emit("shot:update", {"shot_id": shot_id})
+    events.emit(
+        "shot:update",
+        {"shot_id": shot_id},
+        project_id=str(shot.project_id)
+    )
     return shot.serialize()
 
 
@@ -1122,3 +1138,14 @@ def get_shot_versions(shot_id):
         .all()
     )
     return EntityVersion.serialize_list(versions, obj_type="ShotVersion")
+
+
+def get_base_entity_type_name(entity_dict):
+    type_name = "asset"
+    if is_shot(entity_dict):
+        type_name = "shot"
+    elif is_sequence(entity_dict):
+        type_name = "sequence"
+    elif is_episode(entity_dict):
+        type_name = "episode"
+    return type_name

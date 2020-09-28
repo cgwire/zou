@@ -68,3 +68,11 @@ def require_admin(function):
         check_admin_permissions()
         return function(*args, **kwargs)
     return decorated_function
+
+
+def require_manager(function):
+    @wraps(function)
+    def decorated_function(*args, **kwargs):
+        check_manager_permissions()
+        return function(*args, **kwargs)
+    return decorated_function

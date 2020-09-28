@@ -3,6 +3,7 @@ from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
+from zou.app.utils import events
 
 from sqlalchemy.exc import IntegrityError
 
@@ -73,10 +74,20 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     source_id=episode_id,
                     data=data,
                 )
+                events.emit(
+                    "asset:new",
+                    {"asset_id": str(entity.id), "episode_id": episode_id},
+                    project_id=project_id
+                )
             except IntegrityError:
                 current_app.logger.error("Row import failed", exc_info=1)
 
         elif self.is_update:
             entity.update({"description": description, "data": data})
+            events.emit(
+                "asset:update",
+                {"asset_id": str(entity.id), "episode_id": episode_id},
+                project_id=project_id
+            )
 
         return entity.serialize()

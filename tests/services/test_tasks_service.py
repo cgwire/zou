@@ -6,7 +6,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
-from zou.app.services import tasks_service, deletion_service
+from zou.app.services import comments_service, deletion_service, tasks_service
 from zou.app.utils import events, fields
 
 from zou.app.services.exception import TaskNotFoundException
@@ -343,13 +343,13 @@ class TaskServiceTestCase(ApiDBTestCase):
         tasks = tasks_service.get_person_tasks(self.user["id"], projects)
         self.assertEqual(len(tasks), 1)
 
-        tasks_service.create_comment(
+        comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.person.id,
             "first comment"
         )
-        tasks_service.create_comment(
+        comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.person.id,
@@ -401,7 +401,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         )
 
     def test_remove_task_force(self):
-        tasks_service.create_comment(
+        comments_service.new_comment(
             self.task.id,
             self.task_status.id,
             self.person.id,
@@ -437,12 +437,12 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertIsNotNone(Task.get(task_4_id))
 
     def test_get_comment_mentions(self):
-        mentions = tasks_service.get_comment_mentions(
+        mentions = comments_service.get_comment_mentions(
             self.task_id,
             "Test @Emma Doe"
         )
         self.assertEqual(len(mentions), 0)
-        mentions = tasks_service.get_comment_mentions(
+        mentions = comments_service.get_comment_mentions(
             self.task_id,
             "Test @John Doe"
         )
@@ -461,8 +461,8 @@ class TaskServiceTestCase(ApiDBTestCase):
         comments = tasks_service.get_comments(self.task_id, is_client=True)
         self.assertEqual(len(comments), 1)
 
-    def test_create_comment(self):
-        comment = tasks_service.create_comment(
+    def test_new_comment(self):
+        comment = comments_service.new_comment(
             self.task_id,
             self.task_status.id,
             self.person.id,

@@ -230,7 +230,7 @@ def update_project(project_id, data):
     project = get_project_raw(project_id)
     project.update(data)
     clear_project_cache(project_id)
-    events.emit("project:update", {"project_id": project_id})
+    events.emit("project:update", {}, project_id=project_id)
     return project.serialize()
 
 
@@ -318,7 +318,7 @@ def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
 def _save_project(project):
     project.save()
     clear_project_cache(str(project.id))
-    events.emit("project:update", {"project_id": str(project.id)})
+    events.emit("project:update", {}, project_id=str(project.id))
     return project.serialize()
 
 
@@ -334,6 +334,7 @@ def add_metadata_descriptor(project_id, entity_type, name, choices, for_client):
     events.emit(
         "metadata-descriptor:new",
         {"metadata_descriptor_id": str(descriptor.id)},
+        project_id=project_id
     )
     clear_project_cache(project_id)
     return descriptor.serialize()
@@ -392,6 +393,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     events.emit(
         "metadata-descriptor:update",
         {"metadata_descriptor_id": str(descriptor.id)},
+        project_id=descriptor.project_id
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()
@@ -415,6 +417,7 @@ def remove_metadata_descriptor(metadata_descriptor_id):
     events.emit(
         "metadata-descriptor:delete",
         {"metadata_descriptor_id": str(descriptor.id)},
+        project_id=descriptor.project_id
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()

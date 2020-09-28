@@ -7,6 +7,7 @@ from zou.app.models.comment import Comment
 from zou.app.models.attachment_file import AttachmentFile
 
 from zou.app.services import (
+    comments_service,
     deletion_service,
     notifications_service,
     persons_service,
@@ -65,15 +66,15 @@ class CommentResource(BaseModelResource):
             self.previous_task_status_id = instance_dict["task_status_id"]
 
     def post_update(self, instance_dict):
-        comment = tasks_service.reset_mentions(instance_dict)
+        comment = comments_service.reset_mentions(instance_dict)
         if self.task_status_change:
             task_id = comment["object_id"]
-            tasks_service.reset_task_data(task_id)
+            task = tasks_service.reset_task_data(task_id)
             events.emit("task:status-changed", {
                 "task_id": task_id,
                 "new_task_status_id": comment["task_status_id"],
                 "previous_task_status_id": self.previous_task_status_id
-            })
+            }, project_id=task["project_id"])
 
         tasks_service.clear_comment_cache(comment["id"])
         notifications_service.reset_notifications_for_mentions(comment)
@@ -114,7 +115,7 @@ class CommentResource(BaseModelResource):
                 "task_id": task["id"],
                 "new_task_status_id": self.new_task_status_id,
                 "previous_task_status_id": self.previous_task_status_id
-            })
+            }, project_id=task["project_id"])
         return comment
 
     @jwt_required
