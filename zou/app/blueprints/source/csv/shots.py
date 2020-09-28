@@ -76,7 +76,9 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         for name, field_name in self.descriptor_fields.items():
             if name in row:
                 data[field_name] = row[name]
-            elif entity.data is not None and field_name in entity.data:
+            elif entity is not None and \
+                entity.data is not None and \
+                field_name in entity.data:
                 data[field_name] = entity.data[field_name]
 
         if entity is None:
