@@ -41,6 +41,9 @@ def get_attachment_file(attachment_file_id):
 
 
 def get_attachment_file_path(attachment_file):
+    """
+    Get attachement file path when stored locally.
+    """
     return fs.get_file_path(
         config,
         file_store.get_local_file_path,
@@ -60,27 +63,41 @@ def create_comment(
     files,
     created_at
 ):
-    task = tasks_service.get_task(task_id)
+    """
+    Create a new comment and related: news, notifications and events.
+    """
+    task = tasks_service.get_task_with_relations(task_id)
     task_status = tasks_service.get_task_status(task_status_id)
-    if person_id:
-        person = persons_service.get_person(person_id)
-    else:
-        person = persons_service.get_current_user()
-
+    author = _get_comment_author(person_id)
     comment = new_comment(
         task_id=task_id,
         object_type="Task",
         files=files,
-        person_id=person["id"],
+        person_id=author["id"],
         task_status_id=task_status_id,
         text=comment,
         checklist=checklist,
         created_at=created_at
     )
+    task, status_changed = _manage_status_change(task_status, task, comment)
+    _manage_subscriptions(task, comment, status_changed)
+    comment["task_status"] = task_status
+    comment["person"] = author
+    return comment
 
-    status_changed = task_status_id != task["task_status_id"]
+
+def _get_comment_author(person_id):
+    if person_id:
+        person = persons_service.get_person(person_id)
+    else:
+        person = persons_service.get_current_user()
+    return person
+
+
+def _manage_status_change(task_status, task, comment):
+    status_changed = task_status["id"] != task["task_status_id"]
     new_data = {
-        "task_status_id": task_status_id,
+        "task_status_id": task_status["id"],
         "last_comment_date": comment["created_at"],
     }
     if status_changed:
@@ -101,30 +118,28 @@ def create_comment(
         ):
             new_data["real_start_date"] = datetime.datetime.now()
 
-    tasks_service.update_task(task_id, new_data)
+    tasks_service.update_task(task["id"], new_data)
+    task.update(new_data)
     if status_changed:
         events.emit(
             "task:status-changed",
             {
-                "task_id": task_id,
+                "task_id": task["id"],
                 "new_task_status_id": new_data["task_status_id"],
                 "previous_task_status_id": task["task_status_id"]
             },
             project_id=task["project_id"]
         )
+    return task, status_changed
 
-    task = tasks_service.get_task_with_relations(task_id)
 
+def _manage_subscriptions(task, comment, status_changed):
     notifications_service.create_notifications_for_task_and_comment(
         task, comment, change=status_changed
     )
     news_service.create_news_for_task_and_comment(
         task, comment, change=status_changed
     )
-
-    comment["task_status"] = task_status
-    comment["person"] = person
-    return comment
 
 
 def new_comment(
