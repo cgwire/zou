@@ -117,3 +117,27 @@ class CommentTaskResource(Resource):
             args["created_at"],
             checklist
         )
+
+
+class CommentManyTasksResource(Resource):
+    """
+    """
+
+    @jwt_required
+    def post(self, project_id):
+        comments = request.json
+        user_service.check_manager_project_access(project_id)
+        person_id = persons_service.get_current_user()["id"]
+        result = []
+        for comment in comments:
+            comment = comments_service.create_comment(
+                person_id,
+                comment["object_id"],
+                comment["task_status_id"],
+                comment["comment"],
+                [],
+                {},
+                None
+            )
+            result.append(comment)
+        return result, 201
