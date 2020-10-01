@@ -23,7 +23,7 @@ from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
 
-from zou.app.utils import events
+from zou.app.utils import events, fields
 from zou.app.stores import file_store
 
 from zou.app.services.exception import (
@@ -198,6 +198,24 @@ def clear_generic_files(preview_file_id):
         file_store.remove_file("previews", preview_file_id)
     except:
         pass
+
+
+def remove_tasks(project_id, task_ids):
+    """
+    Remove fully given tasks and related for given project. The project id
+    filter is there to facilitate right management.
+    """
+    task_ids = [
+        task_id for task_id in task_ids if fields.is_valid_id(task_id)
+    ]
+    tasks = (
+        Task.query
+        .filter(Project.id == project_id)
+        .filter(Task.id.in_(task_ids))
+    )
+    for task in tasks:
+        remove_task(task.id, force=True)
+    return task_ids
 
 
 def remove_tasks_for_project_and_task_type(project_id, task_type_id):

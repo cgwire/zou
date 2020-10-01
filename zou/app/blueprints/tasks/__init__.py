@@ -4,6 +4,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 from .resources import (
     TaskFullResource,
     TaskForEntityResource,
+    DeleteTasksResource,
     DeleteAllTasksForTaskTypeResource,
     TaskAssignResource,
     TasksAssignResource,
@@ -41,15 +42,19 @@ routes = [
         "/data/entities/<entity_id>/task-types/<task_type_id>/tasks",
         TaskForEntityResource,
     ),
-    (
-        "/data/projects/<project_id>/task-types/<task_type_id>/tasks/",
-        DeleteAllTasksForTaskTypeResource,
-    ),
     ("/data/projects/<project_id>/comments", ProjectCommentsResource),
     ("/data/projects/<project_id>/notifications", ProjectNotificationsResource),
     ("/data/projects/<project_id>/preview-files", ProjectPreviewFilesResource),
     ("/data/projects/<project_id>/subscriptions", ProjectSubscriptionsResource),
     ("/data/projects/<project_id>/tasks", ProjectTasksResource),
+    (
+        "/actions/projects/<project_id>/task-types/<task_type_id>/delete-tasks",
+        DeleteAllTasksForTaskTypeResource,
+    ),
+    (
+        "/actions/projects/<project_id>/delete-tasks",
+        DeleteTasksResource,
+    ),
     ("/actions/tasks/<task_id>/assign", TaskAssignResource),
     ("/actions/tasks/clear-assignation", ClearAssignationResource),
     ("/actions/persons/<person_id>/assign", TasksAssignResource),

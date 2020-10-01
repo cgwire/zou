@@ -50,7 +50,8 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.generate_fixture_output_type()
         self.generate_fixture_output_file()
 
-        self.task_id = self.task.id
+        self.project_id = str(self.project.id)
+        self.task_id = str(self.task.id)
         self.open_status_id = self.task_status.id
         self.wip_status_id = self.task_status_wip.id
         self.to_review_status_id = self.task_status_to_review.id
@@ -398,6 +399,24 @@ class TaskServiceTestCase(ApiDBTestCase):
             TaskNotFoundException,
             tasks_service.get_task,
             self.task_id
+        )
+
+    def test_remove_tasks(self):
+        self.working_file.delete()
+        self.output_file.delete()
+        task_id = str(self.task_id)
+        task2_id = str(self.generate_fixture_task("main 2").id)
+        task_ids = [task_id, task2_id]
+        deletion_service.remove_tasks(self.project_id, task_ids)
+        self.assertRaises(
+            TaskNotFoundException,
+            tasks_service.get_task,
+            task_id
+        )
+        self.assertRaises(
+            TaskNotFoundException,
+            tasks_service.get_task,
+            task2_id
         )
 
     def test_remove_task_force(self):
