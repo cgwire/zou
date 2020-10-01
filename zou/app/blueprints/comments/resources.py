@@ -1,16 +1,13 @@
-import datetime
 import json
 
 from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import events, permissions
+from zou.app.utils import permissions
 
 from zou.app.services import (
     comments_service,
-    notifications_service,
-    news_service,
     persons_service,
     tasks_service,
     user_service
@@ -106,7 +103,12 @@ class CommentTaskResource(Resource):
             checklist = args["checklist"]
             checklist = json.loads(checklist)
         else:
-            parser.add_argument("checklist", type=dict, action="append", default=[])
+            parser.add_argument(
+                "checklist",
+                type=dict,
+                action="append",
+                default=[]
+            )
             args = parser.parse_args()
             checklist = args["checklist"]
 
@@ -121,6 +123,10 @@ class CommentTaskResource(Resource):
 
 class CommentManyTasksResource(Resource):
     """
+    Create several comments at once. Each comment, requires a text, a task id,
+    task_status and a person as arguments. This way, comments keep history of
+    status changes. When the comment is created, it updates the task status with
+    given task status.
     """
 
     @jwt_required

@@ -17,7 +17,10 @@ routes = [
         DownloadAttachmentResource
     ),
     ("/actions/tasks/<task_id>/comment", CommentTaskResource),
-    ("/actions/project/<project_id>/tasks/comment-many", CommentManyTasksResource),
+    (
+        "/actions/projects/<project_id>/tasks/comment-many",
+        CommentManyTasksResource
+    ),
 ]
 
 blueprint = Blueprint("comments", "comments")

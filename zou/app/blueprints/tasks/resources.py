@@ -16,7 +16,6 @@ from zou.app.services import (
     entities_service,
     files_service,
     file_tree_service,
-    news_service,
     notifications_service,
     persons_service,
     projects_service,
@@ -547,6 +546,22 @@ class DeleteAllTasksForTaskTypeResource(Resource):
         return "", 204
 
 
+class DeleteTasksResource(Resource):
+    """
+    Delete tasks matching id list given in parameter. See it as a way to batch
+    delete tasks.
+    """
+
+    @jwt_required
+    def post(self, project_id):
+        user_service.check_manager_project_access(project_id)
+        task_ids = request.json
+        task_ids = deletion_service.remove_tasks(project_id, task_ids)
+        for task_id in task_ids:
+            tasks_service.clear_task_cache(task_id)
+        return task_ids, 200
+
+
 class ProjectSubscriptionsResource(Resource):
     """
     Retrieve all subcriptions to tasks related to given project.
@@ -554,8 +569,8 @@ class ProjectSubscriptionsResource(Resource):
     """
 
     @jwt_required
+    @permissions.require_admin
     def get(self, project_id):
-        permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         return notifications_service.get_subscriptions_for_project(project_id)
 
@@ -567,8 +582,8 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
     """
 
     @jwt_required
+    @permissions.require_admin
     def get(self, project_id):
-        permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         page = self.get_page()
         return notifications_service.get_notifications_for_project(
@@ -583,8 +598,8 @@ class ProjectTasksResource(Resource, ArgsMixin):
     """
 
     @jwt_required
+    @permissions.require_admin
     def get(self, project_id):
-        permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         page = self.get_page()
         return tasks_service.get_tasks_for_project(project_id, page)
@@ -597,8 +612,8 @@ class ProjectCommentsResource(Resource, ArgsMixin):
     """
 
     @jwt_required
+    @permissions.require_admin
     def get(self, project_id):
-        permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         page = self.get_page()
         return tasks_service.get_comments_for_project(project_id, page)
@@ -611,8 +626,8 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
     """
 
     @jwt_required
+    @permissions.require_admin
     def get(self, project_id):
-        permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         page = self.get_page()
         return files_service.get_preview_files_for_project(project_id, page)
