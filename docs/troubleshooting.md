@@ -32,3 +32,16 @@ Zou cannot connect to it. Zou cannot run properly in that case.
 
 NB: Database refers to Posgres, Key Value Store refers to Redis and Event
 Stream refers to `zou-events`.
+
+## Installing on Ubuntu server or minimal desktop
+
+zou install will require libjpeg-dev to be installed at the 3rd party software step:
+```
+sudo apt-get install libjpeg-dev
+```
+## To enable zou to start on reboot
+```
+sudo systemctl enable zou
+
+sudo systemctl enable zou-events
+```
