@@ -33,7 +33,7 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
 
         instances = []
         for entry in kitsu_entries:
-            if self.check_access(self, entry):
+            if self.check_access(entry):
                 try:
                     (instance, is_updated) = \
                         self.model.create_from_import(entry)
