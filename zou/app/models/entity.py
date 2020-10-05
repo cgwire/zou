@@ -43,10 +43,10 @@ class EntityLink(db.Model, BaseMixin, SerializerMixin):
             entity_out_id=data["entity_out_id"],
         )
         if entity_link is None:
-            return cls.create(**data)
+            return cls.create(**data), False
         else:
             entity_link.update(data)
-            return entity_link
+            return entity_link, True
 
 
 class Entity(db.Model, BaseMixin, SerializerMixin):

@@ -25,7 +25,6 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         self.model = model
 
     @jwt_required
-    @permissions.require_manager
     def post(self):
         kitsu_entries = request.json
         if type(kitsu_entries) != list:
@@ -85,18 +84,18 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
 
     def check_access(self, entry):
         try:
-            project_id = str(entry.project_id)
+            project_id = entry["project_id"]
             user_service.check_project_access(project_id)
         except:
             return False
         return True
 
     def emit_event(self, event_type, entry):
-        project_id = str(entry.project_id)
+        project_id = entry["project_id"]
         name = shots_service.get_base_entity_type_name(entry)
         events.emit(
             "%s:%s" % (name, event_type),
-            {"%s_id" % name: entry.id},
+            {"%s_id" % name: entry["id"]},
             project_id=project_id
         )
 
@@ -109,7 +108,7 @@ class ImportKitsuProjectsResource(BaseImportKitsuResource):
     def emit_event(self, event_type, entry):
         events.emit(
             "project:%s" % event_type,
-            project_id=entry.project_id
+            project_id=entry["id"]
         )
 
 
@@ -120,7 +119,7 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
 
     def check_access(self, entry):
         try:
-            project_id = str(entry.project_id)
+            project_id = entry["project_id"]
             user_service.check_project_access(project_id)
         except:
             return False
@@ -129,7 +128,7 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
     def emit_event(self, event_type, entry):
         events.emit(
             "task:%s" % event_type,
-            project_id=entry.project_id
+            project_id=entry["project_id"]
         )
 
 
@@ -140,7 +139,7 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
 
     def check_access(self, entry):
         try:
-            entity = entities_service.get_entity(str(entry.entity_in_id))
+            entity = entities_service.get_entity(entry["entity_in_id"])
             project_id = entity["project_id"]
             user_service.check_project_access(project_id)
         except:
@@ -148,7 +147,7 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
         return True
 
     def emit_event(self, event_type, entry):
-        entity = entities_service.get_entity(str(entry.entity_in_id))
+        entity = entities_service.get_entity(entry["entity_in_id"])
         project_id = entity["project_id"]
         events.emit(
             "entity-link:%s" % event_type,
