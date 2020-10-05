@@ -10,9 +10,9 @@ class EntityTestCase(ApiDBTestCase):
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
-        self.generate_fixture_asset("Asset 1")
-        self.generate_fixture_asset("Asset 2")
-        self.generate_fixture_asset("Asset 3")
+        self.asset_1_id = str(self.generate_fixture_asset("Asset 1").id)
+        self.asset_2_id = str(self.generate_fixture_asset("Asset 2").id)
+        self.asset_3_id = str(self.generate_fixture_asset("Asset 3").id)
 
     def test_get_entities(self):
         entities = self.get("data/entities")
@@ -72,3 +72,15 @@ class EntityTestCase(ApiDBTestCase):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 2)
         self.delete_404("data/entities/%s" % fields.gen_uuid())
+
+    def test_delete_entity_link(self):
+        entity_link = {
+            "entity_in_id": self.asset_1_id,
+            "entity_out_id": self.asset_2_id
+        }
+        entity_link = self.post("data/entity-links", entity_link)
+        entity_links = self.get("data/entity-links")
+        self.assertEqual(len(entity_links), 1)
+        self.delete("data/entity-links/%s" % entity_link["id"])
+        entity_links = self.get("data/entity-links")
+        self.assertEqual(len(entity_links), 0)
