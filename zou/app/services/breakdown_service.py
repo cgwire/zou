@@ -32,16 +32,28 @@ def get_casting(shot_id):
         .join(Entity, EntityLink.entity_out_id == Entity.id)
         .join(EntityType, Entity.entity_type_id == EntityType.id)
         .filter(Entity.canceled != True)
-        .add_columns(Entity.name, EntityType.name, Entity.preview_file_id)
+        .add_columns(
+            Entity.name,
+            EntityType.name,
+            Entity.preview_file_id,
+            Entity.source_id,
+        )
         .order_by(EntityType.name, Entity.name)
     )
 
-    for (link, entity_name, entity_type_name, entity_preview_file_id) in links:
+    for (
+        link,
+        entity_name,
+        entity_type_name,
+        entity_preview_file_id,
+        episode_id
+    ) in links:
         casting.append(
             {
                 "asset_id": fields.serialize_value(link.entity_out_id),
                 "asset_name": entity_name,
                 "asset_type_name": entity_type_name,
+                "episode_id": fields.serialize_value(episode_id),
                 "preview_file_id": fields.serialize_value(
                     entity_preview_file_id
                 ),
