@@ -105,6 +105,7 @@ def get_first_shot_preview_file_id(playlist):
     first_shot_preview_file_id = None
     if playlist.shots is not None \
        and len(playlist.shots) > 0 \
+       and type(playlist.shots) == list \
        and "preview_file_id" in playlist.shots[0]:
         first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
     return first_shot_preview_file_id
