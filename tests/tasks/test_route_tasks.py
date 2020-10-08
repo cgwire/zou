@@ -41,11 +41,30 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.person_id = self.person.id
 
     def test_create_asset_tasks(self):
-        path = "/actions/task-types/%s/assets/create-tasks" % self.task_type_id
-        path += "?project_id=%s" % self.project.id
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        path = "/actions/projects/%s/task-types/%s/assets/create-tasks" % (
+            self.project.id,
+            self.task_type_id
+        )
         tasks = self.post(path, {})
-        self.assertEqual(len(tasks), 1)
+        self.assertEqual(len(tasks), 2)
 
+        tasks = self.get("/data/tasks")
+        self.assertEqual(len(tasks), 2)
+        task = tasks[0]
+        self.assertEqual(task["name"], "main")
+        self.assertEqual(task["task_type_id"], self.task_type_id)
+
+    def test_create_asset_tasks_from_list(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        path = "/actions/projects/%s/task-types/%s/assets/create-tasks" % (
+            self.project.id,
+            self.task_type_id,
+        )
+        tasks = self.post(path, [self.asset_id])
+        self.assertEqual(len(tasks), 1)
         tasks = self.get("/data/tasks")
         self.assertEqual(len(tasks), 1)
         task = tasks[0]
@@ -54,8 +73,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(task["entity_id"], self.asset_id)
 
     def test_create_shot_tasks(self):
-        path = "/actions/task-types/%s/shots/create-tasks" % self.task_type_id
-        path += "?project_id=%s" % self.project.id
+        path = "/actions/projects/%s/task-types/%s/shots/create-tasks" % (
+            self.project.id,
+            self.task_type_id
+        )
         tasks = self.post(path, {})
         self.assertEqual(len(tasks), 1)
 

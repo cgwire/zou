@@ -192,15 +192,24 @@ class CreateShotTasksResource(Resource):
     """
 
     @jwt_required
-    def post(self, task_type_id):
-        criterions = query.get_query_criterions_from_request(request)
-        if "project_id" not in criterions:
-            return {"error": True, "message": "Project ID is missing"}, 400
-
-        user_service.check_manager_project_access(criterions["project_id"])
-        shots = shots_service.get_shots(criterions)
+    def post(self, project_id, task_type_id):
+        user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
-        tasks = [tasks_service.create_task(task_type, shot) for shot in shots]
+
+        shot_ids = request.json
+        shots = []
+        if type(shot_ids) == list and len(shot_ids) > 0:
+            for shot_id in shot_ids:
+                shot = shots_service.get_shot(shot_id)
+                if shot["project_id"] == project_id:
+                    shots.append(shot)
+        else:
+            criterions = query.get_query_criterions_from_request(request)
+            criterions["project_id"] = project_id
+            shots = shots_service.get_shots(criterions)
+
+        task_type = tasks_service.get_task_type(task_type_id)
+        tasks = tasks_service.create_tasks(task_type, shots)
         return tasks, 201
 
 
@@ -210,17 +219,23 @@ class CreateAssetTasksResource(Resource):
     """
 
     @jwt_required
-    def post(self, task_type_id):
-        criterions = query.get_query_criterions_from_request(request)
-        if "project_id" not in criterions:
-            return {"error": True, "message": "Project ID is missing"}, 400
-
-        user_service.check_manager_project_access(criterions["project_id"])
-        assets = assets_service.get_assets(criterions)
+    def post(self, project_id, task_type_id):
+        user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
-        tasks = [
-            tasks_service.create_task(task_type, asset) for asset in assets
-        ]
+
+        asset_ids = request.json
+        assets = []
+        if type(asset_ids) == list and len(asset_ids) > 0:
+            for asset_id in asset_ids:
+                asset = assets_service.get_asset(asset_id)
+                if asset["project_id"] == project_id:
+                    assets.append(asset)
+        else:
+            criterions = query.get_query_criterions_from_request(request)
+            criterions["project_id"] = project_id
+            assets = assets_service.get_assets(criterions)
+
+        tasks = tasks_service.create_tasks(task_type, assets)
         return tasks, 201
 
 
