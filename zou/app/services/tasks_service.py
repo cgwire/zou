@@ -529,7 +529,7 @@ def _build_preview_map_for_comments(comment_ids):
         PreviewFile.query
         .join(preview_link_table)
         .filter(preview_link_table.c.comment.in_(comment_ids))
-        .add_column(preview_link_table.c.comment)
+        .add_columns(preview_link_table.c.comment)
     )
     for (preview, comment_id) in query.all():
         comment_id = str(comment_id)
@@ -769,6 +769,53 @@ def get_person_tasks(person_id, projects, is_done=None):
     return tasks
 
 
+def create_tasks(task_type, entities):
+    """
+    Create a new task for given task type and for each entity.
+    """
+    task_status = get_todo_status()
+    current_user_id = None
+    try:
+        current_user_id = persons_service.get_current_user()["id"]
+    except RuntimeError:
+        pass
+
+    tasks = []
+    for entity in entities:
+        existing_task = Task.query \
+            .filter_by(
+                entity_id=entity["id"],
+                task_type_id=task_type["id"]
+            ) \
+            .scalar()
+        if existing_task is None:
+            task = Task.create_no_commit(
+                name="main",
+                duration=0,
+                estimation=0,
+                completion_rate=0,
+                start_date=None,
+                end_date=None,
+                due_date=None,
+                real_start_date=None,
+                project_id=entity["project_id"],
+                task_type_id=task_type["id"],
+                task_status_id=task_status["id"],
+                entity_id=entity["id"],
+                assigner_id=current_user_id,
+                assignees=[],
+            )
+            tasks.append(task)
+    Task.commit()
+
+    task_dicts = []
+    for task in tasks:
+        task_dict = _finalize_task_creation(task_type, task_status, task)
+        task_dicts.append(task_dict)
+
+    return task_dicts
+
+
 def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
@@ -795,28 +842,34 @@ def create_task(task_type, entity, name="main"):
             assigner_id=current_user_id,
             assignees=[],
         )
-        task_dict = task.serialize(relations=True)
-        task_dict.update(
-            {
-                "task_status_id": task_status["id"],
-                "task_status_name": task_status["name"],
-                "task_status_short_name": task_status["short_name"],
-                "task_status_color": task_status["color"],
-                "task_type_id": task_type["id"],
-                "task_type_name": task_type["name"],
-                "task_type_color": task_type["color"],
-                "task_type_priority": task_type["priority"],
-            }
-        )
-        events.emit(
-            "task:new",
-            {"task_id": task.id},
-            project_id=entity["project_id"]
-        )
+        task_dict = _finalize_task_creation(task_type, task_status, task)
         return task_dict
-
     except IntegrityError:
         pass  # Tasks already exists, no need to create it.
+    return None
+
+
+def _finalize_task_creation(task_type, task_status, task):
+    task_dict = task.serialize()
+    task_dict["assignees"] = []
+    task_dict.update(
+        {
+            "task_status_id": task_status["id"],
+            "task_status_name": task_status["name"],
+            "task_status_short_name": task_status["short_name"],
+            "task_status_color": task_status["color"],
+            "task_type_id": task_type["id"],
+            "task_type_name": task_type["name"],
+            "task_type_color": task_type["color"],
+            "task_type_priority": task_type["priority"],
+        }
+    )
+    events.emit(
+        "task:new",
+        {"task_id": task.id},
+        project_id=task_dict["project_id"]
+    )
+    return task_dict
 
 
 def update_task(task_id, data):

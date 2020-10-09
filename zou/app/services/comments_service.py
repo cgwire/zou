@@ -258,7 +258,7 @@ def acknowledge_comment(comment_id):
 def _ack_comment(project_id, comment, user):
     user_id = str(user.id)
     comment.acknowledgements.append(user)
-    _send_ack_event(comment, user_id, "acknowledge")
+    _send_ack_event(project_id, comment, user_id, "acknowledge")
 
 
 def _unack_comment(project_id, comment, user):

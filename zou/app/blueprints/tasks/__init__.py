@@ -79,11 +79,11 @@ routes = [
     ),
     ("/actions/tasks/<task_id>/to-review", ToReviewResource),
     (
-        "/actions/task-types/<task_type_id>/shots/create-tasks",
+        "/actions/projects/<project_id>/task-types/<task_type_id>/shots/create-tasks",
         CreateShotTasksResource,
     ),
     (
-        "/actions/task-types/<task_type_id>/assets/create-tasks",
+        "/actions/projects/<project_id>/task-types/<task_type_id>/assets/create-tasks",
         CreateAssetTasksResource,
     ),
 ]

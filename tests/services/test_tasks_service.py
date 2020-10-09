@@ -100,6 +100,20 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task["project_id"], shot["project_id"])
         self.assertEqual(task["task_status_id"], status["id"])
 
+    def test_create_tasks(self):
+        shot = self.shot.serialize()
+        shot_2 = self.generate_fixture_shot("S02").serialize()
+        task_type = self.task_type.serialize()
+        status = tasks_service.get_todo_status()
+        tasks = tasks_service.create_tasks(task_type, [shot, shot_2])
+        self.assertEqual(len(tasks), 2)
+        task = tasks[0]
+        task = tasks_service.get_task(task["id"])
+        self.assertEqual(task["entity_id"], shot["id"])
+        self.assertEqual(task["task_type_id"], task_type["id"])
+        self.assertEqual(task["project_id"], shot["project_id"])
+        self.assertEqual(task["task_status_id"], status["id"])
+
     def test_status_to_wip(self):
         events.register(
             "task:start",
