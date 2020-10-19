@@ -288,18 +288,18 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_pass http://localhost:5000/;
         client_max_body_size 500M;
-	proxy_connect_timeout 600s;
+        proxy_connect_timeout 600s;
         proxy_send_timeout 600s;
         proxy_read_timeout 600s;
         send_timeout 600s;
     }
 
     location /socket.io {
-	proxy_http_version 1.1;
+    proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-	proxy_set_header Upgrade $http_upgrade;
-	proxy_set_header Connection "Upgrade";
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
         proxy_pass http://localhost:5001;
     }
 }
@@ -393,18 +393,18 @@ server {
         proxy_set_header Host $host;
         proxy_pass http://localhost:5000/;
         client_max_body_size 500M;
-	proxy_connect_timeout 600s;
+        proxy_connect_timeout 600s;
         proxy_send_timeout 600s;
         proxy_read_timeout 600s;
         send_timeout 600s;
     }
 
     location /socket.io {
-	proxy_http_version 1.1;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-	proxy_set_header Upgrade $http_upgrade;
-	proxy_set_header Connection "Upgrade";
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
         proxy_pass http://localhost:5001;
     }
 
@@ -412,7 +412,6 @@ server {
         autoindex on;
         root  /opt/kitsu/dist;
         try_files $uri $uri/ /index.html;
-        
     }
 }
 ```
