@@ -6,24 +6,27 @@ quickly to configure `logrotate` to create a new log file every day.
 
 ## Store PID of zou processes
 
-Add this folder and change owner to `zou` user:
+To create a folder on boot to store pid files add a RuntimeDirectory add a line
+before ExecStart in the unit file
+(`/etc/systemd/system/zou.service`):
 
 ```
-mkdir /var/run/zou
-chown zou: /var/run/zou
+RuntimeDirectory=zou
 ```
 
-Add this line to Zou gunicorn configuration file (`/etc/zou/gunicorn.conf`):
+Add this to the ExecStart line to create the pid file for zou
 
 ```
-PIDFile = "/var/run/zou/zou.pid"
+-p /var/run/zou/zou.pid
 ```
+For example:
+> ExecStart=/opt/zou/zouenv/bin/gunicorn -p /run/zou/zou.pid  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
 
-Add this line to Zou Events gunicorn configuration file 
-(`/etc/zou/gunicorn-events.conf`):
+Edit the zou-events unit file to create the pid file for zou-events  
+(`/etc/systemd/system/zou-events.service`):
 
 ```
-PIDFile = "/var/run/zou/zou-events.pid"
+-p /var/run/zou/zou-events.pid
 ```
 
 PIDs are now stored in mentioned files. 
@@ -37,7 +40,7 @@ file to work properly.
 Add this logrotate configuration (`/etc/logrotate.d/zou`):
 
 ```
-/var/log/zou/gunicorn_access.log {
+/opt/zou/logs/gunicorn_access.log {
     daily
     missingok
     rotate 14
@@ -50,7 +53,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     endscript
 }
 
-/var/log/zou/gunicorn_error.log {
+/opt/zou/logs/gunicorn_error.log {
     daily
     missingok
     rotate 14
@@ -63,7 +66,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     endscript
 }
 
-/var/log/zou/gunicorn_events_access.log {
+/opt/zou/logs/gunicorn_events_access.log {
     daily
     missingok
     rotate 14
@@ -76,7 +79,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     endscript
 }
 
-/var/log/zou/gunicorn_events_error.log {
+/opt/zou/logs/gunicorn_events_error.log {
     daily
     missingok
     rotate 14
@@ -91,4 +94,9 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
 ```
 
 It will create a new log file for each day, and keep only the last 14 files.
+
+You can test the log rotation is set up correctly by running
+```
+logrotate /etc/logrotate.d/zou --debug
+```
 You're done with log rotation!
