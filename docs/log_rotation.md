@@ -47,7 +47,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     notifempty
     nocompress
     size 100M
-    create 640 zou zou
+    create 644 zou zou
     postrotate
         kill -USR1 `cat /run/zou/zou.pid`
     endscript
@@ -60,7 +60,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     nocompress
     size 100M
     notifempty
-    create 640 zou zou
+    create 644 zou zou
     postrotate
         kill -USR1 `cat /run/zou/zou.pid`
     endscript
@@ -73,7 +73,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     nocompress
     size 100M
     notifempty
-    create 640 zou zou
+    create 644 zou zou
     postrotate
         kill -USR1 `cat /run/zou/zou-events.pid`
     endscript
@@ -86,7 +86,7 @@ Add this logrotate configuration (`/etc/logrotate.d/zou`):
     nocompress
     size 100M
     notifempty
-    create 640 zou zou
+    create 644 zou zou
     postrotate
         kill -USR1 `cat /run/zou/zou-events.pid`
     endscript
