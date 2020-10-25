@@ -560,7 +560,7 @@ def remove_playlist(playlist_id):
     events.emit(
         "playlist:delete",
         {"playlist_id": playlist_dict["id"]},
-        project_id=playlist["project_id"]
+        project_id=playlist_dict["project_id"]
     )
     return playlist_dict
 

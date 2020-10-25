@@ -31,6 +31,13 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get("data/projects/%s/playlists" % self.project_id)
         self.assertEqual(len(playlists), 1)
 
+    def test_delete_playlist(self):
+        self.generate_fixture_playlist("Playlist 1")
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.delete("data/playlists/%s" % playlists[0]["id"])
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.assertEqual(len(playlists), 0)
+
     def test_download_playlist(self):
         self.generate_fixture_playlist("Playlist 1", for_client=False)
         result_file_path = self.get_file_path("playlist.zip")
