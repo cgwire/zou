@@ -56,12 +56,13 @@ def remove_comment(comment_id):
         for preview in previews:
             remove_preview_file(preview)
 
-        events.emit(
-            "comment:delete",
-            {"comment_id": comment.id},
-            project_id=str(task.project_id)
-        )
-        return comment.serialize()
+        if task is not None:
+            events.emit(
+                "comment:delete",
+                {"comment_id": comment.id},
+                project_id=str(task.project_id)
+            )
+            return comment.serialize()
     else:
         raise CommentNotFoundException
 
