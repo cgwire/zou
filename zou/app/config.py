@@ -65,7 +65,7 @@ MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
 MAIL_PORT = os.getenv("MAIL_PORT", 25)
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0)
+MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0) != 0
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "False").lower() == "true"
 MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "no-reply@cg-wire.com")
