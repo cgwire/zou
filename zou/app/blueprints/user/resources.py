@@ -249,10 +249,20 @@ class FiltersResource(Resource, ArgsMixin):
         )
 
 
-class FilterResource(Resource):
+class FilterResource(Resource, ArgsMixin):
     """
-    Allow to remove given filter if its owned by current user.
+    Allow to remove or update given filter if its owned by current user.
     """
+
+    @jwt_required
+    def put(self, filter_id):
+        data = self.get_args([
+            ('name', None, False),
+            ('search_query', None, False),
+        ])
+        data = self.clear_empty_fields(data)
+        user_filter = user_service.update_filter(filter_id, data)
+        return user_filter, 200
 
     @jwt_required
     def delete(self, filter_id):
