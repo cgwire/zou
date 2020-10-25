@@ -36,6 +36,11 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertEqual(len(sequences), 4)
         self.assertDictEqual(sequences[0], self.serialized_sequence)
 
+    def test_get_shots_for_episode(self):
+        shots = self.get("data/episodes/%s/shots" % self.episode_id)
+        self.assertEqual(len(shots), 3)
+        self.assertEqual(shots[0]["type"], "Shot")
+
     def test_get_sequences_for_episode_with_vendor(self):
         self.generate_fixture_department()
         self.generate_fixture_task_status()

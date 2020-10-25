@@ -12,7 +12,6 @@ from zou.app.utils import (
 )
 
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
-from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
@@ -739,6 +738,21 @@ def get_shots_for_project(project_id, only_assigned=False):
     return entities_service.get_entities_for_project(
         project_id, get_shot_type()["id"], "Shot", only_assigned=only_assigned
     )
+
+
+def get_shots_for_episode(episode_id, relations=False):
+    """
+    Get all shots for given episode.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    shot_type_id = get_shot_type()["id"]
+    result = (
+        Entity.query
+        .filter(Entity.entity_type_id == shot_type_id)
+        .filter(Sequence.parent_id == episode_id)
+        .join(Sequence, Entity.parent_id == Sequence.id)
+    ).all()
+    return Entity.serialize_list(result, "Shot", relations=relations)
 
 
 def get_scenes_for_project(project_id, only_assigned=False):
