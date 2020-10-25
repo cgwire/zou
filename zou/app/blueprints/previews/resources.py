@@ -33,6 +33,7 @@ ALLOWED_MOVIE_EXTENSION = [
     ".avi",
     ".mp4",
     ".m4v",
+    ".mkv",
     ".mov",
     ".wmv",
     ".AVI",
@@ -40,6 +41,7 @@ ALLOWED_MOVIE_EXTENSION = [
     ".MOV",
     ".WMV",
     ".M4V",
+    ".MKV",
 ]
 ALLOWED_FILE_EXTENSION = [
     ".obj",
