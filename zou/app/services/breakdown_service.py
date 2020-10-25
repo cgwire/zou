@@ -511,3 +511,13 @@ def get_entity_casting(entity_id):
     """
     entity = entities_service.get_entity_raw(entity_id)
     return Entity.serialize_list(entity.entities_out, obj_type="Asset")
+
+
+def get_entity_link(entity_in_id, entity_out_id):
+    """
+    Get link matching given entities.
+    """
+    link = EntityLink.get_by(
+        entity_in_id=entity_in_id, entity_out_id=entity_out_id
+    )
+    return link.serialize()
