@@ -17,6 +17,7 @@ class EntityTestCase(ApiDBTestCase):
     def test_get_entities(self):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 3)
+        self.assertEqual(entities[0]["type"], "Asset")
 
     def test_get_entity(self):
         entity = self.get_first("data/entities?relations=true")
