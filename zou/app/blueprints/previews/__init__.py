@@ -19,6 +19,7 @@ from .resources import (
     PersonThumbnailResource,
     LegacySetMainPreviewResource,
     SetMainPreviewResource,
+    UpdatePreviewPositionResource,
 )
 
 routes = [
@@ -84,6 +85,10 @@ routes = [
         "/actions/preview-files/<preview_file_id>/set-main-preview",
         SetMainPreviewResource,
     ),
+    (
+        "/actions/preview-files/<preview_file_id>/update-position",
+        UpdatePreviewPositionResource,
+    )
 ]
 blueprint = Blueprint("thumbnails", "thumbnails")
 api = configure_api_from_blueprint(blueprint, routes)

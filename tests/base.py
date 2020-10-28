@@ -867,15 +867,18 @@ class ApiDBTestCase(ApiTestCase):
             use_original_file_name=False
         )
 
-    def generate_fixture_preview_file(self, revision=1):
+    def generate_fixture_preview_file(
+        self, revision=1, name="main", position=1
+    ):
         self.preview_file = PreviewFile.create(
-            name="main",
+            name=name,
             revision=revision,
             description="test description",
             source="pytest",
             task_id=self.task.id,
             extension="mp4",
-            person_id=self.person.id
+            person_id=self.person.id,
+            position=position
         )
         return self.preview_file
 

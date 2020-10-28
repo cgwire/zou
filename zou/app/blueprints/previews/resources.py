@@ -2,11 +2,12 @@ import os
 
 from flask import abort, request, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 
 from zou.app import config
+from zou.app.mixin import ArgsMixin
 from zou.app.stores import file_store
 from zou.app.services import (
     deletion_service,
@@ -746,4 +747,22 @@ class SetMainPreviewResource(Resource):
         user_service.check_entity_access(task["entity_id"])
         return entities_service.update_entity_preview(
             task["entity_id"], preview_file_id
+        )
+
+
+class UpdatePreviewPositionResource(Resource, ArgsMixin):
+    """
+    Allow to change orders of previews for a single revision.
+    """
+
+    @jwt_required
+    def put(self, preview_file_id):
+        parser = reqparse.RequestParser()
+        parser.add_argument("position", default=0, type=int)
+        args = parser.parse_args()
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        return tasks_service.update_preview_file_position(
+            preview_file_id, args["position"]
         )

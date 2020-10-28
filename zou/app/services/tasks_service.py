@@ -403,6 +403,37 @@ def get_next_preview_revision(task_id):
     return revision
 
 
+def get_next_position(task_id, revision):
+    """
+    Get upcoming position for preview files of given task and revision.
+    """
+    preview_files = (
+        PreviewFile.query.filter_by(task_id=task_id, revision=revision)
+        .all()
+    )
+    return len(preview_files) + 1
+
+
+def update_preview_file_position(preview_file_id, position):
+    """
+    Change positions for preview files of given task and revision.
+    Given position is the new position for given preview file. :q
+    """
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    task_id = preview_file.task_id
+    revision = preview_file.revision
+    preview_files = (
+        PreviewFile.query.filter_by(task_id=task_id, revision=revision)
+        .all()
+    )
+    if position > 0 and position <= len(preview_files):
+        tmp_list = [p for p in preview_files if str(p.id) != preview_file_id]
+        tmp_list.insert(position - 1, preview_file)
+        for (i, preview_file) in enumerate(tmp_list):
+            preview_file.update({"position": i + 1})
+    return PreviewFile.serialize_list(preview_files)
+
+
 def get_time_spents(task_id):
     """
     Return time spents for given task.
@@ -537,8 +568,11 @@ def _build_preview_map_for_comments(comment_ids):
             preview_map[comment_id] = []
         preview_map[comment_id].append({
             "id": str(preview.id),
+            "task_id": str(preview.task_id),
             "revision": preview.revision,
             "extension": preview.extension,
+            "original_name": preview.original_name,
+            "position": preview.position,
             "annotations": preview.annotations,
         })
     return preview_map
@@ -1162,13 +1196,16 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     news = News.get_by(comment_id=comment_id)
     task = Task.get(comment.object_id)
     project_id = str(task.project_id)
+    position = 1
     if revision == 0 and len(comment.previews) == 0:
         revision = get_next_preview_revision(task_id)
     elif revision == 0:
         revision = comment.previews[0].revision
-
+        position = get_next_position(task_id, revision)
+    else:
+        position = get_next_position(task_id, revision)
     preview_file = files_service.create_preview_file_raw(
-        str(uuid.uuid4())[:13], revision, task_id, person_id
+        str(uuid.uuid4())[:13], revision, position, task_id, person_id
     )
     events.emit(
         "preview-file:new",
