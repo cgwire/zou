@@ -23,6 +23,15 @@ class ArgsMixin(object):
 
         return parser.parse_args()
 
+    def clear_empty_fields(self, data):
+        """
+        Remove fiels set to None from data dict.
+        """
+        for key in list(data.keys()):
+            if data[key] is None:
+                del data[key]
+        return data
+
     def get_page(self):
         """
         Returns page requested by the user.
