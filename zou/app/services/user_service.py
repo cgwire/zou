@@ -473,6 +473,21 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
     return search_filter.serialize()
 
 
+def update_filter(search_filter_id, data):
+    """
+    Update given filter from database.
+    """
+    current_user = persons_service.get_current_user()
+    search_filter = SearchFilter.get_by(
+        id=search_filter_id, person_id=current_user["id"]
+    )
+    if search_filter is None:
+        raise SearchFilterNotFoundException
+    search_filter.update(data)
+    clear_filter_cache(current_user["id"])
+    return search_filter.serialize()
+
+
 def remove_filter(search_filter_id):
     """
     Remove given filter from database.

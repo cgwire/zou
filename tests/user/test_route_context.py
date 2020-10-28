@@ -305,6 +305,22 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             result["shot"][project_id][0]["search_query"], "se01")
 
+    def test_update_filter(self):
+        project_id = str(self.project.id)
+        path = "data/user/filters"
+        filter_1 = {
+            "list_type": "asset",
+            "name": "props",
+            "query": "props",
+            "project_id": project_id
+        }
+        search_filter = self.post(path, filter_1)
+        result = self.get(path)
+        self.assertTrue("asset" in result)
+        self.put("%s/%s" % (path, search_filter["id"]), {"name": "updated"})
+        result = self.get("data/search-filters/%s" % search_filter["id"])
+        self.assertEqual(result["name"], "updated")
+
     def test_remove_filter(self):
         project_id = str(self.project.id)
         path = "data/user/filters"

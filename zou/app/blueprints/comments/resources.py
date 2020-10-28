@@ -132,18 +132,39 @@ class CommentManyTasksResource(Resource):
     @jwt_required
     def post(self, project_id):
         comments = request.json
-        user_service.check_manager_project_access(project_id)
         person_id = persons_service.get_current_user()["id"]
+        try:
+            user_service.check_manager_project_access(project_id)
+        except permissions.PermissionDenied:
+            comments = self.get_allowed_comments_only(comments, person_id)
         result = []
         for comment in comments:
-            comment = comments_service.create_comment(
-                person_id,
-                comment["object_id"],
-                comment["task_status_id"],
-                comment["comment"],
-                [],
-                {},
-                None
-            )
-            result.append(comment)
+            try:
+                comment = comments_service.create_comment(
+                    person_id,
+                    comment["object_id"],
+                    comment["task_status_id"],
+                    comment["comment"],
+                    [],
+                    {},
+                    None
+                )
+                result.append(comment)
+            except KeyError:
+                pass
         return result, 201
+
+    def get_allowed_comments_only(self, comments, person_id):
+        allowed_comments = []
+        for comment in comments:
+            try:
+                task = tasks_service.get_task_with_relations(
+                    comment["object_id"],
+                )
+                if person_id in task["assignees"]:
+                    allowed_comments.append(comment)
+            except permissions.PermissionDenied:
+                pass
+            except KeyError:
+                pass
+        return allowed_comments

@@ -137,6 +137,37 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         comments = self.get("data/tasks/%s/comments" % task2_id)
         self.assertEqual(len(comments), 1)
 
+    def test_comment_many_as_artist(self):
+        project_id = str(self.project.id)
+        task_id = str(self.task.id)
+        self.generate_fixture_task(name="second_task")
+        task2_id = str(self.task.id)
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        new_comments = [
+            {
+                "task_status_id": self.retake_status_id,
+                "comment": "retake 1",
+                "object_id": task_id
+            },
+            {
+                "task_status_id": self.retake_status_id,
+                "comment": "retake 1",
+                "object_id": task2_id
+            }
+        ]
+        path = "/actions/projects/%s/tasks/comment-many" % project_id
+        self.assign_task_to_artist(task_id)
+        self.post(path, new_comments)
+        self.log_in_admin()
+        self.get("data/tasks/%s" % task_id)
+        task = self.get("data/tasks/%s" % task_id)
+        self.assertEqual(task["retake_count"], 1)
+        comments = self.get("data/tasks/%s/comments" % task_id)
+        self.assertEqual(len(comments), 1)
+        comments = self.get("data/tasks/%s/comments" % task2_id)
+        self.assertEqual(len(comments), 0)
+
     def test_attachments(self):
         self.delete_test_folder()
         self.create_test_folder()

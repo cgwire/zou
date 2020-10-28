@@ -65,6 +65,8 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
             target_id = self.asset_map.get(target_key, None)
 
         if asset_id is not None and target_id is not None:
-            breakdown_service.create_casting_link(
-                target_id, asset_id, occurences, label
-            )
+            link = breakdown_service.get_entity_link(target_id, asset_id)
+            if link is None:
+                breakdown_service.create_casting_link(
+                    target_id, asset_id, occurences, label
+                )

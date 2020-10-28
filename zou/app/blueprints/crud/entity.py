@@ -44,6 +44,14 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
     def emit_create_event(self, entity_dict):
         self.emit_event("new", entity_dict)
 
+    def all_entries(self, query=None, relations=False):
+        entities = BaseModelsResource.all_entries(
+            self, query=query, relations=relations
+        )
+        for entity in entities:
+            entity["type"] = shots_service.get_base_entity_type_name(entity)
+        return entities
+
 
 class EntityResource(BaseModelResource, EntityEventMixin):
     def __init__(self):
@@ -56,6 +64,11 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             "type",
             "shotgun_id",
         ]
+
+    def serialize_instance(self, entity):
+        entity = entity.serialize(relations=True)
+        entity["type"] = shots_service.get_base_entity_type_name(entity)
+        return entity
 
     def check_read_permissions(self, entity):
         user_service.check_project_access(entity["project_id"])

@@ -867,15 +867,18 @@ class ApiDBTestCase(ApiTestCase):
             use_original_file_name=False
         )
 
-    def generate_fixture_preview_file(self, revision=1):
+    def generate_fixture_preview_file(
+        self, revision=1, name="main", position=1
+    ):
         self.preview_file = PreviewFile.create(
-            name="main",
+            name=name,
             revision=revision,
             description="test description",
             source="pytest",
             task_id=self.task.id,
             extension="mp4",
-            person_id=self.person.id
+            person_id=self.person.id,
+            position=position
         )
         return self.preview_file
 
@@ -980,6 +983,14 @@ class ApiDBTestCase(ApiTestCase):
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
         self.generate_fixture_scene()
+
+    def assign_task(self, task_id, user_id):
+        return tasks_service.assign_task(task_id, user_id)
+
+    def assign_task_to_artist(self, task_id):
+        if self.user_cg_artist is None:
+            self.generate_fixture_user_cg_artist()
+        self.assign_task(task_id, self.user_cg_artist["id"])
 
     def now(self):
         return datetime.datetime.now().replace(microsecond=0).isoformat()

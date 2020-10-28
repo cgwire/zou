@@ -94,7 +94,7 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         project_id = entry["project_id"]
         name = shots_service.get_base_entity_type_name(entry)
         events.emit(
-            "%s:%s" % (name, event_type),
+            "%s:%s" % (name.lower(), event_type),
             {"%s_id" % name: entry["id"]},
             project_id=project_id
         )

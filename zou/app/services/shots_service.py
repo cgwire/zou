@@ -12,7 +12,6 @@ from zou.app.utils import (
 )
 
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
-from zou.app.models.playlist import Playlist
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
@@ -741,6 +740,21 @@ def get_shots_for_project(project_id, only_assigned=False):
     )
 
 
+def get_shots_for_episode(episode_id, relations=False):
+    """
+    Get all shots for given episode.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    shot_type_id = get_shot_type()["id"]
+    result = (
+        Entity.query
+        .filter(Entity.entity_type_id == shot_type_id)
+        .filter(Sequence.parent_id == episode_id)
+        .join(Sequence, Entity.parent_id == Sequence.id)
+    ).all()
+    return Entity.serialize_list(result, "Shot", relations=relations)
+
+
 def get_scenes_for_project(project_id, only_assigned=False):
     """
     Retrieve all scenes related to given project.
@@ -1141,11 +1155,11 @@ def get_shot_versions(shot_id):
 
 
 def get_base_entity_type_name(entity_dict):
-    type_name = "asset"
+    type_name = "Asset"
     if is_shot(entity_dict):
-        type_name = "shot"
+        type_name = "Shot"
     elif is_sequence(entity_dict):
-        type_name = "sequence"
+        type_name = "Sequence"
     elif is_episode(entity_dict):
-        type_name = "episode"
+        type_name = "Episode"
     return type_name

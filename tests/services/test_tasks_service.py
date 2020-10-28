@@ -6,6 +6,7 @@ from tests.base import ApiDBTestCase
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
+from zou.app.models.preview_file import PreviewFile
 from zou.app.services import comments_service, deletion_service, tasks_service
 from zou.app.utils import events, fields
 
@@ -513,3 +514,41 @@ class TaskServiceTestCase(ApiDBTestCase):
 
         task = tasks_service.get_full_task(self.shot_task.id)
         self.assertEqual(task["sequence"]["id"], str(self.sequence.id))
+
+    def test_get_next_position(self):
+        self.generate_fixture_preview_file(revision=1)
+        self.generate_fixture_preview_file(revision=2)
+        self.generate_fixture_preview_file(revision=2, name="second")
+        task_id = self.task.id
+        position = tasks_service.get_next_position(task_id, 2)
+        self.assertEqual(position, 3)
+
+    def test_update_preview_file_position(self):
+        self.generate_fixture_preview_file(revision=1)
+        self.generate_fixture_preview_file(revision=2)
+        preview_file = \
+            self.generate_fixture_preview_file(revision=2, name="second")
+        preview_file_id = str(preview_file.id)
+        self.generate_fixture_preview_file(revision=2, name="third")
+
+        tasks_service.update_preview_file_position(preview_file_id, 1)
+        preview_files = (
+            PreviewFile
+            .query
+            .filter_by(task_id=self.task_id, revision=2)
+            .order_by(PreviewFile.position)
+        )
+        for (i, preview_file) in enumerate(preview_files):
+            self.assertEqual(preview_file.position, i + 1)
+        self.assertEqual(str(preview_files[0].id), preview_file_id)
+
+        tasks_service.update_preview_file_position(preview_file_id, 3)
+        preview_files = (
+            PreviewFile
+            .query
+            .filter_by(task_id=self.task_id, revision=2)
+            .order_by(PreviewFile.position)
+        )
+        for (i, preview_file) in enumerate(preview_files):
+            self.assertEqual(preview_file.position, i + 1)
+        self.assertEqual(str(preview_files[2].id), preview_file_id)

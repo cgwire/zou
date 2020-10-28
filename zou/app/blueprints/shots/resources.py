@@ -191,6 +191,24 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
         )
 
 
+class EpisodeShotsResource(Resource, ArgsMixin):
+
+    @jwt_required
+    def get(self, episode_id):
+        """
+        Retrieve all shots related to a given episode.
+        """
+        episode = shots_service.get_episode(episode_id)
+        user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
+        relations = self.get_relations()
+        return shots_service.get_shots_for_episode(
+            episode_id,
+            relations=relations
+        )
+
+
+
 class ShotPreviewsResource(Resource):
     @jwt_required
     def get(self, shot_id):
