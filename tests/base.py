@@ -981,6 +981,14 @@ class ApiDBTestCase(ApiTestCase):
         self.generate_fixture_shot()
         self.generate_fixture_scene()
 
+    def assign_task(self, task_id, user_id):
+        return tasks_service.assign_task(task_id, user_id)
+
+    def assign_task_to_artist(self, task_id):
+        if self.user_cg_artist is None:
+            self.generate_fixture_user_cg_artist()
+        self.assign_task(task_id, self.user_cg_artist["id"])
+
     def now(self):
         return datetime.datetime.now().replace(microsecond=0).isoformat()
 
