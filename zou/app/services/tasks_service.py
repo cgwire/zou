@@ -424,13 +424,14 @@ def update_preview_file_position(preview_file_id, position):
     revision = preview_file.revision
     preview_files = (
         PreviewFile.query.filter_by(task_id=task_id, revision=revision)
+        .order_by(PreviewFile.position, PreviewFile.created_at)
         .all()
     )
     if position > 0 and position <= len(preview_files):
         tmp_list = [p for p in preview_files if str(p.id) != preview_file_id]
         tmp_list.insert(position - 1, preview_file)
-        for (i, preview_file) in enumerate(tmp_list):
-            preview_file.update({"position": i + 1})
+        for (i, preview) in enumerate(tmp_list):
+            preview.update({"position": i + 1})
     return PreviewFile.serialize_list(preview_files)
 
 
@@ -1205,7 +1206,7 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     else:
         position = get_next_position(task_id, revision)
     preview_file = files_service.create_preview_file_raw(
-        str(uuid.uuid4())[:13], revision, position, task_id, person_id
+        str(uuid.uuid4())[:13], revision, task_id, person_id, position=position
     )
     events.emit(
         "preview-file:new",

@@ -704,7 +704,8 @@ def get_preview_files_for_task(task_id):
 
 
 def create_preview_file_raw(
-    name, revision, task_id, person_id, source="webgui", extension="mp4"
+    name, revision, task_id, person_id, source="webgui", extension="mp4",
+    position=1
 ):
     return PreviewFile.create(
         name=name,
@@ -713,14 +714,16 @@ def create_preview_file_raw(
         task_id=task_id,
         person_id=person_id,
         extension=extension,
+        position=position,
     )
 
 
 def create_preview_file(
-    name, revision, task_id, person_id, source="webgui", extension="mp4"
+    name, revision, task_id, person_id, source="webgui", extension="mp4",
+    position=1
 ):
     return create_preview_file_raw(
-        name, revision, task_id, person_id, source, extension
+        name, revision, task_id, person_id, source, extension, position
     ).serialize()
 
 
