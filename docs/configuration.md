@@ -53,6 +53,31 @@ future, we expect to propose email notifications too.
   for instance).
 
 
+## S3 Storage
+
+If you want to store you previews in a S3 backend, add the following
+variables (we assume that you created a programmatic user that can access
+to S3).
+
+* `FS_BACKEND`: Set this variable with "s3"
+* `FS_BUCKET_PREFIX`: A prefix for your bucket names, it's mandatory to 
+   set it to properly use S3.
+* `FS_S3_REGION`: Example: *eu-west-3*
+* `FS_S3_ENDPOINT`: The url of your region. 
+   Example: *https://s3.eu-west-3.amazonaws.com*
+* `FS_S3_ACCESS_KEY`: Your user access key.
+* `FS_S3_SECRET_KEY`: Your user secret key.
+
+Then install the following package in your virtual environment:
+
+```
+cd /opt/zou
+. zouenv/bin/activate
+pip install boto3
+```
+
+When you restart Zou, it should use S3 to store and retrieve files.
+
 ## Swift Storage
 
 If you want to store you previews in a Swift backend, add the following
