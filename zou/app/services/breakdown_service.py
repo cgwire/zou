@@ -520,4 +520,7 @@ def get_entity_link(entity_in_id, entity_out_id):
     link = EntityLink.get_by(
         entity_in_id=entity_in_id, entity_out_id=entity_out_id
     )
-    return link.serialize()
+    if link:
+        return link.serialize()
+    else:
+        return None
