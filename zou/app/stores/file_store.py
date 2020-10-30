@@ -4,6 +4,7 @@ import flask_fs as fs
 
 from flask_fs.backends.local import LocalBackend
 from flask_fs.backends.swift import SwiftBackend
+from flask_fs.backends.s3 import S3Backend
 
 from zou.app import app
 
@@ -48,6 +49,31 @@ def init_swift(self, name, config):
     self.conn.put_container(self.name)
 
 
+def init_s3(self, name, config):
+    import boto3
+
+    super(S3Backend, self).__init__(name, config)
+    self.session = boto3.session.Session()
+    self.s3config = boto3.session.Config(signature_version='s3v4')
+
+    self.s3 = self.session.resource('s3',
+                                    config=self.s3config,
+                                    endpoint_url=config.endpoint,
+                                    region_name=config.region,
+                                    aws_access_key_id=config.access_key,
+                                    aws_secret_access_key=config.secret_key)
+    self.bucket = self.s3.Bucket(name)
+
+    try:
+        self.bucket.create(
+            CreateBucketConfiguration={
+                'LocationConstraint': config.region
+            }
+        )
+    except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
+        pass
+
+
 def clear_bucket(bucket):
     for filename in bucket.list_files():
         os.remove(os.path.join(bucket.root, filename))
@@ -56,6 +82,7 @@ def clear_bucket(bucket):
 LocalBackend.read = read
 LocalBackend.path = path
 SwiftBackend.__init__ = init_swift
+S3Backend.__init__ = init_s3
 
 
 def make_key(prefix, id):
