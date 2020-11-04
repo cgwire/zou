@@ -23,6 +23,7 @@ from .resources import (
     ProjectSequencesResource,
     ProjectEpisodesResource,
     ProjectEpisodeStatsResource,
+    ProjectEpisodeRetakeStatsResource,
     EpisodeResource,
     EpisodesResource,
     EpisodeShotsResource,
@@ -79,6 +80,10 @@ routes = [
     ("/data/projects/<project_id>/sequences", ProjectSequencesResource),
     ("/data/projects/<project_id>/episodes", ProjectEpisodesResource),
     ("/data/projects/<project_id>/episodes/stats", ProjectEpisodeStatsResource),
+    (
+        "/data/projects/<project_id>/episodes/retake-stats",
+        ProjectEpisodeRetakeStatsResource
+    ),
 ]
 
 
