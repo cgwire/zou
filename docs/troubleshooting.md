@@ -1,4 +1,4 @@
-# Troubleshooting
+# Troubleshooting
 
 To solve issues related to your installation, you can do several actions to
 get information about what is going wrong.
@@ -7,7 +7,6 @@ get information about what is going wrong.
 
 Main error logs are stored in the `/opt/zou/gunicorn_error.log` file. Errors 
 can be explicit. They can tell what is going wrong.
-
 
 ## Status route
 
@@ -32,6 +31,17 @@ Zou cannot connect to it. Zou cannot run properly in that case.
 
 NB: Database refers to Posgres, Key Value Store refers to Redis and Event
 Stream refers to `zou-events`.
+
+# Changing password
+
+If, for any reasons, the user cannot access to his rest password email, you can
+put his password back to "default" with the following command:
+
+```bash
+cd /opt/zou
+. zou/bin/activate
+zou set_default_password email@studio.com
+```
 
 ## Installing on Ubuntu server or minimal desktop
 
