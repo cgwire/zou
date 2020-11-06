@@ -139,7 +139,7 @@ class TaskCommentResource(Resource):
         if permissions.has_manager_permissions():
             user_service.check_project_access(task["project_id"])
         else:
-            user_service.check_working_on_entity(task["entity_id"])
+            user_service.check_person_access(comment["author_id"])
         self.pre_delete(comment)
         deletion_service.remove_comment(comment_id)
         tasks_service.reset_task_data(comment["object_id"])
