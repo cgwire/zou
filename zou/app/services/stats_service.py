@@ -332,5 +332,5 @@ def _add_stats(
                     }
                 results[key1][key2]["evolution"][take_number]["count"] += 1
                 results[key1][key2]["evolution"][take_number]["frames"] += \
-                    nb_frames
+                    nb_frames or 0
     return results
