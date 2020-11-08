@@ -18,9 +18,9 @@ class EpisodeTestCase(ApiDBTestCase):
         self.generate_fixture_sequence("SE01")
         self.serialized_sequence = self.sequence.serialize(obj_type="Sequence")
 
-        self.generate_fixture_shot("SE01")
-        self.generate_fixture_shot("SE02")
-        self.generate_fixture_shot("SE03")
+        self.generate_fixture_shot("SH01")
+        self.generate_fixture_shot("SH02")
+        self.generate_fixture_shot("SH03")
 
         self.generate_fixture_sequence("SE02")
         self.generate_fixture_sequence("SE03")
@@ -131,3 +131,6 @@ class EpisodeTestCase(ApiDBTestCase):
         self.delete("data/episodes/%s" % self.episode_id, 400)
         self.delete("data/episodes/%s?force=true" % self.episode_id)
         self.get("data/episodes/%s" % self.episode_id, 404)
+
+    def test_episode_stats(self):
+        pass

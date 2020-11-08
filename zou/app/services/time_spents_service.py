@@ -100,11 +100,11 @@ def get_table_from_time_spents(time_spents, detail_level="month"):
     """
     result = {}
     for time_spent in time_spents:
-        if detail_level is "week":
+        if detail_level == "week":
             unit = str(time_spent.date.isocalendar()[1])
-        elif detail_level is "day":
+        elif detail_level == "day":
             unit = str(time_spent.date.day)
-        elif detail_level is "year":
+        elif detail_level == "year":
             unit = str(time_spent.date.year)
         else:
             unit = str(time_spent.date.month)

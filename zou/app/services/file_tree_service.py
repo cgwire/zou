@@ -653,9 +653,9 @@ def get_folder_from_revision(revision):
 
 
 def join_path(left, right, sep=os.sep):
-    if left is "":
+    if left == "":
         return right
-    elif right is "":
+    elif right == "":
         return left
     else:
         return "%s%s%s" % (left, sep, right)

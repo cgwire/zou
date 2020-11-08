@@ -11,6 +11,7 @@ from zou.app.services import (
     playlists_service,
     scenes_service,
     shots_service,
+    stats_service,
     tasks_service,
     user_service,
 )
@@ -412,7 +413,22 @@ class ProjectEpisodeStatsResource(Resource):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        return shots_service.get_episode_stats_for_project(
+        return stats_service.get_episode_stats_for_project(
+            project_id,
+            only_assigned=permissions.has_vendor_permissions()
+        )
+
+
+class ProjectEpisodeRetakeStatsResource(Resource):
+    @jwt_required
+    def get(self, project_id):
+        """
+        Retrieve number of tasks by status, task_types and episodes
+        for given project.
+        """
+        projects_service.get_project(project_id)
+        user_service.check_project_access(project_id)
+        return stats_service.get_episode_retake_stats_for_project(
             project_id,
             only_assigned=permissions.has_vendor_permissions()
         )
