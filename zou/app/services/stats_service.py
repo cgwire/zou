@@ -284,8 +284,6 @@ def _get_retake_stats_query(project_id, only_assigned):
 def _init_entries(results, episode_id, task_type_id):
     if episode_id not in results:
         results[episode_id] = {"all": copy.deepcopy(DEFAULT_RETAKE_STATS)}
-    if episode_id not in results["all"]:
-        results["all"][episode_id] = copy.deepcopy(DEFAULT_RETAKE_STATS)
     if task_type_id not in results["all"]:
         results["all"][task_type_id] = copy.deepcopy(DEFAULT_RETAKE_STATS)
     if task_type_id not in results[episode_id]:
