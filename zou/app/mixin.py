@@ -1,6 +1,9 @@
 from flask_restful import reqparse
 from flask import request
 
+from zou.app.utils import fields
+from zou.app.services.exception import WrongParameterException
+
 
 class ArgsMixin(object):
     """
@@ -59,3 +62,19 @@ class ArgsMixin(object):
         """
         options = request.args
         return options.get("episode_id", None)
+
+    def parse_date_parameter(self, param):
+        date = None
+        if param is None:
+            return date
+        try:
+            date = fields.get_date_object(param, "%Y-%m-%dT%H:%M:%S")
+        except Exception:
+            try:
+                date = fields.get_date_object(param, "%Y-%m-%d")
+            except Exception:
+                raise WrongParameterException(
+                    "Wrong date format for before argument."
+                    "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
+                )
+        return date
