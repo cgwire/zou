@@ -1,3 +1,5 @@
+import math
+
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.news import News
@@ -15,6 +17,7 @@ def create_news(
     task_id=None,
     preview_file_id=None,
     change=False,
+    created_at=None
 ):
     """
     Create a new news for given person and comment.
@@ -25,11 +28,14 @@ def create_news(
         comment_id=comment_id,
         preview_file_id=preview_file_id,
         task_id=task_id,
+        created_at=created_at
     )
     return news.serialize()
 
 
-def create_news_for_task_and_comment(task, comment, change=False):
+def create_news_for_task_and_comment(
+    task, comment, change=False, created_at=None
+):
     """
     For given task and comment, create a news matching comment and change
     that occured on the task.
@@ -41,6 +47,7 @@ def create_news_for_task_and_comment(task, comment, change=False):
         author_id=comment["person_id"],
         task_id=comment["object_id"],
         change=change,
+        created_at=created_at
     )
     events.emit(
         "news:new",
@@ -82,6 +89,8 @@ def get_last_news_for_project(
     author_id=None,
     page=1,
     page_size=50,
+    before=None,
+    after=None
 ):
     """
     Return last 50 news for given project. Add related information to make it
@@ -90,7 +99,8 @@ def get_last_news_for_project(
     offset = (page - 1) * page_size
 
     query = (
-        News.query.order_by(News.created_at.desc())
+        News.query
+        .order_by(News.created_at.desc())
         .join(Task, News.task_id == Task.id)
         .join(Project)
         .join(Entity, Task.entity_id == Entity.id)
@@ -123,6 +133,15 @@ def get_last_news_for_project(
 
     if only_preview:
         query = query.filter(News.preview_file_id != None)
+
+    if after is not None:
+        query = query.filter(News.created_at > after)
+
+    if before is not None:
+        query = query.filter(News.created_at < before)
+
+    total = query.count()
+    nb_pages = int(math.ceil(total / float(page_size)))
 
     query = query.limit(page_size)
     query = query.offset(offset)
@@ -167,7 +186,14 @@ def get_last_news_for_project(
                 }
             )
         )
-    return result
+    return {
+        "data": result,
+        "total": total,
+        "nb_pages": nb_pages,
+        "limit": page_size,
+        "offset": offset,
+        "page": page,
+    }
 
 
 @cache.memoize_function(120)

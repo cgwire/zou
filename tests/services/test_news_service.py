@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from tests.base import ApiDBTestCase
 
 from zou.app.models.news import News
@@ -105,3 +106,33 @@ class NewsServiceTestCase(ApiDBTestCase):
             news_id=news["id"]
         )
         self.assertEqual(len(news_list), 1)
+
+    def test_get_last_news_for_project_with_dates(self):
+        self.generate_fixture_comment()
+        for i in range(1, 7):
+            comment = comments_service.new_comment(
+                self.task.id,
+                self.task_status.id,
+                self.user["id"],
+                "comment %s" % i
+            )
+            news_service.create_news_for_task_and_comment(
+                self.task_dict,
+                comment,
+                created_at=datetime.now() - timedelta(days=i)
+            )
+        news_list = news_service.get_last_news_for_project(
+            self.task_dict["project_id"]
+        )
+        self.assertEqual(len(news_list), 6)
+        date = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
+        news_list = news_service.get_last_news_for_project(
+            self.task_dict["project_id"],
+            after=date
+        )
+        self.assertEqual(len(news_list), 2)
+        news_list = news_service.get_last_news_for_project(
+            self.task_dict["project_id"],
+            before=date
+        )
+        self.assertEqual(len(news_list), 4)
