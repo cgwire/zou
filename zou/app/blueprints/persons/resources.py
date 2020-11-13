@@ -38,9 +38,7 @@ class NewPersonResource(Resource):
         parser.add_argument(
             "first_name", help="The first name is required.", required=True
         )
-        parser.add_argument(
-            "last_name", help="The last name is required.", required=True
-        )
+        parser.add_argument("last_name", default="")
         parser.add_argument("phone", default="")
         parser.add_argument("role", default="user")
         parser.add_argument("desktop_login", default="")
