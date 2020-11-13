@@ -783,7 +783,7 @@ class ApiDBTestCase(ApiTestCase):
         if task_id is None:
             task_id = self.task_id
         if task_status_id is None:
-            task_status_id = self.task_status_id
+            task_status_id = self.task_status.id
         self.comment = comments_service.new_comment(
             task_id,
             task_status_id,
