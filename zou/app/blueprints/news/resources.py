@@ -23,7 +23,7 @@ class ProjectNewsResource(Resource, ArgsMixin):
         user_service.block_access_to_vendor()
         after = self.parse_date_parameter(after)
         before = self.parse_date_parameter(before)
-        return news_service.get_last_news_for_project(
+        result = news_service.get_last_news_for_project(
             project_id,
             only_preview=only_preview,
             task_type_id=task_type_id,
@@ -34,6 +34,16 @@ class ProjectNewsResource(Resource, ArgsMixin):
             after=after,
             before=before,
         )
+        stats = news_service.get_news_stats_for_project(
+            project_id,
+            task_type_id=task_type_id,
+            task_status_id=task_status_id,
+            author_id=person_id,
+            after=after,
+            before=before,
+        )
+        result["stats"] = stats
+        return result
 
     def get_arguments(self):
         parser = reqparse.RequestParser()

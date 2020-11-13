@@ -1,5 +1,7 @@
 import math
 
+from sqlalchemy import func
+
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.news import News
@@ -81,7 +83,6 @@ def delete_news_for_comment(comment_id):
 
 def get_last_news_for_project(
     project_id,
-    filters={},
     news_id=None,
     only_preview=False,
     task_type_id=None,
@@ -107,16 +108,6 @@ def get_last_news_for_project(
         .outerjoin(Comment, News.comment_id == Comment.id)
         .outerjoin(PreviewFile, News.preview_file_id == PreviewFile.id)
         .filter(Task.project_id == project_id)
-        .add_columns(
-            Project.id,
-            Project.name,
-            Task.task_type_id,
-            Comment.id,
-            Comment.task_status_id,
-            Task.entity_id,
-            PreviewFile.extension,
-            Entity.preview_file_id,
-        )
     )
 
     if news_id is not None:
@@ -124,6 +115,7 @@ def get_last_news_for_project(
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id)
+        query = query.filter(News.change == True)
 
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
@@ -140,8 +132,19 @@ def get_last_news_for_project(
     if before is not None:
         query = query.filter(News.created_at < before)
 
-    total = query.count()
-    nb_pages = int(math.ceil(total / float(page_size)))
+    (total, nb_pages) = _get_news_total(query, page_size)
+
+    query = query \
+        .add_columns(
+            Project.id,
+            Project.name,
+            Task.task_type_id,
+            Comment.id,
+            Comment.task_status_id,
+            Task.entity_id,
+            PreviewFile.extension,
+            Entity.preview_file_id,
+        )
 
     query = query.limit(page_size)
     query = query.offset(offset)
@@ -192,8 +195,69 @@ def get_last_news_for_project(
         "nb_pages": nb_pages,
         "limit": page_size,
         "offset": offset,
-        "page": page,
+        "page": page
     }
+
+
+def _get_news_total(query, page_size):
+    total = query.count()
+    nb_pages = int(math.ceil(total / float(page_size)))
+    return total, nb_pages
+
+
+def get_news_stats_for_project(
+    project_id,
+    only_preview=False,
+    task_type_id=None,
+    task_status_id=None,
+    author_id=None,
+    before=None,
+    after=None
+):
+    """
+    Return the number of news by task status for given project and filters.
+    { "task-status-1": 24, "task-status-2": 58 }
+    """
+    query = (
+        News.query
+        .join(Task, News.task_id == Task.id)
+        .join(Project)
+        .join(Comment)
+        .join(Entity, Task.entity_id == Entity.id)
+        .outerjoin(PreviewFile, News.preview_file_id == PreviewFile.id)
+        .with_entities(
+            Comment.task_status_id,
+            func.count(Entity.id)
+        )
+        .group_by(
+            Comment.task_status_id,
+        )
+        .filter(Task.project_id == project_id)
+        .filter(News.change == True)
+    )
+
+    if task_status_id is not None:
+        query = query.filter(Comment.task_status_id == task_status_id)
+
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+
+    if author_id is not None:
+        query = query.filter(News.author_id == author_id)
+
+    if only_preview:
+        query = query.filter(News.preview_file_id != None)
+
+    if after is not None:
+        query = query.filter(News.created_at > after)
+
+    if before is not None:
+        query = query.filter(News.created_at < before)
+    stats = {}
+    for (task_status_id, count) in query.all():
+        if task_status_id is not None:
+            stats[str(task_status_id)] = count
+    return stats
 
 
 @cache.memoize_function(120)
