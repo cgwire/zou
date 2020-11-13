@@ -19,37 +19,8 @@ class EventsResource(Resource, ArgsMixin):
             ("project_id", None, False),
         ])
         permissions.check_manager_permissions()
-        before = None
-        after = None
-
-        if args["before"] is not None:
-            try:
-                before = fields.get_date_object(
-                    args["before"], "%Y-%m-%dT%H:%M:%S"
-                )
-            except Exception:
-                try:
-                    before = fields.get_date_object(args["before"], "%Y-%m-%d")
-                except Exception:
-                    raise WrongParameterException(
-                        "Wrong date format for before argument."
-                        "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
-                    )
-
-        if args["after"] is not None:
-            try:
-                after = fields.get_date_object(
-                    args["after"], "%Y-%m-%dT%H:%M:%S"
-                )
-            except Exception:
-                try:
-                    after = fields.get_date_object(args["after"], "%Y-%m-%d")
-                except Exception:
-                    raise WrongParameterException(
-                        "Wrong date format for after argument."
-                        "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
-                    )
-
+        before = self.parse_date_parameter(args["before"])
+        after = self.parse_date_parameter(args["after"])
         page_size = args["page_size"]
         only_files = args["only_files"] == "true"
         project_id = args.get("project_id", None)
