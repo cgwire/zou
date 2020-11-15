@@ -1,13 +1,15 @@
 from zou.app.blueprints.export.csv.base import BaseCsvExport
+from sqlalchemy.orm import aliased
 
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.task import Task
 from zou.app.models.person import Person
 from zou.app.models.project import Project
-from zou.app.models.department import Department
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+
+from zou.app.services import projects_service
 
 
 class TasksCsvExport(BaseCsvExport):
@@ -19,8 +21,9 @@ class TasksCsvExport(BaseCsvExport):
     def build_headers(self):
         return [
             "Project",
-            "Department",
             "Task Type",
+            "Episode",
+            "Sequence",
             "Entity Type",
             "Entity",
             "Assigner",
@@ -34,28 +37,39 @@ class TasksCsvExport(BaseCsvExport):
         ]
 
     def build_query(self):
+        Sequence = aliased(Entity, name="sequence")
+        Episode = aliased(Entity, name="episode")
+        open_status = projects_service.get_open_status()
+
         query = self.model.query.order_by(
             Project.name, TaskType.name, Task.name
         )
         query = query.join(Project)
         query = query.join(TaskType)
-        query = query.join(Department)
         query = query.join(TaskStatus)
         query = query.join(Entity, Task.entity_id == Entity.id)
         query = query.join(EntityType)
-        query = query.join(Person)
-        query = query.add_columns(Project.name)
-        query = query.add_columns(Department.name)
-        query = query.add_columns(TaskType.name)
-        query = query.add_columns(TaskStatus.name)
-        query = query.add_columns(EntityType.name)
-        query = query.add_columns(Entity.name)
-        query = query.add_columns(Person.first_name)
-        query = query.add_columns(Person.last_name)
+        query = query \
+            .outerjoin(Person, Task.assigner_id == Person.id) \
+            .outerjoin(Sequence, Sequence.id == Entity.parent_id) \
+            .outerjoin(Episode, Episode.id == Sequence.parent_id)
+        query = query.add_columns(
+            Project.name,
+            TaskType.name,
+            TaskStatus.name,
+            Episode.name,
+            Sequence.name,
+            EntityType.name,
+            Entity.name,
+            Person.first_name,
+            Person.last_name,
+        )
+        query = query.filter(Project.project_status_id == open_status["id"])
         query = query.order_by(
             Project.name,
-            Department.name,
             TaskType.name,
+            Episode.name,
+            Sequence.name,
             EntityType.name,
             Entity.name,
         )
@@ -66,14 +80,24 @@ class TasksCsvExport(BaseCsvExport):
         (
             task,
             project_name,
-            department_name,
             task_type_name,
             task_status_name,
+            episode_name,
+            sequence_name,
             entity_type_name,
             entity_name,
             assigner_first_name,
             assigner_last_name,
         ) = task_data
+
+        assigner_name = ""
+        if assigner_first_name is not None and assigner_last_name is not None:
+            assigner_name = assigner_first_name + " " + assigner_last_name
+        elif assigner_first_name is not None:
+            assigner_name = assigner_first_name
+        elif assigner_last_name is not None:
+            assigner_name = assigner_last_name
+
         persons = task.assignees_as_string()
 
         start_date = ""
@@ -90,11 +114,12 @@ class TasksCsvExport(BaseCsvExport):
 
         return [
             project_name,
-            department_name,
             task_type_name,
+            episode_name,
+            sequence_name,
             entity_type_name,
             entity_name,
-            assigner_first_name + " " + assigner_last_name,
+            assigner_name,
             persons,
             task.duration,
             task.estimation,
