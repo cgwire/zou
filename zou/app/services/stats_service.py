@@ -297,7 +297,6 @@ def _init_entries(results, episode_id, task_type_id):
     return results
 
 
-
 def _add_stats(
     results,
     episode_id,
@@ -333,28 +332,24 @@ def _add_stats(
     for (key1, key2) in [(episode_id, "all"), (episode_id, task_type_id)]:
         # In this loop we compute the "evolution" statistics
         # They represent the dynamics of the production
+        max_retake_count = results[key1][key2]["max_retake_count"]
         evolution_data = results[key1][key2]["evolution"]
 
         # Note that tasks can have both `is_done` and `is_retake` values:
         # We simply count them twice in two different takes
         # (at take `retake_count` and take `retake_count+1`).
 
-        for i in range(retake_count):
-            # We count every retake there was for each take
+        for i in range(max_retake_count):
+
             take_number = str(i + 1)
             if take_number not in evolution_data:
                 evolution_data[take_number] = copy.deepcopy(DEFAULT_EVOLUTION_STATS)
 
-            evolution_data[take_number]["retake"]["count"] += 1
-            evolution_data[take_number]["retake"]["frames"] += nb_frames or 0
-
-        if is_done:
-            # We count every validation there was for each take
-            take_number = retake_count + 1
-            if take_number not in evolution_data:
-                evolution_data[take_number] = copy.deepcopy(DEFAULT_EVOLUTION_STATS)
-
-            evolution_data[take_number]["done"]["count"] += 1
-            evolution_data[take_number]["done"]["frames"] += nb_frames or 0
+            if i <= retake_count:
+                evolution_data[take_number]["retake"]["count"] += 1
+                evolution_data[take_number]["retake"]["frames"] += nb_frames or 0
+            elif is_done:
+                evolution_data[take_number]["done"]["count"] += 1
+                evolution_data[take_number]["done"]["frames"] += nb_frames or 0
 
     return results
