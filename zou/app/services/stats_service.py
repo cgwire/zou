@@ -34,8 +34,9 @@ DEFAULT_RETAKE_STATS = {
 
 
 DEFAULT_EVOLUTION_STATS = {
-    "retake": {"count": 0, "frames": 0},
     "done": {"count": 0, "frames": 0},
+    "retake": {"count": 0, "frames": 0},
+    "other": {"count": 0, "frames": 0},
 }
 
 
@@ -204,20 +205,23 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             "max_retake_count": 4,
             "evolution": {
                 "1": {
-                    "count": 80,
-                    "frames": 7900
+                    "retake": {
+                        "count": 80,
+                        "frames": 7900
+                    },
+                    "done": {
+                        "count": 117,
+                        "frames": 3900
+                    }
                 },
                 "2": {
-                    "count": 29,
-                    "frames": 3086
+                    ...
                 },
                 "3": {
-                    "count": 9,
-                    "frames": 1396
+                    ...
                 },
                 "4": {
-                    "count": 1,
-                    "frames": 213
+                    ...
                 }
             },
             "done": {
@@ -239,6 +243,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
         "all": {"all":  copy.deepcopy(DEFAULT_RETAKE_STATS)}
     }
     query = _get_retake_stats_query(project_id, only_assigned)
+    query_results = query.all()
     for (
         episode_id,
         nb_frames,
@@ -246,15 +251,35 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
         retake_count,
         is_done,
         is_retake,
-    ) in query.all():
+    ) in query_results:
         episode_id = str(episode_id)
         task_type_id = str(task_type_id)
 
         _init_entries(results, episode_id, task_type_id)
         results = _add_stats(
             results,
-            episode_id,
-            task_type_id,
+            str(episode_id),
+            str(task_type_id),
+            is_retake,
+            is_done,
+            retake_count,
+            nb_frames
+        )
+
+    # Another loop is needed because we need to know the max retake count
+    # for each entries prior to build evolution stats.
+    for (
+        episode_id,
+        nb_frames,
+        task_type_id,
+        retake_count,
+        is_done,
+        is_retake,
+    ) in query_results:
+        results = _add_evolution_stats(
+            results,
+            str(episode_id),
+            str(task_type_id),
             is_retake,
             is_done,
             retake_count,
@@ -328,28 +353,41 @@ def _add_stats(
         else:
             results[key1][key2]["other"]["count"] += 1
             results[key1][key2]["other"]["frames"] += nb_frames or 0
+    return results
 
+
+def _add_evolution_stats(
+    results,
+    episode_id,
+    task_type_id,
+    is_retake,
+    is_done,
+    retake_count,
+    nb_frames
+):
     for (key1, key2) in [(episode_id, "all"), (episode_id, task_type_id)]:
         # In this loop we compute the "evolution" statistics
         # They represent the dynamics of the production
         max_retake_count = results[key1][key2]["max_retake_count"]
         evolution_data = results[key1][key2]["evolution"]
-
         # Note that tasks can have both `is_done` and `is_retake` values:
         # We simply count them twice in two different takes
         # (at take `retake_count` and take `retake_count+1`).
-
-        for i in range(max_retake_count):
-
-            take_number = str(i + 1)
+        for i in range(1, max_retake_count + 1):
+            take_number = str(i)
             if take_number not in evolution_data:
-                evolution_data[take_number] = copy.deepcopy(DEFAULT_EVOLUTION_STATS)
-
-            if i <= retake_count:
+                evolution_data[take_number] = \
+                    copy.deepcopy(DEFAULT_EVOLUTION_STATS)
+            if retake_count > 0 and i <= retake_count:
                 evolution_data[take_number]["retake"]["count"] += 1
-                evolution_data[take_number]["retake"]["frames"] += nb_frames or 0
+                evolution_data[take_number]["retake"]["frames"] += \
+                    nb_frames or 0
             elif is_done:
                 evolution_data[take_number]["done"]["count"] += 1
-                evolution_data[take_number]["done"]["frames"] += nb_frames or 0
-
+                evolution_data[take_number]["done"]["frames"] += \
+                    nb_frames or 0
+            else:
+                evolution_data[take_number]["other"]["count"] += 1
+                evolution_data[take_number]["other"]["frames"] += \
+                    nb_frames or 0
     return results

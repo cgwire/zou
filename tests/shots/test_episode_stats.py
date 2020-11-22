@@ -82,9 +82,17 @@ class EpisodeStatsTestCase(ApiDBTestCase):
         self.assertEqual(
             retake_stats["all"][animation_id]["done"]["frames"], 360)
         self.assertEqual(
-            retake_stats[ep1_id]["all"]["evolution"]["1"]["count"], 12)
+            retake_stats[ep1_id]["all"]["evolution"]["1"]["retake"]["count"],
+            12
+        )
         self.assertEqual(
-            retake_stats[ep1_id][animation_id]["evolution"]["1"]["count"], 4)
+            retake_stats[ep1_id][animation_id]["evolution"]["1"]["retake"]["count"],
+            4
+        )
+        self.assertEqual(
+            retake_stats[ep1_id][animation_id]["evolution"]["1"]["done"]["count"],
+            8
+        )
         self.assertEqual(
             retake_stats[ep1_id][layout_id]["retake"]["frames"], 80)
         self.assertEqual(
