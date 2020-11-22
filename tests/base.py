@@ -781,7 +781,7 @@ class ApiDBTestCase(ApiTestCase):
         if person is None:
             person = self.person.serialize()
         if task_id is None:
-            task_id = self.task_id
+            task_id = self.task.id
         if task_status_id is None:
             task_status_id = self.task_status.id
         self.comment = comments_service.new_comment(
