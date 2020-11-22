@@ -203,7 +203,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(notifications), 1)
 
         news_list = news_service.get_last_news_for_project(self.project_id)
-        self.assertEqual(len(news_list), 2)
+        self.assertEqual(len(news_list["data"]), 2)
 
     def test_edit_comment(self):
         self.generate_fixture_user_manager()

@@ -12,7 +12,7 @@ class TasksCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
 
-    def test_get_output_files(self):
+    def test_export(self):
         csv_task_types = self.get_raw("export/csv/task-types.csv")
         expected_result = """Department;Name\r
 Animation;Animation\r

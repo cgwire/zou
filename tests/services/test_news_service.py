@@ -59,9 +59,15 @@ class NewsServiceTestCase(ApiDBTestCase):
         )
         news_list = News.get_all()
         self.assertEqual(len(news_list), 1)
-        self.assertEqual(str(news_list[0].author_id), self.user["id"])
-        self.assertEqual(str(news_list[0].task_id), self.task_dict["id"])
-        self.assertEqual(str(news_list[0].comment_id), self.comment["id"])
+        self.assertEqual(
+            str(news_list[0].author_id), self.user["id"]
+        )
+        self.assertEqual(
+            str(news_list[0].task_id), self.task_dict["id"]
+        )
+        self.assertEqual(
+            str(news_list[0].comment_id), self.comment["id"]
+        )
 
     def test_delete_news_for_comment(self):
         self.generate_fixture_comment()
@@ -89,8 +95,8 @@ class NewsServiceTestCase(ApiDBTestCase):
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"]
         )
-        self.assertEqual(len(news_list), 50)
-        news = news_list[0]
+        self.assertEqual(len(news_list["data"]), 50)
+        news = news_list["data"][0]
         self.assertEqual(news["project_name"], "Cosmos Landromat")
         self.assertEqual(news["full_entity_name"], "E01 / S01 / P01")
         self.assertEqual(news["project_id"], self.task_dict["project_id"])
@@ -99,13 +105,13 @@ class NewsServiceTestCase(ApiDBTestCase):
             self.task_dict["project_id"],
             page=2
         )
-        self.assertEqual(len(news_list), 30)
+        self.assertEqual(len(news_list["data"]), 30)
 
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"],
             news_id=news["id"]
         )
-        self.assertEqual(len(news_list), 1)
+        self.assertEqual(len(news_list["data"]), 1)
 
     def test_get_last_news_for_project_with_dates(self):
         self.generate_fixture_comment()
@@ -124,15 +130,15 @@ class NewsServiceTestCase(ApiDBTestCase):
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"]
         )
-        self.assertEqual(len(news_list), 6)
+        self.assertEqual(len(news_list["data"]), 6)
         date = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"],
             after=date
         )
-        self.assertEqual(len(news_list), 2)
+        self.assertEqual(len(news_list["data"]), 2)
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"],
             before=date
         )
-        self.assertEqual(len(news_list), 4)
+        self.assertEqual(len(news_list["data"]), 4)

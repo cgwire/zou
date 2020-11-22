@@ -8,7 +8,7 @@ class PersonsCsvExportTestCase(ApiDBTestCase):
 
         self.generate_fixture_person()
 
-    def test_get_asset_csv(self):
+    def test_export(self):
         csv_persons = self.get_raw("/export/csv/persons.csv")
         expected_result = """Last Name;First Name;Email;Phone;Role;Active\r
 Did;John;john.did@gmail.com;;admin;yes\r

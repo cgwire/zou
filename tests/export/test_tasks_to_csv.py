@@ -19,9 +19,9 @@ class TasksCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_assigner()
         self.generate_fixture_task()
 
-    def test_get_output_files(self):
+    def test_export(self):
         csv_tasks = self.get_raw("/export/csv/tasks.csv")
-        expected_result = """Project;Department;Task Type;Entity Type;Entity;Assigner;Assignees;Duration;Estimation;Start date;Real start date;Due date;Task Status\r
-Cosmos Landromat;Modeling;Shaders;Props;Tree;Ema Peel;John Doe;50;40;2017-02-20;2017-02-22;2017-02-28;Open\r
+        expected_result = """Project;Task Type;Episode;Sequence;Entity Type;Entity;Assigner;Assignees;Duration;Estimation;Start date;Real start date;Due date;Task Status\r
+Cosmos Landromat;Shaders;;;Props;Tree;Ema Peel;John Doe;50;40;2017-02-20;2017-02-22;2017-02-28;Open\r
 """
         self.assertEqual(csv_tasks, expected_result)

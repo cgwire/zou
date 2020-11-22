@@ -9,7 +9,7 @@ class OutputFileTestCase(ApiDBTestCase):
         self.generate_fixture_project_status()
         self.generate_fixture_project()
 
-    def test_get_output_files(self):
+    def test_export(self):
         csv_projects = self.get_raw("/export/csv/projects.csv")
         expected_result = """Name;Status\r
 Cosmos Landromat;Open\r\n"""
