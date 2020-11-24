@@ -73,7 +73,8 @@ class CommentResource(BaseModelResource):
             events.emit("task:status-changed", {
                 "task_id": task_id,
                 "new_task_status_id": comment["task_status_id"],
-                "previous_task_status_id": self.previous_task_status_id
+                "previous_task_status_id": self.previous_task_status_id,
+                "person_id": comment["person_id"]
             }, project_id=task["project_id"])
 
         tasks_service.clear_comment_cache(comment["id"])
@@ -114,7 +115,8 @@ class CommentResource(BaseModelResource):
             events.emit("task:status-changed", {
                 "task_id": task["id"],
                 "new_task_status_id": self.new_task_status_id,
-                "previous_task_status_id": self.previous_task_status_id
+                "previous_task_status_id": self.previous_task_status_id,
+                "person_id": comment["person_id"]
             }, project_id=task["project_id"])
         return comment
 
