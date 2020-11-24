@@ -81,6 +81,10 @@ class CommentNotFoundException(NotFound):
     pass
 
 
+class NewsNotFoundException(NotFound):
+    pass
+
+
 class EntityNotFoundException(NotFound):
     pass
 

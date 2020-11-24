@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
 from zou.app.services import news_service, projects_service, user_service
+from zou.app.services.exception import NewsNotFoundException
 
 
 class ProjectNewsResource(Resource, ArgsMixin):
@@ -75,4 +76,8 @@ class ProjectSingleNewsResource(Resource):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
-        return news_service.get_news(project_id, news_id)
+        news = news_service.get_news(project_id, news_id)
+        if len(news["data"]) > 0:
+            return news["data"][0]
+        else:
+            raise NewsNotFoundException
