@@ -127,7 +127,7 @@ def _manage_status_change(task_status, task, comment):
                 "task_id": task["id"],
                 "new_task_status_id": new_data["task_status_id"],
                 "previous_task_status_id": task["task_status_id"],
-                "person_id": comment["author_id"]
+                "person_id": comment["person_id"]
             },
             project_id=task["project_id"]
         )
