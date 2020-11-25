@@ -69,10 +69,10 @@ class NewsRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(news_list["data"]), 30)
 
-        news_list = self.get(
+        news = self.get(
             "/data/projects/%s/news/%s" % (
                 self.task_dict["project_id"],
                 news["id"]
             )
         )
-        self.assertEqual(len(news_list["data"]), 1)
+        self.assertIsNotNone(news["created_at"])
