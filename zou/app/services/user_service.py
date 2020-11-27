@@ -515,7 +515,20 @@ def get_notification(notification_id):
     return notifications[0]
 
 
-def get_last_notifications(notification_id=None):
+def get_unread_notifications_count(notification_id=None):
+    """
+    Return the number of unread notifications.
+    """
+    current_user = persons_service.get_current_user()
+    return (
+        Notification.query.filter_by(
+            person_id=current_user["id"],
+            read=False
+        ).count()
+    )
+
+
+def get_last_notifications(notification_id=None, after=None, before=None):
     """
     Return last 100 user notifications.
     """
@@ -539,6 +552,12 @@ def get_last_notifications(notification_id=None):
 
     if notification_id is not None:
         query = query.filter(Notification.id == notification_id)
+
+    if after is not None:
+        query = query.filter(Notification.created_at > after)
+
+    if before is not None:
+        query = query.filter(Notification.created_at < before)
 
     notifications = query.limit(100).all()
 
@@ -692,7 +711,7 @@ def get_context():
     persons = persons_service.get_persons(
         minimal=not permissions.has_manager_permissions()
     )
-    notifications = get_last_notifications()
+    notification_count = get_unread_notifications_count()
     project_status_list = projects_service.get_project_statuses()
     task_types = tasks_service.get_task_types()
     task_status_list = tasks_service.get_task_statuses()
@@ -701,7 +720,7 @@ def get_context():
     return {
         "asset_types": asset_types,
         "custom_actions": custom_actions,
-        "notifications": notifications,
+        "notification_count": notification_count,
         "persons": persons,
         "project_status": project_status_list,
         "projects": projects,

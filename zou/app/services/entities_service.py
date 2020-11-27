@@ -15,6 +15,10 @@ from zou.app.services.exception import (
 )
 
 
+def clear_entity_cache(entity_id):
+    cache.cache.delete_memoized(get_entity, entity_id)
+
+
 def clear_entity_type_cache(entity_type_id):
     cache.cache.delete_memoized(get_entity_type, entity_type_id)
     cache.cache.delete_memoized(get_entity_type_by_name)
@@ -75,6 +79,7 @@ def update_entity_preview(entity_id, preview_file_id):
         raise PreviewFileNotFoundException
 
     entity.update({"preview_file_id": preview_file.id})
+    clear_entity_cache(str(entity.id))
     events.emit(
         "preview-file:set-main",
         {"entity_id": entity_id, "preview_file_id": preview_file_id},

@@ -296,16 +296,34 @@ class DesktopLoginLogsResource(Resource):
         return parser.parse_args()
 
 
-class NotificationsResource(Resource):
+class NotificationsResource(Resource, ArgsMixin):
     """
     Return last 100 user notifications.
     """
 
     @jwt_required
     def get(self):
-        notifications = user_service.get_last_notifications()
+        (
+            after,
+            before
+        ) = self.get_arguments()
+        notifications = user_service.get_last_notifications(
+            after=after,
+            before=before
+        )
         user_service.mark_notifications_as_read()
         return notifications
+
+    def get_arguments(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("after", default=None)
+        parser.add_argument("before", default=None)
+        args = parser.parse_args()
+
+        return (
+            args["after"],
+            args["before"],
+        )
 
 
 class NotificationResource(Resource):
