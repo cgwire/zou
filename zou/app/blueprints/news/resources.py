@@ -46,6 +46,7 @@ class ProjectNewsResource(Resource, ArgsMixin):
         result["stats"] = stats
         return result
 
+
     def get_arguments(self):
         parser = reqparse.RequestParser()
         parser.add_argument("only_preview", default=False, type=bool)
