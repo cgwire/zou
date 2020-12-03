@@ -1041,8 +1041,8 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
 
     task.duration = 0
     time_spents = TimeSpent.get_all_by(task_id=task_id)
-    for time_spent in time_spents:
-        task.duration += time_spent.duration
+    for task_time_spent in time_spents:
+        task.duration += task_time_spent.duration
     task.save()
     clear_task_cache(task_id)
     events.emit(
