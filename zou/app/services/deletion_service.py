@@ -372,4 +372,5 @@ def remove_episode(episode_id, force=False):
         raise ModelWithRelationsDeletionException(
             "Some data are still linked to this episode."
         )
+    shots_service.clear_episode_cache(episode_id)
     return episode.serialize(obj_type="Episode")

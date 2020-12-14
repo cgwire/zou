@@ -116,7 +116,15 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             entity_dict = entity.serialize()
 
             if shots_service.is_shot(entity_dict):
+                shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
+            elif assets_service.is_asset(entity):
+                assets_service.clear_asset_cache(entity_dict["id"])
+            elif shots_service.is_sequence(entity_dict):
+                shots_service.clear_sequence_cache(entity_dict["id"])
+            elif shots_service.is_episode(entity_dict):
+                shots_service.clear_episode_cache(entity_dict["id"])
+
             self.emit_update_event(entity_dict)
             return entity_dict, 200
 
