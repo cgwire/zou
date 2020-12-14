@@ -216,3 +216,6 @@ class EntityVersion(db.Model, BaseMixin, SerializerMixin):
     entity_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
     )
+    person_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("person.id"), index=True
+    )

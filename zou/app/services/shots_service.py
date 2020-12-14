@@ -16,7 +16,6 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task import assignees_table
-from zou.app.models.task_status import TaskStatus
 
 from zou.app.services import (
     deletion_service,
@@ -38,6 +37,15 @@ def clear_shot_cache(shot_id):
     cache.cache.delete_memoized(get_shot, shot_id)
     cache.cache.delete_memoized(get_shot_with_relations, shot_id)
     cache.cache.delete_memoized(get_full_shot, shot_id)
+
+
+def clear_sequence_cache(sequence_id):
+    cache.cache.delete_memoized(get_sequence, sequence_id)
+    cache.cache.delete_memoized(get_full_sequence, sequence_id)
+
+
+def clear_episode_cache(episode_id):
+    cache.cache.delete_memoized(get_episode, episode_id)
 
 
 def get_temporal_entity_type_by_name(name):
@@ -434,6 +442,7 @@ def get_sequence_raw(sequence_id):
     return sequence
 
 
+@cache.memoize_function(120)
 def get_sequence(sequence_id):
     """
     Return given sequence as a dictionary.
@@ -441,6 +450,7 @@ def get_sequence(sequence_id):
     return get_sequence_raw(sequence_id).serialize(obj_type="Sequence")
 
 
+@cache.memoize_function(120)
 def get_full_sequence(sequence_id):
     """
     Return given sequence as a dictionary with extra data like project name.
@@ -488,6 +498,7 @@ def get_episode_raw(episode_id):
     return episode
 
 
+@cache.memoize_function(120)
 def get_episode(episode_id):
     """
     Return given episode as a dictionary.
@@ -852,6 +863,7 @@ def remove_sequence(sequence_id, force=False):
         raise ModelWithRelationsDeletionException(
             "Some data are still linked to this sequence."
         )
+    clear_sequence_cache(sequence_id)
     return sequence.serialize(obj_type="Sequence")
 
 
