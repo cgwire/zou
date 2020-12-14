@@ -7,8 +7,13 @@ from sqlalchemy.exc import IntegrityError, StatementError
 
 from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.subscription import Subscription
-from zou.app.services import assets_service, shots_service, user_service
-from zou.app.utils import events
+from zou.app.services import (
+    assets_service,
+    persons_service,
+    shots_service,
+    user_service
+)
+from zou.app.utils import events, fields, date_helpers
 
 from werkzeug.exceptions import NotFound
 
@@ -108,7 +113,6 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
             entity.update(data)
-
             entity_dict = entity.serialize()
 
             if shots_service.is_shot(entity_dict):
@@ -145,9 +149,25 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         pname = previous_shot["name"]
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
-            version = EntityVersion.create(
-                entity_id=shot["id"], name=pname, data=previous_data
+            current_user_id = persons_service.get_current_user()["id"]
+            previous_updated_at = fields.get_date_object(
+                previous_shot["updated_at"],
+                date_format="%Y-%m-%dT%H:%M:%S"
             )
+            updated_at = fields.get_date_object(
+                shot["updated_at"],
+                date_format="%Y-%m-%dT%H:%M:%S"
+            )
+            if date_helpers.get_date_diff(
+                   previous_updated_at,
+                   updated_at
+               ) > 60:
+                version = EntityVersion.create(
+                    entity_id=shot["id"],
+                    name=pname,
+                    data=shot["data"],
+                    person_id=current_user_id
+                )
         return version
 
     def emit_update_event(self, entity_dict):

@@ -99,6 +99,7 @@ def gen_uuid():
 def get_date_object(date_string, date_format="%Y-%m-%d"):
     """
     Shortcut for date parsing (useful for json dumping).
+    Format for full date string: %Y-%m-%dT%H:%M:%S
     """
     return datetime.datetime.strptime(date_string, date_format)
 
