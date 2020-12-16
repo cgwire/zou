@@ -63,6 +63,7 @@ def emit(event, data={}, persist=True, project_id=None):
     It publishes too the event to other services
     (like the realtime event daemon).
     """
+    event = event.lower()
     event_handlers = handlers.get(event, {})
     if project_id is not None:
         data["project_id"] = project_id
