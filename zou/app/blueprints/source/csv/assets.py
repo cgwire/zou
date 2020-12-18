@@ -1,11 +1,8 @@
-from flask import current_app
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
 from zou.app.utils import events
-
-from sqlalchemy.exc import IntegrityError
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
@@ -27,7 +24,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
     def import_row(self, row, project_id):
         asset_name = row["Name"]
         entity_type_name = row["Type"]
-        description = row["Description"]
+        description = row.get("Description", "")
         episode_name = row.get("Episode", None)
         episode_id = None
         if episode_name is not None:
@@ -65,22 +62,19 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 data[field_name] = entity.data[field_name]
 
         if entity is None:
-            try:
-                entity = Entity.create(
-                    name=asset_name,
-                    description=description,
-                    project_id=project_id,
-                    entity_type_id=entity_type_id,
-                    source_id=episode_id,
-                    data=data,
-                )
-                events.emit(
-                    "asset:new",
-                    {"asset_id": str(entity.id), "episode_id": episode_id},
-                    project_id=project_id
-                )
-            except IntegrityError:
-                current_app.logger.error("Row import failed", exc_info=1)
+            entity = Entity.create(
+                name=asset_name,
+                description=description,
+                project_id=project_id,
+                entity_type_id=entity_type_id,
+                source_id=episode_id,
+                data=data,
+            )
+            events.emit(
+                "asset:new",
+                {"asset_id": str(entity.id), "episode_id": episode_id},
+                project_id=project_id
+            )
 
         elif self.is_update:
             entity.update({"description": description, "data": data})

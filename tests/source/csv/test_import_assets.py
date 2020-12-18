@@ -1,4 +1,5 @@
 import os
+import json
 
 from tests.base import ApiDBTestCase
 
@@ -54,3 +55,44 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
+
+    def test_import_assets_with_non_comma_delimiter(self):
+        path = "/import/csv/projects/%s/assets" % self.project.id
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_other_delimiter.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 3)
+
+    def test_import_assets_empty_lines(self):
+        # With empty lines. It should work
+        path = "/import/csv/projects/%s/assets" % self.project.id
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_01.csv")
+        )
+        self.upload_file(path, file_path_fixture)
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 3)
+
+    def test_import_assets_missing_columns(self):
+        # With missing columns on a given line. It should not work.
+        path = "/import/csv/projects/%s/assets" % self.project.id
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_02.csv")
+        )
+        error = json.loads(self.upload_file(path, file_path_fixture, 400))
+        self.assertEqual(error["line_number"], 2)
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 1)
+
+    def test_import_assets_missing_header(self):
+        # With missing columns on a given line. It should not work.
+        path = "/import/csv/projects/%s/assets" % self.project.id
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("csv", "assets_broken_03.csv")
+        )
+        error = json.loads(self.upload_file(path, file_path_fixture, 400))
+        self.assertEqual(error["line_number"], 1)
+        entities = Entity.query.all()
+        self.assertEqual(len(entities), 0)
