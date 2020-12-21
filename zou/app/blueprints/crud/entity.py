@@ -31,7 +31,7 @@ class EntityEventMixin(object):
             if type_name == "asset":
                 assets_service.clear_asset_cache(instance_id)
         events.emit(
-            "%s:%s" % (type_name, event_name),
+            "%s:%s" % (type_name.lower(), event_name),
             {
                 "%s_id" % type_name: instance_id
             },
