@@ -64,6 +64,7 @@ def emit(event, data={}, persist=True, project_id=None):
     (like the realtime event daemon).
     """
     event = event.lower()
+    print(data)
     event_handlers = handlers.get(event, {})
     if project_id is not None:
         data["project_id"] = project_id

@@ -33,7 +33,7 @@ class EntityEventMixin(object):
         events.emit(
             "%s:%s" % (type_name.lower(), event_name),
             {
-                "%s_id" % type_name: instance_id
+                "%s_id" % type_name.lower(): instance_id
             },
             project_id=entity_dict["project_id"]
         )
