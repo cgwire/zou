@@ -1,7 +1,3 @@
-from flask import current_app
-
-from sqlalchemy.exc import IntegrityError
-
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.models.entity import Entity
@@ -82,33 +78,30 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 data[field_name] = entity.data[field_name]
 
         if entity is None:
-            try:
-                if nb_frames is None or len(nb_frames) == 0:
-                    entity = Entity.create(
-                        name=shot_name,
-                        description=description,
-                        project_id=project_id,
-                        parent_id=sequence_id,
-                        entity_type_id=shot_type["id"],
-                        data=data,
-                    )
-                else:
-                    entity = Entity.create(
-                        name=shot_name,
-                        description=description,
-                        project_id=project_id,
-                        parent_id=sequence_id,
-                        entity_type_id=shot_type["id"],
-                        nb_frames=nb_frames,
-                        data=data,
-                    )
-                events.emit(
-                    "shot:new",
-                    {"shot_id": str(entity.id)},
-                    project_id=project_id
+            if nb_frames is None or len(nb_frames) == 0:
+                entity = Entity.create(
+                    name=shot_name,
+                    description=description,
+                    project_id=project_id,
+                    parent_id=sequence_id,
+                    entity_type_id=shot_type["id"],
+                    data=data,
                 )
-            except IntegrityError:
-                current_app.logger.error("Row import failed", exc_info=1)
+            else:
+                entity = Entity.create(
+                    name=shot_name,
+                    description=description,
+                    project_id=project_id,
+                    parent_id=sequence_id,
+                    entity_type_id=shot_type["id"],
+                    nb_frames=nb_frames,
+                    data=data,
+                )
+            events.emit(
+                "shot:new",
+                {"shot_id": str(entity.id)},
+                project_id=project_id
+            )
 
         elif self.is_update:
             entity.update({
