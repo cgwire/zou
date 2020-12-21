@@ -65,11 +65,14 @@ def init_s3(self, name, config):
     self.bucket = self.s3.Bucket(name)
 
     try:
-        self.bucket.create(
-            CreateBucketConfiguration={
-                'LocationConstraint': config.region
-            }
-        )
+        if config.region == "us-east-1":
+            self.bucket.create()
+        else:
+            self.bucket.create(
+                CreateBucketConfiguration={
+                    'LocationConstraint': config.region
+                }
+            )
     except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
         pass
 
