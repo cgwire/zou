@@ -81,7 +81,10 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_broken_02.csv")
         )
-        error = json.loads(self.upload_file(path, file_path_fixture, 400))
+        result = self.upload_file(path, file_path_fixture, 400)
+        if type(result) != str:
+            result = result.decode("utf-8")
+        error = json.loads(result)
         self.assertEqual(error["line_number"], 2)
         entities = Entity.query.all()
         self.assertEqual(len(entities), 1)
@@ -92,7 +95,10 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_broken_03.csv")
         )
-        error = json.loads(self.upload_file(path, file_path_fixture, 400))
+        result = self.upload_file(path, file_path_fixture, 400)
+        if type(result) != str:
+            result = result.decode("utf-8")
+        error = json.loads(result)
         self.assertEqual(error["line_number"], 1)
         entities = Entity.query.all()
         self.assertEqual(len(entities), 0)
