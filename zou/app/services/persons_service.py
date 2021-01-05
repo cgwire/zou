@@ -356,3 +356,12 @@ def update_organisation(organisation_id, data):
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
     return organisation.present()
+
+
+def is_user_limit_reached():
+    """
+    Returns true if the number of active users is equal and superior to the
+    user limit set in the configuration.
+    """
+    nb_active_users = Person.query.filter(Person.active).count()
+    return nb_active_users >= config.USER_LIMIT

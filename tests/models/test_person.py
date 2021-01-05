@@ -50,6 +50,18 @@ class PersonTestCase(ApiDBTestCase):
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 5)
 
+    def test_create_too_much_person(self):
+        from zou.app import config
+        config.USER_LIMIT = 4
+        data = {
+            "first_name": "John3",
+            "last_name": "Doe",
+            "email": "john3.doe@gmail.com"
+        }
+        resp = self.post("data/persons/new", data, 400)
+        self.assertEqual(resp["limit"], 4)
+        config.USER_LIMIT = 100
+
     def test_create_person_with_no_data(self):
         data = {}
         self.person = self.post("data/persons/new", data, 400)
@@ -71,6 +83,22 @@ class PersonTestCase(ApiDBTestCase):
         person_again = self.get("data/persons/%s" % person["id"])
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404("data/persons/%s" % fields.gen_uuid(), data)
+
+    def test_set_active_when_too_much_person(self):
+        from zou.app import config
+        config.USER_LIMIT = 3
+        persons = self.get("data/persons")
+        person = [
+            person for person in persons
+            if person["id"] != self.user["id"]
+        ][0]
+        data = { "active": False }
+        self.put("data/persons/%s" % person["id"], data, 200)
+        data = { "active": True }
+        self.put("data/persons/%s" % person["id"], data, 400)
+        config.USER_LIMIT = 100
+        data = { "active": True }
+        self.put("data/persons/%s" % person["id"], data)
 
     def test_delete_person(self):
         persons = self.get("data/persons")
