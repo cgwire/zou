@@ -112,3 +112,12 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(logs), 2)
         self.assertEqual(logs[0]["person_id"], person["id"])
         self.assertEqual(logs[0]["date"], date_2)
+
+    def test_is_user_limit_reached(self):
+        is_reached = persons_service.is_user_limit_reached()
+        self.assertEqual(is_reached, False)
+        from zou.app import config
+        config.USER_LIMIT = 2
+        is_reached = persons_service.is_user_limit_reached()
+        self.assertEqual(is_reached, True)
+        config.USER_LIMIT = 100

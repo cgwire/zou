@@ -9,6 +9,8 @@ from .base import BaseModelsResource, BaseModelResource
 
 from zou.app.mixin import ArgsMixin
 
+from zou.app.services.exception import WrongParameterException
+
 
 class PersonsResource(BaseModelsResource):
     def __init__(self):
@@ -65,6 +67,13 @@ class PersonResource(BaseModelResource, ArgsMixin):
             return instance.serialize_safe()
         else:
             return instance.present_minimal()
+
+    def pre_update(self, instance_dict, data):
+        if data.get("active", False) \
+           and not instance_dict.get("active", False) \
+           and persons_service.is_user_limit_reached():
+            raise WrongParameterException("User limit reached.")
+        return instance_dict
 
     def post_update(self, instance_dict):
         persons_service.clear_person_cache()

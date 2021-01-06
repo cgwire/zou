@@ -8,6 +8,8 @@ from zou.app.services import persons_service, user_service, time_spents_service
 from zou.app.utils import auth, permissions, csv_utils
 from zou.app.services.exception import WrongDateFormatException
 
+from zou.app import config
+
 
 class NewPersonResource(Resource):
     """
@@ -19,15 +21,23 @@ class NewPersonResource(Resource):
     def post(self):
         permissions.check_admin_permissions()
         data = self.get_arguments()
-        person = persons_service.create_person(
-            data["email"],
-            auth.encrypt_password("default"),
-            data["first_name"],
-            data["last_name"],
-            data["phone"],
-            role=data["role"],
-            desktop_login=data["desktop_login"],
-        )
+
+        if persons_service.is_user_limit_reached():
+            return {
+                "error": True,
+                "message": "User limit reached.",
+                "limit": config.USER_LIMIT,
+            }, 400
+        else:
+            person = persons_service.create_person(
+                data["email"],
+                auth.encrypt_password("default"),
+                data["first_name"],
+                data["last_name"],
+                data["phone"],
+                role=data["role"],
+                desktop_login=data["desktop_login"],
+            )
         return person, 201
 
     def get_arguments(self):
