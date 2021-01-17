@@ -50,6 +50,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     skills = db.relationship("Department", secondary=department_link)
 
+    class Meta:
+        exclude_serializes = ('password',)
+
     def __repr__(self):
         if sys.version_info[0] < 3:
             return "<Person %s>" % self.full_name().encode("utf-8")
@@ -67,7 +70,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     def serialize_safe(self, relations=False):
         data = SerializerMixin.serialize(self, "Person", relations=relations)
         data["full_name"] = self.full_name()
-        del data["password"]
         return data
 
     def present_minimal(self, relations=False):

@@ -118,11 +118,9 @@ def get_person_by_email(email):
     return person.serialize()
 
 
-@cache.memoize_function(120)
-def get_person_by_desktop_login(desktop_login):
+def get_person_by_desktop_login_raw(desktop_login):
     """
-    Return person that matches given desktop login as a dictionary. It is useful
-    to authenticate user from their desktop session login.
+    Return person that matches given desktop_login as an active record.
     """
     try:
         person = Person.get_by(desktop_login=desktop_login)
@@ -131,6 +129,16 @@ def get_person_by_desktop_login(desktop_login):
 
     if person is None:
         raise PersonNotFoundException()
+    return person
+
+
+@cache.memoize_function(120)
+def get_person_by_desktop_login(desktop_login):
+    """
+    Return person that matches given desktop login as a dictionary. It is useful
+    to authenticate user from their desktop session login.
+    """
+    person = get_person_by_desktop_login_raw(desktop_login)
     return person.serialize()
 
 

@@ -53,29 +53,29 @@ def check_credentials(email, password, app=None):
     Password hash comparison is based on BCrypt.
     """
     try:
-        person = persons_service.get_person_by_email(email)
+        person = persons_service.get_person_by_email_raw(email)
     except PersonNotFoundException:
         try:
-            person = persons_service.get_person_by_desktop_login(email)
+            person = persons_service.get_person_by_desktop_login_raw(email)
         except PersonNotFoundException:
             if app is not None:
                 app.logger.error("Person not found: %s" % (email))
             raise WrongPasswordException()
 
     try:
-        password_hash = person["password"] or u""
+        password_hash = person.password or u""
 
         if bcrypt.check_password_hash(password_hash, password):
-            return person
+            return person.serialize()
         else:
             if app is not None:
                 app.logger.error(
-                    "Wrong password for person: %s" % person["full_name"]
+                    "Wrong password for person: %s" % person.full_name
                 )
             raise WrongPasswordException()
     except ValueError:
         if app is not None:
-            app.logger.error("Wrong password for: %s" % person["full_name"])
+            app.logger.error("Wrong password for: %s" % person.full_name)
         raise WrongPasswordException()
 
 

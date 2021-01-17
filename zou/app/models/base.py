@@ -19,6 +19,9 @@ class BaseMixin(object):
         onupdate=datetime.datetime.utcnow,
     )
 
+    class Meta:
+        exclude_serializes = ()
+
     def __repr__(self):
         """
         String representation based on type and name by default.

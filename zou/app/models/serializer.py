@@ -15,7 +15,11 @@ class SerializerMixin(object):
         )
 
     def serialize(self, obj_type=None, relations=False):
-        attrs = inspect(self).attrs.keys()
+        exclude_fields = self.__class__.Meta.exclude_serializes
+        attrs = filter(lambda attr: attr not in exclude_fields, inspect(self).attrs.keys())
+        if not isinstance(attrs, list):
+            attrs = list(attrs)
+
         if relations:
             obj_dict = {
                 attr: serialize_value(getattr(self, attr)) for attr in attrs
