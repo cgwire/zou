@@ -104,6 +104,22 @@ def get_date_object(date_string, date_format="%Y-%m-%d"):
     return datetime.datetime.strptime(date_string, date_format)
 
 
+def get_default_date_object(date_string):
+    """
+    Shortcut for date parsing at default format.
+    """
+    date_obj = None
+    if date_string is not None and len(date_string) > 0:
+        try:
+            date_obj = get_date_object(
+                date_string,
+                date_format="%Y-%m-%dT%H:%M:%S"
+            )
+        except ValueError:
+            pass
+    return date_obj
+
+
 def is_valid_id(uuid):
     _UUID_RE = re.compile(
         "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}){1}"
