@@ -58,7 +58,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     name = db.Column(db.String(80), nullable=False, unique=True, index=True)
     code = db.Column(db.String(80))
-    description = db.Column(db.String(200))
+    description = db.Column(db.Text())
     shotgun_id = db.Column(db.Integer)
     file_tree = db.Column(JSONB)
     data = db.Column(JSONB)
@@ -70,6 +70,8 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     start_date = db.Column(db.Date())
     end_date = db.Column(db.Date())
     man_days = db.Column(db.Integer)
+    nb_episodes = db.Column(db.Integer)
+    episode_span = db.Column(db.Integer)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True
