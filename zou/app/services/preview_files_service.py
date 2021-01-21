@@ -3,6 +3,7 @@ import re
 
 from zou.app.stores import file_store
 
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import files_service

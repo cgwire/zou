@@ -7,7 +7,12 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.preview_file import PreviewFile
-from zou.app.services import comments_service, deletion_service, tasks_service
+from zou.app.services import (
+    comments_service,
+    deletion_service,
+    preview_files_service,
+    tasks_service
+)
 from zou.app.utils import events, fields
 
 from zou.app.services.exception import TaskNotFoundException
@@ -520,7 +525,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file(revision=2)
         self.generate_fixture_preview_file(revision=2, name="second")
         task_id = self.task.id
-        position = tasks_service.get_next_position(task_id, 2)
+        position = preview_files_service.get_next_position(task_id, 2)
         self.assertEqual(position, 3)
 
     def test_update_preview_file_position(self):
@@ -531,7 +536,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         preview_file_id = str(preview_file.id)
         self.generate_fixture_preview_file(revision=2, name="third")
 
-        tasks_service.update_preview_file_position(preview_file_id, 1)
+        preview_files_service.update_preview_file_position(preview_file_id, 1)
         preview_files = (
             PreviewFile
             .query
@@ -542,7 +547,7 @@ class TaskServiceTestCase(ApiDBTestCase):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[0].id), preview_file_id)
 
-        tasks_service.update_preview_file_position(preview_file_id, 3)
+        preview_files_service.update_preview_file_position(preview_file_id, 3)
         preview_files = (
             PreviewFile
             .query
