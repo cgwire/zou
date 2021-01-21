@@ -21,7 +21,7 @@ def create_app(redis_url):
     app = Flask(__name__)
     app.config.from_object(config)
 
-    @app.route("/")
+    @app.route("/", methods=['GET', 'POST'])
     def index():
         return jsonify({"name": "%s Event stream" % config.APP_NAME})
 
