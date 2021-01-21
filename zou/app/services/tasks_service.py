@@ -414,27 +414,6 @@ def get_next_position(task_id, revision):
     return len(preview_files) + 1
 
 
-def update_preview_file_position(preview_file_id, position):
-    """
-    Change positions for preview files of given task and revision.
-    Given position is the new position for given preview file. :q
-    """
-    preview_file = files_service.get_preview_file_raw(preview_file_id)
-    task_id = preview_file.task_id
-    revision = preview_file.revision
-    preview_files = (
-        PreviewFile.query.filter_by(task_id=task_id, revision=revision)
-        .order_by(PreviewFile.position, PreviewFile.created_at)
-        .all()
-    )
-    if position > 0 and position <= len(preview_files):
-        tmp_list = [p for p in preview_files if str(p.id) != preview_file_id]
-        tmp_list.insert(position - 1, preview_file)
-        for (i, preview) in enumerate(tmp_list):
-            preview.update({"position": i + 1})
-    return PreviewFile.serialize_list(preview_files)
-
-
 def get_time_spents(task_id):
     """
     Return time spents for given task.
@@ -567,11 +546,16 @@ def _build_preview_map_for_comments(comment_ids):
         comment_id = str(comment_id)
         if comment_id not in preview_map:
             preview_map[comment_id] = []
+        status = "ready"
+        if preview.status is not None:
+            status = preview.status.code
+
         preview_map[comment_id].append({
             "id": str(preview.id),
             "task_id": str(preview.task_id),
             "revision": preview.revision,
             "extension": preview.extension,
+            "status": status,
             "original_name": preview.original_name,
             "position": preview.position,
             "annotations": preview.annotations,

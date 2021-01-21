@@ -1,4 +1,6 @@
-from sqlalchemy_utils import UUIDType
+import enum
+
+from sqlalchemy_utils import UUIDType, ChoiceType
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
@@ -6,6 +8,11 @@ from zou.app.models.base import BaseMixin
 
 from sqlalchemy.dialects.postgresql import JSONB
 
+STATUSES = [
+    ("processing", "Processing"),
+    ("ready", "Ready"),
+    ("broken", "Broken"),
+]
 
 class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     """
@@ -21,7 +28,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     description = db.Column(db.Text())
     path = db.Column(db.String(400))
     source = db.Column(db.String(40))
-
+    file_size = db.Column(db.Integer(), default=0)
+    status = db.Column(ChoiceType(STATUSES), default="processing")
     annotations = db.Column(JSONB)
 
     task_id = db.Column(
@@ -37,6 +45,7 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     )
 
     shotgun_id = db.Column(db.Integer, unique=True)
+
     is_movie = db.Column(db.Boolean, default=False)  # deprecated
     url = db.Column(db.String(600))  # deprecated
     uploaded_movie_url = db.Column(db.String(600))  # deprecated

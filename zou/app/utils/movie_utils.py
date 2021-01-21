@@ -36,16 +36,22 @@ def generate_thumbnail(movie_path):
     return file_target_path
 
 
+def generate_tile(movie_path):
+    pass
+
+
 def get_movie_size(movie_path):
     """
     Returns movie resolution (extract a frame and returns its size).
     """
-    image_path = generate_thumbnail(movie_path)
-    im = Image.open(image_path)
-    size = im.size
-    im.close()
-    os.remove(image_path)
-    return size
+    probe = ffmpeg.probe(movie_path)
+    video = next((
+        stream for stream in probe['streams']
+        if stream['codec_type'] == 'video'
+    ), None)
+    width = int(video['width'])
+    height = int(video['height'])
+    return (width, height)
 
 
 def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
@@ -79,6 +85,7 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
             crf="15",
             preset="medium",
             vcodec="libx264",
+            vsync="passthrough",
             s="%sx%s" % (width, height),
         )
         stream.run(quiet=False, capture_stderr=True)

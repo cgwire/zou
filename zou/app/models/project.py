@@ -70,8 +70,8 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     start_date = db.Column(db.Date())
     end_date = db.Column(db.Date())
     man_days = db.Column(db.Integer)
-    nb_episodes = db.Column(db.Integer)
-    episode_span = db.Column(db.Integer)
+    nb_episodes = db.Column(db.Integer, default=0)
+    episode_span = db.Column(db.Integer, default=0)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True

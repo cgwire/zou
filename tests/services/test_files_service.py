@@ -3,7 +3,7 @@ import pytest
 from tests.base import ApiDBTestCase
 
 from zou.app import app
-from zou.app.services import files_service
+from zou.app.services import files_service, preview_files_service
 from zou.app.models.software import Software
 from zou.app.services.exception import (
     EntryAlreadyExistsException,
@@ -458,7 +458,7 @@ class FileServiceTestCase(ApiDBTestCase):
     def test_get_project_from_preview_file(self):
         project_id = str(self.project.id)
         self.generate_fixture_preview_file()
-        project = files_service.get_project_from_preview_file(
+        project = preview_files_service.get_project_from_preview_file(
             self.preview_file.id
         )
         self.assertEqual(project["id"], project_id)

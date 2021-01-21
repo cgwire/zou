@@ -715,6 +715,7 @@ def create_preview_file_raw(
         person_id=person_id,
         extension=extension,
         position=position,
+        status="processing"
     )
 
 
@@ -737,19 +738,6 @@ def update_output_file(output_file_id, data):
     output_file = get_output_file_raw(output_file_id)
     output_file.update(data)
     return output_file.serialize()
-
-
-def update_preview_file(preview_file_id, data):
-    preview_file = get_preview_file_raw(preview_file_id)
-    preview_file.update(data)
-    clear_preview_file_cache(preview_file_id)
-    task = Task.get(preview_file.task_id)
-    events.emit(
-        "preview-file:update",
-        {"preview_file_id": preview_file_id},
-        project_id=str(task.project_id)
-    )
-    return preview_file.serialize()
 
 
 def get_output_types_for_entity(entity_id):
@@ -830,16 +818,6 @@ def remove_preview_file(preview_file_id):
         project_id=str(task.project_id)
     )
     return preview_file.serialize()
-
-
-def get_project_from_preview_file(preview_file_id):
-    """
-    Get project dict of related preview file.
-    """
-    preview_file = get_preview_file_raw(preview_file_id)
-    task = Task.get(preview_file.task_id)
-    project = Project.get(task.project_id)
-    return project.serialize()
 
 
 def get_preview_files_for_project(project_id, page=-1):

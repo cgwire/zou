@@ -95,3 +95,6 @@ Vagrantfile
 previews
 thumbnails
 release.sh
+
+tmp
+restore.sh

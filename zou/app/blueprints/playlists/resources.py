@@ -118,13 +118,12 @@ class BuildPlaylistMovieResource(Resource):
     def get(self, playlist_id):
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
-
         if config.ENABLE_JOB_QUEUE:
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
                 args=(playlist, current_user["email"]),
-                job_timeout=7200,
+                job_timeout=3600,
             )
             return {"job": "running"}
         else:

@@ -990,32 +990,6 @@ def update_shot(shot_id, data_dict):
     return shot.serialize()
 
 
-def get_preview_dimensions(project):
-    """
-    Return dimensions set at project level or default dimensions if the
-    dimensions are not set.
-    """
-    resolution = project["resolution"]
-    height = 1080
-    width = None
-    if resolution is not None and bool(re.match(r"\d*x\d*", resolution)):
-        [width, height] = resolution.split("x")
-        width = int(width)
-        height = int(height)
-    return (width, height)
-
-
-def get_preview_fps(project):
-    """
-    Return fps set at project level or default fps if the dimensions are not
-    set.
-    """
-    fps = "24.00"
-    if project["fps"] is not None:
-        fps = "%.2f" % float(project["fps"].replace(",", "."))
-    return fps
-
-
 def get_shot_versions(shot_id):
     """
     Shot metadata changes are versioned. This function returns all versions

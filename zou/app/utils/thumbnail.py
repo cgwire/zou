@@ -72,15 +72,28 @@ def turn_into_thumbnail(file_path, size=None):
 
     if size is not None:
         (width, height) = size
-
         if height == 0:
             size = get_full_size_from_width(im, width)
-        else:
-            im = prepare_image_for_thumbnail(im, size)
     else:
         size = im.size
 
-    im = im.resize(size, Image.LANCZOS)
+    im.thumbnail(size, Image.LANCZOS)
+    if im.mode == "CMYK":
+        im = im.convert("RGB")
+    final = Image.new("RGB", size, (0, 0, 0))
+    final.paste(
+        im, (int((size[0] - im.size[0]) / 2), int((size[1] - im.size[1]) / 2))
+    )
+    final.save(file_path, "PNG")
+    return file_path
+
+
+def resize(file_path, size):
+    """
+    Resize given picture
+    """
+    im = Image.open(file_path)
+    im = im.resize(size, Image.ANTIALIAS)
     if im.mode == "CMYK":
         im = im.convert("RGB")
     im.save(file_path, "PNG")
@@ -91,7 +104,6 @@ def prepare_image_for_thumbnail(im, size):
     """
     Crop image to avoid deformation while building the target thumbnail.
     """
-
     im_width, im_height = im.size
     width, height = size
     original_ratio = float(im_width) / float(im_height)
