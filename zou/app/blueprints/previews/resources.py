@@ -17,10 +17,12 @@ from zou.app.services import (
     names_service,
     persons_service,
     projects_service,
+    preview_files_service,
     shots_service,
     tasks_service,
     user_service,
 )
+from zou.app.stores import queue_store
 from zou.app.utils import (
     fs,
     events,
@@ -171,7 +173,7 @@ def send_storage_file(
         )
 
 
-class CreatePreviewFilePictureResource(Resource):
+class CreatePreviewFilePictureResource(Resource, ArgsMixin):
     """
     Main resource to add a preview. It stores the preview file and generates
     three picture files matching preview when it's possible: a square thumbnail,
@@ -194,9 +196,13 @@ class CreatePreviewFilePictureResource(Resource):
 
         if extension in ALLOWED_PICTURE_EXTENSION:
             self.save_picture_preview(instance_id, uploaded_file)
-            preview_file = files_service.update_preview_file(
+            preview_file = preview_files_service.update_preview_file(
                 instance_id,
-                {"extension": "png", "original_name": original_file_name},
+                {
+                    "extension": "png",
+                    "original_name": original_file_name,
+                    "status": "ready"
+                },
             )
             self.emit_app_preview_event(instance_id)
             return preview_file, 201
@@ -209,7 +215,7 @@ class CreatePreviewFilePictureResource(Resource):
                 current_app.logger.error("Normalization failed.")
                 deletion_service.remove_preview_file_by_id(instance_id)
                 abort(400, "Normalization failed.")
-            preview_file = files_service.update_preview_file(
+            preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {"extension": "mp4", "original_name": original_file_name},
             )
@@ -218,11 +224,12 @@ class CreatePreviewFilePictureResource(Resource):
 
         elif extension in ALLOWED_FILE_EXTENSION:
             self.save_file_preview(instance_id, uploaded_file, extension)
-            preview_file = files_service.update_preview_file(
+            preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {
                     "extension": extension[1:],
                     "original_name": original_file_name,
+                    "status": "ready"
                 },
             )
             self.emit_app_preview_event(instance_id)
@@ -244,32 +251,33 @@ class CreatePreviewFilePictureResource(Resource):
         original_tmp_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
         )
-        return self.save_variants(original_tmp_path, instance_id)
+        return preview_files_service.save_variants(
+            instance_id,
+            original_tmp_path
+        )
 
-    def save_movie_preview(self, instance_id, uploaded_file):
+    def save_movie_preview(self, preview_file_id, uploaded_file):
         """
         Get uploaded movie, normalize it then build thumbnails then save
         everything in the file storage.
         """
+        no_job = self.get_no_job()
         tmp_folder = current_app.config["TMP_DIR"]
         uploaded_movie_path = movie_utils.save_file(
-            tmp_folder, instance_id, uploaded_file
+            tmp_folder, preview_file_id, uploaded_file
         )
-
-        project = files_service.get_project_from_preview_file(instance_id)
-        fps = shots_service.get_preview_fps(project)
-        (width, height) = shots_service.get_preview_dimensions(project)
-        normalized_movie_path = movie_utils.normalize_movie(
-            uploaded_movie_path, fps=fps, width=width, height=height
-        )
-        file_store.add_movie("previews", instance_id, normalized_movie_path)
-        original_tmp_path = movie_utils.generate_thumbnail(
-            normalized_movie_path
-        )
-
-        os.remove(uploaded_movie_path)
-        os.remove(normalized_movie_path)
-        return self.save_variants(original_tmp_path, instance_id)
+        if config.ENABLE_JOB_QUEUE and not no_job:
+            queue_store.job_queue.enqueue(
+                preview_files_service.prepare_and_store_movie,
+                args=(preview_file_id, uploaded_movie_path),
+                job_timeout=600,
+            )
+        else:
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_movie_path
+            )
+        return preview_file_id
 
     def save_file_preview(self, instance_id, uploaded_file, extension):
         """
@@ -283,20 +291,6 @@ class CreatePreviewFilePictureResource(Resource):
         os.remove(file_path)
         return file_path
 
-    def save_variants(self, original_tmp_path, instance_id):
-        """
-        Build variants of a picture file and save them in the main storage.
-        """
-        variants = thumbnail_utils.generate_preview_variants(
-            original_tmp_path, instance_id
-        )
-        variants.append(("original", original_tmp_path))
-        for (name, path) in variants:
-            file_store.add_picture(name, instance_id, path)
-            os.remove(path)
-
-        return variants
-
     def emit_app_preview_event(self, preview_file_id):
         """
         Emit an event, each time a preview is added.
@@ -305,11 +299,6 @@ class CreatePreviewFilePictureResource(Resource):
         comment = tasks_service.get_comment_by_preview_file_id(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         comment_id = None
-        events.emit(
-            "preview-file:update", {"preview_file_id": preview_file["id"]},
-            project_id=task["project_id"]
-        )
-
         if comment is not None:
             comment_id = comment["id"]
             events.emit(
@@ -325,6 +314,7 @@ class CreatePreviewFilePictureResource(Resource):
                     "preview_file_id": preview_file["id"],
                     "revision": preview_file["revision"],
                     "extension": preview_file["extension"],
+                    "status": preview_file["status"],
                 },
                 project_id=task["project_id"]
             )
@@ -767,6 +757,6 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_manager_project_access(task["project_id"])
-        return tasks_service.update_preview_file_position(
+        return preview_files_service.update_preview_file_position(
             preview_file_id, args["position"]
         )

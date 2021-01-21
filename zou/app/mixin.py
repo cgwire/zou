@@ -63,6 +63,13 @@ class ArgsMixin(object):
         options = request.args
         return options.get("episode_id", None)
 
+    def get_no_job(self):
+        """
+        Returns force parameter.
+        """
+        options = request.args
+        return options.get("no_job", "false") == "true"
+
     def parse_date_parameter(self, param):
         date = None
         if param is None:
