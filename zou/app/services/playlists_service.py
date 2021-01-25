@@ -26,6 +26,7 @@ from zou.app.services import (
     base_service,
     entities_service,
     files_service,
+    preview_files_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -420,8 +421,8 @@ def build_playlist_movie_file(playlist, app=None):
     project = projects_service.get_project(playlist["project_id"])
     tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
     movie_file_path = get_playlist_movie_file_path(playlist, job)
-    (width, height) = shots_service.get_preview_dimensions(project)
-    fps = shots_service.get_preview_fps(project)
+    (width, height) = preview_files_service.get_preview_file_dimensions(project)
+    fps = preview_files_service.get_preview_file_fps(project)
 
     result = movie_utils.build_playlist_movie(
         tmp_file_paths, movie_file_path, width, height, fps
