@@ -92,7 +92,7 @@ To run the Server Events server used to update the web GUI in realtime, use the
 following command.
 
 ```bash
-gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -b 127.0.0.1:5001 -w 3 zou.event_stream:app
+gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -b 127.0.0.1:5001 -w 1 zou.event_stream:app
 ```
 
 ## Tests
