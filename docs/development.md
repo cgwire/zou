@@ -62,7 +62,7 @@ pip install -r requirements.txt
 
 ## Init data
 
-Create a database in postgres named `zou` with user `postgres` and password
+Create a database in postgres named `zoudb` with user `postgres` and password
 `mysecretpassword`. Then init db:
 
 ```bash
