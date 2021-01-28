@@ -1,7 +1,7 @@
 # Development environment
 
 To start with developing on Zou you need Python 3 installed and a
-Postgres database instance. 
+Postgres database instance.
 
 ## Database
 
@@ -31,7 +31,7 @@ sudo docker run \
 
 ## FFMPEG
 
-For video operations, it is required to have FFMPEG installed. For that, simply install it through your OS package manager: 
+For video operations, it is required to have FFMPEG installed. For that, simply install it through your OS package manager:
 
 ```
 sudo apt-get install ffmpeg
@@ -57,7 +57,7 @@ workon zou
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt 
+pip install -r requirements.txt
 ```
 
 ## Init data
