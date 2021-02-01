@@ -16,7 +16,7 @@ from zou.app.services import (
 
 class DownloadAttachmentResource(Resource):
     @jwt_required
-    def get(self, attachment_file_id):
+    def get(self, attachment_file_id, file_name):
         attachment_file = comments_service.get_attachment_file(
             attachment_file_id
         )
@@ -32,7 +32,6 @@ class DownloadAttachmentResource(Resource):
                 mimetype=attachment_file["mimetype"],
                 as_attachment=False,
                 attachment_filename=attachment_file["name"],
-
             )
         except:
             abort(404)
