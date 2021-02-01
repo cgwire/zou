@@ -525,7 +525,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.generate_fixture_preview_file(revision=2)
         self.generate_fixture_preview_file(revision=2, name="second")
         task_id = self.task.id
-        position = preview_files_service.get_next_position(task_id, 2)
+        position = tasks_service.get_next_position(task_id, 2)
         self.assertEqual(position, 3)
 
     def test_update_preview_file_position(self):
