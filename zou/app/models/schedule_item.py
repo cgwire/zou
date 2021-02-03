@@ -26,6 +26,15 @@ class ScheduleItem(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False), index=True
     )  # Sequence or Episode or Asset Type
 
+    __table_args__ = (
+        db.UniqueConstraint(
+            "project_id",
+            "task_type_id",
+            "object_id",
+            name="schedule_item_uc",
+        ),
+    )
+
     def present(self):
         return fields.serialize_dict(
             {
