@@ -31,8 +31,9 @@ class TasksCsvExport(BaseCsvExport):
             "Duration",
             "Estimation",
             "Start date",
-            "Real start date",
             "Due date",
+            "WIP date",
+            "Validation date",
             "Task Status",
         ]
 
@@ -112,6 +113,10 @@ class TasksCsvExport(BaseCsvExport):
         if task.real_start_date is not None:
             real_start_date = task.real_start_date.strftime("%Y-%m-%d")
 
+        end_date = ""
+        if task.end_date is not None:
+            end_date = task.end_date.strftime("%Y-%m-%d")
+
         return [
             project_name,
             task_type_name,
@@ -124,7 +129,8 @@ class TasksCsvExport(BaseCsvExport):
             task.duration,
             task.estimation,
             start_date,
-            real_start_date,
             due_date,
-            task_status_name,
+            real_start_date,
+            end_date,
+            task_status_name
         ]
