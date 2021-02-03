@@ -23,7 +23,7 @@ class BaseStatusResource(Resource):
     def get_status(self):
         is_db_up = True
         try:
-            projects_service.get_open_status()
+            projects_service.get_or_create_status("Open")
         except:
             is_db_up = False
 
