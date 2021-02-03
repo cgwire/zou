@@ -1,12 +1,13 @@
 import os
 import datetime
+import pytest
 import unittest
 import uuid
 
 from babel import Locale
 from pytz import timezone
 
-from zou.app.utils import colors, fields, query, fs
+from zou.app.utils import colors, fields, query, fs, shell
 from zou.app.models.person import Person
 from zou.app.models.task import Task
 
@@ -104,3 +105,9 @@ class UtilsTestCase(unittest.TestCase):
         self.assertTrue(os.path.exists(folder))
         fs.rm_rf("one")
         self.assertTrue(not os.path.exists(folder))
+
+    def test_run_command(self):
+        out = shell.run_command(["ls"])
+        self.assertTrue(len(out) > 0)
+        with pytest.raises(shell.ShellCommandFailed):
+            shell.run_command(["nonexist"])

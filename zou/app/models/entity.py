@@ -33,6 +33,14 @@ class EntityLink(db.Model, BaseMixin, SerializerMixin):
     nb_occurences = db.Column(db.Integer, default=1)
     label = db.Column(db.String(80), default="")
 
+    __table_args__ = (
+        db.UniqueConstraint(
+            "entity_in_id",
+            "entity_out_id",
+            name="entity_link_uc",
+        ),
+    )
+
     @classmethod
     def create_from_import(cls, data):
         del data["type"]

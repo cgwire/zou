@@ -13,7 +13,7 @@ from .resources import (
 routes = [
     ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
     (
-        "/data/attachment-files/<attachment_file_id>/file",
+        "/data/attachment-files/<attachment_file_id>/file/<file_name>",
         DownloadAttachmentResource
     ),
     ("/actions/tasks/<task_id>/comment", CommentTaskResource),

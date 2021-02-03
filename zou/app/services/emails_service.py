@@ -52,9 +52,10 @@ def send_comment_notification(person_id, author_id, comment, task):
     person = persons_service.get_person(person_id)
     if person["notifications_enabled"] or person["notifications_slack_enabled"]:
         task_status = tasks_service.get_task_status(task["task_status_id"])
+        task_status_name = task_status["short_name"].upper()
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
         subject = "[Kitsu] %s - %s commented on %s" % (
-            task_status["short_name"],
+            task_status_name,
             author["first_name"],
             task_name,
         )
@@ -66,7 +67,7 @@ def send_comment_notification(person_id, author_id, comment, task):
                 author["full_name"],
                 task_url,
                 task_name,
-                task_status["short_name"],
+                task_status_name,
                 comment["text"],
             )
             slack_message = """*%s* wrote a comment on <%s|%s> and set the status to *%s*.
@@ -76,7 +77,7 @@ _%s_
                 author["full_name"],
                 task_url,
                 task_name,
-                task_status["short_name"],
+                task_status_name,
                 comment["text"],
             )
 
@@ -86,14 +87,14 @@ _%s_
                 author["full_name"],
                 task_url,
                 task_name,
-                task_status["short_name"],
+                task_status_name,
             )
             slack_message = """*%s* changed status of <%s|%s> to *%s*.
 """ % (
                 author["full_name"],
                 task_url,
                 task_name,
-                task_status["short_name"],
+                task_status_name,
             )
         messages = {
             "email_message": email_message,
