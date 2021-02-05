@@ -97,7 +97,7 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 current_app.logger.error(
                     "Fail to add silent audiotrack to: %s" % uploaded_movie_path
                 )
-                current_app.logger.error("\n".join(str(err).split("\\n")))
+                current_app.logger.error(err)
 
             current_app.logger.info("file normalized %s" % normalized_movie_path)
             file_store.add_movie(

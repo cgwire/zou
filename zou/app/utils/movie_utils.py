@@ -113,7 +113,8 @@ def add_empty_soundtrack(file_path):
         "-shortest",
         tmp_file_path
     ]
-    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True)
     out, err = sp.communicate()
 
     shutil.copyfile(tmp_file_path, file_path)
