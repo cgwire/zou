@@ -18,7 +18,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.utils import fields, movie_utils, events
+from zou.app.utils import fields, events
 from zou.app.utils import query as query_utils
 
 from zou.app.services import (
@@ -37,6 +37,8 @@ from zou.app.services.exception import (
     BuildJobNotFoundException,
     PlaylistNotFoundException,
 )
+
+from zou.utils import movie
 
 
 def all_playlists_for_project(project_id, for_client=False):
