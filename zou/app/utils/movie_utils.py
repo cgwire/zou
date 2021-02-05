@@ -1,11 +1,11 @@
+import contextlib
 import ffmpeg
 import os
 import math
+import shutil
 import subprocess
 
 from PIL import Image
-
-from . import fs
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -102,7 +102,10 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
 
 def add_empty_soundtrack(file_path):
     tmp_file_path = file_path + ".tmp.mp4"
-    fs.rm_file(tmp_file_path)
+
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(tmp_file_path)
+
     args = [
         "ffmpeg",
         "-f", "lavfi",
@@ -124,8 +127,7 @@ def add_empty_soundtrack(file_path):
         )
         current_app.logger.error("\n".join(str(err).split("\\n")))
 
-    fs.rm_file(file_path)
-    fs.copyfile(tmp_file_path, file_path)
+    shutil.copyfile(tmp_file_path, file_path)
     return sp.returncode
 
 
