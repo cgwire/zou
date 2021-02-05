@@ -69,6 +69,8 @@ MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0) != 0
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "False").lower() == "true"
 MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "no-reply@cg-wire.com")
+if os.getenv("MAIL_SUPPRESS_SEND") is not None:
+    MAIL_SUPPRESS_SEND = os.getenv("MAIL_SUPPRESS_SEND")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
 
