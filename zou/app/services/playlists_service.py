@@ -413,7 +413,7 @@ def build_playlist_zip_file(playlist):
     return zip_file_path
 
 
-def build_playlist_movie_file(playlist, app=None):
+def build_playlist_movie_file(playlist):
     """
     Build a movie for all files for a given playlist into the temporary folder.
     """
@@ -433,13 +433,8 @@ def build_playlist_movie_file(playlist, app=None):
             if os.path.exists(movie_file_path):
                 file_store.add_movie("playlists", job["id"], movie_file_path)
             else:
-                if app is not None:
-                    current_app.logger.error("No playlist was created")
                 result["success"] = False
                 result["message"] = "No playlist was created"
-
-        elif app is not None:
-            current_app.logger.error(result["message"])
     finally:
         end_build_job(playlist, job, result)
     return job
