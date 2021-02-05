@@ -418,27 +418,30 @@ def build_playlist_movie_file(playlist, app=None):
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
-    project = projects_service.get_project(playlist["project_id"])
-    tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
-    movie_file_path = get_playlist_movie_file_path(playlist, job)
-    (width, height) = preview_files_service.get_preview_file_dimensions(project)
-    fps = preview_files_service.get_preview_file_fps(project)
+    result["success"] = False
+    try:
+        project = projects_service.get_project(playlist["project_id"])
+        tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
+        movie_file_path = get_playlist_movie_file_path(job)
+        (width, height) = preview_files_service.get_preview_file_dimensions(project)
+        fps = preview_files_service.get_preview_file_fps(project)
 
-    result = movie_utils.build_playlist_movie(
-        tmp_file_paths, movie_file_path, width, height, fps
-    )
-    if result["success"] == True:
-        if os.path.exists(movie_file_path):
-            file_store.add_movie("playlists", job["id"], movie_file_path)
-        else:
-            if app is not None:
-                current_app.logger.error("No playlist was created")
-            result["success"] = False
-            result["message"] = "No playlist was created"
+        result = movie.build_playlist_movie(
+            tmp_file_paths, movie_file_path, width, height, fps
+        )
+        if result["success"] == True:
+            if os.path.exists(movie_file_path):
+                file_store.add_movie("playlists", job["id"], movie_file_path)
+            else:
+                if app is not None:
+                    current_app.logger.error("No playlist was created")
+                result["success"] = False
+                result["message"] = "No playlist was created"
 
-    elif app is not None:
-        current_app.logger.error(result["message"])
-    end_build_job(playlist, job, result)
+        elif app is not None:
+            current_app.logger.error(result["message"])
+    finally:
+        end_build_job(playlist, job, result)
     return job
 
 
@@ -492,13 +495,7 @@ def build_playlist_job(playlist, email):
     from zou.app import app, mail
 
     with app.app_context():
-        job = None
-        try:
-            job = build_playlist_movie_file(playlist)
-        except:
-            if job is not None:
-                end_build_job(playlist, job)
-            raise
+        job = build_playlist_movie_file(playlist)
 
         message_text = """
 Your playlist %s is available at:
@@ -529,7 +526,7 @@ def get_playlist_file_name(playlist):
     return slugify(attachment_filename)
 
 
-def get_playlist_movie_file_path(playlist, build_job):
+def get_playlist_movie_file_path(build_job):
     """
     Build file path for the movie file matching given playlist.
     """
@@ -585,7 +582,7 @@ def remove_build_job(playlist, build_job_id):
     hard drive.
     """
     job = BuildJob.get(build_job_id)
-    movie_file_path = get_playlist_movie_file_path(playlist, job.serialize())
+    movie_file_path = get_playlist_movie_file_path(job.serialize())
     if os.path.exists(movie_file_path):
         os.remove(movie_file_path)
     try:
