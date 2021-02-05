@@ -418,7 +418,7 @@ def build_playlist_movie_file(playlist, app=None):
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
-    result["success"] = False
+    result = {"success": False}
     try:
         project = projects_service.get_project(playlist["project_id"])
         tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
