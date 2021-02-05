@@ -1,6 +1,8 @@
 import os
 import re
 
+import ffmpeg
+
 from zou.app.stores import file_store
 
 from zou.app.models.preview_file import PreviewFile
@@ -87,9 +89,16 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            normalized_movie_path = movie_utils.normalize_movie(
+            normalized_movie_path, err = movie_utils.normalize_movie(
                 uploaded_movie_path, fps=fps, width=width, height=height
             )
+
+            if err:
+                current_app.logger.error(
+                    "Fail to add silent audiotrack to: %s" % uploaded_movie_path
+                )
+                current_app.logger.error("\n".join(str(err).split("\\n")))
+
             current_app.logger.info("file normalized %s" % normalized_movie_path)
             file_store.add_movie(
                 "previews",
@@ -97,7 +106,9 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 normalized_movie_path
             )
             current_app.logger.info("file stored")
-        except:
+        except Exception as exc:
+            if isinstance(exc, ffmpeg.Error):
+                current_app.logger.error(exc.stderr)
             current_app.logger.error("failed", exc_info=1)
             preview_file = set_preview_file_as_broken(preview_file_id)
             return preview_file
