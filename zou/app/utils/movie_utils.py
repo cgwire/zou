@@ -144,6 +144,9 @@ def build_playlist_movie(
                 ret, _, err = add_empty_soundtrack(tmp_file_path)
                 if err:
                     result["message"] += "%s\n" % err
+                if ret != 0:
+                    result["success"] = False
+                    return result
 
         for tmp_file_path, file_name in tmp_file_paths:
             in_file = ffmpeg.input(tmp_file_path)
