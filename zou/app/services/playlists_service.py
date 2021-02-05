@@ -495,9 +495,9 @@ def build_playlist_job(playlist, email):
         job = None
         try:
             job = build_playlist_movie_file(playlist)
-        except:
+        except Exception:
             if job is not None:
-                end_build_job(playlist, job)
+                end_build_job(playlist, job, {"result": False})
             raise
 
         message_text = """
