@@ -14,7 +14,7 @@ from zou.app.services import projects_service
 
 class TasksCsvExport(BaseCsvExport):
     def __init__(self):
-        BaseCsvExport.__init__(self, Task)
+        BaseCsvExport.__init__(self)
 
         self.file_name = "tasks_export"
 
@@ -42,7 +42,7 @@ class TasksCsvExport(BaseCsvExport):
         Episode = aliased(Entity, name="episode")
         open_status = projects_service.get_open_status()
 
-        query = self.model.query.order_by(
+        query = Task.query.order_by(
             Project.name, TaskType.name, Task.name
         )
         query = query.join(Project)

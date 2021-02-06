@@ -6,13 +6,13 @@ from zou.app.models.project import Project
 
 class ProjectsCsvExport(BaseCsvExport):
     def __init__(self):
-        BaseCsvExport.__init__(self, Project)
+        BaseCsvExport.__init__(self)
 
     def build_headers(self):
         return ["Name", "Status"]
 
     def build_query(self):
-        query = self.model.query.join(ProjectStatus)
+        query = Project.query.join(ProjectStatus)
         query = query.add_columns(ProjectStatus.name)
         query = query.order_by(Project.name)
         return query

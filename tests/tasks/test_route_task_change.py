@@ -183,7 +183,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         )
         attachment = self.get("data/attachment-files")[0]
         attachment = self.get("data/attachment-files/%s" % attachment["id"])
-        path = "/data/attachment-files/%s/file" % attachment["id"]
+        path = "/data/attachment-files/%s/file/th01.png" % attachment["id"]
         result_file_path = self.get_file_path("th01.png")
 
         self.download_file(path, result_file_path)

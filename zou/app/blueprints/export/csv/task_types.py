@@ -6,7 +6,7 @@ from zou.app.models.task_type import TaskType
 
 class TaskTypesCsvExport(BaseCsvExport):
     def __init__(self):
-        BaseCsvExport.__init__(self, TaskType)
+        BaseCsvExport.__init__(self)
 
         self.name = "task_types_export"
 
@@ -14,7 +14,7 @@ class TaskTypesCsvExport(BaseCsvExport):
         return ["Department", "Name"]
 
     def build_query(self):
-        query = self.model.query.order_by(Department.name, TaskType.name)
+        query = TaskType.query.order_by(Department.name, TaskType.name)
         query = query.join(Department)
         query = query.add_columns(Department.name)
         return query
