@@ -1,13 +1,13 @@
 from flask import abort
 from flask_jwt_extended import jwt_required
 
-from zou.app.blueprints.crud.base import BaseModelResource
+from flask_restful import Resource
 from zou.app.utils import csv_utils, permissions
 
 
-class BaseCsvExport(BaseModelResource):
-    def __init__(self, model):
-        BaseModelResource.__init__(self, model)
+class BaseCsvExport(Resource):
+    def __init__(self):
+        Resource.__init__(self)
         self.file_name = "export"
 
     def check_permissions(self):

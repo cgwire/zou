@@ -10,6 +10,7 @@ from .csv.casting import CastingCsvExport
 from .csv.projects import ProjectsCsvExport
 from .csv.shots import ShotsCsvExport
 from .csv.persons import PersonsCsvExport
+from .csv.playlists import PlaylistCsvExport
 from .csv.task_types import TaskTypesCsvExport
 from .csv.tasks import TasksCsvExport
 
@@ -17,6 +18,7 @@ routes = [
     ("/export/csv/projects/<project_id>/assets.csv", AssetsCsvExport),
     ("/export/csv/projects/<project_id>/shots.csv", ShotsCsvExport),
     ("/export/csv/projects/<project_id>/casting.csv", CastingCsvExport),
+    ("/export/csv/playlists/<playlist_id>", PlaylistCsvExport),
     ("/export/csv/persons.csv", PersonsCsvExport),
     ("/export/csv/projects.csv", ProjectsCsvExport),
     ("/export/csv/tasks.csv", TasksCsvExport),
