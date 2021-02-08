@@ -1,3 +1,4 @@
+from collections import namedtuple
 import contextlib
 import ffmpeg
 import os
@@ -6,6 +7,10 @@ import shutil
 import subprocess
 
 from PIL import Image
+
+
+EncodingParameters = namedtuple('EncodingParameters',
+                                ['width', 'height', 'fps'])
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -54,9 +59,9 @@ def get_movie_size(movie_path):
     return (width, height)
 
 
-def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
+def normalize_movie(movie_path, fps, width, height):
     """
-    Turn movie in a 1080p movie file (or use resolution given in parameter).
+    normalize movie using resolution, width and height given in parameter.
     """
     folder_path = os.path.dirname(movie_path)
     file_source_name = os.path.basename(movie_path)
@@ -126,9 +131,7 @@ def has_soundtrack(file_path):
     return len(audio["streams"]) > 0
 
 
-def build_playlist_movie(
-    tmp_file_paths, movie_file_path, width=None, height=1080, fps="24.00"
-):
+def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
     """
     Build a single movie file from a playlist.
     """

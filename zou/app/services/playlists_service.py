@@ -415,21 +415,18 @@ def build_playlist_zip_file(playlist):
     return zip_file_path
 
 
-def build_playlist_movie_file(playlist):
+def build_playlist_movie_file(playlist, params):
     """
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
     result = {"success": False}
     try:
-        project = projects_service.get_project(playlist["project_id"])
         tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
         movie_file_path = get_playlist_movie_file_path(job)
-        (width, height) = preview_files_service.get_preview_file_dimensions(project)
-        fps = preview_files_service.get_preview_file_fps(project)
 
         result = movie.build_playlist_movie(
-            tmp_file_paths, movie_file_path, width, height, fps
+            tmp_file_paths, movie_file_path, **params._as_dict()
         )
         if result["success"] == True:
             if os.path.exists(movie_file_path):
@@ -484,7 +481,7 @@ def end_build_job(playlist, job, result):
     return build_job.serialize()
 
 
-def build_playlist_job(playlist, email):
+def build_playlist_job(playlist, params, email):
     """
     Build playlist file (concatenate all mnovie previews). This function is
     aimed at being runned as a job in a job queue.
@@ -492,7 +489,7 @@ def build_playlist_job(playlist, email):
     from zou.app import app, mail
 
     with app.app_context():
-        job = build_playlist_movie_file(playlist)
+        job = build_playlist_movie_file(playlist, params)
 
         message_text = """
 Your playlist %s is available at:

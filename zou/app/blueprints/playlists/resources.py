@@ -12,12 +12,14 @@ from zou.app.services import (
     entities_service,
     playlists_service,
     persons_service,
+    preview_files_service,
     projects_service,
     shots_service,
     user_service,
 )
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs
+from zou.utils.movie import EncodingParameters
 
 
 class ProjectPlaylistsResource(Resource):
@@ -118,16 +120,23 @@ class BuildPlaylistMovieResource(Resource):
     def get(self, playlist_id):
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
+
+        project = projects_service.get_project(playlist["project_id"])
+        (width, height) = preview_files_service.get_preview_file_dimensions(project)
+        fps = preview_files_service.get_preview_file_fps(project)
+
+        params = EncodingParameters(width=width, height=height, fps=fps)
+
         if config.ENABLE_JOB_QUEUE:
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
-                args=(playlist, current_user["email"]),
+                args=(playlist, params, current_user["email"]),
                 job_timeout=3600,
             )
             return {"job": "running"}
         else:
-            playlists_service.build_playlist_movie_file(playlist)
+            playlists_service.build_playlist_movie_file(playlist, params)
             return {"job": "succeeded"}
 
 
