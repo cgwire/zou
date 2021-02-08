@@ -130,16 +130,21 @@ class BuildPlaylistMovieResource(Resource):
         shots = [{"preview_file_id": x.get("preview_file_id")} for x in playlist["shots"]]
 
         if config.ENABLE_JOB_QUEUE:
+            remote = config.ENABLE_JOB_QUEUE_REMOTE
+            # remote worker can not access files local to the web app
+            assert not remote or config.FS_BACKEND == "s3"
+
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
-                args = (playlist, shots, params, current_user["email"]),
+                args = (playlist, shots, params, current_user["email"], remote),
                 job_timeout=3600,
             )
             return {"job": "running"}
         else:
+            remote = False
             playlists_service.build_playlist_movie_file(
-                playlist, shots, params
+                playlist, shots, params, remote
             )
             return {"job": "succeeded"}
 
