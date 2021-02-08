@@ -132,7 +132,7 @@ class BuildPlaylistMovieResource(Resource):
         if config.ENABLE_JOB_QUEUE:
             remote = config.ENABLE_JOB_QUEUE_REMOTE
             # remote worker can not access files local to the web app
-            assert not remote or config.FS_BACKEND == "s3"
+            assert not remote or config.FS_BACKEND in ["s3", "swift"]
 
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(

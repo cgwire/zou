@@ -41,6 +41,29 @@ class S3Client:
         self.s3client.upload_file(local_path, bucket, key)
 
 
+class SwiftClient:
+    def __init__(self, config):
+        import swiftclient
+        self.conn = swiftclient.Connection(
+            authurl=config["OS_AUTH_URL"],
+            user=config["OS_USERNAME"],
+            key=config["OS_PASSWORD"],
+            os_options={
+                "region_name": config["OS_REGION_NAME"],
+                "tenant_name": config["OS_TENANT_NAME"],
+            },
+            auth_version="3",
+        )
+
+    def get(self, bucket, key, local_fd):
+        _, data = self.conn.get_object(bucket, key)
+        local_fd.write(data)
+
+    def put(self, local_path, bucket, key):
+        with open(local_path, 'rb') as local:
+            self.conn.put_object(bucket, key, contents=local)
+
+
 def fetch_inputs(storage, outdir, inputs, bucket_prefix):
     """Fetch inputs from object storage, return a list of local paths"""
     input_paths = []
@@ -69,6 +92,7 @@ def fetch_inputs(storage, outdir, inputs, bucket_prefix):
 
 
 ObjectStorageClient.register(S3Client)
+ObjectStorageClient.register(SwiftClient)
 
 
 def main():
@@ -98,6 +122,8 @@ def main():
 
     if config["FS_BACKEND"] == "s3":
         storage = S3Client(config)
+    elif config["FS_BACKEND"] == "swift":
+        storage = SwiftClient(config)
     else:
         print("Unknown object storage backend (%r)" % config["FS_BACKEND"])
         sys.exit(1)

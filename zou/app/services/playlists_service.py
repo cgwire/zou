@@ -470,11 +470,24 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                     "width": params.width,
                     "height": params.height,
                     "fps": params.fps,
-                    "AWS_DEFAULT_REGION": config.FS_S3_REGION,
-                    "S3_ENDPOINT": config.FS_S3_ENDPOINT,
-                    "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
-                    "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
+                    "FS_BACKEND": config.FS_BACKEND,
                 }
+                if config.FS_BACKEND == "s3":
+                    params.update({
+                        "S3_ENDPOINT": config.FS_S3_ENDPOINT,
+                        "AWS_DEFAULT_REGION": config.FS_S3_REGION,
+                        "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
+                        "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
+                    })
+                elif config.FS_BACKEND == "swift":
+                    params.update({
+                        "OS_USERNAME": config.FS_SWIFT_USER,
+                        "OS_PASSWORD": config.FS_SWIFT_KEY,
+                        "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
+                        "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
+                        "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
+                    })
+
                 json.dump(params, temp.file)
                 temp.file.flush()
                 args = ("zou_playlist", temp.name)
