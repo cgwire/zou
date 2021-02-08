@@ -26,10 +26,10 @@ from zou.app.stores import queue_store
 from zou.app.utils import (
     fs,
     events,
-    movie_utils,
     permissions,
     thumbnail as thumbnail_utils,
 )
+from zou.utils import movie
 
 
 ALLOWED_PICTURE_EXTENSION = [
@@ -272,7 +272,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         """
         no_job = self.get_no_job()
         tmp_folder = current_app.config["TMP_DIR"]
-        uploaded_movie_path = movie_utils.save_file(
+        uploaded_movie_path = movie.save_file(
             tmp_folder, preview_file_id, uploaded_file
         )
         if config.ENABLE_JOB_QUEUE and not no_job:

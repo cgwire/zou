@@ -1,13 +1,16 @@
 import os
 import re
 
+import ffmpeg
+
 from zou.app.stores import file_store
 
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import files_service
-from zou.app.utils import events, movie_utils, thumbnail as thumbnail_utils
+from zou.app.utils import events, thumbnail as thumbnail_utils
+from zou.utils import movie
 
 
 def get_preview_file_dimensions(project):
@@ -87,9 +90,16 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            normalized_movie_path = movie_utils.normalize_movie(
+            normalized_movie_path, err = movie.normalize_movie(
                 uploaded_movie_path, fps=fps, width=width, height=height
             )
+
+            if err:
+                current_app.logger.error(
+                    "Fail to add silent audiotrack to: %s" % uploaded_movie_path
+                )
+                current_app.logger.error(err)
+
             current_app.logger.info("file normalized %s" % normalized_movie_path)
             file_store.add_movie(
                 "previews",
@@ -97,17 +107,19 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 normalized_movie_path
             )
             current_app.logger.info("file stored")
-        except:
+        except Exception as exc:
+            if isinstance(exc, ffmpeg.Error):
+                current_app.logger.error(exc.stderr)
             current_app.logger.error("failed", exc_info=1)
             preview_file = set_preview_file_as_broken(preview_file_id)
             return preview_file
 
         # Build thumbnails
-        size = movie_utils.get_movie_size(normalized_movie_path)
+        size = movie.get_movie_size(normalized_movie_path)
         original_picture_path = \
-            movie_utils.generate_thumbnail(normalized_movie_path)
+            movie.generate_thumbnail(normalized_movie_path)
         tile_picture_path = \
-            movie_utils.generate_tile(normalized_movie_path)
+            movie.generate_tile(normalized_movie_path)
         thumbnail_utils.resize(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)

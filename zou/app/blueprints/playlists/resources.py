@@ -12,12 +12,14 @@ from zou.app.services import (
     entities_service,
     playlists_service,
     persons_service,
+    preview_files_service,
     projects_service,
     shots_service,
     user_service,
 )
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs
+from zou.utils.movie import EncodingParameters
 
 
 class ProjectPlaylistsResource(Resource):
@@ -118,16 +120,32 @@ class BuildPlaylistMovieResource(Resource):
     def get(self, playlist_id):
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
+
+        project = projects_service.get_project(playlist["project_id"])
+        (width, height) = preview_files_service.get_preview_file_dimensions(project)
+        fps = preview_files_service.get_preview_file_fps(project)
+
+        params = EncodingParameters(width=width, height=height, fps=fps)
+
+        shots = [{"preview_file_id": x.get("preview_file_id")} for x in playlist["shots"]]
+
         if config.ENABLE_JOB_QUEUE:
+            remote = config.ENABLE_JOB_QUEUE_REMOTE
+            # remote worker can not access files local to the web app
+            assert not remote or config.FS_BACKEND in ["s3", "swift"]
+
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
-                args=(playlist, current_user["email"]),
+                args = (playlist, shots, params, current_user["email"], remote),
                 job_timeout=3600,
             )
             return {"job": "running"}
         else:
-            playlists_service.build_playlist_movie_file(playlist)
+            remote = False
+            playlists_service.build_playlist_movie_file(
+                playlist, shots, params, remote
+            )
             return {"job": "succeeded"}
 
 

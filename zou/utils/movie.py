@@ -1,11 +1,15 @@
-import ffmpeg
+from collections import namedtuple
+import contextlib
 import os
 import math
+import shutil
 import subprocess
 
-from PIL import Image
+import ffmpeg
 
-from . import fs
+
+EncodingParameters = namedtuple('EncodingParameters',
+                                ['width', 'height', 'fps'])
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -54,9 +58,9 @@ def get_movie_size(movie_path):
     return (width, height)
 
 
-def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
+def normalize_movie(movie_path, fps, width, height):
     """
-    Turn movie in a 1080p movie file (or use resolution given in parameter).
+    normalize movie using resolution, width and height given in parameter.
     """
     folder_path = os.path.dirname(movie_path)
     file_source_name = os.path.basename(movie_path)
@@ -75,34 +79,32 @@ def normalize_movie(movie_path, fps="24.00", width=None, height=1080):
     if height % 2 == 1:
         height = height + 1
 
-    try:
-        stream = ffmpeg.input(movie_path)
-        stream = stream.output(
-            file_target_path,
-            pix_fmt="yuv420p",
-            format="mp4",
-            r=fps,
-            crf="15",
-            preset="medium",
-            vcodec="libx264",
-            vsync="passthrough",
-            s="%sx%s" % (width, height),
-        )
-        stream.run(quiet=False, capture_stderr=True)
-        if not has_soundtrack(file_target_path):
-            add_empty_soundtrack(file_target_path)
-    except ffmpeg.Error as exc:
-        from flask import current_app
-
-        current_app.logger.error(exc.stderr)
-        raise
-
-    return file_target_path
+    stream = ffmpeg.input(movie_path)
+    stream = stream.output(
+        file_target_path,
+        pix_fmt="yuv420p",
+        format="mp4",
+        r=fps,
+        crf="15",
+        preset="medium",
+        vcodec="libx264",
+        vsync="passthrough",
+        s="%sx%s" % (width, height),
+    )
+    stream.run(quiet=False, capture_stderr=True)
+    if not has_soundtrack(file_target_path):
+        _, _, err = add_empty_soundtrack(file_target_path)
+    else:
+        err = None
+    return file_target_path, err
 
 
 def add_empty_soundtrack(file_path):
     tmp_file_path = file_path + ".tmp.mp4"
-    fs.rm_file(tmp_file_path)
+
+    with contextlib.suppress(FileNotFoundError):
+        os.remove(tmp_file_path)
+
     args = [
         "ffmpeg",
         "-f", "lavfi",
@@ -115,18 +117,12 @@ def add_empty_soundtrack(file_path):
         "-shortest",
         tmp_file_path
     ]
-    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True)
     out, err = sp.communicate()
-    if err:
-        from flask import current_app
-        current_app.logger.error(
-            "Fail to add silent audiotrack to: %s" % file_path
-        )
-        current_app.logger.error("\n".join(str(err).split("\\n")))
 
-    fs.rm_file(file_path)
-    fs.copyfile(tmp_file_path, file_path)
-    return sp.returncode
+    shutil.copyfile(tmp_file_path, file_path)
+    return sp.returncode, out, err
 
 
 def has_soundtrack(file_path):
@@ -134,13 +130,12 @@ def has_soundtrack(file_path):
     return len(audio["streams"]) > 0
 
 
-def build_playlist_movie(
-    tmp_file_paths, movie_file_path, width=None, height=1080, fps="24.00"
-):
+def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
     """
     Build a single movie file from a playlist.
     """
     in_files = []
+    result = {"message": ""}
     if len(tmp_file_paths) > 0:
         (first_movie_file_path, _) = tmp_file_paths[0]
         if width is None:
@@ -148,7 +143,12 @@ def build_playlist_movie(
 
         for tmp_file_path, file_name in tmp_file_paths:
             if not has_soundtrack(tmp_file_path):
-                add_empty_soundtrack(tmp_file_path)
+                ret, _, err = add_empty_soundtrack(tmp_file_path)
+                if err:
+                    result["message"] += "%s\n" % err
+                if ret != 0:
+                    result["success"] = False
+                    return result
 
         for tmp_file_path, file_name in tmp_file_paths:
             in_file = ffmpeg.input(tmp_file_path)
@@ -169,5 +169,9 @@ def build_playlist_movie(
             ).overwrite_output().run()
         except Exception as e:
             print(e)
-            return {"success": False, "message": str(e)}
-    return {"success": True}
+            result["success"] = False
+            result["message"] += str(e)
+            return result
+
+    result["success"] = True
+    return result

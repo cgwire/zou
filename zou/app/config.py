@@ -23,6 +23,7 @@ KV_EVENTS_DB_INDEX = 2
 KV_JOB_DB_INDEX = 3
 
 ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
+ENABLE_JOB_QUEUE_REMOTE = os.getenv("ENABLE_JOB_QUEUE_REMOTE", "False").lower() == "true"
 
 JWT_BLACKLIST_ENABLED = True
 JWT_BLACKLIST_TOKEN_CHECKS = ["access", "refresh"]

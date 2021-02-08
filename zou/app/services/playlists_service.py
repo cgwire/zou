@@ -1,6 +1,10 @@
+import json
 import os
 from operator import itemgetter
+from pathlib import Path
 from slugify import slugify
+import subprocess
+import tempfile
 
 from shutil import copyfile
 from zipfile import ZipFile
@@ -18,7 +22,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.utils import fields, movie_utils, events
+from zou.app.utils import fields, events
 from zou.app.utils import query as query_utils
 
 from zou.app.services import (
@@ -26,7 +30,6 @@ from zou.app.services import (
     base_service,
     entities_service,
     files_service,
-    preview_files_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -37,6 +40,8 @@ from zou.app.services.exception import (
     BuildJobNotFoundException,
     PlaylistNotFoundException,
 )
+
+from zou.utils import movie
 
 
 def all_playlists_for_project(project_id, for_client=False):
@@ -341,12 +346,12 @@ def get_playlist(playlist_id):
     return get_playlist_raw(playlist_id).serialize()
 
 
-def retrieve_playlist_tmp_files(playlist, only_movies=False):
+def playlist_previews(shots, only_movies=False):
     """
-    Retrieve all files for a given playlist into the temporary folder.
+    Retrieve all preview id and extension for the given shots.
     """
     preview_files = []
-    for entity in playlist["shots"]:
+    for entity in shots:
         if (
             "preview_file_id" in entity and
             entity["preview_file_id"] is not None and
@@ -361,6 +366,13 @@ def retrieve_playlist_tmp_files(playlist, only_movies=False):
             ):
                 preview_files.append(preview_file)
 
+    return [{'id': x['id'], 'extension': x['extension']} for x in preview_files]
+
+
+def retrieve_playlist_tmp_files(preview_files):
+    """
+    Retrieve all files for a given playlist into the temporary folder.
+    """
     file_paths = []
     for preview_file in preview_files:
         prefix = "original"
@@ -403,7 +415,9 @@ def build_playlist_zip_file(playlist):
     """
     Build a zip for all files for a given playlist into the temporary folder.
     """
-    tmp_file_paths = retrieve_playlist_tmp_files(playlist)
+    previews = playlist_previews(playlist["shots"])
+    tmp_file_paths = retrieve_playlist_tmp_files(previews)
+
     zip_file_path = get_playlist_zip_file_path(playlist)
     if os.path.exists(zip_file_path):
         os.remove(zip_file_path)
@@ -413,28 +427,87 @@ def build_playlist_zip_file(playlist):
     return zip_file_path
 
 
-def build_playlist_movie_file(playlist):
+def build_playlist_movie_file(playlist, shots, params, remote):
     """
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
     result = {"success": False}
     try:
-        project = projects_service.get_project(playlist["project_id"])
-        tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
+        previews = playlist_previews(shots, only_movies=True)
         movie_file_path = get_playlist_movie_file_path(job)
-        (width, height) = preview_files_service.get_preview_file_dimensions(project)
-        fps = preview_files_service.get_preview_file_fps(project)
+        if not remote:
+            tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
-        result = movie.build_playlist_movie(
-            tmp_file_paths, movie_file_path, width, height, fps
-        )
-        if result["success"] == True:
-            if os.path.exists(movie_file_path):
-                file_store.add_movie("playlists", job["id"], movie_file_path)
+            result = movie.build_playlist_movie(
+                tmp_file_paths, movie_file_path, **params._asdict()
+            )
+
+            if result["success"] == True:
+                if os.path.exists(movie_file_path):
+                    file_store.add_movie("playlists", job["id"], movie_file_path)
+                else:
+                    result["success"] = False
+                    result["message"] = "No playlist was created"
             else:
-                result["success"] = False
-                result["message"] = "No playlist was created"
+                pass
+                # FIXME log the error
+        else:
+            from zou.app import app, mail
+            with app.app_context():
+                bucket_prefix = app.config.get("FS_BUCKET_PREFIX", "")
+
+            # execute a script which build playlist
+            # fetch the movie from the object storage
+            # TODO: fetch the movie from the worker
+            with tempfile.NamedTemporaryFile(mode="w") as temp:
+                params = {
+                    "version": "1",
+                    "bucket_prefix": bucket_prefix,
+                    "output_filename": Path(movie_file_path).name,
+                    "output_key": file_store.make_key("playlists", job["id"]),
+                    "input": previews,
+                    "width": params.width,
+                    "height": params.height,
+                    "fps": params.fps,
+                    "FS_BACKEND": config.FS_BACKEND,
+                }
+                if config.FS_BACKEND == "s3":
+                    params.update({
+                        "S3_ENDPOINT": config.FS_S3_ENDPOINT,
+                        "AWS_DEFAULT_REGION": config.FS_S3_REGION,
+                        "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
+                        "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
+                    })
+                elif config.FS_BACKEND == "swift":
+                    params.update({
+                        "OS_USERNAME": config.FS_SWIFT_USER,
+                        "OS_PASSWORD": config.FS_SWIFT_KEY,
+                        "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
+                        "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
+                        "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
+                    })
+
+                json.dump(params, temp.file)
+                temp.file.flush()
+                args = ("zou_playlist", temp.name)
+
+                # create movie
+                process = subprocess.Popen(args, stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+
+                out, err = process.communicate()
+                result["success"] = process.returncode == 0
+
+                # TODO warning if success but stderr isn't empty
+                if process.returncode:
+                    result['message'] = err
+                    return job
+
+                # fetch movie from object storage
+                with open(movie_file_path, "wb") as movie_file:
+                    for chunk in file_store.open_movie("playlists", job["id"]):
+                        movie_file.write(chunk)
     finally:
         end_build_job(playlist, job, result)
     return job
@@ -482,7 +555,7 @@ def end_build_job(playlist, job, result):
     return build_job.serialize()
 
 
-def build_playlist_job(playlist, email):
+def build_playlist_job(playlist, shots, params, email, remote):
     """
     Build playlist file (concatenate all mnovie previews). This function is
     aimed at being runned as a job in a job queue.
@@ -490,7 +563,7 @@ def build_playlist_job(playlist, email):
     from zou.app import app, mail
 
     with app.app_context():
-        job = build_playlist_movie_file(playlist)
+        job = build_playlist_movie_file(playlist, shots, params, remote)
 
         message_text = """
 Your playlist %s is available at:
