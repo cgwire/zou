@@ -127,16 +127,20 @@ class BuildPlaylistMovieResource(Resource):
 
         params = EncodingParameters(width=width, height=height, fps=fps)
 
+        shots = [{"preview_file_id": x.get("preview_file_id")} for x in playlist["shots"]]
+
         if config.ENABLE_JOB_QUEUE:
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
-                args=(playlist, params, current_user["email"]),
+                args = (playlist, shots, params, current_user["email"]),
                 job_timeout=3600,
             )
             return {"job": "running"}
         else:
-            playlists_service.build_playlist_movie_file(playlist, params)
+            playlists_service.build_playlist_movie_file(
+                playlist, shots, params
+            )
             return {"job": "succeeded"}
 
 

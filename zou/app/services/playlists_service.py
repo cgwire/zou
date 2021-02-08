@@ -26,7 +26,6 @@ from zou.app.services import (
     base_service,
     entities_service,
     files_service,
-    preview_files_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -343,9 +342,9 @@ def get_playlist(playlist_id):
     return get_playlist_raw(playlist_id).serialize()
 
 
-def retrieve_playlist_tmp_files(playlist, only_movies=False):
+def playlist_previews(playlist, only_movies=False):
     """
-    Retrieve all files for a given playlist into the temporary folder.
+    Retrieve all preview id and extension for the given shots.
     """
     preview_files = []
     for entity in playlist["shots"]:
@@ -363,6 +362,13 @@ def retrieve_playlist_tmp_files(playlist, only_movies=False):
             ):
                 preview_files.append(preview_file)
 
+    return [{'id': x['id'], 'extension': x['extension']} for x in preview_files]
+
+
+def retrieve_playlist_tmp_files(preview_files):
+    """
+    Retrieve all files for a given playlist into the temporary folder.
+    """
     file_paths = []
     for preview_file in preview_files:
         prefix = "original"
@@ -405,7 +411,9 @@ def build_playlist_zip_file(playlist):
     """
     Build a zip for all files for a given playlist into the temporary folder.
     """
-    tmp_file_paths = retrieve_playlist_tmp_files(playlist)
+    previews = playlist_previews(playlist["shots"])
+    tmp_file_paths = retrieve_playlist_tmp_files(previews)
+
     zip_file_path = get_playlist_zip_file_path(playlist)
     if os.path.exists(zip_file_path):
         os.remove(zip_file_path)
@@ -415,14 +423,15 @@ def build_playlist_zip_file(playlist):
     return zip_file_path
 
 
-def build_playlist_movie_file(playlist, params):
+def build_playlist_movie_file(playlist, shots, params):
     """
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
     result = {"success": False}
     try:
-        tmp_file_paths = retrieve_playlist_tmp_files(playlist, only_movies=True)
+        previews = playlist_previews(shots, only_movies=True)
+        tmp_file_paths = retrieve_playlist_tmp_files(previews)
         movie_file_path = get_playlist_movie_file_path(job)
 
         result = movie.build_playlist_movie(
@@ -481,7 +490,7 @@ def end_build_job(playlist, job, result):
     return build_job.serialize()
 
 
-def build_playlist_job(playlist, params, email):
+def build_playlist_job(playlist, shots, params, email):
     """
     Build playlist file (concatenate all mnovie previews). This function is
     aimed at being runned as a job in a job queue.
@@ -489,7 +498,7 @@ def build_playlist_job(playlist, params, email):
     from zou.app import app, mail
 
     with app.app_context():
-        job = build_playlist_movie_file(playlist, params)
+        job = build_playlist_movie_file(playlist, shots, params)
 
         message_text = """
 Your playlist %s is available at:
