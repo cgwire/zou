@@ -1,12 +1,11 @@
 from collections import namedtuple
 import contextlib
-import ffmpeg
 import os
 import math
 import shutil
 import subprocess
 
-from PIL import Image
+import ffmpeg
 
 
 EncodingParameters = namedtuple('EncodingParameters',
