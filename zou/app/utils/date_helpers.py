@@ -17,6 +17,15 @@ def get_date_string_with_timezone(date_string, timezone):
     date_obj = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S")
     return format_datetime(
         date_obj,
-        "YYYY-MM-DDTHH:mm:ss",
+        "yyyy-MM-ddTHH:mm:ss",
+        tzinfo=timezone
+    )
+
+
+def get_today_string_with_timezone(timezone):
+    date_obj = date.today()
+    return format_datetime(
+        date_obj,
+        "yyyy-MM-dd",
         tzinfo=timezone
     )
