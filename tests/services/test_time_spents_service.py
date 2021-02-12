@@ -63,6 +63,18 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(month_table["6"][self.user_id], 600)
         self.assertTrue("1" not in month_table)
 
+    def test_get_month_table_with_different_projects(self):
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        self.generate_fixture_task_standard()
+        tasks_service.create_or_update_time_spent(
+            self.task_standard.id, self.person_id, "2018-05-03", 600
+        )
+        month_table = time_spents_service.get_month_table(
+            "2018", project_id=self.project_standard.id
+        )
+        self.assertEqual(month_table["5"][self.person_id], 600)
+
     def test_get_day_table(self):
         day_table = time_spents_service.get_day_table("2018", "06")
         self.assertEqual(day_table["3"][self.person_id], 600)
@@ -87,6 +99,23 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["entity_name"], "Tree")
         self.assertEqual(tasks[0]["duration"], 600)
+
+    def test_get_month_time_spents_with_different_projects(self):
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        self.generate_fixture_task_standard()
+        tasks_service.create_or_update_time_spent(
+            self.task_standard.id, self.person_id, "2018-05-03", 400
+        )
+        tasks = time_spents_service.get_month_time_spents(
+            self.person_id,
+            "2018",
+            "5",
+            project_id=self.project_standard.id
+        )
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["entity_name"], "Car")
+        self.assertEqual(tasks[0]["duration"], 400)
 
     def test_get_week_time_spents(self):
         tasks = time_spents_service.get_week_time_spents(

@@ -18,47 +18,57 @@ from zou.app.utils import fields
 from zou.app.services.exception import WrongDateFormatException
 
 
-def get_year_table(person_id=None):
+def get_year_table(person_id=None, project_id=None):
     """
     Return a table giving time spent by user and by month for given year.
     """
-    return get_yearly_table(None, detail_level="year", person_id=person_id)
+    return get_yearly_table(
+        None, detail_level="year", person_id=person_id, project_id=project_id
+    )
 
 
-def get_month_table(year, person_id=None):
+def get_month_table(year, person_id=None, project_id=None):
     """
     Return a table giving time spent by user and by month for given year.
     """
-    return get_yearly_table(year, person_id=person_id)
+    return get_yearly_table(year, person_id=person_id, project_id=project_id)
 
 
-def get_week_table(year, person_id=None):
+def get_week_table(year, person_id=None, project_id=None):
     """
     Return a table giving time spent by user and by week for given year.
     """
-    return get_yearly_table(year, "week", person_id=person_id)
+    return get_yearly_table(
+        year, "week", person_id=person_id, project_id=project_id
+    )
 
 
-def get_day_table(year, month, person_id=None):
+def get_day_table(year, month, person_id=None, project_id=None):
     """
     Return a table giving time spent by user and by day for given year and
     month.
     """
-    time_spents = get_time_spents_for_month(year, month, person_id=person_id)
+    time_spents = get_time_spents_for_month(
+        year, month, person_id=person_id, project_id=project_id
+    )
     return get_table_from_time_spents(time_spents, "day")
 
 
-def get_yearly_table(year=None, detail_level="month", person_id=None):
+def get_yearly_table(
+    year=None, detail_level="month", person_id=None, project_id=None
+):
     """
     Return a table giving time spent by user and by week or month for given
     year. Week or month detail level can be selected through *detail_level*
     argument.
     """
-    time_spents = get_time_spents_for_year(year=year, person_id=person_id)
+    time_spents = get_time_spents_for_year(
+        year=year, person_id=person_id, project_id=project_id
+    )
     return get_table_from_time_spents(time_spents, detail_level)
 
 
-def get_time_spents_for_year(year=None, person_id=None):
+def get_time_spents_for_year(year=None, person_id=None, project_id=None):
     """
     Return all time spents for given year.
     """
@@ -72,10 +82,14 @@ def get_time_spents_for_year(year=None, person_id=None):
             TimeSpent.date.between("%s-01-01" % year, "%s-12-31" % year)
         )
 
+    if project_id is not None:
+        query = query.filter(Task.project_id == project_id)
+        query = query.join(Task)
+
     return query.all()
 
 
-def get_time_spents_for_month(year, month, person_id=None):
+def get_time_spents_for_month(year, month, person_id=None, project_id=None):
     """
     Return all time spents for given month.
     """
@@ -89,6 +103,10 @@ def get_time_spents_for_month(year, month, person_id=None):
 
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
+
+    if project_id is not None:
+        query = query.filter(Task.project_id == project_id)
+        query = query.join(Task)
 
     return query.all()
 
@@ -131,7 +149,7 @@ def get_time_spents(person_id, date):
     return fields.serialize_list(time_spents)
 
 
-def get_year_time_spents(person_id, year):
+def get_year_time_spents(person_id, year, project_id=None):
     """
     Return aggregated time spents at task level for given person and month.
     """
@@ -146,12 +164,13 @@ def get_year_time_spents(person_id, year):
         person_id,
         TimeSpent.date >= date.strftime("%Y-%m-%d"),
         TimeSpent.date < next_year.strftime("%Y-%m-%d"),
+        project_id=project_id
     )
 
     return build_results(entries)
 
 
-def get_month_time_spents(person_id, year, month):
+def get_month_time_spents(person_id, year, month, project_id=None):
     """
     Return aggregated time spents at task level for given person and month.
     """
@@ -172,12 +191,13 @@ def get_month_time_spents(person_id, year, month):
         person_id,
         TimeSpent.date >= date.strftime("%Y-%m-%d"),
         TimeSpent.date < next_month.strftime("%Y-%m-%d"),
+        project_id=project_id
     )
 
     return build_results(entries)
 
 
-def get_week_time_spents(person_id, year, week):
+def get_week_time_spents(person_id, year, week, project_id=None):
     """
     Return aggregated time spents at task level for given person and week.
     """
@@ -198,12 +218,13 @@ def get_week_time_spents(person_id, year, week):
         person_id,
         TimeSpent.date >= date.strftime("%Y-%m-%d"),
         TimeSpent.date < next_week.strftime("%Y-%m-%d"),
+        project_id=project_id
     )
 
     return build_results(entries)
 
 
-def get_day_time_spents(person_id, year, month, day):
+def get_day_time_spents(person_id, year, month, day, project_id=None):
     """
     Return aggregated time spents at task level for given person and day.
     """
@@ -221,11 +242,12 @@ def get_day_time_spents(person_id, year, month, day):
         raise WrongDateFormatException
 
     date = datetime.datetime(year, month, day)
-    entries = get_person_time_spent_entries(person_id, TimeSpent.date == date)
+    entries = get_person_time_spent_entries(
+        person_id, TimeSpent.date == date, project_id=project_id)
     return build_results(entries)
 
 
-def get_person_time_spent_entries(person_id, *args):
+def get_person_time_spent_entries(person_id, *args, project_id=None):
     """
     Return aggregated time spents at task level for given person and
     query filter (args).
@@ -261,6 +283,9 @@ def get_person_time_spent_entries(person_id, *args):
             func.sum(TimeSpent.duration),
         )
     )
+
+    if project_id is not None:
+        query = query.filter(Project.id == project_id)
 
     for arg in args:
         query = query.filter(arg)
