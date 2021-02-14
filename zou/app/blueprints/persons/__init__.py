@@ -2,19 +2,24 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from .resources import (
+    DayOffResource,
+    DayOffForMonthResource,
     DesktopLoginsResource,
     InvitePersonResource,
     NewPersonResource,
     PersonMonthTimeSpentsResource,
     PersonWeekTimeSpentsResource,
     PersonDayTimeSpentsResource,
+    PersonWeekDayOffResource,
+    PersonYearDayOffResource,
+    PersonMonthDayOffResource,
     PresenceLogsResource,
     TimeSpentsResource,
     TimeSpentMonthResource,
     TimeSpentMonthsResource,
     TimeSpentWeekResource,
     TimeSpentYearsResource,
-    PersonYearTimeSpentsResource
+    PersonYearTimeSpentsResource,
 )
 
 routes = [
@@ -23,6 +28,7 @@ routes = [
     ("/data/persons/presence-logs/<month_date>", PresenceLogsResource),
 
     ("/data/persons/<person_id>/time-spents/<date>", TimeSpentsResource),
+    ("/data/persons/<person_id>/day-offs/<date>", DayOffResource),
     (
         "/data/persons/<person_id>/time-spents/year/<year>",
         PersonYearTimeSpentsResource,
@@ -46,6 +52,10 @@ routes = [
         "/data/persons/time-spents/day-table/<year>/<month>",
         TimeSpentMonthResource,
     ),
+    ("/data/persons/days-off/<year>/<month>", DayOffForMonthResource),
+    ("/data/persons/<person_id>/days-off/<year>/<week>", PersonWeekDayOffResource),
+    ("/data/persons/<person_id>/days-off/<year>/<month>", PersonMonthDayOffResource),
+    ("/data/persons/<person_id>/days-off/<year>", PersonYearDayOffResource),
 
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
 ]

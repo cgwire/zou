@@ -431,6 +431,20 @@ class TimeSpentsResource(Resource):
             abort(404)
 
 
+class DayOffResource(Resource):
+    """
+    Get day off object for current user and given date.
+    """
+
+    @jwt_required
+    def get(self, date):
+        try:
+            current_user = persons_service.get_current_user()
+            return time_spents_service.get_day_off(current_user["id"], date)
+        except WrongDateFormatException:
+            abort(404)
+
+
 class ContextResource(Resource):
     """
     Return context required to run properly a full app connected to

@@ -28,7 +28,7 @@ class ArgsMixin(object):
 
     def clear_empty_fields(self, data):
         """
-        Remove fiels set to None from data dict.
+        Remove fields set to None from data dict.
         """
         for key in list(data.keys()):
             if data[key] is None:
@@ -55,6 +55,14 @@ class ArgsMixin(object):
         """
         options = request.args
         return options.get("relations", "false") == "true"
+
+
+    def get_project_id(self):
+        """
+        Returns episode ID parameter.
+        """
+        options = request.args
+        return options.get("project_id", None)
 
     def get_episode_id(self):
         """

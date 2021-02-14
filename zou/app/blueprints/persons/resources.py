@@ -9,6 +9,7 @@ from zou.app.utils import auth, permissions, csv_utils
 from zou.app.services.exception import WrongDateFormatException
 
 from zou.app import config
+from zou.app.mixin import ArgsMixin
 
 
 class NewPersonResource(Resource):
@@ -124,69 +125,91 @@ class TimeSpentsResource(Resource):
             abort(404)
 
 
-class PersonYearTimeSpentsResource(Resource):
+class DayOffResource(Resource):
+    """
+    Get day off object for given person and date.
+    """
+
+    @jwt_required
+    def get(self, person_id, date):
+        current_user = persons_service.get_current_user()
+        if current_user["id"] != person_id:
+            permissions.check_admin_permissions()
+        try:
+            return time_spents_service.get_day_off(person_id, date)
+        except WrongDateFormatException:
+            abort(404)
+
+
+class PersonYearTimeSpentsResource(Resource, ArgsMixin):
     """
     Get aggregated time spents for given person and year.
     """
 
     @jwt_required
     def get(self, person_id, year):
+        project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
-            return time_spents_service.get_year_time_spents(person_id, year)
+            return time_spents_service.get_year_time_spents(
+                person_id, year, project_id=project_id
+            )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonMonthTimeSpentsResource(Resource):
+class PersonMonthTimeSpentsResource(Resource, ArgsMixin):
     """
     Get aggregated time spents for given person and month.
     """
 
     @jwt_required
     def get(self, person_id, year, month):
+        project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_month_time_spents(
-                person_id, year, month
+                person_id, year, month, project_id=project_id
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonWeekTimeSpentsResource(Resource):
+class PersonWeekTimeSpentsResource(Resource, ArgsMixin):
     """
     Get aggregated time spents for given person and week.
     """
 
     @jwt_required
     def get(self, person_id, year, week):
+        project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_week_time_spents(
-                person_id, year, week
+                person_id, year, week, project_id=project_id
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonDayTimeSpentsResource(Resource):
+class PersonDayTimeSpentsResource(Resource, ArgsMixin):
     """
     Get aggregated time spents for given person and day.
     """
 
     @jwt_required
     def get(self, person_id, year, month, day):
+        project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_day_time_spents(
-                person_id, year, month, day
+                person_id, year, month, day, project_id=project_id
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class TimeSpentMonthResource(Resource):
+class TimeSpentMonthResource(Resource, ArgsMixin):
     """
     Return a table giving time spent by user and by day for given year and
     month.
@@ -194,68 +217,66 @@ class TimeSpentMonthResource(Resource):
 
     @jwt_required
     def get(self, year, month):
-        if permissions.has_admin_permissions():
-            return time_spents_service.get_day_table(year, month)
-        else:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_day_table(
-                year, month, person_id=current_user["id"]
-            )
+        project_id = self.get_project_id()
+        person_id = None
+        if not permissions.has_admin_permissions():
+            person_id = persons_service.get_current_user()["id"]
+        return time_spents_service.get_day_table(
+            year, month, person_id=person_id, project_id=project_id
+        )
 
 
-class TimeSpentYearsResource(Resource):
+class TimeSpentYearsResource(Resource, ArgsMixin):
     """
     Return a table giving time spent by user and by month for given year.
     """
 
     @jwt_required
     def get(self):
-        if permissions.has_admin_permissions():
-            return time_spents_service.get_year_table()
-        else:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_year_table(
-                person_id=current_user["id"]
-            )
+        project_id = self.get_project_id()
+        person_id = None
+        if not permissions.has_admin_permissions():
+            person_id = persons_service.get_current_user()["id"]
+        return time_spents_service.get_year_table(
+            person_id=person_id, project_id=project_id
+        )
 
 
-class TimeSpentMonthsResource(Resource):
+class TimeSpentMonthsResource(Resource, ArgsMixin):
     """
     Return a table giving time spent by user and by month for given year.
     """
 
     @jwt_required
     def get(self, year):
-        if permissions.has_admin_permissions():
-            return time_spents_service.get_month_table(year)
-        else:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_month_table(
-                year,
-                person_id=current_user["id"]
-            )
+        project_id = self.get_project_id()
+        person_id = None
+        if not permissions.has_admin_permissions():
+            person_id = persons_service.get_current_user()["id"]
+        return time_spents_service.get_month_table(
+            year, person_id=person_id, project_id=project_id
+        )
 
 
-class TimeSpentWeekResource(Resource):
+class TimeSpentWeekResource(Resource, ArgsMixin):
     """
     Return a table giving time spent by user and by week for given year.
     """
 
     @jwt_required
     def get(self, year):
-        if permissions.has_admin_permissions():
-            return time_spents_service.get_week_table(year)
-        else:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_week_table(
-                year,
-                person_id=current_user["id"]
-            )
+        project_id = self.get_project_id()
+        person_id = None
+        if not permissions.has_admin_permissions():
+            person_id = persons_service.get_current_user()["id"]
+        return time_spents_service.get_week_table(
+            year, person_id=person_id, project_id=project_id
+        )
 
 
 class InvitePersonResource(Resource):
     """
-    Sends an email to given person to invite him/her to connect to Kitsu
+    Sends an email to given person to invite him/her to connect to Kitsu.
     """
 
     @jwt_required
@@ -263,3 +284,47 @@ class InvitePersonResource(Resource):
         permissions.check_admin_permissions()
         persons_service.invite_person(person_id)
         return {"success": True, "message": "Email sent"}
+
+
+class DayOffForMonthResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, year, month):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_day_offs_for_month(year, month)
+
+
+class PersonWeekDayOffResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_person_day_offs_for_week(
+            person_id, year, week
+        )
+
+
+class PersonMonthDayOffResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_person_day_offs_for_month(
+            person_id, year, month
+        )
+
+
+class PersonYearDayOffResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_person_day_offs_for_year(person_id, year)

@@ -13,6 +13,7 @@ from .csv.persons import PersonsCsvExport
 from .csv.playlists import PlaylistCsvExport
 from .csv.task_types import TaskTypesCsvExport
 from .csv.tasks import TasksCsvExport
+from .csv.time_spents import TimeSpentsCsvExport
 
 routes = [
     ("/export/csv/projects/<project_id>/assets.csv", AssetsCsvExport),
@@ -22,6 +23,7 @@ routes = [
     ("/export/csv/persons.csv", PersonsCsvExport),
     ("/export/csv/projects.csv", ProjectsCsvExport),
     ("/export/csv/tasks.csv", TasksCsvExport),
+    ("/export/csv/time-spents.csv", TimeSpentsCsvExport),
     ("/export/csv/task-types.csv", TaskTypesCsvExport),
 ]
 
