@@ -125,6 +125,22 @@ class TimeSpentsResource(Resource):
             abort(404)
 
 
+class DayOffResource(Resource):
+    """
+    Get day off object for given person and date.
+    """
+
+    @jwt_required
+    def get(self, person_id, date):
+        current_user = persons_service.get_current_user()
+        if current_user["id"] != person_id:
+            permissions.check_admin_permissions()
+        try:
+            return time_spents_service.get_day_off(person_id, date)
+        except WrongDateFormatException:
+            abort(404)
+
+
 class PersonYearTimeSpentsResource(Resource, ArgsMixin):
     """
     Get aggregated time spents for given person and year.
@@ -260,7 +276,7 @@ class TimeSpentWeekResource(Resource, ArgsMixin):
 
 class InvitePersonResource(Resource):
     """
-    Sends an email to given person to invite him/her to connect to Kitsu
+    Sends an email to given person to invite him/her to connect to Kitsu.
     """
 
     @jwt_required
@@ -268,3 +284,47 @@ class InvitePersonResource(Resource):
         permissions.check_admin_permissions()
         persons_service.invite_person(person_id)
         return {"success": True, "message": "Email sent"}
+
+
+class DayOffForMonthResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, year, month):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_day_offs_for_month(year, month)
+
+
+class PersonWeekDayOffResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_person_day_offs_for_week(
+            person_id, year, week
+        )
+
+
+class PersonMonthDayOffResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_person_day_offs_for_month(
+            person_id, year, month
+        )
+
+
+class PersonYearDayOffResource(Resource, ArgsMixin):
+    """
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        permissions.check_admin_permissions()
+        return time_spents_service.get_person_day_offs_for_year(person_id, year)

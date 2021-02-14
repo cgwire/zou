@@ -7,14 +7,16 @@ from sqlalchemy import func
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import aliased
 
+from zou.app.models.day_off import DayOff
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 
-from zou.app.utils import fields
+from zou.app.utils import fields, date_helpers
 
+from zou.app.services import persons_service
 from zou.app.services.exception import WrongDateFormatException
 
 
@@ -149,24 +151,32 @@ def get_time_spents(person_id, date):
     return fields.serialize_list(time_spents)
 
 
+def get_day_off(person_id, date):
+    """
+    Return day off for given person and date.
+    """
+    try:
+        day_off = DayOff.get_by(person_id=person_id, date=date)
+    except DataError:
+        raise WrongDateFormatException
+    if day_off is not None:
+        return day_off.serialize()
+    else:
+        return {}
+
+
 def get_year_time_spents(person_id, year, project_id=None):
     """
     Return aggregated time spents at task level for given person and month.
     """
-    year = int(year)
-    if year > datetime.datetime.now().year or year < 2010:
-        raise WrongDateFormatException
-
-    date = datetime.datetime(year, 1, 1)
-    next_year = date + relativedelta.relativedelta(years=1)
-
+    start, end = date_helpers.get_year_interval(year, month)
+    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= date.strftime("%Y-%m-%d"),
-        TimeSpent.date < next_year.strftime("%Y-%m-%d"),
+        TimeSpent.date >= start,
+        TimeSpent.date < end,
         project_id=project_id
     )
-
     return build_results(entries)
 
 
@@ -174,26 +184,14 @@ def get_month_time_spents(person_id, year, month, project_id=None):
     """
     Return aggregated time spents at task level for given person and month.
     """
-    year = int(year)
-    month = int(month)
-    if (
-        year > datetime.datetime.now().year
-        or year < 2010
-        or month < 1
-        or month > 12
-    ):
-        raise WrongDateFormatException
-
-    date = datetime.datetime(year, month, 1)
-    next_month = date + relativedelta.relativedelta(months=1)
-
+    start, end = date_helpers.get_month_interval(year, month)
+    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= date.strftime("%Y-%m-%d"),
-        TimeSpent.date < next_month.strftime("%Y-%m-%d"),
+        TimeSpent.date >= start,
+        TimeSpent.date < end,
         project_id=project_id
     )
-
     return build_results(entries)
 
 
@@ -201,26 +199,12 @@ def get_week_time_spents(person_id, year, week, project_id=None):
     """
     Return aggregated time spents at task level for given person and week.
     """
-    year = int(year)
-    week = int(week)
-    if (
-        year > datetime.datetime.now().year
-        or year < 2010
-        or week < 1
-        or week > 52
-    ):
-        raise WrongDateFormatException
-
-    date = isoweek.Week(year, week).monday()
-    next_week = date + relativedelta.relativedelta(days=7)
-
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= date.strftime("%Y-%m-%d"),
-        TimeSpent.date < next_week.strftime("%Y-%m-%d"),
+        TimeSpent.date >= start,
+        TimeSpent.date < end,
         project_id=project_id
     )
-
     return build_results(entries)
 
 
@@ -228,22 +212,13 @@ def get_day_time_spents(person_id, year, month, day, project_id=None):
     """
     Return aggregated time spents at task level for given person and day.
     """
-    year = int(year)
-    month = int(month)
-    day = int(day)
-    if (
-        year > datetime.datetime.now().year
-        or year < 2010
-        or month < 1
-        or month > 12
-        or day < 1
-        or day > 31
-    ):
-        raise WrongDateFormatException
-
-    date = datetime.datetime(year, month, day)
+    start, end = date_helpers.get_day_interval(year, month, day)
     entries = get_person_time_spent_entries(
-        person_id, TimeSpent.date == date, project_id=project_id)
+        person_id,
+        TimeSpent.date >= start,
+        TimeSpent.date < end,
+        project_id=project_id
+    )
     return build_results(entries)
 
 
@@ -324,3 +299,66 @@ def build_results(entries):
             }
         )
     return result
+
+
+def get_day_offs_for_month(year, month):
+    """
+    Get all day off entries for given year and month.
+    """
+    start, end = date_helpers.get_month_interval(year, month)
+    start, end = get_timezoned_interval(start, end)
+    return get_day_offs_between(start, end)
+
+
+def get_person_day_offs_for_week(person_id, year, week):
+    """
+    Get all day off entries for given person, year and week.
+    """
+    start, end = date_helpers.get_week_interval(year, month)
+    start, end = get_timezoned_interval(start, end)
+    return get_day_offs_between(start, end, person_id=person_id)
+
+
+def get_person_day_offs_for_month(person_id, year, week):
+    """
+    Get all day off entries for given person, year and week.
+    """
+    start, end = date_helpers.get_month_interval(year, month)
+    start, end = get_timezoned_interval(start, end)
+    return get_day_offs_between(start, end, person_id=person_id)
+
+
+def get_person_day_offs_for_year(person_id, year, week):
+    """
+    Get all day off entries for given person, year.
+    """
+    start, end = date_helpers.get_year_interval(year, month)
+    start, end = get_timezoned_interval(start, end)
+    return get_day_offs_between(start, end, person_id=person_id)
+
+
+def get_day_offs_between(start, end, person_id=None):
+    """
+    Get all day off entries for given person, year.
+    """
+    query = DayOff.query
+    if person_id is not None:
+        query = query.filter(DayOff.person_id == person_id)
+    query = (
+        query
+        .filter(DayOff.date >= start)
+        .filter(DayOff.date < end)
+        .all()
+    )
+    return query.all()
+
+
+def get_timezoned_interval(start, end):
+    """
+    Get all day off entries for given person, year.
+    """
+    timezone = persons_service.get_current_user()["timezone"]
+    return (
+        get_string_with_timezone_from_date(start, timezone),
+        get_string_with_timezone_from_date(end, timezone)
+    )

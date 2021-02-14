@@ -6,6 +6,7 @@ from .asset_instance import AssetInstanceResource, AssetInstancesResource
 from .attachment_file import AttachmentFilesResource, AttachmentFileResource
 from .comments import CommentsResource, CommentResource
 from .custom_action import CustomActionsResource, CustomActionResource
+from .day_off import DayOffsResource, DayOffResource
 from .department import DepartmentsResource, DepartmentResource
 from .entity import EntityResource, EntitiesResource
 from .entity_type import EntityTypesResource, EntityTypeResource
@@ -77,6 +78,8 @@ routes = [
     ("/data/comments/<instance_id>", CommentResource),
     ("/data/time-spents/", TimeSpentsResource),
     ("/data/time-spents/<instance_id>", TimeSpentResource),
+    ("/data/day-offs/", DayOffsResource),
+    ("/data/day-offs/<instance_id>", DayOffResource),
     ("/data/custom-actions/", CustomActionsResource),
     ("/data/custom-actions/<instance_id>", CustomActionResource),
     ("/data/asset-instances/", AssetInstancesResource),
