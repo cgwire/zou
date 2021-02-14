@@ -14,7 +14,7 @@ class BaseCsvExport(Resource):
         permissions.check_manager_permissions()
         return True
 
-    def prepare_import():
+    def prepare_import(self):
         pass
 
     @jwt_required

@@ -700,6 +700,14 @@ def get_sequence_subscriptions(project_id, task_type_id):
     )
 
 
+def get_timezone():
+    try:
+        timezone = persons_service.get_current_user()["timezone"]
+    except:
+        timezone = "Europe/Paris"
+    return timezone or "Europe/Paris"
+
+
 def get_context():
     if permissions.has_admin_permissions():
         projects = projects_service.open_projects()

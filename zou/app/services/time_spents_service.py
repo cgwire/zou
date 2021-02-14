@@ -16,7 +16,7 @@ from zou.app.models.entity_type import EntityType
 
 from zou.app.utils import fields, date_helpers
 
-from zou.app.services import persons_service
+from zou.app.services import user_service
 from zou.app.services.exception import WrongDateFormatException
 
 
@@ -199,6 +199,8 @@ def get_week_time_spents(person_id, year, week, project_id=None):
     """
     Return aggregated time spents at task level for given person and week.
     """
+    start, end = date_helpers.get_week_interval(year, week)
+    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
         TimeSpent.date >= start,
@@ -213,6 +215,7 @@ def get_day_time_spents(person_id, year, month, day, project_id=None):
     Return aggregated time spents at task level for given person and day.
     """
     start, end = date_helpers.get_day_interval(year, month, day)
+    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
         TimeSpent.date >= start,
@@ -357,8 +360,8 @@ def get_timezoned_interval(start, end):
     """
     Get all day off entries for given person, year.
     """
-    timezone = persons_service.get_current_user()["timezone"]
+    timezone = user_service.get_timezone()
     return (
-        get_string_with_timezone_from_date(start, timezone),
-        get_string_with_timezone_from_date(end, timezone)
+        date_helpers.get_string_with_timezone_from_date(start, timezone),
+        date_helpers.get_string_with_timezone_from_date(end, timezone)
     )
