@@ -539,10 +539,10 @@ def end_build_job(playlist, job, result):
     clients that the build is done.
     """
     build_job = BuildJob.get(job["id"])
-    build_job.end()
     status = "succeeded"
     if not result["success"]:
         status = "failed"
+    build_job.end(status=status)
     events.emit(
         "build-job:update",
         {
