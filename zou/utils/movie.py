@@ -79,8 +79,15 @@ def normalize_movie(movie_path, fps, width, height):
     if height % 2 == 1:
         height = height + 1
 
+    if not has_soundtrack(movie_path):
+        _, _, err = add_empty_soundtrack(movie_path)
+    else:
+        err = None
+
     stream = ffmpeg.input(movie_path)
-    stream = stream.output(
+    stream = ffmpeg.output(
+        stream.video,
+        stream.audio,
         file_target_path,
         pix_fmt="yuv420p",
         format="mp4",
@@ -92,10 +99,6 @@ def normalize_movie(movie_path, fps, width, height):
         s="%sx%s" % (width, height),
     )
     stream.run(quiet=False, capture_stderr=True)
-    if not has_soundtrack(file_target_path):
-        _, _, err = add_empty_soundtrack(file_target_path)
-    else:
-        err = None
     return file_target_path, err
 
 
