@@ -1,6 +1,8 @@
 import base64
 import json
+import logging
 import os
+import textwrap
 import time
 from operator import itemgetter
 from pathlib import Path
@@ -41,6 +43,8 @@ from zou.app.services.exception import (
 )
 
 from zou.utils import movie
+
+logger = logging.getLogger(__name__)
 
 
 def all_playlists_for_project(project_id, for_client=False):
@@ -449,7 +453,8 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                 file_store.add_movie("playlists", job["id"], movie_file_path)
                 success = True
         except Exception:
-            pass
+            logger.exception("Unable to build playlist %r using concat "
+                             "demuxer", playlist["id"])
 
         # Try again using concat filter
         if not success:
@@ -468,10 +473,7 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                 with app.app_context():
                     execute_nomad_job(job, previews, params, movie_file_path)
                     success = True
-
-    except Exception:
-        logger.exception("Failure while building playlist %r", playlist["id"])
-        raise
+    # exception will by logged by rq
     finally:
         job = end_build_job(playlist, job, success)
 
@@ -522,11 +524,14 @@ def execute_nomad_job(job, previews, params, movie_file_path):
         summary = ncli.job.get_summary(nomad_jobid)
         task_group = list(summary["Summary"])[0]
         status = summary["Summary"][task_group]
-        if status["Failed"] == 1 or status["Lost"] == 1:
-            raise Exception("Job status is 'Failed' or 'Lost' "
-                            "(%s)" % nomad_jobid)
-
+        if status["Failed"] != 0 or status["Lost"] != 0:
+            logger.debug("Nomad job %r failed: %r", nomad_jobid, status)
+            out, err = get_nomad_job_logs(ncli, nomad_jobid)
+            raise Exception("Job %s is 'Failed' or 'Lost':\nStatus: "
+                            "%s\nerr:\n%s\nout:\n%s" % (nomad_jobid, status,
+                                                        err, out))
         if status["Complete"] == 1:
+            logger.debug("Nomad job %r: complete", nomad_jobid)
             break
 
         # there isn't a timeout here but python rq jobs have a timeout
@@ -537,6 +542,25 @@ def execute_nomad_job(job, previews, params, movie_file_path):
         for chunk in file_store.open_movie("playlists", job["id"]):
             movie_file.write(chunk)
 
+
+def get_nomad_job_logs(ncli, nomad_jobid):
+    allocations = ncli.job.get_allocations(nomad_jobid)
+    last = max([(alloc['CreateIndex'], idx) for idx, alloc
+               in enumerate(allocations)])[1]
+    alloc_id = allocations[last]['ID']
+
+    err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
+    out = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stdout')
+    if err:
+        err = json.loads(err).get('Data', '')
+        err = base64.b64decode(err).decode('utf-8')
+        err = textwrap.indent(err, '\t')
+    if out:
+        out = json.loads(out).get('Data', '')
+        out = base64.b64decode(out).decode('utf-8')
+        out = textwrap.indent(out, '\t')
+
+    return out.rstrip(), err.rstrip()
 
 
 def start_build_job(playlist):
