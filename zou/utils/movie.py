@@ -176,7 +176,31 @@ def concat_demuxer(in_files, output_path):
     with any container formats."""
 
     for input_path in in_files:
-        stream = ffmpeg.input(temp.name, format='concat')
+        info = ffmpeg.probe(input_path)
+        streams = info["streams"]
+        if len(streams) != 2:
+            return {
+                "result": False,
+                "message": "%s has an unexpected stream number (%s)" %
+                           (input_path, len(streams))
+            }
+
+        if {streams[0]["codec_type"], streams[1]["codec_type"]} != {"video", "audio"}:
+            return {
+                "result": False,
+                "message": "%s has unexpected stream type (%s)" %
+                           (input_path, {streams[0]["codec_type"],
+                                         streams[1]["codec_type"]})
+            }
+
+        video_index = [x["index"] for x in streams
+                       if x["codec_type"] == "video"][0]
+        if video_index != 0:
+            # TODO streams could be reordered using copy
+            return {
+                "result": False,
+                "message": "%s has an unexpected stream order" % input_path
+            }
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:
         for input_path in in_files:
