@@ -145,7 +145,7 @@ def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
     Build a single movie file from a playlist.
     """
     in_files = []
-    result = {"message": ""}
+    result = {"message": "", "success": False}
     if len(tmp_file_paths) > 0:
         (first_movie_file_path, _) = tmp_file_paths[0]
         if width is None:
@@ -157,31 +157,44 @@ def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
                 if err:
                     result["message"] += "%s\n" % err
                 if ret != 0:
-                    result["success"] = False
                     return result
+            in_files.append(tmp_file_path)
 
-        for tmp_file_path, file_name in tmp_file_paths:
-            in_file = ffmpeg.input(tmp_file_path)
-            in_files.append(
-                in_file["v"]
-                .filter("setsar", "1/1")
-                .filter("scale", width, height)
-            )
-            in_files.append(in_file["a"])
+        concat_result = concat_filter(in_files, movie_file_path)
 
-        joined = ffmpeg.concat(*in_files, v=1, a=1).node
-        video = joined[0]
-        audio = joined[1]
+        if concat_result.get("message"):
+            result["message"] += concat_result.get("message")
+        result["success"] = concat_result["success"]
 
-        try:
-            ffmpeg.output(
-                audio, video, movie_file_path
-            ).overwrite_output().run()
-        except Exception as e:
-            print(e)
-            result["success"] = False
-            result["message"] += str(e)
-            return result
+    return result
+
+
+def concat_filter(in_files, output_path, result):
+    """Concatenate media files with different codecs or different codec
+    properties"""
+    streams = []
+    for input_path in in_files:
+        in_file = ffmpeg.input(input_path)
+        streams.append(
+            in_file["v"]
+            .filter("setsar", "1/1")
+            .filter("scale", width, height)
+        )
+        streams.append(in_file["a"])
+
+    joined = ffmpeg.concat(*streams, v=1, a=1).node
+    video = joined[0]
+    audio = joined[1]
+
+    try:
+        ffmpeg.output(
+            audio, video, output_path
+        ).overwrite_output().run()
+    except Exception as e:
+        print(e)
+        result["success"] = False
+        result["message"] += str(e)
+        return result
 
     result["success"] = True
     return result
