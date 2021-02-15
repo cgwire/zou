@@ -432,84 +432,89 @@ def build_playlist_movie_file(playlist, shots, params, remote):
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
-    result = {"success": False}
+    success = False
     try:
         previews = playlist_previews(shots, only_movies=True)
         movie_file_path = get_playlist_movie_file_path(job)
-        if not remote:
-            tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
+        tmp_file_paths = retrieve_playlist_tmp_files(previews)
+
+        # First, try using concat demuxer
+        try:
             result = movie.build_playlist_movie(
-                tmp_file_paths, movie_file_path, **params._asdict()
+                movie.concat_demux, tmp_file_paths, movie_file_path, **params._asdict()
             )
+            if result["success"] == True and os.path.exists(movie_file_path):
+                success = True
+        except Exception:
+            pass
 
-            if result["success"] == True:
-                if os.path.exists(movie_file_path):
-                    file_store.add_movie("playlists", job["id"], movie_file_path)
-                else:
-                    result["success"] = False
-                    result["message"] = "No playlist was created"
+        # Try again using concat filter
+        if not success:
+            if not remote:
+                result = movie.build_playlist_movie(
+                    movie.concat_filter, tmp_file_paths, movie_file_path, **params._asdict()
+                )
+                if result["success"] == True and os.path.exists(movie_file_path):
+                    success = True
             else:
-                pass
-                # FIXME log the error
-        else:
-            from zou.app import app, mail
-            with app.app_context():
-                bucket_prefix = app.config.get("FS_BUCKET_PREFIX", "")
+                from zou.app import app, mail
+                with app.app_context():
+                    bucket_prefix = app.config.get("FS_BUCKET_PREFIX", "")
 
-            # execute a script which build playlist
-            # fetch the movie from the object storage
-            # TODO: fetch the movie from the worker
-            with tempfile.NamedTemporaryFile(mode="w") as temp:
-                params = {
-                    "version": "1",
-                    "bucket_prefix": bucket_prefix,
-                    "output_filename": Path(movie_file_path).name,
-                    "output_key": file_store.make_key("playlists", job["id"]),
-                    "input": previews,
-                    "width": params.width,
-                    "height": params.height,
-                    "fps": params.fps,
-                    "FS_BACKEND": config.FS_BACKEND,
-                }
-                if config.FS_BACKEND == "s3":
-                    params.update({
-                        "S3_ENDPOINT": config.FS_S3_ENDPOINT,
-                        "AWS_DEFAULT_REGION": config.FS_S3_REGION,
-                        "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
-                        "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
-                    })
-                elif config.FS_BACKEND == "swift":
-                    params.update({
-                        "OS_USERNAME": config.FS_SWIFT_USER,
-                        "OS_PASSWORD": config.FS_SWIFT_KEY,
-                        "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
-                        "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
-                        "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
-                    })
+                    # execute a script which build playlist
+                    # fetch the movie from the object storage
+                    # TODO: fetch the movie from the worker
+                    with tempfile.NamedTemporaryFile(mode="w") as temp:
+                        params = {
+                            "version": "1",
+                            "bucket_prefix": bucket_prefix,
+                            "output_filename": Path(movie_file_path).name,
+                            "output_key": file_store.make_key("playlists", job["id"]),
+                            "input": previews,
+                            "width": params.width,
+                            "height": params.height,
+                            "fps": params.fps,
+                            "FS_BACKEND": config.FS_BACKEND,
+                        }
+                        if config.FS_BACKEND == "s3":
+                            params.update({
+                                "S3_ENDPOINT": config.FS_S3_ENDPOINT,
+                                "AWS_DEFAULT_REGION": config.FS_S3_REGION,
+                                "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
+                                "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
+                            })
+                        elif config.FS_BACKEND == "swift":
+                            params.update({
+                                "OS_USERNAME": config.FS_SWIFT_USER,
+                                "OS_PASSWORD": config.FS_SWIFT_KEY,
+                                "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
+                                "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
+                                "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
+                            })
 
-                json.dump(params, temp.file)
-                temp.file.flush()
-                args = ("zou_playlist", temp.name)
+                        json.dump(params, temp.file)
+                        temp.file.flush()
+                        args = ("zou_playlist", temp.name)
 
-                # create movie
-                process = subprocess.Popen(args, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
+                        # create movie
+                        process = subprocess.Popen(args, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
 
-                out, err = process.communicate()
-                result["success"] = process.returncode == 0
+                        out, err = process.communicate()
+                        success = process.returncode == 0
 
-                # TODO warning if success but stderr isn't empty
-                if process.returncode:
-                    result['message'] = err
-                    return job
-
+        if success:
+            if not remote:
+                # put movie to object storage
+                file_store.add_movie("playlists", job["id"], movie_file_path)
+            else:
                 # fetch movie from object storage
                 with open(movie_file_path, "wb") as movie_file:
                     for chunk in file_store.open_movie("playlists", job["id"]):
                         movie_file.write(chunk)
     finally:
-        end_build_job(playlist, job, result)
+        end_build_job(playlist, job, success)
     return job
 
 
@@ -533,15 +538,17 @@ def start_build_job(playlist):
     return job.serialize()
 
 
-def end_build_job(playlist, job, result):
+def end_build_job(playlist, job, success):
     """
     Register in database that a build is finished. Emits an event to notify
     clients that the build is done.
     """
-    build_job = BuildJob.get(job["id"])
-    status = "succeeded"
-    if not result["success"]:
+    if success:
+        status = "succeeded"
+    else:
         status = "failed"
+
+    build_job = BuildJob.get(job["id"])
     build_job.end(status=status)
     events.emit(
         "build-job:update",
