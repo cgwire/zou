@@ -141,7 +141,8 @@ def has_soundtrack(file_path):
     return len(audio["streams"]) > 0
 
 
-def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
+def build_playlist_movie(concat, tmp_file_paths, movie_file_path, width,
+                         height, fps):
     """
     Build a single movie file from a playlist.
     """
@@ -161,7 +162,7 @@ def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
                     return result
             in_files.append(tmp_file_path)
 
-        concat_result = concat_filter(in_files, movie_file_path)
+        concat_result = concat(in_files, movie_file_path, width, height, fps)
 
         if concat_result.get("message"):
             result["message"] += concat_result.get("message")
@@ -170,7 +171,7 @@ def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
     return result
 
 
-def concat_demuxer(in_files, output_path):
+def concat_demuxer(in_files, output_path, *args):
     """Concatenate media files with exactly the same codec and codec
     parameters. Different container formats can be used and it can be used
     with any container formats."""
@@ -213,7 +214,7 @@ def concat_demuxer(in_files, output_path):
         return run_ffmpeg(stream, '-xerror')
 
 
-def concat_filter(in_files, output_path):
+def concat_filter(in_files, output_path, width, height, *args):
     """Concatenate media files with different codecs or different codec
     properties"""
     streams = []

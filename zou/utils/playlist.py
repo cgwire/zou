@@ -7,7 +7,7 @@ import sys
 import tempfile
 
 
-from .movie import EncodingParameters, build_playlist_movie
+from .movie import EncodingParameters, build_playlist_movie, concat_filter
 
 
 class ObjectStorageClient(metaclass=ABCMeta):
@@ -138,7 +138,7 @@ def main():
                                    bucket_prefix)
 
         output_movie = str(Path(tmpdir) / config["output_filename"])
-        result = build_playlist_movie(input_paths, output_movie,
+        result = build_playlist_movie(concat_filter, input_paths, output_movie,
                                       **enc_params._asdict())
 
         if result["success"]:
