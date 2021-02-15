@@ -4,6 +4,7 @@ import os
 import math
 import shutil
 import subprocess
+import tempfile
 
 import ffmpeg
 
@@ -169,7 +170,26 @@ def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
     return result
 
 
-def concat_filter(in_files, output_path, result):
+def concat_demuxer(in_files, output_path):
+    """Concatenate media files with exactly the same codec and codec
+    parameters. Different container formats can be used and it can be used
+    with any container formats."""
+
+    for input_path in in_files:
+        stream = ffmpeg.input(temp.name, format='concat')
+
+    with tempfile.NamedTemporaryFile(mode="w") as temp:
+        for input_path in in_files:
+            temp.write("file '%s'\n" % input_path)
+        temp.flush()
+
+        stream = ffmpeg.input(temp.name, format='concat', safe=0)
+        stream = ffmpeg.output(stream.video, stream.audio, output_path,
+                               c='copy')
+        return run_ffmpeg(stream, '-xerror')
+
+
+def concat_filter(in_files, output_path):
     """Concatenate media files with different codecs or different codec
     properties"""
     streams = []
@@ -185,16 +205,18 @@ def concat_filter(in_files, output_path, result):
     joined = ffmpeg.concat(*streams, v=1, a=1).node
     video = joined[0]
     audio = joined[1]
+    stream = ffmpeg.output(audio, video, output_path)
+    return run_ffmpeg(stream)
 
+
+def run_ffmpeg(stream, *args):
+    result = {}
     try:
-        ffmpeg.output(
-            audio, video, output_path
-        ).overwrite_output().run()
+        stream.overwrite_output().run(cmd=('ffmpeg',) + args)
+        result["success"] = True
     except Exception as e:
         print(e)
         result["success"] = False
-        result["message"] += str(e)
-        return result
+        result["message"] = str(e)
 
-    result["success"] = True
     return result
