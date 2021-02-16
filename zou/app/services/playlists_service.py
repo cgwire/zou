@@ -527,6 +527,8 @@ def execute_nomad_job(job, previews, params, movie_file_path):
         if status["Failed"] != 0 or status["Lost"] != 0:
             logger.debug("Nomad job %r failed: %r", nomad_jobid, status)
             out, err = get_nomad_job_logs(ncli, nomad_jobid)
+            out = textwrap.indent(out, '\t')
+            err = textwrap.indent(err, '\t')
             raise Exception("Job %s is 'Failed' or 'Lost':\nStatus: "
                             "%s\nerr:\n%s\nout:\n%s" % (nomad_jobid, status,
                                                         err, out))
@@ -549,16 +551,21 @@ def get_nomad_job_logs(ncli, nomad_jobid):
                in enumerate(allocations)])[1]
     alloc_id = allocations[last]['ID']
 
-    err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
-    out = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stdout')
-    if err:
-        err = json.loads(err).get('Data', '')
-        err = base64.b64decode(err).decode('utf-8')
-        err = textwrap.indent(err, '\t')
-    if out:
-        out = json.loads(out).get('Data', '')
-        out = base64.b64decode(out).decode('utf-8')
-        out = textwrap.indent(out, '\t')
+    # logs aren't available when the task isn't started
+    task = allocations[last]['TaskStates']['zou-playlist']
+    if not task['StartedAt']:
+        out = '\n'.join([x['DisplayMessage'] for x in
+                        task['Events']])
+        err = ''
+    else:
+        err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
+        out = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stdout')
+        if err:
+            err = json.loads(err).get('Data', '')
+            err = base64.b64decode(err).decode('utf-8')
+        if out:
+            out = json.loads(out).get('Data', '')
+            out = base64.b64decode(out).decode('utf-8')
 
     return out.rstrip(), err.rstrip()
 
