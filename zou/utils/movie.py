@@ -146,17 +146,10 @@ def add_empty_soundtrack(file_path):
         "-shortest",
         tmp_file_path
     ]
-    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    out, error = sp.communicate()
-    err = None
-    if error:
-        from flask import current_app
-        current_app.logger.error(
-            "Fail to add silent audiotrack to: %s" % file_path
-        )
-        err = "\n".join(str(err).split("\\n"))
-        current_app.logger.error(err)
 
+    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True)
+    out, err = sp.communicate()
 
     if sp.returncode == 0:
         shutil.copyfile(tmp_file_path, file_path)
