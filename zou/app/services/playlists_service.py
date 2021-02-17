@@ -521,7 +521,12 @@ def execute_nomad_job(job, previews, params, movie_file_path):
     data = json.dumps(params).encode('utf-8')
     payload = base64.b64encode(data).decode('utf-8')
     ncli = nomad.Nomad(timeout=5)
-    response = ncli.job.dispatch_job('zou-playlist', payload=payload)
+
+    # don't use 'app.config' because the webapp doesn't use this variable,
+    # only the rq worker does.
+    nomad_job = os.getenv("ZOU_NOMAD_PLAYLIST_JOB", "zou-playlist")
+
+    response = ncli.job.dispatch_job(nomad_job, payload=payload)
     nomad_jobid = response['DispatchedJobID']
 
     while True:
@@ -540,7 +545,8 @@ def execute_nomad_job(job, previews, params, movie_file_path):
             logger.debug("Nomad job %r: complete", nomad_jobid)
             break
 
-        # there isn't a timeout here but python rq jobs have a timeout
+        # there isn't a timeout here but python rq jobs have a timeout. Nomad
+        # jobs have a timeout too.
         time.sleep(1)
 
     # fetch movie from object storage
