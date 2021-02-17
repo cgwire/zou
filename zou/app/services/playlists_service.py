@@ -452,6 +452,8 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                 # put movie to object storage
                 file_store.add_movie("playlists", job["id"], movie_file_path)
                 success = True
+            if result.get("message"):
+                current_app.logger.error(result["message"])
         except Exception:
             logger.exception("Unable to build playlist %r using concat "
                              "demuxer", playlist["id"])
@@ -468,6 +470,8 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                     file_store.add_movie("playlists", job["id"],
                                          movie_file_path)
                     success = True
+                if result.get("message"):
+                    current_app.logger.error(result["message"])
             else:
                 from zou.app import app
                 with app.app_context():
