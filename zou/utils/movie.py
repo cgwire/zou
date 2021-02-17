@@ -157,7 +157,9 @@ def add_empty_soundtrack(file_path):
         err = "\n".join(str(err).split("\\n"))
         current_app.logger.error(err)
 
-    shutil.copyfile(tmp_file_path, file_path)
+
+    if sp.returncode == 0:
+        shutil.copyfile(tmp_file_path, file_path)
     return sp.returncode, out, err
 
 
