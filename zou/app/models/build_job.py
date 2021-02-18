@@ -33,9 +33,9 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
 
-    def end(self):
+    def end(self, status):
         self.update(
-            {"status": "succeeded", "ended_at": datetime.datetime.now()}
+            {"status": status, "ended_at": datetime.datetime.now()}
         )
 
     def present(self):

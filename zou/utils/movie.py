@@ -4,6 +4,7 @@ import os
 import math
 import shutil
 import subprocess
+import tempfile
 
 import ffmpeg
 
@@ -79,23 +80,26 @@ def normalize_movie(movie_path, fps, width, height):
     if height % 2 == 1:
         height = height + 1
 
+    if not has_soundtrack(movie_path):
+        _, _, err = add_empty_soundtrack(movie_path)
+    else:
+        err = None
+
     stream = ffmpeg.input(movie_path)
-    stream = stream.output(
+    stream = ffmpeg.output(
+        stream.video,
+        stream.audio,
         file_target_path,
         pix_fmt="yuv420p",
         format="mp4",
         r=fps,
-        crf="15",
+        b="28M",
         preset="medium",
         vcodec="libx264",
         vsync="passthrough",
         s="%sx%s" % (width, height),
     )
     stream.run(quiet=False, capture_stderr=True)
-    if not has_soundtrack(file_target_path):
-        _, _, err = add_empty_soundtrack(file_target_path)
-    else:
-        err = None
     return file_target_path, err
 
 
@@ -137,12 +141,13 @@ def has_soundtrack(file_path):
     return len(audio["streams"]) > 0
 
 
-def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
+def build_playlist_movie(concat, tmp_file_paths, movie_file_path, width,
+                         height, fps):
     """
     Build a single movie file from a playlist.
     """
     in_files = []
-    result = {"message": ""}
+    result = {"message": "", "success": False}
     if len(tmp_file_paths) > 0:
         (first_movie_file_path, _) = tmp_file_paths[0]
         if width is None:
@@ -154,31 +159,89 @@ def build_playlist_movie(tmp_file_paths, movie_file_path, width, height, fps):
                 if err:
                     result["message"] += "%s\n" % err
                 if ret != 0:
-                    result["success"] = False
                     return result
+            in_files.append(tmp_file_path)
 
-        for tmp_file_path, file_name in tmp_file_paths:
-            in_file = ffmpeg.input(tmp_file_path)
-            in_files.append(
-                in_file["v"]
-                .filter("setsar", "1/1")
-                .filter("scale", width, height)
-            )
-            in_files.append(in_file["a"])
+        concat_result = concat(in_files, movie_file_path, width, height, fps)
 
-        joined = ffmpeg.concat(*in_files, v=1, a=1).node
-        video = joined[0]
-        audio = joined[1]
+        if concat_result.get("message"):
+            result["message"] += concat_result.get("message")
+        result["success"] = concat_result["success"]
 
-        try:
-            ffmpeg.output(
-                audio, video, movie_file_path
-            ).overwrite_output().run()
-        except Exception as e:
-            print(e)
-            result["success"] = False
-            result["message"] += str(e)
-            return result
+    return result
 
-    result["success"] = True
+
+def concat_demuxer(in_files, output_path, *args):
+    """Concatenate media files with exactly the same codec and codec
+    parameters. Different container formats can be used and it can be used
+    with any container formats."""
+
+    for input_path in in_files:
+        info = ffmpeg.probe(input_path)
+        streams = info["streams"]
+        if len(streams) != 2:
+            return {
+                "result": False,
+                "message": "%s has an unexpected stream number (%s)" %
+                           (input_path, len(streams))
+            }
+
+        if {streams[0]["codec_type"], streams[1]["codec_type"]} != {"video", "audio"}:
+            return {
+                "result": False,
+                "message": "%s has unexpected stream type (%s)" %
+                           (input_path, {streams[0]["codec_type"],
+                                         streams[1]["codec_type"]})
+            }
+
+        video_index = [x["index"] for x in streams
+                       if x["codec_type"] == "video"][0]
+        if video_index != 0:
+            # TODO streams could be reordered using copy
+            return {
+                "result": False,
+                "message": "%s has an unexpected stream order" % input_path
+            }
+
+    with tempfile.NamedTemporaryFile(mode="w") as temp:
+        for input_path in in_files:
+            temp.write("file '%s'\n" % input_path)
+        temp.flush()
+
+        stream = ffmpeg.input(temp.name, format='concat', safe=0)
+        stream = ffmpeg.output(stream.video, stream.audio, output_path,
+                               c='copy')
+        return run_ffmpeg(stream, '-xerror')
+
+
+def concat_filter(in_files, output_path, width, height, *args):
+    """Concatenate media files with different codecs or different codec
+    properties"""
+    streams = []
+    for input_path in in_files:
+        in_file = ffmpeg.input(input_path)
+        streams.append(
+            in_file["v"]
+            .filter("setsar", "1/1")
+            .filter("scale", width, height)
+        )
+        streams.append(in_file["a"])
+
+    joined = ffmpeg.concat(*streams, v=1, a=1).node
+    video = joined[0]
+    audio = joined[1]
+    stream = ffmpeg.output(audio, video, output_path)
+    return run_ffmpeg(stream)
+
+
+def run_ffmpeg(stream, *args):
+    result = {}
+    try:
+        stream.overwrite_output().run(cmd=('ffmpeg',) + args)
+        result["success"] = True
+    except Exception as e:
+        print(e)
+        result["success"] = False
+        result["message"] = str(e)
+
     return result

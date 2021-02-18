@@ -1,16 +1,17 @@
+import base64
 import json
+import logging
 import os
+import textwrap
+import time
 from operator import itemgetter
 from pathlib import Path
-from slugify import slugify
-import subprocess
-import tempfile
-
 from shutil import copyfile
 from zipfile import ZipFile
 
 from flask import current_app
 from flask_mail import Message
+from slugify import slugify
 from sqlalchemy import or_
 
 from zou.app import config
@@ -42,6 +43,8 @@ from zou.app.services.exception import (
 )
 
 from zou.utils import movie
+
+logger = logging.getLogger(__name__)
 
 
 def all_playlists_for_project(project_id, for_client=False):
@@ -432,85 +435,149 @@ def build_playlist_movie_file(playlist, shots, params, remote):
     Build a movie for all files for a given playlist into the temporary folder.
     """
     job = start_build_job(playlist)
-    result = {"success": False}
+    success = False
     try:
         previews = playlist_previews(shots, only_movies=True)
         movie_file_path = get_playlist_movie_file_path(job)
-        if not remote:
-            tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
+        tmp_file_paths = retrieve_playlist_tmp_files(previews)
+
+        # First, try using concat demuxer
+        try:
             result = movie.build_playlist_movie(
-                tmp_file_paths, movie_file_path, **params._asdict()
+                movie.concat_demuxer, tmp_file_paths, movie_file_path,
+                **params._asdict()
             )
+            if result["success"] and os.path.exists(movie_file_path):
+                # put movie to object storage
+                file_store.add_movie("playlists", job["id"], movie_file_path)
+                success = True
+            if result.get("message"):
+                current_app.logger.error(result["message"])
+        except Exception:
+            logger.exception("Unable to build playlist %r using concat "
+                             "demuxer", playlist["id"])
 
-            if result["success"] == True:
-                if os.path.exists(movie_file_path):
-                    file_store.add_movie("playlists", job["id"], movie_file_path)
-                else:
-                    result["success"] = False
-                    result["message"] = "No playlist was created"
+        # Try again using concat filter
+        if not success:
+            if not remote:
+                result = movie.build_playlist_movie(
+                    movie.concat_filter, tmp_file_paths, movie_file_path,
+                    **params._asdict()
+                )
+                if result["success"] and os.path.exists(movie_file_path):
+                    # put movie to object storage
+                    file_store.add_movie("playlists", job["id"],
+                                         movie_file_path)
+                    success = True
+                if result.get("message"):
+                    current_app.logger.error(result["message"])
             else:
-                pass
-                # FIXME log the error
-        else:
-            from zou.app import app, mail
-            with app.app_context():
-                bucket_prefix = app.config.get("FS_BUCKET_PREFIX", "")
-
-            # execute a script which build playlist
-            # fetch the movie from the object storage
-            # TODO: fetch the movie from the worker
-            with tempfile.NamedTemporaryFile(mode="w") as temp:
-                params = {
-                    "version": "1",
-                    "bucket_prefix": bucket_prefix,
-                    "output_filename": Path(movie_file_path).name,
-                    "output_key": file_store.make_key("playlists", job["id"]),
-                    "input": previews,
-                    "width": params.width,
-                    "height": params.height,
-                    "fps": params.fps,
-                    "FS_BACKEND": config.FS_BACKEND,
-                }
-                if config.FS_BACKEND == "s3":
-                    params.update({
-                        "S3_ENDPOINT": config.FS_S3_ENDPOINT,
-                        "AWS_DEFAULT_REGION": config.FS_S3_REGION,
-                        "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
-                        "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
-                    })
-                elif config.FS_BACKEND == "swift":
-                    params.update({
-                        "OS_USERNAME": config.FS_SWIFT_USER,
-                        "OS_PASSWORD": config.FS_SWIFT_KEY,
-                        "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
-                        "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
-                        "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
-                    })
-
-                json.dump(params, temp.file)
-                temp.file.flush()
-                args = ("zou_playlist", temp.name)
-
-                # create movie
-                process = subprocess.Popen(args, stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE)
-
-                out, err = process.communicate()
-                result["success"] = process.returncode == 0
-
-                # TODO warning if success but stderr isn't empty
-                if process.returncode:
-                    result['message'] = err
-                    return job
-
-                # fetch movie from object storage
-                with open(movie_file_path, "wb") as movie_file:
-                    for chunk in file_store.open_movie("playlists", job["id"]):
-                        movie_file.write(chunk)
+                from zou.app import app
+                with app.app_context():
+                    execute_nomad_job(job, previews, params, movie_file_path)
+                    success = True
+    # exception will by logged by rq
     finally:
-        end_build_job(playlist, job, result)
+        job = end_build_job(playlist, job, success)
+
+    if not success:
+        raise Exception("Failure while building playlist %r" % playlist["id"])
+
     return job
+
+
+def execute_nomad_job(job, previews, params, movie_file_path):
+    import nomad
+
+    bucket_prefix = config.FS_BUCKET_PREFIX
+    params = {
+        "version": "1",
+        "bucket_prefix": bucket_prefix,
+        "output_filename": Path(movie_file_path).name,
+        "output_key": file_store.make_key("playlists", job["id"]),
+        "input": previews,
+        "width": params.width,
+        "height": params.height,
+        "fps": params.fps,
+        "FS_BACKEND": config.FS_BACKEND,
+    }
+    if config.FS_BACKEND == "s3":
+        params.update({
+            "S3_ENDPOINT": config.FS_S3_ENDPOINT,
+            "AWS_DEFAULT_REGION": config.FS_S3_REGION,
+            "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
+            "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
+        })
+    elif config.FS_BACKEND == "swift":
+        params.update({
+            "OS_USERNAME": config.FS_SWIFT_USER,
+            "OS_PASSWORD": config.FS_SWIFT_KEY,
+            "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
+            "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
+            "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
+        })
+
+    data = json.dumps(params).encode('utf-8')
+    payload = base64.b64encode(data).decode('utf-8')
+    ncli = nomad.Nomad(timeout=5)
+
+    # don't use 'app.config' because the webapp doesn't use this variable,
+    # only the rq worker does.
+    nomad_job = os.getenv("ZOU_NOMAD_PLAYLIST_JOB", "zou-playlist")
+
+    response = ncli.job.dispatch_job(nomad_job, payload=payload)
+    nomad_jobid = response['DispatchedJobID']
+
+    while True:
+        summary = ncli.job.get_summary(nomad_jobid)
+        task_group = list(summary["Summary"])[0]
+        status = summary["Summary"][task_group]
+        if status["Failed"] != 0 or status["Lost"] != 0:
+            logger.debug("Nomad job %r failed: %r", nomad_jobid, status)
+            out, err = get_nomad_job_logs(ncli, nomad_jobid)
+            out = textwrap.indent(out, '\t')
+            err = textwrap.indent(err, '\t')
+            raise Exception("Job %s is 'Failed' or 'Lost':\nStatus: "
+                            "%s\nerr:\n%s\nout:\n%s" % (nomad_jobid, status,
+                                                        err, out))
+        if status["Complete"] == 1:
+            logger.debug("Nomad job %r: complete", nomad_jobid)
+            break
+
+        # there isn't a timeout here but python rq jobs have a timeout. Nomad
+        # jobs have a timeout too.
+        time.sleep(1)
+
+    # fetch movie from object storage
+    with open(movie_file_path, "wb") as movie_file:
+        for chunk in file_store.open_movie("playlists", job["id"]):
+            movie_file.write(chunk)
+
+
+def get_nomad_job_logs(ncli, nomad_jobid):
+    allocations = ncli.job.get_allocations(nomad_jobid)
+    last = max([(alloc['CreateIndex'], idx) for idx, alloc
+               in enumerate(allocations)])[1]
+    alloc_id = allocations[last]['ID']
+
+    # logs aren't available when the task isn't started
+    task = allocations[last]['TaskStates']['zou-playlist']
+    if not task['StartedAt']:
+        out = '\n'.join([x['DisplayMessage'] for x in
+                        task['Events']])
+        err = ''
+    else:
+        err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
+        out = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stdout')
+        if err:
+            err = json.loads(err).get('Data', '')
+            err = base64.b64decode(err).decode('utf-8')
+        if out:
+            out = json.loads(out).get('Data', '')
+            out = base64.b64decode(out).decode('utf-8')
+
+    return out.rstrip(), err.rstrip()
 
 
 def start_build_job(playlist):
@@ -533,16 +600,18 @@ def start_build_job(playlist):
     return job.serialize()
 
 
-def end_build_job(playlist, job, result):
+def end_build_job(playlist, job, success):
     """
     Register in database that a build is finished. Emits an event to notify
     clients that the build is done.
     """
-    build_job = BuildJob.get(job["id"])
-    build_job.end()
-    status = "succeeded"
-    if not result["success"]:
+    if success:
+        status = "succeeded"
+    else:
         status = "failed"
+
+    build_job = BuildJob.get(job["id"])
+    build_job.end(status=status)
     events.emit(
         "build-job:update",
         {
@@ -565,21 +634,24 @@ def build_playlist_job(playlist, shots, params, email, remote):
     with app.app_context():
         job = build_playlist_movie_file(playlist, shots, params, remote)
 
-        message_text = """
+        # Just in case, since rq jobs which encounter an error raise an
+        # exception in order to be flagged as failed.
+        if job["status"] == "succeeded":
+            message_text = """
 Your playlist %s is available at:
 https://%s/api/data/playlists/%s/jobs/%s/build/mp4
 """ % (
-            playlist["name"],
-            config.DOMAIN_NAME,
-            playlist["id"],
-            job["id"],
-        )
-        message = Message(
-            body=message_text,
-            subject="CGWire playlist download",
-            recipients=[email],
-        )
-        mail.send(message)
+                playlist["name"],
+                config.DOMAIN_NAME,
+                playlist["id"],
+                job["id"],
+            )
+            message = Message(
+                body=message_text,
+                subject="CGWire playlist download",
+                recipients=[email],
+            )
+            mail.send(message)
 
 
 def get_playlist_file_name(playlist):

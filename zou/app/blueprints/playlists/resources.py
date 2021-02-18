@@ -142,11 +142,10 @@ class BuildPlaylistMovieResource(Resource):
             )
             return {"job": "running"}
         else:
-            remote = False
-            playlists_service.build_playlist_movie_file(
-                playlist, shots, params, remote
+            job = playlists_service.build_playlist_movie_file(
+                playlist, shots, params, remote=False
             )
-            return {"job": "succeeded"}
+            return {"job": job["status"]}
 
 
 class PlaylistZipDownloadResource(Resource):
