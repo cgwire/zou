@@ -445,7 +445,7 @@ def build_playlist_movie_file(playlist, shots, params, remote):
         # First, try using concat demuxer
         success = _run_concatenation(
             playlist, job, tmp_file_paths, movie_file_path, params,
-            movie.concat_demuxer, "demuxer"
+            movie.concat_demuxer
         )
 
         # Try again using concat filter
@@ -453,7 +453,7 @@ def build_playlist_movie_file(playlist, shots, params, remote):
             if not remote:
                 success = _run_concatenation(
                     playlist, job, tmp_file_paths, movie_file_path, params,
-                    movie.concat_filter, "filter"
+                    movie.concat_filter
                 )
             else:
                 from zou.app import app
@@ -472,7 +472,7 @@ def build_playlist_movie_file(playlist, shots, params, remote):
 
 
 def _run_concatenation(
-    playlist, job, tmp_file_paths, movie_file_path, params, mode, mode_name
+    playlist, job, tmp_file_paths, movie_file_path, params, mode
 ):
     success = False
     try:
@@ -489,8 +489,8 @@ def _run_concatenation(
             current_app.logger.error(result["message"])
     except Exception:
         logger.error(
-            "Unable to build playlist %r using concat %s", (
-                playlist["id"], mode_name
+            "Unable to build playlist %r using %s", (
+                playlist["id"], mode.__qualname__
             ), exc_info=1
         )
     return success
