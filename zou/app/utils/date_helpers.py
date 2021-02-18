@@ -70,8 +70,8 @@ def get_year_interval(year):
         raise WrongDateFormatException
 
     start = datetime(year, 1, 1)
-    next_year = end + relativedelta.relativedelta(years=1)
-    return date, next_year
+    end = start + relativedelta.relativedelta(years=1)
+    return start, end
 
 
 def get_month_interval(year, month):

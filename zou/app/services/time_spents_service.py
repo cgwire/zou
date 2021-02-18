@@ -169,7 +169,8 @@ def get_year_time_spents(person_id, year, project_id=None):
     """
     Return aggregated time spents at task level for given person and month.
     """
-    start, end = date_helpers.get_year_interval(year, month)
+    start, end = date_helpers.get_year_interval(year)
+    print(start, end)
     start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
@@ -317,12 +318,12 @@ def get_person_day_offs_for_week(person_id, year, week):
     """
     Get all day off entries for given person, year and week.
     """
-    start, end = date_helpers.get_week_interval(year, month)
+    start, end = date_helpers.get_week_interval(year, week)
     start, end = get_timezoned_interval(start, end)
     return get_day_offs_between(start, end, person_id=person_id)
 
 
-def get_person_day_offs_for_month(person_id, year, week):
+def get_person_day_offs_for_month(person_id, year, month):
     """
     Get all day off entries for given person, year and week.
     """
@@ -331,11 +332,11 @@ def get_person_day_offs_for_month(person_id, year, week):
     return get_day_offs_between(start, end, person_id=person_id)
 
 
-def get_person_day_offs_for_year(person_id, year, week):
+def get_person_day_offs_for_year(person_id, year):
     """
     Get all day off entries for given person, year.
     """
-    start, end = date_helpers.get_year_interval(year, month)
+    start, end = date_helpers.get_year_interval(year)
     start, end = get_timezoned_interval(start, end)
     return get_day_offs_between(start, end, person_id=person_id)
 
@@ -347,13 +348,13 @@ def get_day_offs_between(start, end, person_id=None):
     query = DayOff.query
     if person_id is not None:
         query = query.filter(DayOff.person_id == person_id)
-    query = (
+
+    return DayOff.serialize_list(
         query
         .filter(DayOff.date >= start)
         .filter(DayOff.date < end)
         .all()
     )
-    return query.all()
 
 
 def get_timezoned_interval(start, end):

@@ -52,10 +52,10 @@ routes = [
         "/data/persons/time-spents/day-table/<year>/<month>",
         TimeSpentMonthResource,
     ),
-    ("/data/persons/days-off/<year>/<month>", DayOffForMonthResource),
-    ("/data/persons/<person_id>/days-off/<year>/<week>", PersonWeekDayOffResource),
-    ("/data/persons/<person_id>/days-off/<year>/<month>", PersonMonthDayOffResource),
-    ("/data/persons/<person_id>/days-off/<year>", PersonYearDayOffResource),
+    ("/data/persons/day-offs/<year>/<month>", DayOffForMonthResource),
+    ("/data/persons/<person_id>/day-offs/week/<year>/<week>", PersonWeekDayOffResource),
+    ("/data/persons/<person_id>/day-offs/month/<year>/<month>", PersonMonthDayOffResource),
+    ("/data/persons/<person_id>/day-offs/year/<year>", PersonYearDayOffResource),
 
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
 ]

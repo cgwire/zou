@@ -17,6 +17,7 @@ from zou.app.services import (
 
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.build_job import BuildJob
+from zou.app.models.day_off import DayOff
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -987,6 +988,15 @@ class ApiDBTestCase(ApiTestCase):
             task_type_id=self.task_type.id
         )
         return self.milestone.serialize()
+
+    def generate_fixture_day_off(self, date, person_id=None):
+        if person_id is None:
+            person_id = self.person.id
+        self.day_off = DayOff.create(
+            date=date,
+            person_id=person_id
+        )
+        return self.day_off.serialize()
 
     def generate_assigned_task(self):
         self.generate_fixture_asset()

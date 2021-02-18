@@ -313,7 +313,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
     """
 
     @jwt_required
-    def get(self, person_id, year, week):
+    def get(self, person_id, year, month):
         permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_month(
             person_id, year, month
@@ -325,6 +325,6 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
     """
 
     @jwt_required
-    def get(self, person_id, year, week):
+    def get(self, person_id, year):
         permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_year(person_id, year)

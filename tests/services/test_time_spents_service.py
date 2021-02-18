@@ -168,3 +168,42 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
                 duration += time_spent["duration"]
             self.assertEqual(len(time_spents), 2)
             self.assertEqual(duration, 800)
+
+
+    def test_get_day_offs_for_month(self):
+        self.generate_fixture_day_off("2021-01-10")
+        self.generate_fixture_day_off("2021-02-10")
+        self.generate_fixture_day_off("2021-02-11")
+        self.generate_fixture_day_off("2021-03-10")
+        day_offs = time_spents_service.get_day_offs_for_month(2021, 2)
+        self.assertEqual(len(day_offs), 2)
+
+    def test_get_person_day_offs(self):
+        self.generate_fixture_day_off("2021-01-10")
+        self.generate_fixture_day_off("2021-02-10")
+        self.generate_fixture_day_off("2021-02-11")
+        self.generate_fixture_day_off("2021-03-10")
+        self.generate_fixture_user_cg_artist()
+        self.generate_fixture_day_off(
+            "2021-02-10",
+            person_id=self.user_cg_artist["id"]
+        )
+        day_offs = time_spents_service.get_person_day_offs_for_year(
+            self.person_id,
+            2021
+        )
+        self.assertEqual(len(day_offs), 4)
+
+        day_offs = time_spents_service.get_person_day_offs_for_month(
+            self.person_id,
+            2021,
+            2
+        )
+        self.assertEqual(len(day_offs), 2)
+
+        day_offs = time_spents_service.get_person_day_offs_for_week(
+            self.person_id,
+            2021,
+            6
+        )
+        self.assertEqual(len(day_offs), 2)
