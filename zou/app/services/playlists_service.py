@@ -530,10 +530,11 @@ def _execute_nomad_job(job, previews, params, movie_file_path):
 
     # don't use 'app.config' because the webapp doesn't use this variable,
     # only the rq worker does.
-    nomad_job = os.getenv("ZOU_NOMAD_PLAYLIST_JOB", "zou-playlist")
+    nomad_job = os.getenv("JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist")
+    nomad_host = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
     data = json.dumps(params).encode('utf-8')
     payload = base64.b64encode(data).decode('utf-8')
-    ncli = nomad.Nomad(timeout=5)
+    ncli = nomad.Nomad(host=nomad_host, timeout=5)
 
     response = ncli.job.dispatch_job(nomad_job, payload=payload)
     nomad_jobid = response['DispatchedJobID']

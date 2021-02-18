@@ -22,9 +22,6 @@ MEMOIZE_DB_INDEX = 1
 KV_EVENTS_DB_INDEX = 2
 KV_JOB_DB_INDEX = 3
 
-ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
-ENABLE_JOB_QUEUE_REMOTE = os.getenv("ENABLE_JOB_QUEUE_REMOTE", "False").lower() == "true"
-
 JWT_BLACKLIST_ENABLED = True
 JWT_BLACKLIST_TOKEN_CHECKS = ["access", "refresh"]
 JWT_ACCESS_TOKEN_EXPIRES = datetime.timedelta(days=7)
@@ -89,6 +86,14 @@ FS_S3_REGION = os.getenv("FS_S3_REGION")
 FS_S3_ENDPOINT = os.getenv("FS_S3_ENDPOINT")
 FS_S3_ACCESS_KEY = os.getenv("FS_S3_ACCESS_KEY")
 FS_S3_SECRET_KEY = os.getenv("FS_S3_SECRET_KEY")
+
+ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
+ENABLE_JOB_QUEUE_REMOTE = os.getenv(
+    "ENABLE_JOB_QUEUE_REMOTE", "False"
+).lower() == "true"
+JOB_QUEUE_NOMAD_PLAYLIST_JOB = "zou-playlist"
+JOB_QUEUE_NOMAD_HOST = "zou-nomad-01.zou"
+
 
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
 LDAP_PORT = os.getenv("LDAP_PORT", "389")
