@@ -90,7 +90,11 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            normalized_movie_path, err = movie.normalize_movie(
+            (
+                normalized_movie_path,
+                normalized_movie_low_path,
+                err
+            ) = movie.normalize_movie(
                 uploaded_movie_path, fps=fps, width=width, height=height
             )
 
@@ -105,6 +109,11 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 "previews",
                 preview_file_id,
                 normalized_movie_path
+            )
+            file_store.add_movie(
+                "lowdef",
+                preview_file_id,
+                normalized_movie_low_path
             )
             current_app.logger.info("file stored")
         except Exception as exc:
