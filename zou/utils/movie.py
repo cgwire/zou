@@ -61,12 +61,15 @@ def get_movie_size(movie_path):
 
 def normalize_movie(movie_path, fps, width, height):
     """
-    normalize movie using resolution, width and height given in parameter.
+    Normalize movie using resolution, width and height given in parameter.
+    Generates a high def movie and a low def movie.
     """
     folder_path = os.path.dirname(movie_path)
     file_source_name = os.path.basename(movie_path)
     file_target_name = "%s.mp4" % file_source_name[:-8]
     file_target_path = os.path.join(folder_path, file_target_name)
+    low_file_target_name = "%s_low.mp4" % file_source_name[:-8]
+    low_file_target_path = os.path.join(folder_path, low_file_target_name)
 
     (w, h) = get_movie_size(movie_path)
     resize_factor = w / h
@@ -85,6 +88,7 @@ def normalize_movie(movie_path, fps, width, height):
     else:
         err = None
 
+    # High def version
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
         stream.video,
@@ -100,7 +104,28 @@ def normalize_movie(movie_path, fps, width, height):
         s="%sx%s" % (width, height),
     )
     stream.run(quiet=False, capture_stderr=True)
-    return file_target_path, err
+
+    # Low def version
+    low_width = 1280
+    low_height = math.floor((height / width) * low_width)
+    if low_height % 2 == 1:
+        low_height = low_height + 1
+    stream = ffmpeg.input(movie_path)
+    stream = ffmpeg.output(
+        stream.video,
+        stream.audio,
+        low_file_target_path,
+        pix_fmt="yuv420p",
+        format="mp4",
+        r=fps,
+        b="14M",
+        preset="medium",
+        vcodec="libx264",
+        vsync="passthrough",
+        s="%sx%s" % (low_width, low_height),
+    )
+    stream.run(quiet=False, capture_stderr=True)
+    return file_target_path, low_file_target_path, err
 
 
 def add_empty_soundtrack(file_path):
