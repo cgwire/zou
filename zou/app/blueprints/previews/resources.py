@@ -106,11 +106,14 @@ def send_standard_file(
     )
 
 
-def send_movie_file(preview_file_id, as_attachment=False):
+def send_movie_file(preview_file_id, as_attachment=False, lowdef=False):
+    folder = "previews"
+    if lowdef:
+        folder = "lowdef"
     return send_storage_file(
         file_store.get_local_movie_path,
         file_store.open_movie,
-        "previews",
+        folder,
         preview_file_id,
         "mp4",
         mimetype="video/mp4",
@@ -382,6 +385,26 @@ class PreviewFileMovieResource(Resource):
         except FileNotFound:
             current_app.logger.error("Movie file was not found for: %s" % instance_id)
             abort(404)
+
+
+class PreviewFileLowMovieResource(PreviewFileMovieResource):
+    """
+    Allow to download a lowdef movie preview.
+    """
+
+    @jwt_required
+    def get(self, instance_id):
+        if not self.is_allowed(instance_id):
+            abort(403)
+
+        try:
+            return send_movie_file(instance_id, lowdef=True)
+        except FileNotFound:
+            current_app.logger.error(
+                "Movie file was not found for: %s" % instance_id
+            )
+            abort(404)
+
 
 
 class PreviewFileMovieDownloadResource(PreviewFileMovieResource):

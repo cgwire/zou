@@ -3,6 +3,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 
 from .resources import (
     CreatePreviewFilePictureResource,
+    PreviewFileLowMovieResource,
     PreviewFileMovieResource,
     PreviewFileMovieDownloadResource,
     PreviewFileThumbnailResource,
@@ -31,6 +32,10 @@ routes = [
     (
         "/movies/originals/preview-files/<instance_id>/download",
         PreviewFileMovieDownloadResource,
+    ),
+    (
+        "/movies/low/preview-files/<instance_id>.mp4",
+        PreviewFileLowMovieResource,
     ),
     (
         "/pictures/thumbnails/preview-files/<instance_id>.png",
