@@ -4,6 +4,7 @@ import logging
 import os
 import textwrap
 import time
+
 from operator import itemgetter
 from pathlib import Path
 from shutil import copyfile
@@ -439,44 +440,27 @@ def build_playlist_movie_file(playlist, shots, params, remote):
     try:
         previews = playlist_previews(shots, only_movies=True)
         movie_file_path = get_playlist_movie_file_path(job)
-
         tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
         # First, try using concat demuxer
-        try:
-            result = movie.build_playlist_movie(
-                movie.concat_demuxer, tmp_file_paths, movie_file_path,
-                **params._asdict()
-            )
-            if result["success"] and os.path.exists(movie_file_path):
-                # put movie to object storage
-                file_store.add_movie("playlists", job["id"], movie_file_path)
-                success = True
-            if result.get("message"):
-                current_app.logger.error(result["message"])
-        except Exception:
-            logger.exception("Unable to build playlist %r using concat "
-                             "demuxer", playlist["id"])
+        success = _run_concatenation(
+            playlist, job, tmp_file_paths, movie_file_path, params,
+            movie.concat_demuxer, "demuxer"
+        )
 
         # Try again using concat filter
         if not success:
             if not remote:
-                result = movie.build_playlist_movie(
-                    movie.concat_filter, tmp_file_paths, movie_file_path,
-                    **params._asdict()
+                success = _run_concatenation(
+                    playlist, job, tmp_file_paths, movie_file_path, params,
+                    movie.concat_filter, "filter"
                 )
-                if result["success"] and os.path.exists(movie_file_path):
-                    # put movie to object storage
-                    file_store.add_movie("playlists", job["id"],
-                                         movie_file_path)
-                    success = True
-                if result.get("message"):
-                    current_app.logger.error(result["message"])
             else:
                 from zou.app import app
                 with app.app_context():
-                    execute_nomad_job(job, previews, params, movie_file_path)
+                    _execute_nomad_job(job, previews, params, movie_file_path)
                     success = True
+
     # exception will by logged by rq
     finally:
         job = end_build_job(playlist, job, success)
@@ -487,7 +471,32 @@ def build_playlist_movie_file(playlist, shots, params, remote):
     return job
 
 
-def execute_nomad_job(job, previews, params, movie_file_path):
+def _run_concatenation(
+    playlist, job, tmp_file_paths, movie_file_path, params, mode, mode_name
+):
+    success = False
+    try:
+        result = movie.build_playlist_movie(
+            mode,
+            tmp_file_paths,
+            movie_file_path,
+            **params._asdict()
+        )
+        if result["success"] and os.path.exists(movie_file_path):
+            file_store.add_movie("playlists", job["id"], movie_file_path)
+            success = True
+        if result.get("message"):
+            current_app.logger.error(result["message"])
+    except Exception:
+        logger.error(
+            "Unable to build playlist %r using concat %s", (
+                playlist["id"], mode_name
+            ), exc_info=1
+        )
+    return success
+
+
+def _execute_nomad_job(job, previews, params, movie_file_path):
     import nomad
 
     bucket_prefix = config.FS_BUCKET_PREFIX
@@ -502,6 +511,7 @@ def execute_nomad_job(job, previews, params, movie_file_path):
         "fps": params.fps,
         "FS_BACKEND": config.FS_BACKEND,
     }
+    # Add object storage information
     if config.FS_BACKEND == "s3":
         params.update({
             "S3_ENDPOINT": config.FS_S3_ENDPOINT,
@@ -518,13 +528,12 @@ def execute_nomad_job(job, previews, params, movie_file_path):
             "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
         })
 
-    data = json.dumps(params).encode('utf-8')
-    payload = base64.b64encode(data).decode('utf-8')
-    ncli = nomad.Nomad(timeout=5)
-
     # don't use 'app.config' because the webapp doesn't use this variable,
     # only the rq worker does.
     nomad_job = os.getenv("ZOU_NOMAD_PLAYLIST_JOB", "zou-playlist")
+    data = json.dumps(params).encode('utf-8')
+    payload = base64.b64encode(data).decode('utf-8')
+    ncli = nomad.Nomad(timeout=5)
 
     response = ncli.job.dispatch_job(nomad_job, payload=payload)
     nomad_jobid = response['DispatchedJobID']
@@ -535,16 +544,21 @@ def execute_nomad_job(job, previews, params, movie_file_path):
         status = summary["Summary"][task_group]
         if status["Failed"] != 0 or status["Lost"] != 0:
             logger.debug("Nomad job %r failed: %r", nomad_jobid, status)
-            out, err = get_nomad_job_logs(ncli, nomad_jobid)
+            out, err = _get_nomad_job_logs(ncli, nomad_jobid)
             out = textwrap.indent(out, '\t')
             err = textwrap.indent(err, '\t')
-            raise Exception("Job %s is 'Failed' or 'Lost':\nStatus: "
-                            "%s\nerr:\n%s\nout:\n%s" % (nomad_jobid, status,
-                                                        err, out))
+            raise Exception(
+                "Job %s is 'Failed' or 'Lost':\nStatus: "
+                "%s\nerr:\n%s\nout:\n%s" % (
+                    nomad_jobid,
+                    status,
+                    err,
+                    out
+                )
+            )
         if status["Complete"] == 1:
             logger.debug("Nomad job %r: complete", nomad_jobid)
             break
-
         # there isn't a timeout here but python rq jobs have a timeout. Nomad
         # jobs have a timeout too.
         time.sleep(1)
@@ -555,17 +569,18 @@ def execute_nomad_job(job, previews, params, movie_file_path):
             movie_file.write(chunk)
 
 
-def get_nomad_job_logs(ncli, nomad_jobid):
+def _get_nomad_job_logs(ncli, nomad_jobid):
     allocations = ncli.job.get_allocations(nomad_jobid)
-    last = max([(alloc['CreateIndex'], idx) for idx, alloc
-               in enumerate(allocations)])[1]
+    last = max(
+        [
+            (alloc['CreateIndex'], idx) for idx, alloc
+            in enumerate(allocations)
+        ])[1]
     alloc_id = allocations[last]['ID']
-
     # logs aren't available when the task isn't started
     task = allocations[last]['TaskStates']['zou-playlist']
     if not task['StartedAt']:
-        out = '\n'.join([x['DisplayMessage'] for x in
-                        task['Events']])
+        out = '\n'.join([x['DisplayMessage'] for x in task['Events']])
         err = ''
     else:
         err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
@@ -576,7 +591,6 @@ def get_nomad_job_logs(ncli, nomad_jobid):
         if out:
             out = json.loads(out).get('Data', '')
             out = base64.b64decode(out).decode('utf-8')
-
     return out.rstrip(), err.rstrip()
 
 
@@ -626,7 +640,7 @@ def end_build_job(playlist, job, success):
 
 def build_playlist_job(playlist, shots, params, email, remote):
     """
-    Build playlist file (concatenate all mnovie previews). This function is
+    Build playlist file (concatenate all movie previews). This function is
     aimed at being runned as a job in a job queue.
     """
     from zou.app import app, mail
