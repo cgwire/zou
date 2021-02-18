@@ -60,7 +60,7 @@ class MovieTestCase(unittest.TestCase):
 
         self.assertFalse(movie.has_soundtrack(video))
         width, height = movie.get_movie_size(video)
-        normalized, _ = movie.normalize_movie(video, 5, width, height)
+        normalized, _, _ = movie.normalize_movie(video, 5, width, height)
 
         # normalization adds an audio stream
         self.assertTrue(movie.has_soundtrack(normalized))
@@ -76,7 +76,7 @@ class MovieTestCase(unittest.TestCase):
         shutil.copyfile(self.video_only_path, video)
 
         width, height = movie.get_movie_size(video)
-        normalized, _ = movie.normalize_movie(video, 5, None, int(height/2))
+        normalized, _, _ = movie.normalize_movie(video, 5, None, int(height/2))
         width_norm, height_norm = movie.get_movie_size(normalized)
         self.assertEqual(width/2, width_norm)
         self.assertEqual(height/2, height_norm)
@@ -88,7 +88,7 @@ class MovieTestCase(unittest.TestCase):
             filename = "%s-%s.m4v" % (i, test_name)
             video = str(Path(self.tmpdir) / filename)
             shutil.copyfile(self.video_only_path, video)
-            normalized, _ = movie.normalize_movie(video, 5, width, height)
+            normalized, _, _ = movie.normalize_movie(video, 5, width, height)
             # 2nd item isn't used by build_playlist_movie
             videos.append((normalized, None))
 
