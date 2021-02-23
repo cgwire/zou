@@ -573,6 +573,7 @@ class ApiDBTestCase(ApiTestCase):
             name="Animation",
             color="#FFFFFF"
         )
+        return self.department
 
     def generate_fixture_task_type(self):
         self.task_type = TaskType.create(

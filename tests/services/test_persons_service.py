@@ -11,6 +11,7 @@ class PersonServiceTestCase(ApiDBTestCase):
         super(PersonServiceTestCase, self).setUp()
 
         self.generate_fixture_person()
+        self.generate_fixture_department()
         self.person_id = str(self.person.id)
         self.person_email = self.person.email
         self.person_desktop_login = self.person.desktop_login
@@ -121,3 +122,18 @@ class PersonServiceTestCase(ApiDBTestCase):
         is_reached = persons_service.is_user_limit_reached()
         self.assertEqual(is_reached, True)
         config.USER_LIMIT = 100
+
+    def test_add_to_department(self):
+        person = self.person.serialize()
+        department = self.department.serialize()
+        persons_service.add_to_department(department["id"], person["id"])
+        person = persons_service.get_person(person["id"])
+        self.assertEqual(person["departments"][0], department["id"])
+
+    def test_remove_from_department(self):
+        person = self.person.serialize()
+        department = self.department.serialize()
+        persons_service.add_to_department(department["id"], person["id"])
+        persons_service.remove_from_department(department["id"], person["id"])
+        person = persons_service.get_person(person["id"])
+        self.assertEqual(len(person["departments"]), 0)

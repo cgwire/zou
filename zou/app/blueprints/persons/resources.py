@@ -4,12 +4,21 @@ from flask import abort
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
-from zou.app.services import persons_service, user_service, time_spents_service
-from zou.app.utils import auth, permissions, csv_utils
-from zou.app.services.exception import WrongDateFormatException
-
 from zou.app import config
 from zou.app.mixin import ArgsMixin
+from zou.app.services import (
+    persons_service,
+    tasks_service,
+    time_spents_service,
+    user_service,
+)
+from zou.app.utils import auth, permissions, csv_utils
+from zou.app.services.exception import (
+    DepartmentNotFoundException,
+    WrongDateFormatException,
+    WrongParameterException
+)
+
 
 
 class NewPersonResource(Resource):
@@ -288,6 +297,7 @@ class InvitePersonResource(Resource):
 
 class DayOffForMonthResource(Resource, ArgsMixin):
     """
+    Return all day off recorded for given month.
     """
 
     @jwt_required
@@ -298,6 +308,7 @@ class DayOffForMonthResource(Resource, ArgsMixin):
 
 class PersonWeekDayOffResource(Resource, ArgsMixin):
     """
+    Return all day off recorded for given week and person.
     """
 
     @jwt_required
@@ -310,6 +321,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
 
 class PersonMonthDayOffResource(Resource, ArgsMixin):
     """
+    Return all day off recorded for given month and person.
     """
 
     @jwt_required
@@ -322,9 +334,45 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
 
 class PersonYearDayOffResource(Resource, ArgsMixin):
     """
+    Return all day off recorded for given year and person.
     """
 
     @jwt_required
     def get(self, person_id, year):
         permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_year(person_id, year)
+
+
+class AddToDepartmentResource(Resource, ArgsMixin):
+    """
+    Add a user to given department.
+    """
+
+    @jwt_required
+    def post(self, person_id):
+        permissions.check_admin_permissions()
+        args = self.get_args([
+            ("department_id", None, True),
+        ])
+        try:
+            department = tasks_service.get_department(args["department_id"])
+        except DepartmentNotFoundException:
+            raise WrongParameterException("Department ID matches no department")
+        person = persons_service.add_to_department(department["id"], person_id)
+        return person, 201
+
+
+class RemoveFromDepartmentResource(Resource, ArgsMixin):
+    """
+    Remove a user from given department.
+    """
+
+    @jwt_required
+    def delete(self, person_id, department_id):
+        permissions.check_admin_permissions()
+        try:
+            department = tasks_service.get_department(department_id)
+        except DepartmentNotFoundException:
+            raise WrongParameterException("Department ID matches no department")
+        persons_service.remove_from_department(department_id, person_id)
+        return "", 204

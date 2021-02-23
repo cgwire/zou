@@ -135,6 +135,7 @@ def get_department(department_id):
     """
     Get department matching given id as a dictionary.
     """
+    print(department_id)
     try:
         department = Department.get(department_id)
     except StatementError:

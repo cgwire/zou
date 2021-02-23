@@ -20,6 +20,8 @@ from .resources import (
     TimeSpentWeekResource,
     TimeSpentYearsResource,
     PersonYearTimeSpentsResource,
+    AddToDepartmentResource,
+    RemoveFromDepartmentResource
 )
 
 routes = [
@@ -53,11 +55,18 @@ routes = [
         TimeSpentMonthResource,
     ),
     ("/data/persons/day-offs/<year>/<month>", DayOffForMonthResource),
-    ("/data/persons/<person_id>/day-offs/week/<year>/<week>", PersonWeekDayOffResource),
-    ("/data/persons/<person_id>/day-offs/month/<year>/<month>", PersonMonthDayOffResource),
-    ("/data/persons/<person_id>/day-offs/year/<year>", PersonYearDayOffResource),
+    ("/data/persons/<person_id>/day-offs/week/<year>/<week>",
+     PersonWeekDayOffResource),
+    ("/data/persons/<person_id>/day-offs/month/<year>/<month>",
+     PersonMonthDayOffResource),
+    ("/data/persons/<person_id>/day-offs/year/<year>",
+     PersonYearDayOffResource),
 
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
+    ("/actions/persons/<person_id>/departments/add",
+     AddToDepartmentResource),
+    ("/actions/persons/<person_id>/departments/<department_id>",
+     RemoveFromDepartmentResource),
 ]
 
 blueprint = Blueprint("persons", "persons")

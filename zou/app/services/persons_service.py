@@ -8,6 +8,7 @@ from sqlalchemy.exc import StatementError
 
 from flask_jwt_extended import get_jwt_identity
 
+from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
@@ -78,7 +79,7 @@ def get_person(person_id):
     Return given person as a dictionary.
     """
     person = get_person_raw(person_id)
-    return person.serialize()
+    return person.serialize(relations=True)
 
 
 @cache.memoize_function(120)
@@ -365,3 +366,28 @@ def is_user_limit_reached():
     """
     nb_active_users = Person.query.filter(Person.active).count()
     return nb_active_users >= config.USER_LIMIT
+
+
+def add_to_department(department_id, person_id):
+    """
+    Add to department.
+    """
+    person = get_person_raw(person_id)
+    department = Department.get(department_id)
+    person.departments = person.departments + [department]
+    person.save()
+    return person.serialize(relations=True)
+
+
+def remove_from_department(department_id, person_id):
+    """
+    Remove from department.
+    """
+    person = get_person_raw(person_id)
+    person.departments = [
+        department
+        for department in person.departments
+        if  str(department.id) != department_id
+    ]
+    person.save()
+    return person.serialize(relations=True)
