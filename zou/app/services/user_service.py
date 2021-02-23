@@ -721,6 +721,7 @@ def get_context():
     )
     notification_count = get_unread_notifications_count()
     project_status_list = projects_service.get_project_statuses()
+    departments = tasks_service.get_departments()
     task_types = tasks_service.get_task_types()
     task_status_list = tasks_service.get_task_statuses()
     search_filters = get_filters()
@@ -728,6 +729,7 @@ def get_context():
     return {
         "asset_types": asset_types,
         "custom_actions": custom_actions,
+        "departments": departments,
         "notification_count": notification_count,
         "persons": persons,
         "project_status": project_status_list,

@@ -48,7 +48,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_slack_enabled = db.Column(db.Boolean(), default=False)
     notifications_slack_userid = db.Column(db.String(60), default="")
 
-    skills = db.relationship("Department", secondary=department_link)
+    departments = db.relationship("Department", secondary=department_link)
 
     def __repr__(self):
         if sys.version_info[0] < 3:

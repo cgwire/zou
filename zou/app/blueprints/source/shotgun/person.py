@@ -73,14 +73,14 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                     id=imported_department['id'])
 
                 if department_person_link is None:
-                    person.skills.append(department)
+                    person.departments.append(department)
                     current_app.logger.info(
                         "Department Person Link created: %s-%s" % (
                             department.name,
                             person.full_name()
                         ))
-                elif person.skills != [department, ]:
-                    person.skills = [department, ]
+                elif person.departments != [department, ]:
+                    person.departments = [department, ]
                     current_app.logger.info(
                         "Department Person Link updated: %s-%s" % (
                             department.name,

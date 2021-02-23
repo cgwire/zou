@@ -59,6 +59,11 @@ def clear_task_type_cache(task_type_id):
     cache.cache.delete_memoized(get_task_types)
 
 
+def clear_department_cache(department_id):
+    cache.cache.delete_memoized(get_department, department_id)
+    cache.cache.delete_memoized(get_departments)
+
+
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
     cache.cache.delete_memoized(get_task_with_relations, task_id)
@@ -69,6 +74,11 @@ def clear_task_cache(task_id):
 def clear_comment_cache(comment_id):
     cache.cache.delete_memoized(get_comment, comment_id)
     cache.cache.delete_memoized(get_comment_with_relations, comment_id)
+
+
+@cache.memoize_function(120)
+def get_departments():
+    return fields.serialize_models(Department.get_all())
 
 
 @cache.memoize_function(120)
@@ -120,6 +130,7 @@ def get_task_status(task_status_id):
     return get_task_status_raw(task_status_id).serialize()
 
 
+@cache.memoize_function(120)
 def get_department(department_id):
     """
     Get department matching given id as a dictionary.
@@ -956,6 +967,7 @@ def get_or_create_department(name):
     if department is None:
         department = Department(name=name, color="#000000")
         department.save()
+        clear_department_cache(department.id)
         events.emit("department:new", {"department_id": department.id})
     return department.serialize()
 
