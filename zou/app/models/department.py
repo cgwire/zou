@@ -10,3 +10,4 @@ class Department(db.Model, BaseMixin, SerializerMixin):
 
     name = db.Column(db.String(80), unique=True, nullable=False)
     color = db.Column(db.String(7), nullable=False)
+    shotgun_id = db.Column(db.Integer, index=True)

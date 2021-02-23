@@ -441,6 +441,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         context = self.get("/data/user/context")
         self.assertEqual(len(context["projects"]), 1)
         self.assertEqual(len(context["asset_types"]), 1)
+        self.assertEqual(len(context["departments"]), 2)
         self.assertEqual(len(context["task_types"]), 3)
         self.assertEqual(len(context["task_status"]), 3)
         self.assertEqual(len(context["project_status"]), 2)
