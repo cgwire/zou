@@ -256,26 +256,38 @@ def sync_with_ldap_server():
                 email = "%s@%s" % (desktop_login, EMAIL_DOMAIN)
 
             if person is None and active is True:
-                person = persons_service.create_person(
-                    email,
-                    "default".encode("utf-8"),
-                    first_name,
-                    last_name,
-                    desktop_login=desktop_login,
-                )
-                print("User %s created." % desktop_login)
+                try:
+                    person = persons_service.create_person(
+                        email,
+                        "default".encode("utf-8"),
+                        first_name,
+                        last_name,
+                        desktop_login=desktop_login,
+                    )
+                    print("User %s created." % desktop_login)
+                except:
+                    print("User %s creation failed (email duplicated?)." % (
+                        desktop_login
+                    ))
 
             elif person is not None:
-                persons_service.update_person(
-                    person["id"],
-                    {
-                        "email": email,
-                        "first_name": first_name,
-                        "last_name": last_name,
-                        "active": active,
-                    },
-                )
-                print("User %s updated." % desktop_login)
+                try:
+                    persons_service.update_person(
+                        person["id"],
+                        {
+                            "email": email,
+                            "first_name": first_name,
+                            "last_name": last_name,
+                            "active": active,
+                        },
+                    )
+                    print("User %s updated." % desktop_login)
+                except:
+                    print("User %s update failed (email duplicated?)." % (
+                        desktop_login
+                    ))
+
+
 
             if person is not None and len(thumbnail) > 0:
                 save_thumbnail(person, thumbnail)
