@@ -166,23 +166,7 @@ def send_storage_file(
         )
     except IOError as e:
         current_app.logger.error(e)
-        return (
-            {
-                "error": True,
-                "message": "File not found for: %s %s"
-                % (prefix, preview_file_id),
-            },
-            404,
-        )
-    except FileNotFound:
-        return (
-            {
-                "error": True,
-                "message": "File not found for: %s %s"
-                % (prefix, preview_file_id),
-            },
-            404,
-        )
+        raise FileNotFound
 
 
 class CreatePreviewFilePictureResource(Resource, ArgsMixin):
@@ -399,12 +383,14 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
 
         try:
             return send_movie_file(instance_id, lowdef=True)
-        except FileNotFound:
-            current_app.logger.error(
-                "Movie file was not found for: %s" % instance_id
-            )
-            abort(404)
-
+        except Exception as e:
+            try:
+                return send_movie_file(instance_id)
+            except FileNotFound:
+                current_app.logger.error(
+                    "Movie file was not found for: %s" % instance_id
+                )
+                abort(404)
 
 
 class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
@@ -420,7 +406,9 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
         try:
             return send_movie_file(instance_id, as_attachment=True)
         except FileNotFound:
-            current_app.logger.error("Movie file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Movie file was not found for: %s" % instance_id
+            )
             abort(404)
 
 
