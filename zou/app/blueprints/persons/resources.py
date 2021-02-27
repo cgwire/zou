@@ -302,8 +302,13 @@ class DayOffForMonthResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, year, month):
-        permissions.check_admin_permissions()
-        return time_spents_service.get_day_offs_for_month(year, month)
+        if permissions.has_admin_permissions():
+            return time_spents_service.get_day_offs_for_month(year, month)
+        else:
+            person_id = persons_service.get_current_user()["id"]
+            return time_spents_service.get_person_day_offs_for_month(
+                person_id, year, month
+            )
 
 
 class PersonWeekDayOffResource(Resource, ArgsMixin):
@@ -313,7 +318,9 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, week):
-        permissions.check_admin_permissions()
+        user_id = persons_service.get_current_user()["id"]
+        if person_id != user_id:
+            permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_week(
             person_id, year, week
         )
@@ -326,7 +333,9 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, month):
-        permissions.check_admin_permissions()
+        user_id = persons_service.get_current_user()["id"]
+        if person_id != user_id:
+            permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_month(
             person_id, year, month
         )
@@ -339,7 +348,9 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year):
-        permissions.check_admin_permissions()
+        user_id = persons_service.get_current_user()["id"]
+        if person_id != user_id:
+            permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_year(person_id, year)
 
 
