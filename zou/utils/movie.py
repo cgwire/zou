@@ -98,9 +98,12 @@ def normalize_movie(movie_path, fps, width, height):
         format="mp4",
         r=fps,
         b="28M",
-        preset="medium",
+        preset="slow",
         vcodec="libx264",
-        vsync="passthrough",
+        color_primaries=1,
+        color_trc=1,
+        colorspace=1,
+        movflags="+faststart",
         s="%sx%s" % (width, height),
     )
     stream.run(quiet=False, capture_stderr=True)
@@ -118,10 +121,13 @@ def normalize_movie(movie_path, fps, width, height):
         pix_fmt="yuv420p",
         format="mp4",
         r=fps,
-        b="14M",
-        preset="medium",
+        b="1M",
+        preset="slow",
         vcodec="libx264",
-        vsync="passthrough",
+        color_primaries=1,
+        color_trc=1,
+        colorspace=1,
+        movflags="+faststart",
         s="%sx%s" % (low_width, low_height),
     )
     stream.run(quiet=False, capture_stderr=True)
