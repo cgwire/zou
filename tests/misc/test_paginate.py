@@ -7,7 +7,7 @@ class PaginationTestCase(ApiDBTestCase):
 
     def setUp(self):
         super(PaginationTestCase, self).setUp()
-        self.generate_data(Person, 250, skills=[])
+        self.generate_data(Person, 250, departments=[])
 
     def test_paginate(self):
         persons = self.get("data/persons?page=1")["data"]

@@ -109,7 +109,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
 
     def test_person(self):
         person_dict = {
-            "skills": [ ],
+            "departments": [ ],
             "id": "b86127df-909b-4bc2-983e-a959ea5a7319",
             "created_at": "2019-06-29T15:05:22",
             "updated_at": "2019-06-29T15:05:22",
