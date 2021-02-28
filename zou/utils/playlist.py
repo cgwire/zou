@@ -66,9 +66,8 @@ class SwiftClient:
             self.conn.put_object(bucket, key, contents=local)
 
 
-def fetch_inputs(storage, outdir, inputs, bucket_prefix):
+def fetch_inputs(storage, outdir, preview_file_ids, bucket_prefix):
     """Fetch inputs from object storage, return a list of local paths"""
-    preview_file_ids = json.loads(zlib.decompress(inputs))
     input_paths = []
     for input_id in preview_file_ids:
         prefix = "previews"
@@ -126,8 +125,14 @@ def main():
                                         height=config["height"],
                                         fps=config["fps"])
 
-        input_paths = fetch_inputs(storage, tmpdir, config["input"],
-                                   bucket_prefix)
+        input_zipped = base64.b64decode(config["input"])
+        preview_file_ids = json.loads(zlib.decompress(input_zipped))
+        input_paths = fetch_inputs(
+            storage,
+            tmpdir,
+            preview_file_ids,
+            bucket_prefix
+        )
 
         output_movie = str(Path(tmpdir) / config["output_filename"])
         result = build_playlist_movie(concat_filter, input_paths, output_movie,

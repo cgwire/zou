@@ -505,7 +505,8 @@ def _execute_nomad_job(job, previews, params, movie_file_path):
         for preview in previews
         if preview["extension"] == "mp4"
     ]
-    input_string = zlib.compress(bytes(json.dumps(preview_ids),'utf-8'))
+    input_bytes = zlib.compress(bytes(json.dumps(preview_ids),'utf-8'))
+    input_string = base64.b64encode(input_bytes).decode("ascii")
     bucket_prefix = config.FS_BUCKET_PREFIX
     params = {
         "version": "1",
