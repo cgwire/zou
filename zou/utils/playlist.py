@@ -1,10 +1,12 @@
 #!/usr/bin/env python
-from abc import ABCMeta, abstractmethod
 import json
 import os
-from pathlib import Path
 import sys
 import tempfile
+import zlib
+
+from abc import ABCMeta, abstractmethod
+from pathlib import Path
 
 
 from .movie import EncodingParameters, build_playlist_movie, concat_filter
@@ -66,8 +68,9 @@ class SwiftClient:
 
 def fetch_inputs(storage, outdir, inputs, bucket_prefix):
     """Fetch inputs from object storage, return a list of local paths"""
+    preview_file_ids = json.loads(zlib.decompress(inputs))
     input_paths = []
-    for input_id in inputs:
+    for input_id in preview_file_ids:
         prefix = "previews"
         bucket = "movies"
         filename = "cache-previews-%s.mp4" % input_id
