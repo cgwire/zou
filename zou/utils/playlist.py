@@ -67,26 +67,15 @@ class SwiftClient:
 def fetch_inputs(storage, outdir, inputs, bucket_prefix):
     """Fetch inputs from object storage, return a list of local paths"""
     input_paths = []
-    for input_file in inputs:
-        # FIXME reuse code from zou
-        prefix = "original"
-        if input_file["extension"] == "mp4":
-            prefix = "previews"
-            bucket = "movies"
-        elif input_file["extension"] == "png":
-            bucket = "movies"
-        else:
-            bucket = "files"
-
-        filename = ("cache-previews-%s.%s" % (
-                    input_file["id"], input_file["extension"]))
+    for input_id in inputs:
+        prefix = "previews"
+        bucket = "movies"
+        filename = "cache-previews-%s.mp4" % input_id
         file_path = Path(outdir) / filename
-
         if not file_path.exists() or os.path.getsize(file_path) == 0:
             with open(file_path, "wb") as output:
-                key = "%s-%s" % (prefix, input_file["id"])
+                key = "%s-%s" % (prefix, input_id)
                 storage.get(bucket_prefix + bucket, key, output)
-
         input_paths.append((str(file_path), filename))
     return input_paths
 

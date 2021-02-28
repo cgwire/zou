@@ -499,13 +499,18 @@ def _run_concatenation(
 def _execute_nomad_job(job, previews, params, movie_file_path):
     import nomad
 
+    preview_ids = [
+        preview["id"]
+        for preview in previews
+        if preview["extension"] == "mp4"
+    ]
     bucket_prefix = config.FS_BUCKET_PREFIX
     params = {
         "version": "1",
         "bucket_prefix": bucket_prefix,
         "output_filename": Path(movie_file_path).name,
         "output_key": file_store.make_key("playlists", job["id"]),
-        "input": previews,
+        "input": preview_ids,
         "width": params.width,
         "height": params.height,
         "fps": params.fps,
