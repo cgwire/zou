@@ -195,7 +195,7 @@ def build_playlist_movie(concat, tmp_file_paths, movie_file_path, width,
         concat_result = concat(in_files, movie_file_path, width, height, fps)
         if concat_result.get("message"):
             result["message"] += concat_result.get("message")
-        result["success"] = concat_result["success"]
+        result["success"] = concat_result.get("success", True)
 
     return result
 
@@ -212,7 +212,7 @@ def concat_demuxer(in_files, output_path, *args):
         streams = info["streams"]
         if len(streams) != 2:
             return {
-                "result": False,
+                "success": False,
                 "message": "%s has an unexpected stream number (%s)" %
                            (input_path, len(streams))
             }
@@ -220,7 +220,7 @@ def concat_demuxer(in_files, output_path, *args):
         stream_infos = {streams[0]["codec_type"], streams[1]["codec_type"]}
         if stream_infos  != {"video", "audio"}:
             return {
-                "result": False,
+                "success": False,
                 "message": "%s has unexpected stream type (%s)" %
                            (input_path, {streams[0]["codec_type"],
                                          streams[1]["codec_type"]})
@@ -231,9 +231,8 @@ def concat_demuxer(in_files, output_path, *args):
             if x["codec_type"] == "video"
         ][0]
         if video_index != 0:
-            # TODO streams could be reordered using copy
             return {
-                "result": False,
+                "success": False,
                 "message": "%s has an unexpected stream order" % input_path
             }
 

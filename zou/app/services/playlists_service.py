@@ -587,8 +587,12 @@ def _get_nomad_job_logs(ncli, nomad_jobid):
         err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
         out = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stdout')
         if err:
-            err = json.loads(err).get('Data', '')
-            err = base64.b64decode(err).decode('utf-8')
+            try:
+                err_json = json.loads(err).get('Data', '')
+                err_json = base64.b64decode(err).decode('utf-8')
+            except:
+                err_json = err
+            err = err_json
         if out:
             out = json.loads(out).get('Data', '')
             out = base64.b64decode(out).decode('utf-8')
