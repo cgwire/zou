@@ -153,9 +153,11 @@ def add_empty_soundtrack(file_path):
         tmp_file_path
     ]
 
-    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          universal_newlines=True)
-    out, err = sp.communicate()
+    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, error = sp.communicate()
+    err = None
+    if error:
+        err = "\n".join(str(error).split("\\n"))
 
     if sp.returncode == 0:
         shutil.copyfile(tmp_file_path, file_path)
