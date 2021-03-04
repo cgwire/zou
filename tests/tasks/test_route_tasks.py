@@ -418,6 +418,21 @@ class TaskRoutesTestCase(ApiDBTestCase):
         tasks = self.get("/data/persons/%s/done-tasks" % self.person.id)
         self.assertEqual(len(tasks), 1)
 
+    def test_get_related_tasks_for_person(self):
+        task_type_id = str(self.task_type_animation.id)
+        self.generate_fixture_task()
+        task = self.generate_fixture_task(task_type_id=task_type_id)
+        task.assignees = []
+        task.save()
+        tasks = self.get(
+            "/data/persons/%s/related-tasks/%s" % (
+                self.person.id,
+                task_type_id
+            )
+        )
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["task_type_id"], task_type_id)
+
     def test_delete_all_tasks_for_task_type(self):
         self.generate_fixture_project_standard()
         self.generate_fixture_asset_standard()

@@ -671,6 +671,33 @@ def get_person_done_tasks(person_id, projects):
     return get_person_tasks(person_id, projects, is_done=True)
 
 
+def get_person_related_tasks(person_id, task_type_id):
+    """
+    Retrieve all tasks for given task types and to entiities
+    that have at least one person assignation.
+    """
+    person = Person.get(person_id)
+    projects = projects_service.open_projects()
+    project_ids = [project["id"] for project in projects]
+
+    AssignedTask = aliased(Entity, name="sequence")
+    entities = (
+        Entity.query
+        .join(Task, Entity.id == Task.entity_id)
+        .filter(Task.assignees.contains(person))
+        .filter(Entity.project_id.in_(project_ids))
+    ).all()
+
+    entity_ids = [entity.id for entity in entities]
+    tasks = (
+        Task.query
+        .filter(Task.entity_id.in_(entity_ids))
+        .filter(Task.task_type_id == task_type_id)
+    ).all()
+
+    return fields.serialize_models(tasks)
+
+
 def get_person_tasks(person_id, projects, is_done=None):
     """
     Retrieve all tasks for given person and projects.
