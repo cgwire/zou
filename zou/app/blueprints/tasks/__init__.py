@@ -9,6 +9,7 @@ from .resources import (
     TaskAssignResource,
     TasksAssignResource,
     ClearAssignationResource,
+    PersonRelatedTasksResource,
     PersonTasksResource,
     PersonDoneTasksResource,
     TaskStartResource,
@@ -37,6 +38,10 @@ routes = [
     ("/data/tasks/<task_id>/previews", TaskPreviewsResource),
     ("/data/tasks/<task_id>/full", TaskFullResource),
     ("/data/persons/<person_id>/tasks", PersonTasksResource),
+    (
+        "/data/persons/<person_id>/related-tasks/<task_type_id>",
+        PersonRelatedTasksResource
+    ),
     ("/data/persons/<person_id>/done-tasks", PersonDoneTasksResource),
     (
         "/data/entities/<entity_id>/task-types/<task_type_id>/tasks",

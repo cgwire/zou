@@ -168,6 +168,22 @@ class PersonTasksResource(Resource):
         return tasks_service.get_person_tasks(person_id, projects)
 
 
+class PersonRelatedTasksResource(Resource):
+    """
+    For all entities assigned to given person (that have at least one task
+    assigned to given person), returns all tasks for given task type.
+    """
+
+    @jwt_required
+    def get(self, person_id, task_type_id):
+        user = persons_service.get_current_user()
+        if person_id != user["id"]:
+            permissions.check_admin_permissions()
+        projects = projects_service.open_projects()
+        return tasks_service.get_person_related_tasks(person_id, task_type_id)
+
+
+
 class PersonDoneTasksResource(Resource):
     """
     Return task assigned to given user of which status has is_done flag sets
