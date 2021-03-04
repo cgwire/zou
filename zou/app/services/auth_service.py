@@ -115,12 +115,15 @@ def ldap_auth_strategy(email, password, app):
         person = persons_service.get_person_by_desktop_login(email)
 
     try:
-        ldap_server = "%s:%s" % (
-            app.config["LDAP_HOST"],
-            app.config["LDAP_PORT"],
-        )
-        server = Server(ldap_server, get_info=ALL)
-        if app.config["LDAP_IS_AD"]:
+        SSL=False
+        if app.config["LDAP_IS_AD_SIMPLE"]:
+            user = "CN=%s,%s" % (
+                person["full_name"],
+                app.config["LDAP_BASE_DN"],
+            )
+            SSL=True
+            authentication = SIMPLE
+        elif app.config["LDAP_IS_AD"]:
             user = "%s\%s" % (
                 app.config["LDAP_DOMAIN"],
                 person["desktop_login"],
@@ -133,6 +136,11 @@ def ldap_auth_strategy(email, password, app):
             )
             authentication = SIMPLE
 
+        ldap_server = "%s:%s" % (
+            app.config["LDAP_HOST"],
+            app.config["LDAP_PORT"],
+        )
+        server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
         conn = Connection(
             server,
             user=user,
@@ -144,7 +152,7 @@ def ldap_auth_strategy(email, password, app):
         return person
 
     except LDAPSocketOpenError:
-        app.logger.error("Cannot connect to LDAP/Active directory server")
+        app.logger.error("Cannot connect to LDAP/Active directory server %s " % (ldap_server))
         return ldap_auth_strategy_fallback(email, password, app, person)
 
     except LDAPInvalidCredentialsResult:
