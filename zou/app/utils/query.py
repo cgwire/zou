@@ -72,3 +72,16 @@ def get_paginated_results(query, page, relations=False):
                 "page": page,
             }
         return result
+
+
+def apply_sort_by(model, query, sort_by):
+    """
+    Apply an order by clause to a sqlalchemy query from a string parameter.
+    """
+    if sort_by in model.__table__.columns.keys():
+        sort_field = model.__table__.columns[sort_by]
+        if sort_by in ["created_at", "updated_at"]:
+            sort_field = sort_field.desc()
+    else:
+        sort_field = model.updated_at.desc()
+    return query.order_by(sort_field)
