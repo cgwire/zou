@@ -22,25 +22,44 @@ from zou.app.utils import fs
 from zou.utils.movie import EncodingParameters
 
 
-class ProjectPlaylistsResource(Resource):
+class ProjectPlaylistsResource(Resource, ArgsMixin):
+    """
+    Retrieve all playlists related to given project. Result is paginated and
+    can be sorted.
+    """
+
     @jwt_required
     def get(self, project_id):
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
+        page = self.get_page()
+        sort_by = self.get_sort_by()
         return playlists_service.all_playlists_for_project(
-            project_id, permissions.has_client_permissions()
+            project_id,
+            for_client=permissions.has_client_permissions(),
+            page=page,
+            sort_by=sort_by
         )
 
 
 class EpisodePlaylistsResource(Resource):
+    """
+    Retrieve all playlists related to given episode. The full list is returned
+    because the number of playlists in an episode is not that big.
+    """
+
     @jwt_required
     def get(self, project_id, episode_id):
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
+        sort_by = self.get_sort_by()
         if episode_id not in ["main", "all"]:
             shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
-            project_id, episode_id, permissions.has_client_permissions()
+            project_id,
+            episode_id,
+            permissions.has_client_permissions(),
+            sort_by=sort_by
         )
 
 
