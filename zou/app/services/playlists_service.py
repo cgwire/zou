@@ -48,22 +48,40 @@ from zou.utils import movie
 logger = logging.getLogger(__name__)
 
 
-def all_playlists_for_project(project_id, for_client=False):
+def all_playlists_for_project(
+    project_id,
+    for_client=False,
+    page=1,
+    sort_by="updated_at"
+):
     """
     Return all playlists created for given project.
     """
     result = []
+    query = Playlist.query.filter(Playlist.project_id == project_id)
     if for_client:
-        playlists = Playlist.get_all_by(project_id=project_id, for_client=True)
-    else:
-        playlists = Playlist.get_all_by(project_id=project_id)
+        query = query.filter(Playlist.for_client)
+
+    query = query_utils.apply_sort_by(Playlist, query, sort_by)
+    if page < 1:
+        page = 1
+    limit = 20
+    offset = (page - 1) * limit
+    query = query.limit(limit)
+    query = query.offset(offset)
+    playlists = query.all()
     for playlist in playlists:
         playlist_dict = build_playlist_dict(playlist)
         result.append(playlist_dict)
     return result
 
 
-def all_playlists_for_episode(project_id, episode_id, for_client=False):
+def all_playlists_for_episode(
+    project_id,
+    episode_id,
+    for_client=False,
+    sort_by="updated_at"
+):
     """
     Return all playlists created for given episode.
     """
@@ -90,6 +108,7 @@ def all_playlists_for_episode(project_id, episode_id, for_client=False):
     else:
         query = query.filter(Playlist.episode_id == episode_id)
 
+    query = query_utils.apply_sort_by(Playlist, query, sort_by)
     playlists = query.all()
     for playlist in playlists:
         playlist_dict = build_playlist_dict(playlist)
@@ -165,6 +184,8 @@ def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
 
 def set_preview_files_for_entities(playlist_dict):
     """
+    Retrieve all preview files related to entities listed in given playlist.
+    Add to each entity a dict with task as keys and preview list as values.
     """
     entity_ids = []
     for entity in playlist_dict["shots"]:
@@ -779,7 +800,7 @@ def get_build_jobs_for_project(project_id):
 
 def get_playlists_for_project(project_id, page=0):
     """
-    Return all time spents for given project.
+    Return all playlists for given project.
     """
     query = Playlist.query.filter(Playlist.project_id == project_id)
     return query_utils.get_paginated_results(query, page, relations=True)
