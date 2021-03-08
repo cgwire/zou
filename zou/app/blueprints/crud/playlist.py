@@ -32,6 +32,18 @@ class PlaylistResource(BaseModelResource):
         user_service.check_project_access(playlist["project_id"])
         user_service.block_access_to_vendor()
 
+    def pre_update(self, instance_dict, data):
+        if "shots" in data:
+            shots = [
+                {
+                    "entity_id": shot["entity_id"],
+                    "preview_file_id": shot["preview_file_id"],
+                }
+                for shot in data["shots"]
+            ]
+            data["shots"] = shots
+        return data
+
     def delete(self, instance_id):
         playlists_service.remove_playlist(instance_id)
         return "", 204
