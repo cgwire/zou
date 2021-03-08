@@ -42,6 +42,12 @@ class ArgsMixin(object):
         options = request.args
         return int(options.get("page", "-1"))
 
+    def get_sort_by(self):
+        """
+        Returns sort by option value
+        """
+        return self.get_text_parameter("sort_by")
+
     def get_force(self):
         """
         Returns force parameter.
@@ -55,7 +61,6 @@ class ArgsMixin(object):
         """
         options = request.args
         return options.get("relations", "false") == "true"
-
 
     def get_project_id(self):
         """
@@ -77,6 +82,13 @@ class ArgsMixin(object):
         """
         options = request.args
         return options.get("no_job", "false") == "true"
+
+    def get_text_parameter(self, field_name):
+        options = request.args
+        return options.get(field_name, None)
+
+    def get_date_parameter(self, field_name):
+        self.parse_date_parameter(self.get_text_parameter(field_name))
 
     def parse_date_parameter(self, param):
         date = None
