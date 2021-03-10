@@ -14,6 +14,16 @@ from zou.app.services import (
 )
 
 
+def check_criterion_access(criterions):
+    project_id = None
+    if "project_id" in criterions:
+        project_id = criterions.get("project_id", None)
+    elif "episode_id" in criterions:
+        episode_id = criterions.get("episode_id", None)
+        project_id = shots_service.get_episode(episode_id)["project_id"]
+    return user_service.check_project_access(project_id)
+
+
 class AssetResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -47,24 +57,14 @@ class AllAssetsResource(Resource):
         Adds project name and asset type name.
         """
         criterions = query.get_query_criterions_from_request(request)
-        user_service.check_project_access(criterions.get("project_id", None))
+        check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets(criterions)
 
 
-class AllAssetsAliasResource(Resource):
-    @jwt_required
-    def get(self):
-        """
-        Retrieve all entities that are not shot or sequence.
-        Adds project name and asset type name.
-        """
-        criterions = query.get_query_criterions_from_request(request)
-        user_service.check_project_access(criterions.get("project_id", None))
-        if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
-        return assets_service.get_assets(criterions)
+class AllAssetsAliasResource(AllAssetsResource):
+    pass
 
 
 class AssetsAndTasksResource(Resource):
@@ -78,7 +78,7 @@ class AssetsAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         page = query.get_page_from_request(request)
-        user_service.check_project_access(criterions.get("project_id", None))
+        check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()["id"]
         return assets_service.get_assets_and_tasks(criterions, page)
