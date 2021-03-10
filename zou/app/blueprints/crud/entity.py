@@ -113,7 +113,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
             entity.update(data)
-            entity_dict = entity.serialize()
+            entity_dict = self.serialize_instance(entity)
 
             if shots_service.is_shot(entity_dict):
                 shots_service.clear_shot_cache(entity_dict["id"])
