@@ -350,6 +350,18 @@ def get_task_types_for_sequence(sequence_id):
     """
     Return all task types for which there is a task related to given sequence.
     """
+    Sequence = aliased(Entity, name="sequence")
+    task_types = (
+        TaskType.query
+        .join(Task, Entity)
+        .join(Sequence, Sequence.id == Entity.parent_id)
+        .filter(Sequence.id == sequence_id)
+        .group_by(TaskType.id)
+        .all()
+    )
+    return fields.serialize_models(task_types)
+
+
     return get_task_types_for_entity(sequence_id)
 
 
@@ -364,7 +376,18 @@ def get_task_types_for_episode(episode_id):
     """
     Return all task types for which there is a task related to given episode.
     """
-    return get_task_types_for_entity(episode_id)
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    task_types = (
+        TaskType.query
+        .join(Task, Entity)
+        .join(Sequence, Sequence.id == Entity.parent_id)
+        .join(Episode, Episode.id == Sequence.parent_id)
+        .filter(Episode.id == episode_id)
+        .group_by(TaskType.id)
+        .all()
+    )
+    return fields.serialize_models(task_types)
 
 
 def get_task_types_for_entity(entity_id):
