@@ -8,6 +8,9 @@ class PreviewFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, PreviewFile)
 
+    def check_read_permissions(self):
+        return True
+
 
 class PreviewFileResource(BaseModelResource):
     def __init__(self):
