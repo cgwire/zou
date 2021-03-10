@@ -145,16 +145,33 @@ def add_empty_soundtrack(file_path):
         "-f", "lavfi",
         "-i", "anullsrc",
         "-i", file_path,
-        "-c:v", "copy",
         "-c:a", "aac",
+        "-c:v", "copy",
         "-map", "0:a",
         "-map", "1:v",
         "-shortest",
         tmp_file_path
     ]
-
     sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, error = sp.communicate()
+    if error:
+        args = [
+            "ffmpeg",
+            "-f", "lavfi",
+            "-i", "anullsrc",
+            "-i", file_path,
+            "-c:a", "aac",
+            "-c:v", "libx264",
+            "-map", "0:a",
+            "-map", "1:v",
+            "-shortest",
+            tmp_file_path
+        ]
+        sp = subprocess.Popen(
+            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        out, error = sp.communicate()
+
     err = None
     if error:
         err = "\n".join(str(error).split("\\n"))
