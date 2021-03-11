@@ -42,7 +42,7 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
         )
 
 
-class EpisodePlaylistsResource(Resource):
+class EpisodePlaylistsResource(Resource, ArgsMixin):
     """
     Retrieve all playlists related to given episode. The full list is returned
     because the number of playlists in an episode is not that big.
