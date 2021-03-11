@@ -36,7 +36,7 @@ class PlaylistResource(BaseModelResource):
         if "shots" in data:
             shots = [
                 {
-                    "entity_id": shot["entity_id"],
+                    "entity_id": shot.get("entity_id", shot.get("id", "")),
                     "preview_file_id": shot["preview_file_id"],
                 }
                 for shot in data["shots"]
