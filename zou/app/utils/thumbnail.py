@@ -64,6 +64,14 @@ def get_full_size_from_width(im, width):
     return (width, height)
 
 
+def make_im_bigger_if_needed(im, size):
+    im_width, im_height = im.size
+    width, height = size
+    if im_width < width and im_height < height:
+        im = im.resize(size, Image.ANTIALIAS)
+    return im
+
+
 def turn_into_thumbnail(file_path, size=None):
     """
     Turn given picture into a smaller version.
@@ -76,6 +84,8 @@ def turn_into_thumbnail(file_path, size=None):
             size = get_full_size_from_width(im, width)
     else:
         size = im.size
+
+    im = make_im_bigger_if_needed(im, size)
 
     im.thumbnail(size, Image.LANCZOS)
     if im.mode == "CMYK":
