@@ -30,10 +30,12 @@ class PlaylistCsvExport(Resource):
         self.check_permissions(project["id"])
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()
-        task_ids = [
-            shot["preview_file_task_id"]
-            for shot in playlist["shots"]
-        ]
+        task_ids = []
+        for shot in playlist["shots"]:
+            preview_file = files_service.get_preview_file(
+                shot["preview_file_id"]
+            )
+            task_ids.append(preview_file["task_id"])
         self.task_comment_map = tasks_service.get_last_comment_map(task_ids)
         episode = self.get_episode(playlist)
 
@@ -92,7 +94,7 @@ class PlaylistCsvExport(Resource):
     def build_row(self, shot):
         name, _ = names_service.get_full_entity_name(shot["entity_id"])
         preview_file = files_service.get_preview_file(shot["preview_file_id"])
-        task = tasks_service.get_task(shot["preview_file_task_id"])
+        task = tasks_service.get_task(preview_file["task_id"])
         task_type = self.task_type_map[task["task_type_id"]]
         task_status = self.task_status_map[task["task_status_id"]]
         comment = self.task_comment_map.get(task["id"], {})
