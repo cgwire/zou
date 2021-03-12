@@ -135,7 +135,8 @@ def normalize_movie(movie_path, fps, width, height):
 
 
 def add_empty_soundtrack(file_path):
-    tmp_file_path = file_path + ".tmp.mp4"
+    extension = file_path.split(".")[-2]
+    tmp_file_path = file_path + "_empty_audio." + extension
 
     with contextlib.suppress(FileNotFoundError):
         os.remove(tmp_file_path)
@@ -145,32 +146,18 @@ def add_empty_soundtrack(file_path):
         "-f", "lavfi",
         "-i", "anullsrc",
         "-i", file_path,
-        "-c:a", "aac",
         "-c:v", "copy",
+        "-c:a", "aac",
         "-map", "0:a",
         "-map", "1:v",
         "-shortest",
         tmp_file_path
     ]
-    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    sp = subprocess.Popen(
+        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True
+    )
     out, error = sp.communicate()
-    if error:
-        args = [
-            "ffmpeg",
-            "-f", "lavfi",
-            "-i", "anullsrc",
-            "-i", file_path,
-            "-c:a", "aac",
-            "-c:v", "libx264",
-            "-map", "0:a",
-            "-map", "1:v",
-            "-shortest",
-            tmp_file_path
-        ]
-        sp = subprocess.Popen(
-            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        out, error = sp.communicate()
 
     err = None
     if error:
