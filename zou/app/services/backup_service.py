@@ -32,7 +32,7 @@ def generate_db_backup(host, port, user, password, database):
     Generate a Postgres dump file from the database.
     """
     now = datetime.datetime.now().strftime("%Y-%m-%d")
-    filename = "%s-zou-db-backup.dump" % now
+    filename = "%s-zou-db-backup.sql.gz" % now
     with gzip.open(filename, "wb") as archive:
         pg_dump(
             "-h",
