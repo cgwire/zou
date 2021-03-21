@@ -154,8 +154,7 @@ def add_empty_soundtrack(file_path):
         tmp_file_path
     ]
     sp = subprocess.Popen(
-        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True
+        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
     )
     out, error = sp.communicate()
 
