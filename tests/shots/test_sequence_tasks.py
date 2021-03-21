@@ -34,6 +34,8 @@ class SequenceTasksTestCase(ApiDBTestCase):
         self.assertEqual(sequences[0]["name"], "S01")
 
     def test_get_task_types_for_sequence(self):
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
         task_types = self.get(
             "/data/sequences/%s/task-types" % self.sequence.id
         )

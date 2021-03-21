@@ -33,6 +33,9 @@ class EpisodeTasksTestCase(ApiDBTestCase):
         self.assertEqual(episodes[0]["name"], "E01")
 
     def test_get_task_types_for_episode(self):
+        self.generate_fixture_sequence()
+        self.generate_fixture_shot()
+        self.generate_fixture_shot_task()
         task_types = self.get("/data/episodes/%s/task-types" % self.episode.id)
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(

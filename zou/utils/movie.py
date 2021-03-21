@@ -135,7 +135,9 @@ def normalize_movie(movie_path, fps, width, height):
 
 
 def add_empty_soundtrack(file_path):
-    extension = file_path.split(".")[-2]
+    extension = file_path.split(".")[-1]
+    if extension == "tmp":
+        extension = file_path.split(".")[-2]
     tmp_file_path = file_path + "_empty_audio." + extension
 
     with contextlib.suppress(FileNotFoundError):
