@@ -105,7 +105,17 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
   to fallback on default auth strategy when the LDAP server is down.
 * `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with active directory.
 
+
+## Job queue
+
+* `ENABLE_JOB_QUEUE` (default: "False"): Set to True if you want to send
+  asynchronous tasks to the `zou-rq` service.
+* `ENABLE_JOB_QUEUE_REMOTE` (default: "False"): Set to True if you want to send
+  playlist builds to a Nomad cluster.
+
+
 ## Misc
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
 * `DEBUG` (default: False): Activate the debug mode for development purpose.
+* `CRISP TOKEN` (default: ): Activate the Crisp support chatbox on bottom right.
