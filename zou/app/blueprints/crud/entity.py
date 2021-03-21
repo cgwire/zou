@@ -11,7 +11,7 @@ from zou.app.services import (
     assets_service,
     persons_service,
     shots_service,
-    user_service
+    user_service,
 )
 from zou.app.utils import events, fields, date_helpers
 
@@ -21,7 +21,6 @@ from .base import BaseModelResource, BaseModelsResource
 
 
 class EntityEventMixin(object):
-
     def emit_event(self, event_name, entity_dict):
         instance_id = entity_dict["id"]
         type_name = shots_service.get_base_entity_type_name(entity_dict)
@@ -32,10 +31,8 @@ class EntityEventMixin(object):
                 assets_service.clear_asset_cache(instance_id)
         events.emit(
             "%s:%s" % (type_name.lower(), event_name),
-            {
-                "%s_id" % type_name.lower(): instance_id
-            },
-            project_id=entity_dict["project_id"]
+            {"%s_id" % type_name.lower(): instance_id},
+            project_id=entity_dict["project_id"],
         )
 
 
@@ -159,22 +156,17 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
             current_user_id = persons_service.get_current_user()["id"]
             previous_updated_at = fields.get_date_object(
-                previous_shot["updated_at"],
-                date_format="%Y-%m-%dT%H:%M:%S"
+                previous_shot["updated_at"], date_format="%Y-%m-%dT%H:%M:%S"
             )
             updated_at = fields.get_date_object(
-                shot["updated_at"],
-                date_format="%Y-%m-%dT%H:%M:%S"
+                shot["updated_at"], date_format="%Y-%m-%dT%H:%M:%S"
             )
-            if date_helpers.get_date_diff(
-                   previous_updated_at,
-                   updated_at
-               ) > 60:
+            if date_helpers.get_date_diff(previous_updated_at, updated_at) > 60:
                 version = EntityVersion.create(
                     entity_id=shot["id"],
                     name=pname,
                     data=shot["data"],
-                    person_id=current_user_id
+                    person_id=current_user_id,
                 )
         return version
 

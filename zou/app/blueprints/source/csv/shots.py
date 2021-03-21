@@ -72,9 +72,11 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         for name, field_name in self.descriptor_fields.items():
             if name in row:
                 data[field_name] = row[name]
-            elif entity is not None and \
-                entity.data is not None and \
-                field_name in entity.data:
+            elif (
+                entity is not None
+                and entity.data is not None
+                and field_name in entity.data
+            ):
                 data[field_name] = entity.data[field_name]
 
         if entity is None:
@@ -98,21 +100,21 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     data=data,
                 )
             events.emit(
-                "shot:new",
-                {"shot_id": str(entity.id)},
-                project_id=project_id
+                "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
             )
 
         elif self.is_update:
-            entity.update({
-                "description": description,
-                "nb_frames": nb_frames,
-                "data": data
-            })
+            entity.update(
+                {
+                    "description": description,
+                    "nb_frames": nb_frames,
+                    "data": data,
+                }
+            )
             events.emit(
                 "shot:update",
                 {"shot_id": str(entity.id)},
-                project_id=project_id
+                project_id=project_id,
             )
 
         return entity.serialize()

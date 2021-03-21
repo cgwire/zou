@@ -22,8 +22,7 @@ class DayOffsResource(BaseModelsResource):
 
     def post_creation(self, instance):
         time_spents = TimeSpent.delete_all_by(
-            person_id=instance.person_id,
-            date=instance.date
+            person_id=instance.person_id, date=instance.date
         )
         return instance.serialize()
 
@@ -34,7 +33,6 @@ class DayOffResource(BaseModelResource):
 
     def check_delete_permissions(self, instance):
         user = persons_service.get_current_user()
-        return (
-            permissions.check_admin_permissions()
-            or user["id"] == str(instance.person_id)
+        return permissions.check_admin_permissions() or user["id"] == str(
+            instance.person_id
         )

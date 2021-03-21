@@ -4,7 +4,6 @@ from zou.app.utils import fields
 
 
 class EntityTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(EntityTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -30,7 +29,7 @@ class EntityTestCase(ApiDBTestCase):
             "name": "Cosmos Landromat",
             "description": "Video game trailer.",
             "project_id": self.project.id,
-            "entity_type_id": self.asset_type.id
+            "entity_type_id": self.asset_type.id,
         }
         self.asset = self.post("data/entities", data)
         self.assertIsNotNone(self.asset["id"])
@@ -40,28 +39,18 @@ class EntityTestCase(ApiDBTestCase):
 
     def test_update_entity(self):
         entity = self.get_first("data/entities")
-        data = {
-            "name": "Cosmos Landromat 2",
-            "data": {
-                "extra_work": True
-            }
-        }
+        data = {"name": "Cosmos Landromat 2", "data": {"extra_work": True}}
         self.put("data/entities/%s" % entity["id"], data)
         entity_again = self.get("data/entities/%s" % entity["id"])
         self.assertEqual(entity_again["name"], data["name"])
         self.assertEqual(entity_again["data"], data["data"])
 
-        data = {
-            "data": {
-                "extra_field": True
-            }
-        }
+        data = {"data": {"extra_field": True}}
         self.put("data/entities/%s" % entity["id"], data)
         entity_again = self.get("data/entities/%s" % entity["id"])
-        self.assertEqual(entity_again["data"], {
-            "extra_work": True,
-            "extra_field": True
-        })
+        self.assertEqual(
+            entity_again["data"], {"extra_work": True, "extra_field": True}
+        )
 
         self.put_404("data/entities/%s" % fields.gen_uuid(), data)
 
@@ -77,7 +66,7 @@ class EntityTestCase(ApiDBTestCase):
     def test_delete_entity_link(self):
         entity_link = {
             "entity_in_id": self.asset_1_id,
-            "entity_out_id": self.asset_2_id
+            "entity_out_id": self.asset_2_id,
         }
         entity_link = self.post("data/entity-links", entity_link)
         entity_links = self.get("data/entity-links")

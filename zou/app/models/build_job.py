@@ -34,13 +34,13 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
     )
 
     def end(self, status):
-        self.update(
-            {"status": status, "ended_at": datetime.datetime.now()}
-        )
+        self.update({"status": status, "ended_at": datetime.datetime.now()})
 
     def present(self):
-        return fields.serialize_dict({
-            "id": self.id,
-            "status": self.status,
-            "created_at": self.created_at,
-        })
+        return fields.serialize_dict(
+            {
+                "id": self.id,
+                "status": self.status,
+                "created_at": self.created_at,
+            }
+        )

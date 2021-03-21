@@ -5,46 +5,37 @@ from zou.app.models.entity import Entity
 
 
 class ImportShotgunSequence(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunSequence, self).setUp()
         self.generate_fixture_asset_type()
 
     def test_import_sequences(self):
-        self.load_fixture('projects')
-        self.sequences = self.load_fixture('sequences')
+        self.load_fixture("projects")
+        self.sequences = self.load_fixture("sequences")
         self.assertEqual(len(self.sequences), 3)
 
         self.sequences = self.get("data/sequences")
         self.assertEqual(len(self.sequences), 3)
 
     def test_import_sequences_twice(self):
-        self.load_fixture('projects')
-        self.sequences = self.load_fixture('sequences')
-        self.sequences = self.load_fixture('sequences')
+        self.load_fixture("projects")
+        self.sequences = self.load_fixture("sequences")
+        self.sequences = self.load_fixture("sequences")
         self.assertEqual(len(self.sequences), 3)
 
         self.sequences = self.get("data/sequences")
         self.assertEqual(len(self.sequences), 3)
 
     def test_import_sequence(self):
-        self.load_fixture('projects')
-        self.load_fixture('episodes')
+        self.load_fixture("projects")
+        self.load_fixture("episodes")
         sg_sequence = {
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Agent327"
-            },
-            "episode": {
-                "type": "Episode",
-                "id": 1,
-                "name": "E01"
-            },
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
+            "episode": {"type": "Episode", "id": 1, "name": "E01"},
             "code": "S04",
             "type": "Sequence",
             "id": 4,
-            "description": "test description"
+            "description": "test description",
         }
         api_path = "/import/shotgun/sequences"
         self.sequences = self.post(api_path, [sg_sequence], 200)

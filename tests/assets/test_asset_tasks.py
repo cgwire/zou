@@ -4,7 +4,6 @@ from zou.app.services import projects_service, tasks_service
 
 
 class AssetTasksTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AssetTasksTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -46,32 +45,22 @@ class AssetTasksTestCase(ApiDBTestCase):
         person_id = self.user_vendor["id"]
         self.log_in_vendor()
         assets = self.get(
-            "data/assets/with-tasks?project_id=%s" % project_id,
-            403
+            "data/assets/with-tasks?project_id=%s" % project_id, 403
         )
         projects_service.add_team_member(project_id, person_id)
         projects_service.clear_project_cache(str(project_id))
-        assets = self.get(
-            "data/assets/with-tasks?project_id=%s" % project_id
-        )
+        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
         self.assertEqual(len(assets), 0)
         tasks_service.assign_task(task_id, person_id)
-        assets = self.get(
-            "data/assets/with-tasks?project_id=%s" % project_id
-        )
+        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
         self.assertEqual(len(assets), 1)
         self.assertEqual(len(assets[0]["tasks"]), 1)
-        self.assertTrue(
-            str(person_id) in assets[0]["tasks"][0]["assignees"]
-        )
+        self.assertTrue(str(person_id) in assets[0]["tasks"][0]["assignees"])
 
     def test_get_task_types_for_asset(self):
         task_types = self.get("data/assets/%s/task-types" % self.asset_id)
         self.assertEqual(len(task_types), 1)
-        self.assertDictEqual(
-            task_types[0],
-            self.task_type_dict
-        )
+        self.assertDictEqual(task_types[0], self.task_type_dict)
 
     def test_get_task_types_for_asset_not_found(self):
         self.get("data/assets/no-asset/task-types", 404)

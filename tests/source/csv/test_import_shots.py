@@ -7,7 +7,6 @@ from zou.app.services import shots_service
 
 
 class ImportCsvShotsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ImportCsvShotsTestCase, self).setUp()
 
@@ -17,9 +16,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
     def test_import_shots(self):
         path = "/import/csv/projects/%s/shots" % self.project.id
-        self.project.update({
-            "production_type": "tvshow"
-        })
+        self.project.update({"production_type": "tvshow"})
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "shots.csv")

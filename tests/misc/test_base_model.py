@@ -5,7 +5,6 @@ from zou.app.models.project import Project
 
 
 class BaseModelTestCase(ApiDBTestCase):
-
     def test_get(self):
         self.generate_fixture_project_status()
         project_id = self.generate_fixture_project().id
@@ -66,8 +65,6 @@ class BaseModelTestCase(ApiDBTestCase):
     def update(self):
         self.generate_fixture_project_status()
         project = self.generate_fixture_project()
-        project.update({
-            "name": "new name"
-        })
+        project.update({"name": "new name"})
         project = Project.get(project.id)
         self.assertEqual(project.name, "new name")

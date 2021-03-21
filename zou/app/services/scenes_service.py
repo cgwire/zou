@@ -9,8 +9,9 @@ def add_shot_to_scene(scene, shot):
     """
     shot = shots_service.update_shot(shot["id"], {"source_id": scene["id"]})
     events.emit(
-        "shot:add-to-scene", {"scene_id": scene["id"], "shot_id": shot["id"]},
-        project_id=shot["project_id"]
+        "shot:add-to-scene",
+        {"scene_id": scene["id"], "shot_id": shot["id"]},
+        project_id=shot["project_id"],
     )
     return shot
 
@@ -23,7 +24,7 @@ def remove_shot_from_scene(scene, shot):
     events.emit(
         "shot:remove-from-scene",
         {"scene_id": scene["id"], "shot_id": shot["id"]},
-        project_id=shot["project_id"]
+        project_id=shot["project_id"],
     )
     return shot
 

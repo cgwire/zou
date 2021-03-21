@@ -4,7 +4,6 @@ from zou.app.services import tasks_service
 
 
 class RouteTimeSpentTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(RouteTimeSpentTestCase, self).setUp()
 
@@ -52,15 +51,11 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         )
 
     def test_set_time_spent(self):
-        data = {
-            "duration": 3600
-        }
+        data = {"duration": 3600}
         self.post(
-            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s" % (
-                self.task.id,
-                self.person.id
-            ),
-            data
+            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s"
+            % (self.task.id, self.person.id),
+            data,
         )
         time_spents = self.get("data/time-spents")
         self.assertEqual(time_spents[0]["date"], "2017-09-23")
@@ -68,16 +63,12 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         self.assertEqual(time_spents[0]["duration"], data["duration"])
 
     def test_set_time_spent_wrong_date(self):
-        data = {
-            "duration": 3600
-        }
+        data = {"duration": 3600}
         self.post(
-            "/actions/tasks/%s/time-spents/wrong-date/persons/%s" % (
-                self.task.id,
-                self.person.id
-            ),
+            "/actions/tasks/%s/time-spents/wrong-date/persons/%s"
+            % (self.task.id, self.person.id),
             data,
-            404
+            404,
         )
 
     def test_get_time_spent(self):
@@ -87,14 +78,14 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         data = {"duration": 3600}
         path = "/actions/tasks/%s/time-spents/2017-09-27/persons/%s" % (
             task_id,
-            person_id
+            person_id,
         )
         self.post(path, data)
 
         data = {"duration": 7200}
         path = "/actions/tasks/%s/time-spents/2017-09-27/persons/%s" % (
             task_id,
-            user_id
+            user_id,
         )
         self.post(path, data)
 
@@ -111,20 +102,16 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
 
         data = {"duration": 3600}
         self.post(
-            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s" % (
-                task_id,
-                person_id
-            ),
-            data
+            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s"
+            % (task_id, person_id),
+            data,
         )
 
         data = {"duration": 10800}
         self.post(
-            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s/add" % (
-                task_id,
-                person_id
-            ),
-            data
+            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s/add"
+            % (task_id, person_id),
+            data,
         )
         time_spents = self.get("data/time-spents")
         self.assertEqual(time_spents[0]["duration"], 14400)

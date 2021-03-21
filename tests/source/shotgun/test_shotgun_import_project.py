@@ -6,7 +6,6 @@ from zou.app.models.project_status import ProjectStatus
 
 
 class ImportShotgunProjectTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunProjectTestCase, self).setUp()
 
@@ -42,7 +41,7 @@ class ImportShotgunProjectTestCase(ShotgunTestCase):
             "sg_status": "Active",
             "sg_fps": "25",
             "sg_width___height": "1920 / 1080",
-            "type": "Project"
+            "type": "Project",
         }
 
         api_path = "/import/shotgun/projects"
@@ -60,5 +59,5 @@ class ImportShotgunProjectTestCase(ShotgunTestCase):
         self.assertEqual(project["data"]["sg_fps"], sg_project["sg_fps"])
         self.assertEqual(
             project["data"]["sg_width___height"],
-            sg_project["sg_width___height"]
+            sg_project["sg_width___height"],
         )

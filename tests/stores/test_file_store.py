@@ -7,7 +7,6 @@ from zou.app.stores import file_store
 
 
 class FileStoreTestCase(unittest.TestCase):
-
     def setUp(self):
         super(FileStoreTestCase, self).setUp()
         with app.app_context():
@@ -21,10 +20,7 @@ class FileStoreTestCase(unittest.TestCase):
     def get_fixture_file_path(self, relative_path):
         current_path = os.getcwd()
         file_path_fixture = os.path.join(
-            current_path,
-            "tests",
-            "fixtures",
-            relative_path
+            current_path, "tests", "fixtures", relative_path
         )
         return file_path_fixture
 
@@ -35,8 +31,8 @@ class FileStoreTestCase(unittest.TestCase):
             os.path.join(
                 self.preview_path,
                 "pictures/thumbnails/63e/453/"
-                "63e453f1-9655-49ad-acba-ff7f27c49e9d"
-            )
+                "63e453f1-9655-49ad-acba-ff7f27c49e9d",
+            ),
         )
 
     def test_add_and_open_picture(self):
@@ -44,7 +40,7 @@ class FileStoreTestCase(unittest.TestCase):
         file_store.add_picture(
             "thumbnails",
             "63e453f1-9655-49ad-acba-ff7f27c49e9d",
-            file_path_fixture
+            file_path_fixture,
         )
         file_name = "thumbnails-63e453f1-9655-49ad-acba-ff7f27c49e9d"
         result_path = file_store.path(file_store.pictures, file_name)

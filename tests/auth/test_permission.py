@@ -4,7 +4,6 @@ from zou.app.services import projects_service
 
 
 class PermissionTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PermissionTestCase, self).setUp()
 
@@ -20,9 +19,7 @@ class PermissionTestCase(ApiDBTestCase):
 
     def test_admin_can_create_project(self):
         self.log_in(self.user["email"])
-        data = {
-            "name": "Cosmos Landromat 2"
-        }
+        data = {"name": "Cosmos Landromat 2"}
         self.post("data/projects/", data, 201)
 
     def test_admin_can_edit_project(self):
@@ -33,16 +30,12 @@ class PermissionTestCase(ApiDBTestCase):
 
     def test_cg_artist_cannot_create_project(self):
         self.log_in_cg_artist()
-        data = {
-            "name": "Cosmos Landromat 2"
-        }
+        data = {"name": "Cosmos Landromat 2"}
         self.post("data/projects/", data, 403)
 
     def test_cg_artist_cannot_edit_project(self):
         self.log_in_cg_artist()
-        data = {
-            "name": "Cosmos Landromat 2 edited"
-        }
+        data = {"name": "Cosmos Landromat 2 edited"}
         self.put("data/projects/%s" % self.project_id, data, 403)
 
     def test_cg_artist_can_read_open_projects(self):
@@ -54,7 +47,7 @@ class PermissionTestCase(ApiDBTestCase):
         data = {
             "first_name": "John",
             "last_name": "Doe",
-            "email": "john.doe@gmail.com"
+            "email": "john.doe@gmail.com",
         }
         self.post("data/persons/new", data, 403)
 
@@ -63,30 +56,24 @@ class PermissionTestCase(ApiDBTestCase):
         data = {
             "first_name": "John",
             "last_name": "Doe",
-            "email": "john.doe@gmail.com"
+            "email": "john.doe@gmail.com",
         }
         self.post("data/persons/new", data, 201)
 
     def test_manager_cannot_update_admin(self):
         self.log_in_manager()
-        data = {
-            "email": "john.doe2@gmail.com"
-        }
+        data = {"email": "john.doe2@gmail.com"}
         self.put("data/persons/%s" % self.user["id"], data, 403)
 
     def test_manager_cannot_update_person(self):
         self.log_in_manager()
-        data = {
-            "role": "admin"
-        }
+        data = {"role": "admin"}
         self.put("data/persons/%s" % self.user_cg_artist_id, data, 403)
         self.get("data/persons/%s" % self.user_cg_artist_id)
 
     def test_admin_can_update_admin(self):
         self.log_in_admin()
-        data = {
-            "first_name": "Super admin"
-        }
+        data = {"first_name": "Super admin"}
         self.put("data/persons/%s" % self.user["id"], data, 200)
 
     def test_manager_cannot_delete_admin(self):
@@ -119,7 +106,6 @@ class PermissionTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         self.get("data/assets/%s" % asset_id, 403)
         projects_service.add_team_member(
-            self.project_id,
-            self.user_cg_artist["id"]
+            self.project_id, self.user_cg_artist["id"]
         )
         self.get("data/assets/%s" % asset_id, 200)

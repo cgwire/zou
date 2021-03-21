@@ -8,20 +8,21 @@ from zou.app.services import persons_service
 
 
 class AuthTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AuthTestCase, self).setUp()
 
         self.generate_fixture_person()
-        self.person.update({
-            "password": auth.encrypt_password("secretpassword"),
-            "role": "admin"
-        })
+        self.person.update(
+            {
+                "password": auth.encrypt_password("secretpassword"),
+                "role": "admin",
+            }
+        )
 
         self.person_dict = self.person.serialize()
         self.credentials = {
             "email": self.person_dict["email"],
-            "password": "secretpassword"
+            "password": "secretpassword",
         }
         try:
             self.get("auth/logout")
@@ -69,7 +70,7 @@ class AuthTestCase(ApiDBTestCase):
     def test_login_with_desktop_login(self):
         self.credentials = {
             "email": self.person_dict["desktop_login"],
-            "password": "secretpassword"
+            "password": "secretpassword",
         }
         tokens = self.post("auth/login", self.credentials, 200)
 
@@ -82,7 +83,7 @@ class AuthTestCase(ApiDBTestCase):
 
         credentials = {
             "email": self.person_dict["email"],
-            "password": "wrongpassword"
+            "password": "wrongpassword",
         }
         result = self.post("auth/login", credentials, 400)
         self.assertFalse(result["login"])
@@ -100,13 +101,13 @@ class AuthTestCase(ApiDBTestCase):
             "password": "123456",
             "password_2": "123456",
             "first_name": "Alice",
-            "last_name": "Doe"
+            "last_name": "Doe",
         }
         self.post("auth/register", subscription_data, 201)
 
         credentials = {
             "email": subscription_data["email"],
-            "password": subscription_data["password"]
+            "password": subscription_data["password"],
         }
         tokens = self.post("auth/login", credentials, 200)
         self.assertIsAuthenticated(tokens)
@@ -118,7 +119,7 @@ class AuthTestCase(ApiDBTestCase):
             "password": "123456",
             "password_2": "123456",
             "first_name": "Alice",
-            "last_name": "Doe"
+            "last_name": "Doe",
         }
         self.post("auth/register", credentials, 400)
 
@@ -128,7 +129,7 @@ class AuthTestCase(ApiDBTestCase):
             "password": "123456",
             "password_2": "123457",
             "first_name": "Alice",
-            "last_name": "Doe"
+            "last_name": "Doe",
         }
         self.post("auth/register", credentials, 400)
 
@@ -138,7 +139,7 @@ class AuthTestCase(ApiDBTestCase):
             "password": "123",
             "password_2": "123",
             "first_name": "Alice",
-            "last_name": "Doe"
+            "last_name": "Doe",
         }
         self.post("auth/register", credentials, 400)
 
@@ -148,7 +149,7 @@ class AuthTestCase(ApiDBTestCase):
             "password": "123456",
             "password_2": "123456",
             "first_name": "Alice",
-            "last_name": "Doe"
+            "last_name": "Doe",
         }
         credentials = {
             "email": "alice@doe.com",
@@ -161,18 +162,13 @@ class AuthTestCase(ApiDBTestCase):
         new_password = {
             "old_password": "123456",
             "password": "654321",
-            "password_2": "654321"
+            "password_2": "654321",
         }
-        credentials = {
-            "email": "alice@doe.com",
-            "password": "654321"
-        }
+        credentials = {"email": "alice@doe.com", "password": "654321"}
 
         headers = self.get_auth_headers(tokens)
         response = self.app.post(
-            "auth/change-password",
-            data=new_password,
-            headers=headers
+            "auth/change-password", data=new_password, headers=headers
         )
         self.assertEqual(response.status_code, 200)
         self.logout(tokens)
@@ -197,19 +193,19 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsNotAuthenticated(tokens)
 
     def test_cookies_auth(self):
-        user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)" \
-                     " AppleWebKit/537.36 (KHTML, like Gecko)" \
-                     " Chrome/39.0.2171.95 Safari/537.36'}"
-        headers = {
-            "User-Agent": user_agent
-        }
+        user_agent = (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1)"
+            " AppleWebKit/537.36 (KHTML, like Gecko)"
+            " Chrome/39.0.2171.95 Safari/537.36'}"
+        )
+        headers = {"User-Agent": user_agent}
 
         response = self.app.get("data/persons")
         self.assertEqual(response.status_code, 401)
         response = self.app.post(
             "auth/login",
             data=fields.serialize_value(self.credentials),
-            headers=headers
+            headers=headers,
         )
         self.assertTrue("access_token" in response.headers["Set-Cookie"])
         response = self.app.get("data/persons")
@@ -231,14 +227,11 @@ class AuthTestCase(ApiDBTestCase):
         data = {
             "token": token,
             "password": new_password,
-            "password2": new_password
+            "password2": new_password,
         }
         response = self.put("auth/reset-password", data, 200)
         self.assertTrue(response["success"])
-        self.post("auth/login", {
-            "email": email,
-            "password": new_password
-        }, 200)
+        self.post("auth/login", {"email": email, "password": new_password}, 200)
 
     def test_unactive(self):
         self.person.update({"active": False})
@@ -255,21 +248,23 @@ class AuthTestCase(ApiDBTestCase):
         self.app.put(
             "data/persons/%s" % self.person_dict["id"],
             data=json.dumps({"active": False}),
-            headers=headers
+            headers=headers,
         )
         self.assertIsNotAuthenticated(tokens)
 
     def test_default_password(self):
-        self.person.update({
-            "password": auth.encrypt_password("default"),
-        })
+        self.person.update(
+            {
+                "password": auth.encrypt_password("default"),
+            }
+        )
         self.credentials["password"] = "default"
         response = self.post("auth/login", self.credentials, 400)
         self.assertTrue(response["default_password"])
         data = {
             "token": response["token"],
             "password": "complex22pass",
-            "password2": "complex22pass"
+            "password2": "complex22pass",
         }
         response = self.put("auth/reset-password", data, 200)
 

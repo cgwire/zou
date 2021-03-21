@@ -10,7 +10,7 @@ from zou.app.services import (
     comments_service,
     persons_service,
     tasks_service,
-    user_service
+    user_service,
 )
 
 
@@ -66,7 +66,7 @@ class CommentTaskResource(Resource):
             comment,
             person_id,
             created_at,
-            checklist
+            checklist,
         ) = self.get_arguments()
 
         task = tasks_service.get_task(task_id)
@@ -84,7 +84,7 @@ class CommentTaskResource(Resource):
             comment,
             checklist,
             files,
-            created_at
+            created_at,
         )
         return comment, 201
 
@@ -103,10 +103,7 @@ class CommentTaskResource(Resource):
             checklist = json.loads(checklist)
         else:
             parser.add_argument(
-                "checklist",
-                type=dict,
-                action="append",
-                default=[]
+                "checklist", type=dict, action="append", default=[]
             )
             args = parser.parse_args()
             checklist = args["checklist"]
@@ -116,7 +113,7 @@ class CommentTaskResource(Resource):
             args["comment"],
             args["person_id"],
             args["created_at"],
-            checklist
+            checklist,
         )
 
 
@@ -146,7 +143,7 @@ class CommentManyTasksResource(Resource):
                     comment["comment"],
                     [],
                     {},
-                    None
+                    None,
                 )
                 result.append(comment)
             except KeyError:

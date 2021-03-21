@@ -4,7 +4,6 @@ from zou.app.services import projects_service
 
 
 class OpenProjectRouteTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(OpenProjectRouteTestCase, self).setUp()
 
@@ -21,15 +20,18 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
 
     def test_add_team_member(self):
         self.person_id = str(self.generate_fixture_person().id)
-        self.post("data/projects/%s/team" % self.project_id, {
-            "person_id": self.person_id
-        })
+        self.post(
+            "data/projects/%s/team" % self.project_id,
+            {"person_id": self.person_id},
+        )
         project = projects_service.get_project_with_relations(self.project_id)
         self.assertEqual(project["team"], [str(self.person_id)])
 
     def test_remove_team_member(self):
         self.person_id = str(self.generate_fixture_person().id)
         projects_service.add_team_member(self.project_id, self.person_id)
-        self.delete("data/projects/%s/team/%s" % (self.project_id, self.person_id))
+        self.delete(
+            "data/projects/%s/team/%s" % (self.project_id, self.person_id)
+        )
         project = projects_service.get_project_with_relations(self.project_id)
         self.assertEqual(project["team"], [])

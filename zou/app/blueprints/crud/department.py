@@ -42,6 +42,7 @@ class DepartmentResource(BaseModelResource):
                     "A task type with similar name already exists"
                 )
         return data
+
     def post_update(self, instance_dict):
         tasks_service.clear_department_cache(instance_dict["id"])
 

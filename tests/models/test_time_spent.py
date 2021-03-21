@@ -6,7 +6,6 @@ from zou.app.utils import fields
 
 
 class TimeSpentTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(TimeSpentTestCase, self).setUp()
 
@@ -21,10 +20,7 @@ class TimeSpentTestCase(ApiDBTestCase):
         self.generate_fixture_assigner()
         self.generate_fixture_task()
         self.tasks = self.generate_data(
-            TimeSpent,
-            3,
-            task_id=self.task.id,
-            person_id=self.person.id
+            TimeSpent, 3, task_id=self.task.id, person_id=self.person.id
         )
 
     def test_get_time_spents(self):
@@ -43,7 +39,7 @@ class TimeSpentTestCase(ApiDBTestCase):
             "person_id": self.person.id,
             "task_id": self.task.id,
             "date": "2017-09-23",
-            "duration": 3600
+            "duration": 3600,
         }
         self.time_spent = self.post("data/time-spents", data)
         self.assertIsNotNone(self.time_spent["id"])
@@ -53,9 +49,7 @@ class TimeSpentTestCase(ApiDBTestCase):
 
     def test_update_time_spent(self):
         time_spent = self.get_first("data/time-spents")
-        data = {
-            "duration": 7200
-        }
+        data = {"duration": 7200}
         self.put("data/time-spents/%s" % time_spent["id"], data)
         time_spent_again = self.get("data/time-spents/%s" % time_spent["id"])
         self.assertEqual(data["duration"], time_spent_again["duration"])

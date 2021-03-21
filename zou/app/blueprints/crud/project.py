@@ -83,7 +83,7 @@ class ProjectResource(BaseModelResource):
         if projects_service.is_open(project_dict):
             return {
                 "error": True,
-                "message": "Only closed projects can be deleted"
+                "message": "Only closed projects can be deleted",
             }, 400
         else:
             self.check_delete_permissions(project_dict)

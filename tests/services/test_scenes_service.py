@@ -4,7 +4,6 @@ from zou.app.services import scenes_service
 
 
 class SceneUtilsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(SceneUtilsTestCase, self).setUp()
 

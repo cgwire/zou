@@ -364,9 +364,7 @@ def check_entity_access(entity_id):
     is_allowed = not permissions.has_vendor_permissions()
     if not is_allowed:
         nb_tasks = (
-            Task
-            .query
-            .filter(Task.entity_id == entity_id)
+            Task.query.filter(Task.entity_id == entity_id)
             .filter(build_assignee_filter())
             .count()
         )
@@ -381,11 +379,9 @@ def check_manager_project_access(project_id):
     Return true if current user is manager or has a task assigned for this
     project.
     """
-    is_allowed = (
-        permissions.has_admin_permissions() or (
-            permissions.has_manager_permissions() and
-            check_belong_to_project(project_id)
-        )
+    is_allowed = permissions.has_admin_permissions() or (
+        permissions.has_manager_permissions()
+        and check_belong_to_project(project_id)
     )
     if not is_allowed:
         raise permissions.PermissionDenied
@@ -520,12 +516,9 @@ def get_unread_notifications_count(notification_id=None):
     Return the number of unread notifications.
     """
     current_user = persons_service.get_current_user()
-    return (
-        Notification.query.filter_by(
-            person_id=current_user["id"],
-            read=False
-        ).count()
-    )
+    return Notification.query.filter_by(
+        person_id=current_user["id"], read=False
+    ).count()
 
 
 def get_last_notifications(notification_id=None, after=None, before=None):

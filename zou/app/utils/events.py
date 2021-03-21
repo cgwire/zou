@@ -98,7 +98,7 @@ def save_event(event, data, project_id=None):
     except:
         person_id = None
 
-    if project_id == 'None':
+    if project_id == "None":
         project_id = None
 
     return ApiEvent.create(

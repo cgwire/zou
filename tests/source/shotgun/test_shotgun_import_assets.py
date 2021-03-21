@@ -8,22 +8,21 @@ from zou.app.services import assets_service
 
 
 class ImportShotgunAssetTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunAssetTestCase, self).setUp()
 
     def test_import_assets(self):
-        self.load_fixture('projects')
-        self.entities = self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.entities = self.load_fixture("assets")
         self.assertEqual(len(self.entities), 2)
 
         self.entities = self.get("data/assets/all")
         self.assertEqual(len(self.entities), 2)
 
     def test_import_twice_assets(self):
-        self.load_fixture('projects')
-        self.entities = self.load_fixture('assets')
-        self.entities = self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.entities = self.load_fixture("assets")
+        self.entities = self.load_fixture("assets")
         self.assertEqual(len(self.entities), 2)
 
         self.entities = self.get("data/assets/all")
@@ -37,20 +36,16 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.generate_fixture_shot()
         self.shot.update({"shotgun_id": 3})
 
-        self.load_fixture('projects')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("assets")
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Agent 327"
-            },
+            "project": {"type": "Project", "id": 1, "name": "Agent 327"},
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [{"type": "Asset", "id": 1}],
-            "id": 3
+            "id": 3,
         }
 
         api_path = "/import/shotgun/assets"
@@ -73,20 +68,16 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.assertEqual(str(parent.entities_out[0].id), asset["id"])
 
     def test_remove_asset(self):
-        self.load_fixture('projects')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("assets")
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Cosmos Landromat"
-            },
+            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [],
-            "id": 3
+            "id": 3,
         }
 
         api_path = "/import/shotgun/assets"
@@ -105,20 +96,16 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.get("data/assets/%s" % asset["id"], 404)
 
     def test_remove_asset_with_working_files(self):
-        self.load_fixture('projects')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("assets")
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Cosmos Landromat"
-            },
+            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [],
-            "id": 3
+            "id": 3,
         }
 
         api_path = "/import/shotgun/assets"
@@ -151,20 +138,16 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.assertTrue(asset["canceled"])
 
     def test_remove_subasset(self):
-        self.load_fixture('projects')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("assets")
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Cosmos Landromat"
-            },
+            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [{"type": "Asset", "id": 1}],
-            "id": 3
+            "id": 3,
         }
 
         api_path = "/import/shotgun/assets"

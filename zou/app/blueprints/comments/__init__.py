@@ -14,12 +14,12 @@ routes = [
     ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
     (
         "/data/attachment-files/<attachment_file_id>/file/<file_name>",
-        DownloadAttachmentResource
+        DownloadAttachmentResource,
     ),
     ("/actions/tasks/<task_id>/comment", CommentTaskResource),
     (
         "/actions/projects/<project_id>/tasks/comment-many",
-        CommentManyTasksResource
+        CommentManyTasksResource,
     ),
 ]
 

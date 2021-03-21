@@ -17,7 +17,7 @@ class ProjectNewsResource(Resource, ArgsMixin):
             page,
             page_size,
             after,
-            before
+            before,
         ) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -45,7 +45,6 @@ class ProjectNewsResource(Resource, ArgsMixin):
         )
         result["stats"] = stats
         return result
-
 
     def get_arguments(self):
         parser = reqparse.RequestParser()

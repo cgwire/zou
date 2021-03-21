@@ -9,54 +9,35 @@ from zou.app.services import assets_service, shots_service, tasks_service
 
 
 class ImportShotgunTaskTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunTaskTestCase, self).setUp()
-        self.load_fixture('persons')
-        self.load_fixture('projects')
-        self.load_fixture('status')
-        self.load_fixture('steps')
-        self.load_fixture('assets')
-        self.load_fixture('sequences')
-        self.load_fixture('shots')
-        self.load_fixture('scenes')
+        self.load_fixture("persons")
+        self.load_fixture("projects")
+        self.load_fixture("status")
+        self.load_fixture("steps")
+        self.load_fixture("assets")
+        self.load_fixture("sequences")
+        self.load_fixture("shots")
+        self.load_fixture("scenes")
 
     def load_task(self):
         self.sg_task = {
             "cached_display_name": "Shading",
-            "created_by": {
-                "id": 1,
-                "name": "John Doe",
-                "type": "HumanUser"
-            },
+            "created_by": {"id": 1, "name": "John Doe", "type": "HumanUser"},
             "due_date": None,
             "duration": 7200,
-            "entity": {
-                "id": 1,
-                "name": "Sheep",
-                "type": "Asset"
-            },
+            "entity": {"id": 1, "name": "Sheep", "type": "Asset"},
             "id": 20,
-            "project": {
-                "id": 1,
-                "name": "Agent327",
-                "type": "Project"
-            },
+            "project": {"id": 1, "name": "Agent327", "type": "Project"},
             "sg_description": "test description",
             "sg_sort_order": None,
             "sg_status_list": "wip",
             "start_date": None,
-            "step": {
-                "id": 1,
-                "name": "Modeling Shading",
-                "type": "Step"
-            },
-            "task_assignees": [{
-                "id": 2,
-                "name": "Ema Peel",
-                "type": "HumanUser"
-            }],
-            "type": "Task"
+            "step": {"id": 1, "name": "Modeling Shading", "type": "Step"},
+            "task_assignees": [
+                {"id": 2, "name": "Ema Peel", "type": "HumanUser"}
+            ],
+            "type": "Task",
         }
         api_path = "/import/shotgun/tasks"
         self.tasks = self.post(api_path, [self.sg_task], 200)
@@ -64,39 +45,21 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
     def load_sequence_task(self):
         self.sg_task = {
             "cached_display_name": "Previz",
-            "created_by": {
-                "id": 1,
-                "name": "John Doe",
-                "type": "HumanUser"
-            },
+            "created_by": {"id": 1, "name": "John Doe", "type": "HumanUser"},
             "due_date": None,
             "duration": 7200,
-            "entity": {
-                "id": 1,
-                "name": "S01",
-                "type": "Sequence"
-            },
+            "entity": {"id": 1, "name": "S01", "type": "Sequence"},
             "id": 20,
-            "project": {
-                "id": 1,
-                "name": "Agent327",
-                "type": "Project"
-            },
+            "project": {"id": 1, "name": "Agent327", "type": "Project"},
             "sg_description": "test description",
             "sg_sort_order": None,
             "sg_status_list": "wip",
             "start_date": None,
-            "step": {
-                "id": 1,
-                "name": "Modeling Shading",
-                "type": "Step"
-            },
-            "task_assignees": [{
-                "id": 2,
-                "name": "Ema Peel",
-                "type": "HumanUser"
-            }],
-            "type": "Task"
+            "step": {"id": 1, "name": "Modeling Shading", "type": "Step"},
+            "task_assignees": [
+                {"id": 2, "name": "Ema Peel", "type": "HumanUser"}
+            ],
+            "type": "Task",
         }
 
         api_path = "/import/shotgun/tasks"
@@ -105,53 +68,35 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
     def load_scene_task(self):
         self.sg_task = {
             "cached_display_name": "Layout",
-            "created_by": {
-                "id": 1,
-                "name": "John Doe",
-                "type": "HumanUser"
-            },
+            "created_by": {"id": 1, "name": "John Doe", "type": "HumanUser"},
             "due_date": None,
             "duration": 7200,
-            "entity": {
-                "id": 1,
-                "name": "SC01",
-                "type": "Scene"
-            },
+            "entity": {"id": 1, "name": "SC01", "type": "Scene"},
             "id": 20,
-            "project": {
-                "id": 1,
-                "name": "Agent327",
-                "type": "Project"
-            },
+            "project": {"id": 1, "name": "Agent327", "type": "Project"},
             "sg_description": "test description",
             "sg_sort_order": None,
             "sg_status_list": "wip",
             "start_date": None,
-            "step": {
-                "id": 3,
-                "name": "Layout",
-                "type": "Step"
-            },
-            "task_assignees": [{
-                "id": 2,
-                "name": "Ema Peel",
-                "type": "HumanUser"
-            }],
-            "type": "Task"
+            "step": {"id": 3, "name": "Layout", "type": "Step"},
+            "task_assignees": [
+                {"id": 2, "name": "Ema Peel", "type": "HumanUser"}
+            ],
+            "type": "Task",
         }
         api_path = "/import/shotgun/tasks"
         self.tasks = self.post(api_path, [self.sg_task], 200)
 
     def test_import_tasks(self):
-        self.tasks = self.load_fixture('tasks')
+        self.tasks = self.load_fixture("tasks")
         self.assertEqual(len(self.tasks), 2)
 
         self.tasks = self.get("data/tasks")
         self.assertEqual(len(self.tasks), 2)
 
     def test_import_tasks_twice(self):
-        self.tasks = self.load_fixture('tasks')
-        self.tasks = self.load_fixture('tasks')
+        self.tasks = self.load_fixture("tasks")
+        self.tasks = self.load_fixture("tasks")
         self.tasks = self.get("data/tasks")
         self.assertEqual(len(self.tasks), 2)
 
@@ -165,17 +110,20 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         task = self.tasks[0]
         task = tasks_service.get_task_with_relations(task["id"])
         project = Project.get_by(name=self.sg_task["project"]["name"])
-        task_type = \
-            TaskType.get_by(name=self.sg_task["step"]["name"])
+        task_type = TaskType.get_by(name=self.sg_task["step"]["name"])
         task_status = TaskStatus.get_by(
-            short_name=self.sg_task["sg_status_list"])
+            short_name=self.sg_task["sg_status_list"]
+        )
         assets = assets_service.get_assets(
-            {"shotgun_id": self.sg_task["entity"]["id"]})
+            {"shotgun_id": self.sg_task["entity"]["id"]}
+        )
         entity = assets[0]
         assigner = Person.get_by(
-            last_name=self.sg_task["created_by"]["name"].split(" ")[1])
+            last_name=self.sg_task["created_by"]["name"].split(" ")[1]
+        )
         assignee = Person.get_by(
-            last_name=self.sg_task["task_assignees"][0]["name"].split(" ")[1])
+            last_name=self.sg_task["task_assignees"][0]["name"].split(" ")[1]
+        )
 
         self.assertEqual(task["name"], self.sg_task["cached_display_name"])
         self.assertEqual(task["duration"], self.sg_task["duration"])

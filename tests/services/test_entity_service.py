@@ -6,12 +6,11 @@ from zou.app.services import entities_service, assets_service
 
 from zou.app.services.exception import (
     PreviewFileNotFoundException,
-    EntityNotFoundException
+    EntityNotFoundException,
 )
 
 
 class ToReviewHandler(object):
-
     def __init__(self, open_status_id, to_review_status_id):
         self.is_event_fired = False
         self.open_status_id = open_status_id
@@ -23,7 +22,6 @@ class ToReviewHandler(object):
 
 
 class EntityServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(EntityServiceTestCase, self).setUp()
 
@@ -54,8 +52,9 @@ class EntityServiceTestCase(ApiDBTestCase):
         self.assertEqual(entity_type, self.asset_type.serialize())
 
     def test_get_entity_type_by_name(self):
-        entity_type = \
-            entities_service.get_entity_type_by_name(self.asset_type.name)
+        entity_type = entities_service.get_entity_type_by_name(
+            self.asset_type.name
+        )
         self.assertEqual(entity_type, self.asset_type.serialize())
 
     def test_get_entity_raw(self):
@@ -68,22 +67,19 @@ class EntityServiceTestCase(ApiDBTestCase):
 
     def test_update_entity_preview(self):
         entities_service.update_entity_preview(
-            str(self.asset.id),
-            str(self.preview_file.id)
+            str(self.asset.id), str(self.preview_file.id)
         )
         asset = assets_service.get_asset(self.asset.id)
         self.assertEqual(asset["preview_file_id"], str(self.preview_file.id))
 
         with pytest.raises(EntityNotFoundException):
             entities_service.update_entity_preview(
-                str(self.preview_file.id),
-                str(self.preview_file.id)
+                str(self.preview_file.id), str(self.preview_file.id)
             )
 
         with pytest.raises(PreviewFileNotFoundException):
             entities_service.update_entity_preview(
-                str(self.asset.id),
-                str(self.asset.id)
+                str(self.asset.id), str(self.asset.id)
             )
 
         self.asset.preview_file_id = None

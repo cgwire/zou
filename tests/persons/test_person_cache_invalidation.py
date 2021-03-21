@@ -8,7 +8,6 @@ from zou.app.services.exception import PersonNotFoundException
 
 
 class PersonCacheInvalidationTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PersonCacheInvalidationTestCase, self).setUp()
         self.generate_fixture_person()
@@ -20,8 +19,7 @@ class PersonCacheInvalidationTestCase(ApiDBTestCase):
         person = persons_service.get_person_by_email("john.doe@gmail.com")
 
         person = persons_service.update_person(
-            person["id"],
-            {"email": "john.doe2@gmail.com"}
+            person["id"], {"email": "john.doe2@gmail.com"}
         )
         with pytest.raises(PersonNotFoundException):
             persons_service.get_person_by_email("john.doe@gmail.com")

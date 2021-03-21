@@ -7,24 +7,17 @@ from zou.app.services import shots_service
 
 
 class ImportShotgunSceneTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunSceneTestCase, self).setUp()
 
         self.sg_scene = {
             "code": "SC03",
-            "sequence_sg_scenes_1_sequences": [{
-                "type": "Sequence",
-                "id": 1,
-                "name": "S01"
-            }],
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Agent327"
-            },
+            "sequence_sg_scenes_1_sequences": [
+                {"type": "Sequence", "id": 1, "name": "S01"}
+            ],
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
             "type": "Scene",
-            "id": 4
+            "id": 4,
         }
 
     def test_import_scene(self):
@@ -41,7 +34,7 @@ class ImportShotgunSceneTestCase(ShotgunTestCase):
         scene = self.scenes[0]
         sequence = Entity.get_by(
             shotgun_id=self.sg_scene["sequence_sg_scenes_1_sequences"][0]["id"],
-            entity_type_id=shots_service.get_sequence_type()["id"]
+            entity_type_id=shots_service.get_sequence_type()["id"],
         )
         project = Project.get_by(name=self.sg_scene["project"]["name"])
         self.assertEqual(scene["name"], self.sg_scene["code"])
@@ -74,7 +67,7 @@ class ImportShotgunSceneTestCase(ShotgunTestCase):
         self.assertEqual(self.sg_scene["code"], scene["name"])
 
     def test_remove_scene(self):
-        self.load_fixture('projects')
+        self.load_fixture("projects")
         self.load_fixture("sequences")
 
         api_path = "/import/shotgun/scenes"

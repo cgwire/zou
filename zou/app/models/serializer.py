@@ -11,7 +11,7 @@ class SerializerMixin(object):
     def is_join(self, attr):
         return isinstance(
             getattr(self.__class__, attr).impl,
-            orm.attributes.CollectionAttributeImpl
+            orm.attributes.CollectionAttributeImpl,
         )
 
     def serialize(self, obj_type=None, relations=False):
@@ -34,4 +34,4 @@ class SerializerMixin(object):
         return [
             model.serialize(obj_type=obj_type, relations=relations)
             for model in models
-    ]
+        ]

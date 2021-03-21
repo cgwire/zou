@@ -12,11 +12,9 @@ from zou.app.services import (
     news_service,
     notifications_service,
     persons_service,
-    tasks_service
+    tasks_service,
 )
-from zou.app.services.exception import (
-    AttachmentFileNotFoundException
-)
+from zou.app.services.exception import AttachmentFileNotFoundException
 
 from zou.app.utils import cache, events, fs, fields
 from zou.app.stores import file_store
@@ -25,9 +23,7 @@ from zou.app import config
 
 def get_attachment_file_raw(attachment_file_id):
     return base_service.get_instance(
-        AttachmentFile,
-        attachment_file_id,
-        AttachmentFileNotFoundException
+        AttachmentFile, attachment_file_id, AttachmentFileNotFoundException
     )
 
 
@@ -50,18 +46,12 @@ def get_attachment_file_path(attachment_file):
         file_store.open_file,
         "attachments",
         attachment_file["id"],
-        attachment_file["extension"]
+        attachment_file["extension"],
     )
 
 
 def create_comment(
-    person_id,
-    task_id,
-    task_status_id,
-    comment,
-    checklist,
-    files,
-    created_at
+    person_id, task_id, task_status_id, comment, checklist, files, created_at
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -77,7 +67,7 @@ def create_comment(
         task_status_id=task_status_id,
         text=comment,
         checklist=checklist,
-        created_at=created_at
+        created_at=created_at,
     )
     task, status_changed = _manage_status_change(task_status, task, comment)
     _manage_subscriptions(task, comment, status_changed)
@@ -113,8 +103,8 @@ def _manage_status_change(task_status, task, comment):
             new_data["end_date"] = None
 
         if (
-            task_status["short_name"] == "wip" and
-            task["real_start_date"] is None
+            task_status["short_name"] == "wip"
+            and task["real_start_date"] is None
         ):
             new_data["real_start_date"] = datetime.datetime.now()
 
@@ -127,9 +117,9 @@ def _manage_status_change(task_status, task, comment):
                 "task_id": task["id"],
                 "new_task_status_id": new_data["task_status_id"],
                 "previous_task_status_id": task["task_status_id"],
-                "person_id": comment["person_id"]
+                "person_id": comment["person_id"],
             },
-            project_id=task["project_id"]
+            project_id=task["project_id"],
         )
     return task, status_changed
 
@@ -144,8 +134,14 @@ def _manage_subscriptions(task, comment, status_changed):
 
 
 def new_comment(
-    task_id, task_status_id, person_id, text,
-    object_type="Task", files={}, checklist=[], created_at=""
+    task_id,
+    task_status_id,
+    person_id,
+    text,
+    object_type="Task",
+    files={},
+    checklist=[],
+    created_at="",
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -156,8 +152,7 @@ def new_comment(
     if created_at is not None and len(created_at) > 0:
         try:
             created_at_date = fields.get_date_object(
-                created_at,
-                date_format="%Y-%m-%d %H:%M:%S"
+                created_at, date_format="%Y-%m-%d %H:%M:%S"
             )
         except ValueError:
             pass
@@ -170,7 +165,7 @@ def new_comment(
         mentions=get_comment_mentions(task_id, text),
         checklist=checklist,
         text=text,
-        created_at=created_at_date
+        created_at=created_at_date,
     )
 
     comment = comment.serialize(relations=True)
@@ -182,7 +177,7 @@ def new_comment(
     events.emit(
         "comment:new",
         {"comment_id": comment["id"]},
-        project_id=task["project_id"]
+        project_id=task["project_id"],
     )
     return comment
 
@@ -223,7 +218,7 @@ def create_attachment(comment, uploaded_file):
         size=0,
         extension=extension,
         mimetype=mimetype,
-        comment_id=comment["id"]
+        comment_id=comment["id"],
     )
     attachment_file_id = str(attachment_file.id)
 
@@ -275,10 +270,7 @@ def _unack_comment(project_id, comment, user):
 def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     events.emit(
         "comment:%s" % name,
-        {
-            "comment_id": str(comment.id),
-            "person_id": user_id
-        },
+        {"comment_id": str(comment.id), "person_id": user_id},
         project_id=project_id,
-        persist=False
+        persist=False,
     )

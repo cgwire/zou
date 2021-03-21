@@ -28,7 +28,10 @@ routes = [
         SequenceCastingResource,
     ),
     ("/data/projects/<project_id>/entity-links", ProjectEntityLinksResource),
-    ("/data/projects/<project_id>/entity-links/<entity_link_id>", ProjectEntityLinkResource),
+    (
+        "/data/projects/<project_id>/entity-links/<entity_link_id>",
+        ProjectEntityLinkResource,
+    ),
     ("/data/scenes/<scene_id>/asset-instances", SceneAssetInstancesResource),
     ("/data/scenes/<scene_id>/camera-instances", SceneCameraInstancesResource),
     ("/data/shots/<shot_id>/asset-instances", ShotAssetInstancesResource),

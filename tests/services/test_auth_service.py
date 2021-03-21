@@ -8,24 +8,23 @@ from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     PersonNotFoundException,
     WrongPasswordException,
-    WrongUserException
+    WrongUserException,
 )
 
 
 class AuthTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AuthTestCase, self).setUp()
 
         self.generate_fixture_person()
-        self.person.update({
-            "password": auth.encrypt_password("secretpassword")
-        })
+        self.person.update(
+            {"password": auth.encrypt_password("secretpassword")}
+        )
 
         self.person_dict = self.person.serialize()
         self.credentials = {
             "email": self.person_dict["email"],
-            "password": "secretpassword"
+            "password": "secretpassword",
         }
 
     def test_load_user(self):
@@ -33,9 +32,7 @@ class AuthTestCase(ApiDBTestCase):
         self.assertEqual(person["id"], str(self.person.id))
         persons_service.delete_person(person["id"])
         self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person,
-            self.person.id
+            PersonNotFoundException, persons_service.get_person, self.person.id
         )
 
     def test_encrypt_password(self):
@@ -47,13 +44,10 @@ class AuthTestCase(ApiDBTestCase):
 
     def test_validate_email(self):
         self.assertEqual(
-            auth.validate_email("john@gmail.com"),
-            "john@gmail.com"
+            auth.validate_email("john@gmail.com"), "john@gmail.com"
         )
         self.assertRaises(
-            auth.EmailNotValidException,
-            auth.validate_email,
-            "johngmail.com"
+            auth.EmailNotValidException, auth.validate_email, "johngmail.com"
         )
 
     def test_validate_password(self):
@@ -61,33 +55,29 @@ class AuthTestCase(ApiDBTestCase):
             auth.PasswordTooShortException,
             auth.validate_password,
             "12345",
-            "12345"
+            "12345",
         )
         self.assertRaises(
             auth.PasswordsNoMatchException,
             auth.validate_password,
             "12345678",
-            "12345676"
+            "12345676",
         )
-        self.assertTrue(
-            auth.validate_password("mypassword", "mypassword")
-        )
+        self.assertTrue(auth.validate_password("mypassword", "mypassword"))
 
     def test_check_credentials(self):
-        self.person.update({
-            "password": auth.encrypt_password("mypassword")
-        })
+        self.person.update({"password": auth.encrypt_password("mypassword")})
         self.assertRaises(
             WrongPasswordException,
             auth_service.check_credentials,
             "john.doe@gmail.com",
-            "mypassword2"
+            "mypassword2",
         )
         self.assertRaises(
             WrongPasswordException,
             auth_service.check_credentials,
             "john.doe@yahoo.com",
-            "mypassword2"
+            "mypassword2",
         )
         self.assertTrue(
             auth_service.check_credentials("john.doe@gmail.com", "mypassword")
@@ -98,24 +88,21 @@ class AuthTestCase(ApiDBTestCase):
         self.assertEqual(person["first_name"], "John")
 
     def test_local_auth_strategy(self):
-        self.person.update({
-            "password": auth.encrypt_password("mypassword")
-        })
+        self.person.update({"password": auth.encrypt_password("mypassword")})
         self.assertRaises(
             WrongPasswordException,
             auth_service.local_auth_strategy,
             "john.doe@gmail.com",
-            "mypassword2"
+            "mypassword2",
         )
         self.assertRaises(
             WrongPasswordException,
             auth_service.local_auth_strategy,
             "john.doe@yahoo.com",
-            "mypassword2"
+            "mypassword2",
         )
         person = auth_service.local_auth_strategy(
-            "john.doe@gmail.com",
-            "mypassword"
+            "john.doe@gmail.com", "mypassword"
         )
         self.assertEqual(person["first_name"], "John")
 

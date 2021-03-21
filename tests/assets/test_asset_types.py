@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class AssetTypesTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AssetTypesTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -16,23 +15,20 @@ class AssetTypesTestCase(ApiDBTestCase):
         asset_types = self.get("data/asset-types")
         self.assertEqual(len(asset_types), 1)
         self.assertDictEqual(
-            asset_types[0],
-            self.asset_type.serialize(obj_type="AssetType")
+            asset_types[0], self.asset_type.serialize(obj_type="AssetType")
         )
 
     def test_get_asset_type(self):
         asset_type = self.get("data/asset-types/%s" % self.asset_type.id)
         self.assertDictEqual(
-            asset_type,
-            self.asset_type.serialize(obj_type="AssetType")
+            asset_type, self.asset_type.serialize(obj_type="AssetType")
         )
 
     def test_get_project_asset_types(self):
         asset_types = self.get("data/projects/%s/asset-types" % self.project.id)
         self.assertEqual(len(asset_types), 1)
         self.assertDictEqual(
-            asset_types[0],
-            self.asset_type.serialize(obj_type="AssetType")
+            asset_types[0], self.asset_type.serialize(obj_type="AssetType")
         )
 
     def test_get_shot_asset_types(self):

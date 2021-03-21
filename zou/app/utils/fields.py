@@ -112,8 +112,7 @@ def get_default_date_object(date_string):
     if date_string is not None and len(date_string) > 0:
         try:
             date_obj = get_date_object(
-                date_string,
-                date_format="%Y-%m-%dT%H:%M:%S"
+                date_string, date_format="%Y-%m-%dT%H:%M:%S"
             )
         except ValueError:
             pass

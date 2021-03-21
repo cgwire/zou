@@ -33,27 +33,27 @@ routes = [
     ),
     (
         "/data/projects/<project_id>/settings/asset-types",
-        ProductionAssetTypeResource
+        ProductionAssetTypeResource,
     ),
     (
         "/data/projects/<project_id>/settings/asset-types/<asset_type_id>",
-        ProductionAssetTypeRemoveResource
+        ProductionAssetTypeRemoveResource,
     ),
     (
         "/data/projects/<project_id>/settings/task-types",
-        ProductionTaskTypeResource
+        ProductionTaskTypeResource,
     ),
     (
         "/data/projects/<project_id>/settings/task-types/<task_type_id>",
-        ProductionTaskTypeRemoveResource
+        ProductionTaskTypeRemoveResource,
     ),
     (
         "/data/projects/<project_id>/settings/task-status",
-        ProductionTaskStatusResource
+        ProductionTaskStatusResource,
     ),
     (
         "/data/projects/<project_id>/settings/task-status/<task_status_id>",
-        ProductionTaskStatusRemoveResource
+        ProductionTaskStatusRemoveResource,
     ),
     (
         "/data/projects/<project_id>/metadata-descriptors",

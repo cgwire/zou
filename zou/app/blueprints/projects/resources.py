@@ -27,8 +27,7 @@ class OpenProjectsResource(Resource):
             permissions.check_admin_permissions()
             for_client = permissions.has_client_permissions()
             return projects_service.open_projects(
-                name=name,
-                for_client=for_client
+                name=name, for_client=for_client
             )
         except permissions.PermissionDenied:
             return user_service.get_open_projects(name=name)
@@ -106,8 +105,7 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
         args = self.get_args([("asset_type_id", "", True)])
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_asset_type_setting(
-            project_id,
-            args["asset_type_id"]
+            project_id, args["asset_type_id"]
         )
         return project, 201
 
@@ -134,8 +132,7 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
         args = self.get_args([("task_type_id", "", True)])
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
-            project_id,
-            args["task_type_id"]
+            project_id, args["task_type_id"]
         )
         return project, 201
 
@@ -161,8 +158,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
     def post(self, project_id):
         args = self.get_args([("task_status_id", "", True)])
         project = projects_service.add_task_status_setting(
-            project_id,
-            args["task_status_id"]
+            project_id, args["task_status_id"]
         )
         return project, 201
 
@@ -219,7 +215,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 args["entity_type"],
                 args["name"],
                 args["choices"],
-                args["for_client"]
+                args["for_client"],
             ),
             201,
         )
@@ -238,11 +234,13 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
     @jwt_required
     def put(self, project_id, descriptor_id):
-        args = self.get_args([
-            ("name", "", False),
-            ("for_client", "False", False),
-            ("choices", [], False, "append")
-        ])
+        args = self.get_args(
+            [
+                ("name", "", False),
+                ("for_client", "False", False),
+                ("choices", [], False, "append"),
+            ]
+        )
         permissions.check_admin_permissions()
 
         if len(args["name"]) == 0:

@@ -4,7 +4,6 @@ from zou.app.services import projects_service, tasks_service
 
 
 class SequenceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(SequenceTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -40,7 +39,8 @@ class SequenceTestCase(ApiDBTestCase):
 
     def test_get_sequence_by_name(self):
         sequences = self.get(
-            "data/sequences?name=%s" % self.sequence.name.lower())
+            "data/sequences?name=%s" % self.sequence.name.lower()
+        )
         self.assertEqual(sequences[0]["id"], str(self.sequence.id))
 
     def test_get_sequence_tasks(self):
@@ -55,10 +55,7 @@ class SequenceTestCase(ApiDBTestCase):
         project_id = str(self.project.id)
         episode_id = str(self.episode.id)
         data = {"name": sequence_name, "episode_id": episode_id}
-        sequence = self.post(
-            "data/projects/%s/sequences" % project_id,
-            data
-        )
+        sequence = self.post("data/projects/%s/sequences" % project_id, data)
         sequence = self.get("data/sequences/%s" % sequence["id"])
         self.assertEqual(sequence["name"], sequence_name)
         self.assertEqual(sequence["parent_id"], episode_id)
@@ -66,10 +63,7 @@ class SequenceTestCase(ApiDBTestCase):
     def test_get_sequences_for_project(self):
         sequences = self.get("data/projects/%s/sequences" % self.project.id)
         self.assertEqual(len(sequences), 3)
-        self.assertDictEqual(
-            sequences[0],
-            self.serialized_sequence
-        )
+        self.assertDictEqual(sequences[0], self.serialized_sequence)
 
     def test_get_sequences_for_project_with_vendor(self):
         self.generate_fixture_shot_task(name="Secondary")

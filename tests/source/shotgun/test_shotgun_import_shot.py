@@ -7,46 +7,27 @@ from zou.app.services import shots_service
 
 
 class ImportShotgunShotTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunShotTestCase, self).setUp()
 
         self.sg_shot = {
             "sg_cut_in": 0,
             "code": "SH03",
-            "sg_sequence": {
-                "type": "Sequence",
-                "id": 1,
-                "name": "S01"
-            },
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Agent327"
-            },
-            "assets": [
-                {
-                    "type": "Asset",
-                    "id": 1,
-                    "name": "Sheep"
-                }
-            ],
-            "sg_scene": {
-                "type": "Scene",
-                "id": 1,
-                "name": "SC01"
-            },
+            "sg_sequence": {"type": "Sequence", "id": 1, "name": "S01"},
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
+            "assets": [{"type": "Asset", "id": 1, "name": "Sheep"}],
+            "sg_scene": {"type": "Scene", "id": 1, "name": "SC01"},
             "sg_cut_duration": 122,
             "sg_custom_field": "test",
             "type": "Shot",
-            "id": 1
+            "id": 1,
         }
 
     def test_import_shot(self):
-        self.load_fixture('projects')
-        self.load_fixture('sequences')
-        self.load_fixture('assets')
-        self.load_fixture('scenes')
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("assets")
+        self.load_fixture("scenes")
 
         api_path = "/import/shotgun/shots"
         self.shots = self.post(api_path, [self.sg_shot], 200)
@@ -59,7 +40,7 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         shot = shots_service.get_shot_with_relations(shot["id"])
         sequence = Entity.get_by(
             shotgun_id=self.sg_shot["sg_sequence"]["id"],
-            entity_type_id=shots_service.get_sequence_type()["id"]
+            entity_type_id=shots_service.get_sequence_type()["id"],
         )
         entity = Entity.get_by(name=self.sg_shot["assets"][0]["name"])
         project = Project.get_by(name=self.sg_shot["project"]["name"])
@@ -74,9 +55,9 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.assertEqual(shot["source_id"], str(scene.id))
 
     def test_import_shot_twice(self):
-        self.load_fixture('projects')
-        self.load_fixture('sequences')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("assets")
 
         api_path = "/import/shotgun/shots"
         self.shots = self.post(api_path, [self.sg_shot], 200)
@@ -87,9 +68,9 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.assertEqual(len(self.shots), 1)
 
     def test_import_shot_update(self):
-        self.load_fixture('projects')
-        self.load_fixture('sequences')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("assets")
 
         api_path = "/import/shotgun/shots"
         self.shots = self.post(api_path, [self.sg_shot], 200)
@@ -102,9 +83,9 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.assertEqual(shot["data"]["sg_custom_field_2"], "test 2")
 
     def test_remove_shots(self):
-        self.load_fixture('projects')
-        self.load_fixture('sequences')
-        self.load_fixture('assets')
+        self.load_fixture("projects")
+        self.load_fixture("sequences")
+        self.load_fixture("assets")
 
         api_path = "/import/shotgun/shots"
         self.post(api_path, [self.sg_shot], 200)

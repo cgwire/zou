@@ -2,21 +2,18 @@ from tests.source.shotgun.base import ShotgunTestCase
 
 
 class ImportShotgunStepTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunStepTestCase, self).setUp()
 
     def test_import_steps(self):
-        self.steps = self.load_fixture('steps')
+        self.steps = self.load_fixture("steps")
         self.assertEqual(len(self.steps), 3)
 
         self.departments = self.get("data/departments")
         self.assertEqual(len(self.departments), 3)
 
     def test_import_wrong_step(self):
-        data = [
-            {"bad": "wrong"}
-        ]
+        data = [{"bad": "wrong"}]
         self.step = self.post("/import/shotgun/steps", data, 200)
         self.assertEqual(len(self.step), 0)
 
@@ -25,13 +22,13 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
             "code": "Animation",
             "color": "50,149,253",
             "id": 14,
-            "type": "Step"
+            "type": "Step",
         }
         sg_step_modeling = {
             "code": "Modeling",
             "color": "50,149,253",
             "id": 15,
-            "type": "Step"
+            "type": "Step",
         }
         sg_steps = [sg_step_animation, sg_step_modeling]
 
@@ -58,7 +55,7 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
             "code": "Modeling Shaders",
             "color": "50,149,253",
             "id": 14,
-            "type": "Step"
+            "type": "Step",
         }
 
         api_path = "/import/shotgun/steps"
@@ -83,13 +80,13 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
             "code": "Animation",
             "color": "50,149,253",
             "id": 14,
-            "type": "Step"
+            "type": "Step",
         }
         sg_step_modeling = {
             "code": "Modeling",
             "color": "50,149,253",
             "id": 15,
-            "type": "Step"
+            "type": "Step",
         }
         sg_steps = [sg_step_animation, sg_step_modeling]
 
@@ -108,13 +105,13 @@ class ImportShotgunStepTestCase(ShotgunTestCase):
             "code": "Animation",
             "color": "50,149,253",
             "id": 14,
-            "type": "Step"
+            "type": "Step",
         }
         sg_step_modeling = {
             "code": "Modeling",
             "color": "50,149,253",
             "id": 14,
-            "type": "Step"
+            "type": "Step",
         }
         sg_steps = [sg_step_animation, sg_step_modeling]
 

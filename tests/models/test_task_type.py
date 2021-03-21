@@ -5,7 +5,6 @@ from zou.app.utils import fields
 
 
 class TaskTypeTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(TaskTypeTestCase, self).setUp()
         self.generate_fixture_department()
@@ -18,8 +17,7 @@ class TaskTypeTestCase(ApiDBTestCase):
 
     def test_get_task_type(self):
         task_type = self.get_first("data/task-types")
-        task_type_again = self.get(
-            "data/task-types/%s" % task_type["id"])
+        task_type_again = self.get("data/task-types/%s" % task_type["id"])
         self.assertEqual(task_type, task_type_again)
         self.get_404("data/task-types/%s" % fields.gen_uuid())
 
@@ -27,7 +25,7 @@ class TaskTypeTestCase(ApiDBTestCase):
         data = {
             "name": "animation",
             "color": "#000000",
-            "department_id": self.department_id
+            "department_id": self.department_id,
         }
         self.task_type = self.post("data/task-types", data)
         self.assertIsNotNone(self.task_type["id"])
@@ -38,12 +36,9 @@ class TaskTypeTestCase(ApiDBTestCase):
 
     def test_update_task_type(self):
         task_type = self.get_first("data/task-types")
-        data = {
-            "color": "#FFFFFF"
-        }
+        data = {"color": "#FFFFFF"}
         self.put("data/task-types/%s" % task_type["id"], data)
-        task_type_again = self.get(
-            "data/task-types/%s" % task_type["id"])
+        task_type_again = self.get("data/task-types/%s" % task_type["id"])
         self.assertEqual(data["color"], task_type_again["color"])
         self.put_404("data/task-types/%s" % fields.gen_uuid(), data)
 

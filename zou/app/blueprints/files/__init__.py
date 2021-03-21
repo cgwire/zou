@@ -104,7 +104,7 @@ routes = [
         "/actions/working-files/<working_file_id>/comment",
         CommentWorkingFileResource,
     ),
-    ("/actions/working-files/<working_file_id>/modified", ModifiedFileResource)
+    ("/actions/working-files/<working_file_id>/modified", ModifiedFileResource),
 ]
 
 blueprint = Blueprint("files", "files")

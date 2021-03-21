@@ -4,7 +4,6 @@ from zou.app.services import files_service, names_service
 
 
 class NamesServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(NamesServiceTestCase, self).setUp()
 
@@ -27,30 +26,24 @@ class NamesServiceTestCase(ApiDBTestCase):
         self.shot_task = self.generate_fixture_shot_task().serialize()
 
     def test_get_full_entity_name(self):
-        (asset_name, episode_id) = \
-            names_service.get_full_entity_name(self.asset.id)
-        (shot_name, episode_id) = \
-            names_service.get_full_entity_name(self.shot.id)
+        (asset_name, episode_id) = names_service.get_full_entity_name(
+            self.asset.id
+        )
+        (shot_name, episode_id) = names_service.get_full_entity_name(
+            self.shot.id
+        )
         self.assertEqual(asset_name, "Props / Tree")
         self.assertEqual(shot_name, "E01 / S01 / P01")
 
     def test_get_preview_file_name(self):
         preview_file = files_service.create_preview_file(
-            "main",
-            3,
-            self.shot_task["id"],
-            self.user["id"],
-            source="webgui"
+            "main", 3, self.shot_task["id"], self.user["id"], source="webgui"
         )
         name = names_service.get_preview_file_name(preview_file["id"])
         self.assertEqual(name, "cosmos_landromat_e01_s01_p01_animation_v3.mp4")
 
         preview_file = files_service.create_preview_file(
-            "main",
-            3,
-            self.asset_task["id"],
-            self.user["id"],
-            source="webgui"
+            "main", 3, self.asset_task["id"], self.user["id"], source="webgui"
         )
         name = names_service.get_preview_file_name(preview_file["id"])
         self.assertEqual(name, "cosmos_landromat_props_tree_shaders_v3.mp4")

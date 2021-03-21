@@ -57,7 +57,7 @@ def update_preview_file(preview_file_id, data):
     events.emit(
         "preview-file:update",
         {"preview_file_id": preview_file_id},
-        project_id=str(task.project_id)
+        project_id=str(task.project_id),
     )
     return preview_file.serialize()
 
@@ -82,6 +82,7 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
     and store the files.
     """
     from zou.app import app as current_app
+
     with current_app.app_context():
         project = get_project_from_preview_file(preview_file_id)
         fps = get_preview_file_fps(project)
@@ -93,7 +94,7 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
             (
                 normalized_movie_path,
                 normalized_movie_low_path,
-                err
+                err,
             ) = movie.normalize_movie(
                 uploaded_movie_path, fps=fps, width=width, height=height
             )
@@ -104,16 +105,14 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 )
                 current_app.logger.error(err)
 
-            current_app.logger.info("file normalized %s" % normalized_movie_path)
-            file_store.add_movie(
-                "previews",
-                preview_file_id,
-                normalized_movie_path
+            current_app.logger.info(
+                "file normalized %s" % normalized_movie_path
             )
             file_store.add_movie(
-                "lowdef",
-                preview_file_id,
-                normalized_movie_low_path
+                "previews", preview_file_id, normalized_movie_path
+            )
+            file_store.add_movie(
+                "lowdef", preview_file_id, normalized_movie_low_path
             )
             current_app.logger.info("file stored")
         except Exception as exc:
@@ -125,10 +124,8 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
 
         # Build thumbnails
         size = movie.get_movie_size(normalized_movie_path)
-        original_picture_path = \
-            movie.generate_thumbnail(normalized_movie_path)
-        tile_picture_path = \
-            movie.generate_tile(normalized_movie_path)
+        original_picture_path = movie.generate_thumbnail(normalized_movie_path)
+        tile_picture_path = movie.generate_tile(normalized_movie_path)
         thumbnail_utils.resize(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)
@@ -137,10 +134,9 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Remove files and update status
         os.remove(uploaded_movie_path)
         os.remove(normalized_movie_path)
-        preview_file = update_preview_file(preview_file_id, {
-            "status": "ready",
-            "file_size": file_size
-        })
+        preview_file = update_preview_file(
+            preview_file_id, {"status": "ready", "file_size": file_size}
+        )
         return preview_file
 
 
@@ -156,7 +152,7 @@ def save_variants(preview_file_id, original_picture_path):
         file_store.add_picture(name, preview_file_id, path)
         os.remove(path)
 
-    return [] # variants
+    return []  # variants
 
 
 def update_preview_file_position(preview_file_id, position):

@@ -8,9 +8,7 @@ class ShellCommandFailed(Exception):
 def run_command(args):
     try:
         sp = subprocess.Popen(
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         out, err = sp.communicate()
         if err:
@@ -19,5 +17,3 @@ def run_command(args):
             return out
     except Exception as e:
         raise ShellCommandFailed(str(e))
-
-

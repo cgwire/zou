@@ -5,7 +5,6 @@ from zou.app import api, app
 
 
 class PluginTestCase(ApiTestCase):
-
     def test_load_plugin_modules(self):
         plugins = api.load_plugin_modules("tests/fixtures/plugins")
         self.assertEqual(len(plugins), 1)

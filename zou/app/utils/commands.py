@@ -208,11 +208,11 @@ def sync_with_ldap_server():
     def get_ldap_users():
         excluded_accounts = LDAP_EXCLUDED_ACCOUNTS.split(",")
         ldap_server = "%s:%s" % (LDAP_HOST, LDAP_PORT)
-        SSL=False
+        SSL = False
         if LDAP_IS_AD_SIMPLE:
-            user=LDAP_USER
+            user = LDAP_USER
             authentication = SIMPLE
-            SSL=True
+            SSL = True
         elif LDAP_IS_AD:
             user = "%s\%s" % (LDAP_DOMAIN, LDAP_USER)
             authentication = NTLM
@@ -272,9 +272,10 @@ def sync_with_ldap_server():
                     )
                     print("User %s created." % desktop_login)
                 except:
-                    print("User %s creation failed (email duplicated?)." % (
-                        desktop_login
-                    ))
+                    print(
+                        "User %s creation failed (email duplicated?)."
+                        % (desktop_login)
+                    )
 
             elif person is not None:
                 try:
@@ -289,11 +290,10 @@ def sync_with_ldap_server():
                     )
                     print("User %s updated." % desktop_login)
                 except:
-                    print("User %s update failed (email duplicated?)." % (
-                        desktop_login
-                    ))
-
-
+                    print(
+                        "User %s update failed (email duplicated?)."
+                        % (desktop_login)
+                    )
 
             if person is not None and len(thumbnail) > 0:
                 save_thumbnail(person, thumbnail)
@@ -322,11 +322,7 @@ def sync_with_ldap_server():
 
 
 def import_data_from_another_instance(
-    target,
-    login,
-    password,
-    project=None,
-    with_events=False
+    target, login, password, project=None, with_events=False
 ):
     """
     Retrieve and save all the data from another API instance. It doesn't
@@ -391,10 +387,7 @@ def import_last_file_changes_from_another_instance(
     """
     sync_service.init(target, login, password)
     print("Last files syncing started.")
-    sync_service.run_last_events_files(
-        minutes=minutes,
-        page_size=50
-    )
+    sync_service.run_last_events_files(minutes=minutes, page_size=50)
     print("Last files syncing ended.")
 
 

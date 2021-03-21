@@ -202,8 +202,6 @@ class BaseMixin(object):
                 kwargs={field_left: self.id, field_right: id}
             ).first()
             if link is None:
-                link = LinkTable(
-                    kwargs={field_left: self.id, field_right: id}
-                )
+                link = LinkTable(kwargs={field_left: self.id, field_right: id})
                 db.session.add(link)
         db.session.commit()

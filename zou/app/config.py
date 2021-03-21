@@ -88,9 +88,9 @@ FS_S3_ACCESS_KEY = os.getenv("FS_S3_ACCESS_KEY")
 FS_S3_SECRET_KEY = os.getenv("FS_S3_SECRET_KEY")
 
 ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
-ENABLE_JOB_QUEUE_REMOTE = os.getenv(
-    "ENABLE_JOB_QUEUE_REMOTE", "False"
-).lower() == "true"
+ENABLE_JOB_QUEUE_REMOTE = (
+    os.getenv("ENABLE_JOB_QUEUE_REMOTE", "False").lower() == "true"
+)
 JOB_QUEUE_NOMAD_PLAYLIST_JOB = "zou-playlist"
 JOB_QUEUE_NOMAD_HOST = "zou-nomad-01.zou"
 

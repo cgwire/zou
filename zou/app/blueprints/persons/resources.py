@@ -16,9 +16,8 @@ from zou.app.utils import auth, permissions, csv_utils
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
-    WrongParameterException
+    WrongParameterException,
 )
-
 
 
 class NewPersonResource(Resource):
@@ -362,9 +361,11 @@ class AddToDepartmentResource(Resource, ArgsMixin):
     @jwt_required
     def post(self, person_id):
         permissions.check_admin_permissions()
-        args = self.get_args([
-            ("department_id", None, True),
-        ])
+        args = self.get_args(
+            [
+                ("department_id", None, True),
+            ]
+        )
         try:
             department = tasks_service.get_department(args["department_id"])
         except DepartmentNotFoundException:

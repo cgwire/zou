@@ -38,10 +38,7 @@ class EventsTestCase(ApiDBTestCase):
         self.assertEqual(self.counter, 1)
 
     def test_register_all(self):
-        event_map = {
-            "task:start": self,
-            "task:new": self
-        }
+        event_map = {"task:start": self, "task:new": self}
         events.register_all(event_map)
         events.emit("task:start")
         self.assertEqual(self.counter, 2)

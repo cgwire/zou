@@ -19,6 +19,7 @@ class CacheTestCase(unittest.TestCase):
     @cache.memoize_function(50)
     def memoized_function2(self, parameter):
         import random
+
         return parameter + str(random.randrange(1, 50))
 
     def test_memoize(self):

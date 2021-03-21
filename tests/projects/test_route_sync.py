@@ -4,7 +4,6 @@ from zou.app.services import breakdown_service
 
 
 class ProjectSyncRouteTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ProjectSyncRouteTestCase, self).setUp()
 
@@ -42,8 +41,7 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
         self.generate_fixture_build_job("2019-08-01T13:00:00")
         self.generate_fixture_milestone()
         breakdown_service.create_casting_link(
-            self.shot_standard.id,
-            self.asset_standard.id
+            self.shot_standard.id, self.asset_standard.id
         )
 
     def test_get_build_jobs(self):
@@ -51,8 +49,9 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
         self.assertEqual(len(jobs), 1)
 
     def test_get_subscriptions(self):
-        subscriptions = \
-            self.get("/data/projects/%s/subscriptions" % self.project_id)
+        subscriptions = self.get(
+            "/data/projects/%s/subscriptions" % self.project_id
+        )
         self.assertEqual(len(subscriptions), 1)
 
     def test_get_comments(self):
@@ -61,13 +60,15 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
         self.assertEqual(len(comments), 1)
 
     def test_get_notifications(self):
-        notitfications = \
-            self.get("/data/projects/%s/notifications" % self.project_id)
+        notitfications = self.get(
+            "/data/projects/%s/notifications" % self.project_id
+        )
         self.assertEqual(len(notitfications), 1)
 
     def test_get_preview_files(self):
-        preview_files = \
-            self.get("/data/projects/%s/preview-files" % self.project_id)
+        preview_files = self.get(
+            "/data/projects/%s/preview-files" % self.project_id
+        )
         self.assertEqual(len(preview_files), 1)
 
     def test_get_entity_links(self):

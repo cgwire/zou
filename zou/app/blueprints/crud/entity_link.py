@@ -4,7 +4,7 @@ from zou.app.utils import fields
 from .base import BaseModelResource, BaseModelsResource
 from zou.app.services.exception import (
     EntityLinkNotFoundException,
-    WrongParameterException
+    WrongParameterException,
 )
 
 

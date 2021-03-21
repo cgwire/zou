@@ -5,7 +5,6 @@ from zou.app.utils import fields
 
 
 class ProjectStatusTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ProjectStatusTestCase, self).setUp()
         self.generate_data(ProjectStatus, 3)
@@ -17,15 +16,13 @@ class ProjectStatusTestCase(ApiDBTestCase):
     def test_get_project_status(self):
         project_status = self.get_first("data/project-status")
         project_status_again = self.get(
-            "data/project-status/%s" % project_status["id"])
+            "data/project-status/%s" % project_status["id"]
+        )
         self.assertEqual(project_status, project_status_again)
         self.get_404("data/project-status/%s" % fields.gen_uuid())
 
     def test_create_project_status(self):
-        data = {
-            "name": "open",
-            "color": "#000000"
-        }
+        data = {"name": "open", "color": "#000000"}
         self.project_status = self.post("data/project-status", data)
         self.assertIsNotNone(self.project_status["id"])
 
@@ -34,12 +31,11 @@ class ProjectStatusTestCase(ApiDBTestCase):
 
     def test_update_project_status(self):
         project_status = self.get_first("data/project-status")
-        data = {
-            "color": "#FFFFFF"
-        }
+        data = {"color": "#FFFFFF"}
         self.put("data/project-status/%s" % project_status["id"], data)
         project_status_again = self.get(
-            "data/project-status/%s" % project_status["id"])
+            "data/project-status/%s" % project_status["id"]
+        )
         self.assertEqual(data["color"], project_status_again["color"])
         self.put_404("data/project-status/%s" % fields.gen_uuid(), data)
 

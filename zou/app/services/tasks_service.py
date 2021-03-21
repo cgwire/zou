@@ -13,7 +13,7 @@ from zou.app.models.comment import (
     Comment,
     acknowledgements_table,
     mentions_table,
-    preview_link_table
+    preview_link_table,
 )
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity
@@ -275,10 +275,8 @@ def get_shot_tasks_for_episode(episode_id, relations=False):
     """
     query = _get_entity_task_query()
     Sequence = aliased(Entity, name="sequence")
-    query = (
-        query
-        .join(Sequence, Entity.parent_id == Sequence.id)
-        .filter(Sequence.parent_id == episode_id)
+    query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
+        Sequence.parent_id == episode_id
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
@@ -352,15 +350,13 @@ def get_task_types_for_sequence(sequence_id):
     """
     Sequence = aliased(Entity, name="sequence")
     task_types = (
-        TaskType.query
-        .join(Task, Entity)
+        TaskType.query.join(Task, Entity)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .filter(Sequence.id == sequence_id)
         .group_by(TaskType.id)
         .all()
     )
     return fields.serialize_models(task_types)
-
 
     return get_task_types_for_entity(sequence_id)
 
@@ -379,8 +375,7 @@ def get_task_types_for_episode(episode_id):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     task_types = (
-        TaskType.query
-        .join(Task, Entity)
+        TaskType.query.join(Task, Entity)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .join(Episode, Episode.id == Sequence.parent_id)
         .filter(Episode.id == episode_id)
@@ -442,10 +437,9 @@ def get_next_position(task_id, revision):
     """
     Get upcoming position for preview files of given task and revision.
     """
-    preview_files = (
-        PreviewFile.query.filter_by(task_id=task_id, revision=revision)
-        .all()
-    )
+    preview_files = PreviewFile.query.filter_by(
+        task_id=task_id, revision=revision
+    ).all()
     return len(preview_files) + 1
 
 
@@ -478,15 +472,15 @@ def get_comments(task_id, is_client=False, is_manager=False):
             comment["acknowledgements"] = ack_map.get(comment["id"], [])
             comment["previews"] = preview_map.get(comment["id"], [])
             comment["mentions"] = mention_map.get(comment["id"], [])
-            comment["attachment_files"] = \
-                attachment_file_map.get(comment["id"], [])
+            comment["attachment_files"] = attachment_file_map.get(
+                comment["id"], []
+            )
     return comments
 
 
 def _prepare_query(task_id, is_client, is_manager):
     query = (
-        Comment.query
-        .order_by(Comment.created_at.desc())
+        Comment.query.order_by(Comment.created_at.desc())
         .filter_by(object_id=task_id)
         .join(Person, TaskStatus)
         .add_columns(
@@ -540,8 +534,7 @@ def _run_task_comments_query(query):
 def _build_ack_map_for_comments(comment_ids):
     ack_map = {}
     for link in (
-        db.session
-        .query(acknowledgements_table)
+        db.session.query(acknowledgements_table)
         .filter(acknowledgements_table.c.comment.in_(comment_ids))
         .all()
     ):
@@ -556,8 +549,7 @@ def _build_ack_map_for_comments(comment_ids):
 def _build_mention_map_for_comments(comment_ids):
     mention_map = {}
     for link in (
-        db.session
-        .query(mentions_table)
+        db.session.query(mentions_table)
         .filter(mentions_table.c.comment.in_(comment_ids))
         .all()
     ):
@@ -572,8 +564,7 @@ def _build_mention_map_for_comments(comment_ids):
 def _build_preview_map_for_comments(comment_ids):
     preview_map = {}
     query = (
-        PreviewFile.query
-        .join(preview_link_table)
+        PreviewFile.query.join(preview_link_table)
         .filter(preview_link_table.c.comment.in_(comment_ids))
         .add_columns(preview_link_table.c.comment)
     )
@@ -585,37 +576,39 @@ def _build_preview_map_for_comments(comment_ids):
         if preview.status is not None:
             status = preview.status.code
 
-        preview_map[comment_id].append({
-            "id": str(preview.id),
-            "task_id": str(preview.task_id),
-            "revision": preview.revision,
-            "extension": preview.extension,
-            "status": status,
-            "original_name": preview.original_name,
-            "position": preview.position,
-            "annotations": preview.annotations,
-        })
+        preview_map[comment_id].append(
+            {
+                "id": str(preview.id),
+                "task_id": str(preview.task_id),
+                "revision": preview.revision,
+                "extension": preview.extension,
+                "status": status,
+                "original_name": preview.original_name,
+                "position": preview.position,
+                "annotations": preview.annotations,
+            }
+        )
     return preview_map
 
 
 def _build_attachment_map_for_comments(comment_ids):
     attachment_file_map = {}
-    attachment_files = (
-        AttachmentFile.query
-        .filter(AttachmentFile.comment_id.in_(comment_ids))
-        .all()
-    )
+    attachment_files = AttachmentFile.query.filter(
+        AttachmentFile.comment_id.in_(comment_ids)
+    ).all()
     for attachment_file in attachment_files:
         comment_id = str(attachment_file.comment_id)
         attachment_file_id = str(attachment_file.id)
         if comment_id not in attachment_file_map:
             attachment_file_map[str(comment_id)] = []
-        attachment_file_map[str(comment_id)].append({
-            "id": attachment_file_id,
-            "name": attachment_file.name,
-            "extension": attachment_file.extension,
-            "size": attachment_file.size
-        })
+        attachment_file_map[str(comment_id)].append(
+            {
+                "id": attachment_file_id,
+                "name": attachment_file.name,
+                "extension": attachment_file.extension,
+                "size": attachment_file.size,
+            }
+        )
     return attachment_file_map
 
 
@@ -705,17 +698,16 @@ def get_person_related_tasks(person_id, task_type_id):
 
     AssignedTask = aliased(Entity, name="sequence")
     entities = (
-        Entity.query
-        .join(Task, Entity.id == Task.entity_id)
+        Entity.query.join(Task, Entity.id == Task.entity_id)
         .filter(Task.assignees.contains(person))
         .filter(Entity.project_id.in_(project_ids))
     ).all()
 
     entity_ids = [entity.id for entity in entities]
     tasks = (
-        Task.query
-        .filter(Task.entity_id.in_(entity_ids))
-        .filter(Task.task_type_id == task_type_id)
+        Task.query.filter(Task.entity_id.in_(entity_ids)).filter(
+            Task.task_type_id == task_type_id
+        )
     ).all()
 
     return fields.serialize_models(tasks)
@@ -865,12 +857,9 @@ def create_tasks(task_type, entities):
 
     tasks = []
     for entity in entities:
-        existing_task = Task.query \
-            .filter_by(
-                entity_id=entity["id"],
-                task_type_id=task_type["id"]
-            ) \
-            .scalar()
+        existing_task = Task.query.filter_by(
+            entity_id=entity["id"], task_type_id=task_type["id"]
+        ).scalar()
         if existing_task is None:
             task = Task.create_no_commit(
                 name="main",
@@ -948,9 +937,7 @@ def _finalize_task_creation(task_type, task_status, task):
         }
     )
     events.emit(
-        "task:new",
-        {"task_id": task.id},
-        project_id=task_dict["project_id"]
+        "task:new", {"task_id": task.id}, project_id=task_dict["project_id"]
     )
     return task_dict
 
@@ -967,9 +954,7 @@ def update_task(task_id, data):
     task.update(data)
     clear_task_cache(task_id)
     events.emit(
-        "task:update",
-        {"task_id": task_id},
-        project_id=str(task.project_id)
+        "task:update", {"task_id": task_id}, project_id=str(task.project_id)
     )
     return task.serialize()
 
@@ -1076,7 +1061,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
         events.emit(
             "time-spent:update",
             {"time_spent_id": str(time_spent.id)},
-            project_id=project_id
+            project_id=project_id,
         )
     else:
         time_spent = TimeSpent.create(
@@ -1085,7 +1070,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
         events.emit(
             "time-spent:new",
             {"time_spent_id": str(time_spent.id)},
-            project_id=project_id
+            project_id=project_id,
         )
 
     task.duration = 0
@@ -1094,11 +1079,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
         task.duration += task_time_spent.duration
     task.save()
     clear_task_cache(task_id)
-    events.emit(
-        "task:update",
-        {"task_id": task_id},
-        project_id=project_id
-    )
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
 
     return time_spent.serialize()
 
@@ -1129,7 +1110,7 @@ def clear_assignation(task_id):
         events.emit(
             "task:unassign",
             {"person_id": assignee["id"], "task_id": task_id},
-            project_id=project_id
+            project_id=project_id,
         )
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
     return task_dict
@@ -1148,7 +1129,7 @@ def assign_task(task_id, person_id):
     events.emit(
         "task:assign",
         {"task_id": task.id, "person_id": person.id},
-        project_id=project_id
+        project_id=project_id,
     )
     clear_task_cache(task_id)
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
@@ -1183,7 +1164,7 @@ def start_task(task_id):
                 "previous_task_status_id": task_dict_before["task_status_id"],
                 "real_start_date": task.real_start_date,
                 "shotgun_id": task_dict_before["shotgun_id"],
-            }
+            },
         )
 
     return task.serialize()
@@ -1263,16 +1244,14 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
             "preview_file_id": preview_file.id,
             "comment_id": comment_id,
         },
-        project_id=project_id
+        project_id=project_id,
     )
     comment.previews.append(preview_file)
     comment.save()
     if news is not None:
         news.update({"preview_file_id": preview_file.id})
     events.emit(
-        "comment:update",
-        {"comment_id": comment.id},
-        project_id=project_id
+        "comment:update", {"comment_id": comment.id}, project_id=project_id
     )
     return preview_file.serialize()
 

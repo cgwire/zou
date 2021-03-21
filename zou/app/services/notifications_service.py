@@ -21,7 +21,7 @@ def create_notification(
     read=False,
     change=False,
     type="comment",
-    created_at=None
+    created_at=None,
 ):
     """
     Create a new notification for given person and comment.
@@ -35,7 +35,7 @@ def create_notification(
         comment_id=comment_id,
         task_id=task_id,
         type=type,
-        created_at=creation_date
+        created_at=creation_date,
     )
     return notification.serialize()
 
@@ -117,7 +117,7 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
                     "person_id": recipient_id,
                 },
                 project_id=task["project_id"],
-                persist=False
+                persist=False,
             )
         except PersonNotFoundException:
             pass
@@ -164,7 +164,7 @@ def reset_notifications_for_mentions(comment):
             author_id=author_id,
             task_id=comment["object_id"],
             type="mention",
-            created_at=comment["created_at"]
+            created_at=comment["created_at"],
         )
         emails_service.send_mention_notification(
             recipient_id, author_id, comment, task

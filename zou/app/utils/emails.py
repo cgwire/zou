@@ -16,6 +16,6 @@ def send_email(subject, body, recipient_email, html=None):
             body=body,
             html=html,
             subject=subject,
-            recipients=[recipient_email]
+            recipients=[recipient_email],
         )
         mail.send(message)

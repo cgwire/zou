@@ -6,14 +6,13 @@ from zou.app.services import (
     user_service,
     persons_service,
     projects_service,
-    tasks_service
+    tasks_service,
 )
 
 from zou.app.utils import permissions
 
 
 class UserServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(UserServiceTestCase, self).setUp()
 
@@ -62,6 +61,7 @@ class UserServiceTestCase(ApiDBTestCase):
 
     def test_check_project_access(self):
         from zou.app import app
+
         with app.app_context():
             self.generate_fixture_user_cg_artist()
             self.log_in_cg_artist()
@@ -69,14 +69,12 @@ class UserServiceTestCase(ApiDBTestCase):
                 user_service.check_project_access(str(self.project_id))
 
             projects_service.add_team_member(
-                str(self.project.id),
-                str(self.get_current_user_raw().id)
+                str(self.project.id), str(self.get_current_user_raw().id)
             )
-            projects_service.get_project_with_relations(
-                self.project_id
-            )
+            projects_service.get_project_with_relations(self.project_id)
             self.assertTrue(
-                user_service.check_project_access(str(self.project_id)))
+                user_service.check_project_access(str(self.project_id))
+            )
 
     def test_related_projects(self):
         projects = user_service.related_projects()
@@ -91,6 +89,7 @@ class UserServiceTestCase(ApiDBTestCase):
 
     def test_check_entity_access(self):
         from zou.app import app
+
         self.asset_id = str(self.asset.id)
         with app.app_context():
             self.generate_fixture_user_vendor()

@@ -5,20 +5,19 @@ from zou.app.utils import fields
 
 
 class PersonTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PersonTestCase, self).setUp()
         self.generate_fixture_person(
             first_name="Ema",
             last_name="Doe",
             desktop_login="ema.doe",
-            email="ema.doe@gmail.com"
+            email="ema.doe@gmail.com",
         )
         self.generate_fixture_person(
             first_name="Jérémy",
             last_name="Utêfœuit",
             desktop_login="jeremy.utf8",
-            email="jeremy.utf8@gmail.com"
+            email="jeremy.utf8@gmail.com",
         )
         self.generate_fixture_person()
 
@@ -42,7 +41,7 @@ class PersonTestCase(ApiDBTestCase):
         data = {
             "first_name": "John2",
             "last_name": "Doe",
-            "email": "john2.doe@gmail.com"
+            "email": "john2.doe@gmail.com",
         }
         self.person = self.post("data/persons/new", data)
         self.assertIsNotNone(self.person["id"])
@@ -52,11 +51,12 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_create_too_much_person(self):
         from zou.app import config
+
         config.USER_LIMIT = 4
         data = {
             "first_name": "John3",
             "last_name": "Doe",
-            "email": "john3.doe@gmail.com"
+            "email": "john3.doe@gmail.com",
         }
         resp = self.post("data/persons/new", data, 400)
         self.assertEqual(resp["limit"], 4)
@@ -86,18 +86,18 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_set_active_when_too_much_person(self):
         from zou.app import config
+
         config.USER_LIMIT = 3
         persons = self.get("data/persons")
         person = [
-            person for person in persons
-            if person["id"] != self.user["id"]
+            person for person in persons if person["id"] != self.user["id"]
         ][0]
-        data = { "active": False }
+        data = {"active": False}
         self.put("data/persons/%s" % person["id"], data, 200)
-        data = { "active": True }
+        data = {"active": True}
         self.put("data/persons/%s" % person["id"], data, 400)
         config.USER_LIMIT = 100
-        data = { "active": True }
+        data = {"active": True}
         self.put("data/persons/%s" % person["id"], data)
 
     def test_delete_person(self):

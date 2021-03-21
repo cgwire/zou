@@ -2,10 +2,7 @@ from zou.app.models.attachment_file import AttachmentFile
 
 from .base import BaseModelResource, BaseModelsResource
 
-from zou.app.services import (
-    tasks_service,
-    user_service
-)
+from zou.app.services import tasks_service, user_service
 
 
 class AttachmentFilesResource(BaseModelsResource):

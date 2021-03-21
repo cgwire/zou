@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import unittest
+
 from pathlib import Path
 from urllib import request
 
@@ -12,13 +13,13 @@ from zou.utils import movie
 
 
 class MovieTestCase(unittest.TestCase):
-
     def setUp(self):
         # download test file once
         self.tmpdir = tempfile.mkdtemp()
         self.video_only_path = str(Path(self.tmpdir) / "demo.m4v")
-        test_url = os.getenv("ZOU_TEST_VIDEO_URL",
-                             "http://fate-suite.ffmpeg.org/mpeg4/demo.m4v")
+        test_url = os.getenv(
+            "ZOU_TEST_VIDEO_URL", "http://fate-suite.ffmpeg.org/mpeg4/demo.m4v"
+        )
         request.urlretrieve(test_url, self.video_only_path)
 
     def tearDown(self):
@@ -37,8 +38,10 @@ class MovieTestCase(unittest.TestCase):
 
         # Create an audio file
         stream = ffmpeg.input(video)
-        audio_only = str(Path(self.tmpdir) / ("audio_only-%s.mp4"
-                         % inspect.currentframe().f_code.co_name))
+        audio_only = str(
+            Path(self.tmpdir)
+            / ("audio_only-%s.mp4" % inspect.currentframe().f_code.co_name)
+        )
         stream = ffmpeg.output(stream.audio, audio_only, f="mp4", c="aac")
         stream.run(quiet=False, cmd=("ffmpeg", "-xerror"))
 
@@ -76,10 +79,12 @@ class MovieTestCase(unittest.TestCase):
         shutil.copyfile(self.video_only_path, video)
 
         width, height = movie.get_movie_size(video)
-        normalized, _, _ = movie.normalize_movie(video, 5, None, int(height/2))
+        normalized, _, _ = movie.normalize_movie(
+            video, 5, None, int(height / 2)
+        )
         width_norm, height_norm = movie.get_movie_size(normalized)
-        self.assertEqual(width/2, width_norm)
-        self.assertEqual(height/2, height_norm)
+        self.assertEqual(width / 2, width_norm)
+        self.assertEqual(height / 2, height_norm)
 
     def concat(self, method, test_name):
         videos = []
@@ -95,8 +100,9 @@ class MovieTestCase(unittest.TestCase):
         out = "out-%s.mp4" % test_name
         out = str(Path(self.tmpdir) / out)
 
-        result = movie.build_playlist_movie(method, videos, out, width, height,
-                                            fps=5)
+        result = movie.build_playlist_movie(
+            method, videos, out, width, height, fps=5
+        )
         self.assertTrue(result.get("success"))
         self.assertFalse(result.get("message"))
 

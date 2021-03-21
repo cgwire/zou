@@ -3,7 +3,6 @@ from zou.app.services import projects_service
 
 
 class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunProjectConnectionsTestCase, self).setUp()
 
@@ -31,17 +30,9 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.load_fixture("projects")
         sg_project_persons = {
             "id": 1,
-            "project": {
-                "type": "Project",
-                "id": 1,
-                "name": "Agent327"
-            },
-            "user": {
-                "type": "HumanUser",
-                "id": 1,
-                "name": "Jhon Doe"
-            },
-            "type": "ProjectUserConnection"
+            "project": {"type": "Project", "id": 1, "name": "Agent327"},
+            "user": {"type": "HumanUser", "id": 1, "name": "Jhon Doe"},
+            "type": "ProjectUserConnection",
         }
 
         api_path = "/import/shotgun/projectconnections"

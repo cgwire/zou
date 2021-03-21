@@ -17,8 +17,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         if self.is_tv_show:
             episodes = shots_service.get_episodes_for_project(project_id)
             self.episodes = {
-                episode["name"]: episode["id"]
-                for episode in episodes
+                episode["name"]: episode["id"] for episode in episodes
             }
 
     def import_row(self, row, project_id):
@@ -33,7 +32,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     episode_name
                 ] = shots_service.get_or_create_episode(
                     project_id, episode_name
-                )["id"]
+                )[
+                    "id"
+                ]
             episode_id = self.episodes.get(episode_name, None)
 
         self.add_to_cache_if_absent(
@@ -49,16 +50,18 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             name=asset_name,
             project_id=project_id,
             entity_type_id=entity_type_id,
-            source_id=episode_id
+            source_id=episode_id,
         )
 
         data = {}
         for name, field_name in self.descriptor_fields.items():
             if name in row:
                 data[field_name] = row[name]
-            elif entity is not None \
-            and entity.data is not None \
-            and field_name in entity.data:
+            elif (
+                entity is not None
+                and entity.data is not None
+                and field_name in entity.data
+            ):
                 data[field_name] = entity.data[field_name]
 
         if entity is None:
@@ -73,7 +76,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             events.emit(
                 "asset:new",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id
+                project_id=project_id,
             )
 
         elif self.is_update:
@@ -81,7 +84,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             events.emit(
                 "asset:update",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
-                project_id=project_id
+                project_id=project_id,
             )
 
         return entity.serialize()

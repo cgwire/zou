@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class AssetsCsvExportTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AssetsCsvExportTestCase, self).setUp()
 
@@ -29,11 +28,7 @@ Cosmos Landromat;Props;Tree;Description Tree;0.10;opn\r\n"""
 
     def test_get_asset_csv_with_metadata(self):
         self.generate_fixture_metadata_descriptor()
-        self.asset.update({
-            "data": {
-                "contractor": "Contractor 1"
-            }
-        })
+        self.asset.update({"data": {"contractor": "Contractor 1"}})
         csv_assets = self.get_raw(
             "/export/csv/projects/%s/assets.csv" % self.project.id
         )

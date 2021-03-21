@@ -6,7 +6,6 @@ from zou.app.utils import fields
 
 
 class CommentTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(CommentTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -22,7 +21,7 @@ class CommentTestCase(ApiDBTestCase):
     def test_repr(self):
         self.assertEqual(
             str(Comment.get(self.comments[0]["id"])),
-            "<Comment of %s>" % self.comments[0]["object_id"]
+            "<Comment of %s>" % self.comments[0]["object_id"],
         )
 
     def test_get_comments(self):
@@ -40,7 +39,7 @@ class CommentTestCase(ApiDBTestCase):
             "object_type": "shot",
             "object_id": self.task.id,
             "person_id": self.person.id,
-            "text": "New comment"
+            "text": "New comment",
         }
         self.comment = self.post("data/comments", data)
         self.assertIsNotNone(self.comment["id"])
@@ -50,9 +49,7 @@ class CommentTestCase(ApiDBTestCase):
 
     def test_update_comment(self):
         comment = self.get_first("data/comments")
-        data = {
-            "text": "Edited comment"
-        }
+        data = {"text": "Edited comment"}
         self.put("data/comments/%s" % comment["id"], data)
         comment_again = self.get("data/comments/%s" % comment["id"])
         self.assertEqual(data["text"], comment_again["text"])

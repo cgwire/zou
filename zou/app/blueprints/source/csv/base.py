@@ -47,7 +47,7 @@ class BaseCsvImportResource(Resource):
         return {
             "error": True,
             "message": exception.message,
-            "line_number": exception.line_number
+            "line_number": exception.line_number,
         }
 
     def run_import(self, file_path):
@@ -128,8 +128,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
                     raise ImportRowException(e._message(), line_number)
                 except KeyError as e:
                     raise ImportRowException(
-                        "A columns is missing: %s" % e.args,
-                        line_number
+                        "A columns is missing: %s" % e.args, line_number
                     )
                 line_number += 1
         return result

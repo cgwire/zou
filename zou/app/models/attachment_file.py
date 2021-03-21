@@ -15,9 +15,7 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
     extension = db.Column(db.String(6))
     mimetype = db.Column(db.String(255))
     comment_id = db.Column(
-        UUIDType(binary=False),
-        db.ForeignKey("comment.id"),
-        index=True
+        UUIDType(binary=False), db.ForeignKey("comment.id"), index=True
     )
 
     __table_args__ = (
@@ -32,5 +30,5 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
             "id": str(self.id),
             "name": self.name,
             "extension": self.extension,
-            "size": self.size
+            "size": self.size,
         }

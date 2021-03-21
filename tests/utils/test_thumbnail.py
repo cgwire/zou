@@ -12,14 +12,10 @@ TEST_FOLDER = os.path.join("tests", "tmp")
 
 
 class ThumbnailTestCase(unittest.TestCase):
-
     def get_fixture_file_path(self, relative_path):
         current_path = os.getcwd()
         file_path_fixture = os.path.join(
-            current_path,
-            "tests",
-            "fixtures",
-            relative_path
+            current_path, "tests", "fixtures", relative_path
         )
         return file_path_fixture
 
@@ -36,9 +32,8 @@ class ThumbnailTestCase(unittest.TestCase):
 
     def test_turn_into_thumbnail(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/th01.png")
-        full_path =  os.path.join(
-            TEST_FOLDER,
-            thumbnail.get_file_name("instance-id")
+        full_path = os.path.join(
+            TEST_FOLDER, thumbnail.get_file_name("instance-id")
         )
         fs.copyfile(file_path_fixture, full_path)
 
@@ -70,8 +65,7 @@ class ThumbnailTestCase(unittest.TestCase):
     def test_save_file(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/th01.png")
         th_file = FileStorage(
-            stream=open(file_path_fixture, "rb"),
-            filename="th01.png"
+            stream=open(file_path_fixture, "rb"), filename="th01.png"
         )
         full_path = thumbnail.save_file(TEST_FOLDER, "instance-id", th_file)
 
@@ -83,14 +77,10 @@ class ThumbnailTestCase(unittest.TestCase):
 
     def test_url_path(self):
         url_path = thumbnail.url_path("shots", "instance-id")
-        self.assertEqual(
-            url_path,
-            "pictures/thumbnails/shots/instance-id.png"
-        )
+        self.assertEqual(url_path, "pictures/thumbnails/shots/instance-id.png")
         url_path = thumbnail.url_path("working_files", "instance-id")
         self.assertEqual(
-            url_path,
-            "pictures/thumbnails/working-files/instance-id.png"
+            url_path, "pictures/thumbnails/working-files/instance-id.png"
         )
 
     def test_flat(self):
@@ -136,8 +126,7 @@ class ThumbnailTestCase(unittest.TestCase):
         self.assertTrue(Image.open(file_path).size, thumbnail.RECTANGLE_SIZE)
 
         file_path = os.path.join(
-            TEST_FOLDER,
-            "thumbnails-square-%s.png" % preview_id
+            TEST_FOLDER, "thumbnails-square-%s.png" % preview_id
         )
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.SQUARE_SIZE)

@@ -25,8 +25,9 @@ class TasksResource(BaseModelsResource):
         if permissions.has_vendor_permissions():
             query = query.filter(user_service.build_assignee_filter())
         elif not permissions.has_admin_permissions():
-            query = query.join(Project) \
-                .filter(user_service.build_related_projects_filter())
+            query = query.join(Project).filter(
+                user_service.build_related_projects_filter()
+            )
         return query
 
     def post(self):
@@ -59,6 +60,7 @@ class TasksResource(BaseModelsResource):
         except IntegrityError as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": "Task already exists."}, 400
+
 
 class TaskResource(BaseModelResource):
     def __init__(self):

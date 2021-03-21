@@ -4,7 +4,6 @@ from zou.app.services import projects_service
 
 
 class PlaylistTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PlaylistTestCase, self).setUp()
         self.generate_fixture_project_status()

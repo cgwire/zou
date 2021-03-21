@@ -6,7 +6,6 @@ from zou.app.services import comments_service, news_service
 
 
 class NewsServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(NewsServiceTestCase, self).setUp()
 
@@ -30,15 +29,11 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.task = self.generate_fixture_shot_task()
         self.task_dict = self.task.serialize()
         self.person_dict = self.generate_fixture_person(
-            first_name="Jane",
-            email="jane.doe@gmail.com"
+            first_name="Jane", email="jane.doe@gmail.com"
         ).serialize()
 
         self.comment = comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.user["id"],
-            "first comment"
+            self.task.id, self.task_status.id, self.user["id"], "first comment"
         )
 
     def test_create_news(self):
@@ -46,7 +41,7 @@ class NewsServiceTestCase(ApiDBTestCase):
         news = news_service.create_news(
             comment_id=self.comment["id"],
             author_id=self.comment["person_id"],
-            task_id=self.comment["object_id"]
+            task_id=self.comment["object_id"],
         )
         news_again = News.get(news["id"])
         self.assertIsNotNone(news_again)
@@ -54,26 +49,18 @@ class NewsServiceTestCase(ApiDBTestCase):
     def test_create_news_for_task_and_comment(self):
         self.generate_fixture_comment()
         news_service.create_news_for_task_and_comment(
-            self.task_dict,
-            self.comment
+            self.task_dict, self.comment
         )
         news_list = News.get_all()
         self.assertEqual(len(news_list), 1)
-        self.assertEqual(
-            str(news_list[0].author_id), self.user["id"]
-        )
-        self.assertEqual(
-            str(news_list[0].task_id), self.task_dict["id"]
-        )
-        self.assertEqual(
-            str(news_list[0].comment_id), self.comment["id"]
-        )
+        self.assertEqual(str(news_list[0].author_id), self.user["id"])
+        self.assertEqual(str(news_list[0].task_id), self.task_dict["id"])
+        self.assertEqual(str(news_list[0].comment_id), self.comment["id"])
 
     def test_delete_news_for_comment(self):
         self.generate_fixture_comment()
         news_service.create_news_for_task_and_comment(
-            self.task_dict,
-            self.comment
+            self.task_dict, self.comment
         )
         news_service.delete_news_for_comment(self.comment["id"])
         news_list = News.get_all()
@@ -86,11 +73,10 @@ class NewsServiceTestCase(ApiDBTestCase):
                 self.task.id,
                 self.task_status.id,
                 self.user["id"],
-                "comment %s" % i
+                "comment %s" % i,
             )
             news = news_service.create_news_for_task_and_comment(
-                self.task_dict,
-                comment
+                self.task_dict, comment
             )
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"]
@@ -102,14 +88,12 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertEqual(news["project_id"], self.task_dict["project_id"])
 
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"],
-            page=2
+            self.task_dict["project_id"], page=2
         )
         self.assertEqual(len(news_list["data"]), 30)
 
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"],
-            news_id=news["id"]
+            self.task_dict["project_id"], news_id=news["id"]
         )
         self.assertEqual(len(news_list["data"]), 1)
 
@@ -120,12 +104,12 @@ class NewsServiceTestCase(ApiDBTestCase):
                 self.task.id,
                 self.task_status.id,
                 self.user["id"],
-                "comment %s" % i
+                "comment %s" % i,
             )
             news_service.create_news_for_task_and_comment(
                 self.task_dict,
                 comment,
-                created_at=datetime.now() - timedelta(days=i)
+                created_at=datetime.now() - timedelta(days=i),
             )
         news_list = news_service.get_last_news_for_project(
             self.task_dict["project_id"]
@@ -133,12 +117,10 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(news_list["data"]), 6)
         date = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"],
-            after=date
+            self.task_dict["project_id"], after=date
         )
         self.assertEqual(len(news_list["data"]), 2)
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"],
-            before=date
+            self.task_dict["project_id"], before=date
         )
         self.assertEqual(len(news_list["data"]), 4)

@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class EpisodeTasksTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(EpisodeTasksTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -28,13 +27,14 @@ class EpisodeTasksTestCase(ApiDBTestCase):
         episodes = self.get("data/episodes/with-tasks")
         self.assertEqual(len(episodes), 1)
         self.assertEqual(len(episodes[0]["tasks"]), 2)
-        self.assertEqual(episodes[0]["tasks"][0]["assignees"][0], self.person_id)
+        self.assertEqual(
+            episodes[0]["tasks"][0]["assignees"][0], self.person_id
+        )
         self.assertEqual(episodes[0]["name"], "E01")
 
     def test_get_task_types_for_episode(self):
         task_types = self.get("/data/episodes/%s/task-types" % self.episode.id)
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
-            task_types[0],
-            self.task_type_animation.serialize()
+            task_types[0], self.task_type_animation.serialize()
         )

@@ -35,7 +35,7 @@ class ProjectTaskStatusLink(db.Model):
     task_status_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("task_status.id"),
-        primary_key=True
+        primary_key=True,
     )
 
 
@@ -47,7 +47,7 @@ class ProjectAssetTypeLink(db.Model):
     asset_type_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("entity_type.id"),
-        primary_key=True
+        primary_key=True,
     )
 
 
@@ -84,9 +84,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     task_statuses = db.relationship(
         "TaskStatus", secondary="project_task_status_link"
     )
-    task_types = db.relationship(
-        "TaskType", secondary="project_task_type_link"
-    )
+    task_types = db.relationship("TaskType", secondary="project_task_type_link")
 
     def set_team(self, person_ids):
         for person_id in person_ids:
@@ -102,10 +100,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     def set_task_types(self, task_type_ids):
         return self.set_links(
-            task_type_ids,
-            ProjectTaskTypeLink,
-            "project_id",
-            "task_type_id"
+            task_type_ids, ProjectTaskTypeLink, "project_id", "task_type_id"
         )
 
     def set_task_statuses(self, task_status_ids):
@@ -113,15 +108,12 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             task_status_ids,
             ProjectTaskStatusLink,
             "project_id",
-            "task_status_id"
+            "task_status_id",
         )
 
     def set_asset_types(self, asset_type_ids):
         return self.set_links(
-            asset_type_ids,
-            ProjectAssetTypeLink,
-            "project_id",
-            "entity_type_id"
+            asset_type_ids, ProjectAssetTypeLink, "project_id", "entity_type_id"
         )
 
     @classmethod

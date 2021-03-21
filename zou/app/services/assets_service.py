@@ -15,7 +15,7 @@ from zou.app.services import (
     deletion_service,
     projects_service,
     shots_service,
-    user_service
+    user_service,
 )
 
 from zou.app.services.exception import (
@@ -109,8 +109,7 @@ def get_full_assets(criterions={}):
         del criterions["assigned_to"]
 
     query = (
-        Entity.query
-        .filter_by(**criterions)
+        Entity.query.filter_by(**criterions)
         .filter(build_asset_type_filter())
         .join(Project, EntityType)
         .add_columns(Project.name, EntityType.name)
@@ -494,11 +493,8 @@ def create_asset(
     asset_dict = asset.serialize(obj_type="Asset")
     events.emit(
         "asset:new",
-        {
-            "asset_id": asset.id,
-            "asset_type": asset_type.id
-        },
-        project_id=str(project.id)
+        {"asset_id": asset.id, "asset_type": asset_type.id},
+        project_id=str(project.id),
     )
     return asset_dict
 
@@ -509,7 +505,7 @@ def update_asset(asset_id, data):
     events.emit(
         "asset:update",
         {"asset_id": asset_id, "data": data},
-        project_id=str(asset.project_id)
+        project_id=str(asset.project_id),
     )
     return asset.serialize(obj_type="Asset")
 
@@ -524,7 +520,7 @@ def remove_asset(asset_id, force=False):
         events.emit(
             "asset:update",
             {"asset_id": asset_id},
-            project_id=str(asset.project_id)
+            project_id=str(asset.project_id),
         )
     else:
         from zou.app.services import tasks_service
@@ -538,7 +534,7 @@ def remove_asset(asset_id, force=False):
         events.emit(
             "asset:delete",
             {"asset_id": asset_id},
-            project_id=str(asset.project_id)
+            project_id=str(asset.project_id),
         )
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
@@ -557,7 +553,7 @@ def add_asset_link(asset_in_id, asset_out_id):
         events.emit(
             "asset:new-link",
             {"asset_in": asset_in.id, "asset_out": asset_out.id},
-            project_id=str(asset_in.project_id)
+            project_id=str(asset_in.project_id),
         )
     return asset_in.serialize(obj_type="Asset")
 
@@ -577,7 +573,7 @@ def remove_asset_link(asset_in_id, asset_out_id):
         events.emit(
             "asset:remove-link",
             {"asset_in": asset_in.id, "asset_out": asset_out.id},
-            project_id=str(asset_in.project_id)
+            project_id=str(asset_in.project_id),
         )
     return asset_in.serialize(obj_type="Asset")
 
@@ -591,8 +587,6 @@ def cancel_asset(asset_id, force=True):
     asset.update({"canceled": True})
     asset_dict = asset.serialize(obj_type="Asset")
     events.emit(
-        "asset:delete",
-        {"asset_id": asset_id},
-        project_id=str(asset.project_id)
+        "asset:delete", {"asset_id": asset_id}, project_id=str(asset.project_id)
     )
     return asset_dict

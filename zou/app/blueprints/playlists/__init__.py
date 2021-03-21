@@ -13,7 +13,7 @@ from .resources import (
     ProjectPlaylistResource,
     PlaylistDownloadResource,
     PlaylistZipDownloadResource,
-    TempPlaylistResource
+    TempPlaylistResource,
 )
 
 

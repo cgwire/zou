@@ -18,33 +18,21 @@ def get_date_string_with_timezone(date_string, timezone):
     Apply given timezone to given date and return it as a string.
     """
     date_obj = datetime.strptime(date_string, "%Y-%m-%dT%H:%M:%S")
-    return format_datetime(
-        date_obj,
-        "yyyy-MM-ddTHH:mm:ss",
-        tzinfo=timezone
-    )
+    return format_datetime(date_obj, "yyyy-MM-ddTHH:mm:ss", tzinfo=timezone)
 
 
 def get_string_with_timezone_from_date(date_obj, timezone):
     """
     Apply given timezone to given date and return it as a string.
     """
-    return format_datetime(
-        date_obj,
-        "yyyy-MM-ddTHH:mm:ss",
-        tzinfo=timezone
-    )
+    return format_datetime(date_obj, "yyyy-MM-ddTHH:mm:ss", tzinfo=timezone)
 
 
 def get_simple_string_with_timezone_from_date(date_obj, timezone):
     """
     Apply given timezone to given date and return it as a string (only date).
     """
-    return format_datetime(
-        date_obj,
-        "yyyy-MM-dd",
-        tzinfo=timezone
-    )
+    return format_datetime(date_obj, "yyyy-MM-dd", tzinfo=timezone)
 
 
 def get_today_string_with_timezone(timezone):
@@ -80,12 +68,7 @@ def get_month_interval(year, month):
     """
     year = int(year)
     month = int(month)
-    if (
-        year > datetime.now().year
-        or year < 2010
-        or month < 1
-        or month > 12
-    ):
+    if year > datetime.now().year or year < 2010 or month < 1 or month > 12:
         raise WrongDateFormatException
 
     start = datetime(year, month, 1)
@@ -99,12 +82,7 @@ def get_week_interval(year, week):
     """
     year = int(year)
     week = int(week)
-    if (
-        year > datetime.now().year
-        or year < 2010
-        or week < 1
-        or week > 52
-    ):
+    if year > datetime.now().year or year < 2010 or week < 1 or week > 52:
         raise WrongDateFormatException
     start = isoweek.Week(year, week).monday()
     end = start + relativedelta.relativedelta(days=7)

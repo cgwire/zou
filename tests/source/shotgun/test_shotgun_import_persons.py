@@ -2,12 +2,11 @@ from tests.source.shotgun.base import ShotgunTestCase
 
 
 class ImportShotgunPersonTestCase(ShotgunTestCase):
-
     def setUp(self):
         super(ImportShotgunPersonTestCase, self).setUp()
 
     def test_import_persons(self):
-        self.persons = self.load_fixture('persons')
+        self.persons = self.load_fixture("persons")
         self.assertEqual(len(self.persons), 2)
 
         self.persons = self.get("data/persons")
@@ -15,8 +14,8 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
         self.assertEqual(self.persons[0]["active"], True)
 
     def test_import_persons_twice(self):
-        self.persons = self.load_fixture('persons')
-        self.persons = self.load_fixture('persons')
+        self.persons = self.load_fixture("persons")
+        self.persons = self.load_fixture("persons")
         self.assertEqual(len(self.persons), 2)
 
         self.persons = self.get("data/persons")
@@ -30,7 +29,7 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
             "login": "jamie",
             "id": 3,
             "sg_status_list": "dis",
-            "type": "HumanUser"
+            "type": "HumanUser",
         }
 
         api_path = "/import/shotgun/persons"
@@ -57,7 +56,7 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
             "id": 3,
             "sg_status_list": "dis",
             "type": "HumanUser",
-            "permission_rule_set": {"name": "Admin"}
+            "permission_rule_set": {"name": "Admin"},
         }
 
         api_path = "/import/shotgun/persons"

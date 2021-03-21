@@ -35,7 +35,7 @@ def get_or_create_instance_by_name(model, **kwargs):
         events.emit(
             "%s:new" % model.__tablename__,
             {"%s_id" % model.__tablename__: instance.id},
-            project_id=str(project_id)
+            project_id=str(project_id),
         )
     return instance.serialize()
 

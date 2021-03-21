@@ -7,7 +7,6 @@ from zou.app.services import projects_service
 
 
 class WorkingFileTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(WorkingFileTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -28,7 +27,7 @@ class WorkingFileTestCase(ApiDBTestCase):
             task_id=self.task.id,
             entity_id=self.asset.id,
             person_id=self.person.id,
-            outputs=[]
+            outputs=[],
         )
 
     def test_get_working_files(self):
@@ -41,16 +40,19 @@ class WorkingFileTestCase(ApiDBTestCase):
         working_file = self.get_first("data/working-files")
         working_file["outputs"] = []
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"])
+            "data/working-files/%s" % working_file["id"]
+        )
         self.assertEqual(working_file, working_file_again)
         self.get_404("data/working-files/%s" % fields.gen_uuid())
 
         self.log_in_cg_artist()
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"], 403)
+            "data/working-files/%s" % working_file["id"], 403
+        )
         projects_service.add_team_member(self.project_id, user_cg_artist_id)
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"])
+            "data/working-files/%s" % working_file["id"]
+        )
 
     def test_create_working_file(self):
         data = {
@@ -60,7 +62,7 @@ class WorkingFileTestCase(ApiDBTestCase):
             "size": 1024,
             "task_id": self.task.id,
             "entity_id": self.asset.id,
-            "person_id": self.person.id
+            "person_id": self.person.id,
         }
         self.working_file = self.post("data/working-files", data)
         self.assertIsNotNone(self.working_file["id"])
@@ -70,12 +72,11 @@ class WorkingFileTestCase(ApiDBTestCase):
 
     def test_update_working_file(self):
         working_file = self.get_first("data/working-files")
-        data = {
-            "name": "Super modeling working_file 2"
-        }
+        data = {"name": "Super modeling working_file 2"}
         self.put("data/working-files/%s" % working_file["id"], data)
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"])
+            "data/working-files/%s" % working_file["id"]
+        )
         self.assertEqual(data["name"], working_file_again["name"])
         self.put_404("data/working-files/%s" % fields.gen_uuid(), data)
 
@@ -98,5 +99,5 @@ class WorkingFileTestCase(ApiDBTestCase):
         output_file.save()
         self.assertEqual(
             working_file.serialize(relations=True)["outputs"],
-            [str(output_file.id)]
+            [str(output_file.id)],
         )

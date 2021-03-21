@@ -1,13 +1,9 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import (
-    comments_service,
-    news_service
-)
+from zou.app.services import comments_service, news_service
 
 
 class NewsRoutesTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(NewsRoutesTestCase, self).setUp()
 
@@ -31,15 +27,11 @@ class NewsRoutesTestCase(ApiDBTestCase):
         self.task = self.generate_fixture_shot_task()
         self.task_dict = self.task.serialize()
         self.person_dict = self.generate_fixture_person(
-            first_name="Jane",
-            email="jane.doe@gmail.com"
+            first_name="Jane", email="jane.doe@gmail.com"
         ).serialize()
 
         self.comment = comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.user["id"],
-            "first comment"
+            self.task.id, self.task_status.id, self.user["id"], "first comment"
         )
 
     def test_get_last_news_for_project(self):
@@ -49,11 +41,10 @@ class NewsRoutesTestCase(ApiDBTestCase):
                 self.task.id,
                 self.task_status.id,
                 self.user["id"],
-                "comment %s" % i
+                "comment %s" % i,
             )
             news = news_service.create_news_for_task_and_comment(
-                self.task_dict,
-                comment
+                self.task_dict, comment
             )
         news_list = self.get(
             "/data/projects/%s/news" % self.task_dict["project_id"]
@@ -70,9 +61,7 @@ class NewsRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(news_list["data"]), 30)
 
         news = self.get(
-            "/data/projects/%s/news/%s" % (
-                self.task_dict["project_id"],
-                news["id"]
-            )
+            "/data/projects/%s/news/%s"
+            % (self.task_dict["project_id"], news["id"])
         )
         self.assertIsNotNone(news["created_at"])

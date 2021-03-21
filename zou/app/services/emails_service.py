@@ -23,7 +23,11 @@ def send_notification(person_id, subject, messages):
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
                 emails.send_email,
-                args=(subject, email_message + get_signature(), person["email"]),
+                args=(
+                    subject,
+                    email_message + get_signature(),
+                    person["email"],
+                ),
             )
         else:
             emails.send_email(

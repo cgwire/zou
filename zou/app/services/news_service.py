@@ -19,7 +19,7 @@ def create_news(
     task_id=None,
     preview_file_id=None,
     change=False,
-    created_at=None
+    created_at=None,
 ):
     """
     Create a new news for given person and comment.
@@ -30,7 +30,7 @@ def create_news(
         comment_id=comment_id,
         preview_file_id=preview_file_id,
         task_id=task_id,
-        created_at=created_at
+        created_at=created_at,
     )
     return news.serialize()
 
@@ -49,7 +49,7 @@ def create_news_for_task_and_comment(
         author_id=comment["person_id"],
         task_id=comment["object_id"],
         change=change,
-        created_at=created_at
+        created_at=created_at,
     )
     events.emit(
         "news:new",
@@ -76,7 +76,7 @@ def delete_news_for_comment(comment_id):
             events.emit(
                 "news:delete",
                 {"news_id": news.id},
-                project_id=task["project_id"]
+                project_id=task["project_id"],
             )
     return fields.serialize_list(news_list)
 
@@ -91,7 +91,7 @@ def get_last_news_for_project(
     page=1,
     page_size=50,
     before=None,
-    after=None
+    after=None,
 ):
     """
     Return last 50 news for given project. Add related information to make it
@@ -100,8 +100,7 @@ def get_last_news_for_project(
     offset = (page - 1) * page_size
 
     query = (
-        News.query
-        .order_by(News.created_at.desc())
+        News.query.order_by(News.created_at.desc())
         .join(Task, News.task_id == Task.id)
         .join(Project)
         .join(Entity, Task.entity_id == Entity.id)
@@ -134,17 +133,16 @@ def get_last_news_for_project(
 
     (total, nb_pages) = _get_news_total(query, page_size)
 
-    query = query \
-        .add_columns(
-            Project.id,
-            Project.name,
-            Task.task_type_id,
-            Comment.id,
-            Comment.task_status_id,
-            Task.entity_id,
-            PreviewFile.extension,
-            Entity.preview_file_id,
-        )
+    query = query.add_columns(
+        Project.id,
+        Project.name,
+        Task.task_type_id,
+        Comment.id,
+        Comment.task_status_id,
+        Task.entity_id,
+        PreviewFile.extension,
+        Entity.preview_file_id,
+    )
 
     query = query.limit(page_size)
     query = query.offset(offset)
@@ -195,7 +193,7 @@ def get_last_news_for_project(
         "nb_pages": nb_pages,
         "limit": page_size,
         "offset": offset,
-        "page": page
+        "page": page,
     }
 
 
@@ -212,23 +210,19 @@ def get_news_stats_for_project(
     task_status_id=None,
     author_id=None,
     before=None,
-    after=None
+    after=None,
 ):
     """
     Return the number of news by task status for given project and filters.
     { "task-status-1": 24, "task-status-2": 58 }
     """
     query = (
-        News.query
-        .join(Task, News.task_id == Task.id)
+        News.query.join(Task, News.task_id == Task.id)
         .join(Project)
         .join(Comment)
         .join(Entity, Task.entity_id == Entity.id)
         .outerjoin(PreviewFile, News.preview_file_id == PreviewFile.id)
-        .with_entities(
-            Comment.task_status_id,
-            func.count(Entity.id)
-        )
+        .with_entities(Comment.task_status_id, func.count(Entity.id))
         .group_by(
             Comment.task_status_id,
         )

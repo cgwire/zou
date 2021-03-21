@@ -4,7 +4,6 @@ from zou.app.stores import auth_tokens_store
 
 
 class AuthTokensTestCase(ApiTestCase):
-
     def setUp(self):
         super(AuthTokensTestCase, self).setUp()
         self.store = auth_tokens_store

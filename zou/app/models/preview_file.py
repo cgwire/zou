@@ -14,6 +14,7 @@ STATUSES = [
     ("broken", "Broken"),
 ]
 
+
 class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     """
     Describes a file which is aimed at being reviewed. It is not a publication

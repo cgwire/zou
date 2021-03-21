@@ -21,14 +21,13 @@ from .resources import (
     TimeSpentYearsResource,
     PersonYearTimeSpentsResource,
     AddToDepartmentResource,
-    RemoveFromDepartmentResource
+    RemoveFromDepartmentResource,
 )
 
 routes = [
     ("/data/persons/new", NewPersonResource),
     ("/data/persons/<person_id>/desktop-login-logs", DesktopLoginsResource),
     ("/data/persons/presence-logs/<month_date>", PresenceLogsResource),
-
     ("/data/persons/<person_id>/time-spents/<date>", TimeSpentsResource),
     ("/data/persons/<person_id>/day-offs/<date>", DayOffResource),
     (
@@ -55,18 +54,24 @@ routes = [
         TimeSpentMonthResource,
     ),
     ("/data/persons/day-offs/<year>/<month>", DayOffForMonthResource),
-    ("/data/persons/<person_id>/day-offs/week/<year>/<week>",
-     PersonWeekDayOffResource),
-    ("/data/persons/<person_id>/day-offs/month/<year>/<month>",
-     PersonMonthDayOffResource),
-    ("/data/persons/<person_id>/day-offs/year/<year>",
-     PersonYearDayOffResource),
-
+    (
+        "/data/persons/<person_id>/day-offs/week/<year>/<week>",
+        PersonWeekDayOffResource,
+    ),
+    (
+        "/data/persons/<person_id>/day-offs/month/<year>/<month>",
+        PersonMonthDayOffResource,
+    ),
+    (
+        "/data/persons/<person_id>/day-offs/year/<year>",
+        PersonYearDayOffResource,
+    ),
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
-    ("/actions/persons/<person_id>/departments/add",
-     AddToDepartmentResource),
-    ("/actions/persons/<person_id>/departments/<department_id>",
-     RemoveFromDepartmentResource),
+    ("/actions/persons/<person_id>/departments/add", AddToDepartmentResource),
+    (
+        "/actions/persons/<person_id>/departments/<department_id>",
+        RemoveFromDepartmentResource,
+    ),
 ]
 
 blueprint = Blueprint("persons", "persons")

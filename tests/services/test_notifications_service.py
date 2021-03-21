@@ -5,7 +5,6 @@ from zou.app.services import comments_service, notifications_service
 
 
 class NotificationsServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(NotificationsServiceTestCase, self).setUp()
 
@@ -28,15 +27,11 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         self.task = self.generate_fixture_shot_task()
         self.task_dict = self.task.serialize(relations=True)
         self.person_dict = self.generate_fixture_person(
-            first_name="Jane",
-            email="jane.doe@gmail.com"
+            first_name="Jane", email="jane.doe@gmail.com"
         ).serialize()
 
         self.comment = comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.user["id"],
-            "first comment"
+            self.task.id, self.task_status.id, self.user["id"], "first comment"
         )
 
     def test_create_notification(self):
@@ -45,7 +40,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
             self.person.id,
             comment_id=self.comment["id"],
             author_id=self.comment["person_id"],
-            task_id=self.comment["object_id"]
+            task_id=self.comment["object_id"],
         )
         notification_again = Notification.get(notification["id"])
         self.assertIsNotNone(notification_again)
@@ -53,14 +48,14 @@ class NotificationsServiceTestCase(ApiDBTestCase):
     def test_get_notification_recipients(self):
         self.generate_fixture_comment()
         person_ids = notifications_service.get_notification_recipients(
-            self.task_dict)
+            self.task_dict
+        )
         self.assertEqual(len(person_ids), 2)
 
     def test_create_notifications_for_task_and_comment(self):
         self.generate_fixture_comment()
         notifications_service.create_notifications_for_task_and_comment(
-            self.task_dict,
-            self.comment
+            self.task_dict, self.comment
         )
         notifications = Notification.get_all()
         self.assertEqual(len(notifications), 1)
@@ -70,8 +65,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_comment()
         self.comment["mentions"] = [self.person.id]
         notifications_service.create_notifications_for_task_and_comment(
-            self.task_dict,
-            self.comment
+            self.task_dict, self.comment
         )
         notifications = Notification.get_all()
         self.assertEqual(len(notifications), 2)
@@ -79,15 +73,13 @@ class NotificationsServiceTestCase(ApiDBTestCase):
     def test_create_assignation_notification(self):
         self.generate_fixture_comment()
         notifications_service.create_assignation_notification(
-            self.task_dict["id"],
-            self.person.id
+            self.task_dict["id"], self.person.id
         )
         notifications = Notification.get_all()
         self.assertEqual(len(notifications), 1)
         self.assertEqual(notifications[0].type, "assignation")
         self.assertEqual(
-            str(notifications[0].author_id),
-            self.task_dict["assigner_id"]
+            str(notifications[0].author_id), self.task_dict["assigner_id"]
         )
 
     def test_subscribe_task(self):
@@ -98,12 +90,10 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         self.assertFalse(self.person_dict["id"] in recipients)
 
         notifications_service.subscribe_to_task(
-            self.person_dict["id"],
-            self.task_dict["id"]
+            self.person_dict["id"], self.task_dict["id"]
         )
         subscription = notifications_service.get_task_subscription_raw(
-            self.person_dict["id"],
-            self.task_dict["id"]
+            self.person_dict["id"], self.task_dict["id"]
         )
         self.assertIsNotNone(subscription)
         recipients = notifications_service.get_notification_recipients(
@@ -114,16 +104,13 @@ class NotificationsServiceTestCase(ApiDBTestCase):
     def test_unsubscribe_task(self):
         self.generate_fixture_comment()
         notifications_service.subscribe_to_task(
-            self.person_dict["id"],
-            self.task_dict["id"]
+            self.person_dict["id"], self.task_dict["id"]
         )
         notifications_service.unsubscribe_from_task(
-            self.person_dict["id"],
-            self.task_dict["id"]
+            self.person_dict["id"], self.task_dict["id"]
         )
         subscription = notifications_service.get_task_subscription_raw(
-            self.person_dict["id"],
-            self.task_dict["id"]
+            self.person_dict["id"], self.task_dict["id"]
         )
         self.assertIsNone(subscription)
         recipients = notifications_service.get_notification_recipients(
@@ -141,7 +128,7 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         notifications_service.subscribe_to_sequence(
             self.person_dict["id"],
             self.sequence_dict["id"],
-            self.task_type_dict["id"]
+            self.task_type_dict["id"],
         )
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
@@ -153,12 +140,12 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         notifications_service.subscribe_to_sequence(
             self.person_dict["id"],
             self.sequence_dict["id"],
-            self.task_type_dict["id"]
+            self.task_type_dict["id"],
         )
         notifications_service.unsubscribe_from_sequence(
             self.person_dict["id"],
             self.sequence_dict["id"],
-            self.task_type_dict["id"]
+            self.task_type_dict["id"],
         )
         recipients = notifications_service.get_notification_recipients(
             self.task_dict

@@ -71,7 +71,7 @@ from .kitsu import (
     ImportKitsuEntitiesResource,
     ImportKitsuEntityLinksResource,
     ImportKitsuProjectsResource,
-    ImportKitsuTasksResource
+    ImportKitsuTasksResource,
 )
 
 routes = [

@@ -3,7 +3,7 @@ from tests.base import ApiDBTestCase
 from zou.app.services import (
     tasks_service,
     notifications_service,
-    projects_service
+    projects_service,
 )
 
 from zou.app.models.project import Project
@@ -11,7 +11,6 @@ from zou.app.models.person import Person
 
 
 class UserContextRoutesTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(UserContextRoutesTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -37,8 +36,9 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.task_id = self.task.id
         self.sequence_dict = self.sequence.serialize()
 
-        self.shot_task_dict = \
-            self.generate_fixture_shot_task().serialize(relations=True)
+        self.shot_task_dict = self.generate_fixture_shot_task().serialize(
+            relations=True
+        )
         self.task_type_dict = self.task_type_animation.serialize()
         self.shot_task_id = self.task.id
 
@@ -64,9 +64,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
     def test_get_project_episodes(self):
         self.assign_user(self.shot_task.id)
-        episodes = self.get(
-            "data/user/projects/%s/episodes" % self.project.id
-        )
+        episodes = self.get("data/user/projects/%s/episodes" % self.project.id)
         self.assertEqual(len(episodes), 1)
         self.assertEqual(episodes[0]["name"], "E01")
         self.assertEqual(episodes[0]["type"], "Episode")
@@ -114,19 +112,15 @@ class UserContextRoutesTestCase(ApiDBTestCase):
     def test_get_project_asset_types_assets(self):
         task_id = self.task.id
         assets = self.get(
-            "data/user/projects/%s/asset-types/%s/assets" % (
-                self.project.id,
-                self.asset_type.id
-            )
+            "data/user/projects/%s/asset-types/%s/assets"
+            % (self.project.id, self.asset_type.id)
         )
         self.assertEqual(len(assets), 0)
         self.assign_user(task_id)
 
         assets = self.get(
-            "data/user/projects/%s/asset-types/%s/assets" % (
-                self.project.id,
-                self.asset_type.id
-            )
+            "data/user/projects/%s/asset-types/%s/assets"
+            % (self.project.id, self.asset_type.id)
         )
         self.assertEqual(len(assets), 1)
 
@@ -236,9 +230,10 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         tasks = self.get(path)
         self.assertEqual(len(tasks), 2)
 
-        tasks_service.update_task(shot_task_id, {
-            "task_status_id": tasks_service.get_done_status()["id"]
-        })
+        tasks_service.update_task(
+            shot_task_id,
+            {"task_status_id": tasks_service.get_done_status()["id"]},
+        )
 
         path = "data/user/tasks/"
         tasks = self.get(path)
@@ -258,9 +253,9 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 0)
 
         done_status = tasks_service.get_done_status()
-        tasks_service.update_task(task_id, {
-            "task_status_id": done_status["id"]
-        })
+        tasks_service.update_task(
+            task_id, {"task_status_id": done_status["id"]}
+        )
 
         path = "data/user/done-tasks/"
         tasks = self.get(path)
@@ -273,19 +268,19 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             "list_type": "asset",
             "name": "props",
             "query": "props",
-            "project_id": project_id
+            "project_id": project_id,
         }
         filter_2 = {
             "list_type": "shot",
             "name": "se01",
             "query": "se01",
-            "project_id": project_id
+            "project_id": project_id,
         }
         filter_3 = {
             "list_type": "all",
             "name": "wfa",
             "query": "wfa",
-            "project_id": project_id
+            "project_id": project_id,
         }
         self.post(path, filter_1)
         self.post(path, filter_2)
@@ -298,12 +293,11 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(result["asset"][project_id]), 1)
         self.assertEqual(len(result["shot"][project_id]), 1)
         self.assertEqual(len(result["all"][project_id]), 1)
+        self.assertEqual(result["all"][project_id][0]["search_query"], "wfa")
         self.assertEqual(
-            result["all"][project_id][0]["search_query"], "wfa")
-        self.assertEqual(
-            result["asset"][project_id][0]["search_query"], "props")
-        self.assertEqual(
-            result["shot"][project_id][0]["search_query"], "se01")
+            result["asset"][project_id][0]["search_query"], "props"
+        )
+        self.assertEqual(result["shot"][project_id][0]["search_query"], "se01")
 
     def test_update_filter(self):
         project_id = str(self.project.id)
@@ -312,7 +306,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             "list_type": "asset",
             "name": "props",
             "query": "props",
-            "project_id": project_id
+            "project_id": project_id,
         }
         search_filter = self.post(path, filter_1)
         result = self.get(path)
@@ -328,7 +322,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             "list_type": "asset",
             "name": "props",
             "query": "props",
-            "project_id": project_id
+            "project_id": project_id,
         }
         search_filter = self.post(path, filter_1)
         result = self.get(path)
@@ -363,8 +357,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.task_dict = self.task.serialize(relations=True)
         self.generate_fixture_comment()
         notifications_service.create_notifications_for_task_and_comment(
-            self.task_dict,
-            self.comment
+            self.task_dict, self.comment
         )
         path = "/data/user/notifications"
         notifications = self.get(path)
@@ -376,8 +369,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_comment()
         self.task_dict = self.task.serialize(relations=True)
         notifications_service.create_notifications_for_task_and_comment(
-            self.task_dict,
-            self.comment
+            self.task_dict, self.comment
         )
         path = "/data/user/notifications"
         notifications = self.get(path)
@@ -415,7 +407,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
         path = "/actions/user/sequences/%s/task-types/%s/subscribe" % (
             self.sequence_dict["id"],
-            self.task_type_dict["id"]
+            self.task_type_dict["id"],
         )
         print(path)
         self.post(path, {})
@@ -428,7 +420,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
     def test_unsubscribe_sequence(self):
         path = "/actions/user/sequences/%s/task-types/%s/" % (
             self.sequence_dict["id"],
-            self.task_type_dict["id"]
+            self.task_type_dict["id"],
         )
         self.post(path + "subscribe", {})
         self.delete(path + "unsubscribe")
@@ -452,24 +444,15 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
     def test_get_metadata_columns(self):
         projects_service.add_metadata_descriptor(
-            self.project_id,
-            "asset",
-            "test client",
-            [],
-            True
+            self.project_id, "asset", "test client", [], True
         )
         projects_service.add_metadata_descriptor(
-            self.project_id,
-            "asset",
-            "test",
-            [],
-            False
+            self.project_id, "asset", "test", [], False
         )
         self.generate_fixture_user_client()
         self.log_in_client()
         projects_service.add_team_member(
-            self.project_id,
-            self.user_client["id"]
+            self.project_id, self.user_client["id"]
         )
         context = self.get("/data/user/context")
         self.assertEqual(len(context["projects"]), 1)

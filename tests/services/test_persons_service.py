@@ -6,7 +6,6 @@ from zou.app.utils import auth
 
 
 class PersonServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PersonServiceTestCase, self).setUp()
 
@@ -23,25 +22,21 @@ class PersonServiceTestCase(ApiDBTestCase):
 
     def test_get_person(self):
         self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person,
-            "wrong-id"
+            PersonNotFoundException, persons_service.get_person, "wrong-id"
         )
         person = persons_service.get_person(self.person_id)
         self.assertEqual(self.person_id, person["id"])
         persons_service.delete_person(self.person_id)
 
         self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person,
-            self.person_id
+            PersonNotFoundException, persons_service.get_person, self.person_id
         )
 
     def test_get_person_by_email(self):
         self.assertRaises(
             PersonNotFoundException,
             persons_service.get_person_by_email,
-            "wrong-email"
+            "wrong-email",
         )
         person = persons_service.get_person_by_email(self.person_email)
         self.assertEqual(self.person_id, person["id"])
@@ -50,17 +45,18 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertRaises(
             PersonNotFoundException,
             persons_service.get_person_by_email,
-            self.person_email
+            self.person_email,
         )
 
     def test_get_person_by_desktop_login(self):
         self.assertRaises(
             PersonNotFoundException,
             persons_service.get_person_by_desktop_login,
-            "wrong-login"
+            "wrong-login",
         )
         person = persons_service.get_person_by_desktop_login(
-            self.person_desktop_login)
+            self.person_desktop_login
+        )
         person = persons_service.get_person_by_email(person["email"])
         self.assertEqual(self.person_id, person["id"])
         persons_service.delete_person(person["id"])
@@ -68,7 +64,7 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertRaises(
             PersonNotFoundException,
             persons_service.get_person_by_desktop_login,
-            self.person_desktop_login
+            self.person_desktop_login,
         )
 
     def test_get_person_by_username(self):
@@ -79,7 +75,7 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertRaises(
             PersonNotFoundException,
             persons_service.get_person_by_email_username,
-            "ema.doe@yahoo.com"
+            "ema.doe@yahoo.com",
         )
 
     def test_create_person(self):
@@ -87,7 +83,7 @@ class PersonServiceTestCase(ApiDBTestCase):
             "john.doe2@gmail.com",
             auth.encrypt_password("passwordhash"),
             "John",
-            "Doe"
+            "Doe",
         )
         person = persons_service.get_person_by_email(person["email"])
         self.assertEqual(person["first_name"], "John")
@@ -96,7 +92,7 @@ class PersonServiceTestCase(ApiDBTestCase):
             " john.doe3@gmail.com \n",
             auth.encrypt_password("passwordhash"),
             "John",
-            "Doe"
+            "Doe",
         )
         person = persons_service.get_person_by_email("john.doe3@gmail.com")
         self.assertEqual(person["first_name"], "John")
@@ -118,6 +114,7 @@ class PersonServiceTestCase(ApiDBTestCase):
         is_reached = persons_service.is_user_limit_reached()
         self.assertEqual(is_reached, False)
         from zou.app import config
+
         config.USER_LIMIT = 2
         is_reached = persons_service.is_user_limit_reached()
         self.assertEqual(is_reached, True)

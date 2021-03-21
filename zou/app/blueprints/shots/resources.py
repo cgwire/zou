@@ -141,7 +141,6 @@ class ShotTaskTypesResource(Resource):
 
 
 class ShotTasksResource(Resource, ArgsMixin):
-
     @jwt_required
     def get(self, shot_id):
         """
@@ -155,7 +154,6 @@ class ShotTasksResource(Resource, ArgsMixin):
 
 
 class SequenceShotTasksResource(Resource, ArgsMixin):
-
     @jwt_required
     def get(self, sequence_id):
         """
@@ -168,13 +166,11 @@ class SequenceShotTasksResource(Resource, ArgsMixin):
             raise permissions.PermissionDenied
         relations = self.get_relations()
         return tasks_service.get_shot_tasks_for_sequence(
-            sequence_id,
-            relations=relations
+            sequence_id, relations=relations
         )
 
 
 class EpisodeShotTasksResource(Resource, ArgsMixin):
-
     @jwt_required
     def get(self, episode_id):
         """
@@ -187,13 +183,11 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
             raise permissions.PermissionDenied
         relations = self.get_relations()
         return tasks_service.get_shot_tasks_for_episode(
-            episode_id,
-            relations=relations
+            episode_id, relations=relations
         )
 
 
 class EpisodeShotsResource(Resource, ArgsMixin):
-
     @jwt_required
     def get(self, episode_id):
         """
@@ -204,10 +198,8 @@ class EpisodeShotsResource(Resource, ArgsMixin):
         user_service.check_entity_access(episode["id"])
         relations = self.get_relations()
         return shots_service.get_shots_for_episode(
-            episode_id,
-            relations=relations
+            episode_id, relations=relations
         )
-
 
 
 class ShotPreviewsResource(Resource):
@@ -234,8 +226,7 @@ class SequenceTasksResource(Resource, ArgsMixin):
         user_service.check_project_access(sequence["project_id"])
         relations = self.get_relations()
         return tasks_service.get_tasks_for_sequence(
-            sequence_id,
-            relations=relations
+            sequence_id, relations=relations
         )
 
 
@@ -312,8 +303,7 @@ class ProjectShotsResource(Resource):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         return shots_service.get_shots_for_project(
-            project_id,
-            only_assigned=permissions.has_vendor_permissions()
+            project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
     @jwt_required
@@ -338,7 +328,10 @@ class ProjectShotsResource(Resource):
         parser.add_argument("nb_frames", default=None, type=int)
         args = parser.parse_args()
         return (
-            args["sequence_id"], args["name"], args["data"], args["nb_frames"]
+            args["sequence_id"],
+            args["name"],
+            args["data"],
+            args["nb_frames"],
         )
 
 
@@ -351,8 +344,7 @@ class ProjectSequencesResource(Resource):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         return shots_service.get_sequences_for_project(
-            project_id,
-            only_assigned=permissions.has_vendor_permissions()
+            project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
     @jwt_required
@@ -383,8 +375,7 @@ class ProjectEpisodesResource(Resource):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         return shots_service.get_episodes_for_project(
-            project_id,
-            only_assigned=permissions.has_vendor_permissions()
+            project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
     @jwt_required
@@ -414,8 +405,7 @@ class ProjectEpisodeStatsResource(Resource):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         return stats_service.get_episode_stats_for_project(
-            project_id,
-            only_assigned=permissions.has_vendor_permissions()
+            project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
 
@@ -429,8 +419,7 @@ class ProjectEpisodeRetakeStatsResource(Resource):
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         return stats_service.get_episode_retake_stats_for_project(
-            project_id,
-            only_assigned=permissions.has_vendor_permissions()
+            project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
 
@@ -481,8 +470,7 @@ class EpisodeSequencesResource(Resource):
         criterions["parent_id"] = episode_id
         if permissions.has_vendor_permissions():
             return shots_service.get_sequences_for_episode(
-                episode_id,
-                only_assigned=True
+                episode_id, only_assigned=True
             )
         else:
             return shots_service.get_sequences(criterions)

@@ -4,7 +4,6 @@ from zou.app.services import projects_service, tasks_service
 
 
 class EpisodeTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(EpisodeTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -64,10 +63,7 @@ class EpisodeTestCase(ApiDBTestCase):
     def test_get_episodes(self):
         episodes = self.get("data/episodes")
         self.assertEqual(len(episodes), 3)
-        self.assertDictEqual(
-            episodes[0],
-            self.serialized_episode
-        )
+        self.assertDictEqual(episodes[0], self.serialized_episode)
 
     def test_get_episode(self):
         episode = self.get("data/episodes/%s" % self.episode.id)

@@ -57,7 +57,7 @@ def get_task_types_schedule_items(project_id):
             events.emit(
                 "schedule-item:new",
                 {"schedule_item_id": str(new_schedule_item.id)},
-                project_id=project_id
+                project_id=project_id,
             )
 
     schedule_items = (
@@ -175,7 +175,7 @@ def get_entity_schedule_items(
             events.emit(
                 "schedule-item:new",
                 {"schedule_item_id": str(new_schedule_item.id)},
-                project_id=project_id
+                project_id=project_id,
             )
             new_schedule_items.add(new_schedule_item)
 

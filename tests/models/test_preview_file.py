@@ -4,7 +4,6 @@ from zou.app.utils import fields
 
 
 class PreviewFileTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PreviewFileTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -33,7 +32,8 @@ class PreviewFileTestCase(ApiDBTestCase):
     def test_get_preview_file(self):
         preview_file = self.get_first("data/preview-files?relations=true")
         preview_file_again = self.get(
-            "data/preview-files/%s" % preview_file["id"])
+            "data/preview-files/%s" % preview_file["id"]
+        )
         self.assertEqual(preview_file, preview_file_again)
         self.get_404("data/preview-files/%s" % fields.gen_uuid())
 
@@ -42,7 +42,7 @@ class PreviewFileTestCase(ApiDBTestCase):
             "name": "Modeling preview_file 1",
             "person_id": self.person.id,
             "task_id": self.task.id,
-            "source_file_id": self.output_file.id
+            "source_file_id": self.output_file.id,
         }
         self.file_status_id = self.file_status.id
         self.preview_file = self.post("data/preview-files", data)
@@ -53,12 +53,11 @@ class PreviewFileTestCase(ApiDBTestCase):
 
     def test_update_preview_file(self):
         preview_file = self.get_first("data/preview-files")
-        data = {
-            "name": "Super modeling preview_file 2"
-        }
+        data = {"name": "Super modeling preview_file 2"}
         self.put("data/preview-files/%s" % preview_file["id"], data)
         preview_file_again = self.get(
-            "data/preview-files/%s" % preview_file["id"])
+            "data/preview-files/%s" % preview_file["id"]
+        )
         self.assertEqual(data["name"], preview_file_again["name"])
         self.put_404("data/preview-files/%s" % fields.gen_uuid(), data)
 

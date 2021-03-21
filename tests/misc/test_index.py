@@ -5,13 +5,11 @@ from zou.app import app
 
 
 class VersionTestCase(ApiTestCase):
-
     def test_version_route(self):
         data = self.get("/")
-        self.assertEqual(data, {
-            "api": app.config["APP_NAME"],
-            "version": __version__
-        })
+        self.assertEqual(
+            data, {"api": app.config["APP_NAME"], "version": __version__}
+        )
 
     def test_status_route(self):
         data = self.get("/status")

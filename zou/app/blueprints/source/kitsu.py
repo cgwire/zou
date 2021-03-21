@@ -14,12 +14,11 @@ from zou.app.services import (
     entities_service,
     shots_service,
     tasks_service,
-    user_service
+    user_service,
 )
 
 
 class BaseImportKitsuResource(Resource, ArgsMixin):
-
     def __init__(self, model):
         Resource.__init__(self)
         self.model = model
@@ -34,8 +33,9 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         for entry in kitsu_entries:
             if self.check_access(entry):
                 try:
-                    (instance, is_updated) = \
-                        self.model.create_from_import(entry)
+                    (instance, is_updated) = self.model.create_from_import(
+                        entry
+                    )
                     if is_updated:
                         self.emit_event("update", entry)
                     else:
@@ -53,7 +53,6 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
 
 
 class ImportKitsuCommentsResource(BaseImportKitsuResource):
-
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Entity)
         user_service.check_project_manager_access()
@@ -73,12 +72,11 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
         events.emit(
             "comment:%s" % event_type,
             {"comment_id": entry.id},
-            project_id=project_id
+            project_id=project_id,
         )
 
 
 class ImportKitsuEntitiesResource(BaseImportKitsuResource):
-
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Entity)
 
@@ -96,24 +94,19 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         events.emit(
             "%s:%s" % (name.lower(), event_type),
             {"%s_id" % name: entry["id"]},
-            project_id=project_id
+            project_id=project_id,
         )
 
 
 class ImportKitsuProjectsResource(BaseImportKitsuResource):
-
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Project)
 
     def emit_event(self, event_type, entry):
-        events.emit(
-            "project:%s" % event_type,
-            project_id=entry["id"]
-        )
+        events.emit("project:%s" % event_type, project_id=entry["id"])
 
 
 class ImportKitsuTasksResource(BaseImportKitsuResource):
-
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Task)
 
@@ -126,14 +119,10 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         return True
 
     def emit_event(self, event_type, entry):
-        events.emit(
-            "task:%s" % event_type,
-            project_id=entry["project_id"]
-        )
+        events.emit("task:%s" % event_type, project_id=entry["project_id"])
 
 
 class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
-
     def __init__(self):
         BaseImportKitsuResource.__init__(self, EntityLink)
 
@@ -149,7 +138,4 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
     def emit_event(self, event_type, entry):
         entity = entities_service.get_entity(entry["entity_in_id"])
         project_id = entity["project_id"]
-        events.emit(
-            "entity-link:%s" % event_type,
-            project_id=project_id
-        )
+        events.emit("entity-link:%s" % event_type, project_id=project_id)

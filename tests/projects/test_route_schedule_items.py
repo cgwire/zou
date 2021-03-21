@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class ProjectScheduleRouteTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ProjectScheduleRouteTestCase, self).setUp()
 
@@ -27,7 +26,7 @@ class ProjectScheduleRouteTestCase(ApiDBTestCase):
     def test_get_schedule_sequence_items(self):
         path = "/data/projects/%s/schedule-items/%s/sequences" % (
             self.project_id,
-            self.task_type_id
+            self.task_type_id,
         )
         items = self.get(path)
         self.assertEqual(len(items), 1)
@@ -38,7 +37,7 @@ class ProjectScheduleRouteTestCase(ApiDBTestCase):
     def test_get_schedule_episode_items(self):
         path = "/data/projects/%s/schedule-items/%s/episodes" % (
             self.project_id,
-            self.task_type_id
+            self.task_type_id,
         )
         items = self.get(path)
         self.assertEqual(len(items), 1)
@@ -49,7 +48,7 @@ class ProjectScheduleRouteTestCase(ApiDBTestCase):
     def test_get_schedule_asset_type_items(self):
         path = "/data/projects/%s/schedule-items/%s/asset-types" % (
             self.project_id,
-            self.task_type_id
+            self.task_type_id,
         )
         items = self.get(path)
         self.assertEqual(len(items), 1)

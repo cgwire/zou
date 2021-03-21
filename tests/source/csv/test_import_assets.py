@@ -8,7 +8,6 @@ from zou.app.models.entity_type import EntityType
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ImportCsvAssetsTestCase, self).setUp()
 

@@ -4,7 +4,6 @@ from tests.base import ApiDBTestCase
 
 
 class ShotgunTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ShotgunTestCase, self).setUp()
 

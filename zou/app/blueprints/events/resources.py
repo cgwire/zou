@@ -11,13 +11,15 @@ from zou.app.services.exception import WrongParameterException
 class EventsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
-        args = self.get_args([
-            ("after", None, False),
-            ("before", None, False),
-            ("only_files", False, False),
-            ("page_size", 100, False),
-            ("project_id", None, False),
-        ])
+        args = self.get_args(
+            [
+                ("after", None, False),
+                ("before", None, False),
+                ("only_files", False, False),
+                ("page_size", 100, False),
+                ("project_id", None, False),
+            ]
+        )
         permissions.check_manager_permissions()
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
@@ -34,7 +36,7 @@ class EventsResource(Resource, ArgsMixin):
                 before=before,
                 page_size=page_size,
                 only_files=only_files,
-                project_id=project_id
+                project_id=project_id,
             )
 
 

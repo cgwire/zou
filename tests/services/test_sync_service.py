@@ -10,8 +10,6 @@ from zou.app.utils import events
 
 
 class SyncServiceTestCase(ApiDBTestCase):
-
-
     def setUp(self):
         super(SyncServiceTestCase, self).setUp()
 
@@ -27,14 +25,16 @@ class SyncServiceTestCase(ApiDBTestCase):
         self.new_project_id = str(uuid.uuid4())
 
         self.real_fetch_one = gazu.client.fetch_one
+
         def fetch_one_mock(model_name, model_id):
             return {
                 "id": self.new_project_id,
                 "name": "Test Sync Project",
                 "project_status_id": str(self.open_status.id),
                 "team": [],
-                "type": "Project"
+                "type": "Project",
             }
+
         gazu.client.fetch_one = fetch_one_mock
 
     def tearDown(self):
@@ -44,21 +44,23 @@ class SyncServiceTestCase(ApiDBTestCase):
         self.last_event_data = data
 
     def test_sync_event(self):
-        sync_service.sync_event({
-            "name": "project:new",
-            "data": {"project_id": self.new_project_id}
-        })
+        sync_service.sync_event(
+            {"name": "project:new", "data": {"project_id": self.new_project_id}}
+        )
         self.assertIsNotNone(Project.get(self.new_project_id))
-        sync_service.sync_event({
-            "name": "project:delete",
-            "data": {"project_id": self.new_project_id}
-        })
+        sync_service.sync_event(
+            {
+                "name": "project:delete",
+                "data": {"project_id": self.new_project_id},
+            }
+        )
         self.assertIsNone(Project.get(self.new_project_id))
 
     def test_create_entry(self):
         events.register("project:new", "handle_event", self)
         create_func = sync_service.create_entry(
-            "projects", "project", Project, "new")
+            "projects", "project", Project, "new"
+        )
         create_func({"project_id": self.new_project_id})
         self.assertTrue("project_id" in self.last_event_data)
         self.assertIsNotNone(Project.get(self.last_event_data["project_id"]))
@@ -67,7 +69,8 @@ class SyncServiceTestCase(ApiDBTestCase):
         events.unregister_all()
         events.register("project:update", "handle_event", self)
         create_func = sync_service.create_entry(
-            "projects", "project", Project, "update")
+            "projects", "project", Project, "update"
+        )
         create_func({"project_id": self.new_project_id})
         self.assertTrue("project_id" in self.last_event_data)
         project = Project.get(self.last_event_data["project_id"])

@@ -10,7 +10,6 @@ from zou.app.models.task import Task
 
 
 class CreateFromImportTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(CreateFromImportTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -32,22 +31,22 @@ class CreateFromImportTestCase(ApiDBTestCase):
     def test_project(self):
         project_id = "d98a6269-e566-4e11-b29f-b3faa2039d79"
         project_name = "Caminandes"
-        Project.create_from_import({
-            "team": [
-                str(self.person.id)
-            ],
-            "id": project_id,
-            "created_at": "2019-06-20T12:28:16",
-            "updated_at": "2019-08-30T12:48:09",
-            "name": project_name,
-            "has_avatar": True,
-            "fps": "25",
-            "production_type": "tvshow",
-            "start_date": "2019-07-01",
-            "end_date": "2021-12-31",
-            "project_status_id": str(self.open_status.id),
-            "type": "Project"
-        })
+        Project.create_from_import(
+            {
+                "team": [str(self.person.id)],
+                "id": project_id,
+                "created_at": "2019-06-20T12:28:16",
+                "updated_at": "2019-08-30T12:48:09",
+                "name": project_name,
+                "has_avatar": True,
+                "fps": "25",
+                "production_type": "tvshow",
+                "start_date": "2019-07-01",
+                "end_date": "2021-12-31",
+                "project_status_id": str(self.open_status.id),
+                "type": "Project",
+            }
+        )
         project = Project.get(project_id)
         self.assertEqual(project.name, project_name)
 
@@ -64,7 +63,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "entity_type_id": str(self.asset_type_character.id),
             "preview_file_id": None,
             "entities_in": [],
-            "type": "Asset"
+            "type": "Asset",
         }
         Entity.create_from_import(entity_dict)
         entity = Entity.get(entity_dict["id"])
@@ -79,7 +78,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "entity_out_id": str(self.asset.id),
             "nb_occurences": 1,
             "label": "animation",
-            "type": "EntityLink"
+            "type": "EntityLink",
         }
         EntityLink.create_from_import(entity_link_dict)
         entity_link = EntityLink.get_by(id=entity_link_dict["id"])
@@ -101,7 +100,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "project_name": "Caminandes",
             "created_at": "2019-08-25T23:05:05",
             "change": True,
-            "episode_id": None
+            "episode_id": None,
         }
         News.create_from_import(news_dict)
         news = News.get(news_dict["id"])
@@ -109,7 +108,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
 
     def test_person(self):
         person_dict = {
-            "departments": [ ],
+            "departments": [],
             "id": "b86127df-909b-4bc2-983e-a959ea5a7319",
             "created_at": "2019-06-29T15:05:22",
             "updated_at": "2019-06-29T15:05:22",
@@ -127,7 +126,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "notifications_slack_enabled": False,
             "notifications_slack_userid": None,
             "type": "Person",
-            "full_name": "John Doe"
+            "full_name": "John Doe",
         }
         Person.create_from_import(person_dict)
         person = Person.get(person_dict["id"])
@@ -143,7 +142,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "shots": [],
             "project_id": str(self.project.id),
             "episode_id": str(self.episode.id),
-            "type": "Playlist"
+            "type": "Playlist",
         }
         Playlist.create_from_import(playlist_dict)
         playlist = Playlist.get(playlist_dict["id"])
@@ -164,9 +163,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "person_id": str(self.person.id),
             "source_file_id": None,
             "type": "PreviewFile",
-            "comments": [
-                self.comment["id"]
-            ]
+            "comments": [self.comment["id"]],
         }
         PreviewFile.create_from_import(preview_file_dict)
         preview_file = PreviewFile.get(preview_file_dict["id"])
@@ -192,7 +189,7 @@ class CreateFromImportTestCase(ApiDBTestCase):
             "task_status_id": str(self.task_status.id),
             "entity_id": str(self.asset.id),
             "assigner_id": str(self.user["id"]),
-            "type": "Task"
+            "type": "Task",
         }
         Task.create_from_import(task_dict)
         task = Task.get(task_dict["id"])

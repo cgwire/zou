@@ -6,7 +6,6 @@ from zou.app.utils import fields
 
 
 class FileStatusTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(FileStatusTestCase, self).setUp()
         self.generate_data(FileStatus, 3)
@@ -22,10 +21,7 @@ class FileStatusTestCase(ApiDBTestCase):
         self.get_404("data/file-status/%s" % fields.gen_uuid())
 
     def test_create_file_status(self):
-        data = {
-            "name": "open",
-            "color": "#000000"
-        }
+        data = {"name": "open", "color": "#000000"}
         self.file_status = self.post("data/file-status", data)
         self.assertIsNotNone(self.file_status["id"])
 
@@ -34,12 +30,9 @@ class FileStatusTestCase(ApiDBTestCase):
 
     def test_update_file_status(self):
         file_status = self.get_first("data/file-status")
-        data = {
-            "color": "#FFFFFF"
-        }
+        data = {"color": "#FFFFFF"}
         self.put("data/file-status/%s" % file_status["id"], data)
-        file_status_again = self.get(
-            "data/file-status/%s" % file_status["id"])
+        file_status_again = self.get("data/file-status/%s" % file_status["id"])
         self.assertEqual(data["color"], file_status_again["color"])
         self.put_404("data/file-status/%s" % fields.gen_uuid(), data)
 

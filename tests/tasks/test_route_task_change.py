@@ -12,7 +12,6 @@ from PIL import Image
 
 
 class RouteTaskChangeTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(RouteTaskChangeTestCase, self).setUp()
 
@@ -43,21 +42,14 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
 
     def handle_event(self, data):
         self.is_event_fired = True
-        self.assertEqual(
-            data["previous_task_status_id"],
-            self.open_status_id
-        )
+        self.assertEqual(data["previous_task_status_id"], self.open_status_id)
 
     def assert_event_is_fired(self):
         self.assertTrue(self.is_event_fired)
 
     def test_status_to_wip(self):
         self.task.real_start_date = None
-        events.register(
-            "task:start",
-            "mark_event_as_fired",
-            self
-        )
+        events.register("task:start", "mark_event_as_fired", self)
 
         now = self.now()
         time.sleep(1)
@@ -77,37 +69,36 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(
             real_start_date.replace(microsecond=0).isoformat(),
-            task["real_start_date"]
+            task["real_start_date"],
         )
 
     def test_retake_count(self):
         task_id = str(self.task.id)
-        self.post("/actions/tasks/%s/comment" % task_id, {
-            "task_status_id": self.retake_status_id,
-            "comment": "retake 1"
-        })
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 1"},
+        )
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 1)
-        self.post("/actions/tasks/%s/comment" % task_id, {
-            "task_status_id": self.wip_status_id,
-            "comment": "wip 1"
-        })
-        comment = self.post("/actions/tasks/%s/comment" % task_id, {
-            "task_status_id": self.retake_status_id,
-            "comment": "retake 2"
-        })
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.wip_status_id, "comment": "wip 1"},
+        )
+        comment = self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 2"},
+        )
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 2)
-        comment = self.delete("/data/tasks/%s/comments/%s" % (
-            task_id,
-            comment["id"]
-        ))
+        comment = self.delete(
+            "/data/tasks/%s/comments/%s" % (task_id, comment["id"])
+        )
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 1)
-        comment = self.post("/actions/tasks/%s/comment" % task_id, {
-            "task_status_id": self.retake_status_id,
-            "comment": "retake 2"
-        })
+        comment = self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 2"},
+        )
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 2)
 
@@ -117,18 +108,21 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         self.generate_fixture_task(name="second_task")
         task2_id = str(self.task.id)
         path = "/actions/projects/%s/tasks/comment-many" % project_id
-        self.post(path, [
-            {
-                "task_status_id": self.retake_status_id,
-                "comment": "retake 1",
-                "object_id": task_id
-            },
-            {
-                "task_status_id": self.retake_status_id,
-                "comment": "retake 1",
-                "object_id": task2_id
-            }
-        ])
+        self.post(
+            path,
+            [
+                {
+                    "task_status_id": self.retake_status_id,
+                    "comment": "retake 1",
+                    "object_id": task_id,
+                },
+                {
+                    "task_status_id": self.retake_status_id,
+                    "comment": "retake 1",
+                    "object_id": task2_id,
+                },
+            ],
+        )
         self.get("data/tasks/%s" % task_id)
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 1)
@@ -148,13 +142,13 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
             {
                 "task_status_id": self.retake_status_id,
                 "comment": "retake 1",
-                "object_id": task_id
+                "object_id": task_id,
             },
             {
                 "task_status_id": self.retake_status_id,
                 "comment": "retake 1",
-                "object_id": task2_id
-            }
+                "object_id": task2_id,
+            },
         ]
         path = "/actions/projects/%s/tasks/comment-many" % project_id
         self.assign_task_to_artist(task_id)
@@ -178,8 +172,8 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
             self.get_fixture_file_path(os.path.join("thumbnails", "th01.png")),
             extra_fields={
                 "task_status_id": self.retake_status_id,
-                "comment": "retake 1"
-            }
+                "comment": "retake 1",
+            },
         )
         attachment = self.get("data/attachment-files")[0]
         attachment = self.get("data/attachment-files/%s" % attachment["id"])

@@ -201,8 +201,9 @@ def set_logger(logs_dir):
     Configure so that it logs results to a file stored in a given folder.
     """
     file_name = os.path.join(logs_dir, "zou_sync_changes.log")
-    file_handler = logging.handlers.TimedRotatingFileHandler(file_name,
-                                                             when="D")
+    file_handler = logging.handlers.TimedRotatingFileHandler(
+        file_name, when="D"
+    )
 
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
@@ -304,8 +305,7 @@ def run_last_events_files(minutes=0, page_size=50):
                 download_preview_from_another_instance(preview_file)
         else:
             download_thumbnail_from_another_instance(
-                event_name,
-                event["data"]["%s_id" % event_name]
+                event_name, event["data"]["%s_id" % event_name]
             )
 
 
@@ -345,11 +345,11 @@ def sync_entries(model_name, model, project=None):
         model.create_from_import_list(instances)
     elif project:
         project = gazu.project.get_project_by_name(project)
-        if model_name == 'projects':
-            instances = [gazu.client.fetch_one(model_name, project.get('id'))]
-        elif model_name in 'search-filters':
+        if model_name == "projects":
+            instances = [gazu.client.fetch_one(model_name, project.get("id"))]
+        elif model_name in "search-filters":
             instances = gazu.client.fetch_all(
-                model_name, params=dict(project_id=project.get('id'))
+                model_name, params=dict(project_id=project.get("id"))
             )
         else:
             instances = gazu.client.fetch_all(model_name)
@@ -592,7 +592,7 @@ def add_file_listeners(event_client):
         gazu.events.add_listener(
             event_client,
             "%s:set-thumbnail" % model_name,
-            get_retrieve_thumbnail(model_name)
+            get_retrieve_thumbnail(model_name),
         )
 
 
@@ -603,10 +603,7 @@ def retrieve_file(data):
         preview_file_id = data["preview_file_id"]
         preview_file = PreviewFile.get(preview_file_id)
         download_preview_from_another_instance(preview_file)
-        forward_event({
-            "name": "preview-file:add-file",
-            "data": data
-        })
+        forward_event({"name": "preview-file:add-file", "data": data})
         logger.info("Preview file and related downloaded: %s" % preview_file_id)
     except gazu.exception.RouteNotFoundException as e:
         logger.error("Route not found: %s" % e)
@@ -620,10 +617,9 @@ def get_retrieve_thumbnail(model_name):
         try:
             instance_id = data["preview_file_id"]
             download_thumbnail_from_another_instance(model_name, instance_id)
-            forward_event({
-                "name": "%s:set-thumbnail" % model_name,
-                "data": data
-            })
+            forward_event(
+                {"name": "%s:set-thumbnail" % model_name, "data": data}
+            )
             logger.info(
                 "Thumbnail downloaded: %s %s" % (model_name, instance_id)
             )
@@ -632,6 +628,7 @@ def get_retrieve_thumbnail(model_name):
             logger.error(
                 "Fail to dowonload thunbnail: %s %s" % (model_name, instance_id)
             )
+
     return retrieve_thumbnail
 
 
@@ -737,11 +734,11 @@ def download_files_from_another_instance(project=None):
 
     if project:
         project_dict = gazu.project.get_project_by_name(project)
-        preview_files = PreviewFile \
-            .query \
-            .join(Task) \
-            .filter(Task.project_id == project_dict["id"]) \
+        preview_files = (
+            PreviewFile.query.join(Task)
+            .filter(Task.project_id == project_dict["id"])
             .all()
+        )
     else:
         preview_files = PreviewFile.query.all()
 
@@ -759,7 +756,7 @@ def download_thumbnails_from_another_instance(model_name, project=None):
         instances = model.query.all()
     else:
         project = gazu.project.get_project_by_name(project)
-        instances = model.query.filter_by(id=project.get('id'))
+        instances = model.query.filter_by(id=project.get("id"))
 
     for instance in instances:
         if instance.has_avatar:
@@ -771,14 +768,15 @@ def download_thumbnail_from_another_instance(model_name, model_id):
     Download into the local storage the thumbnail for a given model instance.
     """
     from zou.app import app
+
     with app.app_context():
         file_path = "/tmp/thumbnails-%s.png" % str(model_id)
         path = "/pictures/thumbnails/%ss/%s.png" % (model_name, model_id)
         try:
-                gazu.client.download(path, file_path)
-                file_store.add_picture("thumbnails", model_id, file_path)
-                os.remove(file_path)
-                print("%s downloaded" % file_path)
+            gazu.client.download(path, file_path)
+            file_store.add_picture("thumbnails", model_id, file_path)
+            os.remove(file_path)
+            print("%s downloaded" % file_path)
         except Exception as e:
             print(e)
             print("%s download failed" % file_path)
@@ -791,6 +789,7 @@ def download_preview_from_another_instance(preview_file):
     """
 
     from zou.app import app
+
     print(
         "download preview %s (%s)" % (preview_file.id, preview_file.extension)
     )
@@ -818,14 +817,11 @@ def download_preview_from_another_instance(preview_file):
                         file_store.add_picture,
                         prefix,
                         preview_file_id,
-                        preview_file.extension
+                        preview_file.extension,
                     )
         if not exists_func("previews", preview_file_id):
             download_file_from_another_instance(
-                save_func,
-                "previews",
-                preview_file_id,
-                preview_file.extension
+                save_func, "previews", preview_file_id, preview_file.extension
             )
 
 
@@ -842,7 +838,7 @@ def download_file_from_another_instance(
         else:
             path = "/pictures/original/preview-files/%s.%s" % (
                 preview_file_id,
-                extension
+                extension,
             )
     else:
         path_prefix = prefix
@@ -850,7 +846,7 @@ def download_file_from_another_instance(
             path_prefix = prefix + "s"
         path = "/pictures/%s/preview-files/%s.png" % (
             path_prefix,
-            preview_file_id
+            preview_file_id,
         )
     try:
         file_path = "/tmp/%s.%s" % (preview_file_id, extension)

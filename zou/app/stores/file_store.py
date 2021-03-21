@@ -54,14 +54,16 @@ def init_s3(self, name, config):
 
     super(S3Backend, self).__init__(name, config)
     self.session = boto3.session.Session()
-    self.s3config = boto3.session.Config(signature_version='s3v4')
+    self.s3config = boto3.session.Config(signature_version="s3v4")
 
-    self.s3 = self.session.resource('s3',
-                                    config=self.s3config,
-                                    endpoint_url=config.endpoint,
-                                    region_name=config.region,
-                                    aws_access_key_id=config.access_key,
-                                    aws_secret_access_key=config.secret_key)
+    self.s3 = self.session.resource(
+        "s3",
+        config=self.s3config,
+        endpoint_url=config.endpoint,
+        region_name=config.region,
+        aws_access_key_id=config.access_key,
+        aws_secret_access_key=config.secret_key,
+    )
     self.bucket = self.s3.Bucket(name)
 
     try:
@@ -69,9 +71,7 @@ def init_s3(self, name, config):
             self.bucket.create()
         else:
             self.bucket.create(
-                CreateBucketConfiguration={
-                    'LocationConstraint': config.region
-                }
+                CreateBucketConfiguration={"LocationConstraint": config.region}
             )
     except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
         pass

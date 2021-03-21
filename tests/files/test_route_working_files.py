@@ -7,7 +7,6 @@ from zou.app.services import projects_service
 
 
 class WorkingFilesTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(WorkingFilesTestCase, self).setUp()
 
@@ -39,36 +38,26 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.generate_fixture_working_file(name="main", revision=3)
         self.generate_fixture_working_file(name="main", revision=4)
         working_file_main = self.generate_fixture_working_file(
-            name="main",
-            revision=5
+            name="main", revision=5
         )
 
         self.generate_fixture_working_file(name="hotfix", revision=1)
         self.generate_fixture_working_file(name="hotfix", revision=2)
         working_file_hotfix = self.generate_fixture_working_file(
-            name="hotfix",
-            revision=3
+            name="hotfix", revision=3
         )
         working_file_wip = self.generate_fixture_working_file(
-            name="wip",
-            revision=1
+            name="wip", revision=1
         )
 
         working_files = self.get(
             "/data/tasks/%s/working-files/last-revisions" % self.task.id
         )
+        self.assertEqual(working_files["main"], working_file_main.serialize())
         self.assertEqual(
-            working_files["main"],
-            working_file_main.serialize()
+            working_files["hotfix"], working_file_hotfix.serialize()
         )
-        self.assertEqual(
-            working_files["hotfix"],
-            working_file_hotfix.serialize()
-        )
-        self.assertEqual(
-            working_files["wip"],
-            working_file_wip.serialize()
-        )
+        self.assertEqual(working_files["wip"], working_file_wip.serialize())
 
     def test_new_working_file(self):
         task = Task.get(self.task_id)
@@ -76,11 +65,14 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertNotEqual(self.user["id"], str(task.assignees[0].id))
 
         path = "/data/tasks/%s/working-files/new" % self.task_id
-        working_file = self.post(path, {
-            "name": "main",
-            "description": "description test",
-            "comment": "comment test"
-        })
+        working_file = self.post(
+            path,
+            {
+                "name": "main",
+                "description": "description test",
+                "comment": "comment test",
+            },
+        )
         self.assertEqual(working_file["revision"], 1)
         task = Task.get(self.task_id)
 
@@ -91,52 +83,68 @@ class WorkingFilesTestCase(ApiDBTestCase):
 
         task = Task.get(self.task_id)
         path = "/data/tasks/%s/working-files/new" % self.task_id
-        working_file = self.post(path, {
-            "name": "main",
-            "description": "description test",
-            "comment": "comment test"
-        })
+        working_file = self.post(
+            path,
+            {
+                "name": "main",
+                "description": "description test",
+                "comment": "comment test",
+            },
+        )
         self.assertEqual(working_file["revision"], 2)
 
-        working_file = self.post(path, {
-            "name": "main",
-            "description": "description test",
-            "comment": "comment test"
-        })
+        working_file = self.post(
+            path,
+            {
+                "name": "main",
+                "description": "description test",
+                "comment": "comment test",
+            },
+        )
         self.assertEqual(working_file["revision"], 3)
         self.assertEqual(
             working_file["path"],
             "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
-            "3ds_max/cosmos_landromat_props_tree_shaders_main_v003"
+            "3ds_max/cosmos_landromat_props_tree_shaders_main_v003",
         )
 
-        working_file = self.post(path, {
-            "name": "main",
-            "description": "description test",
-            "comment": "comment test",
-            "revision": 66
-        })
+        working_file = self.post(
+            path,
+            {
+                "name": "main",
+                "description": "description test",
+                "comment": "comment test",
+                "revision": 66,
+            },
+        )
         self.assertEqual(working_file["revision"], 66)
         self.assertEqual(
             working_file["path"],
             "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
-            "3ds_max/cosmos_landromat_props_tree_shaders_main_v066"
+            "3ds_max/cosmos_landromat_props_tree_shaders_main_v066",
         )
 
     def test_create_same_working_file(self):
         path = "/data/tasks/%s/working-files/new" % self.task_id
-        self.post(path, {
-            "name": "main",
-            "description": "description test",
-            "comment": "comment test",
-            "revision": 66
-        })
-        self.post(path, {
-            "name": "main",
-            "description": "description test",
-            "comment": "comment test",
-            "revision": 66
-        }, 400)
+        self.post(
+            path,
+            {
+                "name": "main",
+                "description": "description test",
+                "comment": "comment test",
+                "revision": 66,
+            },
+        )
+        self.post(
+            path,
+            {
+                "name": "main",
+                "description": "description test",
+                "comment": "comment test",
+                "revision": 66,
+            },
+            400,
+        )
 
     def test_update_modification_date(self):
         path = "/actions/working-files/%s/modified" % self.working_file.id
@@ -172,18 +180,15 @@ class WorkingFilesTestCase(ApiDBTestCase):
         path = "/data/files/%s" % output_file_id
         self.get(path, 403)
         projects_service.add_team_member(
-            self.project_id,
-            self.user_cg_artist["id"]
+            self.project_id, self.user_cg_artist["id"]
         )
         self.get(path)
 
     def test_comment_working_file(self):
-        comment_data = {
-            "comment": "test working file comment"
-        }
+        comment_data = {"comment": "test working file comment"}
         self.put(
             "/actions/working-files/%s/comment" % self.working_file.id,
-            comment_data
+            comment_data,
         )
         working_file = self.get("data/working-files/%s" % self.working_file.id)
         self.assertEqual(working_file["comment"], comment_data["comment"])
@@ -193,31 +198,27 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.generate_fixture_user_cg_artist()
         user = self.user_cg_artist
         self.log_in_cg_artist()
-        comment_data = {
-            "comment": "test working file comment"
-        }
+        comment_data = {"comment": "test working file comment"}
 
         self.put(
             "/actions/working-files/%s/comment" % working_file["id"],
             comment_data,
-            403
+            403,
         )
         projects_service.add_team_member(self.project_id, user["id"])
         self.put(
             "/actions/working-files/%s/comment" % working_file["id"],
-            comment_data
+            comment_data,
         )
         working_file = self.get("data/working-files/%s" % working_file["id"])
         self.assertEqual(working_file["comment"], comment_data["comment"])
 
     def test_comment_working_wrong_data(self):
-        comment_data = {
-            "comment_wrong": "test working file comment"
-        }
+        comment_data = {"comment_wrong": "test working file comment"}
         self.put(
             "/actions/working-files/%s/comment" % self.working_file.id,
             comment_data,
-            400
+            400,
         )
 
     def test_get_working_files_for_entity(self):

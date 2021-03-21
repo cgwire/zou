@@ -10,9 +10,7 @@ from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 
-from zou.app.services import (
-    user_service
-)
+from zou.app.services import user_service
 
 
 DEFAULT_RETAKE_STATS = {
@@ -29,7 +27,7 @@ DEFAULT_RETAKE_STATS = {
     "other": {
         "count": 0,
         "frames": 0,
-    }
+    },
 }
 
 
@@ -42,14 +40,16 @@ DEFAULT_EVOLUTION_STATS = {
 
 def get_main_stats():
     return {
-        "number_of_video_previews":
-            PreviewFile.query.filter(PreviewFile.extension == "mp4").count(),
-        "number_of_picture_previews":
-            PreviewFile.query.filter(PreviewFile.extension == "png").count(),
-        "number_of_model_previews":
-            PreviewFile.query.filter(PreviewFile.extension == "obj").count(),
-        "number_of_comments":
-            Comment.query.count()
+        "number_of_video_previews": PreviewFile.query.filter(
+            PreviewFile.extension == "mp4"
+        ).count(),
+        "number_of_picture_previews": PreviewFile.query.filter(
+            PreviewFile.extension == "png"
+        ).count(),
+        "number_of_model_previews": PreviewFile.query.filter(
+            PreviewFile.extension == "obj"
+        ).count(),
+        "number_of_comments": Comment.query.count(),
     }
 
 
@@ -239,9 +239,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
 
         },
     """
-    results = {
-        "all": {"all":  copy.deepcopy(DEFAULT_RETAKE_STATS)}
-    }
+    results = {"all": {"all": copy.deepcopy(DEFAULT_RETAKE_STATS)}}
     query = _get_retake_stats_query(project_id, only_assigned)
     query_results = query.all()
     for (
@@ -263,7 +261,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             is_retake,
             is_done,
             retake_count,
-            nb_frames
+            nb_frames,
         )
 
     # Another loop is needed because we need to know the max retake count
@@ -283,7 +281,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             is_retake,
             is_done,
             retake_count,
-            nb_frames
+            nb_frames,
         )
     return results
 
@@ -329,7 +327,7 @@ def _add_stats(
     is_retake,
     is_done,
     retake_count,
-    nb_frames
+    nb_frames,
 ):
     for (key1, key2) in [
         ("all", "all"),
@@ -363,7 +361,7 @@ def _add_evolution_stats(
     is_retake,
     is_done,
     retake_count,
-    nb_frames
+    nb_frames,
 ):
     for (key1, key2) in [(episode_id, "all"), (episode_id, task_type_id)]:
         # In this loop we compute the "evolution" statistics
@@ -376,18 +374,18 @@ def _add_evolution_stats(
         for i in range(1, max_retake_count + 1):
             take_number = str(i)
             if take_number not in evolution_data:
-                evolution_data[take_number] = \
-                    copy.deepcopy(DEFAULT_EVOLUTION_STATS)
+                evolution_data[take_number] = copy.deepcopy(
+                    DEFAULT_EVOLUTION_STATS
+                )
             if retake_count > 0 and i <= retake_count:
                 evolution_data[take_number]["retake"]["count"] += 1
-                evolution_data[take_number]["retake"]["frames"] += \
+                evolution_data[take_number]["retake"]["frames"] += (
                     nb_frames or 0
+                )
             elif is_done:
                 evolution_data[take_number]["done"]["count"] += 1
-                evolution_data[take_number]["done"]["frames"] += \
-                    nb_frames or 0
+                evolution_data[take_number]["done"]["frames"] += nb_frames or 0
             else:
                 evolution_data[take_number]["other"]["count"] += 1
-                evolution_data[take_number]["other"]["frames"] += \
-                    nb_frames or 0
+                evolution_data[take_number]["other"]["frames"] += nb_frames or 0
     return results

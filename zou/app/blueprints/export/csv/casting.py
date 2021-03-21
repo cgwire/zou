@@ -13,7 +13,6 @@ from zou.app.mixin import ArgsMixin
 
 
 class CastingCsvExport(Resource, ArgsMixin):
-
     @jwt_required
     def get(self, project_id):
         project = projects_service.get_project(project_id)  # Check existence
@@ -89,23 +88,21 @@ class CastingCsvExport(Resource, ArgsMixin):
         if episode_id is not None:
             query = query.filter(Episode.id == episode_id)
 
-        query = query \
-            .add_columns(
-                Episode.name,
-                Parent.name,
-                EntityType.name,
-                Target.name,
-                AssetType.name,
-                Asset.name,
-            ) \
-            .order_by(
-                Episode.name,
-                Parent.name,
-                EntityType.name,
-                Target.name,
-                AssetType.name,
-                Asset.name,
-            )
+        query = query.add_columns(
+            Episode.name,
+            Parent.name,
+            EntityType.name,
+            Target.name,
+            AssetType.name,
+            Asset.name,
+        ).order_by(
+            Episode.name,
+            Parent.name,
+            EntityType.name,
+            Target.name,
+            AssetType.name,
+            Asset.name,
+        )
 
         for (
             entity_link,

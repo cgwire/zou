@@ -2,13 +2,10 @@ import time
 from tests.base import ApiDBTestCase
 from zou.app.models.event import ApiEvent
 
-from zou.app.services import (
-    assets_service
-)
+from zou.app.services import assets_service
 
 
 class EventsRoutesTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(EventsRoutesTestCase, self).setUp()
 
@@ -18,37 +15,21 @@ class EventsRoutesTestCase(ApiDBTestCase):
 
     def test_get_last_events(self):
         asset = assets_service.create_asset(
-            self.project.id,
-            self.asset_type.id,
-            "test 1",
-            "",
-            {}
+            self.project.id, self.asset_type.id, "test 1", "", {}
         )
         after = asset["created_at"]
         time.sleep(1)
         asset = assets_service.create_asset(
-            self.project.id,
-            self.asset_type.id,
-            "test 2",
-            "",
-            {}
+            self.project.id, self.asset_type.id, "test 2", "", {}
         )
         time.sleep(1)
         asset = assets_service.create_asset(
-            self.project.id,
-            self.asset_type.id,
-            "test 3",
-            "",
-            {}
+            self.project.id, self.asset_type.id, "test 3", "", {}
         )
         before = asset["created_at"]
         time.sleep(1)
         asset = assets_service.create_asset(
-            self.project.id,
-            self.asset_type.id,
-            "test 4",
-            "",
-            {}
+            self.project.id, self.asset_type.id, "test 4", "", {}
         )
 
         events = self.get("/data/events/last")
@@ -58,7 +39,8 @@ class EventsRoutesTestCase(ApiDBTestCase):
         events = self.get("/data/events/last?before=%s" % before)
         self.assertEqual(len(events), 2)
         events = self.get(
-            "/data/events/last?before=%s&after=%s" % (before, after))
+            "/data/events/last?before=%s&after=%s" % (before, after)
+        )
         self.assertEqual(len(events), 2)
 
         ApiEvent.create(name="preview-file:add-file")

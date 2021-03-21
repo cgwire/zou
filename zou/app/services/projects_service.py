@@ -56,8 +56,7 @@ def get_projects_with_extra_data(query, for_client=False):
         project_dict = project.serialize(relations=True)
         if for_client:
             descriptors = MetadataDescriptor.get_all_by(
-                project_id=project.id,
-                for_client=True
+                project_id=project.id, for_client=True
             )
         else:
             descriptors = MetadataDescriptor.get_all_by(project_id=project.id)
@@ -238,14 +237,14 @@ def add_team_member(project_id, person_id):
     """
     Add a person listed in database to the the project team.
     """
-    return _add_to_list_attr(project_id, Person, person_id, 'team')
+    return _add_to_list_attr(project_id, Person, person_id, "team")
 
 
 def remove_team_member(project_id, person_id):
     """
     Remove a person listed in database from the the project team.
     """
-    return _remove_from_list_attr(project_id, Person, person_id, 'team')
+    return _remove_from_list_attr(project_id, Person, person_id, "team")
 
 
 def add_asset_type_setting(project_id, asset_type_id):
@@ -254,7 +253,7 @@ def add_asset_type_setting(project_id, asset_type_id):
     """
     print(project_id, asset_type_id)
     return _add_to_list_attr(
-        project_id, EntityType, asset_type_id, 'asset_types'
+        project_id, EntityType, asset_type_id, "asset_types"
     )
 
 
@@ -263,7 +262,7 @@ def remove_asset_type_setting(project_id, asset_type_id):
     Remove an asset type listed in database from the the project asset types.
     """
     return _remove_from_list_attr(
-        project_id, EntityType, asset_type_id, 'asset_types'
+        project_id, EntityType, asset_type_id, "asset_types"
     )
 
 
@@ -271,7 +270,7 @@ def add_task_type_setting(project_id, task_type_id):
     """
     Add a task type listed in database to the the project task types.
     """
-    return _add_to_list_attr(project_id, TaskType, task_type_id, 'task_types')
+    return _add_to_list_attr(project_id, TaskType, task_type_id, "task_types")
 
 
 def remove_task_type_setting(project_id, task_type_id):
@@ -279,7 +278,7 @@ def remove_task_type_setting(project_id, task_type_id):
     Remove a task status listed in database from the the project task types.
     """
     return _remove_from_list_attr(
-        project_id, TaskType, task_type_id, 'task_types'
+        project_id, TaskType, task_type_id, "task_types"
     )
 
 
@@ -288,7 +287,7 @@ def add_task_status_setting(project_id, task_status_id):
     Add a task status listed in database to the the project task statuses.
     """
     return _add_to_list_attr(
-        project_id, TaskStatus, task_status_id, 'task_statuses'
+        project_id, TaskStatus, task_status_id, "task_statuses"
     )
 
 
@@ -297,7 +296,7 @@ def remove_task_status_setting(project_id, task_status_id):
     Remove a task status listed in database from the the project task statuses.
     """
     return _remove_from_list_attr(
-        project_id, TaskStatus, task_status_id, 'task_statuses'
+        project_id, TaskStatus, task_status_id, "task_statuses"
     )
 
 
@@ -334,7 +333,7 @@ def add_metadata_descriptor(project_id, entity_type, name, choices, for_client):
     events.emit(
         "metadata-descriptor:new",
         {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=project_id
+        project_id=project_id,
     )
     clear_project_cache(project_id)
     return descriptor.serialize()
@@ -344,12 +343,9 @@ def get_metadata_descriptors(project_id, for_client=False):
     """
     Get all metadata descriptors for given project and entity type.
     """
-    query = (
-        MetadataDescriptor.query.filter(
-            MetadataDescriptor.project_id == project_id
-        )
-        .order_by(MetadataDescriptor.name)
-    )
+    query = MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id == project_id
+    ).order_by(MetadataDescriptor.name)
     if for_client:
         query = query.filter(MetadataDescriptor.for_client == True)
 
@@ -393,7 +389,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     events.emit(
         "metadata-descriptor:update",
         {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=descriptor.project_id
+        project_id=descriptor.project_id,
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()
@@ -417,7 +413,7 @@ def remove_metadata_descriptor(metadata_descriptor_id):
     events.emit(
         "metadata-descriptor:delete",
         {"metadata_descriptor_id": str(descriptor.id)},
-        project_id=descriptor.project_id
+        project_id=descriptor.project_id,
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()

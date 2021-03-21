@@ -7,7 +7,6 @@ from zou.app.utils import events
 
 
 class AssetsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AssetsTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -69,7 +68,7 @@ class AssetsTestCase(ApiDBTestCase):
         Entity.create(
             name="Smoke",
             entity_type_id=asset_type["id"],
-            project_id=self.project.id
+            project_id=self.project.id,
         )
         path_ids = (self.project.id, self.asset_type.id)
         path = "data/projects/%s/asset-types/%s/assets" % path_ids
@@ -78,36 +77,25 @@ class AssetsTestCase(ApiDBTestCase):
         self.assertDictEqual(assets[0], self.asset_dict)
 
     def test_create_asset(self):
-        events.register(
-            "asset:new",
-            "handle_event",
-            self
-        )
+        events.register("asset:new", "handle_event", self)
         self.asset_data = {
             "name": "car",
             "description": "Test description",
-            "data": {"extra": "test extra"}
+            "data": {"extra": "test extra"},
         }
         path = "data/projects/%s/asset-types/%s/assets/new" % (
             self.project.id,
-            self.asset_type.id
+            self.asset_type.id,
         )
         asset = self.post(path, self.asset_data)
         assets = assets_service.get_assets()
         self.assertIsNotNone(asset.get("id", None))
         self.assertEqual(len(assets), 2)
+        self.assertEqual(assets[1]["name"], self.asset_data["name"])
         self.assertEqual(
-            assets[1]["name"],
-            self.asset_data["name"]
+            assets[1]["description"], self.asset_data["description"]
         )
-        self.assertEqual(
-            assets[1]["description"],
-            self.asset_data["description"]
-        )
-        self.assertDictEqual(
-            assets[1]["data"],
-            self.asset_data["data"]
-        )
+        self.assertDictEqual(assets[1]["data"], self.asset_data["data"])
 
     def test_remove_asset(self):
         self.generate_fixture_asset_types()

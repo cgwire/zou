@@ -4,7 +4,6 @@ from zou.app.services import persons_service, projects_service, tasks_service
 
 
 class ShotTasksTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ShotTasksTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -44,28 +43,20 @@ class ShotTasksTestCase(ApiDBTestCase):
         person_id = self.user_vendor["id"]
         self.log_in_vendor()
         shots = self.get(
-            "data/shots/with-tasks?project_id=%s" % project_id,
-            403
+            "data/shots/with-tasks?project_id=%s" % project_id, 403
         )
         projects_service.add_team_member(project_id, person_id)
-        shots = self.get(
-            "data/shots/with-tasks?project_id=%s" % project_id
-        )
+        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
         self.assertEqual(len(shots), 0)
         tasks_service.assign_task(task_id, person_id)
-        shots = self.get(
-            "data/shots/with-tasks?project_id=%s" % project_id
-        )
+        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
         self.assertEqual(len(shots), 1)
         self.assertEqual(len(shots[0]["tasks"]), 1)
-        self.assertTrue(
-            str(person_id) in shots[0]["tasks"][0]["assignees"]
-        )
+        self.assertTrue(str(person_id) in shots[0]["tasks"][0]["assignees"])
 
     def test_get_task_types_for_shot(self):
         task_types = self.get("/data/shots/%s/task-types" % self.shot.id)
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
-            task_types[0],
-            self.task_type_animation.serialize()
+            task_types[0], self.task_type_animation.serialize()
         )

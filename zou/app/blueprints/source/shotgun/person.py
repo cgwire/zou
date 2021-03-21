@@ -27,9 +27,9 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
         elif permission_group == "Admin":
             role = "admin"
 
-        if sg_person.get('department', None) is not None:
+        if sg_person.get("department", None) is not None:
             department = tasks_service.get_or_create_department(
-                sg_person['department']['name']
+                sg_person["department"]["name"]
             )
         else:
             department = None
@@ -48,7 +48,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
     def import_entry(self, data):
         # remove departments. It needs to be created using the DepartmentLink
         # table.
-        imported_department = data.pop('department')
+        imported_department = data.pop("department")
 
         if data["email"] != "changeme@email.com":
             person = Person.get_by(shotgun_id=data["shotgun_id"])
@@ -66,26 +66,29 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
 
             # create or update a department/person link if needed
             if imported_department:
-                department_person_link = \
-                    db.session.query(DepartmentLink).filter_by(
-                        person_id=person.id).first()
-                department = Department.get_by(
-                    id=imported_department['id'])
+                department_person_link = (
+                    db.session.query(DepartmentLink)
+                    .filter_by(person_id=person.id)
+                    .first()
+                )
+                department = Department.get_by(id=imported_department["id"])
 
                 if department_person_link is None:
                     person.departments.append(department)
                     current_app.logger.info(
-                        "Department Person Link created: %s-%s" % (
-                            department.name,
-                            person.full_name()
-                        ))
-                elif person.departments != [department, ]:
-                    person.departments = [department, ]
+                        "Department Person Link created: %s-%s"
+                        % (department.name, person.full_name())
+                    )
+                elif person.departments != [
+                    department,
+                ]:
+                    person.departments = [
+                        department,
+                    ]
                     current_app.logger.info(
-                        "Department Person Link updated: %s-%s" % (
-                            department.name,
-                            person.full_name()
-                        ))
+                        "Department Person Link updated: %s-%s"
+                        % (department.name, person.full_name())
+                    )
 
                 person.save()
 

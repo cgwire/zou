@@ -18,7 +18,6 @@ from zou.app.utils import csv_utils
 
 
 class PlaylistCsvExport(Resource):
-
     def check_permissions(self, project_id):
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -68,17 +67,9 @@ class PlaylistCsvExport(Resource):
                 created_at,
                 "",
                 "",
-                ""
+                "",
             ],
-            [
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-                ""
-            ],
+            ["", "", "", "", "", "", ""],
             [
                 "Entity name",
                 "Task Type",
@@ -86,8 +77,8 @@ class PlaylistCsvExport(Resource):
                 "Task Status",
                 "Last comment author",
                 "Last comment date",
-                "Last comment"
-            ]
+                "Last comment",
+            ],
         ]
         return headers
 
@@ -107,7 +98,7 @@ class PlaylistCsvExport(Resource):
             task_status["name"],
             author,
             date,
-            comment.get("text",""),
+            comment.get("text", ""),
         ]
 
     def get_episode(self, playlist):

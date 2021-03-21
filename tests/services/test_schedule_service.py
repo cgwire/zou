@@ -4,7 +4,6 @@ from zou.app.services import schedule_service
 
 
 class ScheduleServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ScheduleServiceTestCase, self).setUp()
         self.generate_shot_suite()
@@ -31,8 +30,7 @@ class ScheduleServiceTestCase(ApiDBTestCase):
 
     def test_get_schedule_sequence_items(self):
         items = schedule_service.get_sequences_schedule_items(
-            self.project.id,
-            self.task_type_id
+            self.project.id, self.task_type_id
         )
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["object_id"], self.sequence_id)
@@ -41,8 +39,7 @@ class ScheduleServiceTestCase(ApiDBTestCase):
 
     def test_get_schedule_episode_items(self):
         items = schedule_service.get_episodes_schedule_items(
-            self.project.id,
-            self.task_type_id
+            self.project.id, self.task_type_id
         )
         self.assertEqual(items[0]["object_id"], self.episode_id)
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)
@@ -50,8 +47,7 @@ class ScheduleServiceTestCase(ApiDBTestCase):
 
     def test_get_schedule_asset_type_items(self):
         items = schedule_service.get_asset_types_schedule_items(
-            self.project.id,
-            self.task_type_id
+            self.project.id, self.task_type_id
         )
         self.assertEqual(items[0]["object_id"], self.asset_type_id)
         self.assertEqual(items[0]["task_type_id"], self.task_type_id)

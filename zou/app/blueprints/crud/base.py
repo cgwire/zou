@@ -10,7 +10,8 @@ from sqlalchemy.exc import IntegrityError, StatementError
 
 from zou.app.utils import events, fields, permissions
 from zou.app.services.exception import (
-    ArgumentsException, WrongParameterException
+    ArgumentsException,
+    WrongParameterException,
 )
 
 
@@ -204,7 +205,7 @@ class BaseModelsResource(Resource):
         return events.emit(
             "%s:new" % self.model.__tablename__.replace("_", "-"),
             {"%s_id" % self.model.__tablename__: instance_dict["id"]},
-            project_id=instance_dict.get("project_id", None)
+            project_id=instance_dict.get("project_id", None),
         )
 
 
@@ -350,12 +351,12 @@ class BaseModelResource(Resource):
         return events.emit(
             "%s:update" % self.model.__tablename__.replace("_", "-"),
             {"%s_id" % self.model.__tablename__: instance_dict["id"]},
-            project_id=instance_dict.get("project_id", None)
+            project_id=instance_dict.get("project_id", None),
         )
 
     def emit_delete_event(self, instance_dict):
         return events.emit(
             "%s:delete" % self.model.__tablename__.replace("_", "-"),
             {"%s_id" % self.model.__tablename__: instance_dict["id"]},
-            project_id=instance_dict.get("project_id", None)
+            project_id=instance_dict.get("project_id", None),
         )

@@ -12,9 +12,7 @@ from zou.app.models.project import Project
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 
-from zou.app.services import (
-    entities_service
-)
+from zou.app.services import entities_service
 from zou.app.services.base_service import (
     get_instance,
     get_or_create_instance_by_name,
@@ -158,8 +156,8 @@ def get_last_working_files_for_task(task_id):
     # group by name
     working_files_by_name = {
         k: list(v)[0]
-        for k, v
-        in itertools.groupby(working_files, key=itemgetter('name'))}
+        for k, v in itertools.groupby(working_files, key=itemgetter("name"))
+    }
 
     return working_files_by_name
 
@@ -211,7 +209,7 @@ def create_new_working_revision(
         events.emit(
             "working-file:new",
             {"working_file_id": working_file.id},
-            project_id=str(task.project_id)
+            project_id=str(task.project_id),
         )
     except IntegrityError:
         raise EntryAlreadyExistsException
@@ -233,7 +231,7 @@ def create_new_output_revision(
     nb_elements=1,
     asset_instance_id=None,
     temporal_entity_id=None,
-    file_status_id=None
+    file_status_id=None,
 ):
     """
     Create a new ouput file for given entity. Output type, task type, author
@@ -300,7 +298,7 @@ def create_new_output_revision(
             events.emit(
                 "output-file:new",
                 {"output_file_id": output_file.id},
-                project_id=entity["project_id"]
+                project_id=entity["project_id"],
             )
         else:
             raise EntryAlreadyExistsException
@@ -704,8 +702,13 @@ def get_preview_files_for_task(task_id):
 
 
 def create_preview_file_raw(
-    name, revision, task_id, person_id, source="webgui", extension="mp4",
-    position=1
+    name,
+    revision,
+    task_id,
+    person_id,
+    source="webgui",
+    extension="mp4",
+    position=1,
 ):
     return PreviewFile.create(
         name=name,
@@ -715,13 +718,18 @@ def create_preview_file_raw(
         person_id=person_id,
         extension=extension,
         position=position,
-        status="processing"
+        status="processing",
     )
 
 
 def create_preview_file(
-    name, revision, task_id, person_id, source="webgui", extension="mp4",
-    position=1
+    name,
+    revision,
+    task_id,
+    person_id,
+    source="webgui",
+    extension="mp4",
+    position=1,
 ):
     return create_preview_file_raw(
         name, revision, task_id, person_id, source, extension, position
@@ -815,7 +823,7 @@ def remove_preview_file(preview_file_id):
     events.emit(
         "preview-file:delete",
         {"preview_file_id": preview_file_id},
-        project_id=str(task.project_id)
+        project_id=str(task.project_id),
     )
     return preview_file.serialize()
 

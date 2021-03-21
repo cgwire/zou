@@ -40,7 +40,7 @@ routes = [
     ("/data/persons/<person_id>/tasks", PersonTasksResource),
     (
         "/data/persons/<person_id>/related-tasks/<task_type_id>",
-        PersonRelatedTasksResource
+        PersonRelatedTasksResource,
     ),
     ("/data/persons/<person_id>/done-tasks", PersonDoneTasksResource),
     (

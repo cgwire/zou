@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class CastingCsvExportTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(CastingCsvExportTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -20,7 +19,7 @@ class CastingCsvExportTestCase(ApiDBTestCase):
             ("Block", self.asset_type_props.id),
             ("Wagon", self.asset_type_props.id),
             ("Victor", self.asset_type_character.id),
-            ("John", self.asset_type_character.id)
+            ("John", self.asset_type_character.id),
         ]:
             self.generate_fixture_asset(name, asset_type_id=asset_type_id)
             if name == "Lake":

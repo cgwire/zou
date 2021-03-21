@@ -55,10 +55,7 @@ class BaseStatusResource(Resource):
             port = config.KEY_VALUE_STORE["port"]
             db = config.KV_JOB_DB_INDEX
             url = "redis://%s:%s/%s" % (host, port, db)
-            args = [
-                "rq", "info",
-                "--url", url
-            ]
+            args = ["rq", "info", "--url", url]
             out = shell.run_command(args)
             is_jq_up = b"0 workers" not in out
         except Exception as e:
@@ -75,7 +72,12 @@ class BaseStatusResource(Resource):
 class StatusResource(BaseStatusResource):
     def get(self):
         (
-            api_name, version, is_db_up, is_kv_up, is_es_up, is_jq_up
+            api_name,
+            version,
+            is_db_up,
+            is_kv_up,
+            is_es_up,
+            is_jq_up,
         ) = self.get_status()
 
         return {
@@ -91,7 +93,12 @@ class StatusResource(BaseStatusResource):
 class TxtStatusResource(BaseStatusResource):
     def get(self):
         (
-            api_name, version, is_db_up, is_kv_up, is_es_up, is_jq_up
+            api_name,
+            version,
+            is_db_up,
+            is_kv_up,
+            is_es_up,
+            is_jq_up,
         ) = self.get_status()
 
         text = """name: %s
@@ -114,7 +121,12 @@ job-queue-up: %s
 class InfluxStatusResource(BaseStatusResource):
     def get(self):
         (
-            api_name, version, is_db_up, is_kv_up, is_es_up, is_jq_up
+            api_name,
+            version,
+            is_db_up,
+            is_kv_up,
+            is_es_up,
+            is_jq_up,
         ) = self.get_status()
 
         return {
@@ -127,7 +139,6 @@ class InfluxStatusResource(BaseStatusResource):
 
 
 class StatsResource(Resource):
-
     @jwt_required
     def get(self):
         if not permissions.has_admin_permissions():
@@ -137,6 +148,4 @@ class StatsResource(Resource):
 
 class ConfigResource(Resource):
     def get(self):
-        return {
-            "crisp_token": app.config["CRISP_TOKEN"]
-        }
+        return {"crisp_token": app.config["CRISP_TOKEN"]}

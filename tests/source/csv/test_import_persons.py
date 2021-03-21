@@ -6,7 +6,6 @@ from zou.app.models.person import Person
 
 
 class ImportCsvPersonsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ImportCsvPersonsTestCase, self).setUp()
 

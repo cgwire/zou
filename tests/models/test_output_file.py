@@ -7,7 +7,6 @@ from zou.app.services import projects_service
 
 
 class OutputFileTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(OutputFileTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -29,7 +28,7 @@ class OutputFileTestCase(ApiDBTestCase):
             task_id=self.task.id,
             entity_id=self.asset.id,
             person_id=self.person.id,
-            file_status_id=self.file_status.id
+            file_status_id=self.file_status.id,
         )
 
     def test_get_output_files(self):
@@ -38,8 +37,7 @@ class OutputFileTestCase(ApiDBTestCase):
 
     def test_get_output_file(self):
         output_file = self.get_first("data/output-files")
-        output_file_again = self.get(
-            "data/output-files/%s" % output_file["id"])
+        output_file_again = self.get("data/output-files/%s" % output_file["id"])
         self.assertEqual(output_file, output_file_again)
         self.get_404("data/output-files/%s" % fields.gen_uuid())
 
@@ -50,7 +48,7 @@ class OutputFileTestCase(ApiDBTestCase):
             "comment": "Test comment",
             "size": 1024,
             "person_id": self.person.id,
-            "file_status_id": self.file_status.id
+            "file_status_id": self.file_status.id,
         }
         self.file_status_id = self.file_status.id
         self.output_file = self.post("data/output-files", data)
@@ -61,12 +59,9 @@ class OutputFileTestCase(ApiDBTestCase):
 
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
-        data = {
-            "name": "Super modeling output_file 2"
-        }
+        data = {"name": "Super modeling output_file 2"}
         self.put("data/output-files/%s" % output_file["id"], data)
-        output_file_again = self.get(
-            "data/output-files/%s" % output_file["id"])
+        output_file_again = self.get("data/output-files/%s" % output_file["id"])
         self.assertEqual(data["name"], output_file_again["name"])
         self.put_404("data/output-files/%s" % fields.gen_uuid(), data)
 

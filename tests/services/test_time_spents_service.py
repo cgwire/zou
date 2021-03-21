@@ -6,7 +6,6 @@ from zou.app.services import tasks_service, time_spents_service
 
 
 class TimeSpentsServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(TimeSpentsServiceTestCase, self).setUp()
 
@@ -98,9 +97,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
     def test_get_month_time_spents(self):
         with app.app_context():
             tasks = time_spents_service.get_month_time_spents(
-                self.person_id,
-                "2018",
-                "5"
+                self.person_id, "2018", "5"
             )
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0]["entity_name"], "Tree")
@@ -115,10 +112,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
                 self.task_standard.id, self.person_id, "2018-05-03", 400
             )
             tasks = time_spents_service.get_month_time_spents(
-                self.person_id,
-                "2018",
-                "5",
-                project_id=self.project_standard.id
+                self.person_id, "2018", "5", project_id=self.project_standard.id
             )
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0]["entity_name"], "Car")
@@ -127,9 +121,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
     def test_get_week_time_spents(self):
         with app.app_context():
             tasks = time_spents_service.get_week_time_spents(
-                self.person_id,
-                "2018",
-                "18"
+                self.person_id, "2018", "18"
             )
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0]["entity_name"], "Tree")
@@ -138,9 +130,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
     def test_get_week_time_spents_first_week_of_the_year(self):
         with app.app_context():
             tasks = time_spents_service.get_week_time_spents(
-                self.person_id,
-                "2019",
-                "1"
+                self.person_id, "2019", "1"
             )
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0]["duration"], 850)
@@ -148,10 +138,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
     def test_get_day_time_spents(self):
         with app.app_context():
             tasks = time_spents_service.get_day_time_spents(
-                self.person_id,
-                "2018",
-                "5",
-                "3"
+                self.person_id, "2018", "5", "3"
             )
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0]["entity_name"], "Tree")
@@ -160,15 +147,13 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
     def test_get_time_spents(self):
         with app.app_context():
             time_spents = time_spents_service.get_time_spents(
-                self.person_id,
-                "2018-06-04"
+                self.person_id, "2018-06-04"
             )
             duration = 0
             for time_spent in time_spents:
                 duration += time_spent["duration"]
             self.assertEqual(len(time_spents), 2)
             self.assertEqual(duration, 800)
-
 
     def test_get_day_offs_for_month(self):
         self.generate_fixture_day_off("2021-01-10")
@@ -185,25 +170,19 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_day_off("2021-03-10")
         self.generate_fixture_user_cg_artist()
         self.generate_fixture_day_off(
-            "2021-02-10",
-            person_id=self.user_cg_artist["id"]
+            "2021-02-10", person_id=self.user_cg_artist["id"]
         )
         day_offs = time_spents_service.get_person_day_offs_for_year(
-            self.person_id,
-            2021
+            self.person_id, 2021
         )
         self.assertEqual(len(day_offs), 4)
 
         day_offs = time_spents_service.get_person_day_offs_for_month(
-            self.person_id,
-            2021,
-            2
+            self.person_id, 2021, 2
         )
         self.assertEqual(len(day_offs), 2)
 
         day_offs = time_spents_service.get_person_day_offs_for_week(
-            self.person_id,
-            2021,
-            6
+            self.person_id, 2021, 6
         )
         self.assertEqual(len(day_offs), 2)

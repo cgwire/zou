@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class AssetInstanceInShotTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AssetInstanceInShotTestCase, self).setUp()
 
@@ -23,8 +22,7 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
     def new_instance(self, target_type, target_id, asset_id):
         data = {"asset_id": asset_id}
         return self.post(
-            "/data/%s/%s/asset-instances" % (target_type, target_id),
-            data
+            "/data/%s/%s/asset-instances" % (target_type, target_id), data
         )
 
     def new_scene_asset_instance(self, scene_id, asset_id):
@@ -38,47 +36,42 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
     def new_asset_asset_instance(self, asset_id, asset_to_instantiate_id):
         data = {"asset_to_instantiate_id": asset_to_instantiate_id}
         return self.post(
-            "/data/assets/%s/asset-asset-instances" % asset_id,
-            data
+            "/data/assets/%s/asset-asset-instances" % asset_id, data
         )
 
     def test_add_instance_to_scene(self):
-        instances = self.get(
-            "/data/scenes/%s/asset-instances" % self.scene_id)
+        instances = self.get("/data/scenes/%s/asset-instances" % self.scene_id)
         self.assertEqual(instances, {})
         self.new_scene_asset_instance(self.scene.id, self.asset_id)
         self.new_scene_asset_instance(self.scene.id, self.asset_id)
         self.new_scene_asset_instance(self.scene.id, self.asset_character_id)
 
-        instances = self.get(
-            "/data/scenes/%s/asset-instances" % self.scene_id)
+        instances = self.get("/data/scenes/%s/asset-instances" % self.scene_id)
         self.assertEqual(len(instances[self.asset_id]), 2)
         self.assertEqual(len(instances[self.asset_character_id]), 1)
         self.assertEqual(instances[self.asset_id][0]["number"], 1)
         self.assertEqual(instances[self.asset_id][1]["number"], 2)
-        self.assertEqual(
-            instances[self.asset_id][1]["name"],
-            "Tree_0002"
-        )
+        self.assertEqual(instances[self.asset_id][1]["name"], "Tree_0002")
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
 
     def test_get_scene_asset_instances_for_asset(self):
         instances = self.get(
-            "/data/assets/%s/scene-asset-instances" % self.asset_id)
+            "/data/assets/%s/scene-asset-instances" % self.asset_id
+        )
         self.assertEqual(instances, {})
         self.new_scene_asset_instance(self.scene_id, self.asset_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_character_id)
 
         instances = self.get(
-            "/data/assets/%s/scene-asset-instances" % self.asset_id)
+            "/data/assets/%s/scene-asset-instances" % self.asset_id
+        )
         self.assertEqual(len(instances[self.scene_id]), 2)
 
     def test_get_scene_camera_instances_for_asset(self):
         self.generate_fixture_asset_camera()
         self.asset_camera_id = self.asset_camera.id
-        instances = self.get(
-            "/data/scenes/%s/camera-instances" % self.scene_id)
+        instances = self.get("/data/scenes/%s/camera-instances" % self.scene_id)
         self.assertEqual(instances, {})
         self.new_scene_asset_instance(self.scene_id, self.asset_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_id)
@@ -86,8 +79,7 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
-        instances = self.get(
-            "/data/scenes/%s/camera-instances" % self.scene_id)
+        instances = self.get("/data/scenes/%s/camera-instances" % self.scene_id)
         self.assertEqual(len(instances[str(self.asset_camera_id)]), 3)
         self.assertTrue(self.asset_id not in instances)
 
@@ -96,18 +88,15 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.assertEqual(instances, {})
 
         asset_instance = self.new_scene_asset_instance(
-            self.scene_id,
-            self.asset_id
+            self.scene_id, self.asset_id
         )
         self.new_shot_asset_instance(self.shot_id, asset_instance["id"])
         asset_instance = self.new_scene_asset_instance(
-            self.scene_id,
-            self.asset_id
+            self.scene_id, self.asset_id
         )
         self.new_shot_asset_instance(self.shot_id, asset_instance["id"])
         asset_instance = self.new_scene_asset_instance(
-            self.scene_id,
-            self.asset_character_id
+            self.scene_id, self.asset_character_id
         )
         self.new_shot_asset_instance(self.shot_id, asset_instance["id"])
 
@@ -116,17 +105,12 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.assertEqual(len(instances[self.asset_character_id]), 1)
         self.assertEqual(instances[self.asset_id][0]["number"], 1)
         self.assertEqual(instances[self.asset_id][1]["number"], 2)
-        self.assertEqual(
-            instances[self.asset_id][1]["name"],
-            "Tree_0002"
-        )
+        self.assertEqual(instances[self.asset_id][1]["name"], "Tree_0002")
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
 
         self.delete(
-            "/data/shots/%s/asset-instances/%s" % (
-                self.shot_id,
-                asset_instance["id"]
-            )
+            "/data/shots/%s/asset-instances/%s"
+            % (self.shot_id, asset_instance["id"])
         )
         instances = self.get("/data/shots/%s/asset-instances" % self.shot_id)
         self.assertTrue(self.asset_character_id not in instances)
@@ -137,20 +121,15 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         )
         self.assertEqual(instances, {})
         asset_instance = self.new_scene_asset_instance(
-            self.scene_id,
-            self.asset_id
+            self.scene_id, self.asset_id
         )
-        self.new_shot_asset_instance(
-            self.shot_id,
-            asset_instance["id"]
-        )
-        asset_instance = self.new_scene_asset_instance(
-            self.scene_id,
-            self.asset_id)
         self.new_shot_asset_instance(self.shot_id, asset_instance["id"])
         asset_instance = self.new_scene_asset_instance(
-            self.scene_id,
-            self.asset_character_id
+            self.scene_id, self.asset_id
+        )
+        self.new_shot_asset_instance(self.shot_id, asset_instance["id"])
+        asset_instance = self.new_scene_asset_instance(
+            self.scene_id, self.asset_character_id
         )
         self.new_shot_asset_instance(self.shot_id, asset_instance["id"])
 
@@ -177,7 +156,6 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
         self.assertEqual(instances[self.asset_character_id][1]["number"], 2)
         self.assertEqual(
-            instances[self.asset_character_id][1]["name"],
-            "Rabbit_0002"
+            instances[self.asset_character_id][1]["name"], "Rabbit_0002"
         )
         self.assertEqual(instances[self.asset_character_2_id][0]["number"], 1)

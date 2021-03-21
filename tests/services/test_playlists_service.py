@@ -1,14 +1,10 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.playlist import Playlist
-from zou.app.services import (
-    files_service,
-    playlists_service
-)
+from zou.app.services import files_service, playlists_service
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PlaylistsServiceTestCase, self).setUp()
 
@@ -39,24 +35,22 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             name="Playlist 1",
             shots={},
             project_id=self.project.id,
-            episode_id=self.episode.id
+            episode_id=self.episode.id,
         )
         Playlist.create(
-            name="Playlist 2",
-            shots={},
-            project_id=self.project_standard.id
+            name="Playlist 2", shots={}, project_id=self.project_standard.id
         )
         Playlist.create(
             name="Playlist 3",
             shots={},
             project_id=self.project.id,
-            episode_id=self.episode_2.id
+            episode_id=self.episode_2.id,
         )
         self.playlist = Playlist.create(
             name="Playlist 4",
             shots={},
             project_id=self.project.id,
-            episode_id=self.episode_2.id
+            episode_id=self.episode_2.id,
         )
         return self.playlist.serialize()
 
@@ -65,8 +59,11 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         playlists = playlists_service.all_playlists_for_project(self.project.id)
         self.assertEqual(len(playlists), 3)
         self.assertTrue(
-            "Playlist 2" not in [
-                playlists[0]["name"], playlists[1]["name"], playlists[2]["name"]
+            "Playlist 2"
+            not in [
+                playlists[0]["name"],
+                playlists[1]["name"],
+                playlists[2]["name"],
             ]
         )
         self.playlist.update({"for_client": True})
@@ -78,8 +75,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
     def test_get_playlist_for_episode(self):
         self.generate_fixture_playlists()
         playlists = playlists_service.all_playlists_for_episode(
-            self.project.id,
-            self.episode_2.id
+            self.project.id, self.episode_2.id
         )
         self.assertEqual(len(playlists), 2)
         self.assertEqual(playlists[0]["name"], "Playlist 4")
@@ -89,23 +85,16 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(playlists), 1)
 
+        self.generate_fixture_playlist("Test main pack", for_entity="asset")
         self.generate_fixture_playlist(
-            "Test main pack",
-            for_entity="asset"
-        )
-        self.generate_fixture_playlist(
-            "Test all playlist",
-            for_entity="asset",
-            is_for_all=True
+            "Test all playlist", for_entity="asset", is_for_all=True
         )
         playlists = playlists_service.all_playlists_for_episode(
-            self.project.id,
-            "main"
+            self.project.id, "main"
         )
         self.assertEqual(len(playlists), 1)
         playlists = playlists_service.all_playlists_for_episode(
-            self.project.id,
-            "all"
+            self.project.id, "all"
         )
         self.assertEqual(len(playlists), 1)
 
@@ -146,7 +135,7 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             name="Playlist 1",
             shots={},
             project_id=self.project.id,
-            episode_id=self.episode.id
+            episode_id=self.episode.id,
         )
         playlist_dict = playlists_service.build_playlist_dict(playlist)
         self.assertTrue("shots" not in playlist_dict)

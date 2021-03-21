@@ -97,11 +97,9 @@ def get_time_spents_for_month(year, month, person_id=None, project_id=None):
     """
     date = datetime.datetime(int(year), int(month), 1)
     next_month = date + relativedelta.relativedelta(months=1)
-    query = (
-        TimeSpent.query
-        .filter(TimeSpent.date >= date.strftime("%Y-%m-%d"))
-        .filter(TimeSpent.date < next_month.strftime("%Y-%m-%d"))
-    )
+    query = TimeSpent.query.filter(
+        TimeSpent.date >= date.strftime("%Y-%m-%d")
+    ).filter(TimeSpent.date < next_month.strftime("%Y-%m-%d"))
 
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
@@ -176,7 +174,7 @@ def get_year_time_spents(person_id, year, project_id=None):
         person_id,
         TimeSpent.date >= start,
         TimeSpent.date < end,
-        project_id=project_id
+        project_id=project_id,
     )
     return build_results(entries)
 
@@ -191,7 +189,7 @@ def get_month_time_spents(person_id, year, month, project_id=None):
         person_id,
         TimeSpent.date >= start,
         TimeSpent.date < end,
-        project_id=project_id
+        project_id=project_id,
     )
     return build_results(entries)
 
@@ -206,7 +204,7 @@ def get_week_time_spents(person_id, year, week, project_id=None):
         person_id,
         TimeSpent.date >= start,
         TimeSpent.date < end,
-        project_id=project_id
+        project_id=project_id,
     )
     return build_results(entries)
 
@@ -221,7 +219,7 @@ def get_day_time_spents(person_id, year, month, day, project_id=None):
         person_id,
         TimeSpent.date >= start,
         TimeSpent.date < end,
-        project_id=project_id
+        project_id=project_id,
     )
     return build_results(entries)
 
@@ -350,10 +348,7 @@ def get_day_offs_between(start, end, person_id=None):
         query = query.filter(DayOff.person_id == person_id)
 
     return DayOff.serialize_list(
-        query
-        .filter(DayOff.date >= start)
-        .filter(DayOff.date < end)
-        .all()
+        query.filter(DayOff.date >= start).filter(DayOff.date < end).all()
     )
 
 
@@ -364,5 +359,5 @@ def get_timezoned_interval(start, end):
     timezone = user_service.get_timezone()
     return (
         date_helpers.get_string_with_timezone_from_date(start, timezone),
-        date_helpers.get_string_with_timezone_from_date(end, timezone)
+        date_helpers.get_string_with_timezone_from_date(end, timezone),
     )

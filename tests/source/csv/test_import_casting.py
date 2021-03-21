@@ -4,7 +4,6 @@ from zou.app.models.entity import EntityLink
 
 
 class ImportCsvCastingTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ImportCsvCastingTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -20,7 +19,7 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
             ("Block", self.asset_type_props.id),
             ("Wagon", self.asset_type_props.id),
             ("Victor", self.asset_type_character.id),
-            ("John", self.asset_type_character.id)
+            ("John", self.asset_type_character.id),
         ]:
             self.generate_fixture_asset(name, asset_type_id=asset_type_id)
             if name == "Lake":

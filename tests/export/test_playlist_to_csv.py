@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class PlaylistCsvExportTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PlaylistCsvExportTestCase, self).setUp()
         self.generate_fixture_project_status()

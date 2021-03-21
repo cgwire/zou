@@ -49,10 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 def all_playlists_for_project(
-    project_id,
-    for_client=False,
-    page=1,
-    sort_by="updated_at"
+    project_id, for_client=False, page=1, sort_by="updated_at"
 ):
     """
     Return all playlists created for given project.
@@ -77,10 +74,7 @@ def all_playlists_for_project(
 
 
 def all_playlists_for_episode(
-    project_id,
-    episode_id,
-    for_client=False,
-    sort_by="updated_at"
+    project_id, episode_id, for_client=False, sort_by="updated_at"
 ):
     """
     Return all playlists created for given episode.
@@ -91,20 +85,19 @@ def all_playlists_for_episode(
         query = query.filter(Playlist.for_client == True)
 
     if episode_id == "main":
-        query = query \
-            .filter(Playlist.episode_id == None) \
-            .filter(Playlist.project_id == project_id) \
+        query = (
+            query.filter(Playlist.episode_id == None)
+            .filter(Playlist.project_id == project_id)
             .filter(
-                or_(
-                    Playlist.is_for_all == None,
-                    Playlist.is_for_all == False
-                )
+                or_(Playlist.is_for_all == None, Playlist.is_for_all == False)
             )
+        )
     elif episode_id == "all":
-        query = query \
-            .filter(Playlist.episode_id == None) \
-            .filter(Playlist.project_id == project_id) \
+        query = (
+            query.filter(Playlist.episode_id == None)
+            .filter(Playlist.project_id == project_id)
             .filter(Playlist.is_for_all == True)
+        )
     else:
         query = query.filter(Playlist.episode_id == episode_id)
 
@@ -132,10 +125,12 @@ def build_playlist_dict(playlist):
 
 def get_first_shot_preview_file_id(playlist):
     first_shot_preview_file_id = None
-    if playlist.shots is not None \
-       and len(playlist.shots) > 0 \
-       and type(playlist.shots) == list \
-       and "preview_file_id" in playlist.shots[0]:
+    if (
+        playlist.shots is not None
+        and len(playlist.shots) > 0
+        and type(playlist.shots) == list
+        and "preview_file_id" in playlist.shots[0]
+    ):
         first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
     return first_shot_preview_file_id
 
@@ -148,8 +143,7 @@ def get_playlist_with_preview_file_revisions(playlist_id):
     playlist = get_playlist_raw(playlist_id)
     playlist_dict = playlist.serialize()
     playlist_dict = _add_build_job_infos_to_playlist_dict(
-        playlist,
-        playlist_dict
+        playlist, playlist_dict
     )
 
     if playlist_dict["shots"] is None:
@@ -200,8 +194,7 @@ def set_preview_files_for_entities(playlist_dict):
     preview_file_map = {}
 
     preview_files = (
-        PreviewFile.query
-        .join(Task)
+        PreviewFile.query.join(Task)
         .join(TaskType)
         .filter(Task.entity_id.in_(entity_ids))
         .order_by(TaskType.priority.desc())
@@ -263,8 +256,7 @@ def get_preview_files_for_entity(entity_id):
     """
     previews = {}
     query = (
-        Task.query
-        .filter_by(entity_id=entity_id)
+        Task.query.filter_by(entity_id=entity_id)
         .add_columns(
             PreviewFile.id,
             PreviewFile.revision,
@@ -274,7 +266,7 @@ def get_preview_files_for_entity(entity_id):
             PreviewFile.status,
             PreviewFile.annotations,
             PreviewFile.created_at,
-            PreviewFile.task_id
+            PreviewFile.task_id,
         )
         .join(PreviewFile)
         .join(TaskType)
@@ -295,23 +287,27 @@ def get_preview_files_for_entity(entity_id):
         preview_file_status,
         preview_file_annotations,
         preview_file_created_at,
-        preview_file_task_id
+        preview_file_task_id,
     ) in query.all():
         task_id = str(task.id)
         if task_id not in task_previews:
             task_previews[task_id] = []
-        task_previews[task_id].append(fields.serialize_dict({
-            "id": preview_file_id,
-            "revision": preview_file_revision,
-            "position": preview_file_position,
-            "original_name": preview_file_original_name,
-            "extension": preview_file_extension,
-            "status": preview_file_status,
-            "annotations": preview_file_annotations,
-            "created_at": preview_file_created_at,
-            "task_id": task_id,
-            "task_type_id": str(task.task_type_id),
-        }))
+        task_previews[task_id].append(
+            fields.serialize_dict(
+                {
+                    "id": preview_file_id,
+                    "revision": preview_file_revision,
+                    "position": preview_file_position,
+                    "original_name": preview_file_original_name,
+                    "extension": preview_file_extension,
+                    "status": preview_file_status,
+                    "annotations": preview_file_annotations,
+                    "created_at": preview_file_created_at,
+                    "task_id": task_id,
+                    "task_type_id": str(task.task_type_id),
+                }
+            )
+        )
 
     for task_id in task_previews.keys():
         preview_files = task_previews[task_id]
@@ -329,7 +325,7 @@ def get_preview_files_for_entity(entity_id):
                     "annotations": preview_file["annotations"],
                     "previews": preview_file["previews"],
                     "created_at": preview_file["created_at"],
-                    "task_id": preview_file["task_id"]
+                    "task_id": preview_file["task_id"],
                 }
                 for preview_file in preview_files
             ]  # Do not add too much field to avoid building too big responses
@@ -378,20 +374,20 @@ def playlist_previews(shots, only_movies=False):
     preview_files = []
     for entity in shots:
         if (
-            "preview_file_id" in entity and
-            entity["preview_file_id"] is not None and
-            len(entity["preview_file_id"]) > 0
+            "preview_file_id" in entity
+            and entity["preview_file_id"] is not None
+            and len(entity["preview_file_id"]) > 0
         ):
             preview_file = files_service.get_preview_file(
                 entity["preview_file_id"]
             )
             if preview_file is not None and (
-                (only_movies and preview_file["extension"] == "mp4") or
-                not only_movies
+                (only_movies and preview_file["extension"] == "mp4")
+                or not only_movies
             ):
                 preview_files.append(preview_file)
 
-    return [{'id': x['id'], 'extension': x['extension']} for x in preview_files]
+    return [{"id": x["id"], "extension": x["extension"]} for x in preview_files]
 
 
 def retrieve_playlist_tmp_files(preview_files):
@@ -413,16 +409,12 @@ def retrieve_playlist_tmp_files(preview_files):
             open_func = file_store.open_file
 
         if config.FS_BACKEND == "local":
-            file_path = get_path_func(
-                prefix, preview_file["id"]
-            )
+            file_path = get_path_func(prefix, preview_file["id"])
         else:
             file_path = os.path.join(
                 config.TMP_DIR,
-                "cache-previews-%s.%s" % (
-                    preview_file["id"],
-                    preview_file["extension"]
-                ),
+                "cache-previews-%s.%s"
+                % (preview_file["id"], preview_file["extension"]),
             )
             if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
                 with open(file_path, "wb") as tmp_file:
@@ -465,19 +457,28 @@ def build_playlist_movie_file(playlist, shots, params, remote):
 
         # First, try using concat demuxer
         success = _run_concatenation(
-            playlist, job, tmp_file_paths, movie_file_path, params,
-            movie.concat_demuxer
+            playlist,
+            job,
+            tmp_file_paths,
+            movie_file_path,
+            params,
+            movie.concat_demuxer,
         )
 
         # Try again using concat filter
         if not success:
             if not remote:
                 success = _run_concatenation(
-                    playlist, job, tmp_file_paths, movie_file_path, params,
-                    movie.concat_filter
+                    playlist,
+                    job,
+                    tmp_file_paths,
+                    movie_file_path,
+                    params,
+                    movie.concat_filter,
                 )
             else:
                 from zou.app import app
+
                 with app.app_context():
                     _execute_nomad_job(job, previews, params, movie_file_path)
                     success = True
@@ -498,10 +499,7 @@ def _run_concatenation(
     success = False
     try:
         result = movie.build_playlist_movie(
-            mode,
-            tmp_file_paths,
-            movie_file_path,
-            **params._asdict()
+            mode, tmp_file_paths, movie_file_path, **params._asdict()
         )
         if result["success"] and os.path.exists(movie_file_path):
             file_store.add_movie("playlists", job["id"], movie_file_path)
@@ -510,9 +508,9 @@ def _run_concatenation(
             current_app.logger.error(result["message"])
     except Exception:
         logger.error(
-            "Unable to build playlist %r using %s", (
-                playlist["id"], mode.__qualname__
-            ), exc_info=1
+            "Unable to build playlist %r using %s",
+            (playlist["id"], mode.__qualname__),
+            exc_info=1,
         )
     return success
 
@@ -521,12 +519,11 @@ def _execute_nomad_job(job, previews, params, movie_file_path):
     import nomad
     import zlib
     import json
+
     preview_ids = [
-        preview["id"]
-        for preview in previews
-        if preview["extension"] == "mp4"
+        preview["id"] for preview in previews if preview["extension"] == "mp4"
     ]
-    input_bytes = zlib.compress(bytes(json.dumps(preview_ids),'utf-8'))
+    input_bytes = zlib.compress(bytes(json.dumps(preview_ids), "utf-8"))
     input_string = base64.b64encode(input_bytes).decode("ascii")
     bucket_prefix = config.FS_BUCKET_PREFIX
     params = {
@@ -542,31 +539,35 @@ def _execute_nomad_job(job, previews, params, movie_file_path):
     }
     # Add object storage information
     if config.FS_BACKEND == "s3":
-        params.update({
-            "S3_ENDPOINT": config.FS_S3_ENDPOINT,
-            "AWS_DEFAULT_REGION": config.FS_S3_REGION,
-            "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
-            "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY
-        })
+        params.update(
+            {
+                "S3_ENDPOINT": config.FS_S3_ENDPOINT,
+                "AWS_DEFAULT_REGION": config.FS_S3_REGION,
+                "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
+                "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY,
+            }
+        )
     elif config.FS_BACKEND == "swift":
-        params.update({
-            "OS_USERNAME": config.FS_SWIFT_USER,
-            "OS_PASSWORD": config.FS_SWIFT_KEY,
-            "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
-            "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
-            "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
-        })
+        params.update(
+            {
+                "OS_USERNAME": config.FS_SWIFT_USER,
+                "OS_PASSWORD": config.FS_SWIFT_KEY,
+                "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
+                "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
+                "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
+            }
+        )
 
     # don't use 'app.config' because the webapp doesn't use this variable,
     # only the rq worker does.
     nomad_job = os.getenv("JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist")
     nomad_host = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
-    data = json.dumps(params).encode('utf-8')
-    payload = base64.b64encode(data).decode('utf-8')
+    data = json.dumps(params).encode("utf-8")
+    payload = base64.b64encode(data).decode("utf-8")
     ncli = nomad.Nomad(host=nomad_host, timeout=5)
 
     response = ncli.job.dispatch_job(nomad_job, payload=payload)
-    nomad_jobid = response['DispatchedJobID']
+    nomad_jobid = response["DispatchedJobID"]
 
     while True:
         summary = ncli.job.get_summary(nomad_jobid)
@@ -575,16 +576,11 @@ def _execute_nomad_job(job, previews, params, movie_file_path):
         if status["Failed"] != 0 or status["Lost"] != 0:
             logger.debug("Nomad job %r failed: %r", nomad_jobid, status)
             out, err = _get_nomad_job_logs(ncli, nomad_jobid)
-            out = textwrap.indent(out, '\t')
-            err = textwrap.indent(err, '\t')
+            out = textwrap.indent(out, "\t")
+            err = textwrap.indent(err, "\t")
             raise Exception(
                 "Job %s is 'Failed' or 'Lost':\nStatus: "
-                "%s\nerr:\n%s\nout:\n%s" % (
-                    nomad_jobid,
-                    status,
-                    err,
-                    out
-                )
+                "%s\nerr:\n%s\nout:\n%s" % (nomad_jobid, status, err, out)
             )
         if status["Complete"] == 1:
             logger.debug("Nomad job %r: complete", nomad_jobid)
@@ -602,29 +598,27 @@ def _execute_nomad_job(job, previews, params, movie_file_path):
 def _get_nomad_job_logs(ncli, nomad_jobid):
     allocations = ncli.job.get_allocations(nomad_jobid)
     last = max(
-        [
-            (alloc['CreateIndex'], idx) for idx, alloc
-            in enumerate(allocations)
-        ])[1]
-    alloc_id = allocations[last]['ID']
+        [(alloc["CreateIndex"], idx) for idx, alloc in enumerate(allocations)]
+    )[1]
+    alloc_id = allocations[last]["ID"]
     # logs aren't available when the task isn't started
-    task = allocations[last]['TaskStates']['zou-playlist']
-    if not task['StartedAt']:
-        out = '\n'.join([x['DisplayMessage'] for x in task['Events']])
-        err = ''
+    task = allocations[last]["TaskStates"]["zou-playlist"]
+    if not task["StartedAt"]:
+        out = "\n".join([x["DisplayMessage"] for x in task["Events"]])
+        err = ""
     else:
-        err = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stderr')
-        out = ncli.client.stream_logs.stream(alloc_id, 'zou-playlist', 'stdout')
+        err = ncli.client.stream_logs.stream(alloc_id, "zou-playlist", "stderr")
+        out = ncli.client.stream_logs.stream(alloc_id, "zou-playlist", "stdout")
         if err:
             try:
-                err_json = json.loads(err).get('Data', '')
-                err_json = base64.b64decode(err).decode('utf-8')
+                err_json = json.loads(err).get("Data", "")
+                err_json = base64.b64decode(err).decode("utf-8")
             except:
                 err_json = err
             err = err_json
         if out:
-            out = json.loads(out).get('Data', '')
-            out = base64.b64decode(out).decode('utf-8')
+            out = json.loads(out).get("Data", "")
+            out = base64.b64decode(out).decode("utf-8")
     return out.rstrip(), err.rstrip()
 
 
@@ -643,7 +637,7 @@ def start_build_job(playlist):
             "playlist_id": playlist["id"],
             "created_at": fields.serialize_value(job.created_at),
         },
-        project_id=playlist["project_id"]
+        project_id=playlist["project_id"],
     )
     return job.serialize()
 
@@ -667,7 +661,7 @@ def end_build_job(playlist, job, success):
             "playlist_id": playlist["id"],
             "status": status,
         },
-        project_id=playlist["project_id"]
+        project_id=playlist["project_id"],
     )
     return build_job.serialize()
 
@@ -759,7 +753,7 @@ def remove_playlist(playlist_id):
     events.emit(
         "playlist:delete",
         {"playlist_id": playlist_dict["id"]},
-        project_id=playlist_dict["project_id"]
+        project_id=playlist_dict["project_id"],
     )
     return playlist_dict
 
@@ -783,7 +777,7 @@ def remove_build_job(playlist, build_job_id):
     events.emit(
         "build-job:delete",
         {"build_job_id": build_job_id, "playlist_id": playlist["id"]},
-        project_id=playlist["project_id"]
+        project_id=playlist["project_id"],
     )
     return movie_file_path
 
@@ -818,9 +812,9 @@ def generate_temp_playlist(task_ids):
         entities.append(entity)
     if len(entities) > 0:
         if "sequence_name" in entities[0]:
-            return sorted(entities, key=itemgetter('sequence_name', 'name'))
+            return sorted(entities, key=itemgetter("sequence_name", "name"))
         else:
-            return sorted(entities, key=itemgetter('asset_type_name', 'name'))
+            return sorted(entities, key=itemgetter("asset_type_name", "name"))
     else:
         return []
 
@@ -841,13 +835,15 @@ def generate_playlisted_entity_from_task(task_id):
     preview_files = get_preview_files_for_entity(entity["id"])
     if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
         preview_file = preview_files[task_type_id][0]
-        playlisted_entity.update({
-            "preview_file_id": preview_file["id"],
-            "preview_file_extension": preview_file["extension"],
-            "preview_file_status": preview_file["status"],
-            "preview_file_annotations": preview_file["annotations"],
-            "preview_file_previews": preview_file["previews"]
-        })
+        playlisted_entity.update(
+            {
+                "preview_file_id": preview_file["id"],
+                "preview_file_extension": preview_file["extension"],
+                "preview_file_status": preview_file["status"],
+                "preview_file_annotations": preview_file["annotations"],
+                "preview_file_previews": preview_file["previews"],
+            }
+        )
     playlisted_entity["preview_files"] = preview_files
     return playlisted_entity
 
@@ -861,7 +857,7 @@ def get_base_shot_for_playlist(entity, task_id):
         "preview_file_task_id": task_id,
         "sequence_id": sequence["id"],
         "sequence_name": sequence["name"],
-        "parent_name": sequence["name"]
+        "parent_name": sequence["name"],
     }
     return playlisted_entity
 
@@ -875,7 +871,7 @@ def get_base_asset_for_playlist(entity, task_id):
         "preview_file_task_id": task_id,
         "asset_type_id": asset_type["id"],
         "asset_type_name": asset_type["name"],
-        "parent_name": asset_type["name"]
+        "parent_name": asset_type["name"],
     }
     return playlisted_entity
 

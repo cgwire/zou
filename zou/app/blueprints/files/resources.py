@@ -142,8 +142,12 @@ class WorkingFilePathResource(Resource):
                     task_id, name
                 )
             file_path = file_tree_service.get_working_folder_path(
-                task, mode=mode, software=software, name=name, sep=separator,
-                revision=revision
+                task,
+                mode=mode,
+                software=software,
+                name=name,
+                sep=separator,
+                revision=revision,
             )
             file_name = file_tree_service.get_working_file_name(
                 task, mode=mode, revision=revision, software=software, name=name
@@ -398,8 +402,7 @@ class NewWorkingFileResource(Resource):
 
     def build_path(self, task, name, revision, software, sep, mode):
         folder_path = file_tree_service.get_working_folder_path(
-            task, name=name, software=software, mode=mode,
-            revision=revision
+            task, name=name, software=software, mode=mode, revision=revision
         )
         file_name = file_tree_service.get_working_file_name(
             task, name=name, software=software, revision=revision, mode=mode
@@ -532,7 +535,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                 representation=args["representation"],
                 extension=args["extension"],
                 nb_elements=int(args["nb_elements"]),
-                file_status_id=args['file_status_id'],
+                file_status_id=args["file_status_id"],
             )
 
             output_file_dict = self.add_path_info(
@@ -676,7 +679,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                 comment=args["comment"],
                 nb_elements=int(args["nb_elements"]),
                 extension=args["extension"],
-                file_status_id=args['file_status_id'],
+                file_status_id=args["file_status_id"],
             )
 
             output_file_dict = self.add_path_info(
@@ -850,7 +853,7 @@ class LastEntityOutputFilesResource(Resource):
             output_type_id=request.args.get("output_type_id", None),
             task_type_id=request.args.get("task_type_id", None),
             representation=request.args.get("representation", None),
-            file_status_id=request.args.get("file_status_id", None)
+            file_status_id=request.args.get("file_status_id", None),
         )
 
 
@@ -872,7 +875,7 @@ class LastInstanceOutputFilesResource(Resource):
             output_type_id=request.args.get("output_type_id", None),
             task_type_id=request.args.get("task_type_id", None),
             representation=request.args.get("representation", None),
-            file_status_id=request.args.get("file_status_id", None)
+            file_status_id=request.args.get("file_status_id", None),
         )
 
 
@@ -915,8 +918,10 @@ class EntityOutputTypeOutputFilesResource(Resource):
         entity = entities_service.get_entity(entity_id)
         files_service.get_output_type(output_type_id)
         user_service.check_project_access(entity["project_id"])
-        output_files = files_service.get_output_files_for_output_type_and_entity(
-            entity_id, output_type_id, representation=representation
+        output_files = (
+            files_service.get_output_files_for_output_type_and_entity(
+                entity_id, output_type_id, representation=representation
+            )
         )
 
         return output_files
@@ -936,11 +941,13 @@ class InstanceOutputTypeOutputFilesResource(Resource):
         user_service.check_project_access(asset["project_id"])
 
         files_service.get_output_type(output_type_id)
-        return files_service.get_output_files_for_output_type_and_asset_instance(
-            asset_instance_id,
-            temporal_entity_id,
-            output_type_id,
-            representation=representation,
+        return (
+            files_service.get_output_files_for_output_type_and_asset_instance(
+                asset_instance_id,
+                temporal_entity_id,
+                output_type_id,
+                representation=representation,
+            )
         )
 
 

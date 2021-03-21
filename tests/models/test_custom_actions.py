@@ -6,7 +6,6 @@ from zou.app.utils import fields
 
 
 class CustomActionTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(CustomActionTestCase, self).setUp()
         self.generate_data(CustomAction, 3)
@@ -40,9 +39,7 @@ class CustomActionTestCase(ApiDBTestCase):
         self.custom_action = self.post("data/custom-actions", data, 400)
 
     def test_create_custom_action_with_wrong_data(self):
-        data = {
-            "wrong": "data"
-        }
+        data = {"wrong": "data"}
         self.custom_action = self.post("data/custom-actions", data, 400)
 
     def test_update_custom_action(self):

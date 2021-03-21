@@ -4,11 +4,7 @@ from zou.app.utils import fields
 
 
 def get_last_events(
-    after=None,
-    before=None,
-    page_size=100,
-    only_files=False,
-    project_id=None
+    after=None, before=None, page_size=100, only_files=False, project_id=None
 ):
     """
     Return last 100 events published. If before parameter is set, it returns
@@ -23,25 +19,31 @@ def get_last_events(
         query = query.filter(ApiEvent.created_at < before)
 
     if only_files:
-        query = query.filter(ApiEvent.name.in_((
-            "preview-file:add-file",
-            "organisation:set-thumbnail",
-            "person:set-thumbnail",
-            "project:set-thumbnail",
-        )))
+        query = query.filter(
+            ApiEvent.name.in_(
+                (
+                    "preview-file:add-file",
+                    "organisation:set-thumbnail",
+                    "person:set-thumbnail",
+                    "project:set-thumbnail",
+                )
+            )
+        )
 
     if project_id is not None:
         query = query.filter(ApiEvent.project_id == project_id)
 
     events = query.limit(page_size).all()
     return [
-        fields.serialize_dict({
-            "id": event.id,
-            "created_at": event.created_at,
-            "name": event.name,
-            "user_id": event.user_id,
-            "data": event.data,
-        })
+        fields.serialize_dict(
+            {
+                "id": event.id,
+                "created_at": event.created_at,
+                "name": event.name,
+                "user_id": event.user_id,
+                "data": event.data,
+            }
+        )
         for event in events
     ]
 

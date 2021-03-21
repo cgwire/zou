@@ -4,7 +4,6 @@ from zou.app.services import projects_service, shots_service, tasks_service
 
 
 class ShotTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ShotTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -56,7 +55,8 @@ class ShotTestCase(ApiDBTestCase):
         self.assertEqual(shot["id"], str(self.shot.id))
         self.assertEqual(shot["name"], self.shot.name)
         self.assertEqual(
-            shot["sequence_name"], self.serialized_sequence["name"])
+            shot["sequence_name"], self.serialized_sequence["name"]
+        )
         self.assertEqual(shot["sequence_id"], self.serialized_sequence["id"])
         self.assertEqual(shot["episode_name"], self.serialized_episode["name"])
         self.assertEqual(shot["episode_id"], self.serialized_episode["id"])
@@ -86,16 +86,14 @@ class ShotTestCase(ApiDBTestCase):
             "data/shots?sequence_id=%s&name=%s" % (sequence_id, shot_name), 403
         )
         projects_service.add_team_member(project_id, vendor_id)
-        shots = self.get("data/shots?sequence_id=%s&name=%s" % (
-            sequence_id,
-            shot_name
-        ))
+        shots = self.get(
+            "data/shots?sequence_id=%s&name=%s" % (sequence_id, shot_name)
+        )
         self.assertEqual(len(shots), 0)
         tasks_service.assign_task(task_id, vendor_id)
-        shots = self.get("data/shots?sequence_id=%s&name=%s" % (
-            sequence_id,
-            shot_name
-        ))
+        shots = self.get(
+            "data/shots?sequence_id=%s&name=%s" % (sequence_id, shot_name)
+        )
         self.assertEqual(shots[0]["id"], shot_id)
 
     def test_remove_shot_with_tasks(self):
@@ -119,15 +117,9 @@ class ShotTestCase(ApiDBTestCase):
         data = {
             "name": shot_name,
             "sequence_id": sequence_id,
-            "data": {
-                "frame_in": 10,
-                "frame_out": 20
-            }
+            "data": {"frame_in": 10, "frame_out": 20},
         }
-        shot = self.post(
-            "data/projects/%s/shots" % project_id,
-            data
-        )
+        shot = self.post("data/projects/%s/shots" % project_id, data)
         shot = self.get("data/shots/%s" % shot["id"])
         self.assertEqual(shot["name"], shot_name)
         self.assertEqual(shot["sequence_id"], sequence_id)

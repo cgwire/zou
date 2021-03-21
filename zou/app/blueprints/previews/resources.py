@@ -32,9 +32,7 @@ from zou.app.utils import (
 from zou.utils import movie
 
 
-ALLOWED_PICTURE_EXTENSION = [
-    ".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"
-]
+ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]
 ALLOWED_MOVIE_EXTENSION = [
     ".avi",
     ".mp4",
@@ -197,7 +195,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 {
                     "extension": "png",
                     "original_name": original_file_name,
-                    "status": "ready"
+                    "status": "ready",
                 },
             )
             self.emit_app_preview_event(instance_id)
@@ -225,7 +223,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 {
                     "extension": extension[1:],
                     "original_name": original_file_name,
-                    "status": "ready"
+                    "status": "ready",
                 },
             )
             self.emit_app_preview_event(instance_id)
@@ -248,8 +246,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             tmp_folder, instance_id, uploaded_file
         )
         return preview_files_service.save_variants(
-            instance_id,
-            original_tmp_path
+            instance_id, original_tmp_path
         )
 
     def save_movie_preview(self, preview_file_id, uploaded_file):
@@ -270,8 +267,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             )
         else:
             preview_files_service.prepare_and_store_movie(
-                preview_file_id,
-                uploaded_movie_path
+                preview_file_id, uploaded_movie_path
             )
         return preview_file_id
 
@@ -300,7 +296,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             events.emit(
                 "comment:update",
                 {"comment_id": comment_id},
-                project_id=task["project_id"]
+                project_id=task["project_id"],
             )
             events.emit(
                 "preview-file:add-file",
@@ -312,7 +308,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                     "extension": preview_file["extension"],
                     "status": preview_file["status"],
                 },
-                project_id=task["project_id"]
+                project_id=task["project_id"],
             )
 
     def is_allowed(self, preview_file_id):
@@ -367,7 +363,9 @@ class PreviewFileMovieResource(Resource):
         try:
             return send_movie_file(instance_id)
         except FileNotFound:
-            current_app.logger.error("Movie file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Movie file was not found for: %s" % instance_id
+            )
             abort(404)
 
 
@@ -454,7 +452,9 @@ class PreviewFileResource(Resource):
                 return send_standard_file(instance_id, extension)
 
         except FileNotFound:
-            current_app.logger.error("Non-movie file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Non-movie file was not found for: %s" % instance_id
+            )
             abort(404)
 
 
@@ -489,7 +489,9 @@ class PreviewFileDownloadResource(PreviewFileResource):
                     instance_id, extension, as_attachment=True
                 )
         except FileNotFound:
-            current_app.logger.error("Standard file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Standard file was not found for: %s" % instance_id
+            )
             abort(404)
 
 
@@ -529,7 +531,9 @@ class BasePreviewPictureResource(Resource):
         try:
             return send_picture_file(self.picture_type, instance_id)
         except FileNotFound:
-            current_app.logger.error("Picture file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Picture file was not found for: %s" % instance_id
+            )
             abort(404)
 
 
@@ -586,8 +590,7 @@ class BaseCreatePictureResource(Resource):
     def emit_event(self, instance_id):
         model_name = self.data_type[:-1]
         events.emit(
-            "%s:set-thumbnail" % model_name,
-            {"%s_id" % model_name: instance_id}
+            "%s:set-thumbnail" % model_name, {"%s_id" % model_name: instance_id}
         )
 
     @jwt_required
@@ -641,10 +644,14 @@ class BasePictureResource(Resource):
         try:
             return send_picture_file("thumbnails", instance_id)
         except FileNotFound:
-            current_app.logger.error("Thumbnail file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Thumbnail file was not found for: %s" % instance_id
+            )
             abort(404)
         except IOError:
-            current_app.logger.error("Thumbnail file was not found for: %s" % instance_id)
+            current_app.logger.error(
+                "Thumbnail file was not found for: %s" % instance_id
+            )
             abort(404)
 
 

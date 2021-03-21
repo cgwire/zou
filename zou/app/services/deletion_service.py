@@ -60,7 +60,7 @@ def remove_comment(comment_id):
             events.emit(
                 "comment:delete",
                 {"comment_id": comment.id},
-                project_id=str(task.project_id)
+                project_id=str(task.project_id),
             )
             return comment.serialize()
     else:
@@ -73,6 +73,7 @@ def remove_task(task_id, force=False):
     related. This will lead to the deletion of all of them.
     """
     from zou.app.services import tasks_service
+
     task = Task.get(task_id)
     if force:
         working_files = WorkingFile.query.filter_by(task_id=task_id)
@@ -117,9 +118,7 @@ def remove_task(task_id, force=False):
     task.delete()
     tasks_service.clear_task_cache(task_id)
     events.emit(
-        "task:delete",
-        {"task_id": task_id},
-        project_id=str(task.project_id)
+        "task:delete", {"task_id": task_id}, project_id=str(task.project_id)
     )
     return task.serialize()
 
@@ -206,13 +205,9 @@ def remove_tasks(project_id, task_ids):
     Remove fully given tasks and related for given project. The project id
     filter is there to facilitate right management.
     """
-    task_ids = [
-        task_id for task_id in task_ids if fields.is_valid_id(task_id)
-    ]
-    tasks = (
-        Task.query
-        .filter(Project.id == project_id)
-        .filter(Task.id.in_(task_ids))
+    task_ids = [task_id for task_id in task_ids if fields.is_valid_id(task_id)]
+    tasks = Task.query.filter(Project.id == project_id).filter(
+        Task.id.in_(task_ids)
     )
     for task in tasks:
         remove_task(task.id, force=True)
@@ -283,7 +278,8 @@ def remove_person(person_id, force=True):
         )
         for comment in comments:
             comment.acknowledgements = [
-                member for member in comment.acknowledgements
+                member
+                for member in comment.acknowledgements
                 if str(member.id) != person_id
             ]
             comment.save()
@@ -358,6 +354,7 @@ def remove_episode(episode_id, force=False):
     Remove an episode and all related sequences and shots.
     """
     from zou.app.services import shots_service, assets_service
+
     episode = shots_service.get_episode_raw(episode_id)
     if force:
         for sequence in Entity.get_all_by(parent_id=episode_id):

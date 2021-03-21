@@ -6,7 +6,6 @@ from zou.app.utils import fields
 
 
 class DepartmentTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(DepartmentTestCase, self).setUp()
         self.generate_data(Department, 3)
@@ -22,10 +21,7 @@ class DepartmentTestCase(ApiDBTestCase):
         self.get_404("data/departments/%s" % fields.gen_uuid())
 
     def test_create_department(self):
-        data = {
-            "name": "open",
-            "color": "#000000"
-        }
+        data = {"name": "open", "color": "#000000"}
         self.department = self.post("data/departments", data)
         self.assertIsNotNone(self.department["id"])
 
@@ -34,12 +30,9 @@ class DepartmentTestCase(ApiDBTestCase):
 
     def test_update_department(self):
         department = self.get_first("data/departments")
-        data = {
-            "color": "#FFFFFF"
-        }
+        data = {"color": "#FFFFFF"}
         self.put("data/departments/%s" % department["id"], data)
-        department_again = self.get(
-            "data/departments/%s" % department["id"])
+        department_again = self.get("data/departments/%s" % department["id"])
         self.assertEqual(data["color"], department_again["color"])
         self.put_404("data/departments/%s" % fields.gen_uuid(), data)
 

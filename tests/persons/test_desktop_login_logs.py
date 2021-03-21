@@ -4,7 +4,6 @@ from tests.base import ApiDBTestCase
 
 
 class DesktopLoginLogsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(DesktopLoginLogsTestCase, self).setUp()
         self.person = self.generate_fixture_person().serialize()
@@ -27,13 +26,11 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
 
     def test_get_csv(self):
         data = {"date": datetime.datetime(2018, 4, 1, 0, 0, 0).isoformat()}
-        self.path = \
-            "/data/persons/%s/desktop-login-logs" % self.person["id"]
+        self.path = "/data/persons/%s/desktop-login-logs" % self.person["id"]
         self.post(self.path, data)
 
         data = {"date": datetime.datetime(2018, 4, 10, 0, 0, 0).isoformat()}
-        self.path = \
-            "/data/persons/%s/desktop-login-logs" % self.person["id"]
+        self.path = "/data/persons/%s/desktop-login-logs" % self.person["id"]
         self.post(self.path, data)
 
         csv = self.get_raw("/data/persons/presence-logs/2018-04")
@@ -42,6 +39,6 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
             "19;20;21;22;23;24;25;26;27;28;29;30",
             "John Did;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;",
             "John Doe;X;;;;;;;;;X;;;;;;;;;;;;;;;;;;;;",
-            ""
+            "",
         ]
         self.assertListEqual(expected_csv, csv.split("\r\n"))

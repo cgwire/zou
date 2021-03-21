@@ -34,13 +34,12 @@ class TimeSpentsCsvExport(BaseCsvExport):
 
     def build_query(self):
         query = (
-            TimeSpent.query
-            .order_by(
+            TimeSpent.query.order_by(
                 TimeSpent.created_at,
                 Person.last_name,
                 Project.name,
                 EntityType.name,
-                Entity.name
+                Entity.name,
             )
             .join(Task, TimeSpent.task_id == Task.id)
             .join(Entity, Task.entity_id == Entity.id)
@@ -67,7 +66,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
             entity_name,
             task_type_name,
             person_first_name,
-            person_last_name
+            person_last_name,
         ) = time_spent_row
         if entity_type_name == "Shot":
             entity_name, _ = names_service.get_full_entity_name(entity_id)
@@ -85,5 +84,5 @@ class TimeSpentsCsvExport(BaseCsvExport):
             entity_name,
             task_type_name,
             date,
-            time_spent.duration
+            time_spent.duration,
         ]

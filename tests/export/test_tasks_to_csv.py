@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class TasksCsvExportTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(TasksCsvExportTestCase, self).setUp()
 

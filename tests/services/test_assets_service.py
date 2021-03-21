@@ -5,7 +5,6 @@ from zou.app.services.exception import AssetNotFoundException
 
 
 class AssetServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(AssetServiceTestCase, self).setUp()
 
@@ -76,9 +75,7 @@ class AssetServiceTestCase(ApiDBTestCase):
 
         assets_service.remove_asset(asset["id"])
         self.assertRaises(
-            AssetNotFoundException,
-            assets_service.get_asset,
-            str(self.asset.id)
+            AssetNotFoundException, assets_service.get_asset, str(self.asset.id)
         )
 
     def test_get_asset_full(self):
@@ -93,17 +90,14 @@ class AssetServiceTestCase(ApiDBTestCase):
         self.assertEqual(asset["id"], str(self.asset.id))
         assets_service.remove_asset(asset["id"])
         self.assertRaises(
-            AssetNotFoundException,
-            assets_service.get_asset_by_shotgun_id,
-            1
+            AssetNotFoundException, assets_service.get_asset_by_shotgun_id, 1
         )
 
     def test_get_asset_instance(self):
         self.generate_fixture_scene()
         self.generate_fixture_scene_asset_instance()
         self.generate_fixture_shot_asset_instance(
-            self.shot,
-            self.asset_instance
+            self.shot, self.asset_instance
         )
         asset_instance = assets_service.get_asset_instance(
             self.asset_instance.id
@@ -113,12 +107,14 @@ class AssetServiceTestCase(ApiDBTestCase):
     def test_get_asset_type(self):
         asset_type = assets_service.get_asset_type(self.asset_type.id)
         self.assertDictEqual(
-            asset_type, self.asset_type.serialize(obj_type="AssetType"))
+            asset_type, self.asset_type.serialize(obj_type="AssetType")
+        )
 
     def test_get_asset_type_by_name(self):
         asset_type = assets_service.get_asset_type_by_name(self.asset_type.name)
         self.assertDictEqual(
-            asset_type, self.asset_type.serialize(obj_type="AssetType"))
+            asset_type, self.asset_type.serialize(obj_type="AssetType")
+        )
 
     def test_get_or_create_asset_type(self):
         new_name = "New asset type"
@@ -126,7 +122,8 @@ class AssetServiceTestCase(ApiDBTestCase):
             self.asset_type.name
         )
         self.assertDictEqual(
-            asset_type, self.asset_type.serialize(obj_type="AssetType"))
+            asset_type, self.asset_type.serialize(obj_type="AssetType")
+        )
         asset_type = assets_service.get_or_create_asset_type("New asset type")
         self.assertEqual(asset_type["name"], new_name)
 
@@ -156,7 +153,7 @@ class AssetServiceTestCase(ApiDBTestCase):
             self.asset_type.id,
             "New asset",
             "Description test",
-            {}
+            {},
         )
         asset_again = assets_service.get_asset(asset["id"])
         self.assertDictEqual(asset, asset_again)
@@ -171,9 +168,7 @@ class AssetServiceTestCase(ApiDBTestCase):
         asset_id = self.asset.id
         assets_service.remove_asset(asset_id)
         self.assertRaises(
-            AssetNotFoundException,
-            assets_service.get_asset,
-            asset_id
+            AssetNotFoundException, assets_service.get_asset, asset_id
         )
 
     def test_cancel_asset(self):
@@ -185,26 +180,14 @@ class AssetServiceTestCase(ApiDBTestCase):
     def test_add_asset_link(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
-        assets_service.add_asset_link(
-            self.asset.id,
-            self.asset_character.id
-        )
+        assets_service.add_asset_link(self.asset.id, self.asset_character.id)
         asset = assets_service.get_asset_with_relations(self.asset.id)
-        self.assertEqual(
-            asset["entities_out"][0],
-            str(self.asset_character.id)
-        )
+        self.assertEqual(asset["entities_out"][0], str(self.asset_character.id))
 
     def test_remove_asset_link(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
-        assets_service.add_asset_link(
-            self.asset.id,
-            self.asset_character.id
-        )
-        assets_service.remove_asset_link(
-            self.asset.id,
-            self.asset_character.id
-        )
+        assets_service.add_asset_link(self.asset.id, self.asset_character.id)
+        assets_service.remove_asset_link(self.asset.id, self.asset_character.id)
         asset = assets_service.get_asset_with_relations(self.asset.id)
         self.assertEqual(len(asset["entities_out"]), 0)

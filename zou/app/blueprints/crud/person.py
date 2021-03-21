@@ -69,9 +69,11 @@ class PersonResource(BaseModelResource, ArgsMixin):
             return instance.present_minimal()
 
     def pre_update(self, instance_dict, data):
-        if data.get("active", False) \
-           and not instance_dict.get("active", False) \
-           and persons_service.is_user_limit_reached():
+        if (
+            data.get("active", False)
+            and not instance_dict.get("active", False)
+            and persons_service.is_user_limit_reached()
+        ):
             raise WrongParameterException("User limit reached.")
         return instance_dict
 

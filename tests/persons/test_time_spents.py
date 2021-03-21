@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class PersonTimeSpentsTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PersonTimeSpentsTestCase, self).setUp()
 
@@ -26,25 +25,19 @@ class PersonTimeSpentsTestCase(ApiDBTestCase):
         shot_task_id = str(self.shot_task.id)
         person_id = str(self.person.id)
         self.post(
-            "/actions/tasks/%s/time-spents/2018-06-04/persons/%s" % (
-                task_id,
-                person_id
-            ),
-            {"duration": 500}
+            "/actions/tasks/%s/time-spents/2018-06-04/persons/%s"
+            % (task_id, person_id),
+            {"duration": 500},
         )
         self.post(
-            "/actions/tasks/%s/time-spents/2018-06-04/persons/%s" % (
-                shot_task_id,
-                person_id
-            ),
-            {"duration": 300}
+            "/actions/tasks/%s/time-spents/2018-06-04/persons/%s"
+            % (shot_task_id, person_id),
+            {"duration": 300},
         )
         self.post(
-            "/actions/tasks/%s/time-spents/2018-06-03/persons/%s" % (
-                task_id,
-                person_id
-            ),
-            {"duration": 600}
+            "/actions/tasks/%s/time-spents/2018-06-03/persons/%s"
+            % (task_id, person_id),
+            {"duration": 600},
         )
         time_spents = self.get(
             "/data/persons/%s/time-spents/2018-06-04" % person_id

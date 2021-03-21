@@ -82,7 +82,7 @@ routes = [
     ("/data/projects/<project_id>/episodes/stats", ProjectEpisodeStatsResource),
     (
         "/data/projects/<project_id>/episodes/retake-stats",
-        ProjectEpisodeRetakeStatsResource
+        ProjectEpisodeRetakeStatsResource,
     ),
 ]
 

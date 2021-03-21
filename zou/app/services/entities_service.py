@@ -83,7 +83,7 @@ def update_entity_preview(entity_id, preview_file_id):
     events.emit(
         "preview-file:set-main",
         {"entity_id": entity_id, "preview_file_id": preview_file_id},
-        project_id=str(entity.project_id)
+        project_id=str(entity.project_id),
     )
     entity_type = EntityType.get(entity.entity_type_id)
     entity_type_name = "asset"
@@ -92,31 +92,29 @@ def update_entity_preview(entity_id, preview_file_id):
     events.emit(
         "%s:update" % entity_type_name,
         {"%s_id" % entity_type_name: str(entity.id)},
-        project_id=str(entity.project_id)
+        project_id=str(entity.project_id),
     )
     return entity.serialize()
 
 
 def get_entities_for_project(
-    project_id,
-    entity_type_id,
-    obj_type="Entity",
-    only_assigned=False
+    project_id, entity_type_id, obj_type="Entity", only_assigned=False
 ):
     """
     Retrieve all entities related to given project of which entity is entity
     type.
     """
     from zou.app.services import user_service
+
     query = (
         Entity.query.filter(Entity.entity_type_id == entity_type_id)
         .filter(Entity.project_id == project_id)
         .order_by(Entity.name)
     )
     if only_assigned:
-        query = query \
-            .outerjoin(Task) \
-            .filter(user_service.build_assignee_filter())
+        query = query.outerjoin(Task).filter(
+            user_service.build_assignee_filter()
+        )
     result = query.all()
     return Entity.serialize_list(result, obj_type=obj_type)
 
@@ -125,10 +123,9 @@ def get_entity_links_for_project(project_id):
     """
     Retrieve entity links for
     """
-    query = (
-        EntityLink.query.join(Entity, EntityLink.entity_in_id == Entity.id)
-        .filter(Entity.project_id == project_id)
-    )
+    query = EntityLink.query.join(
+        Entity, EntityLink.entity_in_id == Entity.id
+    ).filter(Entity.project_id == project_id)
     result = query.all()
     return Entity.serialize_list(result)
 

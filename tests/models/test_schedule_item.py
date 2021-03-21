@@ -7,7 +7,6 @@ from zou.app.utils import fields
 
 
 class ScheduleItemTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(ScheduleItemTestCase, self).setUp()
         self.generate_fixture_department()
@@ -17,19 +16,19 @@ class ScheduleItemTestCase(ApiDBTestCase):
             project_id=self.project.id,
             task_type_id=self.task_type.id,
             start_date=date.today(),
-            end_date=date.today() + timedelta(days=1)
+            end_date=date.today() + timedelta(days=1),
         )
         ScheduleItem.create(
             project_id=self.project.id,
             task_type_id=self.task_type_animation.id,
             start_date=date.today(),
-            end_date=date.today() + timedelta(days=1)
+            end_date=date.today() + timedelta(days=1),
         )
         ScheduleItem.create(
             project_id=self.project.id,
             task_type_id=self.task_type_layout.id,
             start_date=date.today(),
-            end_date=date.today() + timedelta(days=1)
+            end_date=date.today() + timedelta(days=1),
         )
 
     def test_get_schedule_items(self):
@@ -39,7 +38,8 @@ class ScheduleItemTestCase(ApiDBTestCase):
     def test_get_schedule_item(self):
         schedule_item = self.get_first("data/schedule-items")
         schedule_item_again = self.get(
-            "data/schedule-items/%s" % schedule_item["id"])
+            "data/schedule-items/%s" % schedule_item["id"]
+        )
         self.assertEqual(schedule_item, schedule_item_again)
         self.get_404("data/schedule-items/%s" % fields.gen_uuid())
 
@@ -48,7 +48,7 @@ class ScheduleItemTestCase(ApiDBTestCase):
             "project_id": self.project.id,
             "task_type_id": self.task_type.id,
             "start_date": date.today(),
-            "end_date": date.today() + timedelta(days=1)
+            "end_date": date.today() + timedelta(days=1),
         }
         self.schedule_item = self.post("data/schedule-items", data)
         schedule_items = self.get("data/schedule-items")
@@ -56,20 +56,17 @@ class ScheduleItemTestCase(ApiDBTestCase):
 
     def test_update_schedule_item(self):
         schedule_item = self.get_first("data/schedule-items")
-        data = {
-            "end_date": self.now()
-        }
+        data = {"end_date": self.now()}
         self.put("data/schedule-items/%s" % schedule_item["id"], data)
         schedule_item_again = self.get(
-            "data/schedule-items/%s" % schedule_item["id"])
+            "data/schedule-items/%s" % schedule_item["id"]
+        )
         self.assertEqual(data["end_date"][:10], schedule_item_again["end_date"])
         self.put_404("data/schedule-items/%s" % fields.gen_uuid(), data)
 
     def test_update_schedule_item_wrong_man_days(self):
         schedule_item = self.get_first("data/schedule-items")
-        data = {
-            "man_days": ""
-        }
+        data = {"man_days": ""}
         self.put("data/schedule-items/%s" % schedule_item["id"], data)
 
     def test_delete_schedule_item(self):

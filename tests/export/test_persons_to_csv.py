@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class PersonsCsvExportTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(PersonsCsvExportTestCase, self).setUp()
 

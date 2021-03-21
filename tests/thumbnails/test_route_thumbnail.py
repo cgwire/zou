@@ -12,7 +12,6 @@ TEST_FOLDER = os.path.join("tests", "tmp")
 
 
 class RouteThumbnailTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(RouteThumbnailTestCase, self).setUp()
 
@@ -66,13 +65,15 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         path = "/pictures/preview-files/%s" % self.preview_file_id
 
         file_path_fixture = self.get_fixture_file_path(
-                os.path.join("thumbnails", "th01.png"))
+            os.path.join("thumbnails", "th01.png")
+        )
         self.upload_file(path, file_path_fixture)
 
         current_path = os.path.dirname(__file__)
         result_file_path = os.path.join(TEST_FOLDER, "th01.png")
         result_file_path = os.path.join(
-            current_path, "..", "..", result_file_path)
+            current_path, "..", "..", result_file_path
+        )
         os.mkdir(TEST_FOLDER)
 
         path = "/pictures/previews/preview-files/%s.png" % self.preview_file_id
@@ -80,15 +81,17 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (1200, 674))
 
-        path = "/pictures/thumbnails/preview-files/%s.png" % \
-            self.preview_file_id
+        path = (
+            "/pictures/thumbnails/preview-files/%s.png" % self.preview_file_id
+        )
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (150, 100))
 
-        path = \
-            "/pictures/thumbnails-square/preview-files/%s.png" % \
-            self.preview_file_id
+        path = (
+            "/pictures/thumbnails-square/preview-files/%s.png"
+            % self.preview_file_id
+        )
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (100, 100))
@@ -97,28 +100,31 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         path = "/pictures/preview-files/%s" % self.preview_file_id
 
         file_path_fixture = self.get_fixture_file_path(
-                os.path.join("thumbnails", "th01.png"))
+            os.path.join("thumbnails", "th01.png")
+        )
         self.upload_file(path, file_path_fixture)
 
-        path = \
+        path = (
             "/actions/preview-files/%s/set-main-preview" % self.preview_file_id
+        )
         self.put(path, {})
 
         asset = assets_service.get_asset(self.asset_id)
-        self.assertEqual(
-            asset["preview_file_id"],
-            str(self.preview_file_id)
+        self.assertEqual(asset["preview_file_id"], str(self.preview_file_id))
+
+        self.put(
+            "/actions/entities/%s/set-main-preview/%s"
+            % (self.preview_file_id, self.preview_file_id),
+            {},
+            404,
         )
 
-        self.put("/actions/entities/%s/set-main-preview/%s" % (
-            self.preview_file_id,
-            self.preview_file_id
-        ), {}, 404)
-
-        self.put("/actions/entities/%s/set-main-preview/%s" % (
-            self.asset_id,
-            self.asset_id
-        ), {}, 404)
+        self.put(
+            "/actions/entities/%s/set-main-preview/%s"
+            % (self.asset_id, self.asset_id),
+            {},
+            404,
+        )
         entity = Entity.get(self.asset_id)
         entity.preview_file_id = None
         entity.save()

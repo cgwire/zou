@@ -4,7 +4,6 @@ from zou.app.services import breakdown_service
 
 
 class BreakdownServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(BreakdownServiceTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -31,23 +30,12 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         casting = breakdown_service.get_casting(self.shot.id)
         self.assertListEqual(casting, [])
         new_casting = [
-            {
-                "asset_id": self.asset_id,
-                "nb_occurences": 1
-            },
-            {
-                "asset_id": self.asset_character_id,
-                "nb_occurences": 3
-            }
+            {"asset_id": self.asset_id, "nb_occurences": 1},
+            {"asset_id": self.asset_character_id, "nb_occurences": 3},
         ]
         breakdown_service.update_casting(self.shot.id, new_casting)
         self.generate_fixture_shot("SH02")
-        new_casting = [
-            {
-                "asset_id": self.asset_id,
-                "nb_occurences": 1
-            }
-        ]
+        new_casting = [{"asset_id": self.asset_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.shot.id, new_casting)
         casting = breakdown_service.get_sequence_casting(self.sequence.id)
         self.maxDiff = 10000
@@ -68,34 +56,19 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.forest_id = str(self.asset.id)
 
         casting = breakdown_service.get_asset_type_casting(
-            self.project_id,
-            self.asset_type_environment_id
+            self.project_id, self.asset_type_environment_id
         )
         self.assertDictEqual(casting, {})
         new_casting = [
-            {
-                "asset_id": self.asset_props_id,
-                "nb_occurences": 3
-            },
-            {
-                "asset_id": self.asset_character_id,
-                "nb_occurences": 1
-            }
+            {"asset_id": self.asset_props_id, "nb_occurences": 3},
+            {"asset_id": self.asset_character_id, "nb_occurences": 1},
         ]
         breakdown_service.update_casting(self.asset.id, new_casting)
-        self.generate_fixture_asset(
-            "Park", "", self.asset_type_environment_id
-        )
-        new_casting = [
-            {
-                "asset_id": self.asset_props_id,
-                "nb_occurences": 1
-            }
-        ]
+        self.generate_fixture_asset("Park", "", self.asset_type_environment_id)
+        new_casting = [{"asset_id": self.asset_props_id, "nb_occurences": 1}]
         breakdown_service.update_casting(self.asset.id, new_casting)
         casting = breakdown_service.get_asset_type_casting(
-            self.project_id,
-            self.asset_type_environment_id
+            self.project_id, self.asset_type_environment_id
         )
         self.maxDiff = 10000
         self.assertTrue(self.forest_id in casting)
@@ -121,14 +94,8 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         casting = breakdown_service.get_casting(self.shot.id)
         self.assertListEqual(casting, [])
         new_casting = [
-            {
-                "asset_id": self.asset_id,
-                "nb_occurences": 1
-            },
-            {
-                "asset_id": self.asset_character_id,
-                "nb_occurences": 3
-            }
+            {"asset_id": self.asset_id, "nb_occurences": 1},
+            {"asset_id": self.asset_character_id, "nb_occurences": 3},
         ]
         breakdown_service.update_casting(self.shot.id, new_casting)
 
@@ -136,21 +103,15 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         casting = sorted(casting, key=lambda x: x["nb_occurences"])
         self.assertEqual(casting[0]["asset_id"], new_casting[0]["asset_id"])
         self.assertEqual(
-            casting[0]["nb_occurences"],
-            new_casting[0]["nb_occurences"]
+            casting[0]["nb_occurences"], new_casting[0]["nb_occurences"]
         )
         self.assertEqual(casting[1]["asset_id"], new_casting[1]["asset_id"])
         self.assertEqual(
-            casting[1]["nb_occurences"],
-            new_casting[1]["nb_occurences"]
+            casting[1]["nb_occurences"], new_casting[1]["nb_occurences"]
         )
+        self.assertEqual(casting[1]["asset_name"], self.asset_character.name)
         self.assertEqual(
-            casting[1]["asset_name"],
-            self.asset_character.name
-        )
-        self.assertEqual(
-            casting[1]["asset_type_name"],
-            self.asset_type_character.name
+            casting[1]["asset_type_name"], self.asset_type_character.name
         )
 
         cast_in = breakdown_service.get_cast_in(self.asset_character.id)
@@ -174,10 +135,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(instances[self.asset_character_id]), 1)
         self.assertEqual(instances[self.asset_id][0]["number"], 1)
         self.assertEqual(instances[self.asset_id][1]["number"], 2)
-        self.assertEqual(
-            instances[self.asset_id][1]["name"],
-            "Tree_0002"
-        )
+        self.assertEqual(instances[self.asset_id][1]["name"], "Tree_0002")
         self.assertEqual(instances[self.asset_character_id][0]["number"], 1)
 
         instances = breakdown_service.remove_asset_instance_for_shot(
@@ -187,11 +145,11 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertTrue(self.asset_character_id not in instances)
 
     def test_build_asset_instance_name(self):
-        name = breakdown_service.build_asset_instance_name(
-            self.asset_id, 3)
+        name = breakdown_service.build_asset_instance_name(self.asset_id, 3)
         self.assertEqual(name, "Tree_0003")
         name = breakdown_service.build_asset_instance_name(
-            self.asset_character_id, 5)
+            self.asset_character_id, 5
+        )
         self.assertEqual(name, "Rabbit_0005")
 
     def test_get_shot_asset_instances_for_asset(self):

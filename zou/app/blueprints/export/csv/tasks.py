@@ -42,18 +42,17 @@ class TasksCsvExport(BaseCsvExport):
         Episode = aliased(Entity, name="episode")
         open_status = projects_service.get_open_status()
 
-        query = Task.query.order_by(
-            Project.name, TaskType.name, Task.name
-        )
+        query = Task.query.order_by(Project.name, TaskType.name, Task.name)
         query = query.join(Project)
         query = query.join(TaskType)
         query = query.join(TaskStatus)
         query = query.join(Entity, Task.entity_id == Entity.id)
         query = query.join(EntityType)
-        query = query \
-            .outerjoin(Person, Task.assigner_id == Person.id) \
-            .outerjoin(Sequence, Sequence.id == Entity.parent_id) \
+        query = (
+            query.outerjoin(Person, Task.assigner_id == Person.id)
+            .outerjoin(Sequence, Sequence.id == Entity.parent_id)
             .outerjoin(Episode, Episode.id == Sequence.parent_id)
+        )
         query = query.add_columns(
             Project.name,
             TaskType.name,
@@ -132,5 +131,5 @@ class TasksCsvExport(BaseCsvExport):
             due_date,
             real_start_date,
             end_date,
-            task_status_name
+            task_status_name,
         ]

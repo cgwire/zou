@@ -256,10 +256,12 @@ class FilterResource(Resource, ArgsMixin):
 
     @jwt_required
     def put(self, filter_id):
-        data = self.get_args([
-            ('name', None, False),
-            ('search_query', None, False),
-        ])
+        data = self.get_args(
+            [
+                ("name", None, False),
+                ("search_query", None, False),
+            ]
+        )
         data = self.clear_empty_fields(data)
         user_filter = user_service.update_filter(filter_id, data)
         return user_filter, 200
@@ -303,13 +305,9 @@ class NotificationsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self):
-        (
-            after,
-            before
-        ) = self.get_arguments()
+        (after, before) = self.get_arguments()
         notifications = user_service.get_last_notifications(
-            after=after,
-            before=before
+            after=after, before=before
         )
         user_service.mark_notifications_as_read()
         return notifications

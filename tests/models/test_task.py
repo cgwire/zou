@@ -6,7 +6,6 @@ from zou.app.utils import fields
 
 
 class TaskTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(TaskTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -17,7 +16,7 @@ class TaskTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         self.generate_fixture_task_status()
-        self.assigner = Person(first_name='Ema', last_name='Peel')
+        self.assigner = Person(first_name="Ema", last_name="Peel")
         self.assigner.save()
         self.tasks = self.generate_data(
             Task,
@@ -28,7 +27,7 @@ class TaskTestCase(ApiDBTestCase):
             task_status_id=self.task_status.id,
             entity_id=self.asset.id,
             assignees=[self.person],
-            assigner_id=self.assigner.id
+            assigner_id=self.assigner.id,
         )
 
     def test_get_tasks(self):
@@ -49,18 +48,12 @@ class TaskTestCase(ApiDBTestCase):
             "task_status_id": self.task_status.id,
             "entity_id": self.asset.id,
             "assignees": [str(self.person.id)],
-            "assigner_id": self.assigner.id
+            "assigner_id": self.assigner.id,
         }
         self.task = self.post("data/tasks", data)
         self.assertIsNotNone(self.task["id"])
-        self.assertEqual(
-            str(self.person.id),
-            self.task["assignees"][0]
-        )
-        self.assertEqual(
-            str(self.person.id),
-            self.task["assignees"][0]
-        )
+        self.assertEqual(str(self.person.id), self.task["assignees"][0])
+        self.assertEqual(str(self.person.id), self.task["assignees"][0])
 
         tasks = self.get("data/tasks")
         self.assertEqual(len(tasks), 4)
@@ -72,9 +65,7 @@ class TaskTestCase(ApiDBTestCase):
 
     def test_update_task(self):
         task = self.get_first("data/tasks")
-        data = {
-            "name": "Modeling arbre 2"
-        }
+        data = {"name": "Modeling arbre 2"}
         self.put("data/tasks/%s" % task["id"], data)
         task_again = self.get("data/tasks/%s" % task["id"])
         self.assertEqual(data["name"], task_again["name"])

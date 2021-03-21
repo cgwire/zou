@@ -11,7 +11,7 @@ from zou.app.services import (
     comments_service,
     deletion_service,
     preview_files_service,
-    tasks_service
+    tasks_service,
 )
 from zou.app.utils import events, fields
 
@@ -19,7 +19,6 @@ from zou.app.services.exception import TaskNotFoundException
 
 
 class ToReviewHandler(object):
-
     def __init__(self, open_status_id, to_review_status_id):
         self.is_event_fired = False
         self.open_status_id = open_status_id
@@ -31,7 +30,6 @@ class ToReviewHandler(object):
 
 
 class TaskServiceTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(TaskServiceTestCase, self).setUp()
 
@@ -68,8 +66,7 @@ class TaskServiceTestCase(ApiDBTestCase):
     def handle_event(self, data):
         self.is_event_fired = True
         self.assertEqual(
-            data["previous_task_status_id"],
-            str(self.open_status_id)
+            data["previous_task_status_id"], str(self.open_status_id)
         )
 
     def assert_event_is_fired(self):
@@ -121,11 +118,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task["task_status_id"], status["id"])
 
     def test_status_to_wip(self):
-        events.register(
-            "task:start",
-            "mark_event_as_fired",
-            self
-        )
+        events.register("task:start", "mark_event_as_fired", self)
 
         now = datetime.datetime.now()
         self.task.update({"real_start_date": None})
@@ -140,9 +133,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         tasks_service.start_task(self.task.id)
         task = Task.get(self.task.id)
         real_start_date = task.real_start_date
-        task.update({
-            "task_status_id": self.task_status.id
-        })
+        task.update({"task_status_id": self.task_status.id})
 
         tasks_service.start_task(self.task.id)
         task = Task.get(self.task.id)
@@ -150,15 +141,9 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_publish_task(self):
         handler = ToReviewHandler(self.open_status_id, self.to_review_status_id)
-        events.register(
-            "task:to-review",
-            "mark_event_as_fired",
-            handler
-        )
+        events.register("task:to-review", "mark_event_as_fired", handler)
         tasks_service.task_to_review(
-            self.task.id,
-            self.person.serialize(),
-            "my comment"
+            self.task.id, self.person.serialize(), "my comment"
         )
         self.is_event_fired = handler.is_event_fired
         data = handler.data
@@ -168,8 +153,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assert_event_is_fired()
 
         self.assertEqual(
-            data["previous_task_status_id"],
-            str(self.open_status_id)
+            data["previous_task_status_id"], str(self.open_status_id)
         )
 
         self.assertEqual(data["comment"], "my comment")
@@ -184,9 +168,7 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_get_task(self):
         self.assertRaises(
-            TaskNotFoundException,
-            tasks_service.get_task,
-            "wrong-id"
+            TaskNotFoundException, tasks_service.get_task, "wrong-id"
         )
         task = tasks_service.get_task(self.task_id)
         self.assertEqual(str(self.task_id), task["id"])
@@ -195,9 +177,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         deletion_service.remove_task(task["id"])
 
         self.assertRaises(
-            TaskNotFoundException,
-            tasks_service.get_task,
-            str(self.task_id)
+            TaskNotFoundException, tasks_service.get_task, str(self.task_id)
         )
 
     def test_get_tasks_for_sequence(self):
@@ -258,7 +238,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.task_type = TaskType(
             name="Modélisation",
             color="#FFFFFF",
-            department_id=self.department.id
+            department_id=self.department.id,
         )
         self.task_type.save()
         self.task = Task(
@@ -273,7 +253,7 @@ class TaskServiceTestCase(ApiDBTestCase):
             estimation=40,
             start_date=start_date,
             due_date=due_date,
-            real_start_date=real_start_date
+            real_start_date=real_start_date,
         )
         self.task.save()
 
@@ -291,16 +271,7 @@ class TaskServiceTestCase(ApiDBTestCase):
             person_id=person_id,
             task_id=task_id,
             date="2017-09-23",
-            duration=duration
-        )
-        self.assertEqual(time_spent["duration"], duration)
-
-        duration = 7200
-        time_spent = tasks_service.create_or_update_time_spent(
-            person_id=person_id,
-            task_id=task_id,
-            date="2017-09-23",
-            duration=duration
+            duration=duration,
         )
         self.assertEqual(time_spent["duration"], duration)
 
@@ -310,7 +281,16 @@ class TaskServiceTestCase(ApiDBTestCase):
             task_id=task_id,
             date="2017-09-23",
             duration=duration,
-            add=True
+        )
+        self.assertEqual(time_spent["duration"], duration)
+
+        duration = 7200
+        time_spent = tasks_service.create_or_update_time_spent(
+            person_id=person_id,
+            task_id=task_id,
+            date="2017-09-23",
+            duration=duration,
+            add=True,
         )
         self.assertEqual(time_spent["duration"], 2 * duration)
 
@@ -365,23 +345,16 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
 
         comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.person.id,
-            "first comment"
+            self.task.id, self.task_status.id, self.person.id, "first comment"
         )
         comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.person.id,
-            "last comment"
+            self.task.id, self.task_status.id, self.person.id, "last comment"
         )
         tasks = tasks_service.get_person_tasks(self.person.id, projects)
         self.assertEqual(len(tasks), 2)
         self.assertEqual(tasks[1]["last_comment"]["text"], "last comment")
         self.assertEqual(
-            tasks[1]["last_comment"]["person_id"],
-            str(self.person.id)
+            tasks[1]["last_comment"]["person_id"], str(self.person.id)
         )
 
     def test_get_done_tasks_for_person(self):
@@ -395,8 +368,7 @@ class TaskServiceTestCase(ApiDBTestCase):
 
         done_status = tasks_service.get_done_status()
         tasks_service.update_task(
-            self.task.id,
-            {"task_status_id": done_status["id"]}
+            self.task.id, {"task_status_id": done_status["id"]}
         )
         tasks = tasks_service.get_person_done_tasks(self.user["id"], projects)
         self.assertEqual(len(tasks), 1)
@@ -404,8 +376,7 @@ class TaskServiceTestCase(ApiDBTestCase):
     def test_update_task(self):
         done_status = tasks_service.get_done_status()
         tasks_service.update_task(
-            self.task.id,
-            {"task_status_id": done_status["id"]}
+            self.task.id, {"task_status_id": done_status["id"]}
         )
         self.assertEqual(str(self.task.task_status_id), done_status["id"])
         self.assertIsNotNone(self.task.end_date)
@@ -416,9 +387,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.output_file.delete()
         deletion_service.remove_task(self.task_id)
         self.assertRaises(
-            TaskNotFoundException,
-            tasks_service.get_task,
-            self.task_id
+            TaskNotFoundException, tasks_service.get_task, self.task_id
         )
 
     def test_remove_tasks(self):
@@ -429,34 +398,25 @@ class TaskServiceTestCase(ApiDBTestCase):
         task_ids = [task_id, task2_id]
         deletion_service.remove_tasks(self.project_id, task_ids)
         self.assertRaises(
-            TaskNotFoundException,
-            tasks_service.get_task,
-            task_id
+            TaskNotFoundException, tasks_service.get_task, task_id
         )
         self.assertRaises(
-            TaskNotFoundException,
-            tasks_service.get_task,
-            task2_id
+            TaskNotFoundException, tasks_service.get_task, task2_id
         )
 
     def test_remove_task_force(self):
         comments_service.new_comment(
-            self.task.id,
-            self.task_status.id,
-            self.person.id,
-            "first comment"
+            self.task.id, self.task_status.id, self.person.id, "first comment"
         )
         TimeSpent.create(
             person_id=self.person.id,
             task_id=self.task.id,
             date=datetime.date(2017, 9, 23),
-            duration=3600
+            duration=3600,
         )
         deletion_service.remove_task(self.task_id, force=True)
         self.assertRaises(
-            TaskNotFoundException,
-            tasks_service.get_task,
-            self.task_id
+            TaskNotFoundException, tasks_service.get_task, self.task_id
         )
 
     def test_delete_all_task_types(self):
@@ -467,8 +427,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         task_3_id = str(self.shot_task.id)
         task_4_id = str(self.generate_fixture_task_standard().id)
         deletion_service.remove_tasks_for_project_and_task_type(
-            self.project.id,
-            self.task_type.id
+            self.project.id, self.task_type.id
         )
         self.assertIsNone(Task.get(task_1_id))
         self.assertIsNone(Task.get(task_2_id))
@@ -477,13 +436,11 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_get_comment_mentions(self):
         mentions = comments_service.get_comment_mentions(
-            self.task_id,
-            "Test @Emma Doe"
+            self.task_id, "Test @Emma Doe"
         )
         self.assertEqual(len(mentions), 0)
         mentions = comments_service.get_comment_mentions(
-            self.task_id,
-            "Test @John Doe"
+            self.task_id, "Test @John Doe"
         )
         self.assertEqual(mentions[0], self.person)
 
@@ -502,10 +459,7 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_new_comment(self):
         comment = comments_service.new_comment(
-            self.task_id,
-            self.task_status.id,
-            self.person.id,
-            "Test @John Doe"
+            self.task_id, self.task_status.id, self.person.id, "Test @John Doe"
         )
         self.assertEqual(comment["mentions"][0], str(self.person.id))
 
@@ -531,29 +485,24 @@ class TaskServiceTestCase(ApiDBTestCase):
     def test_update_preview_file_position(self):
         self.generate_fixture_preview_file(revision=1)
         self.generate_fixture_preview_file(revision=2)
-        preview_file = \
-            self.generate_fixture_preview_file(revision=2, name="second")
+        preview_file = self.generate_fixture_preview_file(
+            revision=2, name="second"
+        )
         preview_file_id = str(preview_file.id)
         self.generate_fixture_preview_file(revision=2, name="third")
 
         preview_files_service.update_preview_file_position(preview_file_id, 1)
-        preview_files = (
-            PreviewFile
-            .query
-            .filter_by(task_id=self.task_id, revision=2)
-            .order_by(PreviewFile.position)
-        )
+        preview_files = PreviewFile.query.filter_by(
+            task_id=self.task_id, revision=2
+        ).order_by(PreviewFile.position)
         for (i, preview_file) in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[0].id), preview_file_id)
 
         preview_files_service.update_preview_file_position(preview_file_id, 3)
-        preview_files = (
-            PreviewFile
-            .query
-            .filter_by(task_id=self.task_id, revision=2)
-            .order_by(PreviewFile.position)
-        )
+        preview_files = PreviewFile.query.filter_by(
+            task_id=self.task_id, revision=2
+        ).order_by(PreviewFile.position)
         for (i, preview_file) in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[2].id), preview_file_id)

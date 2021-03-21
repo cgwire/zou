@@ -2,7 +2,6 @@ from tests.base import ApiDBTestCase
 
 
 class SceneTasksTestCase(ApiDBTestCase):
-
     def setUp(self):
         super(SceneTasksTestCase, self).setUp()
         self.generate_fixture_project_status()
@@ -37,6 +36,5 @@ class SceneTasksTestCase(ApiDBTestCase):
         task_types = self.get("/data/scenes/%s/task-types" % self.scene.id)
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
-            task_types[0],
-            self.task_type_animation.serialize()
+            task_types[0], self.task_type_animation.serialize()
         )
