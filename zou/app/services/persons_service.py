@@ -16,7 +16,10 @@ from zou.app.models.person import Person
 from zou.app.utils import fields, events, cache, emails
 from zou.app import config
 
-from zou.app.services.exception import PersonNotFoundException
+from zou.app.services.exception import (
+    DepartmentNotFoundException,
+    PersonNotFoundException,
+)
 
 
 def clear_person_cache():
@@ -159,6 +162,7 @@ def create_person(
     phone="",
     role="user",
     desktop_login="",
+    departments=None,
 ):
     """
     Create a new person entry in the database. No operation are performed on
@@ -166,6 +170,16 @@ def create_person(
     """
     if email is not None:
         email = email.strip()
+    if not departments:
+        departments = []
+
+    try:
+        departments_objects = [
+            Department.get(department_id) for department_id in departments
+        ]
+    except StatementError:
+        raise DepartmentNotFoundException()
+
     person = Person.create(
         email=email,
         password=password,
@@ -174,10 +188,11 @@ def create_person(
         phone=phone,
         role=role,
         desktop_login=desktop_login,
+        departments=departments_objects
     )
     events.emit("person:new", {"person_id": person.id})
     clear_person_cache()
-    return person.serialize()
+    return person.serialize(relations=True)
 
 
 def update_password(email, password):

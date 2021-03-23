@@ -214,6 +214,7 @@ class BaseModelResource(Resource):
         Resource.__init__(self)
         self.protected_fields = ["id", "created_at", "updated_at"]
         self.model = model
+        self.instance = None
 
     def get_model_or_404(self, instance_id):
         if not fields.is_valid_id(instance_id):
@@ -294,13 +295,13 @@ class BaseModelResource(Resource):
                     "Data are empty. Please verify that you sent JSON data and "
                     "that you set the right headers."
                 )
-            instance = self.get_model_or_404(instance_id)
-            instance_dict = instance.serialize()
+            self.instance = self.get_model_or_404(instance_id)
+            instance_dict = self.instance.serialize()
             self.check_update_permissions(instance_dict, data)
             self.pre_update(instance_dict, data)
             data = self.update_data(data, instance_id)
-            instance.update(data)
-            instance_dict = instance.serialize()
+            self.instance.update(data)
+            instance_dict = self.instance.serialize()
             self.emit_update_event(instance_dict)
             self.post_update(instance_dict)
             return instance_dict, 200
