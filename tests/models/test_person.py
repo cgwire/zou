@@ -1,5 +1,7 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
+from zou.app.models.department import Department
+from zou.app.models.person import Person
 
 from zou.app.utils import fields
 
@@ -34,6 +36,7 @@ class PersonTestCase(ApiDBTestCase):
     def test_get_person(self):
         person = self.get_first("data/persons")
         person_again = self.get("data/persons/%s" % person["id"])
+        del person["departments"]
         self.assertEqual(person, person_again)
         self.get_404("data/persons/%s" % fields.gen_uuid())
 
@@ -74,6 +77,32 @@ class PersonTestCase(ApiDBTestCase):
         }
         self.person = self.post("data/persons/new", data, 400)
 
+    def test_create_person_with_departments(self):
+        self.generate_fixture_department()
+        departments = [
+            str(department.id) for department in Department.query.all()
+        ]
+        data = {
+            "first_name": "John2",
+            "last_name": "Doe",
+            "email": "john2.doe@gmail.com",
+            "departments": departments,
+        }
+        person = self.post("data/persons/new", data)
+        self.assertIsNotNone(person["id"])
+        self.assertEquals(
+            set(person["departments"]),
+            set(departments),
+        )
+
+        created_person = Person.get(person["id"])
+        self.assertEquals(
+            set(
+                str(department.id) for department in created_person.departments
+            ),
+            set(departments),
+        )
+
     def test_update_person(self):
         person = self.get_first("data/persons")
         data = {
@@ -83,6 +112,23 @@ class PersonTestCase(ApiDBTestCase):
         person_again = self.get("data/persons/%s" % person["id"])
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404("data/persons/%s" % fields.gen_uuid(), data)
+
+    def test_update_person_with_departments(self):
+        self.generate_fixture_department()
+        person = self.get_first("data/persons")
+        departments = [
+            str(department.id) for department in Department.query.all()
+        ]
+        data = {
+            "first_name": "Johnny",
+            "departments": departments,
+        }
+        self.put("data/persons/%s" % person["id"], data)
+        person_again = Person.get(person["id"])
+        self.assertEquals(
+            set(str(department.id) for department in person_again.departments),
+            set(departments),
+        )
 
     def test_set_active_when_too_much_person(self):
         from zou.app import config

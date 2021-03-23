@@ -1,5 +1,6 @@
 from flask import abort, request
 from flask_jwt_extended import jwt_required
+from sqlalchemy.exc import StatementError
 
 from zou.app.models.person import Person
 from zou.app.services import persons_service, deletion_service
@@ -9,7 +10,11 @@ from .base import BaseModelsResource, BaseModelResource
 
 from zou.app.mixin import ArgsMixin
 
-from zou.app.services.exception import WrongParameterException
+from zou.app.services.exception import (
+    DepartmentNotFoundException,
+    WrongParameterException,
+)
+from zou.app.models.department import Department
 
 
 class PersonsResource(BaseModelsResource):
@@ -22,11 +27,19 @@ class PersonsResource(BaseModelsResource):
 
         if permissions.has_manager_permissions():
             if request.args.get("with_pass_hash") == "true":
-                return [person.serialize() for person in query.all()]
+                return [
+                    person.serialize(relations=True) for person in query.all()
+                ]
             else:
-                return [person.serialize_safe() for person in query.all()]
+                return [
+                    person.serialize_safe(relations=True)
+                    for person in query.all()
+                ]
         else:
-            return [person.present_minimal() for person in query.all()]
+            return [
+                person.present_minimal(relations=True)
+                for person in query.all()
+            ]
 
     def post(self):
         abort(405)
@@ -79,6 +92,9 @@ class PersonResource(BaseModelResource, ArgsMixin):
 
     def post_update(self, instance_dict):
         persons_service.clear_person_cache()
+        instance_dict["departments"] = [
+            str(department.id) for department in self.instance.departments
+        ]
         return instance_dict
 
     def post_delete(self, instance_dict):
@@ -88,6 +104,15 @@ class PersonResource(BaseModelResource, ArgsMixin):
     def update_data(self, data, instance_id):
         if "password" in data:
             del data["password"]
+        if "departments" in data:
+            try:
+                departments = [
+                    Department.get(department_id)
+                    for department_id in data["departments"]
+                ]
+            except StatementError:
+                raise DepartmentNotFoundException()
+            data["departments"] = departments
         return data
 
     @jwt_required
