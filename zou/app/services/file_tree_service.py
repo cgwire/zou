@@ -399,7 +399,10 @@ def get_root_path(tree, mode, sep):
         raise MalformedFileTreeException(
             "Can't find given mode (%s) in given tree." % mode
         )
-    return "%s%s%s%s" % (mountpoint, sep, root, sep)
+    if root:
+        return "%s%s%s%s" % (mountpoint, sep, root, sep)
+    else:
+        return "%s%s" % (mountpoint, sep)
 
 
 def update_variable(
