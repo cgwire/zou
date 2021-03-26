@@ -3,6 +3,16 @@
 To solve issues related to your installation, you can do several actions to
 get information about what is going wrong.
 
+
+## Database status
+
+Prior to look for logs or any clue about your problem, make sure that the
+database is up and up to date:
+
+```bash
+DB_PASSWORD=yourdbpassword zou upgrade_db
+```
+
 ## Error logs
 
 Main error logs are stored in the `/opt/zou/gunicorn_error.log` file. Errors 
