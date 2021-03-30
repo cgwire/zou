@@ -405,7 +405,9 @@ def get_full_shot(shot_id):
     """
     shots = get_shots_and_tasks({"id": shot_id})
     if len(shots) > 0:
-        return shots[0]
+        shot = shots[0]
+        shot.update(get_shot_with_relations(shot_id))
+        return shot
     else:
         raise ShotNotFoundException
 
