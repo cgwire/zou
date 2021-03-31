@@ -5,6 +5,7 @@ from slugify import slugify
 from zou.app.utils import date_helpers
 
 from zou.app.services import (
+    entities_service,
     files_service,
     names_service,
     playlists_service,
@@ -72,7 +73,9 @@ class PlaylistCsvExport(Resource):
             ["", "", "", "", "", "", ""],
             [
                 "Entity name",
+                "Nb Frames",
                 "Task Type",
+                "Retake count",
                 "Revision",
                 "Task Status",
                 "Last comment author",
@@ -83,6 +86,7 @@ class PlaylistCsvExport(Resource):
         return headers
 
     def build_row(self, shot):
+        entity = entities_service.get_entity(shot["entity_id"])
         name, _ = names_service.get_full_entity_name(shot["entity_id"])
         preview_file = files_service.get_preview_file(shot["preview_file_id"])
         task = tasks_service.get_task(preview_file["task_id"])
@@ -93,7 +97,9 @@ class PlaylistCsvExport(Resource):
         date = self.get_date(comment)
         return [
             name,
+            entity.get("nb_frames", ""),
             task_type["name"],
+            task["retake_count"],
             preview_file["revision"],
             task_status["name"],
             author,

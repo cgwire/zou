@@ -9,7 +9,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.services import files_service
-from zou.app.utils import events, thumbnail as thumbnail_utils
+from zou.app.utils import events, fields, thumbnail as thumbnail_utils
 from zou.utils import movie
 
 
@@ -174,3 +174,15 @@ def update_preview_file_position(preview_file_id, position):
         for (i, preview) in enumerate(tmp_list):
             preview.update({"position": i + 1})
     return PreviewFile.serialize_list(preview_files)
+
+
+def get_preview_files_for_revision(task_id, revision):
+    """
+    Get all preview files for given task and revision.
+    """
+    preview_files = (
+        PreviewFile.query
+        .filter_by(task_id=task_id, revision=revision)
+        .order_by(PreviewFile.position)
+    )
+    return fields.serialize_models(preview_files)

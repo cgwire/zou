@@ -18,8 +18,8 @@ class DepartmentsResource(BaseModelsResource):
 
     def update_data(self, data):
         name = data.get("name", None)
-        task_type = Department.get_by(name=name)
-        if task_type is not None:
+        department = Department.get_by(name=name)
+        if department is not None:
             raise ArgumentsException(
                 "A department type with similar name already exists"
             )
@@ -36,10 +36,10 @@ class DepartmentResource(BaseModelResource):
     def update_data(self, data, instance_id):
         name = data.get("name", None)
         if name is not None:
-            task_type = TaskType.get_by(name=name)
-            if task_type is not None and instance_id != str(task_type.id):
+            department = Department.get_by(name=name)
+            if department is not None and instance_id != str(task_type.id):
                 raise ArgumentsException(
-                    "A task type with similar name already exists"
+                    "A department with similar name already exists"
                 )
         return data
 

@@ -63,4 +63,6 @@ def get_preview_file_name(preview_file_id):
             preview_file["revision"],
         )
         name = slugify.slugify(name, separator="_")
+    if preview_file["position"] > 1:
+        name = "%s-%s" % (name, preview_file["position"])
     return "%s.%s" % (name, preview_file["extension"])
