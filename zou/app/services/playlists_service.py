@@ -32,6 +32,7 @@ from zou.app.services import (
     base_service,
     entities_service,
     files_service,
+    preview_files_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -82,7 +83,7 @@ def all_playlists_for_episode(
     result = []
     query = Playlist.query
     if for_client:
-        query = query.filter(Playlist.for_client == True)
+        query = query.filter(Playlist.for_client)
 
     if episode_id == "main":
         query = (
@@ -387,45 +388,64 @@ def playlist_previews(shots, only_movies=False):
             ):
                 preview_files.append(preview_file)
 
-    return [{"id": x["id"], "extension": x["extension"]} for x in preview_files]
+    return [
+        {"id": x["id"], "extension": x["extension"]}
+        for x in preview_files
+    ]
 
 
-def retrieve_playlist_tmp_files(preview_files):
+def retrieve_playlist_tmp_files(preview_files, full=False):
     """
     Retrieve all files for a given playlist into the temporary folder.
     """
     file_paths = []
     for preview_file in preview_files:
-        prefix = "original"
-        if preview_file["extension"] == "mp4":
-            get_path_func = file_store.get_local_movie_path
-            open_func = file_store.open_movie
-            prefix = "previews"
-        elif preview_file["extension"] == "png":
-            get_path_func = file_store.get_local_picture_path
-            open_func = file_store.open_picture
+        if full:
+            preview_file = files_service.get_preview_file(preview_file["id"])
+            sub_preview_files = \
+                preview_files_service.get_preview_files_for_revision(
+                    preview_file["task_id"], preview_file["revision"]
+                )
+            for preview_file in sub_preview_files:
+                tmp_file_path, file_name = \
+                    retrieve_playlist_tmp_file(preview_file)
+                file_paths.append((tmp_file_path, file_name))
         else:
-            get_path_func = file_store.get_local_file_path
-            open_func = file_store.open_file
-
-        if config.FS_BACKEND == "local":
-            file_path = get_path_func(prefix, preview_file["id"])
-        else:
-            file_path = os.path.join(
-                config.TMP_DIR,
-                "cache-previews-%s.%s"
-                % (preview_file["id"], preview_file["extension"]),
-            )
-            if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-                with open(file_path, "wb") as tmp_file:
-                    for chunk in open_func(prefix, preview_file["id"]):
-                        tmp_file.write(chunk)
-
-        file_name = names_service.get_preview_file_name(preview_file["id"])
-        tmp_file_path = os.path.join(config.TMP_DIR, file_name)
-        copyfile(file_path, tmp_file_path)
-        file_paths.append((tmp_file_path, file_name))
+            tmp_file_path, file_name = retrieve_playlist_tmp_file(preview_file)
+            file_paths.append((tmp_file_path, file_name))
     return file_paths
+
+
+def retrieve_playlist_tmp_file(preview_file):
+    prefix = "original"
+    if preview_file["extension"] == "mp4":
+        get_path_func = file_store.get_local_movie_path
+        open_func = file_store.open_movie
+        prefix = "previews"
+    elif preview_file["extension"] == "png":
+        get_path_func = file_store.get_local_picture_path
+        open_func = file_store.open_picture
+        prefix = "original"
+    else:
+        get_path_func = file_store.get_local_file_path
+        open_func = file_store.open_file
+
+    if config.FS_BACKEND == "local":
+        file_path = get_path_func(prefix, preview_file["id"])
+    else:
+        file_path = os.path.join(
+            config.TMP_DIR,
+            "cache-previews-%s.%s"
+            % (preview_file["id"], preview_file["extension"]),
+        )
+        if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+            with open(file_path, "wb") as tmp_file:
+                for chunk in open_func(prefix, preview_file["id"]):
+                    tmp_file.write(chunk)
+    file_name = names_service.get_preview_file_name(preview_file["id"])
+    tmp_file_path = os.path.join(config.TMP_DIR, file_name)
+    copyfile(file_path, tmp_file_path)
+    return tmp_file_path, file_name
 
 
 def build_playlist_zip_file(playlist):
@@ -433,7 +453,7 @@ def build_playlist_zip_file(playlist):
     Build a zip for all files for a given playlist into the temporary folder.
     """
     previews = playlist_previews(playlist["shots"])
-    tmp_file_paths = retrieve_playlist_tmp_files(previews)
+    tmp_file_paths = retrieve_playlist_tmp_files(previews, full=True)
 
     zip_file_path = get_playlist_zip_file_path(playlist)
     if os.path.exists(zip_file_path):
@@ -480,8 +500,14 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                 from zou.app import app
 
                 with app.app_context():
-                    _execute_nomad_job(job, previews, params, movie_file_path)
-                    success = True
+                    try:
+                        _execute_nomad_job(
+                            job, previews, params, movie_file_path
+                        )
+                        success = True
+                    except Exception as exc:
+                        current_app.logger.error(exc)
+                        success = False
 
     # exception will by logged by rq
     finally:
@@ -607,13 +633,15 @@ def _get_nomad_job_logs(ncli, nomad_jobid):
         out = "\n".join([x["DisplayMessage"] for x in task["Events"]])
         err = ""
     else:
-        err = ncli.client.stream_logs.stream(alloc_id, "zou-playlist", "stderr")
-        out = ncli.client.stream_logs.stream(alloc_id, "zou-playlist", "stdout")
+        err = ncli.client.stream_logs.stream(
+            alloc_id, "zou-playlist", "stderr")
+        out = ncli.client.stream_logs.stream(
+            alloc_id, "zou-playlist", "stdout")
         if err:
             try:
                 err_json = json.loads(err).get("Data", "")
                 err_json = base64.b64decode(err).decode("utf-8")
-            except:
+            except Exception:
                 err_json = err
             err = err_json
         if out:
@@ -769,7 +797,7 @@ def remove_build_job(playlist, build_job_id):
         os.remove(movie_file_path)
     try:
         file_store.remove_movie("playlists", build_job_id)
-    except:
+    except Exception:
         current_app.logger.error(
             "Playlist file can't be deleted: %s" % build_job_id
         )
