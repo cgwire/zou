@@ -417,7 +417,6 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
 
 
 def retrieve_playlist_tmp_file(preview_file):
-    prefix = "original"
     if preview_file["extension"] == "mp4":
         get_path_func = file_store.get_local_movie_path
         open_func = file_store.open_movie
@@ -429,6 +428,7 @@ def retrieve_playlist_tmp_file(preview_file):
     else:
         get_path_func = file_store.get_local_file_path
         open_func = file_store.open_file
+        prefix = "previews"
 
     if config.FS_BACKEND == "local":
         file_path = get_path_func(prefix, preview_file["id"])
