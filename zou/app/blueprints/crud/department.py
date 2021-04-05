@@ -37,7 +37,7 @@ class DepartmentResource(BaseModelResource):
         name = data.get("name", None)
         if name is not None:
             department = Department.get_by(name=name)
-            if department is not None and instance_id != str(task_type.id):
+            if department is not None and instance_id != str(department.id):
                 raise ArgumentsException(
                     "A department with similar name already exists"
                 )

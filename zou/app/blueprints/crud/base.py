@@ -118,6 +118,9 @@ class BaseModelsResource(Resource):
     def check_create_permissions(self, data):
         return permissions.check_admin_permissions()
 
+    def check_creation_integrity(self, data):
+        pass
+
     def update_data(self, data):
         return data
 
@@ -154,8 +157,8 @@ class BaseModelsResource(Resource):
                 return (
                     {
                         "error": True,
-                        "message": "One of the value of the filter has not the "
-                        "proper format: %s" % exception.message,
+                        "message": "One of the value of the filter has not the"
+                        " proper format: %s" % exception.message,
                     },
                     400,
                 )
@@ -175,10 +178,11 @@ class BaseModelsResource(Resource):
             data = request.json
             if data is None:
                 raise ArgumentsException(
-                    "Data are empty. Please verify that you sent JSON data and "
-                    "that you set the right headers."
+                    "Data are empty. Please verify that you sent JSON data and"
+                    " that you set the right headers."
                 )
             self.check_create_permissions(data)
+            self.check_creation_integrity(data)
             data = self.update_data(data)
             instance = self.model.create(**data)
             instance_dict = self.post_creation(instance)
@@ -292,8 +296,8 @@ class BaseModelResource(Resource):
             data = self.get_arguments()
             if data is None:
                 raise ArgumentsException(
-                    "Data are empty. Please verify that you sent JSON data and "
-                    "that you set the right headers."
+                    "Data are empty. Please verify that you sent JSON data and"
+                    " that you set the right headers."
                 )
             self.instance = self.get_model_or_404(instance_id)
             instance_dict = self.instance.serialize()

@@ -33,6 +33,7 @@ from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
@@ -126,8 +127,8 @@ class ApiTestCase(unittest.TestCase):
 
     def post(self, path, data, code=201):
         """
-        Run a post request at given path while making sure it sends data at JSON
-        format.
+        Run a post request at given path while making sure it sends data at
+        JSON format.
         """
         clean_data = fields.serialize_value(data)
         response = self.app.post(
@@ -904,11 +905,31 @@ class ApiDBTestCase(ApiTestCase):
         )
         return self.milestone.serialize()
 
+    def generate_fixture_schedule_item(
+        self, task_type_id=None, object_id=None
+    ):
+        if task_type_id is None:
+            task_type_id = self.task_type.id
+        self.schedule_item = ScheduleItem.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            object_id=object_id
+        )
+        return self.schedule_item.serialize()
+
     def generate_fixture_day_off(self, date, person_id=None):
         if person_id is None:
             person_id = self.person.id
         self.day_off = DayOff.create(date=date, person_id=person_id)
         return self.day_off.serialize()
+
+    def generate_base_context(self):
+        self.generate_fixture_project_status()
+        self.generate_fixture_project()
+        self.generate_fixture_asset_type()
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
 
     def generate_assigned_task(self):
         self.generate_fixture_asset()
