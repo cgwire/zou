@@ -10,6 +10,7 @@ from .resources import (
     IndexResource,
     InfluxStatusResource,
     StatusResource,
+    StatusResourcesResource,
     StatsResource,
     TxtStatusResource,
 )
@@ -18,6 +19,7 @@ routes = [
     ("/", IndexResource),
     ("/status", StatusResource),
     ("/status/influx", InfluxStatusResource),
+    ("/status/resources", StatusResourcesResource),
     ("/status.txt", TxtStatusResource),
     ("/stats", StatsResource),
     ("/config", ConfigResource),

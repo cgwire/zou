@@ -1,3 +1,4 @@
+import psutil
 import redis
 import requests
 
@@ -24,7 +25,7 @@ class BaseStatusResource(Resource):
         is_db_up = True
         try:
             projects_service.get_or_create_status("Open")
-        except:
+        except Exception:
             is_db_up = False
 
         is_kv_up = True
@@ -58,7 +59,7 @@ class BaseStatusResource(Resource):
             args = ["rq", "info", "--url", url]
             out = shell.run_command(args)
             is_jq_up = b"0 workers" not in out
-        except Exception as e:
+        except Exception:
             app.logger.error("Job queue is not accessible", exc_info=1)
             is_jq_up = False
 
@@ -87,6 +88,43 @@ class StatusResource(BaseStatusResource):
             "key-value-store-up": is_kv_up,
             "event-stream-up": is_es_up,
             "job-queue-up": is_jq_up,
+        }
+
+
+class StatusResourcesResource(BaseStatusResource):
+    def get(self):
+        loadavg = list(psutil.getloadavg())
+
+        cpu_stats = {
+            "percent": psutil.cpu_percent(interval=1, percpu=True),
+            "loadavg": {
+                "last 1 min": loadavg[0],
+                "last 5 min": loadavg[1],
+                "last 10 min": loadavg[2],
+            },
+        }
+
+        memory_stats = {
+            "total": psutil.virtual_memory().total,
+            "used": psutil.virtual_memory().used,
+            "available": psutil.virtual_memory().available,
+            "percent": psutil.virtual_memory().percent,
+        }
+
+        nb_jobs = 0
+        if config.ENABLE_JOB_QUEUE:
+            from zou.app.stores.queue_store import job_queue
+            registry = job_queue.started_job_registry
+            nb_jobs = registry.count
+        job_stats = {
+            "running_jobs": nb_jobs,
+        }
+
+        return {
+            "date": datetime.now().isoformat(),
+            "cpu": cpu_stats,
+            "memory": memory_stats,
+            "jobs": job_stats,
         }
 
 
