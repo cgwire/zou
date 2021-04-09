@@ -98,6 +98,7 @@ JOB_QUEUE_NOMAD_HOST = "zou-nomad-01.zou"
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
 LDAP_PORT = os.getenv("LDAP_PORT", "389")
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "cn=Users,dc=zou,dc=local")
+LDAP_GROUP = os.getenv("LDAP_GROUP", "")
 LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "zou.local")
 LDAP_FALLBACK = os.getenv("LDAP_FALLBACK", "False").lower() == "true"
 LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
