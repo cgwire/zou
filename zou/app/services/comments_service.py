@@ -176,7 +176,7 @@ def new_comment(
 
     events.emit(
         "comment:new",
-        {"comment_id": comment["id"]},
+        {"comment_id": comment["id"], "task_id": task_id},
         project_id=task["project_id"],
     )
     return comment
