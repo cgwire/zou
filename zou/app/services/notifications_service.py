@@ -53,9 +53,6 @@ def get_notification_recipients(task):
     for assignee_id in task["assignees"]:
         recipients.add(assignee_id)
 
-    for comment in comments:
-        recipients.add(str(comment.person_id))
-
     for subscription in task_subscriptions:
         recipients.add(str(subscription.person_id))
 
