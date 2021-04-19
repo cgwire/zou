@@ -89,7 +89,8 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
     to the task and to every person participating to this task.
     """
     recipient_ids = get_notification_recipients(task)
-    recipient_ids.remove(comment["person_id"])
+    if comment["person_id"] in recipient_ids:
+        recipient_ids.remove(comment["person_id"])
     author_id = comment["person_id"]
     task = tasks_service.get_task(comment["object_id"])
 
