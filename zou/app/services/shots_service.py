@@ -217,9 +217,7 @@ def get_shots_and_tasks(criterions={}):
         .outerjoin(Task, Task.entity_id == Entity.id)
         .outerjoin(assignees_table)
         .add_columns(
-            Episode.name,
             Episode.id,
-            Sequence.name,
             Sequence.id,
             Task.id,
             Task.task_type_id,
@@ -234,6 +232,132 @@ def get_shots_and_tasks(criterions={}):
             Task.due_date,
             Task.last_comment_date,
             assignees_table.columns.person,
+            Project.id
+        )
+        .filter(Entity.entity_type_id == shot_type["id"])
+    )
+    if "id" in criterions:
+        query = query.filter(Entity.id == criterions["id"])
+
+    if "project_id" in criterions:
+        query = query.filter(Entity.project_id == criterions["project_id"])
+
+    if "episode_id" in criterions:
+        query = query.filter(Sequence.parent_id == criterions["episode_id"])
+
+    if "assigned_to" in criterions:
+        query = query.filter(user_service.build_assignee_filter())
+        del criterions["assigned_to"]
+
+    for (
+        shot,
+        episode_id,
+        sequence_id,
+        task_id,
+        task_type_id,
+        task_status_id,
+        task_priority,
+        task_estimation,
+        task_duration,
+        task_retake_count,
+        task_real_start_date,
+        task_end_date,
+        task_start_date,
+        task_due_date,
+        task_last_comment_date,
+        person_id,
+        project_id
+    ) in query.all():
+        shot_id = str(shot.id)
+
+        shot.data = shot.data or {}
+
+        if shot_id not in shot_map:
+
+            shot_map[shot_id] = fields.serialize_dict(
+                {
+                    "canceled": shot.canceled,
+                    "data": shot.data,
+                    "description": shot.description,
+                    "entity_type_id": shot.entity_type_id,
+                    "episode_id": episode_id,
+                    "fps": shot.data.get("fps", None),
+                    "frame_in": shot.data.get("frame_in", None),
+                    "frame_out": shot.data.get("frame_out", None),
+                    "id": shot.id,
+                    "name": shot.name,
+                    "nb_frames": shot.nb_frames,
+                    "parent_id": shot.parent_id,
+                    "preview_file_id": shot.preview_file_id or None,
+                    "project_id": project_id,
+                    "sequence_id": sequence_id,
+                    "source_id": shot.source_id,
+                    "tasks": [],
+                    "type": "Shot",
+                }
+            )
+
+        if task_id is not None:
+            if task_id not in task_map:
+                task_dict = fields.serialize_dict(
+                    {
+                        "id": task_id,
+                        "entity_id": shot_id,
+                        "task_status_id": task_status_id,
+                        "task_type_id": task_type_id,
+                        "priority": task_priority or 0,
+                        "estimation": task_estimation,
+                        "duration": task_duration,
+                        "retake_count": task_retake_count,
+                        "real_start_date": task_real_start_date,
+                        "end_date": task_end_date,
+                        "start_date": task_start_date,
+                        "due_date": task_due_date,
+                        "last_comment_date": task_last_comment_date,
+                        "assignees": [],
+                    }
+                )
+                task_map[task_id] = task_dict
+                shot_dict = shot_map[shot_id]
+                shot_dict["tasks"].append(task_dict)
+
+            if person_id:
+                task_map[task_id]["assignees"].append(str(person_id))
+
+    return list(shot_map.values())
+
+
+def new_get_shots_and_tasks(criterions={}):
+    """
+    Get all shots for given criterions with related tasks for each shot.
+    """
+    shot_type = get_shot_type()
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    last_date = "toto"
+
+    shot_map = {}
+    task_map = {}
+    query = (
+        Task.query
+        .join(Project)
+        .join(Entity)
+        .join(Sequence, Sequence.id == Entity.parent_id)
+        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+        .outerjoin(Task, Task.entity_id == Entity.id)
+        .outerjoin(assignees_table)
+        .add_columns(
+            Episode.id,
+            Sequence.id,
+            Entity.canceled,
+            Entity.data,
+            Entity.description,
+            Entity.entity_type_id,
+            Entity.name,
+            Entity.nb_frames,
+            Entity.parent_id,
+            Entity.preview_file_id or None,
+            Entity.source_id,
             Project.id,
             Project.name,
         )
@@ -287,7 +411,6 @@ def get_shots_and_tasks(criterions={}):
                     "description": shot.description,
                     "entity_type_id": shot.entity_type_id,
                     "episode_id": episode_id,
-                    "episode_name": episode_name or "",
                     "fps": shot.data.get("fps", None),
                     "frame_in": shot.data.get("frame_in", None),
                     "frame_out": shot.data.get("frame_out", None),
@@ -297,9 +420,7 @@ def get_shots_and_tasks(criterions={}):
                     "parent_id": shot.parent_id,
                     "preview_file_id": shot.preview_file_id or None,
                     "project_id": project_id,
-                    "project_name": project_name,
                     "sequence_id": sequence_id,
-                    "sequence_name": sequence_name,
                     "source_id": shot.source_id,
                     "tasks": [],
                     "type": "Shot",
@@ -334,6 +455,7 @@ def get_shots_and_tasks(criterions={}):
                 task_map[task_id]["assignees"].append(str(person_id))
 
     return list(shot_map.values())
+
 
 
 def get_shot_raw(shot_id):
