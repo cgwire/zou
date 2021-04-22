@@ -88,7 +88,7 @@ class BaseModelsResource(Resource):
 
         return (many_join_filter, in_filter, name_filter, filters)
 
-    def apply_filters(self, options):
+    def apply_filters(self, query, options):
         (
             many_join_filter,
             in_filter,
@@ -96,7 +96,7 @@ class BaseModelsResource(Resource):
             criterions,
         ) = self.build_filters(options)
 
-        query = self.model.query.filter_by(**criterions)
+        query = query.filter_by(**criterions)
 
         for value in name_filter:
             query = query.filter(self.model.name.ilike(value))
@@ -136,12 +136,13 @@ class BaseModelsResource(Resource):
         try:
             self.check_read_permissions()
             query = self.model.query
-            query = self.add_project_permission_filter(query)
             if not request.args:
+                query = self.add_project_permission_filter(query)
                 return self.all_entries(query)
             else:
                 options = request.args
-                query = self.apply_filters(options)
+                query = self.apply_filters(query, options)
+                query = self.add_project_permission_filter(query)
                 page = int(options.get("page", "-1"))
                 relations = options.get("relations", "false") == "true"
                 is_paginated = page > -1
