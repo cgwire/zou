@@ -54,22 +54,22 @@ Data you can store and retrieve are from the following type :
 ### Main routes
 
 * GET `/data/projects`: Get all projects
-* GET `/data/project_status`: Get all project status
+* GET `/data/project-status`: Get all project status
 * GET `/data/persons`: Get all projects
 * GET `/data/episodes`: Get all episodes
 * GET `/data/sequences`: Get all sequences
 * GET `/data/shots`: Get all shots
-* GET `/data/asset_types`: Get all asset types
+* GET `/data/asset-types`: Get all asset types
 * GET `/data/shots`: Get all assets
 * GET `/data/departments`: Get all departements
 * GET `/data/tasks`: Get all projects
-* GET `/data/task_types`: Get all task types
-* GET `/data/task_status`: Get all task status
-* GET `/data/file_status`: Get all file status
-* GET `/data/working_files`: Get all working files
-* GET `/data/output_files`: Get all output files
+* GET `/data/task-types`: Get all task types
+* GET `/data/task-status`: Get all task status
+* GET `/data/file-status`: Get all file status
+* GET `/data/working-files`: Get all working files
+* GET `/data/output-files`: Get all output files
 * GET `/data/comments`: Get all comments
-* GET `/data/entity_types`: Get all entity types (asset or shot)
+* GET `/data/entity-types`: Get all entity types (asset or shot)
 * GET `/data/entities`: Get all entities (asset or shot)
 
 ### Main operations
@@ -115,7 +115,7 @@ supported.
 * GET `/data/sequences/:sequence_id/shots`: Get all sequences of given shot.
 
 * GET `/data/shots/:shot_id/assets`: Get all assets that appears on given shot.
-* GET `/data/assets_types`: Get all asset types.
+* GET `/data/assets-types`: Get all asset types.
 * GET `/data/projects/:project_id/assets`: Get all assets related to given
   project.
 * GET `/data/projects/:project_id/asset_types/:asset_type_id/assets`: Get all
@@ -207,7 +207,7 @@ supported.
     * Expect csv file in the body
 * POST `/data/import/csv/asset`: Export assets info from a CSV file. 
     * Expect csv file in the body
-* POST `/data/import/csv/task_types`: Export task types info from a CSV file. 
+* POST `/data/import/csv/task-types`: Export task types info from a CSV file. 
     * Expect csv file in the body
 * POST `/data/import/csv/tasks.csv`: Export tasks info from a CSV file. 
     * Expect csv file in the body
@@ -219,6 +219,6 @@ supported.
 * GET `/export/csv/projects.csv`: Export projects info into a CSV file.
 * GET `/export/csv/shots.csv`: Export shots info into a CSV file.
 * GET `/export/csv/assets.csv`: Export asset info into a CSV files.
-* GET `/export/csv/task_types.csv`: Export task type info into a CSV file.
+* GET `/export/csv/task-types.csv`: Export task type info into a CSV file.
 * GET `/export/csv/tasks.csv`: Export task info into a CSV file. 
 
