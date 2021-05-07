@@ -53,7 +53,7 @@ def check_credentials(email, password, app=None):
     Password hash comparison is based on BCrypt.
     """
     try:
-        person = persons_service.get_person_by_email(email)
+        person = persons_service.get_person_by_email(email, unsafe=True)
     except PersonNotFoundException:
         try:
             person = persons_service.get_person_by_desktop_login(email)

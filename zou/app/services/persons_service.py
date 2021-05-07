@@ -82,7 +82,7 @@ def get_person(person_id):
     Return given person as a dictionary.
     """
     person = get_person_raw(person_id)
-    return person.serialize(relations=True)
+    return person.serialize_safe(relations=True)
 
 
 @cache.memoize_function(120)
@@ -114,12 +114,15 @@ def get_person_by_email_raw(email):
 
 
 @cache.memoize_function(120)
-def get_person_by_email(email):
+def get_person_by_email(email, unsafe=False):
     """
     Return person that matches given email as a dictionary.
     """
     person = get_person_by_email_raw(email)
-    return person.serialize()
+    if unsafe:
+        return person.serialize()
+    else:
+        return person.serialize_safe()
 
 
 @cache.memoize_function(120)

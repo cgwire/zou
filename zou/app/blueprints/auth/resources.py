@@ -135,7 +135,6 @@ class AuthenticatedResource(Resource):
     def get(self):
         try:
             person = persons_service.get_person_by_email(get_jwt_identity())
-            del person["password"]
             organisation = persons_service.get_organisation()
             return {
                 "authenticated": True,
