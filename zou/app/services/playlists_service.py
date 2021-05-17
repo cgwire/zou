@@ -50,7 +50,11 @@ logger = logging.getLogger(__name__)
 
 
 def all_playlists_for_project(
-    project_id, for_client=False, page=1, sort_by="updated_at"
+    project_id,
+    for_client=False,
+    page=1,
+    sort_by="updated_at",
+    task_type_id=None
 ):
     """
     Return all playlists created for given project.
@@ -59,6 +63,9 @@ def all_playlists_for_project(
     query = Playlist.query.filter(Playlist.project_id == project_id)
     if for_client:
         query = query.filter(Playlist.for_client)
+
+    if task_type_id is not None and len(task_type_id) > 0:
+        query = query.filter(Playlist.task_type_id == task_type_id)
 
     query = query_utils.apply_sort_by(Playlist, query, sort_by)
     if page < 1:
@@ -75,7 +82,11 @@ def all_playlists_for_project(
 
 
 def all_playlists_for_episode(
-    project_id, episode_id, for_client=False, sort_by="updated_at"
+    project_id,
+    episode_id,
+    for_client=False,
+    sort_by="updated_at",
+    task_type_id=None
 ):
     """
     Return all playlists created for given episode.
@@ -85,12 +96,15 @@ def all_playlists_for_episode(
     if for_client:
         query = query.filter(Playlist.for_client)
 
+    if task_type_id is not None and len(task_type_id) > 0:
+        query = query.filter(Playlist.task_type_id == task_type_id)
+
     if episode_id == "main":
         query = (
             query.filter(Playlist.episode_id == None)
             .filter(Playlist.project_id == project_id)
             .filter(
-                or_(Playlist.is_for_all == None, Playlist.is_for_all == False)
+                or_(Playlist.is_for_all is None, Playlist.is_for_all == False)
             )
         )
     elif episode_id == "all":

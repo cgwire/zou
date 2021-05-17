@@ -849,6 +849,7 @@ class ApiDBTestCase(ApiTestCase):
         for_entity="shot",
         for_client=False,
         is_for_all=False,
+        task_type_id=None,
     ):
         if project_id is None:
             project_id = self.project.id
@@ -859,6 +860,7 @@ class ApiDBTestCase(ApiTestCase):
             for_entity=for_entity,
             is_for_all=is_for_all,
             for_client=for_client,
+            task_type_id=task_type_id,
             shots=[],
         )
         return self.playlist.serialize()

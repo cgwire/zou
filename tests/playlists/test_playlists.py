@@ -30,6 +30,28 @@ class PlaylistTestCase(ApiDBTestCase):
         playlists = self.get("data/projects/%s/playlists" % self.project_id)
         self.assertEqual(len(playlists), 1)
 
+    def test_get_playlists_by_task_type(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_playlist(
+            "Playlist 1", task_type_id=self.task_type_layout.id
+        )
+        self.generate_fixture_playlist(
+            "Playlist 2", task_type_id=self.task_type_animation.id
+        )
+        self.generate_fixture_playlist(
+            "Playlist 3", task_type_id=self.task_type_animation.id
+        )
+        playlists = self.get(
+            "data/projects/%s/playlists?task_type_id=%s" % (
+                self.project_id,
+                self.task_type_animation.id
+            )
+        )
+        self.assertEqual(len(playlists), 2)
+        self.assertEqual(playlists[0]["name"], "Playlist 3")
+        self.assertEqual(playlists[1]["name"], "Playlist 2")
+
     def test_delete_playlist(self):
         self.generate_fixture_playlist("Playlist 1")
         playlists = self.get("data/projects/%s/playlists" % self.project_id)

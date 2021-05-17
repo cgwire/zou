@@ -34,11 +34,13 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         page = self.get_page()
         sort_by = self.get_sort_by()
+        task_type_id = self.get_text_parameter("task_type_id")
         return playlists_service.all_playlists_for_project(
             project_id,
             for_client=permissions.has_client_permissions(),
             page=page,
             sort_by=sort_by,
+            task_type_id=task_type_id
         )
 
 
@@ -53,6 +55,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         sort_by = self.get_sort_by()
+        task_type_id = self.get_text_parameter("task_type_id")
         if episode_id not in ["main", "all"]:
             shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
@@ -60,6 +63,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
             episode_id,
             permissions.has_client_permissions(),
             sort_by=sort_by,
+            task_type_id=task_type_id,
         )
 
 
@@ -145,7 +149,6 @@ class BuildPlaylistMovieResource(Resource):
             project
         )
         fps = preview_files_service.get_preview_file_fps(project)
-
         params = EncodingParameters(width=width, height=height, fps=fps)
 
         shots = [
