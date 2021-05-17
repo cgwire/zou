@@ -158,7 +158,7 @@ def save_variants(preview_file_id, original_picture_path):
 def update_preview_file_position(preview_file_id, position):
     """
     Change positions for preview files of given task and revision.
-    Given position is the new position for given preview file. :q
+    Given position is the new position for given preview file.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     task_id = preview_file.task_id
@@ -186,3 +186,19 @@ def get_preview_files_for_revision(task_id, revision):
         .order_by(PreviewFile.position)
     )
     return fields.serialize_models(preview_files)
+
+
+def update_preview_file_annotations(project_id, preview_file_id, annotations):
+    """
+    Update annotations for given preview file.
+    """
+    import pprint
+    pprint.pprint(annotations)
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    preview_file.update({"annotations": annotations})
+    events.emit(
+        "preview-file:annotation-update",
+        {"preview_file_id": preview_file_id},
+        project_id=project_id,
+    )
+    return {"id": preview_file_id}
