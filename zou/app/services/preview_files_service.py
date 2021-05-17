@@ -4,6 +4,7 @@ import time
 
 import ffmpeg
 
+from zou.app import config
 from zou.app.stores import file_store
 
 from zou.app.models.preview_file import PreviewFile
@@ -13,7 +14,7 @@ from zou.app.models.task import Task
 from zou.app.services import names_service, files_service
 from zou.app.utils import events, fields, thumbnail as thumbnail_utils
 from zou.app.services.exception import PreviewFileNotFoundException
-from zou.utils import movie
+from zou.utils import fs, movie, nomad
 
 
 def get_preview_file_dimensions(project):
@@ -108,28 +109,48 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            (
-                normalized_movie_path,
-                normalized_movie_low_path,
-                err,
-            ) = movie.normalize_movie(
-                uploaded_movie_path, fps=fps, width=width, height=height
-            )
-
+            if config.ENABLE_JOB_QUEUE_REMOTE:
+                file_store.add_movie(
+                    "source", preview_file_id, uploaded_movie_path
+                )
+                err = _run_nomad_normalize_movie(
+                    current_app,
+                    preview_file_id,
+                    uploaded_movie_path,
+                    fps,
+                    width,
+                    height
+                )
+                fs.get_file_path(
+                    config,
+                    file_store.get_local_movie_path,
+                    file_store.open_movie,
+                    "previews",
+                    preview_file_id,
+                    ".mp4"
+                )
+            else:
+                (
+                    normalized_movie_path,
+                    normalized_movie_low_path,
+                    err,
+                ) = movie.normalize_movie(
+                    uploaded_movie_path, fps=fps, width=width, height=height
+                )
+                file_store.add_movie(
+                    "previews", preview_file_id, normalized_movie_path
+                )
+                file_store.add_movie(
+                    "lowdef", preview_file_id, normalized_movie_low_path
+                )
             if err:
                 current_app.logger.error(
-                    "Fail to add silent audiotrack to: %s" % uploaded_movie_path
+                    "Fail to normalize: %s" % uploaded_movie_path
                 )
                 current_app.logger.error(err)
 
             current_app.logger.info(
                 "file normalized %s" % normalized_movie_path
-            )
-            file_store.add_movie(
-                "previews", preview_file_id, normalized_movie_path
-            )
-            file_store.add_movie(
-                "lowdef", preview_file_id, normalized_movie_low_path
             )
             current_app.logger.info("file stored")
         except Exception as exc:
@@ -142,7 +163,6 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build thumbnails
         size = movie.get_movie_size(normalized_movie_path)
         original_picture_path = movie.generate_thumbnail(normalized_movie_path)
-        tile_picture_path = movie.generate_tile(normalized_movie_path)
         thumbnail_utils.resize(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)
@@ -155,6 +175,25 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
             preview_file_id, {"status": "ready", "file_size": file_size}
         )
         return preview_file
+
+
+def _run_nomad_normalize_movie(app, preview_file_id, fps, width, height):
+    bucket_prefix = config.FS_BUCKET_PREFIX
+    params = {
+        "version": "1",
+        "bucket_prefix": bucket_prefix,
+        "preview_file_id": preview_file_id,
+        "width": width,
+        "height": height,
+        "fps": fps,
+    }
+    nomad_job = os.getenv(
+        "JOB_QUEUE_NOMAD_NORMALIZE_MOVIE_JOB",
+        "zou-movie-normalize"
+    )
+    nomad_host = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
+    result = nomad.run_job(app, config, nomad_job, nomad_host, params)
+    return result
 
 
 def save_variants(preview_file_id, original_picture_path):
