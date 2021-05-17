@@ -2,6 +2,7 @@ from zou.app.models.playlist import Playlist
 from zou.app.services import user_service, playlists_service
 
 from .base import BaseModelResource, BaseModelsResource
+from zou.app.utils import fields
 
 
 class PlaylistsResource(BaseModelsResource):
@@ -17,6 +18,9 @@ class PlaylistsResource(BaseModelsResource):
     def update_data(self, data):
         if "episode_id" in data and data["episode_id"] in ["all", "main"]:
             data["episode_id"] = None
+        if "task_type_id" in data and \
+           not fields.is_valid_id(data["task_type_id"]):
+            data["task_type_id"] = None
         return data
 
 
