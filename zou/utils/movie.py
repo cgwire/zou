@@ -106,7 +106,7 @@ def normalize_movie(movie_path, fps, width, height):
         movflags="+faststart",
         s="%sx%s" % (width, height),
     )
-    stream.run(quiet=False, capture_stderr=True)
+    stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
 
     # Low def version
     low_width = 1280
@@ -130,7 +130,7 @@ def normalize_movie(movie_path, fps, width, height):
         movflags="+faststart",
         s="%sx%s" % (low_width, low_height),
     )
-    stream.run(quiet=False, capture_stderr=True)
+    stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
     return file_target_path, low_file_target_path, err
 
 
