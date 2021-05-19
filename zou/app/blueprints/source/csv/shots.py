@@ -1,7 +1,9 @@
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.models.entity import Entity
+from zou.app.models.task_type import TaskType
 from zou.app.services import shots_service, projects_service
+from zou.app.services.tasks_service import create_tasks
 from zou.app.utils import events
 
 
@@ -14,6 +16,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
+        self.created_shots = []
 
     def import_row(self, row, project_id):
         if self.is_tv_show:
@@ -99,6 +102,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     nb_frames=nb_frames,
                     data=data,
                 )
+            self.created_shots.append(entity.serialize())
             events.emit(
                 "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
             )
@@ -118,3 +122,9 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         return entity.serialize()
+
+    def run_import(self, project_id, file_path):
+        entities = super().run_import(project_id, file_path)
+        for task_type in TaskType.query.filter_by(for_shots=True):
+            create_tasks(task_type.serialize(), self.created_shots)
+        return entities

@@ -3,6 +3,8 @@ import os
 from tests.base import ApiDBTestCase
 
 from zou.app.models.entity_type import EntityType
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.services import shots_service
 
 
@@ -13,8 +15,15 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_metadata_descriptor(entity_type="Shot")
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
 
     def test_import_shots(self):
+        self.assertEqual(len(Task.query.all()), 0)
+        number_of_task_per_entity_to_create = len(
+            TaskType.query.filter_by(for_shots=True).all()
+        )
+        self.assertEqual(number_of_task_per_entity_to_create, 2)
         path = "/import/csv/projects/%s/shots" % self.project.id
         self.project.update({"production_type": "tvshow"})
 
@@ -31,8 +40,17 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         entity_types = EntityType.query.all()
         self.assertEqual(len(entity_types), 3)
 
+        tasks = Task.query.all()
+        self.assertEqual(
+            len(tasks),
+            number_of_task_per_entity_to_create * len(shots),
+        )
+
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
+
+        task = tasks[0]
+        self.assertEqual(str(task.entity_id), shot["id"])
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "shots_no_metadata.csv")

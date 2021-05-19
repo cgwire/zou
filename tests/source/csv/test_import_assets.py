@@ -5,6 +5,8 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
@@ -14,8 +16,15 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_metadata_descriptor(entity_type="Asset")
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
 
     def test_import_assets(self):
+        self.assertEqual(len(Task.query.all()), 0)
+        number_of_task_per_entity_to_create = len(
+            TaskType.query.filter_by(for_shots=False).all()
+        )
+        self.assertEqual(number_of_task_per_entity_to_create, 1)
         path = "/import/csv/projects/%s/assets" % self.project.id
 
         file_path_fixture = self.get_fixture_file_path(
@@ -29,8 +38,17 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         entity_types = EntityType.query.all()
         self.assertEqual(len(entity_types), 2)
 
+        tasks = Task.query.all()
+        self.assertEqual(
+            len(tasks),
+            number_of_task_per_entity_to_create * len(entities),
+        )
+
         asset = entities[0]
         self.assertEqual(asset.data.get("contractor", None), "contractor 1")
+
+        task = tasks[0]
+        self.assertEqual(task.entity_id, asset.id)
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_no_metadata.csv")

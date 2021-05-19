@@ -1,7 +1,10 @@
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
+from zou.app.services.tasks_service import create_tasks
 from zou.app.utils import events
 
 
@@ -19,6 +22,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.episodes = {
                 episode["name"]: episode["id"] for episode in episodes
             }
+        self.created_assets = []
 
     def import_row(self, row, project_id):
         asset_name = row["Name"]
@@ -73,6 +77,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 source_id=episode_id,
                 data=data,
             )
+            self.created_assets.append(entity.serialize())
             events.emit(
                 "asset:new",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
@@ -88,3 +93,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         return entity.serialize()
+
+    def run_import(self, project_id, file_path):
+        entities = super().run_import(project_id, file_path)
+        for task_type in TaskType.query.filter_by(for_shots=False):
+            create_tasks(task_type.serialize(), self.created_assets)
+        return entities
