@@ -2,9 +2,11 @@ import os
 import json
 
 from tests.base import ApiDBTestCase
+from zou.app import db
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
@@ -24,6 +26,17 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         number_of_task_per_entity_to_create = len(
             TaskType.query.filter_by(for_shots=False).all()
         )
+        db.session.add(ProjectTaskTypeLink(
+            project_id=self.project_id, task_type_id=self.task_type.id
+        ))
+        db.session.add(ProjectTaskTypeLink(
+            project_id=self.project_id, task_type_id=self.task_type_layout.id
+        ))
+        db.session.add(ProjectTaskTypeLink(
+            project_id=self.project_id,
+            task_type_id=self.task_type_animation.id,
+        ))
+        db.session.commit()
         self.assertEqual(number_of_task_per_entity_to_create, 1)
         path = "/import/csv/projects/%s/assets" % self.project.id
 

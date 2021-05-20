@@ -1,8 +1,10 @@
 import os
 
 from tests.base import ApiDBTestCase
+from zou.app import db
 
 from zou.app.models.entity_type import EntityType
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.services import shots_service
@@ -20,10 +22,12 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
     def test_import_shots(self):
         self.assertEqual(len(Task.query.all()), 0)
-        number_of_task_per_entity_to_create = len(
-            TaskType.query.filter_by(for_shots=True).all()
-        )
-        self.assertEqual(number_of_task_per_entity_to_create, 2)
+        db.session.add(ProjectTaskTypeLink(
+            project_id=self.project_id, task_type_id=self.task_type.id
+        ))
+        db.session.add(ProjectTaskTypeLink(
+            project_id=self.project_id, task_type_id=self.task_type_layout.id
+        ))
         path = "/import/csv/projects/%s/shots" % self.project.id
         self.project.update({"production_type": "tvshow"})
 
@@ -43,7 +47,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         tasks = Task.query.all()
         self.assertEqual(
             len(tasks),
-            number_of_task_per_entity_to_create * len(shots),
+            len(shots),
         )
 
         shot = shots[0]

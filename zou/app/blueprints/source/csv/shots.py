@@ -1,6 +1,7 @@
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
 from zou.app.models.entity import Entity
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 from zou.app.services import shots_service, projects_service
 from zou.app.services.tasks_service import create_tasks
@@ -125,6 +126,13 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
 
     def run_import(self, project_id, file_path):
         entities = super().run_import(project_id, file_path)
-        for task_type in TaskType.query.filter_by(for_shots=True):
+        task_types_in_project_for_shots = TaskType.query.join(
+            ProjectTaskTypeLink
+        ).filter(
+            ProjectTaskTypeLink.project_id == project_id
+        ).filter(
+            TaskType.for_shots == True
+        )
+        for task_type in task_types_in_project_for_shots:
             create_tasks(task_type.serialize(), self.created_shots)
         return entities
