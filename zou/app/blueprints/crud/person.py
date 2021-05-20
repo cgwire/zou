@@ -106,10 +106,11 @@ class PersonResource(BaseModelResource, ArgsMixin):
             del data["password"]
         if "departments" in data:
             try:
-                departments = [
-                    Department.get(department_id)
-                    for department_id in data["departments"]
-                ]
+                departments = []
+                for department_id in data["departments"]:
+                    department = Department.get(department_id)
+                    if department is not None:
+                        departments.append(department)
             except StatementError:
                 raise DepartmentNotFoundException()
             data["departments"] = departments
