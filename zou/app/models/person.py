@@ -81,15 +81,37 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "active": data["active"],
         }
 
+    def set_departments(self, department_ids):
+        from zou.app.models.department import Department
+
+        self.departments = []
+        for department_id in department_ids:
+            department = Department.get(department_id)
+            if department is not None:
+                self.departments.append(department)
+        self.save()
+
     @classmethod
     def create_from_import(cls, person):
         del person["type"]
         del person["full_name"]
+        is_update = False
         previous_person = cls.get(person["id"])
+
         if "password" in person:
             person["password"] = person["password"].encode()
+
+        department_ids = None
+        if "departments" in person:
+            department_ids = person.pop("departments", None)
+
         if previous_person is None:
-            return (cls.create(**person), False)
+            previous_person = cls.create(**person)
         else:
+            is_update = True
             previous_person.update(person)
-            return (previous_person, True)
+
+        if department_ids is not None:
+            previous_person.set_departments(department_ids)
+
+        return (previous_person, is_update)

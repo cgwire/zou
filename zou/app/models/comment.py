@@ -98,33 +98,55 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
     def set_preview_files(self, preview_file_ids):
         from zou.app.models.preview_file import PreviewFile
-
-        self.preview_files = []
-        for preview_file_id in preview_file_ids:
-            preview_file = PreviewFile.get(preview_file_id)
-            if preview_file is not None:
-                self.previews.append(preview_file)
-        self.save()
+        self.set_many_to_one(
+            "previews",
+            PreviewFile,
+            preview_file_ids
+        )
 
     def set_mentions(self, person_ids):
         from zou.app.models.person import Person
 
         self.mentions = []
-        for person_id in person_ids:
-            person = Person.get(person_id)
-            if person is not None:
-                self.mentions.append(person)
+        self.set_many_to_one(
+            "mentions",
+            Person,
+            person_ids
+        )
+
+    def set_acknowledgements(self, person_ids):
+        from zou.app.models.person import Person
+        self.set_many_to_one(
+            "acknowledgements",
+            Person,
+            person_ids
+        )
+
+    def set_attachment_files(self, attachment_file_ids):
+        from zou.app.models.attachment_file import AttachmentFile
+        self.set_many_to_one(
+            "attachment_files",
+            AttachmentFile,
+            attachment_file_ids
+        )
+
+    def set_many_to_one(self, field_name, model, model_ids):
+        setattr(self, field_name, [])
+        for model_id in model_ids:
+            instance = model.get(model_id)
+            if instance is not None:
+                getattr(self, field_name).append(instance)
         self.save()
 
     @classmethod
     def create_from_import(cls, data):
         is_update = False
         previous_comment = cls.get(data["id"])
-        preview_file_ids = data.get("previews", None)
-        mention_ids = data.get("mentions", None)
-        del data["previews"]
-        del data["mentions"]
-        del data["type"]
+        data.pop("type", None)
+        preview_file_ids = data.pop("previews", None)
+        mention_ids = data.pop("mentions", None)
+        acknowledgement_ids = data.pop("acknowledgements", None)
+        attachment_file_ids = data.pop("attachment_files", None)
 
         if previous_comment is None:
             previous_comment = cls.create(**data)
@@ -139,5 +161,11 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
         if mention_ids is not None:
             previous_comment.set_mentions(mention_ids)
+
+        if acknowledgement_ids is not None:
+            previous_comment.set_acknowledgements(acknowledgement_ids)
+
+        if attachment_file_ids is not None:
+            previous_comment.set_attachment_files(attachment_file_ids)
 
         return (previous_comment, is_update)

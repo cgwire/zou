@@ -164,3 +164,16 @@ class CommentManyTasksResource(Resource):
             except KeyError:
                 pass
         return allowed_comments
+
+
+class ProjectAttachmentFiles(Resource):
+    """
+    Return all attachment files related to given project.
+    """
+
+    @jwt_required
+    def get(self, project_id):
+        permissions.check_admin_permissions()
+        return comments_service.get_all_attachment_files_for_project(
+            project_id
+        )

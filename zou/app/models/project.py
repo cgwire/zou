@@ -100,7 +100,10 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     def set_task_types(self, task_type_ids):
         return self.set_links(
-            task_type_ids, ProjectTaskTypeLink, "project_id", "task_type_id"
+            task_type_ids,
+            ProjectTaskTypeLink,
+            "project_id",
+            "task_type_id"
         )
 
     def set_task_statuses(self, task_status_ids):
@@ -113,19 +116,23 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     def set_asset_types(self, asset_type_ids):
         return self.set_links(
-            asset_type_ids, ProjectAssetTypeLink, "project_id", "entity_type_id"
+            asset_type_ids,
+            ProjectAssetTypeLink,
+            "project_id",
+            "asset_type_id"
         )
 
     @classmethod
     def create_from_import(cls, data):
         is_update = False
         previous_project = cls.get(data["id"])
-        person_ids = data.get("team", None)
-        task_type_ids = data.get("task_types", None)
-        task_status_ids = data.get("task_statuses", None)
         data.pop("team", None)
         data.pop("type", None)
         data.pop("project_status_name", None)
+        person_ids = data.pop("team", None)
+        task_type_ids = data.pop("task_types", None)
+        task_status_ids = data.pop("task_statuses", None)
+        asset_type_ids = data.pop("asset_types", None)
 
         if previous_project is None:
             previous_project = cls.create(**data)
@@ -143,5 +150,8 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
         if task_status_ids is not None:
             previous_project.set_task_statuses(task_status_ids)
+
+        if asset_type_ids is not None:
+            previous_project.set_asset_types(asset_type_ids)
 
         return (previous_project, is_update)

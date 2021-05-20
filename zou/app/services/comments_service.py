@@ -6,6 +6,7 @@ from flask import current_app
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.project import Project
+from zou.app.models.task import Task
 
 from zou.app.services import (
     base_service,
@@ -227,6 +228,20 @@ def create_attachment(comment, uploaded_file):
     attachment_file.update({"size": size})
     file_store.add_file("attachments", attachment_file_id, tmp_file_path)
     return attachment_file.present()
+
+
+def get_all_attachment_files_for_project(project_id):
+    """
+    Return all attachment files listed into given project. It is mainly needed
+    for synchronisation purposes.
+    """
+    attachment_files = (
+        AttachmentFile.query
+        .join(Comment)
+        .join(Task)
+        .filter(Task.project_id == project_id)
+    )
+    return fields.serialize_models(attachment_files)
 
 
 def acknowledge_comment(comment_id):

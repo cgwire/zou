@@ -73,7 +73,10 @@ routes = [
         "/pictures/thumbnails/persons/<instance_id>",
         CreatePersonThumbnailResource,
     ),
-    ("/pictures/thumbnails/persons/<instance_id>.png", PersonThumbnailResource),
+    (
+        "/pictures/thumbnails/persons/<instance_id>.png",
+        PersonThumbnailResource
+    ),
     (
         "/pictures/thumbnails/projects/<instance_id>",
         CreateProjectThumbnailResource,

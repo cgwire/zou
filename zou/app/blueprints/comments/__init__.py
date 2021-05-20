@@ -7,6 +7,7 @@ from .resources import (
     CommentTaskResource,
     CommentManyTasksResource,
     DownloadAttachmentResource,
+    ProjectAttachmentFiles,
 )
 
 
@@ -16,6 +17,7 @@ routes = [
         "/data/attachment-files/<attachment_file_id>/file/<file_name>",
         DownloadAttachmentResource,
     ),
+    ("/data/projects/<project_id>/attachment-files", ProjectAttachmentFiles),
     ("/actions/tasks/<task_id>/comment", CommentTaskResource),
     (
         "/actions/projects/<project_id>/tasks/comment-many",

@@ -6,9 +6,11 @@ import sys
 import gazu
 import sqlalchemy
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
 from zou.app.models.custom_action import CustomAction
 from zou.app.models.comment import Comment
+from zou.app.models.day_off import DayOff
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
@@ -57,12 +59,14 @@ local_file = LocalBackend(
 
 
 event_name_model_map = {
+    "attachment-file": AttachmentFile,
     "asset": Entity,
     "asset-type": EntityType,
     "build-job": BuildJob,
     "custom-action": CustomAction,
     "comment": Comment,
     "department": Department,
+    "day-off": DayOff,
     "entity": Entity,
     "entity-link": EntityLink,
     "entity-type": EntityType,
@@ -90,32 +94,34 @@ event_name_model_map = {
 }
 
 event_name_model_path_map = {
+    "attachment-file": "attachment-files",
     "asset": "assets",
-    "episode": "episodes",
-    "sequence": "sequences",
-    "shot": "shots",
+    "asset-type": "entity-types",
     "build-job": "build-jobs",
-    "custom-action": "custom-actions",
     "comment": "comments",
+    "custom-action": "custom-actions",
+    "day-off": "day-offs",
     "department": "departments",
     "entity": "entities",
     "entity-link": "entity-links",
-    "asset-type": "entity-types",
     "entity-type": "entity-types",
+    "episode": "episodes",
     "event": "events",
-    "organisation": "organisations",
     "metadata-descriptor": "metadata-descriptors",
     "milestone": "milestones",
     "news": "news",
     "notification": "notifications",
+    "organisation": "organisations",
     "person": "persons",
     "playlist": "playlists",
     "preview-file": "preview-files",
     "project": "projects",
     "project-status": "project-status",
+    "sequence": "sequences",
+    "shot": "shots",
     "schedule-item": "schedule-items",
-    "subscription": "subscriptions",
     "search-filter": "search-filters",
+    "subscription": "subscriptions",
     "task": "tasks",
     "task-status": "task-status",
     "task-type": "task-types",
@@ -123,13 +129,15 @@ event_name_model_path_map = {
 }
 
 project_events = [
+    "preview-file",
+]
+"""
     "episode",
     "sequence",
     "asset",
     "shot",
     "task",
     "time-spent",
-    "preview-file",
     "playlist",
     "build-job",
     "comment",
@@ -140,7 +148,8 @@ project_events = [
     "entity-link",
     "news",
     "milestone",
-]
+    "attachment-file",
+"""
 
 main_events = [
     "person",
@@ -243,11 +252,12 @@ def run_project_data_sync(project=None):
     for project in projects:
         logger.info("Syncing %s..." % project["name"])
         for event in project_events:
+            print(event)
             path = event_name_model_path_map[event]
             model = event_name_model_map[event]
             sync_project_entries(project, path, model)
-        sync_entity_thumbnails(project, "assets")
-        sync_entity_thumbnails(project, "shots")
+        #sync_entity_thumbnails(project, "assets")
+        #sync_entity_thumbnails(project, "shots")
         logger.info("Sync of %s complete." % project["name"])
 
 
@@ -256,6 +266,7 @@ def run_other_sync(project=None, with_events=False):
     Retrieve and import all search filters and events from target instance.
     """
     sync_entries("search-filters", SearchFilter, project=project)
+    sync_entries("day-offs", SearchFilter, project=project)
     if with_events:
         sync_entries("events", ApiEvent, project=project)
 
@@ -398,7 +409,7 @@ def sync_project_entries(project, model_name, model):
     elif model_name == "news":
         while init or result_length > 0:
             path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
-            results = gazu.client.fetch_all(path)
+            results = gazu.client.fetch_all(path)["data"]
             instances += results
             try:
                 model.create_from_import_list(results)
@@ -731,19 +742,8 @@ def download_files_from_another_instance(project=None):
     download_thumbnails_from_another_instance("person")
     download_thumbnails_from_another_instance("organisation")
     download_thumbnails_from_another_instance("project", project=project)
-
-    if project:
-        project_dict = gazu.project.get_project_by_name(project)
-        preview_files = (
-            PreviewFile.query.join(Task)
-            .filter(Task.project_id == project_dict["id"])
-            .all()
-        )
-    else:
-        preview_files = PreviewFile.query.all()
-
-    for preview_file in preview_files:
-        download_preview_from_another_instance(preview_file)
+    download_preview_files_from_another_instance(project=project)
+    download_attachment_files_from_another_instance(project=project)
 
 
 def download_thumbnails_from_another_instance(model_name, project=None):
@@ -783,6 +783,24 @@ def download_thumbnail_from_another_instance(model_name, model_id):
         return path
 
 
+def download_preview_files_from_another_instance(project=None):
+    """
+    Download all preview files and related (thumbnails and low def included).
+    """
+    if project:
+        project_dict = gazu.project.get_project_by_name(project)
+        preview_files = (
+            PreviewFile.query.join(Task)
+            .filter(Task.project_id == project_dict["id"])
+            .all()
+        )
+    else:
+        preview_files = PreviewFile.query.all()
+
+    for preview_file in preview_files:
+        download_preview_from_another_instance(preview_file)
+
+
 def download_preview_from_another_instance(preview_file):
     """
     Download all files link to preview file entry: orginal file and variants.
@@ -798,31 +816,40 @@ def download_preview_from_another_instance(preview_file):
     is_file = not is_movie and not is_picture
 
     preview_file_id = str(preview_file.id)
-    save_func = file_store.add_file
     with app.app_context():
-        if is_file:
-            save_func = file_store.add_file
-            exists_func = file_store.exists_file
-        elif is_movie:
-            save_func = file_store.add_movie
-            exists_func = file_store.exists_movie
-        else:
-            save_func = file_store.add_picture
-            exists_func = file_store.exists_picture
-
         if is_movie or is_picture:
-            for prefix in ["thumbnails", "thumbnails-square", "original"]:
-                if not exists_func(prefix, preview_file_id):
+            for prefix in [
+                "thumbnails",
+                "thumbnails-square",
+                "original",
+                "previews",
+            ]:
+                if not file_store.exists_picture(prefix, preview_file_id):
                     download_file_from_another_instance(
                         file_store.add_picture,
                         prefix,
                         preview_file_id,
+                        "png",
+                    )
+
+        if is_movie:
+            for prefix in ["low", "previews"]:
+                if not file_store.exists_movie(prefix, preview_file_id):
+                    download_file_from_another_instance(
+                        file_store.add_movie,
+                        prefix,
+                        preview_file_id,
                         preview_file.extension,
                     )
-        if not exists_func("previews", preview_file_id):
-            download_file_from_another_instance(
-                save_func, "previews", preview_file_id, preview_file.extension
-            )
+
+        elif is_file:
+            if not file_store.exists_file("previews", preview_file_id):
+                download_file_from_another_instance(
+                    file_store.add_file,
+                    "previews",
+                    preview_file_id,
+                    preview_file.extension
+                )
 
 
 def download_file_from_another_instance(
@@ -832,14 +859,10 @@ def download_file_from_another_instance(
     Download preview file for given preview from object storage and store it
     locally.
     """
-    if prefix == "previews":
-        if extension == "mp4":
-            path = "/movies/original/preview-files/%s.mp4" % preview_file_id
-        else:
-            path = "/pictures/original/preview-files/%s.%s" % (
-                preview_file_id,
-                extension,
-            )
+    if prefix == "previews" and extension == "mp4":
+        path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+    elif prefix == "low":
+        path = "/movies/low/preview-files/%s.mp4" % preview_file_id
     else:
         path_prefix = prefix
         if prefix == "original":
@@ -850,10 +873,51 @@ def download_file_from_another_instance(
         )
     try:
         file_path = "/tmp/%s.%s" % (preview_file_id, extension)
-        gazu.client.download(path, file_path)
-        save_func(prefix, preview_file_id, file_path)
+        response = gazu.client.download(path, file_path)
+        if response.status_code != 404:
+            save_func(prefix, preview_file_id, file_path)
+        else:
+            print("not found", preview_file_id)
         os.remove(file_path)
         print("%s (%s) downloaded" % (file_path, prefix))
     except Exception as e:
         print(e)
         print("%s download failed" % file_path)
+
+
+def download_attachment_files_from_another_instance(project=None):
+    if project:
+        project_dict = gazu.project.get_project_by_name(project)
+        attachment_files = (
+            AttachmentFile.query
+            .join(Comment)
+            .join(Task, Comment.object_id == Task)
+            .filter(Task.project_id == project_dict["id"])
+            .all()
+        )
+    else:
+        attachment_files = AttachmentFile.query.all()
+    for attachment_file in attachment_files:
+        download_attachment_file_from_another_instance(
+            attachment_file.serialize()
+        )
+
+
+def download_attachment_file_from_another_instance(attachment_file):
+    attachment_file_id = attachment_file["id"]
+    extension = attachment_file["extension"]
+    path = "/data/attachment-files/%s/file/%s" % (
+        attachment_file_id,
+        attachment_file["name"]
+    )
+    try:
+        file_path = "/tmp/%s.%s" % (attachment_file_id, extension)
+        gazu.client.download(path, file_path)
+        file_store.add_file("attachments", attachment_file_id, file_path)
+        os.remove(file_path)
+        print("%s (%s) downloaded" % (file_path, "attachment"))
+    except Exception as e:
+        print(e)
+        print("%s download failed" % file_path)
+
+

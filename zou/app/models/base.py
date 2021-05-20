@@ -128,6 +128,8 @@ class BaseMixin(object):
         Create a list of instances of the model based on data that comes from
         the Zou API.
         """
+        if "data" in data_list:
+            data_list = data_list["data"]
         for data in data_list:
             cls.create_from_import(data)
 
@@ -199,9 +201,9 @@ class BaseMixin(object):
     def set_links(self, ids, LinkTable, field_left, field_right):
         for id in ids:
             link = LinkTable.query.filter_by(
-                kwargs={field_left: self.id, field_right: id}
+                **{field_left: self.id, field_right: id}
             ).first()
             if link is None:
-                link = LinkTable(kwargs={field_left: self.id, field_right: id})
+                link = LinkTable(**{field_left: self.id, field_right: id})
                 db.session.add(link)
         db.session.commit()
