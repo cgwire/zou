@@ -53,8 +53,10 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")
 
-        task = tasks[0]
-        self.assertEqual(str(task.entity_id), shot["id"])
+        self.assertEqual(
+            set(str(task.entity_id) for task in tasks),
+            set(shot["id"] for shot in shots),
+        )
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "shots_no_metadata.csv")
