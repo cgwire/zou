@@ -129,18 +129,17 @@ event_name_model_path_map = {
 }
 
 project_events = [
-    "preview-file",
-]
-"""
     "episode",
     "sequence",
     "asset",
     "shot",
     "task",
+    "preview-file",
     "time-spent",
     "playlist",
     "build-job",
     "comment",
+    "attachment-file",
     "metadata-descriptor",
     "schedule-item",
     "subscription",
@@ -148,8 +147,7 @@ project_events = [
     "entity-link",
     "news",
     "milestone",
-    "attachment-file",
-"""
+]
 
 main_events = [
     "person",

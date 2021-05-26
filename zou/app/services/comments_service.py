@@ -238,7 +238,7 @@ def get_all_attachment_files_for_project(project_id):
     attachment_files = (
         AttachmentFile.query
         .join(Comment)
-        .join(Task)
+        .join(Task, Task.id == Comment.object_id)
         .filter(Task.project_id == project_id)
     )
     return fields.serialize_models(attachment_files)
