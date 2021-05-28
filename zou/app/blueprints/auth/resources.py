@@ -66,7 +66,7 @@ def logout():
         current_token = get_raw_jwt()
         jti = current_token["jti"]
         auth_service.revoke_tokens(app, jti)
-    except:
+    except Exception:
         pass
 
 
@@ -177,14 +177,16 @@ class LoginResource(Resource):
     Log in user by creating and registering auth tokens. Login is based
     on email and password. If no user match given email and a destkop ID,
     it looks in matching the desktop ID with the one stored in database. It is
-    useful for clients that run on desktop tools and that don't know user email.
+    useful for clients that run on desktop tools and that don't know user
+    email.
     """
 
     def post(self):
         (email, password) = self.get_arguments()
         try:
             user = auth_service.check_auth(app, email, password)
-            del user["password"]
+            if "password" in user:
+                del user["password"]
 
             if auth_service.is_default_password(app, password):
                 token = uuid.uuid4()
