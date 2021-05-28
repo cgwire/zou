@@ -786,6 +786,24 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_manager_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, args["position"]
+        )
+
+
+class UpdateAnnotationsResource(Resource, ArgsMixin):
+    """
+    Allow to change orders of previews for a single revision.
+    """
+
+    @jwt_required
+    def put(self, preview_file_id):
+        annotations = request.json["annotations"]
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return preview_files_service.update_preview_file_annotations(
+            task["project_id"], preview_file_id, annotations
         )
