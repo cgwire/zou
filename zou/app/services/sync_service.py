@@ -884,21 +884,24 @@ def download_file_from_another_instance(
 
 
 def download_attachment_files_from_another_instance(project=None):
+    from zou.app import app
+
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         attachment_files = (
             AttachmentFile.query
             .join(Comment)
-            .join(Task, Comment.object_id == Task)
+            .join(Task, Comment.object_id == Task.id)
             .filter(Task.project_id == project_dict["id"])
             .all()
         )
     else:
         attachment_files = AttachmentFile.query.all()
     for attachment_file in attachment_files:
-        download_attachment_file_from_another_instance(
-            attachment_file.serialize()
-        )
+        with app.app_context():
+            download_attachment_file_from_another_instance(
+                attachment_file.present()
+            )
 
 
 def download_attachment_file_from_another_instance(attachment_file):
