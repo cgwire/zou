@@ -174,8 +174,16 @@ def sync_with_ldap_server():
 @cli.command()
 @click.option("--target", default="http://localhost:5000")
 @click.option("--project")
-@click.option("--with-events")
-def sync_full(target, project=None, with_events=False):
+@click.option("--no-projects", is_flag=True)
+@click.option("--with-events", is_flag=True)
+@click.option("--only-projects", is_flag=True)
+def sync_full(
+    target,
+    project=None,
+    with_events=False,
+    no_projects=False,
+    only_projects=False
+):
     """
     Retrieve all data from target instance. It expects that credentials to
     connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
@@ -185,7 +193,13 @@ def sync_full(target, project=None, with_events=False):
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_data_from_another_instance(
-        target, login, password, project=project, with_events=with_events
+        target,
+        login,
+        password,
+        project=project,
+        with_events=with_events,
+        no_projects=no_projects,
+        only_projects=only_projects
     )
     print("Syncing ended.")
 

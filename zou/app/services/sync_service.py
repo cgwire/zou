@@ -250,12 +250,12 @@ def run_project_data_sync(project=None):
     for project in projects:
         logger.info("Syncing %s..." % project["name"])
         for event in project_events:
-            print(event)
+            print("Syncing %ss..." % event)
             path = event_name_model_path_map[event]
             model = event_name_model_map[event]
             sync_project_entries(project, path, model)
-        #sync_entity_thumbnails(project, "assets")
-        #sync_entity_thumbnails(project, "shots")
+        sync_entity_thumbnails(project, "assets")
+        sync_entity_thumbnails(project, "shots")
         logger.info("Sync of %s complete." % project["name"])
 
 

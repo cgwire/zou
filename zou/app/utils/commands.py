@@ -326,16 +326,24 @@ def sync_with_ldap_server():
 
 
 def import_data_from_another_instance(
-    target, login, password, project=None, with_events=False
+    target,
+    login,
+    password,
+    project=None,
+    with_events=False,
+    no_projects=False,
+    only_projects=False
 ):
     """
     Retrieve and save all the data from another API instance. It doesn't
     change the IDs.
     """
     sync_service.init(target, login, password)
-    sync_service.run_main_data_sync(project=project)
-    sync_service.run_project_data_sync(project=project)
-    sync_service.run_other_sync(project=project)
+    if not only_projects:
+        sync_service.run_main_data_sync(project=project)
+    if not no_projects:
+        sync_service.run_project_data_sync(project=project)
+        sync_service.run_other_sync(project=project)
 
 
 def run_sync_change_daemon(event_target, target, login, password, logs_dir):
