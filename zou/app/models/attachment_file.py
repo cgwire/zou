@@ -32,3 +32,15 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
             "extension": self.extension,
             "size": self.size,
         }
+
+    @classmethod
+    def create_from_import(cls, data):
+        data.pop("type", None)
+        data.pop("comment", None)
+        previous_data = cls.get(data["id"])
+        if previous_data is None:
+            return cls.create(**data)
+        else:
+            previous_data.update(data)
+            return previous_data
+
