@@ -872,10 +872,12 @@ def download_file_from_another_instance(
     try:
         file_path = "/tmp/%s.%s" % (preview_file_id, extension)
         response = gazu.client.download(path, file_path)
-        if response.status_code != 404:
-            save_func(prefix, preview_file_id, file_path)
-        else:
+        if response.status_code == 404:
             print("not found", preview_file_id)
+        if response.status_code == 500:
+            print("error while downloading", preview_file_id)
+        else:
+            save_func(prefix, preview_file_id, file_path)
         os.remove(file_path)
         print("%s (%s) downloaded" % (file_path, prefix))
     except Exception as e:
