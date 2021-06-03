@@ -115,7 +115,7 @@ def ldap_auth_strategy(email, password, app):
         person = persons_service.get_person_by_desktop_login(email)
 
     try:
-        SSL = False
+        SSL = app.config["LDAP_SSL"]
         if app.config["LDAP_IS_AD_SIMPLE"]:
             user = "CN=%s,%s" % (
                 person["full_name"],
