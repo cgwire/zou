@@ -51,6 +51,7 @@ def init_swift(self, name, config):
 
 def init_s3(self, name, config):
     import boto3
+    import botocore.exceptions
 
     super(S3Backend, self).__init__(name, config)
     self.session = boto3.session.Session()
@@ -66,15 +67,25 @@ def init_s3(self, name, config):
     )
     self.bucket = self.s3.Bucket(name)
 
+    bucket_exists = True
+
     try:
-        if config.region == "us-east-1":
-            self.bucket.create()
-        else:
-            self.bucket.create(
-                CreateBucketConfiguration={"LocationConstraint": config.region}
-            )
-    except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
-        pass
+        self.s3.meta.client.head_bucket(Bucket=name)
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == '404':
+            bucket_exists = False
+
+    if not bucket_exists:
+        try:
+            if config.region == "us-east-1":
+                self.bucket.create()
+            else:
+                self.bucket.create(
+                    CreateBucketConfiguration={"LocationConstraint": config.region}
+                )
+        except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
+            pass
 
 
 def clear_bucket(bucket):
