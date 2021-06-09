@@ -44,6 +44,7 @@ class PlaylistResource(BaseModelResource):
                     "preview_file_id": shot["preview_file_id"],
                 }
                 for shot in data["shots"]
+                if "preview_file_id" in shot
             ]
             data["shots"] = shots
         return data
