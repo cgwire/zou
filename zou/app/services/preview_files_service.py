@@ -192,8 +192,6 @@ def update_preview_file_annotations(project_id, preview_file_id, annotations):
     """
     Update annotations for given preview file.
     """
-    import pprint
-    pprint.pprint(annotations)
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     preview_file.update({"annotations": annotations})
     events.emit(
@@ -202,3 +200,16 @@ def update_preview_file_annotations(project_id, preview_file_id, annotations):
         project_id=project_id,
     )
     return {"id": preview_file_id}
+
+
+def get_processing_preview_files_for_project():
+    """
+    """
+    preview_files = (
+        PreviewFile.query
+        .join(Task)
+        .filter(PreviewFile.status.in_(("Broken", "Processing")))
+        .add_column(Task.task_status_id)
+        .add_column(Task.entity_id)
+    )
+    return fields.serialize_models(preview_files)
