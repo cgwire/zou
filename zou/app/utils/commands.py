@@ -155,11 +155,11 @@ def sync_with_ldap_server():
     LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "")
     LDAP_USER = os.getenv("LDAP_USER", "")
     LDAP_GROUP = os.getenv("LDAP_GROUP", "")
-    LDAP_SSL = os.getenv("LDAP_SSL", False) == "true"
+    LDAP_SSL = os.getenv("LDAP_SSL", "False").lower() == "true"
     EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "studio.local")
     LDAP_EXCLUDED_ACCOUNTS = os.getenv("LDAP_EXCLUDED_ACCOUNTS", "")
-    LDAP_IS_AD = os.getenv("LDAP_IS_AD", False) == "true"
-    LDAP_IS_AD_SIMPLE = os.getenv("LDAP_IS_AD_SIMPLE", False) == "true"
+    LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
+    LDAP_IS_AD_SIMPLE = os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
 
     def clean_value(value):
         cleaned_value = str(value)
