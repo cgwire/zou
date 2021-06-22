@@ -9,10 +9,10 @@ into the API data.
 Create the events folder:
 
 ```
-mkdir /opt/zou/plugins/event_handlers
+mkdir /opt/zou/event_handlers
 ```
 
-Then set `EVENT_HANDLERS_FOLDER` environment variable with the folder that will contain the event handler module: `/opt/zou/plugins`.
+Then set `EVENT_HANDLERS_FOLDER` environment variable with the folder that will contain the event handler module: `/opt/zou/event_handlers`.
 
 
 ## Write an event handler
@@ -53,7 +53,7 @@ event_map = {
 This is how your folder should look like:
 
 ```
-ls /opt/zou/plugins/event_handlers
+ls /opt/zou/event_handlers
 __init__.py
 shotgun_wip.py
 shotgun_pending_review.py
