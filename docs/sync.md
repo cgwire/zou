@@ -1,17 +1,17 @@
 # Data migration
 
-# Raw mode
+## Raw mode
 
 To migrate a Kitsu from an instance to another, you can simply dump the
 database and restore it to the new instance. Once done, you have to move all 
 the files stored in the preview folder to the new instance.
 
-# With Zou CLI
+## With Zou CLI
 
 We assume here that you are evolving in the zou virtualenv environment and that
 all your environment variables are loaded.
 
-# Prepare the new instance
+### Prepare the new instance
 
 Clear original database and rebuild tables:
 
@@ -21,7 +21,7 @@ zou reset_migrations
 zou upgrade_db
 ```
 
-# Get data
+### Get data
 
 Retrieve base data:
 
@@ -47,7 +47,7 @@ SYNC_PASSWORD="password" \
 zou sync_full --target http://yourpreviouskitsu.url/api --project AwesomeProject
 ```
 
-# Get files
+### Get files
 
 Retrieve all files:
 
