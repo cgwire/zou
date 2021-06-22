@@ -46,7 +46,7 @@ from . import shotgun_wip, shotgun_pending_review
 
 event_map = {
     "task:start": shotgun_wip,
-    "task:to-review": shogun_pending_review
+    "task:to-review": shotgun_pending_review
 }
 ```
 
