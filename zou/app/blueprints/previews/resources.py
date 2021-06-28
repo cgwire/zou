@@ -802,8 +802,12 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         annotations = request.json["annotations"]
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_project_access(task["project_id"])
+        is_manager = permissions.has_manager_permissions()
+        is_client = permissions.has_client_permissions()
+        print(is_manager, is_client)
+        if not (is_manager or is_client):
+            raise permissions.PermissionDenied
         return preview_files_service.update_preview_file_annotations(
             task["project_id"], preview_file_id, annotations
         )
