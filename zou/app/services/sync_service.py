@@ -865,9 +865,10 @@ def download_file_from_another_instance(
         path_prefix = prefix
         if prefix == "original":
             path_prefix = prefix + "s"
-        path = "/pictures/%s/preview-files/%s.png" % (
+        path = "/pictures/%s/preview-files/%s.%s" % (
             path_prefix,
             preview_file_id,
+            extension
         )
     try:
         file_path = "/tmp/%s.%s" % (preview_file_id, extension)
