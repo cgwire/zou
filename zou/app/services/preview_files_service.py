@@ -7,8 +7,9 @@ from zou.app.stores import file_store
 
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
-from zou.app.services import files_service
+from zou.app.services import names_service, files_service
 from zou.app.utils import events, fields, thumbnail as thumbnail_utils
 from zou.utils import movie
 
@@ -202,14 +203,29 @@ def update_preview_file_annotations(project_id, preview_file_id, annotations):
     return {"id": preview_file_id}
 
 
-def get_processing_preview_files_for_project():
+def get_running_preview_files():
     """
+    Return preview files for all productions with status equals to broken
+    or processing.
     """
-    preview_files = (
+    entries = (
         PreviewFile.query
         .join(Task)
-        .filter(PreviewFile.status.in_(("Broken", "Processing")))
-        .add_column(Task.task_status_id)
-        .add_column(Task.entity_id)
+        .join(Project)
+        .join(ProjectStatus)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(PreviewFile.status.in_(("broken", "processing")))
+        .add_columns(Task.project_id, Task.task_type_id, Task.entity_id)
+        .order_by(PreviewFile.created_at.desc())
     )
-    return fields.serialize_models(preview_files)
+
+    results = []
+    for (preview_file, project_id, task_type_id, entity_id) in entries:
+        result = preview_file.serialize()
+        result["project_id"] = fields.serialize_value(project_id)
+        result["task_type_id"] = fields.serialize_value(task_type_id)
+        (result["full_entity_name"], _) = names_service.get_full_entity_name(
+            entity_id
+        )
+        results.append(result)
+    return results

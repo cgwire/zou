@@ -811,3 +811,15 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         return preview_files_service.update_preview_file_annotations(
             task["project_id"], preview_file_id, annotations
         )
+
+
+class RunningPreviewFiles(Resource, ArgsMixin):
+    """
+    Retrieve all preview files from open productions with states equals
+    to processing or broken
+    """
+
+    @jwt_required
+    def get(self):
+        permissions.check_admin_permissions()
+        return preview_files_service.get_running_preview_files()

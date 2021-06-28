@@ -810,7 +810,7 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_preview_file(
-        self, revision=1, name="main", position=1
+        self, revision=1, name="main", position=1, status="ready"
     ):
         self.preview_file = PreviewFile.create(
             name=name,
@@ -821,6 +821,7 @@ class ApiDBTestCase(ApiTestCase):
             extension="mp4",
             person_id=self.person.id,
             position=position,
+            status=status
         )
         return self.preview_file
 

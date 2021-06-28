@@ -18,6 +18,7 @@ from .resources import (
     ProjectThumbnailResource,
     CreatePersonThumbnailResource,
     PersonThumbnailResource,
+    RunningPreviewFiles,
     LegacySetMainPreviewResource,
     SetMainPreviewResource,
     UpdateAnnotationsResource,
@@ -25,6 +26,7 @@ from .resources import (
 )
 
 routes = [
+    ("/data/playlists/preview-files/running", RunningPreviewFiles),
     ("/pictures/preview-files/<instance_id>", CreatePreviewFilePictureResource),
     (
         "/movies/originals/preview-files/<instance_id>.mp4",
