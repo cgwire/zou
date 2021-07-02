@@ -612,7 +612,6 @@ def mark_notifications_as_read():
     notifications = (
         Notification.query.filter_by(person_id=current_user["id"], read=False)
         .order_by(Notification.created_at)
-        .limit(100)
         .all()
     )
 
