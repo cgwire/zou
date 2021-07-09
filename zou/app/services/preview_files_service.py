@@ -1,5 +1,6 @@
 import os
 import re
+import time
 
 import ffmpeg
 
@@ -11,6 +12,7 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.services import names_service, files_service
 from zou.app.utils import events, fields, thumbnail as thumbnail_utils
+from zou.app.services.exception import PreviewFileNotFoundException
 from zou.utils import movie
 
 
@@ -85,7 +87,21 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
     from zou.app import app as current_app
 
     with current_app.app_context():
-        project = get_project_from_preview_file(preview_file_id)
+        try:
+            project = get_project_from_preview_file(preview_file_id)
+        except PreviewFileNotFoundException:
+            time.sleep(2)
+            try:
+                project = get_project_from_preview_file(preview_file_id)
+            except PreviewFileNotFoundException:
+                current_app.logger.error(
+                    "Data is missing from database",
+                    exc_info=1
+                )
+                time.sleep(2)
+                preview_file = set_preview_file_as_broken(preview_file_id)
+                return preview_file
+
         fps = get_preview_file_fps(project)
         (width, height) = get_preview_file_dimensions(project)
 
