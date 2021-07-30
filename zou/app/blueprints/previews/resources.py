@@ -794,22 +794,34 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
 
 class UpdateAnnotationsResource(Resource, ArgsMixin):
     """
-    Allow to change orders of previews for a single revision.
+    Allow to modify the annotations stored at the preview level.
+    Modifications are applied via three fields:
+    * `annotation`s to give all the annotations that need to be added.
+    * `updates` that list annotations that needs to be modified.
+    * `deletions` to list the IDs of annotations that needs to be removed.
     """
 
     @jwt_required
     def put(self, preview_file_id):
-        annotations = request.json["annotations"]
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
         is_manager = permissions.has_manager_permissions()
         is_client = permissions.has_client_permissions()
-        print(is_manager, is_client)
         if not (is_manager or is_client):
             raise permissions.PermissionDenied
+
+        additions = request.json.get("additions", [])
+        updates = request.json.get("updates", [])
+        deletions = request.json.get("deletions", [])
+        user = persons_service.get_current_user()
         return preview_files_service.update_preview_file_annotations(
-            task["project_id"], preview_file_id, annotations
+            user["id"],
+            task["project_id"],
+            preview_file_id,
+            additions=additions,
+            updates=updates,
+            deletions=deletions
         )
 
 

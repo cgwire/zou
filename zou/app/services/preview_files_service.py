@@ -205,18 +205,147 @@ def get_preview_files_for_revision(task_id, revision):
     return fields.serialize_models(preview_files)
 
 
-def update_preview_file_annotations(project_id, preview_file_id, annotations):
+def update_preview_file_annotations(
+    person_id,
+    project_id,
+    preview_file_id,
+    additions=[],
+    updates=[],
+    deletions=[]
+):
     """
     Update annotations for given preview file.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
+    previous_annotations = preview_file.annotations or []
+    annotations = _apply_annotation_additions(previous_annotations, additions)
+    annotations = _apply_annotation_updates(annotations, updates)
+    annotations = _apply_annotation_deletions(annotations, deletions)
+    preview_file.update({"annotations": []})
     preview_file.update({"annotations": annotations})
+    files_service.clear_preview_file_cache(preview_file_id)
+    preview_file = files_service.get_preview_file(preview_file_id)
     events.emit(
         "preview-file:annotation-update",
-        {"preview_file_id": preview_file_id},
+        {
+            "preview_file_id": preview_file_id,
+            "person_id": person_id,
+            "updated_at": preview_file["updated_at"],
+        },
         project_id=project_id,
     )
-    return {"id": preview_file_id}
+    return preview_file
+
+
+def _apply_annotation_additions(previous_annotations, new_annotations):
+    annotations = list(previous_annotations)
+    annotation_map = _get_annotation_time_map(annotations)
+
+    for new_annotation in new_annotations:
+        previous_annotation = annotation_map.get(new_annotation["time"], None)
+        if previous_annotation is None:
+            new_objects = new_annotation \
+                .get("drawing", {}) \
+                .get("objects", [])
+            for new_object in new_objects:
+                if "id" not in new_object or len(new_object["id"]) == 0:
+                    new_object["id"] = str(fields.gen_uuid())
+            annotations.append(new_annotation)
+        else:
+            previous_objects = previous_annotation \
+                .get("drawing", {}) \
+                .get("objects", [])
+            new_objects = new_annotation \
+                .get("drawing", {}) \
+                .get("objects", [])
+            previous_annotation["drawing"]["objects"] = _get_new_annotations(
+                previous_objects, new_objects
+            )
+    return annotations
+
+
+def _get_new_annotations(previous_objects, new_objects):
+    result = list(previous_objects)
+    previous_map = {}
+    for previous_object in result:
+        if "id" not in previous_object or len(previous_object["id"]) == 0:
+            previous_object["id"] = str(fields.gen_uuid())
+        previous_map[previous_object["id"]] = True
+
+    for new_object in new_objects:
+        object_id = new_object.get("id", "")
+        if object_id not in previous_map:
+            result.append(new_object)
+    return result
+
+
+def _apply_annotation_updates(
+    annotations,
+    updates
+):
+    annotation_map = _get_annotation_time_map(annotations)
+    for update in updates:
+        time = update["time"]
+        if time in annotation_map:
+            result = []
+            previous_object_map = {}
+            update_map = {}
+            annotation = annotation_map[time]
+
+            previous_objects = annotation \
+                .get("drawing", {}) \
+                .get("objects", [])
+            for previous_object in previous_objects:
+                previous_object_map[previous_object["id"]] = previous_object
+
+            updated_objects = update \
+                .get("drawing", {}) \
+                .get("objects", [])
+            for updated_object in updated_objects:
+                update_map[updated_object["id"]] = update
+
+            result = [
+                previous_object
+                for previous_object in previous_objects
+                if previous_object["id"] not in update_map
+            ]
+            for updated_object in updated_objects:
+                if updated_object["id"] in previous_object_map:
+                    result.append(updated_object)
+            annotation["drawing"]["objects"] = result
+    return annotations
+
+
+def _apply_annotation_deletions(annotations, deletions):
+    annotation_map = _get_annotation_time_map(annotations)
+
+    for deletion in deletions:
+        if deletion["time"] in annotation_map:
+            annotation = annotation_map[deletion["time"]]
+            deleted_object_ids = deletion.get("objects", [])
+            previous_objects = annotation.get("drawing", {}).get("objects", [])
+            annotation.get("drawing", {})["objects"] = [
+                previous_object
+                for previous_object in previous_objects
+                if previous_object.get("id", "") not in deleted_object_ids
+            ]
+
+    return _clear_empty_annotations(annotations)
+
+
+def _get_annotation_time_map(annotations):
+    annotation_map = {}
+    for annotation in annotations:
+        annotation_map[annotation["time"]] = annotation
+    return annotation_map
+
+
+def _clear_empty_annotations(annotations):
+    return [
+        annotation
+        for annotation in annotations
+        if len(annotation.get("drawing", {}).get("objects", [])) > 0
+    ]
 
 
 def get_running_preview_files():
