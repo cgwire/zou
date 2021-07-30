@@ -128,7 +128,7 @@ class TimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, person_id, date):
-        permissions.check_admin_permissions()
+        permissions.check_manager_permissions()
         try:
             return time_spents_service.get_time_spents(person_id, date)
         except WrongDateFormatException:
@@ -144,7 +144,7 @@ class DayOffResource(Resource):
     def get(self, person_id, date):
         current_user = persons_service.get_current_user()
         if current_user["id"] != person_id:
-            permissions.check_admin_permissions()
+            permissions.check_manager_permissions()
         try:
             return time_spents_service.get_day_off(person_id, date)
         except WrongDateFormatException:
