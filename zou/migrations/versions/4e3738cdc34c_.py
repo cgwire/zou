@@ -23,7 +23,7 @@ def upgrade():
     op.add_column('project_task_type_link', sa.Column('created_at', sa.DateTime(), nullable=True))
 
     op.add_column('project_task_type_link', sa.Column('id', sqlalchemy_utils.types.uuid.UUIDType(binary=False), default=uuid.uuid4, nullable=True))
-    op.execute('CREATE EXTENSION "uuid-ossp"')
+    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
     op.execute('UPDATE project_task_type_link SET id = uuid_generate_v4()')
     op.alter_column('project_task_type_link', 'id', nullable=False)
 
@@ -39,6 +39,6 @@ def downgrade():
     op.drop_column('project_task_type_link', 'priority')
     op.drop_column('project_task_type_link', 'updated_at')
     op.drop_column('project_task_type_link', 'id')
-    op.execute('DROP EXTENSION "uuid-ossp"')
+    op.execute('DROP EXTENSION IF EXISTS "uuid-ossp"')
     op.drop_column('project_task_type_link', 'created_at')
     # ### end Alembic commands ###
