@@ -17,13 +17,20 @@ class ProjectPersonLink(db.Model):
     shotgun_id = db.Column(db.Integer)
 
 
-class ProjectTaskTypeLink(db.Model):
+class ProjectTaskTypeLink(db.Model, BaseMixin):
     __tablename__ = "project_task_type_link"
     project_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
     )
     task_type_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_type.id"), primary_key=True
+    )
+    priority = db.Column(db.Integer, default=None)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "project_id", "task_type_id", name="project_tasktype_uc"
+        ),
     )
 
 
@@ -84,7 +91,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     task_statuses = db.relationship(
         "TaskStatus", secondary="project_task_status_link"
     )
-    task_types = db.relationship("TaskType", secondary="project_task_type_link")
+    task_types = db.relationship(
+        "TaskType", secondary="project_task_type_link"
+    )
 
     def set_team(self, person_ids):
         for person_id in person_ids:

@@ -1,10 +1,11 @@
 import slugify
 
+from zou.app import db
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.person import Person
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
@@ -72,6 +73,13 @@ def get_projects_with_extra_data(query, for_client=False):
                     "entity_type": descriptor.entity_type,
                 }
             )
+
+        project_dict["task_types_priority"] = {
+            str(task_type_link.task_type_id): task_type_link.priority
+            for task_type_link in ProjectTaskTypeLink.query.filter_by(
+                project_id=project.id
+            )
+        }
 
         if project.production_type == "tvshow":
             first_episode = (
@@ -266,11 +274,18 @@ def remove_asset_type_setting(project_id, asset_type_id):
     )
 
 
-def add_task_type_setting(project_id, task_type_id):
+def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
-    return _add_to_list_attr(project_id, TaskType, task_type_id, "task_types")
+    link = ProjectTaskTypeLink(
+        task_type_id=task_type_id,
+        project_id=project_id,
+        priority=priority
+    )
+    db.session.add(link)
+    db.session.commit()
+    return _save_project(get_project_raw(project_id))
 
 
 def remove_task_type_setting(project_id, task_type_id):

@@ -1,4 +1,6 @@
 from tests.base import ApiDBTestCase
+from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
     comments_service,
@@ -460,3 +462,19 @@ class TaskRoutesTestCase(ApiDBTestCase):
         tasks = self.get("/data/episodes/%s/shot-tasks" % self.episode.id)
         self.assertEqual(len(tasks), 2)
         self.assertTrue(shot_id in [task["entity_id"] for task in tasks])
+
+    def test_update_task_priority(self):
+        self.assertEqual(ProjectTaskTypeLink.query.count(), 0)
+        self.post("/data/task-type-links", {
+            "taskTypeId": TaskType.query.first().id,
+            "projectId": Project.query.first().id,
+            "priority": 2,
+        })
+        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 2)
+        self.post("/data/task-type-links", {
+            "taskTypeId": TaskType.query.first().id,
+            "projectId": Project.query.first().id,
+            "priority": 3,
+        })
+        self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
+        self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)
