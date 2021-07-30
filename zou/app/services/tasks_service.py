@@ -21,7 +21,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.news import News
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
@@ -1390,3 +1390,25 @@ def reset_task_data(task_id):
     project_id = str(task.project_id)
     events.emit("task:update", {"task_id": task.id}, project_id)
     return task.serialize()
+
+
+def create_or_update_projecttasktypelink(project_id, task_type_id, priority):
+    task_type_link = ProjectTaskTypeLink.query.filter_by(
+        project_id=project_id,
+        task_type_id=task_type_id
+    ).first()
+
+    if task_type_link is None:
+        task_type_link = ProjectTaskTypeLink(
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
+
+    if priority is not None:
+        priority = int(priority)
+
+    task_type_link.update({
+        "priority": priority
+    })
+
+    return task_type_link

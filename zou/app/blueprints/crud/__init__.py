@@ -32,7 +32,11 @@ from .schedule_item import ScheduleItemsResource, ScheduleItemResource
 from .subscription import SubscriptionsResource, SubscriptionResource
 from .search_filter import SearchFiltersResource, SearchFilterResource
 from .software import SoftwaresResource, SoftwareResource
-from .task_type import TaskTypesResource, TaskTypeResource
+from .task_type import (
+    TaskTypeLinksResource,
+    TaskTypesResource,
+    TaskTypeResource
+)
 from .task_status import TaskStatusesResource, TaskStatusResource
 from .task import TasksResource, TaskResource
 from .time_spent import TimeSpentsResource, TimeSpentResource
@@ -52,6 +56,7 @@ routes = [
     ("/data/entities/<instance_id>", EntityResource),
     ("/data/task-types", TaskTypesResource),
     ("/data/task-types/<instance_id>", TaskTypeResource),
+    ("/data/task-type-links", TaskTypeLinksResource),
     ("/data/task-status", TaskStatusesResource),
     ("/data/task-status/<instance_id>", TaskStatusResource),
     ("/data/tasks", TasksResource),

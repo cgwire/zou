@@ -1,6 +1,12 @@
+from flask import request
+from flask_jwt_extended import jwt_required
+from flask_restful import Resource
+
+from zou.app import db
+from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 from zou.app.services.exception import ArgumentsException
-from zou.app.services import tasks_service
+from zou.app.services import tasks_service, projects_service
 
 from .base import BaseModelResource, BaseModelsResource
 
@@ -48,3 +54,15 @@ class TaskTypeResource(BaseModelResource):
 
     def post_delete(self, instance_dict):
         tasks_service.clear_task_type_cache(instance_dict["id"])
+
+
+class TaskTypeLinksResource(Resource):
+    @jwt_required
+    def post(self):
+        data = request.json
+        task_type_link = tasks_service.create_or_update_projecttasktypelink(
+            data["projectId"], data["taskTypeId"], data.get("priority")
+        )
+        tasks_service.clear_task_type_cache(task_type_link.task_type_id)
+        projects_service.clear_project_cache(task_type_link.project_id)
+        return {"message": "updated"}, 201

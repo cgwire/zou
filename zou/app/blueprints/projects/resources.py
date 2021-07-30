@@ -129,10 +129,12 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, project_id):
-        args = self.get_args([("task_type_id", "", True)])
+        args = self.get_args(
+            [("task_type_id", "", True), ("priority", None, False)]
+        )
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
-            project_id, args["task_type_id"]
+            project_id, args["task_type_id"], args["priority"]
         )
         return project, 201
 
