@@ -14,14 +14,21 @@ class ArgsMixin(object):
         parser = reqparse.RequestParser()
         for descriptor in descriptors:
             action = None
+            data_type = str
 
-            if len(descriptor) == 4:
+            if len(descriptor) == 5:
+                (name, default, required, action, type) = descriptor
+            elif len(descriptor) == 4:
                 (name, default, required, action) = descriptor
             else:
                 (name, default, required) = descriptor
 
             parser.add_argument(
-                name, required=required, default=default, action=action
+                name,
+                required=required,
+                default=default,
+                action=action,
+                type=data_type
             )
 
         return parser.parse_args()
