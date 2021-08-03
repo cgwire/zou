@@ -1390,25 +1390,3 @@ def reset_task_data(task_id):
     project_id = str(task.project_id)
     events.emit("task:update", {"task_id": task.id}, project_id)
     return task.serialize()
-
-
-def create_or_update_projecttasktypelink(project_id, task_type_id, priority):
-    task_type_link = ProjectTaskTypeLink.query.filter_by(
-        project_id=project_id,
-        task_type_id=task_type_id
-    ).first()
-
-    if task_type_link is None:
-        task_type_link = ProjectTaskTypeLink(
-            project_id=project_id,
-            task_type_id=task_type_id,
-        )
-
-    if priority is not None:
-        priority = int(priority)
-
-    task_type_link.update({
-        "priority": priority
-    })
-
-    return task_type_link

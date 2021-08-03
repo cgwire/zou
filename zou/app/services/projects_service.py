@@ -278,13 +278,11 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
-    link = ProjectTaskTypeLink(
+    link = ProjectTaskTypeLink.create(
         task_type_id=task_type_id,
         project_id=project_id,
         priority=priority
     )
-    db.session.add(link)
-    db.session.commit()
     return _save_project(get_project_raw(project_id))
 
 
@@ -441,3 +439,26 @@ def is_tv_show(project):
 def is_open(project):
     open_status = get_open_status()
     return project["project_status_id"] == open_status["id"]
+
+
+def create_project_task_type_link(project_id, task_type_id, priority):
+    task_type_link = ProjectTaskTypeLink.get_by(
+        project_id=project_id,
+        task_type_id=task_type_id
+    )
+
+    if priority is not None:
+        priority = int(priority)
+
+    if task_type_link is None:
+        task_type_link = ProjectTaskTypeLink.create(
+            project_id=project_id,
+            task_type_id=task_type_id,
+            priority=priority
+        )
+    else:
+        task_type_link.update({
+            "priority": priority
+        })
+
+    return task_type_link.serialize()

@@ -17,7 +17,7 @@ class ProjectPersonLink(db.Model):
     shotgun_id = db.Column(db.Integer)
 
 
-class ProjectTaskTypeLink(db.Model, BaseMixin):
+class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
     __tablename__ = "project_task_type_link"
     project_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True

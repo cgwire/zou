@@ -26,17 +26,17 @@ from .news import NewssResource, NewsResource
 from .person import PersonResource, PersonsResource
 from .preview_file import PreviewFilesResource, PreviewFileResource
 from .playlist import PlaylistsResource, PlaylistResource
-from .project import ProjectResource, ProjectsResource
+from .project import (
+    ProjectResource,
+    ProjectsResource,
+    ProjectTaskTypeLinksResource
+)
 from .project_status import ProjectStatusResource, ProjectStatussResource
 from .schedule_item import ScheduleItemsResource, ScheduleItemResource
 from .subscription import SubscriptionsResource, SubscriptionResource
 from .search_filter import SearchFiltersResource, SearchFilterResource
 from .software import SoftwaresResource, SoftwareResource
-from .task_type import (
-    TaskTypeLinksResource,
-    TaskTypesResource,
-    TaskTypeResource
-)
+from .task_type import TaskTypesResource, TaskTypeResource
 from .task_status import TaskStatusesResource, TaskStatusResource
 from .task import TasksResource, TaskResource
 from .time_spent import TimeSpentsResource, TimeSpentResource
@@ -56,7 +56,7 @@ routes = [
     ("/data/entities/<instance_id>", EntityResource),
     ("/data/task-types", TaskTypesResource),
     ("/data/task-types/<instance_id>", TaskTypeResource),
-    ("/data/task-type-links", TaskTypeLinksResource),
+    ("/data/task-type-links", ProjectTaskTypeLinksResource),
     ("/data/task-status", TaskStatusesResource),
     ("/data/task-status/<instance_id>", TaskStatusResource),
     ("/data/tasks", TasksResource),
