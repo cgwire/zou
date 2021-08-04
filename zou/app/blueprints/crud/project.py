@@ -1,6 +1,8 @@
 from flask_jwt_extended import jwt_required
-from flask_restful import reqparse
+from flask_restful import Resource, reqparse
 
+
+from zou.app.mixin import ArgsMixin
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
@@ -87,9 +89,27 @@ class ProjectResource(BaseModelResource):
             }, 400
         else:
             self.check_delete_permissions(project_dict)
-            if args["force"] == True:
+            if args["force"] is True:
                 deletion_service.remove_project(instance_id)
             else:
                 project.delete()
             self.post_delete(project_dict)
             return "", 204
+
+
+class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
+
+    @jwt_required
+    def post(self):
+        data = self.get_args([
+            ("project_id", "", True),
+            ("task_type_id", "", True),
+            ("priority", 1, False, None, int)
+        ])
+        task_type_link = projects_service.create_project_task_type_link(
+            data["project_id"],
+            data["task_type_id"],
+            data["priority"]
+        )
+        projects_service.clear_project_cache(task_type_link["project_id"])
+        return task_type_link
