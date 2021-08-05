@@ -43,7 +43,7 @@ def send_storage_file(working_file_id, as_attachment=False):
     open_file = file_store.open_file
     mimetype = "application/octet-stream"
 
-    file_path = fs.get_file_path(
+    file_path = fs.get_file_path_and_file(
         config, get_local_path, open_file, prefix, working_file_id, extension
     )
 

@@ -91,8 +91,12 @@ ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
 ENABLE_JOB_QUEUE_REMOTE = (
     os.getenv("ENABLE_JOB_QUEUE_REMOTE", "False").lower() == "true"
 )
-JOB_QUEUE_NOMAD_PLAYLIST_JOB = "zou-playlist"
-JOB_QUEUE_NOMAD_HOST = "zou-nomad-01.zou"
+JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
+    "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist")
+JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv(
+    "JOB_QUEUE_NOMAD_NORMALIZE_JOB", "zou-normalize-movie")
+JOB_QUEUE_NOMAD_HOST = os.getenv(
+    "JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
 
 
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")

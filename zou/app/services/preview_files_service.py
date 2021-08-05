@@ -12,9 +12,15 @@ from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.services import names_service, files_service
-from zou.app.utils import events, fields, thumbnail as thumbnail_utils
+from zou.utils import movie
+from zou.app.utils import (
+    events,
+    fields,
+    remote_job,
+    thumbnail as thumbnail_utils
+)
 from zou.app.services.exception import PreviewFileNotFoundException
-from zou.utils import fs, movie, nomad
+from zou.app.utils import fs
 
 
 def get_preview_file_dimensions(project):
@@ -113,15 +119,19 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 file_store.add_movie(
                     "source", preview_file_id, uploaded_movie_path
                 )
-                err = _run_nomad_normalize_movie(
+                result = _run_remote_normalize_movie(
                     current_app,
                     preview_file_id,
-                    uploaded_movie_path,
                     fps,
                     width,
                     height
                 )
-                fs.get_file_path(
+                if result is True:
+                    err = None
+                else:
+                    err = result
+
+                normalized_movie_path = fs.get_file_path_and_file(
                     config,
                     file_store.get_local_movie_path,
                     file_store.open_movie,
@@ -177,7 +187,7 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         return preview_file
 
 
-def _run_nomad_normalize_movie(app, preview_file_id, fps, width, height):
+def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
     bucket_prefix = config.FS_BUCKET_PREFIX
     params = {
         "version": "1",
@@ -187,12 +197,8 @@ def _run_nomad_normalize_movie(app, preview_file_id, fps, width, height):
         "height": height,
         "fps": fps,
     }
-    nomad_job = os.getenv(
-        "JOB_QUEUE_NOMAD_NORMALIZE_MOVIE_JOB",
-        "zou-movie-normalize"
-    )
-    nomad_host = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
-    result = nomad.run_job(app, config, nomad_job, nomad_host, params)
+    nomad_job = app.config["JOB_QUEUE_NOMAD_NORMALIZE_JOB"]
+    result = remote_job.run_job(app, config, nomad_job, params)
     return result
 
 

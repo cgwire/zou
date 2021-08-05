@@ -5,12 +5,13 @@ import textwrap
 import time
 
 
-def run_job(app, config, nomad_host, nomad_job, params):
-    # Add object storage information
+def run_job(app, config, nomad_job_name, params):
+    nomad_host = config.JOB_QUEUE_NOMAD_HOST
+
+    params.update({"FS_BACKEND": config.FS_BACKEND})
     if config.FS_BACKEND == "s3":
         params.update(
             {
-                "FS_BACKEND": config.FS_BACKEND,
                 "S3_ENDPOINT": config.FS_S3_ENDPOINT,
                 "AWS_DEFAULT_REGION": config.FS_S3_REGION,
                 "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
@@ -20,7 +21,6 @@ def run_job(app, config, nomad_host, nomad_job, params):
     elif config.FS_BACKEND == "swift":
         params.update(
             {
-                "FS_BACKEND": config.FS_BACKEND,
                 "OS_USERNAME": config.FS_SWIFT_USER,
                 "OS_PASSWORD": config.FS_SWIFT_KEY,
                 "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
@@ -28,19 +28,13 @@ def run_job(app, config, nomad_host, nomad_job, params):
                 "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
             }
         )
-    else:
-        params.update(
-            {
-                "FS_BACKEND": config.FS_BACKEND,
-            }
-        )
-
 
     data = json.dumps(params).encode("utf-8")
     payload = base64.b64encode(data).decode("utf-8")
     ncli = nomad.Nomad(host=nomad_host, timeout=5)
 
-    response = ncli.job.dispatch_job(nomad_job, payload=payload)
+    response = ncli.job.dispatch_job(nomad_job_name, payload=payload)
+
     nomad_jobid = response["DispatchedJobID"]
 
     while True:
@@ -49,7 +43,7 @@ def run_job(app, config, nomad_host, nomad_job, params):
         status = summary["Summary"][task_group]
         if status["Failed"] != 0 or status["Lost"] != 0:
             app.logger.error("Nomad job %r failed: %r", nomad_jobid, status)
-            out, err = nomad.get_nomad_job_logs(ncli, nomad_jobid)
+            out, err = get_nomad_job_logs(ncli, nomad_jobid, nomad_job_name)
             out = textwrap.indent(out, "\t")
             err = textwrap.indent(err, "\t")
             raise Exception(
@@ -66,20 +60,24 @@ def run_job(app, config, nomad_host, nomad_job, params):
     return True
 
 
-def get_nomad_job_logs(ncli, nomad_jobid):
+def get_nomad_job_logs(ncli, nomad_jobid, nomad_job_name):
     allocations = ncli.job.get_allocations(nomad_jobid)
     last = max(
         [(alloc["CreateIndex"], idx) for idx, alloc in enumerate(allocations)]
     )[1]
     alloc_id = allocations[last]["ID"]
     # logs aren't available when the task isn't started
-    task = allocations[last]["TaskStates"]["zou-playlist"]
+    task = allocations[last]["TaskStates"][nomad_job_name]
     if not task["StartedAt"]:
         out = "\n".join([x["DisplayMessage"] for x in task["Events"]])
         err = ""
     else:
-        err = ncli.client.stream_logs.stream(alloc_id, "zou-playlist", "stderr")
-        out = ncli.client.stream_logs.stream(alloc_id, "zou-playlist", "stdout")
+        err = ncli.client.stream_logs.stream(
+            alloc_id, nomad_job_name, "stderr"
+        )
+        out = ncli.client.stream_logs.stream(
+            alloc_id, nomad_job_name, "stdout"
+        )
         if err:
             err = json.loads(err).get("Data", "")
             err = base64.b64decode(err).decode("utf-8")

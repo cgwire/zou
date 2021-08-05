@@ -1,8 +1,6 @@
 import base64
 import json
 import os
-import textwrap
-import time
 import zlib
 
 from operator import itemgetter
@@ -24,7 +22,8 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.utils import fields, events, nomad
+from zou.utils import movie
+from zou.app.utils import fields, events, remote_job
 from zou.app.utils import query as query_utils
 
 from zou.app.services import (
@@ -43,8 +42,6 @@ from zou.app.services.exception import (
     BuildJobNotFoundException,
     PlaylistNotFoundException,
 )
-
-from zou.utils import movie
 
 
 def all_playlists_for_project(
@@ -516,7 +513,7 @@ def build_playlist_movie_file(playlist, shots, params, remote):
             from zou.app import app
             with app.app_context():
                 try:
-                    _run_nomad_build_playlist(
+                    _run_remote_job_build_playlist(
                         app,
                         job,
                         previews,
@@ -527,11 +524,9 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                 except Exception as exc:
                     current_app.logger.error(exc)
                     success = False
-            print("remote execution done")
 
     # exception will be logged by rq
     finally:
-        print("toto ended")
         job = end_build_job(playlist, job, success)
 
     if not success:
@@ -562,7 +557,9 @@ def _run_concatenation(
     return success
 
 
-def _run_nomad_build_playlist(app, job, previews, params, movie_file_path):
+def _run_remote_job_build_playlist(
+    app, job, previews, params, movie_file_path
+):
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
     ]
@@ -579,14 +576,9 @@ def _run_nomad_build_playlist(app, job, previews, params, movie_file_path):
         "height": params.height,
         "fps": params.fps,
     }
+    nomad_job = config.JOB_QUEUE_NOMAD_PLAYLIST_JOB
+    remote_job.run_job(app, config, nomad_job, params)
 
-    # don't use 'app.config' because the webapp doesn't use this variable,
-    # only the rq worker does.
-    nomad_job = os.getenv("JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist")
-    nomad_host = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
-    nomad.run_job(app, config, nomad_job, nomad_host, params)
-
-    # fetch movie from object storage
     with open(movie_file_path, "wb") as movie_file:
         for chunk in file_store.open_movie("playlists", job["id"]):
             movie_file.write(chunk)

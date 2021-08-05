@@ -7,7 +7,12 @@ import tempfile
 import zlib
 
 from pathlib import Path
-from zou.utils.storage import ObjectStorageClient, S3Client, SwiftClient
+
+from zou.remote.config_payload import (
+    check_config_version,
+    get_config_from_payload,
+    get_storage
+)
 
 from zou.utils.movie import (
     EncodingParameters,
@@ -15,10 +20,6 @@ from zou.utils.movie import (
     concat_demuxer,
     concat_filter
 )
-
-
-ObjectStorageClient.register(S3Client)
-ObjectStorageClient.register(SwiftClient)
 
 
 def fetch_inputs(storage, outdir, preview_file_ids, bucket_prefix):
@@ -69,35 +70,9 @@ def main():
     Arguments are retrieved from a payload file at JSON format.
     Nevertheless this script can be run directly from the command line.
     """
-    if len(sys.argv) < 2:
-        print("Required parameter is missing.", file=sys.stderr)
-        sys.exit(1)
-
-    payload_file = Path(sys.argv[1])
-    if not payload_file.exists():
-        print("Payload file %r doesn't exist" % sys.argv[1], file=sys.stderr)
-        sys.exit(1)
-
-    with payload_file.open() as data:
-        config = json.load(data)
-
-    try:
-        version = int(config["version"])
-    except (ValueError, KeyError):
-        version = None
-
-    if version is None or version > 1:
-        print("Input parameters: unsupported format (version: %r)" % version,
-              file=sys.stderr)
-        sys.exit(1)
-
-    if config["FS_BACKEND"] == "s3":
-        storage = S3Client(config)
-    elif config["FS_BACKEND"] == "swift":
-        storage = SwiftClient(config)
-    else:
-        print("Unknown object storage backend (%r)" % config["FS_BACKEND"])
-        sys.exit(1)
+    config = get_config_from_payload()
+    check_config_version(config)
+    storage = get_storage(config)
 
     bucket_prefix = config["bucket_prefix"]
     with tempfile.TemporaryDirectory() as tmpdir:
