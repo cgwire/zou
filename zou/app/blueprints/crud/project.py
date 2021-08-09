@@ -112,4 +112,4 @@ class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
             data["priority"]
         )
         projects_service.clear_project_cache(task_type_link["project_id"])
-        return task_type_link
+        return task_type_link, 201

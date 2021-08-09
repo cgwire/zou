@@ -12,23 +12,30 @@ class PlaylistTestCase(ApiDBTestCase):
         self.generate_fixture_person()
         self.generate_fixture_task()
 
+        self.annotations = [
+            {
+                "drawing": {
+                    "objects": [
+                        {"id": "obj-1", "type": "Path",
+                         "path": ["0 0", "0 10"]}
+                    ]
+                },
+                "time": 0,
+            }
+        ]
+
     def tearDown(self):
         super(PlaylistTestCase, self).tearDown()
         self.delete_test_folder()
 
     def test_update_annotations(self):
         preview_file = self.generate_fixture_preview_file().serialize()
-        annotations = [{
-            "0": [
-                "Path", "0 0", "0 10"
-            ]
-        }]
         self.put(
             "actions/preview-files/%s/update-annotations" % preview_file["id"],
-            {"annotations": annotations}
+            {"additions": self.annotations, "deletions": [], "updates": []}
         )
         preview_file = self.get("data/preview-files/%s" % preview_file["id"])
-        self.assertEqual(preview_file["annotations"], annotations)
+        self.assertEqual(preview_file["annotations"], self.annotations)
 
     def test_update_annotations_rights(self):
         self.generate_fixture_user_client()
@@ -42,21 +49,15 @@ class PlaylistTestCase(ApiDBTestCase):
             self.user_cg_artist["id"]
         )
         preview_file = self.generate_fixture_preview_file().serialize()
-        annotations = [{
-            "0": [
-                "Path", "0 0", "0 10"
-            ]
-        }]
-
         self.log_in_client()
         self.put(
             "actions/preview-files/%s/update-annotations" % preview_file["id"],
-            {"annotations": annotations}
+            {"additions": self.annotations}
         )
 
         self.log_in_cg_artist()
         self.put(
             "actions/preview-files/%s/update-annotations" % preview_file["id"],
-            {"annotations": annotations},
+            {"additions": self.annotations},
             403
         )
