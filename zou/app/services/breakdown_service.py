@@ -135,6 +135,7 @@ def get_asset_type_casting(project_id, asset_type_id):
                     entity_preview_file_id
                 ),
                 "nb_occurences": link.nb_occurences,
+                "label": link.label,
             }
         )
     return castings
