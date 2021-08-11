@@ -61,13 +61,13 @@ Contributors
 About authors
 ~~~~~~~~~~~~~
 
-Zou is written by CGWire, a company based in France. We help animation studios
-to collaborate and work better.
+Zou is written by CGWire, a company based in France. We help teams of animation
+studios to collaborate better. We provide tools to more than 50 studios spread
+all around the world.
 
-We apply software craftmanship principles as much as possible. We love
-coding and consider that strong quality and good developer experience
-matter a lot. Our extensive knowledge allows studios to get better at
-communicating with all stakeholders of the productions. 
+On the technical side, we apply software craftmanship principles as much as
+possible. We love coding and consider that strong quality and good developer
+experience matter a lot.
 
 Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
 
