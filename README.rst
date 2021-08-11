@@ -20,9 +20,10 @@ Zou can:
 
 -  Store production data, such as projects, shots, assets, tasks, metadata files,
    and validations.
+-  Track the progress of your artists
+-  Store preview files and version them
 -  Provide folder and file paths for any task.
--  Import data from Shotgun or CSV files.
--  Export main data to CSV files.
+-  Import and Export data to CSV files.
 -  Provide helpers to manage workflow tasks (start, publish, retake).
 -  Listen to events to plug external modules on it.
 
@@ -47,14 +48,6 @@ Instructions for setting up a development environment are available in
 `the documentation <https://zou.cg-wire.com/development/>`__
 
 
-Sponsors
-~~~~~~~~
-
-|Unit Image Logo|
-|Les Fées Spéciales Logo|
-|NKI Logo|
-|Solidanim Logo|
-
 Contributors
 ------------
 
@@ -68,29 +61,21 @@ Contributors
 About authors
 ~~~~~~~~~~~~~
 
-Gazu is written by CG Wire, a company based in France. We help indie creative studios to build their pipeline and workflow efficiently.
+Zou is written by CGWire, a company based in France. We help animation studios
+to collaborate and work better.
 
-We apply software craftmanship principles as much as possible. We love coding and consider that strong quality and good developer experience matter a lot. Our extensive knowledge allows studios to get better at managing production and doing software. They can focus more on the artistic work.
+We apply software craftmanship principles as much as possible. We love
+coding and consider that strong quality and good developer experience
+matter a lot. Our extensive knowledge allows studios to get better at
+communicating with all stakeholders of the productions. 
 
 Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
 
 |CGWire Logo|
 
-.. |Build badge| image:: https://travis-ci.org/cgwire/zou.svg?branch=master
-   :target: https://travis-ci.org/cgwire/zou
+.. |Build badge| image:: https://travis-ci.com/cgwire/zou.svg?branch=master
+   :target: https://travis-ci.com/cgwire/zou
 .. |Gitter badge| image:: https://badges.gitter.im/cgwire/Lobby.png
    :target: https://gitter.im/cgwire/Lobby
 .. |CGWire Logo| image:: https://zou.cg-wire.com/cgwire.png
    :target: https://cgwire.com
-.. |Unit Image Logo| image:: https://www.cg-wire.com/images/logo-unit-image.png
-   :target: https://www.unit-image.fr
-   :width: 100
-.. |Les Fées Spéciales Logo| image:: https://www.cg-wire.com/images/logo-les-fees-speciales.png
-   :target: https://www.les-fees-speciales.coop
-   :width: 100
-.. |NKI Logo| image:: https://www.cg-wire.com/images/logo-nki.png
-   :target: https://www.nki.tv
-   :width: 100
-.. |Solidanim Logo| image:: https://www.cg-wire.com/images/logo-solidanim.png
-   :target: https://www.solidanim.com
-   :width: 100
