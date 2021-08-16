@@ -12,7 +12,7 @@ is required.
 
 ## Enabling job queue
 
-Set `ENABLE_JOB_QUEUE` environment variable to `True` in the main service file.
+Set `ENABLE_JOB_QUEUE` environment variable to `True` in the main service file (zou.service).
 
 
 ## Setting up RQ, the job manager
@@ -38,4 +38,9 @@ ExecStart=/opt/zou/zouenv/bin/rq worker -c zou.job_settings
 
 [Install]
 WantedBy=multi-user.target
+```
+
+Start the service:
+```
+sudo service zou-jobs start
 ```
