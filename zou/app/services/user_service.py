@@ -307,6 +307,21 @@ def check_working_on_entity(entity_id):
     return True
 
 
+def check_working_on_task(task_id):
+    """
+    Return True if user has task assigned.
+    """
+    current_user = persons_service.get_current_user_raw()
+    query = Task.query.filter(Task.assignees.contains(current_user)).filter(
+        Task.id == task_id
+    )
+
+    if query.first() is None:
+        raise permissions.PermissionDenied
+
+    return True
+
+
 def check_person_access(person_id):
     """
     Return True if user is admin or is matching given person id.

@@ -21,7 +21,7 @@ def has_manager_permissions():
 
 def has_admin_permissions():
     """
-    Return True if user is admin or manager.
+    Return True if user is admin.
     """
     return admin_permission.can()
 
