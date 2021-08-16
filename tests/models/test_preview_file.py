@@ -123,8 +123,7 @@ class PreviewFileTestCase(ApiDBTestCase):
         preview_file_artist1_1 = self.get(route1_1)
         task_related = tasks_service.get_task(preview_file_artist1_1["task_id"])
         self.assertEqual(task_related["project_id"], project1_id)
-        with self.assertRaises(Exception):
-            self.get(route2_1)
+        self.get(route2_1, code=403)
 
     def test_get_preview_file_for_vendor(self):
         """
@@ -140,8 +139,7 @@ class PreviewFileTestCase(ApiDBTestCase):
         task = Task.get(preview_file_vendor["task_id"])
         assignees_ids = [str(assignee.id) for assignee in task.assignees]
         self.assertIn(self.user_vendor_id, assignees_ids)
-        with self.assertRaises(Exception):
-            self.get(route2_1)
+        self.get(route2_1, code=403)
 
     def test_get_preview_file_for_admin(self):
         """

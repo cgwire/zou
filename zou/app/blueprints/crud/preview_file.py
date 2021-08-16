@@ -1,8 +1,10 @@
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.task import Task
+from zou.app.models.project import Project
 from zou.app.services import (
     user_service,
-    persons_service,
     tasks_service,
+    persons_service,
 )
 from zou.app.utils import permissions
 
@@ -15,35 +17,34 @@ class PreviewFilesResource(BaseModelsResource):
 
     def all_entries(self, query=None, relations=False):
         """
-        If the user has at least manager permissions, return all previews
-        If he's a vendor, return only previews for the tasks he's assigned to
+        If the user has at least manager permissions, return all previews.
+        If he's a vendor, return only previews for the tasks he's assigned to.
+        If he's an artist, return only previews for projects he's a part of.
         """
         if query is None:
             query = self.model.query
 
-        projects = user_service.related_projects()
-        all_previews = query.all()
-        previews = []
-
         if permissions.has_manager_permissions():
-            previews = all_previews
+            pass
 
-        elif permissions.has_vendor_permissions() or \
-                permissions.has_client_permissions():
-            current_user = persons_service.get_current_user()
-            tasks = tasks_service.get_person_tasks(current_user["id"], projects)
-            task_ids = [task["id"] for task in tasks]
-            for preview in all_previews:
-                if str(preview.task_id) in task_ids:
-                    previews.append(preview)
+        elif permissions.has_vendor_permissions():
+            query = (
+                PreviewFile.query
+                    .join(Task)
+                    .filter(user_service.build_assignee_filter())
+                    .filter(user_service.build_open_project_filter())
+                    .filter(Task.id == PreviewFile.task_id)
+            )
 
         else:
-            project_ids = [project["id"] for project in projects]
-            for preview in all_previews:
-                task = tasks_service.get_task(preview.task_id)
-                if task["project_id"] in project_ids:
-                    previews.append(preview)
+            query = (
+                PreviewFile.query
+                    .join(Task, Project)
+                    .filter(user_service.build_related_projects_filter())
+                    .filter(user_service.build_open_project_filter())
+            )
 
+        previews = query.all()
         return self.model.serialize_list(previews, relations=relations)
 
     def check_read_permissions(self):
@@ -56,24 +57,18 @@ class PreviewFileResource(BaseModelResource):
 
     def check_read_permissions(self, preview_file):
         """
-        If it's a vendor, check if the user is working on the task
-        If it's an artist, check if preview file belongs to user projects
+        If it's a vendor, check if the user is working on the task.
+        If it's an artist, check if preview file belongs to user projects.
         """
-        projects = user_service.related_projects()
         if permissions.has_manager_permissions():
             pass
-        elif permissions.has_vendor_permissions() or \
-                permissions.has_client_permissions():
-            current_user = persons_service.get_current_user()
-            tasks = tasks_service.get_person_tasks(current_user["id"], projects)
-            task_ids = [task["id"] for task in tasks]
-            if not str(preview_file["task_id"]) in task_ids:
-                raise permissions.PermissionDenied
+        elif permissions.has_vendor_permissions():
+            user_service.check_working_on_task(preview_file["task_id"])
         else:
-            project_ids = [project["id"] for project in projects]
             task = tasks_service.get_task(preview_file["task_id"])
-            if not task["project_id"] in project_ids:
+            if not user_service.check_belong_to_project(task["project_id"]):
                 raise permissions.PermissionDenied
+
         return True
 
     def check_update_permissions(self, preview_file, data):
