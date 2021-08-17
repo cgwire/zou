@@ -323,7 +323,10 @@ def _add_to_list_attr(project_id, model_class, model_id, list_attr):
 def _remove_from_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
-    getattr(project, list_attr).remove(model)
+    try:
+        getattr(project, list_attr).remove(model)
+    except ValueError:
+        pass
     return _save_project(project)
 
 
