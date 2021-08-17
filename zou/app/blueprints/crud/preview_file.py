@@ -24,9 +24,8 @@ class PreviewFilesResource(BaseModelsResource):
         if query is None:
             query = self.model.query
 
-        if permissions.has_manager_permissions():
+        if permissions.has_admin_permissions():
             pass
-
         elif permissions.has_vendor_permissions():
             query = (
                 PreviewFile.query
@@ -35,7 +34,6 @@ class PreviewFilesResource(BaseModelsResource):
                     .filter(user_service.build_open_project_filter())
                     .filter(Task.id == PreviewFile.task_id)
             )
-
         else:
             query = (
                 PreviewFile.query
@@ -60,19 +58,16 @@ class PreviewFileResource(BaseModelResource):
         If it's a vendor, check if the user is working on the task.
         If it's an artist, check if preview file belongs to user projects.
         """
-        if permissions.has_manager_permissions():
-            pass
-        elif permissions.has_vendor_permissions():
+        if permissions.has_vendor_permissions():
             user_service.check_working_on_task(preview_file["task_id"])
         else:
             task = tasks_service.get_task(preview_file["task_id"])
-            if not user_service.check_belong_to_project(task["project_id"]):
-                raise permissions.PermissionDenied
-
+            user_service.check_project_access(task["project_id"])
         return True
 
     def check_update_permissions(self, preview_file, data):
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        if not permissions.has_manager_permissions():
+            user_service.check_working_on_task(task["entity_id"])
         return True
