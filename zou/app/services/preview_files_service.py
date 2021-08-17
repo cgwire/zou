@@ -115,7 +115,8 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            if config.ENABLE_JOB_QUEUE_REMOTE:
+            if config.ENABLE_JOB_QUEUE_REMOTE and \
+               len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0:
                 file_store.add_movie(
                     "source", preview_file_id, uploaded_movie_path
                 )

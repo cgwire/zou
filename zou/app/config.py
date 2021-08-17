@@ -94,7 +94,7 @@ ENABLE_JOB_QUEUE_REMOTE = (
 JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
     "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist")
 JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv(
-    "JOB_QUEUE_NOMAD_NORMALIZE_JOB", "zou-normalize-movie")
+    "JOB_QUEUE_NOMAD_NORMALIZE_JOB", "")
 JOB_QUEUE_NOMAD_HOST = os.getenv(
     "JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
 
