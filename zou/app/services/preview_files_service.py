@@ -4,6 +4,7 @@ import time
 
 import ffmpeg
 
+from zou.app import config
 from zou.app.stores import file_store
 
 from zou.app.models.preview_file import PreviewFile
@@ -11,9 +12,15 @@ from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.services import names_service, files_service
-from zou.app.utils import events, fields, thumbnail as thumbnail_utils
-from zou.app.services.exception import PreviewFileNotFoundException
 from zou.utils import movie
+from zou.app.utils import (
+    events,
+    fields,
+    remote_job,
+    thumbnail as thumbnail_utils
+)
+from zou.app.services.exception import PreviewFileNotFoundException
+from zou.app.utils import fs
 
 
 def get_preview_file_dimensions(project):
@@ -108,28 +115,53 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            (
-                normalized_movie_path,
-                normalized_movie_low_path,
-                err,
-            ) = movie.normalize_movie(
-                uploaded_movie_path, fps=fps, width=width, height=height
-            )
+            if config.ENABLE_JOB_QUEUE_REMOTE and \
+               len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0:
+                file_store.add_movie(
+                    "source", preview_file_id, uploaded_movie_path
+                )
+                result = _run_remote_normalize_movie(
+                    current_app,
+                    preview_file_id,
+                    fps,
+                    width,
+                    height
+                )
+                if result is True:
+                    err = None
+                else:
+                    err = result
 
+                normalized_movie_path = fs.get_file_path_and_file(
+                    config,
+                    file_store.get_local_movie_path,
+                    file_store.open_movie,
+                    "previews",
+                    preview_file_id,
+                    ".mp4"
+                )
+            else:
+                (
+                    normalized_movie_path,
+                    normalized_movie_low_path,
+                    err,
+                ) = movie.normalize_movie(
+                    uploaded_movie_path, fps=fps, width=width, height=height
+                )
+                file_store.add_movie(
+                    "previews", preview_file_id, normalized_movie_path
+                )
+                file_store.add_movie(
+                    "lowdef", preview_file_id, normalized_movie_low_path
+                )
             if err:
                 current_app.logger.error(
-                    "Fail to add silent audiotrack to: %s" % uploaded_movie_path
+                    "Fail to normalize: %s" % uploaded_movie_path
                 )
                 current_app.logger.error(err)
 
             current_app.logger.info(
                 "file normalized %s" % normalized_movie_path
-            )
-            file_store.add_movie(
-                "previews", preview_file_id, normalized_movie_path
-            )
-            file_store.add_movie(
-                "lowdef", preview_file_id, normalized_movie_low_path
             )
             current_app.logger.info("file stored")
         except Exception as exc:
@@ -142,7 +174,6 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build thumbnails
         size = movie.get_movie_size(normalized_movie_path)
         original_picture_path = movie.generate_thumbnail(normalized_movie_path)
-        tile_picture_path = movie.generate_tile(normalized_movie_path)
         thumbnail_utils.resize(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)
@@ -155,6 +186,21 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
             preview_file_id, {"status": "ready", "file_size": file_size}
         )
         return preview_file
+
+
+def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
+    bucket_prefix = config.FS_BUCKET_PREFIX
+    params = {
+        "version": "1",
+        "bucket_prefix": bucket_prefix,
+        "preview_file_id": preview_file_id,
+        "width": width,
+        "height": height,
+        "fps": fps,
+    }
+    nomad_job = app.config["JOB_QUEUE_NOMAD_NORMALIZE_JOB"]
+    result = remote_job.run_job(app, config, nomad_job, params)
+    return result
 
 
 def save_variants(preview_file_id, original_picture_path):

@@ -28,7 +28,7 @@ def copyfile(src, dest):
     shutil.copyfile(src, dest)
 
 
-def get_file_path(
+def get_file_path_and_file(
     config, get_local_path, open_file, prefix, instance_id, extension
 ):
     if config.FS_BACKEND == "local":

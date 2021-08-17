@@ -23,13 +23,13 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.stores import queue_store
+from zou.utils import movie
 from zou.app.utils import (
     fs,
     events,
     permissions,
     thumbnail as thumbnail_utils,
 )
-from zou.utils import movie
 
 
 ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]
@@ -146,7 +146,7 @@ def send_storage_file(
     Send file from storage. If it's not a local storage, cache the file in
     a temporary folder before sending it. It accepts conditional headers.
     """
-    file_path = fs.get_file_path(
+    file_path = fs.get_file_path_and_file(
         config, get_local_path, open_file, prefix, preview_file_id, extension
     )
 

@@ -7,7 +7,7 @@ import click
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
-from zou.app.services import persons_service, tasks_service
+from zou.app.services import persons_service
 
 
 @click.group()
@@ -330,7 +330,7 @@ def clean_tasks_data(projectid):
 def remove_old_data(days):
     """
     Remove old events, notifications and login logs older than 90 days
-    (by deafult).t
+    (by deafult).
     """
     commands.remove_old_data(days)
 

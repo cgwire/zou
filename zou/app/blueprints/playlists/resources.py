@@ -6,7 +6,6 @@ from flask_jwt_extended import jwt_required
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions
 
 from zou.app.services import (
     entities_service,
@@ -18,7 +17,7 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.stores import file_store, queue_store
-from zou.app.utils import fs
+from zou.app.utils import fs, permissions
 from zou.utils.movie import EncodingParameters
 
 
@@ -101,7 +100,7 @@ class PlaylistDownloadResource(Resource):
         if build_job["status"] != "succeeded":
             return {"error": True, "message": "Build is not finished"}, 400
         else:
-            movie_file_path = fs.get_file_path(
+            movie_file_path = fs.get_file_path_and_file(
                 config,
                 file_store.get_local_movie_path,
                 file_store.open_movie,

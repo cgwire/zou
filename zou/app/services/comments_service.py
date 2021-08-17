@@ -41,7 +41,7 @@ def get_attachment_file_path(attachment_file):
     """
     Get attachement file path when stored locally.
     """
-    return fs.get_file_path(
+    return fs.get_file_path_and_file(
         config,
         file_store.get_local_file_path,
         file_store.open_file,
