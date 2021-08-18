@@ -115,8 +115,8 @@ class PreviewFileTestCase(ApiDBTestCase):
         Test route data/preview-files/<preview_file_id> for artist.
         Artists can only access previews linked to projects he works on.
         """
-        route1_1 = "data/preview-files/" % str(self.preview_file1_1.id)
-        route2_1 = "data/preview-files/" % str(self.preview_file2_1.id)
+        route1_1 = "data/preview-files/%s" % str(self.preview_file1_1.id)
+        route2_1 = "data/preview-files/%s" % str(self.preview_file2_1.id)
         project1_id = str(self.project1.id)
 
         self.log_in_cg_artist()
@@ -130,8 +130,8 @@ class PreviewFileTestCase(ApiDBTestCase):
         Test route data/preview-files/<preview_file_id> for vendor.
         The vendor can only access the tasks he's working on.
         """
-        route2_1 = "data/preview-files/" % str(self.preview_file2_1.id)
-        route2_2 = "data/preview-files/" % str(self.preview_file2_2.id)
+        route2_1 = "data/preview-files/%s" % str(self.preview_file2_1.id)
+        route2_2 = "data/preview-files/%s" % str(self.preview_file2_2.id)
 
         self.log_in_vendor()
         preview_file_vendor = self.get(route2_2)
@@ -145,9 +145,9 @@ class PreviewFileTestCase(ApiDBTestCase):
         """
         Test route data/preview-files/<preview_file_id> for admin.
         """
-        route1_1 = "data/preview-files/" % str(self.preview_file1_1.id)
-        route2_1 = "data/preview-files/" % str(self.preview_file2_1.id)
-        route2_2 = "data/preview-files/" % str(self.preview_file2_2.id)
+        route1_1 = "data/preview-files/%s" % str(self.preview_file1_1.id)
+        route2_1 = "data/preview-files/%s" % str(self.preview_file2_1.id)
+        route2_2 = "data/preview-files/%s" % str(self.preview_file2_2.id)
 
         self.log_in_admin()
         preview_file_admin1_1 = self.get(route1_1)
