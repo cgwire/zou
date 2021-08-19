@@ -45,5 +45,5 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         path = "/export/csv/projects/%s/casting.csv" % project_id
         csv = self.get_raw(path)
 
-        self.assertTrue("E01;SEQ01;SH01;Character;John;1;animate" in csv)
-        self.assertTrue(";Environment;Lake;Props;Boat;1;setdress" in csv)
+        self.assertTrue("SEQ01;SH01;Character;John;1;animate" in csv)
+        self.assertTrue("Environment;Lake;Props;Boat;1;setdress" in csv)
