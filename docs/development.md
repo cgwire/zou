@@ -46,10 +46,23 @@ Then get Zou sources:
 git clone git@github.com:cgwire/zou.git
 ```
 
-Create a virtual environment with `mkvirtualenv`:
+Install `virtualenvwrapper`:
 
 ```bash
 pip install virtualenvwrapper
+```
+
+Add configuration for `virtualenvwrapper` to your .bashrc:
+
+```bash
+export WORKON_HOME=directory_for_virtualenvs
+VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+source ~/.local/bin/virtualenvwrapper.sh
+```
+
+Create a virtual environment with `mkvirtualenv`:
+
+```bash
 mkvirtualenv zou
 workon zou
 ```
@@ -74,7 +87,7 @@ python zou/cli.py init_data
 Create a first user:
 
 ```bash
-python zou/cli.py create_admin super.user@mycgstudio.com
+python zou/cli.py create_admin super.user@mycgstudio.com --password=mysecretpassword
 ```
 
 Run server:
