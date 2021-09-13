@@ -44,8 +44,7 @@ class MovieTestCase(unittest.TestCase):
         # Create an audio file
         stream = ffmpeg.input(video)
         audio_only = str(
-            Path(self.tmpdir)
-            / ("audio_only-test_soundtrack.mp4")
+            Path(self.tmpdir) / ("audio_only-test_soundtrack.mp4")
         )
         stream = ffmpeg.output(stream.audio, audio_only, f="mp4", c="aac")
         stream.run(quiet=False, cmd=("ffmpeg", "-xerror"))
@@ -122,5 +121,3 @@ class MovieTestCase(unittest.TestCase):
         width_playlist, height_playlist = movie.get_movie_size(out)
         self.assertEqual(width, width_playlist)
         self.assertEqual(height, height_playlist)
-
-

@@ -83,7 +83,9 @@ class AssetTypeAssetsResource(Resource):
     def get(self, project_id, asset_type_id):
         projects_service.get_project(project_id)
         assets_service.get_asset_type(asset_type_id)
-        return user_service.get_assets_for_asset_type(project_id, asset_type_id)
+        return user_service.get_assets_for_asset_type(
+            project_id, asset_type_id
+        )
 
 
 class OpenProjectsResource(Resource):
@@ -375,7 +377,9 @@ class HasSequenceSubscribedResource(Resource):
 
     @jwt_required
     def get(self, sequence_id, task_type_id):
-        return user_service.has_sequence_subscription(sequence_id, task_type_id)
+        return user_service.has_sequence_subscription(
+            sequence_id, task_type_id
+        )
 
 
 class SequenceSubscribeResource(Resource):
@@ -412,7 +416,9 @@ class SequenceSubscriptionsResource(Resource):
 
     @jwt_required
     def get(self, project_id, task_type_id):
-        return user_service.get_sequence_subscriptions(project_id, task_type_id)
+        return user_service.get_sequence_subscriptions(
+            project_id, task_type_id
+        )
 
 
 class TimeSpentsResource(Resource):
@@ -424,7 +430,9 @@ class TimeSpentsResource(Resource):
     def get(self, date):
         try:
             current_user = persons_service.get_current_user()
-            return time_spents_service.get_time_spents(current_user["id"], date)
+            return time_spents_service.get_time_spents(
+                current_user["id"], date
+            )
         except WrongDateFormatException:
             abort(404)
 

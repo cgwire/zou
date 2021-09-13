@@ -73,7 +73,11 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
+            "project": {
+                "type": "Project",
+                "id": 1,
+                "name": "Cosmos Landromat",
+            },
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [],
@@ -101,7 +105,11 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
+            "project": {
+                "type": "Project",
+                "id": 1,
+                "name": "Cosmos Landromat",
+            },
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [],
@@ -143,7 +151,11 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         sg_asset = {
             "code": "Cake",
             "description": "yellow cake",
-            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
+            "project": {
+                "type": "Project",
+                "id": 1,
+                "name": "Cosmos Landromat",
+            },
             "sg_asset_type": "Props",
             "type": "Asset",
             "parents": [{"type": "Asset", "id": 1}],

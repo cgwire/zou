@@ -98,18 +98,17 @@ class ProjectResource(BaseModelResource):
 
 
 class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
-
     @jwt_required
     def post(self):
-        data = self.get_args([
-            ("project_id", "", True),
-            ("task_type_id", "", True),
-            ("priority", 1, False, None, int)
-        ])
+        data = self.get_args(
+            [
+                ("project_id", "", True),
+                ("task_type_id", "", True),
+                ("priority", 1, False, None, int),
+            ]
+        )
         task_type_link = projects_service.create_project_task_type_link(
-            data["project_id"],
-            data["task_type_id"],
-            data["priority"]
+            data["project_id"], data["task_type_id"], data["priority"]
         )
         projects_service.clear_project_cache(task_type_link["project_id"])
         return task_type_link, 201

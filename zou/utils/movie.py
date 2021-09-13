@@ -9,8 +9,9 @@ import tempfile
 import ffmpeg
 
 
-EncodingParameters = namedtuple('EncodingParameters',
-                                ['width', 'height', 'fps'])
+EncodingParameters = namedtuple(
+    "EncodingParameters", ["width", "height", "fps"]
+)
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -50,12 +51,16 @@ def get_movie_size(movie_path):
     Returns movie resolution (extract a frame and returns its size).
     """
     probe = ffmpeg.probe(movie_path)
-    video = next((
-        stream for stream in probe['streams']
-        if stream['codec_type'] == 'video'
-    ), None)
-    width = int(video['width'])
-    height = int(video['height'])
+    video = next(
+        (
+            stream
+            for stream in probe["streams"]
+            if stream["codec_type"] == "video"
+        ),
+        None,
+    )
+    width = int(video["width"])
+    height = int(video["height"])
     return (width, height)
 
 
@@ -145,19 +150,24 @@ def add_empty_soundtrack(file_path):
 
     args = [
         "ffmpeg",
-        "-f", "lavfi",
-        "-i", "anullsrc",
-        "-i", file_path,
-        "-c:v", "copy",
-        "-c:a", "aac",
-        "-map", "0:a",
-        "-map", "1:v",
+        "-f",
+        "lavfi",
+        "-i",
+        "anullsrc",
+        "-i",
+        file_path,
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-map",
+        "0:a",
+        "-map",
+        "1:v",
         "-shortest",
-        tmp_file_path
+        tmp_file_path,
     ]
-    sp = subprocess.Popen(
-        args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, error = sp.communicate()
 
     err = None
@@ -170,12 +180,13 @@ def add_empty_soundtrack(file_path):
 
 
 def has_soundtrack(file_path):
-    audio = ffmpeg.probe(file_path, select_streams='a')
+    audio = ffmpeg.probe(file_path, select_streams="a")
     return len(audio["streams"]) > 0
 
 
-def build_playlist_movie(concat, tmp_file_paths, movie_file_path, width,
-                         height, fps):
+def build_playlist_movie(
+    concat, tmp_file_paths, movie_file_path, width, height, fps
+):
     """
     Build a single movie file from a playlist.
     """
@@ -220,27 +231,28 @@ def concat_demuxer(in_files, output_path, *args):
         if len(streams) != 2:
             return {
                 "success": False,
-                "message": "%s has an unexpected stream number (%s)" %
-                           (input_path, len(streams))
+                "message": "%s has an unexpected stream number (%s)"
+                % (input_path, len(streams)),
             }
 
         stream_infos = {streams[0]["codec_type"], streams[1]["codec_type"]}
-        if stream_infos  != {"video", "audio"}:
+        if stream_infos != {"video", "audio"}:
             return {
                 "success": False,
-                "message": "%s has unexpected stream type (%s)" %
-                           (input_path, {streams[0]["codec_type"],
-                                         streams[1]["codec_type"]})
+                "message": "%s has unexpected stream type (%s)"
+                % (
+                    input_path,
+                    {streams[0]["codec_type"], streams[1]["codec_type"]},
+                ),
             }
 
         video_index = [
-            x["index"] for x in streams
-            if x["codec_type"] == "video"
+            x["index"] for x in streams if x["codec_type"] == "video"
         ][0]
         if video_index != 0:
             return {
                 "success": False,
-                "message": "%s has an unexpected stream order" % input_path
+                "message": "%s has an unexpected stream order" % input_path,
             }
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:
@@ -248,10 +260,11 @@ def concat_demuxer(in_files, output_path, *args):
             temp.write("file '%s'\n" % input_path)
         temp.flush()
 
-        stream = ffmpeg.input(temp.name, format='concat', safe=0)
-        stream = ffmpeg.output(stream.video, stream.audio, output_path,
-                               c='copy')
-        return run_ffmpeg(stream, '-xerror')
+        stream = ffmpeg.input(temp.name, format="concat", safe=0)
+        stream = ffmpeg.output(
+            stream.video, stream.audio, output_path, c="copy"
+        )
+        return run_ffmpeg(stream, "-xerror")
 
 
 def concat_filter(in_files, output_path, width, height, *args):
@@ -263,9 +276,7 @@ def concat_filter(in_files, output_path, width, height, *args):
     for input_path in in_files:
         in_file = ffmpeg.input(input_path)
         streams.append(
-            in_file["v"]
-            .filter("setsar", "1/1")
-            .filter("scale", width, height)
+            in_file["v"].filter("setsar", "1/1").filter("scale", width, height)
         )
         streams.append(in_file["a"])
 
@@ -283,7 +294,7 @@ def run_ffmpeg(stream, *args):
     """
     result = {}
     try:
-        stream.overwrite_output().run(cmd=('ffmpeg',) + args)
+        stream.overwrite_output().run(cmd=("ffmpeg",) + args)
         result["success"] = True
     except Exception as e:
         print(e)

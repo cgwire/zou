@@ -153,7 +153,8 @@ def ldap_auth_strategy(email, password, app):
 
     except LDAPSocketOpenError:
         app.logger.error(
-            "Cannot connect to LDAP/Active directory server %s " % (ldap_server)
+            "Cannot connect to LDAP/Active directory server %s "
+            % (ldap_server)
         )
         return ldap_auth_strategy_fallback(email, password, app, person)
 

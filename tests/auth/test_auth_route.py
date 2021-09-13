@@ -36,7 +36,9 @@ class AuthTestCase(ApiDBTestCase):
             pass
 
     def get_auth_headers(self, tokens):
-        return {"Authorization": "Bearer %s" % tokens.get("access_token", None)}
+        return {
+            "Authorization": "Bearer %s" % tokens.get("access_token", None)
+        }
 
     def logout(self, tokens):
         headers = self.get_auth_headers(tokens)
@@ -231,7 +233,9 @@ class AuthTestCase(ApiDBTestCase):
         }
         response = self.put("auth/reset-password", data, 200)
         self.assertTrue(response["success"])
-        self.post("auth/login", {"email": email, "password": new_password}, 200)
+        self.post(
+            "auth/login", {"email": email, "password": new_password}, 200
+        )
 
     def test_unactive(self):
         self.person.update({"active": False})

@@ -39,7 +39,10 @@ routes = [
         "/data/playlists/<playlist_id>/jobs/<build_job_id>/build/mp4",
         PlaylistDownloadResource,
     ),
-    ("/data/playlists/<playlist_id>/download/zip", PlaylistZipDownloadResource),
+    (
+        "/data/playlists/<playlist_id>/download/zip",
+        PlaylistZipDownloadResource,
+    ),
     ("/data/projects/<project_id>/playlists/temp", TempPlaylistResource),
 ]
 

@@ -49,8 +49,12 @@ class NamesServiceTestCase(ApiDBTestCase):
         self.assertEqual(name, "cosmos_landromat_props_tree_shaders_v3.mp4")
 
         preview_file = files_service.create_preview_file(
-            "main", 4, self.asset_task["id"], self.user["id"], source="webgui",
-            position=5
+            "main",
+            4,
+            self.asset_task["id"],
+            self.user["id"],
+            source="webgui",
+            position=5,
         )
         name = names_service.get_preview_file_name(preview_file["id"])
         self.assertEqual(name, "cosmos_landromat_props_tree_shaders_v4-5.mp4")

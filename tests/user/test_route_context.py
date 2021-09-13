@@ -377,7 +377,9 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         path = "/data/user/notifications/%s" % notification["id"]
         notification_again = self.get(path)
         self.assertEqual(notification_again["id"], notification["id"])
-        self.assertEqual(notification_again["full_entity_name"], "Props / Tree")
+        self.assertEqual(
+            notification_again["full_entity_name"], "Props / Tree"
+        )
 
     def test_subscribe_task(self):
         recipients = notifications_service.get_notification_recipients(
@@ -385,15 +387,21 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         )
         self.assertFalse(self.user_id in recipients)
 
-        self.post("/actions/user/tasks/%s/subscribe" % self.task_dict["id"], {})
+        self.post(
+            "/actions/user/tasks/%s/subscribe" % self.task_dict["id"], {}
+        )
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
         self.assertTrue(self.user_id in recipients)
 
     def test_unsubscribe_task(self):
-        self.post("/actions/user/tasks/%s/subscribe" % self.task_dict["id"], {})
-        self.delete("/actions/user/tasks/%s/unsubscribe" % self.task_dict["id"])
+        self.post(
+            "/actions/user/tasks/%s/subscribe" % self.task_dict["id"], {}
+        )
+        self.delete(
+            "/actions/user/tasks/%s/unsubscribe" % self.task_dict["id"]
+        )
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )

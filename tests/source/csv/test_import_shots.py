@@ -22,12 +22,17 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
 
     def test_import_shots(self):
         self.assertEqual(len(Task.query.all()), 0)
-        db.session.add(ProjectTaskTypeLink(
-            project_id=self.project_id, task_type_id=self.task_type.id
-        ))
-        db.session.add(ProjectTaskTypeLink(
-            project_id=self.project_id, task_type_id=self.task_type_layout.id
-        ))
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id, task_type_id=self.task_type.id
+            )
+        )
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_layout.id,
+            )
+        )
         path = "/import/csv/projects/%s/shots" % self.project.id
         self.project.update({"production_type": "tvshow"})
 

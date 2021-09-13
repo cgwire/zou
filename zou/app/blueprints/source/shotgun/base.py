@@ -3,7 +3,9 @@ from flask_restful import Resource, current_app
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import fields, permissions
-from zou.app.blueprints.source.shotgun.exception import ShotgunEntryImportFailed
+from zou.app.blueprints.source.shotgun.exception import (
+    ShotgunEntryImportFailed,
+)
 
 from zou.app.services import assets_service, shots_service, tasks_service
 

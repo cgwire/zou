@@ -59,7 +59,9 @@ class AllAssetsResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return assets_service.get_assets(criterions)
 
 
@@ -80,7 +82,9 @@ class AssetsAndTasksResource(Resource):
         page = query.get_page_from_request(request)
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return assets_service.get_assets_and_tasks(criterions, page)
 
 
@@ -135,7 +139,9 @@ class ProjectAssetsResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return assets_service.get_assets(criterions)
 
 
@@ -150,7 +156,9 @@ class ProjectAssetTypeAssetsResource(Resource):
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return assets_service.get_assets(criterions)
 
 

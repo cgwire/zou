@@ -156,7 +156,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.project.save()
         self.generate_fixture_task()
         path = "/actions/tasks/%s/comment/" % self.task.id
-        data = {"task_status_id": self.wip_status_id, "comment": "comment test"}
+        data = {
+            "task_status_id": self.wip_status_id,
+            "comment": "comment test",
+        }
         comment = self.post(path, data)
         self.assertEqual(comment["text"], data["comment"])
         self.assertEqual(
@@ -227,7 +230,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
             "task_status_id": self.retake_status_id,
             "comment": "retake test",
         }
-        data_wip = {"task_status_id": self.wip_status_id, "comment": "wip test"}
+        data_wip = {
+            "task_status_id": self.wip_status_id,
+            "comment": "wip test",
+        }
         self.post(path, data)
         tasks = self.get("/data/tasks")
         self.assertEqual(len(tasks), 1)
@@ -271,7 +277,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.task_2_id = str(self.task_standard.id)
 
         path = "/actions/tasks/%s/comment/" % self.task_id
-        data = {"task_status_id": self.wip_status_id, "comment": "comment test"}
+        data = {
+            "task_status_id": self.wip_status_id,
+            "comment": "comment test",
+        }
         self.post(path, data)
         data = {
             "task_status_id": self.wip_status_id,
@@ -303,7 +312,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.task_id = str(self.task.id)
 
         path = "/actions/tasks/%s/comment/" % self.task_id
-        data = {"task_status_id": self.wip_status_id, "comment": "comment test"}
+        data = {
+            "task_status_id": self.wip_status_id,
+            "comment": "comment test",
+        }
         self.post(path, data)
         comment = {
             "task_status_id": self.wip_status_id,
@@ -377,7 +389,8 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task.assignees = []
         task.save()
         tasks = self.get(
-            "/data/persons/%s/related-tasks/%s" % (self.person.id, task_type_id)
+            "/data/persons/%s/related-tasks/%s"
+            % (self.person.id, task_type_id)
         )
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["task_type_id"], task_type_id)
@@ -465,16 +478,22 @@ class TaskRoutesTestCase(ApiDBTestCase):
 
     def test_update_task_priority(self):
         self.assertEqual(ProjectTaskTypeLink.query.count(), 0)
-        self.post("/data/task-type-links", {
-            "task_type_id": TaskType.query.first().id,
-            "project_id": Project.query.first().id,
-            "priority": 2,
-        })
+        self.post(
+            "/data/task-type-links",
+            {
+                "task_type_id": TaskType.query.first().id,
+                "project_id": Project.query.first().id,
+                "priority": 2,
+            },
+        )
         self.assertEqual(ProjectTaskTypeLink.query.first().priority, 2)
-        self.post("/data/task-type-links", {
-            "task_type_id": TaskType.query.first().id,
-            "project_id": Project.query.first().id,
-            "priority": 3,
-        })
+        self.post(
+            "/data/task-type-links",
+            {
+                "task_type_id": TaskType.query.first().id,
+                "project_id": Project.query.first().id,
+                "priority": 3,
+            },
+        )
         self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
         self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)

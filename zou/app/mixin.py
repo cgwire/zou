@@ -28,7 +28,7 @@ class ArgsMixin(object):
                 required=required,
                 default=default,
                 action=action,
-                type=data_type
+                type=data_type,
             )
 
         return parser.parse_args()

@@ -73,7 +73,9 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
         if entity is not None:
             for parent_shotgun_id in parent_shotgun_ids:
                 self.parent_map.setdefault(parent_shotgun_id, [])
-                self.parent_map[parent_shotgun_id].append(Entity.get(entity.id))
+                self.parent_map[parent_shotgun_id].append(
+                    Entity.get(entity.id)
+                )
 
         return entity
 
@@ -112,7 +114,9 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
 
 class ImportRemoveShotgunAssetResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
-        ImportRemoveShotgunBaseResource.__init__(self, Entity, self.delete_func)
+        ImportRemoveShotgunBaseResource.__init__(
+            self, Entity, self.delete_func
+        )
 
     def delete_func(self, asset):
         try:
@@ -131,7 +135,9 @@ class ImportRemoveShotgunAssetResource(ImportRemoveShotgunBaseResource):
     def is_working_files_linked(self, tasks):
         is_working_files = False
         for task in tasks:
-            working_files = files_service.get_working_files_for_task(task["id"])
+            working_files = files_service.get_working_files_for_task(
+                task["id"]
+            )
             if len(working_files) > 0:
                 is_working_files = True
                 break

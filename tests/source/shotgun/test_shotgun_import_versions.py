@@ -39,7 +39,11 @@ class ImportShotgunVersionTestCase(ShotgunTestCase):
             "id": 2,
             "user": {"id": 1, "name": "Jhon Doe", "type": "HumanUser"},
             "entity": {"id": 1, "name": "SH01", "type": "Shot"},
-            "project": {"id": 1, "name": "Cosmos Landromat", "type": "Project"},
+            "project": {
+                "id": 1,
+                "name": "Cosmos Landromat",
+                "type": "Project",
+            },
             "sg_task": {"id": 1, "name": "Animation", "type": "Task"},
             "sg_uploaded_movie": {
                 "content_type": "video/mp4",
@@ -68,7 +72,9 @@ class ImportShotgunVersionTestCase(ShotgunTestCase):
         self.assertEqual(preview_file["task_id"], str(task.id))
 
         self.assertEqual(preview_file["name"], sg_version["code"])
-        self.assertEqual(preview_file["description"], sg_version["description"])
+        self.assertEqual(
+            preview_file["description"], sg_version["description"]
+        )
         self.assertEqual(preview_file["shotgun_id"], sg_version["id"])
         self.assertEqual(
             preview_file["uploaded_movie_url"],

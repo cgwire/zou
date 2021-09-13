@@ -16,8 +16,11 @@ class PlaylistTestCase(ApiDBTestCase):
             {
                 "drawing": {
                     "objects": [
-                        {"id": "obj-1", "type": "Path",
-                         "path": ["0 0", "0 10"]}
+                        {
+                            "id": "obj-1",
+                            "type": "Path",
+                            "path": ["0 0", "0 10"],
+                        }
                     ]
                 },
                 "time": 0,
@@ -32,7 +35,7 @@ class PlaylistTestCase(ApiDBTestCase):
         preview_file = self.generate_fixture_preview_file().serialize()
         self.put(
             "actions/preview-files/%s/update-annotations" % preview_file["id"],
-            {"additions": self.annotations, "deletions": [], "updates": []}
+            {"additions": self.annotations, "deletions": [], "updates": []},
         )
         preview_file = self.get("data/preview-files/%s" % preview_file["id"])
         self.assertEqual(preview_file["annotations"], self.annotations)
@@ -41,23 +44,21 @@ class PlaylistTestCase(ApiDBTestCase):
         self.generate_fixture_user_client()
         self.generate_fixture_user_cg_artist()
         projects_service.add_team_member(
-            self.project.id,
-            self.user_client["id"]
+            self.project.id, self.user_client["id"]
         )
         projects_service.add_team_member(
-            self.project.id,
-            self.user_cg_artist["id"]
+            self.project.id, self.user_cg_artist["id"]
         )
         preview_file = self.generate_fixture_preview_file().serialize()
         self.log_in_client()
         self.put(
             "actions/preview-files/%s/update-annotations" % preview_file["id"],
-            {"additions": self.annotations}
+            {"additions": self.annotations},
         )
 
         self.log_in_cg_artist()
         self.put(
             "actions/preview-files/%s/update-annotations" % preview_file["id"],
             {"additions": self.annotations},
-            403
+            403,
         )

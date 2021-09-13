@@ -17,12 +17,13 @@ class S3Client:
             aws_access_key_id=config["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=config["AWS_SECRET_ACCESS_KEY"],
         )
-        if config.get('AWS_DEFAULT_REGION'):
-            s3connection['region_name'] = config.get('AWS_DEFAULT_REGION')
-        if config.get('S3_ENDPOINT'):
-            s3connection['endpoint_url'] = config.get('S3_ENDPOINT')
+        if config.get("AWS_DEFAULT_REGION"):
+            s3connection["region_name"] = config.get("AWS_DEFAULT_REGION")
+        if config.get("S3_ENDPOINT"):
+            s3connection["endpoint_url"] = config.get("S3_ENDPOINT")
 
         import boto3
+
         self.s3client = boto3.client("s3", **s3connection)
 
     def get(self, bucket, key, local_fd):
@@ -35,6 +36,7 @@ class S3Client:
 class SwiftClient:
     def __init__(self, config):
         import swiftclient
+
         self.conn = swiftclient.Connection(
             authurl=config["OS_AUTH_URL"],
             user=config["OS_USERNAME"],
@@ -51,5 +53,5 @@ class SwiftClient:
         local_fd.write(data)
 
     def put(self, local_path, bucket, key):
-        with open(local_path, 'rb') as local:
+        with open(local_path, "rb") as local:
             self.conn.put_object(bucket, key, contents=local)

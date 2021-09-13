@@ -44,7 +44,8 @@ class BaseStatusResource(Resource):
         try:
             requests.get(
                 "http://{host}:{port}".format(
-                    host=config.EVENT_STREAM_HOST, port=config.EVENT_STREAM_PORT
+                    host=config.EVENT_STREAM_HOST,
+                    port=config.EVENT_STREAM_PORT,
                 )
             )
         except Exception:
@@ -114,6 +115,7 @@ class StatusResourcesResource(BaseStatusResource):
         nb_jobs = 0
         if config.ENABLE_JOB_QUEUE:
             from zou.app.stores.queue_store import job_queue
+
             registry = job_queue.started_job_registry
             nb_jobs = registry.count
         job_stats = {

@@ -72,7 +72,9 @@ if os.getenv("MAIL_SUPPRESS_SEND") is not None:
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
 
-PLUGIN_FOLDER = os.getenv("PLUGIN_FOLDER", os.path.join(os.getcwd(), "plugins"))
+PLUGIN_FOLDER = os.getenv(
+    "PLUGIN_FOLDER", os.path.join(os.getcwd(), "plugins")
+)
 
 FS_BACKEND = os.getenv("FS_BACKEND", "local")
 FS_ROOT = PREVIEW_FOLDER
@@ -92,11 +94,10 @@ ENABLE_JOB_QUEUE_REMOTE = (
     os.getenv("ENABLE_JOB_QUEUE_REMOTE", "False").lower() == "true"
 )
 JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
-    "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist")
-JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv(
-    "JOB_QUEUE_NOMAD_NORMALIZE_JOB", "")
-JOB_QUEUE_NOMAD_HOST = os.getenv(
-    "JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
+    "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist"
+)
+JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv("JOB_QUEUE_NOMAD_NORMALIZE_JOB", "")
+JOB_QUEUE_NOMAD_HOST = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
 
 
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")

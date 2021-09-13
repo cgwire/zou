@@ -44,7 +44,8 @@ class DataImportErrorTestCase(ShotgunTestCase):
         self.error = DataImportError.get(self.error_id)
         self.assertEqual(errors[1]["source"], "shotgun")
         self.assertEqual(
-            errors[1]["event_data"]["project"]["name"], event["project"]["name"]
+            errors[1]["event_data"]["project"]["name"],
+            event["project"]["name"],
         )
 
     def test_delete_event_error(self):

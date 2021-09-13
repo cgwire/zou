@@ -16,8 +16,9 @@ class ScheduleItemTestCase(ApiDBTestCase):
 
     def test_get_schedule_item(self):
         schedule_items = self.get_first("data/schedule-items")
-        schedule_items_again = \
-            self.get("data/schedule-items/%s" % schedule_items["id"])
+        schedule_items_again = self.get(
+            "data/schedule-items/%s" % schedule_items["id"]
+        )
         self.assertEqual(schedule_items, schedule_items_again)
         self.get_404("data/schedule-items/%s" % fields.gen_uuid())
 
@@ -28,24 +29,22 @@ class ScheduleItemTestCase(ApiDBTestCase):
         data = {
             "project_id": project_id,
             "task_type_id": task_type_id,
-            "object_id": self.sequence.id
+            "object_id": self.sequence.id,
         }
         self.schedule_items = self.post("data/schedule-items", data)
         self.assertIsNotNone(self.schedule_items["id"])
         schedule_items = self.get("data/schedule-items")
         self.assertEqual(len(schedule_items), 4)
-        data = {
-            "project_id": project_id,
-            "task_type_id": task_type_id
-        }
+        data = {"project_id": project_id, "task_type_id": task_type_id}
         self.schedule_items = self.post("data/schedule-items", data, 400)
 
     def test_update_schedule_items(self):
         schedule_items = self.get_first("data/schedule-items")
         data = {"man_days": 3}
         self.put("data/schedule-items/%s" % schedule_items["id"], data)
-        schedule_items_again = \
-            self.get("data/schedule-items/%s" % schedule_items["id"])
+        schedule_items_again = self.get(
+            "data/schedule-items/%s" % schedule_items["id"]
+        )
         self.assertEqual(data["man_days"], schedule_items_again["man_days"])
         self.put_404("data/schedule-items/%s" % fields.gen_uuid(), data)
 

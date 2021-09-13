@@ -28,18 +28,16 @@ class PreviewFilesResource(BaseModelsResource):
             pass
         elif permissions.has_vendor_permissions():
             query = (
-                PreviewFile.query
-                    .join(Task)
-                    .filter(user_service.build_assignee_filter())
-                    .filter(user_service.build_open_project_filter())
-                    .filter(Task.id == PreviewFile.task_id)
+                PreviewFile.query.join(Task)
+                .filter(user_service.build_assignee_filter())
+                .filter(user_service.build_open_project_filter())
+                .filter(Task.id == PreviewFile.task_id)
             )
         else:
             query = (
-                PreviewFile.query
-                    .join(Task, Project)
-                    .filter(user_service.build_related_projects_filter())
-                    .filter(user_service.build_open_project_filter())
+                PreviewFile.query.join(Task, Project)
+                .filter(user_service.build_related_projects_filter())
+                .filter(user_service.build_open_project_filter())
             )
 
         previews = query.all()

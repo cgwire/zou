@@ -354,8 +354,9 @@ def check_project_access(project_id):
     Return true if current user is manager or has a task assigned for this
     project.
     """
-    is_allowed = permissions.has_admin_permissions() or check_belong_to_project(
-        project_id
+    is_allowed = (
+        permissions.has_admin_permissions()
+        or check_belong_to_project(project_id)
     )
     if not is_allowed:
         raise permissions.PermissionDenied

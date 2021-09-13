@@ -39,7 +39,7 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
             for_client=permissions.has_client_permissions(),
             page=page,
             sort_by=sort_by,
-            task_type_id=task_type_id
+            task_type_id=task_type_id,
         )
 
 
@@ -193,7 +193,9 @@ class PlaylistZipDownloadResource(Resource):
                 episode_name = "all assets"
             else:
                 episode_name = "main pack"
-            context_name += "_%s" % slugify.slugify(episode_name, separator="_")
+            context_name += "_%s" % slugify.slugify(
+                episode_name, separator="_"
+            )
         attachment_filename = "%s_%s.zip" % (
             context_name,
             slugify.slugify(playlist["name"], separator="_"),

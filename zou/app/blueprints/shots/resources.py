@@ -82,7 +82,9 @@ class ShotsResource(Resource):
             del criterions["sequence_id"]
         user_service.check_project_access(criterions.get("project_id", None))
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return shots_service.get_shots(criterions)
 
 
@@ -99,7 +101,9 @@ class AllShotsResource(Resource):
             criterions["parent_id"] = sequence["id"]
             del criterions["sequence_id"]
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         user_service.check_project_access(criterions.get("project_id", None))
         return shots_service.get_shots(criterions)
 
@@ -251,7 +255,9 @@ class ShotsAndTasksResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return shots_service.get_shots_and_tasks(criterions)
 
 
@@ -549,7 +555,9 @@ class SequenceShotsResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         criterions["parent_id"] = sequence_id
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()["id"]
+            criterions["assigned_to"] = persons_service.get_current_user()[
+                "id"
+            ]
         return shots_service.get_shots(criterions)
 
 

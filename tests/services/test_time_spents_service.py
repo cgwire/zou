@@ -112,7 +112,10 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
                 self.task_standard.id, self.person_id, "2018-05-03", 400
             )
             tasks = time_spents_service.get_month_time_spents(
-                self.person_id, "2018", "5", project_id=self.project_standard.id
+                self.person_id,
+                "2018",
+                "5",
+                project_id=self.project_standard.id,
             )
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0]["entity_name"], "Car")

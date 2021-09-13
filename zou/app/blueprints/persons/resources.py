@@ -117,7 +117,9 @@ class PresenceLogsResource(Resource):
     def get(self, month_date):
         permissions.check_admin_permissions()
         date = datetime.datetime.strptime(month_date, "%Y-%m")
-        presence_logs = persons_service.get_presence_logs(date.year, date.month)
+        presence_logs = persons_service.get_presence_logs(
+            date.year, date.month
+        )
         return csv_utils.build_csv_response(presence_logs)
 
 
@@ -352,7 +354,9 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
-        return time_spents_service.get_person_day_offs_for_year(person_id, year)
+        return time_spents_service.get_person_day_offs_for_year(
+            person_id, year
+        )
 
 
 class AddToDepartmentResource(Resource, ArgsMixin):
@@ -371,7 +375,9 @@ class AddToDepartmentResource(Resource, ArgsMixin):
         try:
             department = tasks_service.get_department(args["department_id"])
         except DepartmentNotFoundException:
-            raise WrongParameterException("Department ID matches no department")
+            raise WrongParameterException(
+                "Department ID matches no department"
+            )
         person = persons_service.add_to_department(department["id"], person_id)
         return person, 201
 
@@ -387,6 +393,8 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
         try:
             department = tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
-            raise WrongParameterException("Department ID matches no department")
+            raise WrongParameterException(
+                "Department ID matches no department"
+            )
         persons_service.remove_from_department(department_id, person_id)
         return "", 204

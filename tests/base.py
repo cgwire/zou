@@ -821,7 +821,7 @@ class ApiDBTestCase(ApiTestCase):
             extension="mp4",
             person_id=self.person.id,
             position=position,
-            status=status
+            status=status,
         )
         return self.preview_file
 
@@ -916,7 +916,7 @@ class ApiDBTestCase(ApiTestCase):
         self.schedule_item = ScheduleItem.create(
             project_id=self.project.id,
             task_type_id=self.task_type.id,
-            object_id=object_id
+            object_id=object_id,
         )
         return self.schedule_item.serialize()
 

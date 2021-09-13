@@ -31,8 +31,10 @@ def check_config_version(config):
     except (ValueError, KeyError):
         version = None
     if version is None or version > 1:
-        print("Input parameters: unsupported format (version: %r)" % version,
-              file=sys.stderr)
+        print(
+            "Input parameters: unsupported format (version: %r)" % version,
+            file=sys.stderr,
+        )
         sys.exit(1)
     return version
 

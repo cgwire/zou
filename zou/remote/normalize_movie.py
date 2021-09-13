@@ -7,7 +7,7 @@ from pathlib import Path
 from zou.remote.config_payload import (
     check_config_version,
     get_config_from_payload,
-    get_storage
+    get_storage,
 )
 
 from zou.utils.movie import normalize_movie
@@ -28,16 +28,11 @@ def main():
     with tempfile.TemporaryDirectory() as tmpdir:
         preview_file_id = config["preview_file_id"]
         file_path = _fetch_movie_file(
-            storage,
-            tmpdir,
-            preview_file_id,
-            bucket_prefix
+            storage, tmpdir, preview_file_id, bucket_prefix
         )
-        (
-            high_def_path,
-            low_def_path,
-            err
-        ) = _run_normalize_movie(config, file_path)
+        (high_def_path, low_def_path, err) = _run_normalize_movie(
+            config, file_path
+        )
 
         if err is None:
             storage.put(
@@ -74,12 +69,9 @@ def _fetch_movie_file(storage, outdir, preview_file_id, bucket_prefix):
 
 def _run_normalize_movie(config, movie_path):
     return normalize_movie(
-        movie_path,
-        config["fps"],
-        config["width"],
-        config["height"]
+        movie_path, config["fps"], config["width"], config["height"]
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -28,10 +28,14 @@ class EntityTypeResource(BaseModelResource):
         return True
 
     def emit_update_event(self, instance_dict):
-        events.emit("asset-type:update", {"asset_type_id": instance_dict["id"]})
+        events.emit(
+            "asset-type:update", {"asset_type_id": instance_dict["id"]}
+        )
 
     def emit_delete_event(self, instance_dict):
-        events.emit("asset-type:delete", {"asset_type_id": instance_dict["id"]})
+        events.emit(
+            "asset-type:delete", {"asset_type_id": instance_dict["id"]}
+        )
 
     def post_update(self, instance_dict):
         entities_service.clear_entity_type_cache(instance_dict["id"])

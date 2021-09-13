@@ -21,7 +21,11 @@ class SoftwareTestCase(ApiDBTestCase):
         self.get_404("data/softwares/%s" % fields.gen_uuid())
 
     def test_create_software(self):
-        data = {"name": "3dsMax", "short_name": "max", "file_extension": ".max"}
+        data = {
+            "name": "3dsMax",
+            "short_name": "max",
+            "file_extension": ".max",
+        }
         self.software = self.post("data/softwares", data)
         self.assertIsNotNone(self.software["id"])
 

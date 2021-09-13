@@ -17,7 +17,7 @@ from zou.app.utils import (
     events,
     fields,
     remote_job,
-    thumbnail as thumbnail_utils
+    thumbnail as thumbnail_utils,
 )
 from zou.app.services.exception import PreviewFileNotFoundException
 from zou.app.utils import fs
@@ -102,8 +102,7 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                 project = get_project_from_preview_file(preview_file_id)
             except PreviewFileNotFoundException:
                 current_app.logger.error(
-                    "Data is missing from database",
-                    exc_info=1
+                    "Data is missing from database", exc_info=1
                 )
                 time.sleep(2)
                 preview_file = set_preview_file_as_broken(preview_file_id)
@@ -115,17 +114,15 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         # Build movie
         current_app.logger.info("start normalization")
         try:
-            if config.ENABLE_JOB_QUEUE_REMOTE and \
-               len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0:
+            if (
+                config.ENABLE_JOB_QUEUE_REMOTE
+                and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
+            ):
                 file_store.add_movie(
                     "source", preview_file_id, uploaded_movie_path
                 )
                 result = _run_remote_normalize_movie(
-                    current_app,
-                    preview_file_id,
-                    fps,
-                    width,
-                    height
+                    current_app, preview_file_id, fps, width, height
                 )
                 if result is True:
                     err = None
@@ -138,7 +135,7 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
                     file_store.open_movie,
                     "previews",
                     preview_file_id,
-                    ".mp4"
+                    ".mp4",
                 )
             else:
                 (
@@ -243,11 +240,9 @@ def get_preview_files_for_revision(task_id, revision):
     """
     Get all preview files for given task and revision.
     """
-    preview_files = (
-        PreviewFile.query
-        .filter_by(task_id=task_id, revision=revision)
-        .order_by(PreviewFile.position)
-    )
+    preview_files = PreviewFile.query.filter_by(
+        task_id=task_id, revision=revision
+    ).order_by(PreviewFile.position)
     return fields.serialize_models(preview_files)
 
 
@@ -257,7 +252,7 @@ def update_preview_file_annotations(
     preview_file_id,
     additions=[],
     updates=[],
-    deletions=[]
+    deletions=[],
 ):
     """
     Update annotations for given preview file.
@@ -290,20 +285,16 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
     for new_annotation in new_annotations:
         previous_annotation = annotation_map.get(new_annotation["time"], None)
         if previous_annotation is None:
-            new_objects = new_annotation \
-                .get("drawing", {}) \
-                .get("objects", [])
+            new_objects = new_annotation.get("drawing", {}).get("objects", [])
             for new_object in new_objects:
                 if "id" not in new_object or len(new_object["id"]) == 0:
                     new_object["id"] = str(fields.gen_uuid())
             annotations.append(new_annotation)
         else:
-            previous_objects = previous_annotation \
-                .get("drawing", {}) \
-                .get("objects", [])
-            new_objects = new_annotation \
-                .get("drawing", {}) \
-                .get("objects", [])
+            previous_objects = previous_annotation.get("drawing", {}).get(
+                "objects", []
+            )
+            new_objects = new_annotation.get("drawing", {}).get("objects", [])
             previous_annotation["drawing"]["objects"] = _get_new_annotations(
                 previous_objects, new_objects
             )
@@ -325,10 +316,7 @@ def _get_new_annotations(previous_objects, new_objects):
     return result
 
 
-def _apply_annotation_updates(
-    annotations,
-    updates
-):
+def _apply_annotation_updates(annotations, updates):
     annotation_map = _get_annotation_time_map(annotations)
     for update in updates:
         time = update["time"]
@@ -338,15 +326,11 @@ def _apply_annotation_updates(
             update_map = {}
             annotation = annotation_map[time]
 
-            previous_objects = annotation \
-                .get("drawing", {}) \
-                .get("objects", [])
+            previous_objects = annotation.get("drawing", {}).get("objects", [])
             for previous_object in previous_objects:
                 previous_object_map[previous_object["id"]] = previous_object
 
-            updated_objects = update \
-                .get("drawing", {}) \
-                .get("objects", [])
+            updated_objects = update.get("drawing", {}).get("objects", [])
             for updated_object in updated_objects:
                 update_map[updated_object["id"]] = update
 
@@ -400,8 +384,7 @@ def get_running_preview_files():
     or processing.
     """
     entries = (
-        PreviewFile.query
-        .join(Task)
+        PreviewFile.query.join(Task)
         .join(Project)
         .join(ProjectStatus)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))

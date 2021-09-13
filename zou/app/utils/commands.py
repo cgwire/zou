@@ -136,7 +136,9 @@ def init_data():
 
     tasks_service.get_or_create_status("Todo", "todo", "#f5f5f5")
     tasks_service.get_or_create_status("Work In Progress", "wip", "#3273dc")
-    tasks_service.get_or_create_status("Waiting For Approval", "wfa", "#ab26ff")
+    tasks_service.get_or_create_status(
+        "Waiting For Approval", "wfa", "#ab26ff"
+    )
     tasks_service.get_or_create_status(
         "Retake", "retake", "#ff3860", is_retake=True
     )
@@ -159,7 +161,9 @@ def sync_with_ldap_server():
     EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "studio.local")
     LDAP_EXCLUDED_ACCOUNTS = os.getenv("LDAP_EXCLUDED_ACCOUNTS", "")
     LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
-    LDAP_IS_AD_SIMPLE = os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
+    LDAP_IS_AD_SIMPLE = (
+        os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
+    )
 
     def clean_value(value):
         cleaned_value = str(value)
@@ -179,9 +183,7 @@ def sync_with_ldap_server():
         query = "(objectCategory=person)"
         if len(LDAP_GROUP) > 0:
             query = "(&(objectClass=person)(memberOf=%s))" % LDAP_GROUP
-        conn.search(
-            LDAP_BASE_DN, query, attributes=attributes
-        )
+        conn.search(LDAP_BASE_DN, query, attributes=attributes)
         return [
             {
                 "first_name": clean_value(entry.givenName),
@@ -198,7 +200,9 @@ def sync_with_ldap_server():
 
     def search_ldap_users(conn, excluded_accounts):
         attributes = ["givenName", "sn", "mail", "cn", "uid"]
-        conn.search(LDAP_BASE_DN, "(objectclass=person)", attributes=attributes)
+        conn.search(
+            LDAP_BASE_DN, "(objectclass=person)", attributes=attributes
+        )
         return [
             {
                 "first_name": clean_value(entry.givenName),
@@ -333,7 +337,7 @@ def import_data_from_another_instance(
     project=None,
     with_events=False,
     no_projects=False,
-    only_projects=False
+    only_projects=False,
 ):
     """
     Retrieve and save all the data from another API instance. It doesn't

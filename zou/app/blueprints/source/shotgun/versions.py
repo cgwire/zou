@@ -18,7 +18,9 @@ class ImportShotgunVersionsResource(BaseImportShotgunResource):
         self.person_ids = Person.get_id_map()
 
     def filtered_entries(self):
-        return (x for x in self.sg_entries if self.is_version_linked_to_task(x))
+        return (
+            x for x in self.sg_entries if self.is_version_linked_to_task(x)
+        )
 
     def is_version_linked_to_task(self, version):
         return version["sg_task"] is not None

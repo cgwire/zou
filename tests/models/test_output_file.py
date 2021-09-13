@@ -37,7 +37,9 @@ class OutputFileTestCase(ApiDBTestCase):
 
     def test_get_output_file(self):
         output_file = self.get_first("data/output-files")
-        output_file_again = self.get("data/output-files/%s" % output_file["id"])
+        output_file_again = self.get(
+            "data/output-files/%s" % output_file["id"]
+        )
         self.assertEqual(output_file, output_file_again)
         self.get_404("data/output-files/%s" % fields.gen_uuid())
 
@@ -61,7 +63,9 @@ class OutputFileTestCase(ApiDBTestCase):
         output_file = self.get_first("data/output-files")
         data = {"name": "Super modeling output_file 2"}
         self.put("data/output-files/%s" % output_file["id"], data)
-        output_file_again = self.get("data/output-files/%s" % output_file["id"])
+        output_file_again = self.get(
+            "data/output-files/%s" % output_file["id"]
+        )
         self.assertEqual(data["name"], output_file_again["name"])
         self.put_404("data/output-files/%s" % fields.gen_uuid(), data)
 

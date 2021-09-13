@@ -279,9 +279,7 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     Add a task type listed in database to the the project task types.
     """
     link = ProjectTaskTypeLink.create(
-        task_type_id=task_type_id,
-        project_id=project_id,
-        priority=priority
+        task_type_id=task_type_id, project_id=project_id, priority=priority
     )
     return _save_project(get_project_raw(project_id))
 
@@ -337,7 +335,9 @@ def _save_project(project):
     return project.serialize()
 
 
-def add_metadata_descriptor(project_id, entity_type, name, choices, for_client):
+def add_metadata_descriptor(
+    project_id, entity_type, name, choices, for_client
+):
     descriptor = MetadataDescriptor.create(
         project_id=project_id,
         entity_type=entity_type,
@@ -446,8 +446,7 @@ def is_open(project):
 
 def create_project_task_type_link(project_id, task_type_id, priority):
     task_type_link = ProjectTaskTypeLink.get_by(
-        project_id=project_id,
-        task_type_id=task_type_id
+        project_id=project_id, task_type_id=task_type_id
     )
 
     if priority is not None:
@@ -455,13 +454,9 @@ def create_project_task_type_link(project_id, task_type_id, priority):
 
     if task_type_link is None:
         task_type_link = ProjectTaskTypeLink.create(
-            project_id=project_id,
-            task_type_id=task_type_id,
-            priority=priority
+            project_id=project_id, task_type_id=task_type_id, priority=priority
         )
     else:
-        task_type_link.update({
-            "priority": priority
-        })
+        task_type_link.update({"priority": priority})
 
     return task_type_link.serialize()

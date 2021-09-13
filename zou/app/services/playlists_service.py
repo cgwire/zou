@@ -49,7 +49,7 @@ def all_playlists_for_project(
     for_client=False,
     page=1,
     sort_by="updated_at",
-    task_type_id=None
+    task_type_id=None,
 ):
     """
     Return all playlists created for given project.
@@ -81,7 +81,7 @@ def all_playlists_for_episode(
     episode_id,
     for_client=False,
     sort_by="updated_at",
-    task_type_id=None
+    task_type_id=None,
 ):
     """
     Return all playlists created for given episode.
@@ -402,8 +402,7 @@ def playlist_previews(shots, only_movies=False):
                 preview_files.append(preview_file)
 
     return [
-        {"id": x["id"], "extension": x["extension"]}
-        for x in preview_files
+        {"id": x["id"], "extension": x["extension"]} for x in preview_files
     ]
 
 
@@ -415,13 +414,15 @@ def retrieve_playlist_tmp_files(preview_files, full=False):
     for preview_file in preview_files:
         if full:
             preview_file = files_service.get_preview_file(preview_file["id"])
-            sub_preview_files = \
+            sub_preview_files = (
                 preview_files_service.get_preview_files_for_revision(
                     preview_file["task_id"], preview_file["revision"]
                 )
+            )
             for preview_file in sub_preview_files:
-                tmp_file_path, file_name = \
-                    retrieve_playlist_tmp_file(preview_file)
+                tmp_file_path, file_name = retrieve_playlist_tmp_file(
+                    preview_file
+                )
                 file_paths.append((tmp_file_path, file_name))
         else:
             tmp_file_path, file_name = retrieve_playlist_tmp_file(preview_file)
@@ -511,14 +512,11 @@ def build_playlist_movie_file(playlist, shots, params, remote):
                 )
         else:
             from zou.app import app
+
             with app.app_context():
                 try:
                     _run_remote_job_build_playlist(
-                        app,
-                        job,
-                        previews,
-                        params,
-                        movie_file_path
+                        app, job, previews, params, movie_file_path
                     )
                     success = True
                 except Exception as exc:
