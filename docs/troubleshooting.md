@@ -10,7 +10,7 @@ Prior to look for logs or any clue about your problem, make sure that the
 database is up and up to date:
 
 ```bash
-DB_PASSWORD=yourdbpassword zou upgrade_db
+DB_PASSWORD=yourdbpassword zou upgrade-db
 ```
 
 ## Error logs
@@ -51,7 +51,7 @@ put his password back to "default" with the following command:
 ```bash
 cd /opt/zou
 . zou/bin/activate
-zou set_default_password email@studio.com
+zou set-default-password email@studio.com
 ```
 
 ## Installing on Ubuntu server or minimal desktop
