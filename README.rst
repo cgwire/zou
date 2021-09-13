@@ -44,6 +44,13 @@ contract <https://rfc.zeromq.org/spec:42/C4>`__ is respected.
 Zou is based on Python and the `Flask <http://flask.pocoo.org/>`__
 framework.
 
+You can use the pre-commit hook for Black (a python code formatter) before commiting :
+
+.. code:: bash
+
+    pip install pre-commit
+    pre-commit install
+
 Instructions for setting up a development environment are available in
 `the documentation <https://zou.cg-wire.com/development/>`__
 
