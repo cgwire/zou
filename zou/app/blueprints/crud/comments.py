@@ -52,7 +52,10 @@ class CommentResource(BaseModelResource):
 
     def clean_get_result(self, result):
         attachment_files = []
-        if "attachment_files" in result and len(result["attachment_files"]) > 0:
+        if (
+            "attachment_files" in result
+            and len(result["attachment_files"]) > 0
+        ):
             for attachment_file_id in result["attachment_files"]:
                 attachment_file = AttachmentFile.get(attachment_file_id)
                 attachment_files.append(attachment_file.present())

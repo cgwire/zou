@@ -66,10 +66,14 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         self.generate_fixture_output_file(cache, 1)
         self.generate_fixture_output_file(cache, 2)
         self.output_file_cache = self.generate_fixture_output_file(cache, 3)
-        self.output_file_texture = self.generate_fixture_output_file(texture, 1)
+        self.output_file_texture = self.generate_fixture_output_file(
+            texture, 1
+        )
 
         self.generate_fixture_output_file(render, 1)
-        self.output_file_render_1 = self.generate_fixture_output_file(render, 2)
+        self.output_file_render_1 = self.generate_fixture_output_file(
+            render, 2
+        )
         self.output_file_render_2 = self.generate_fixture_output_file(
             render, 1, "variant-1"
         )

@@ -191,7 +191,7 @@ def create_person(
         phone=phone,
         role=role,
         desktop_login=desktop_login,
-        departments=departments_objects
+        departments=departments_objects,
     )
     events.emit("person:new", {"person_id": person.id})
     clear_person_cache()
@@ -298,8 +298,9 @@ def invite_person(person_id):
     """
     organisation = get_organisation()
     person = get_person_raw(person_id)
-    subject = "You are invited by %s to join their Kitsu production tracker" % (
-        organisation["name"]
+    subject = (
+        "You are invited by %s to join their Kitsu production tracker"
+        % (organisation["name"])
     )
     body = """Hello %s,
 

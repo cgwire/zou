@@ -373,7 +373,9 @@ def get_file_name_root(
         revision=revision,
     )
     file_name = slugify(file_name, separator="_")
-    file_name = apply_style(file_name, tree[mode]["file_name"].get("style", ""))
+    file_name = apply_style(
+        file_name, tree[mode]["file_name"].get("style", "")
+    )
     return file_name
 
 
@@ -604,7 +606,9 @@ def get_folder_from_temporal_entity(entity):
 
 def get_folder_from_temporal_entity_type(entity):
     if entity is not None:
-        entity_type = entities_service.get_entity_type(entity["entity_type_id"])
+        entity_type = entities_service.get_entity_type(
+            entity["entity_type_id"]
+        )
         folder = entity_type["name"].lower()
     else:
         raise MalformedFileTreeException("Given temporal entity type is null.")
@@ -622,7 +626,9 @@ def get_folder_from_asset_type(asset):
 
 def get_folder_from_software(software, field="name"):
     if software is None:
-        software = files_service.get_or_create_software("3dsmax", "max", ".max")
+        software = files_service.get_or_create_software(
+            "3dsmax", "max", ".max"
+        )
     return software[field]
 
 
@@ -847,7 +853,9 @@ def guess_asset(project, asset_type_name, asset_name):
 def guess_task_type(department_name, task_type_name):
     criterions = {"name": task_type_name}
     if len(department_name) > 0:
-        criterions["department_id"] = Department.get_by(name=department_name).id
+        criterions["department_id"] = Department.get_by(
+            name=department_name
+        ).id
 
     return TaskType.get_by(**criterions)
 

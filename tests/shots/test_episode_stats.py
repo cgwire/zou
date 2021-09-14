@@ -81,7 +81,8 @@ class EpisodeStatsTestCase(ApiDBTestCase):
             retake_stats["all"][animation_id]["done"]["frames"], 360
         )
         self.assertEqual(
-            retake_stats[ep1_id]["all"]["evolution"]["1"]["retake"]["count"], 12
+            retake_stats[ep1_id]["all"]["evolution"]["1"]["retake"]["count"],
+            12,
         )
         self.assertEqual(
             retake_stats[ep1_id][animation_id]["evolution"]["1"]["retake"][

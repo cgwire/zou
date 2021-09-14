@@ -43,4 +43,3 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
         else:
             previous_data.update(data)
             return previous_data
-

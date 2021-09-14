@@ -387,5 +387,7 @@ def _add_evolution_stats(
                 evolution_data[take_number]["done"]["frames"] += nb_frames or 0
             else:
                 evolution_data[take_number]["other"]["count"] += 1
-                evolution_data[take_number]["other"]["frames"] += nb_frames or 0
+                evolution_data[take_number]["other"]["frames"] += (
+                    nb_frames or 0
+                )
     return results

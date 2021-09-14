@@ -7,7 +7,9 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-from zou.app.blueprints.source.shotgun.exception import ShotgunEntryImportFailed
+from zou.app.blueprints.source.shotgun.exception import (
+    ShotgunEntryImportFailed,
+)
 
 
 class ImportShotgunSequencesResource(BaseImportShotgunResource):
@@ -82,5 +84,7 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
 class ImportRemoveShotgunSequenceResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(
-            self, Entity, entity_type_id=shots_service.get_sequence_type()["id"]
+            self,
+            Entity,
+            entity_type_id=shots_service.get_sequence_type()["id"],
         )

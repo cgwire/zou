@@ -140,7 +140,9 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task.real_start_date, real_start_date)
 
     def test_publish_task(self):
-        handler = ToReviewHandler(self.open_status_id, self.to_review_status_id)
+        handler = ToReviewHandler(
+            self.open_status_id, self.to_review_status_id
+        )
         events.register("task:to-review", "mark_event_as_fired", handler)
         tasks_service.task_to_review(
             self.task.id, self.person.serialize(), "my comment"
@@ -219,7 +221,9 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_get_task_types_for_sequence(self):
         self.generate_fixture_sequence_task()
-        task_types = tasks_service.get_task_types_for_sequence(self.sequence.id)
+        task_types = tasks_service.get_task_types_for_sequence(
+            self.sequence.id
+        )
         self.assertEqual(len(task_types), 1)
         self.assertEqual(task_types[0]["id"], str(self.task_type_animation.id))
 

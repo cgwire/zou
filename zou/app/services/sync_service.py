@@ -613,7 +613,9 @@ def retrieve_file(data):
         preview_file = PreviewFile.get(preview_file_id)
         download_preview_from_another_instance(preview_file)
         forward_event({"name": "preview-file:add-file", "data": data})
-        logger.info("Preview file and related downloaded: %s" % preview_file_id)
+        logger.info(
+            "Preview file and related downloaded: %s" % preview_file_id
+        )
     except gazu.exception.RouteNotFoundException as e:
         logger.error("Route not found: %s" % e)
         logger.error("Fail to dowonload preview file: %s" % (preview_file_id))
@@ -635,7 +637,8 @@ def get_retrieve_thumbnail(model_name):
         except gazu.exception.RouteNotFoundException as e:
             logger.error("Route not found: %s" % e)
             logger.error(
-                "Fail to dowonload thunbnail: %s %s" % (model_name, instance_id)
+                "Fail to dowonload thunbnail: %s %s"
+                % (model_name, instance_id)
             )
 
     return retrieve_thumbnail
@@ -846,7 +849,7 @@ def download_preview_from_another_instance(preview_file):
                     file_store.add_file,
                     "previews",
                     preview_file_id,
-                    preview_file.extension
+                    preview_file.extension,
                 )
 
 
@@ -868,7 +871,7 @@ def download_file_from_another_instance(
         path = "/pictures/%s/preview-files/%s.%s" % (
             path_prefix,
             preview_file_id,
-            extension
+            extension,
         )
     try:
         file_path = "/tmp/%s.%s" % (preview_file_id, extension)
@@ -892,8 +895,7 @@ def download_attachment_files_from_another_instance(project=None):
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         attachment_files = (
-            AttachmentFile.query
-            .join(Comment)
+            AttachmentFile.query.join(Comment)
             .join(Task, Comment.object_id == Task.id)
             .filter(Task.project_id == project_dict["id"])
             .all()
@@ -912,7 +914,7 @@ def download_attachment_file_from_another_instance(attachment_file):
     extension = attachment_file["extension"]
     path = "/data/attachment-files/%s/file/%s" % (
         attachment_file_id,
-        attachment_file["name"]
+        attachment_file["name"],
     )
     try:
         file_path = "/tmp/%s.%s" % (attachment_file_id, extension)
@@ -923,5 +925,3 @@ def download_attachment_file_from_another_instance(attachment_file):
     except Exception as e:
         print(e)
         print("%s download failed" % file_path)
-
-

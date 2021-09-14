@@ -46,12 +46,16 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(project_status["name"], "Open")
 
     def test_save_project_status(self):
-        statuses = projects_service.save_project_status(["Frozen", "Postponed"])
+        statuses = projects_service.save_project_status(
+            ["Frozen", "Postponed"]
+        )
         self.assertEqual(len(statuses), 2)
         statuses = ProjectStatus.query.all()
         self.assertEqual(len(statuses), 4)
 
-        statuses = projects_service.save_project_status(["Frozen", "Postponed"])
+        statuses = projects_service.save_project_status(
+            ["Frozen", "Postponed"]
+        )
         self.assertEqual(len(statuses), 2)
         statuses = ProjectStatus.query.all()
         self.assertEqual(len(statuses), 4)
@@ -169,7 +173,9 @@ class ProjectServiceTestCase(ApiDBTestCase):
             ["contractor 1", "contractor 2"],
             False,
         )
-        descriptors = projects_service.get_metadata_descriptors(self.project.id)
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
         self.assertEqual(len(descriptors), 2)
         self.assertEqual(descriptors[0]["id"], descriptor["id"])
         self.assertEqual(descriptors[0]["field_name"], "contractor")
@@ -191,7 +197,9 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.update_metadata_descriptor(
             descriptor["id"], {"name": "Team", "for_client": True}
         )
-        descriptors = projects_service.get_metadata_descriptors(self.project.id)
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
         self.assertEqual(len(descriptors), 1)
         self.assertTrue(descriptors[0]["for_client"])
         asset = Entity.get(asset.id)
@@ -207,7 +215,9 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertTrue("contractor" in asset.data)
 
         projects_service.remove_metadata_descriptor(descriptor["id"])
-        descriptors = projects_service.get_metadata_descriptors(self.project.id)
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
         self.assertEqual(len(descriptors), 0)
         asset = Entity.get(asset.id)
         self.assertFalse("contractor" in asset.data)

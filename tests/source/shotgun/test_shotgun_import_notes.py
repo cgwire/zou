@@ -17,7 +17,11 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
 
     def load_note(self):
         self.sg_note = {
-            "project": {"type": "Project", "id": 1, "name": "Cosmos Landromat"},
+            "project": {
+                "type": "Project",
+                "id": 1,
+                "name": "Cosmos Landromat",
+            },
             "tasks": [{"type": "Task", "id": 1, "name": "Animation"}],
             "note_links": [
                 {"type": "Shot", "id": 1, "name": "SH01"},

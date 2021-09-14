@@ -91,7 +91,9 @@ class BreakdownTestCase(ApiDBTestCase):
 
         casting = self.get("/data/assets/%s/casting" % self.asset_id)
         self.assertListEqual(casting, [])
-        newCasting = [{"asset_id": self.asset_character_id, "nb_occurences": 3}]
+        newCasting = [
+            {"asset_id": self.asset_character_id, "nb_occurences": 3}
+        ]
         path = "/data/assets/%s/casting" % str(self.asset_id)
         self.put(path, newCasting, 200)
 

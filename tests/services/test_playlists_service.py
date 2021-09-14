@@ -56,7 +56,9 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
 
     def test_get_playlists_for_project(self):
         self.generate_fixture_playlists()
-        playlists = playlists_service.all_playlists_for_project(self.project.id)
+        playlists = playlists_service.all_playlists_for_project(
+            self.project.id
+        )
         self.assertEqual(len(playlists), 3)
         self.assertTrue(
             "Playlist 2"

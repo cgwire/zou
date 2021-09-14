@@ -45,7 +45,10 @@ class SyncServiceTestCase(ApiDBTestCase):
 
     def test_sync_event(self):
         sync_service.sync_event(
-            {"name": "project:new", "data": {"project_id": self.new_project_id}}
+            {
+                "name": "project:new",
+                "data": {"project_id": self.new_project_id},
+            }
         )
         self.assertIsNotNone(Project.get(self.new_project_id))
         sync_service.sync_event(

@@ -24,7 +24,9 @@ class EmailsServiceTestCase(ApiDBTestCase):
         (author, task_name, task_url) = emails_service.get_task_descriptors(
             self.person.id, self.task.serialize()
         )
-        self.assertEqual(task_name, "Cosmos Landromat / Props / Tree / Shaders")
+        self.assertEqual(
+            task_name, "Cosmos Landromat / Props / Tree / Shaders"
+        )
         self.assertEqual(
             task_url,
             "https://localhost:8080/productions/%s/assets/tasks/%s"

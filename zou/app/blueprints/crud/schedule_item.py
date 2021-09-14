@@ -14,7 +14,7 @@ class ScheduleItemsResource(BaseModelsResource):
         schedule_item = ScheduleItem.get_by(
             project_id=data.get("project_id", None),
             task_type_id=data.get("task_type_id", None),
-            object_id=data.get("object_id", None)
+            object_id=data.get("object_id", None),
         )
         if schedule_item is not None:
             raise ArgumentsException("A similar schedule item already exists")

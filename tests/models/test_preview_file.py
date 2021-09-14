@@ -36,7 +36,9 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.generate_fixture_file_status()
         self.generate_fixture_output_type()
         self.generate_fixture_output_file()
-        self.preview_file1_1 = self.generate_fixture_preview_file(name="PROJ1_TASK1_PF1")
+        self.preview_file1_1 = self.generate_fixture_preview_file(
+            name="PROJ1_TASK1_PF1"
+        )
 
         # Create a task with one preview file
         self.task1_2 = self.generate_fixture_task(name="PROJ1_TASK2")
@@ -51,16 +53,22 @@ class PreviewFileTestCase(ApiDBTestCase):
 
         # Create a task with one preview file
         self.task2_1 = self.generate_fixture_task(name="PROJ2_TASK1")
-        self.preview_file2_1 = self.generate_fixture_preview_file(name="PROJ2_TASK1_PF1")
+        self.preview_file2_1 = self.generate_fixture_preview_file(
+            name="PROJ2_TASK1_PF1"
+        )
 
         # Create a task with three preview files
         self.task2_2 = self.generate_fixture_task(name="PROJ2_TASK2")
-        self.preview_file2_2 = self.generate_fixture_preview_file(name="PROJ2_TASK2_PF1")
+        self.preview_file2_2 = self.generate_fixture_preview_file(
+            name="PROJ2_TASK2_PF1"
+        )
         self.generate_fixture_preview_file(name="PROJ2_TASK2_PF2")
         self.generate_fixture_preview_file(name="PROJ2_TASK2_PF3")
 
         # Assign task 1 from project 1 to artist
-        projects_service.add_team_member(self.project1.id, self.user_cg_artist_id)
+        projects_service.add_team_member(
+            self.project1.id, self.user_cg_artist_id
+        )
         tasks_service.assign_task(self.task1_1.id, self.user_cg_artist_id)
 
         # Assign task 2 from project 2 to vendor
@@ -121,7 +129,9 @@ class PreviewFileTestCase(ApiDBTestCase):
 
         self.log_in_cg_artist()
         preview_file_artist1_1 = self.get(route1_1)
-        task_related = tasks_service.get_task(preview_file_artist1_1["task_id"])
+        task_related = tasks_service.get_task(
+            preview_file_artist1_1["task_id"]
+        )
         self.assertEqual(task_related["project_id"], project1_id)
         self.get(route2_1, code=403)
 

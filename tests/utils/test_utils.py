@@ -70,7 +70,9 @@ class UtilsTestCase(unittest.TestCase):
         request = type("test", (object,), {})()
         request.args = {"page": "1", "name": "Test", "project_id": "1234"}
         criterions = query.get_query_criterions_from_request(request)
-        self.assertDictEqual(criterions, {"name": "Test", "project_id": "1234"})
+        self.assertDictEqual(
+            criterions, {"name": "Test", "project_id": "1234"}
+        )
 
     def test_mkdirp(self):
         folder = "one/two/three"

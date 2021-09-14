@@ -51,7 +51,9 @@ def get_entity_raw(entity_id):
     Return an entity type matching given id, as an active record. Raises an
     exception if nothing is found.
     """
-    return base_service.get_instance(Entity, entity_id, EntityNotFoundException)
+    return base_service.get_instance(
+        Entity, entity_id, EntityNotFoundException
+    )
 
 
 @cache.memoize_function(120)

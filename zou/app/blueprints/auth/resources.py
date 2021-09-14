@@ -205,7 +205,8 @@ class LoginResource(Resource):
             refresh_token = create_refresh_token(identity=user["email"])
             auth_service.register_tokens(app, access_token, refresh_token)
             identity_changed.send(
-                current_app._get_current_object(), identity=Identity(user["id"])
+                current_app._get_current_object(),
+                identity=Identity(user["id"]),
             )
 
             ip_address = request.environ.get(

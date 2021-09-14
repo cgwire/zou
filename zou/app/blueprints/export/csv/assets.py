@@ -76,7 +76,8 @@ class AssetsCsvExport(Resource):
             {"project_id": project_id}
         )
         return sorted(
-            results, key=lambda asset: (asset["asset_type_name"], asset["name"])
+            results,
+            key=lambda asset: (asset["asset_type_name"], asset["name"]),
         )
 
     def get_validation_columns(self, results):

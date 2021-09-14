@@ -587,6 +587,8 @@ def cancel_asset(asset_id, force=True):
     asset.update({"canceled": True})
     asset_dict = asset.serialize(obj_type="Asset")
     events.emit(
-        "asset:delete", {"asset_id": asset_id}, project_id=str(asset.project_id)
+        "asset:delete",
+        {"asset_id": asset_id},
+        project_id=str(asset.project_id),
     )
     return asset_dict

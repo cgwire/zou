@@ -236,8 +236,7 @@ def get_all_attachment_files_for_project(project_id):
     for synchronisation purposes.
     """
     attachment_files = (
-        AttachmentFile.query
-        .join(Comment)
+        AttachmentFile.query.join(Comment)
         .join(Task, Task.id == Comment.object_id)
         .filter(Task.project_id == project_id)
     )

@@ -109,10 +109,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     def set_task_types(self, task_type_ids):
         return self.set_links(
-            task_type_ids,
-            ProjectTaskTypeLink,
-            "project_id",
-            "task_type_id"
+            task_type_ids, ProjectTaskTypeLink, "project_id", "task_type_id"
         )
 
     def set_task_statuses(self, task_status_ids):
@@ -125,10 +122,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     def set_asset_types(self, asset_type_ids):
         return self.set_links(
-            asset_type_ids,
-            ProjectAssetTypeLink,
-            "project_id",
-            "asset_type_id"
+            asset_type_ids, ProjectAssetTypeLink, "project_id", "asset_type_id"
         )
 
     @classmethod

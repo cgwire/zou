@@ -208,7 +208,9 @@ def get_task_subscription_raw(person_id, task_id):
     Return subscription matching given person and task.
     """
     try:
-        subscription = Subscription.get_by(person_id=person_id, task_id=task_id)
+        subscription = Subscription.get_by(
+            person_id=person_id, task_id=task_id
+        )
         return subscription
     except StatementError:
         return None
@@ -228,7 +230,9 @@ def subscribe_to_task(person_id, task_id):
     """
     subscription = get_task_subscription_raw(person_id, task_id)
     if subscription is None:
-        subscription = Subscription.create(person_id=person_id, task_id=task_id)
+        subscription = Subscription.create(
+            person_id=person_id, task_id=task_id
+        )
     return subscription.serialize()
 
 

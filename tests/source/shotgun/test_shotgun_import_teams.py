@@ -11,9 +11,13 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.load_fixture("projects")
         self.load_fixture("projectconnections")
         projects = self.get("data/projects")
-        project = projects_service.get_project_with_relations(projects[0]["id"])
+        project = projects_service.get_project_with_relations(
+            projects[0]["id"]
+        )
         self.assertEqual(len(project["team"]), 2)
-        project = projects_service.get_project_with_relations(projects[1]["id"])
+        project = projects_service.get_project_with_relations(
+            projects[1]["id"]
+        )
         self.assertEqual(len(project["team"]), 1)
 
     def test_import_projects_twice(self):
@@ -22,7 +26,9 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.load_fixture("projectconnections")
         self.load_fixture("projectconnections")
         projects = self.get("data/projects")
-        project = projects_service.get_project_with_relations(projects[0]["id"])
+        project = projects_service.get_project_with_relations(
+            projects[0]["id"]
+        )
         self.assertEqual(len(project["team"]), 2)
 
     def test_import_project_connection(self):
@@ -40,5 +46,7 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.assertEqual(len(self.projects), 1)
 
         projects = self.get("data/projects")
-        project = projects_service.get_project_with_relations(projects[1]["id"])
+        project = projects_service.get_project_with_relations(
+            projects[1]["id"]
+        )
         self.assertEqual(len(project["team"]), 1)

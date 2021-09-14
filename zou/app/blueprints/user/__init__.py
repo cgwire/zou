@@ -50,7 +50,10 @@ routes = [
         SequenceTaskTypesResource,
     ),
     ("/data/user/projects/open", OpenProjectsResource),
-    ("/data/user/projects/<project_id>/asset-types", ProjectAssetTypesResource),
+    (
+        "/data/user/projects/<project_id>/asset-types",
+        ProjectAssetTypesResource,
+    ),
     (
         "/data/user/projects/<project_id>/asset-types/<asset_type_id>/assets",
         AssetTypeAssetsResource,

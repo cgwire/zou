@@ -49,6 +49,8 @@ class LoginLogsResource(Resource, ArgsMixin):
         permissions.check_manager_permissions()
         before = None
         if args["before"] is not None:
-            before = fields.get_date_object(args["before"], "%Y-%m-%dT%H:%M:%S")
+            before = fields.get_date_object(
+                args["before"], "%Y-%m-%dT%H:%M:%S"
+            )
         page_size = args["page_size"]
         return events_service.get_last_login_logs(before, page_size)

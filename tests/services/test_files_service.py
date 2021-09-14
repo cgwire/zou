@@ -41,7 +41,9 @@ class FileServiceTestCase(ApiDBTestCase):
 
     def test_get_default_status(self):
         file_status = files_service.get_default_status()
-        self.assertEqual(file_status["name"], app.config["DEFAULT_FILE_STATUS"])
+        self.assertEqual(
+            file_status["name"], app.config["DEFAULT_FILE_STATUS"]
+        )
 
     def test_get_working_file(self):
         working_file = files_service.get_working_file(self.working_file.id)
@@ -105,7 +107,9 @@ class FileServiceTestCase(ApiDBTestCase):
         self.generate_fixture_working_file(name="main", revision=3)
         self.generate_fixture_working_file(name="main", revision=4)
         self.generate_fixture_working_file(name="main", revision=5)
-        revision = files_service.get_next_working_revision(self.task.id, "main")
+        revision = files_service.get_next_working_revision(
+            self.task.id, "main"
+        )
         self.assertEqual(revision)
 
     def test_create_new_working_revision(self):

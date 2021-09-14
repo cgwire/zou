@@ -350,7 +350,8 @@ class FileTreeTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             file_name,
-            "cosmos_landromat_s01_p01_animation_cache_main" + "_tree_0001_v003",
+            "cosmos_landromat_s01_p01_animation_cache_main"
+            + "_tree_0001_v003",
         )
 
     def test_get_folder_path_scene_asset_instance(self):

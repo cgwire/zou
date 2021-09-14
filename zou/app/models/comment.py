@@ -98,36 +98,25 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
     def set_preview_files(self, preview_file_ids):
         from zou.app.models.preview_file import PreviewFile
-        self.set_many_to_one(
-            "previews",
-            PreviewFile,
-            preview_file_ids
-        )
+
+        self.set_many_to_one("previews", PreviewFile, preview_file_ids)
 
     def set_mentions(self, person_ids):
         from zou.app.models.person import Person
 
         self.mentions = []
-        self.set_many_to_one(
-            "mentions",
-            Person,
-            person_ids
-        )
+        self.set_many_to_one("mentions", Person, person_ids)
 
     def set_acknowledgements(self, person_ids):
         from zou.app.models.person import Person
-        self.set_many_to_one(
-            "acknowledgements",
-            Person,
-            person_ids
-        )
+
+        self.set_many_to_one("acknowledgements", Person, person_ids)
 
     def set_attachment_files(self, attachment_file_ids):
         from zou.app.models.attachment_file import AttachmentFile
+
         self.set_many_to_one(
-            "attachment_files",
-            AttachmentFile,
-            attachment_file_ids
+            "attachment_files", AttachmentFile, attachment_file_ids
         )
 
     def set_many_to_one(self, field_name, model, model_ids):

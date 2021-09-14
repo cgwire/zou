@@ -16,7 +16,9 @@ class OutputTypeTestCase(ApiDBTestCase):
 
     def test_get_output_type(self):
         output_type = self.get_first("data/output-types")
-        output_type_again = self.get("data/output-types/%s" % output_type["id"])
+        output_type_again = self.get(
+            "data/output-types/%s" % output_type["id"]
+        )
         self.assertEqual(output_type, output_type_again)
         self.get_404("data/output-types/%s" % fields.gen_uuid())
 
@@ -32,7 +34,9 @@ class OutputTypeTestCase(ApiDBTestCase):
         output_type = self.get_first("data/output-types")
         data = {"name": "point cache"}
         self.put("data/output-types/%s" % output_type["id"], data)
-        output_type_again = self.get("data/output-types/%s" % output_type["id"])
+        output_type_again = self.get(
+            "data/output-types/%s" % output_type["id"]
+        )
         self.assertEqual(data["name"], output_type_again["name"])
         self.put_404("data/output-types/%s" % fields.gen_uuid(), data)
 

@@ -101,12 +101,16 @@ class ThumbnailTestCase(unittest.TestCase):
 
         file_path_fixture = self.get_fixture_file_path("thumbnails/th02.png")
         im = Image.open(file_path_fixture)
-        im = thumbnail.prepare_image_for_thumbnail(im, thumbnail.RECTANGLE_SIZE)
+        im = thumbnail.prepare_image_for_thumbnail(
+            im, thumbnail.RECTANGLE_SIZE
+        )
         self.assertEqual(im.size, (152, 101))
 
         file_path_fixture = self.get_fixture_file_path("thumbnails/th03.png")
         im = Image.open(file_path_fixture)
-        im = thumbnail.prepare_image_for_thumbnail(im, thumbnail.RECTANGLE_SIZE)
+        im = thumbnail.prepare_image_for_thumbnail(
+            im, thumbnail.RECTANGLE_SIZE
+        )
         self.assertEqual(im.size, (180, 120))
 
     def test_generate_preview_variants(self):

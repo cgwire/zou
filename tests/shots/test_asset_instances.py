@@ -71,7 +71,9 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
     def test_get_scene_camera_instances_for_asset(self):
         self.generate_fixture_asset_camera()
         self.asset_camera_id = self.asset_camera.id
-        instances = self.get("/data/scenes/%s/camera-instances" % self.scene_id)
+        instances = self.get(
+            "/data/scenes/%s/camera-instances" % self.scene_id
+        )
         self.assertEqual(instances, {})
         self.new_scene_asset_instance(self.scene_id, self.asset_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_id)
@@ -79,7 +81,9 @@ class AssetInstanceInShotTestCase(ApiDBTestCase):
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
         self.new_scene_asset_instance(self.scene_id, self.asset_camera_id)
-        instances = self.get("/data/scenes/%s/camera-instances" % self.scene_id)
+        instances = self.get(
+            "/data/scenes/%s/camera-instances" % self.scene_id
+        )
         self.assertEqual(len(instances[str(self.asset_camera_id)]), 3)
         self.assertTrue(self.asset_id not in instances)
 

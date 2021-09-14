@@ -11,14 +11,14 @@ from pathlib import Path
 from zou.remote.config_payload import (
     check_config_version,
     get_config_from_payload,
-    get_storage
+    get_storage,
 )
 
 from zou.utils.movie import (
     EncodingParameters,
     build_playlist_movie,
     concat_demuxer,
-    concat_filter
+    concat_filter,
 )
 
 
@@ -77,38 +77,33 @@ def main():
     bucket_prefix = config["bucket_prefix"]
     with tempfile.TemporaryDirectory() as tmpdir:
         enc_params = EncodingParameters(
-            width=config["width"],
-            height=config["height"],
-            fps=config["fps"]
+            width=config["width"], height=config["height"], fps=config["fps"]
         )
 
         input_zipped = base64.b64decode(config["input"])
         preview_file_ids = json.loads(zlib.decompress(input_zipped))
         input_paths = fetch_inputs(
-            storage,
-            tmpdir,
-            preview_file_ids,
-            bucket_prefix
+            storage, tmpdir, preview_file_ids, bucket_prefix
         )
 
         output_movie_path = str(Path(tmpdir) / config["output_filename"])
         result = _run_build_playlist(
-            input_paths,
-            output_movie_path,
-            enc_params
+            input_paths, output_movie_path, enc_params
         )
 
         if result["success"]:
             storage.put(
                 output_movie_path,
                 bucket_prefix + "movies",
-                config["output_key"]
+                config["output_key"],
             )
         else:
-            print("Playlist creation failed: %s" % result.get('message'),
-                  file=sys.stderr)
+            print(
+                "Playlist creation failed: %s" % result.get("message"),
+                file=sys.stderr,
+            )
             sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

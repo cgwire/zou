@@ -161,7 +161,10 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             updated_at = fields.get_date_object(
                 shot["updated_at"], date_format="%Y-%m-%dT%H:%M:%S"
             )
-            if date_helpers.get_date_diff(previous_updated_at, updated_at) > 60:
+            if (
+                date_helpers.get_date_diff(previous_updated_at, updated_at)
+                > 60
+            ):
                 version = EntityVersion.create(
                     entity_id=shot["id"],
                     name=pname,

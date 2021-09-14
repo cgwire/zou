@@ -764,7 +764,10 @@ def get_scenes_for_project(project_id, only_assigned=False):
     Retrieve all scenes related to given project.
     """
     return entities_service.get_entities_for_project(
-        project_id, get_scene_type()["id"], "Scene", only_assigned=only_assigned
+        project_id,
+        get_scene_type()["id"],
+        "Scene",
+        only_assigned=only_assigned,
     )
 
 
@@ -795,7 +798,9 @@ def remove_shot(shot_id, force=False):
         shot.update({"canceled": True})
         clear_shot_cache(shot_id)
         events.emit(
-            "shot:update", {"shot_id": shot_id}, project_id=str(shot.project_id)
+            "shot:update",
+            {"shot_id": shot_id},
+            project_id=str(shot.project_id),
         )
     else:
         from zou.app.services import tasks_service
@@ -811,7 +816,9 @@ def remove_shot(shot_id, force=False):
         shot.delete()
         clear_shot_cache(shot_id)
         events.emit(
-            "shot:delete", {"shot_id": shot_id}, project_id=str(shot.project_id)
+            "shot:delete",
+            {"shot_id": shot_id},
+            project_id=str(shot.project_id),
         )
 
     deleted_shot = shot.serialize(obj_type="Shot")
@@ -830,7 +837,9 @@ def remove_scene(scene_id):
         scene.update({"canceled": True})
     deleted_scene = scene.serialize(obj_type="Scene")
     events.emit(
-        "scene:delete", {"scene_id": scene_id}, project_id=str(scene.project_id)
+        "scene:delete",
+        {"scene_id": scene_id},
+        project_id=str(scene.project_id),
     )
     return deleted_scene
 

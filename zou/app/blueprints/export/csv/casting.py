@@ -104,8 +104,7 @@ class CastingCsvExport(Resource, ArgsMixin):
         AssetType = aliased(EntityType, name="asset_type")
 
         query = (
-            EntityLink.query
-            .join(Shot, EntityLink.entity_in_id == Shot.id)
+            EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
             .join(Sequence, Shot.parent_id == Sequence.id)
             .join(Asset, EntityLink.entity_out_id == Asset.id)
             .join(AssetType, Asset.entity_type_id == AssetType.id)
@@ -191,11 +190,12 @@ class CastingCsvExport(Resource, ArgsMixin):
         shot_type = shots_service.get_shot_type()
 
         query = (
-            EntityLink.query
-            .join(ParentAsset, EntityLink.entity_in_id == ParentAsset.id)
+            EntityLink.query.join(
+                ParentAsset, EntityLink.entity_in_id == ParentAsset.id
+            )
             .join(
                 ParentAssetType,
-                ParentAsset.entity_type_id == ParentAssetType.id
+                ParentAsset.entity_type_id == ParentAssetType.id,
             )
             .join(Asset, EntityLink.entity_out_id == Asset.id)
             .join(AssetType, Asset.entity_type_id == AssetType.id)
@@ -281,11 +281,12 @@ class CastingCsvExport(Resource, ArgsMixin):
         shot_type = shots_service.get_shot_type()
 
         query = (
-            EntityLink.query
-            .join(ParentAsset, EntityLink.entity_in_id == ParentAsset.id)
+            EntityLink.query.join(
+                ParentAsset, EntityLink.entity_in_id == ParentAsset.id
+            )
             .join(
                 ParentAssetType,
-                ParentAsset.entity_type_id == ParentAssetType.id
+                ParentAsset.entity_type_id == ParentAssetType.id,
             )
             .join(Asset, EntityLink.entity_out_id == Asset.id)
             .join(AssetType, Asset.entity_type_id == AssetType.id)

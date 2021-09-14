@@ -33,7 +33,9 @@ class ImportShotgunSceneTestCase(ShotgunTestCase):
 
         scene = self.scenes[0]
         sequence = Entity.get_by(
-            shotgun_id=self.sg_scene["sequence_sg_scenes_1_sequences"][0]["id"],
+            shotgun_id=self.sg_scene["sequence_sg_scenes_1_sequences"][0][
+                "id"
+            ],
             entity_type_id=shots_service.get_sequence_type()["id"],
         )
         project = Project.get_by(name=self.sg_scene["project"]["name"])

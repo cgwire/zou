@@ -106,7 +106,9 @@ class WorkingFileFileResource(Resource):
     @jwt_required
     def post(self, working_file_id):
         working_file = self.check_access(working_file_id)
-        file_path = self.save_uploaded_file_in_temporary_folder(working_file_id)
+        file_path = self.save_uploaded_file_in_temporary_folder(
+            working_file_id
+        )
         file_store.add_file("working", working_file_id, file_path)
         os.remove(file_path)
         return working_file, 201
@@ -150,7 +152,11 @@ class WorkingFilePathResource(Resource):
                 revision=revision,
             )
             file_name = file_tree_service.get_working_file_name(
-                task, mode=mode, revision=revision, software=software, name=name
+                task,
+                mode=mode,
+                revision=revision,
+                software=software,
+                name=name,
             )
         except MalformedFileTreeException as exception:
             return (
@@ -161,7 +167,9 @@ class WorkingFilePathResource(Resource):
         return {"path": file_path, "name": file_name}, 200
 
     def get_arguments(self):
-        maxsoft = files_service.get_or_create_software("3ds Max", "max", ".max")
+        maxsoft = files_service.get_or_create_software(
+            "3ds Max", "max", ".max"
+        )
 
         parser = reqparse.RequestParser()
         parser.add_argument("name", default="main")
@@ -411,7 +419,9 @@ class NewWorkingFileResource(Resource):
 
     def get_arguments(self):
         person = persons_service.get_current_user()
-        maxsoft = files_service.get_or_create_software("3ds Max", "max", ".max")
+        maxsoft = files_service.get_or_create_software(
+            "3ds Max", "max", ".max"
+        )
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -619,7 +629,9 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
             },
         )
 
-        output_file.update({"folder_path": folder_path, "file_name": file_name})
+        output_file.update(
+            {"folder_path": folder_path, "file_name": file_name}
+        )
 
         return output_file
 
@@ -767,7 +779,9 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
             },
         )
 
-        output_file.update({"folder_path": folder_path, "file_name": file_name})
+        output_file.update(
+            {"folder_path": folder_path, "file_name": file_name}
+        )
 
         return output_file
 

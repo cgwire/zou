@@ -43,10 +43,8 @@ class PlaylistTestCase(ApiDBTestCase):
             "Playlist 3", task_type_id=self.task_type_animation.id
         )
         playlists = self.get(
-            "data/projects/%s/playlists?task_type_id=%s" % (
-                self.project_id,
-                self.task_type_animation.id
-            )
+            "data/projects/%s/playlists?task_type_id=%s"
+            % (self.project_id, self.task_type_animation.id)
         )
         self.assertEqual(len(playlists), 2)
         self.assertEqual(playlists[0]["name"], "Playlist 3")

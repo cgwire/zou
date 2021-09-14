@@ -72,8 +72,8 @@ def init_s3(self, name, config):
     try:
         self.s3.meta.client.head_bucket(Bucket=name)
     except botocore.exceptions.ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == '404':
+        error_code = e.response["Error"]["Code"]
+        if error_code == "404":
             bucket_exists = False
 
     if not bucket_exists:
@@ -82,7 +82,9 @@ def init_s3(self, name, config):
                 self.bucket.create()
             else:
                 self.bucket.create(
-                    CreateBucketConfiguration={"LocationConstraint": config.region}
+                    CreateBucketConfiguration={
+                        "LocationConstraint": config.region
+                    }
                 )
         except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
             pass

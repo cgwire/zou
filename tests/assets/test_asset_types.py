@@ -25,7 +25,9 @@ class AssetTypesTestCase(ApiDBTestCase):
         )
 
     def test_get_project_asset_types(self):
-        asset_types = self.get("data/projects/%s/asset-types" % self.project.id)
+        asset_types = self.get(
+            "data/projects/%s/asset-types" % self.project.id
+        )
         self.assertEqual(len(asset_types), 1)
         self.assertDictEqual(
             asset_types[0], self.asset_type.serialize(obj_type="AssetType")

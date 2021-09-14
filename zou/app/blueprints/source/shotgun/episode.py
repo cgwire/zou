@@ -7,7 +7,9 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-from zou.app.blueprints.source.shotgun.exception import ShotgunEntryImportFailed
+from zou.app.blueprints.source.shotgun.exception import (
+    ShotgunEntryImportFailed,
+)
 
 
 class ImportShotgunEpisodesResource(BaseImportShotgunResource):

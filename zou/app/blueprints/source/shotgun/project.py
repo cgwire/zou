@@ -28,7 +28,9 @@ class ImportShotgunProjectsResource(BaseImportShotgunResource):
     def extract_data(self, sg_project):
         sg_project_status = sg_project["sg_status"]
         custom_fields = self.extract_custom_data(sg_project)
-        project_status_id = self.project_status_map.get(sg_project_status, None)
+        project_status_id = self.project_status_map.get(
+            sg_project_status, None
+        )
 
         data = {
             "project_status_id": project_status_id,

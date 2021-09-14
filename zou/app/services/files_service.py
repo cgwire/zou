@@ -72,7 +72,9 @@ def get_output_file_raw(output_file_id):
     """
     Return given output file as active record.
     """
-    return get_instance(OutputFile, output_file_id, OutputFileNotFoundException)
+    return get_instance(
+        OutputFile, output_file_id, OutputFileNotFoundException
+    )
 
 
 def get_output_file(output_file_id):
@@ -100,7 +102,9 @@ def get_output_type_raw(output_type_id):
     """
     Return given output type as active record.
     """
-    return get_instance(OutputType, output_type_id, OutputTypeNotFoundException)
+    return get_instance(
+        OutputType, output_type_id, OutputTypeNotFoundException
+    )
 
 
 def get_output_type(output_type_id):

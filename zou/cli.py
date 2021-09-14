@@ -134,25 +134,25 @@ def create_admin(email, password):
         sys.exit(1)
 
 
-@cli.command("clean_auth_tokens")
+@cli.command()
 def clean_auth_tokens():
     "Remove revoked and expired tokens."
     commands.clean_auth_tokens()
 
 
-@cli.command("clear_all_auth_tokens")
+@cli.command()
 def clear_all_auth_tokens():
     "Remove all authentication tokens."
     commands.clear_all_auth_tokens()
 
 
-@cli.command("init_data")
+@cli.command()
 def init_data():
     "Generates minimal data set required to run Kitsu."
     commands.init_data()
 
 
-@cli.command("set_default_password")
+@cli.command()
 @click.argument("email")
 def set_default_password(email):
     "Set the password of given user as default"
@@ -182,7 +182,7 @@ def sync_full(
     project=None,
     with_events=False,
     no_projects=False,
-    only_projects=False
+    only_projects=False,
 ):
     """
     Retrieve all data from target instance. It expects that credentials to
@@ -199,7 +199,7 @@ def sync_full(
         project=project,
         with_events=with_events,
         no_projects=no_projects,
-        only_projects=only_projects
+        only_projects=only_projects,
     )
     print("Syncing ended.")
 
@@ -216,7 +216,9 @@ def sync_full_files(target, project=None):
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    commands.import_files_from_another_instance(target, login, password, project=project)
+    commands.import_files_from_another_instance(
+        target, login, password, project=project
+    )
     print("Syncing ended.")
 
 

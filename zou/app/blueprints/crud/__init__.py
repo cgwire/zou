@@ -29,7 +29,7 @@ from .playlist import PlaylistsResource, PlaylistResource
 from .project import (
     ProjectResource,
     ProjectsResource,
-    ProjectTaskTypeLinksResource
+    ProjectTaskTypeLinksResource,
 )
 from .project_status import ProjectStatusResource, ProjectStatussResource
 from .schedule_item import ScheduleItemsResource, ScheduleItemResource
