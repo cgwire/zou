@@ -158,7 +158,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-DB_PASSWORD=yourdbpassword zou init_db
+DB_PASSWORD=yourdbpassword zou init-db
 ```
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*

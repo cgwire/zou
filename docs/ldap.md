@@ -70,7 +70,7 @@ LDAP_USER=myusername \
 LDAP_PASSWORD=myuserpassword \
 LDAP_EMAIL_DOMAIN=mystudio.com \
 LDAP_EXCLUDED_ACCOUNTS=Administrator,TestAccount \
-zou sync_with_ldap_server
+zou sync-with-ldap-server
 ```
 
 

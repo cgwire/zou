@@ -17,9 +17,9 @@ all your environment variables are loaded.
 Clear original database and rebuild tables:
 
 ```
-zou clear_db
-zou reset_migrations
-zou upgrade_db
+zou clear-db
+zou reset-migrations
+zou upgrade-db
 ```
 
 ### Get data
@@ -29,7 +29,7 @@ Retrieve base data:
 ```
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
-zou sync_full --target http://yourpreviouskitsu.url/api --no-projects
+zou sync-full --target http://yourpreviouskitsu.url/api --no-projects
 ```
 
 Retrieve project data:
@@ -37,7 +37,7 @@ Retrieve project data:
 ```
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
-zou sync_full --target http://yourpreviouskitsu.url/api --only-projects
+zou sync-full --target http://yourpreviouskitsu.url/api --only-projects
 ```
 
 Retrieve a given project:
@@ -45,7 +45,7 @@ Retrieve a given project:
 ```
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
-zou sync_full --target http://yourpreviouskitsu.url/api --project AwesomeProject
+zou sync-full --target http://yourpreviouskitsu.url/api --project AwesomeProject
 ```
 
 If some changes occured after the migration, you can run the command again and
@@ -60,7 +60,7 @@ Retrieve all files:
 ```
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
-zou sync_full_files --target http://yourpreviouskitsu.url/api
+zou sync-full-files --target http://yourpreviouskitsu.url/api
 ```
 
 Retrieve files for a given project:
@@ -68,7 +68,7 @@ Retrieve files for a given project:
 ```
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
-zou sync_full_files --target http://yourpreviouskitsu.url/api
+zou sync-full-files --target http://yourpreviouskitsu.url/api
 ```
 
 If some changes occured after the migration, you can run the command again and

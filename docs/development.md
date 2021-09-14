@@ -79,15 +79,15 @@ Create a database in postgres named `zoudb` with user `postgres` and password
 `mysecretpassword`. Then init db:
 
 ```bash
-python zou/cli.py clear_db
-python zou/cli.py init_db
-python zou/cli.py init_data
+python zou/cli.py clear-db
+python zou/cli.py init-db
+python zou/cli.py init-data
 ```
 
 Create a first user:
 
 ```bash
-python zou/cli.py create_admin super.user@mycgstudio.com --password=mysecretpassword
+python zou/cli.py create-admin super.user@mycgstudio.com --password=mysecretpassword
 ```
 
 Run server:
