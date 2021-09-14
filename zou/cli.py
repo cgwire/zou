@@ -134,25 +134,25 @@ def create_admin(email, password):
         sys.exit(1)
 
 
-@cli.command("clean_auth_tokens")
+@cli.command()
 def clean_auth_tokens():
     "Remove revoked and expired tokens."
     commands.clean_auth_tokens()
 
 
-@cli.command("clear_all_auth_tokens")
+@cli.command()
 def clear_all_auth_tokens():
     "Remove all authentication tokens."
     commands.clear_all_auth_tokens()
 
 
-@cli.command("init_data")
+@cli.command()
 def init_data():
     "Generates minimal data set required to run Kitsu."
     commands.init_data()
 
 
-@cli.command("set_default_password")
+@cli.command()
 @click.argument("email")
 def set_default_password(email):
     "Set the password of given user as default"
