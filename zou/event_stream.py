@@ -16,7 +16,9 @@ def get_redis_url():
 
 
 def create_app(redis_url):
-    socketio = SocketIO(logger=True)
+    socketio = SocketIO(
+        logger=True, cors_allowed_origins=[], cors_credentials=False
+    )
 
     app = Flask(__name__)
     app.config.from_object(config)
