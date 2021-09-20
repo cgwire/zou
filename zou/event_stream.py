@@ -59,10 +59,10 @@ def check_if_token_is_revoked(decrypted_token):
     return auth_tokens_store.is_revoked(decrypted_token)
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     socketio.run(
         app,
         debug=False,
-        host=config["EVENT_STREAM_HOST"],
-        port=config["EVENT_STREAM_PORT"],
+        host=config.EVENT_STREAM_HOST,
+        port=config.EVENT_STREAM_PORT,
     )
