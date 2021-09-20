@@ -30,7 +30,11 @@ def init():
             host=host, port=port, db=redis_db, decode_responses=True
         )
         publisher_store.get("test")
-        socketio = SocketIO(message_queue=redis_url)
+        socketio = SocketIO(
+            message_queue=redis_url,
+            cors_allowed_origins=[],
+            cors_credentials=False,
+        )
     except redis.ConnectionError:
         pass
 
