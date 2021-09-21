@@ -51,6 +51,8 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         asset_key = slugify("%s%s" % (row["Asset Type"], row["Asset"]))
+        if row["Episode"] == "MP":
+            row["Episode"] = ""
         target_key = slugify(
             "%s%s%s" % (row["Episode"], row["Parent"], row["Name"])
         )
@@ -61,8 +63,11 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
 
         asset_id = self.asset_map.get(asset_key, None)
         target_id = self.shot_map.get(target_key, None)
+        print(asset_key, target_key)
         if target_id is None:
             target_id = self.asset_map.get(target_key, None)
+        print(asset_key, target_key, asset_id, target_id)
+        print(self.asset_map)
 
         if asset_id is not None and target_id is not None:
             link = breakdown_service.get_entity_link(target_id, asset_id)

@@ -1,6 +1,6 @@
 Episode,Parent,Name,Asset Type,Asset,Occurences,Label
-,Environment,Lake,Props,Boat,1,setdress
-,Environment,Lake,Props,Pool,1,setdress
+MP,Environment,Lake,Props,Boat,1,setdress
+MP,Environment,Lake,Props,Pool,1,setdress
 ,Environment,Lake,Props,Flowers,12,setdress
 ,Environment,Mine,Props,Block,2,setdress
 ,Environment,Mine,Props,Wagon,3,setdress
