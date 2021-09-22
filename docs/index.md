@@ -346,7 +346,7 @@ sudo zouenv/bin/pip3 install --upgrade zou
 Then, you need to upgrade the database schema:
 
 ```bash
-DB_PASSWORD=yourdbpassword zou upgrade_db
+DB_PASSWORD=yourdbpassword zou upgrade-db
 ```
 
 
