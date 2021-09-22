@@ -89,7 +89,10 @@ def main():
 
         output_movie_path = str(Path(tmpdir) / config["output_filename"])
         result = _run_build_playlist(
-            input_paths, output_movie_path, enc_params, config["full"]
+            input_paths,
+            output_movie_path,
+            enc_params,
+            config["full"] == "true"
         )
 
         if result["success"]:

@@ -517,7 +517,7 @@ def build_playlist_movie_file(playlist, shots, params, full, remote):
             with app.app_context():
                 try:
                     _run_remote_job_build_playlist(
-                        app, job, previews, params, full, movie_file_path
+                        app, job, previews, params, movie_file_path, full
                     )
                     success = True
                 except Exception as exc:
@@ -574,7 +574,7 @@ def _run_remote_job_build_playlist(
         "width": params.width,
         "height": params.height,
         "fps": params.fps,
-        "full": full
+        "full": str(full).lower()
     }
     nomad_job = config.JOB_QUEUE_NOMAD_PLAYLIST_JOB
     remote_job.run_job(app, config, nomad_job, params)
