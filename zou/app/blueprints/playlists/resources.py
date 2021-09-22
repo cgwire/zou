@@ -137,7 +137,7 @@ class PlaylistDownloadResource(Resource):
             )
 
 
-class BuildPlaylistMovieResource(Resource):
+class BuildPlaylistMovieResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, playlist_id):
         playlist = playlists_service.get_playlist(playlist_id)
@@ -148,6 +148,7 @@ class BuildPlaylistMovieResource(Resource):
             project
         )
         fps = preview_files_service.get_preview_file_fps(project)
+        full = self.get_bool_parameter("full")
         params = EncodingParameters(width=width, height=height, fps=fps)
 
         shots = [
@@ -163,13 +164,20 @@ class BuildPlaylistMovieResource(Resource):
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
-                args=(playlist, shots, params, current_user["email"], remote),
+                args=(
+                    playlist,
+                    shots,
+                    params,
+                    current_user["email"],
+                    full,
+                    remote
+                ),
                 job_timeout=3600,
             )
             return {"job": "running"}
         else:
             job = playlists_service.build_playlist_movie_file(
-                playlist, shots, params, remote=False
+                playlist, shots, params, full, remote=False
             )
             return {"job": job["status"]}
 

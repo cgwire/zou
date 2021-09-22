@@ -478,7 +478,7 @@ def build_playlist_zip_file(playlist):
     return zip_file_path
 
 
-def build_playlist_movie_file(playlist, shots, params, remote):
+def build_playlist_movie_file(playlist, shots, params, full, remote):
     """
     Build a movie for all files for a given playlist into the temporary folder.
     """
@@ -490,15 +490,16 @@ def build_playlist_movie_file(playlist, shots, params, remote):
         tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
         if not remote:
-            # First, try using concat demuxer
-            success = _run_concatenation(
-                playlist,
-                job,
-                tmp_file_paths,
-                movie_file_path,
-                params,
-                movie.concat_demuxer,
-            )
+            success = False
+            if not full:
+                success = _run_concatenation(
+                    playlist,
+                    job,
+                    tmp_file_paths,
+                    movie_file_path,
+                    params,
+                    movie.concat_demuxer,
+                )
 
             # Try again using concat filter
             if not success:
@@ -516,7 +517,7 @@ def build_playlist_movie_file(playlist, shots, params, remote):
             with app.app_context():
                 try:
                     _run_remote_job_build_playlist(
-                        app, job, previews, params, movie_file_path
+                        app, job, previews, params, full, movie_file_path
                     )
                     success = True
                 except Exception as exc:
@@ -556,7 +557,7 @@ def _run_concatenation(
 
 
 def _run_remote_job_build_playlist(
-    app, job, previews, params, movie_file_path
+    app, job, previews, params, movie_file_path, full
 ):
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
@@ -573,6 +574,7 @@ def _run_remote_job_build_playlist(
         "width": params.width,
         "height": params.height,
         "fps": params.fps,
+        "full": full
     }
     nomad_job = config.JOB_QUEUE_NOMAD_PLAYLIST_JOB
     remote_job.run_job(app, config, nomad_job, params)
@@ -632,7 +634,7 @@ def end_build_job(playlist, job, success):
         return {}
 
 
-def build_playlist_job(playlist, shots, params, email, remote):
+def build_playlist_job(playlist, shots, params, email, full, remote):
     """
     Build playlist file (concatenate all movie previews). This function is
     aimed at being runned as a job in a job queue.
@@ -640,7 +642,7 @@ def build_playlist_job(playlist, shots, params, email, remote):
     from zou.app import app, mail
 
     with app.app_context():
-        job = build_playlist_movie_file(playlist, shots, params, remote)
+        job = build_playlist_movie_file(playlist, shots, params, full, remote)
 
         # Just in case, since rq jobs which encounter an error raise an
         # exception in order to be flagged as failed.

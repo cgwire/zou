@@ -38,19 +38,20 @@ def fetch_inputs(storage, outdir, preview_file_ids, bucket_prefix):
     return input_paths
 
 
-def _run_build_playlist(input_paths, output_movie_path, enc_params):
+def _run_build_playlist(input_paths, output_movie_path, enc_params, full):
     is_build_successful = False
-    try:
-        result = build_playlist_movie(
-            concat_demuxer,
-            input_paths,
-            output_movie_path,
-            **enc_params._asdict()
-        )
-        if result["success"] and os.path.exists(output_movie_path):
-            is_build_successful = True
-    except Exception:
-        is_build_successful = False
+    if not full:
+        try:
+            result = build_playlist_movie(
+                concat_demuxer,
+                input_paths,
+                output_movie_path,
+                **enc_params._asdict()
+            )
+            if result["success"] and os.path.exists(output_movie_path):
+                is_build_successful = True
+        except Exception:
+            is_build_successful = False
 
     if not is_build_successful:
         result = build_playlist_movie(
@@ -88,7 +89,7 @@ def main():
 
         output_movie_path = str(Path(tmpdir) / config["output_filename"])
         result = _run_build_playlist(
-            input_paths, output_movie_path, enc_params
+            input_paths, output_movie_path, enc_params, config["full"]
         )
 
         if result["success"]:
