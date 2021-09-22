@@ -59,40 +59,39 @@ class ArgsMixin(object):
         """
         Returns force parameter.
         """
-        options = request.args
-        return options.get("force", "false") == "true"
+        return self.get_bool_parameter("force")
 
     def get_relations(self):
         """
         Returns force parameter.
         """
-        options = request.args
-        return options.get("relations", "false") == "true"
+        return self.get_bool_parameter("relations")
 
     def get_project_id(self):
         """
         Returns episode ID parameter.
         """
-        options = request.args
-        return options.get("project_id", None)
+        return self.get_text_parameter("project_id")
 
     def get_episode_id(self):
         """
         Returns episode ID parameter.
         """
-        options = request.args
-        return options.get("episode_id", None)
+        return self.get_text_parameter("episode_id")
 
     def get_no_job(self):
         """
-        Returns force parameter.
+        Returns no_job parameter.
         """
-        options = request.args
-        return options.get("no_job", "false") == "true"
+        return self.get_bool_parameter("no_job")
 
     def get_text_parameter(self, field_name):
         options = request.args
         return options.get(field_name, None)
+
+    def get_bool_parameter(self, field_name):
+        options = request.args
+        return options.get(field_name, "false") == "true"
 
     def get_date_parameter(self, field_name):
         self.parse_date_parameter(self.get_text_parameter(field_name))
