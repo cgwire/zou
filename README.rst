@@ -80,7 +80,7 @@ Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
 
 |CGWire Logo|
 
-.. |Build badge| image:: https://travis-ci.com/cgwire/zou.svg?branch=master
+.. |Build badge| image:: https://app.travis-ci.com/cgwire/zou.svg?branch=master
    :target: https://travis-ci.com/cgwire/zou
 .. |Gitter badge| image:: https://badges.gitter.im/cgwire/Lobby.png
    :target: https://gitter.im/cgwire/Lobby
