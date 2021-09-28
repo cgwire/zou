@@ -21,21 +21,12 @@ from .services.exception import (
     WrongParameterException,
 )
 from .utils import fs, logs
-from .graphql.schema import schema
 
 from zou.app.utils import cache
 
 
 app = Flask(__name__)
 app.config.from_object(config)
-app.add_url_rule(
-    '/graphql',
-    view_func=GraphQLView.as_view(
-        'graphql',
-        schema=schema,
-        graphiql=True # for having the GraphiQL interface
-    )
-)
 
 logs.configure_logs(app)
 
@@ -129,8 +120,18 @@ def configure_auth():
 
 def load_api():
     from . import api
+    from .graphql.schema import schema
 
     api.configure(app)
+
+    app.add_url_rule(
+        '/graphql',
+        view_func=GraphQLView.as_view(
+            'graphql',
+            schema=schema,
+            graphiql=True # for having the GraphiQL interface
+        )
+    )
 
     fs.mkdir_p(app.config["TMP_DIR"])
     configure_auth()
