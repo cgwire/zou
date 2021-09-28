@@ -9,6 +9,7 @@ from flask_principal import Principal, identity_changed, Identity
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
+from flask_graphql import GraphQLView
 from jwt import ExpiredSignatureError
 
 from . import config
@@ -20,12 +21,21 @@ from .services.exception import (
     WrongParameterException,
 )
 from .utils import fs, logs
+from .graphql.schema import schema
 
 from zou.app.utils import cache
 
 
 app = Flask(__name__)
 app.config.from_object(config)
+app.add_url_rule(
+    '/graphql',
+    view_func=GraphQLView.as_view(
+        'graphql',
+        schema=schema,
+        graphiql=True # for having the GraphiQL interface
+    )
+)
 
 logs.configure_logs(app)
 
