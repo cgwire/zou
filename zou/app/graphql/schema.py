@@ -8,6 +8,7 @@ from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 from zou.app.models.person import Person as PersonModel
 from zou.app.models.comment import Comment as CommentModel
 from zou.app.models.project import Project as ProjectModel
+from zou.app.models.entity import Entity as EntityModel
 
 from zou.app import db
 
@@ -28,7 +29,7 @@ def convert_timezone(type, column, registry=None):
     return graphene.String
 
 @convert_sqlalchemy_type.register(db.LargeBinary)
-def convert_timezone(type, column, registry=None):
+def convert_largebinary(type, column, registry=None):
     return graphene.String
 
 class Person(SQLAlchemyObjectType):
@@ -44,6 +45,11 @@ class Comment(SQLAlchemyObjectType):
 class Project(SQLAlchemyObjectType):
     class Meta:
         model = ProjectModel
+        interfaces = (relay.Node, )
+
+class Entity(SQLAlchemyObjectType):
+    class Meta:
+        model = EntityModel
         interfaces = (relay.Node, )
 
 class Query(graphene.ObjectType):
