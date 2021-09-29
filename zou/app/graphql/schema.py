@@ -47,16 +47,34 @@ class Project(SQLAlchemyObjectType):
         model = ProjectModel
         interfaces = (relay.Node, )
 
-class Entity(SQLAlchemyObjectType):
+class Shot(SQLAlchemyObjectType):
     class Meta:
         model = EntityModel
         interfaces = (relay.Node, )
 
+class Sequence(SQLAlchemyObjectType):
+    class Meta:
+        model = EntityModel
+
+    shots = Shot()
+
+    @staticmethod
+    def resolve_shots(root, info, **kwargs):
+        query = EntityModel.query
+        query = (
+            query.join(ProjectModel)
+            .add_columns(Project.name)
+        )
+        return {"root": root, "info": info, "kwargs": kwargs, "data": query.all()}
+
 class Query(graphene.ObjectType):
     node = relay.Node.Field()
     # Allows sorting over multiple columns, by default over the primary key
-    all_comments = SQLAlchemyConnectionField(Comment.connection)
-    all_persons = SQLAlchemyConnectionField(Person.connection)
-    all_projects = SQLAlchemyConnectionField(Project.connection)
+    comments = SQLAlchemyConnectionField(Comment.connection)
+    persons = SQLAlchemyConnectionField(Person.connection)
+    projects = SQLAlchemyConnectionField(Project.connection)
+    sequences = SQLAlchemyConnectionField(Sequence.connection)
+    shots = SQLAlchemyConnectionField(Shot.connection)
+    shot = relay.Node.Field(Shot)
 
 schema = graphene.Schema(query=Query)
