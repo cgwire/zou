@@ -15,7 +15,7 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.utils import permissions, csv_utils, auth, emails
+from zou.app.utils import permissions, csv_utils, auth, emails, fields
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
@@ -447,6 +447,23 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
                 month,
                 **self.get_project_department_arguments(person_id),
             )
+        except WrongDateFormatException:
+            abort(404)
+
+
+class PersonMonthAllTimeSpentsResource(Resource):
+    """
+    Get all time spents for a given person and month.
+    """
+
+    @jwt_required
+    def get(self, person_id, year, month):
+        user_service.check_person_access(person_id)
+        try:
+            timespents = time_spents_service.get_time_spents_for_month(
+                year, month, person_id=person_id
+            )
+            return fields.serialize_list(timespents)
         except WrongDateFormatException:
             abort(404)
 

@@ -11,6 +11,7 @@ from .resources import (
     PersonWeekQuotaShotsResource,
     PersonDayQuotaShotsResource,
     PersonMonthTimeSpentsResource,
+    PersonMonthAllTimeSpentsResource,
     PersonWeekTimeSpentsResource,
     PersonDayTimeSpentsResource,
     PersonWeekDayOffResource,
@@ -42,6 +43,10 @@ routes = [
     (
         "/data/persons/<person_id>/time-spents/month/<year>/<month>",
         PersonMonthTimeSpentsResource,
+    ),
+    (
+        "/data/persons/<person_id>/time-spents/month/all/<year>/<month>",
+        PersonMonthAllTimeSpentsResource,
     ),
     (
         "/data/persons/<person_id>/time-spents/week/<year>/<week>",
