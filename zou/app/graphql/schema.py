@@ -50,8 +50,8 @@ class Task(SQLAlchemyObjectType):
         model = TaskModel
 
     previews = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFile, PreviewFileModel, "task_id"))
-    status = graphene.Field(TaskStatus, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_status_id"))
-    type = graphene.Field(TaskType, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_type_id"))
+    status = graphene.Field(lambda: TaskStatus, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_status_id"))
+    type = graphene.Field(lambda: TaskType, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_type_id"))
 
 class EntityType(SQLAlchemyObjectType):
     class Meta:
@@ -102,7 +102,7 @@ class Comment(SQLAlchemyObjectType):
     class Meta:
         model = CommentModel
 
-    person = graphene.Field(Person, resolver=DefaultResolver(Person, TaskStatusModel, "id", "person_id"))
+    person = graphene.Field(lambda: Person, resolver=DefaultResolver(Person, TaskStatusModel, "id", "person_id"))
 
 class Query(graphene.ObjectType):
     softwares = graphene.List(Software, resolver=DefaultResolver(Software))
