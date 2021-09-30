@@ -6,21 +6,26 @@ from zou.app.services import (
 
 class DefaultResolver():
 
-    def __init__(self, graphql_type: ObjectType, model_type = None, foreign_key: str = ""):
+    def __init__(self, graphql_type: ObjectType, model_type = None, foreign_key: str = "", parent_key: str = "id", query_all: bool = True):
         self.graphql_type = graphql_type
         self.model_type = model_type
         self.foreign_key = foreign_key
+        self.parent_key = parent_key
+        self.query_all = query_all
 
     def get_query(self, root, info):
         query = self.graphql_type.get_query(info)
         if all([root, self.model_type, self.foreign_key]):
-            query = query.filter(getattr(self.model_type, self.foreign_key) == root.id)
+            query = query.filter(getattr(self.model_type, self.foreign_key) == getattr(root, self.parent_key))
         return query
 
     def __call__(self, root, info, **kwargs):
         query = self.get_query(root, info)
         # TODO: Implement dynamic filters
-        return query.all()
+        if self.query_all:
+            return query.all()
+        else:
+            return query.first()
 
 class EntityResolver(DefaultResolver):
 
@@ -59,7 +64,6 @@ class PreviewUrlResolver(DefaultResolver):
             return ""
         lod = self.lod if not kwargs.get("lod") else kwargs["lod"]
         if root.is_movie:
-            lod = self.lod if self.lod != "low" else "thumbnails"
             return f"/movies/{lod}/preview-files/{root.id}.{root.extension}"
         else:
             return f"/pictures/{lod}/preview-files/{root.id}.{root.extension}"

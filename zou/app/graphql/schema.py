@@ -35,8 +35,7 @@ class PreviewFile(SQLAlchemyObjectType):
     class Meta:
         model = PreviewFileModel
         
-    low_url = graphene.Field(graphene.String, resolver=PreviewUrlResolver(lod="low"), args={"lod": graphene.String(required=False)})
-    original_url = graphene.Field(graphene.String, resolver=PreviewUrlResolver(lod="originals"), args={"lod": graphene.String(required=False)})
+    file_url = graphene.Field(graphene.String, resolver=PreviewUrlResolver(lod="originals"), args={"lod": graphene.String(required=False)})
     
 class TaskType(SQLAlchemyObjectType):
     class Meta:
@@ -51,6 +50,8 @@ class Task(SQLAlchemyObjectType):
         model = TaskModel
 
     previews = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFile, PreviewFileModel, "task_id"))
+    status = graphene.Field(TaskStatus, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_status_id"))
+    type = graphene.Field(TaskType, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_type_id"))
 
 class EntityType(SQLAlchemyObjectType):
     class Meta:
@@ -89,10 +90,6 @@ class AttachmentFile(SQLAlchemyObjectType):
     class Meta:
         model = AttachmentFileModel
 
-class Comment(SQLAlchemyObjectType):
-    class Meta:
-        model = CommentModel
-
 class Department(SQLAlchemyObjectType):
     class Meta:
         model = DepartmentModel
@@ -100,6 +97,12 @@ class Department(SQLAlchemyObjectType):
 class Person(SQLAlchemyObjectType):
     class Meta:
         model = PersonModel
+
+class Comment(SQLAlchemyObjectType):
+    class Meta:
+        model = CommentModel
+
+    person = graphene.Field(Person, resolver=DefaultResolver(Person, TaskStatusModel, "id", "person_id"))
 
 class Query(graphene.ObjectType):
     softwares = graphene.List(Software, resolver=DefaultResolver(Software))
