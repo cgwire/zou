@@ -5,6 +5,7 @@ from zou.app.models.project import Project as ProjectModel
 from zou.app.models.entity import Entity as EntityModel
 from zou.app.models.task import Task as TaskModel
 from zou.app.models.person import Person as PersonModel
+from zou.app.models.comment import Comment as CommentModel
 from zou.app.graphql.resolvers import DefaultResolver, EntityResolver, EntityChildResolver, EntityParentResolver
 from zou.app.graphql import converters
 
@@ -29,16 +30,21 @@ class Project(SQLAlchemyObjectType):
     sequences = graphene.List(Sequence, resolver=EntityResolver(Sequence, "Sequence"))
     assets = graphene.List(Sequence, resolver=EntityResolver(Sequence, "Asset"))
 
+class Comment(SQLAlchemyObjectType):
+    class Meta:
+        model = CommentModel
+
 class Person(SQLAlchemyObjectType):
     class Meta:
         model = PersonModel
 
 class Query(graphene.ObjectType):
-    tasks = graphene.List(Task, resolver=DefaultResolver)
+    tasks = graphene.List(Task, resolver=DefaultResolver(Person))
     shots = graphene.List(Shot, resolver=EntityParentResolver(Shot, "Shot"))
     sequences = graphene.List(Sequence, resolver=EntityParentResolver(Sequence, "Sequence"))
     assets = graphene.List(Sequence, resolver=EntityParentResolver(Sequence, "Asset"))
-    projects = graphene.List(Project, resolver=DefaultResolver)
-    persons = graphene.List(Person, resolver=DefaultResolver)
+    projects = graphene.List(Project, resolver=DefaultResolver(Project))
+    comments = graphene.List(Comment, resolver=DefaultResolver(Comment))
+    persons = graphene.List(Person, resolver=DefaultResolver(Person))
 
 schema = graphene.Schema(query=Query)

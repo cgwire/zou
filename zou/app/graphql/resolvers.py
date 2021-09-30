@@ -26,7 +26,6 @@ class EntityResolver(DefaultResolver):
     @property
     def entity_type(self):
         entity_type = entities_service.get_entity_type_by_name(self.entity_type_name)
-        print(entity_type)
 
         if entity_type is None:
             raise KeyError("Invalid entity type name")
