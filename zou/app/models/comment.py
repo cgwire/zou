@@ -78,8 +78,14 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     task_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_status.id")
     )
+    task_status = db.relationship(
+        "TaskStatus", backref="comments"
+    )
     person_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), nullable=False
+    )
+    person = db.relationship(
+        "Person", backref="comments"
     )
     preview_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("preview_file.id")
