@@ -39,7 +39,7 @@ class EntityResolver(DefaultResolver):
         return entity_type
 
     def get_query(self, root, info):
-        query = super(root, info).get_query()
+        query = super().get_query(root, info)
         query = query.filter(self.model_type.entity_type_id == self.entity_type["id"])
         return query
 
@@ -59,7 +59,7 @@ class PreviewUrlResolver(DefaultResolver):
             return ""
         lod = self.lod if not kwargs.get("lod") else kwargs["lod"]
         if root.is_movie:
-            return f"/pictures/{lod}/preview-files/{root.id}.{root.extension}"
-        else:
             lod = self.lod if self.lod != "low" else "thumbnails"
             return f"/movies/{lod}/preview-files/{root.id}.{root.extension}"
+        else:
+            return f"/pictures/{lod}/preview-files/{root.id}.{root.extension}"
