@@ -6,35 +6,29 @@ from zou.app.services import (
 
 class DefaultResolver():
 
-    def __init__(self, graphql_type: ObjectType):
-        self.graphql_type = graphql_type
-
-    def get_query(self, root, info):
-        return self.graphql_type.get_query(info)
-
-    def __call__(self, root, info, **kwargs):
-        query = self.get_query(root, info)
-        # TODO: Implement dynamic filters
-        return query.all()
-
-class DefaultChildResolver(DefaultResolver):
-
-    def __init__(self, graphql_type: ObjectType, model_type, foreign_key: str):
+    def __init__(self, graphql_type: ObjectType, model_type = None, foreign_key: str = ""):
         self.graphql_type = graphql_type
         self.model_type = model_type
         self.foreign_key = foreign_key
 
     def get_query(self, root, info):
         query = self.graphql_type.get_query(info)
-        if root is not None:
+        if all([root, self.model_type, self.foreign_key]):
             query = query.filter(getattr(self.model_type, self.foreign_key) == root.id)
         return query
 
+    def __call__(self, root, info, **kwargs):
+        query = self.get_query(root, info)
+        # TODO: Implement dynamic filters
+        return query.all()
+
 class EntityResolver(DefaultResolver):
 
-    def __init__(self, graphql_type: ObjectType, entity_type: str):
-        self.graphql_type = graphql_type
+    def __init__(self, entity_type: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.entity_type_name = entity_type
+        self.model_type = EntityModel
+        self.foreign_key = "project_id"
 
     @property
     def entity_type(self):
@@ -45,27 +39,22 @@ class EntityResolver(DefaultResolver):
         return entity_type
 
     def get_query(self, root, info):
-        query = self.graphql_type.get_query(info)
-        if root is not None:
-            query = query.filter(EntityModel.project_id == root.id)
-        query = query.filter(EntityModel.entity_type_id == self.entity_type["id"])
+        query = super(root, info).get_query()
+        query = query.filter(self.model_type.entity_type_id == self.entity_type["id"])
         return query
 
 class EntityChildResolver(EntityResolver):
 
-    def get_query(self, root, info):
-        query = self.graphql_type.get_query(info)
-        if root is not None:
-            query = query.filter(EntityModel.parent_id == root.id)
-        query = query.filter(EntityModel.entity_type_id == self.entity_type["id"])
-        return query
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.foreign_key = "parent_id"
 
 class PreviewUrlResolver(DefaultResolver):
 
     def __init__(self, lod: str):
         self.lod = lod
     
-    def __call_(self, root, info, **kwargs):
+    def __call__(self, root, info, **kwargs):
         if root is None:
             return ""
         lod = self.lod if not kwargs.get("lod") else kwargs["lod"]
