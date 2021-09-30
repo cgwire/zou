@@ -58,13 +58,20 @@ class Shot(SQLAlchemyObjectType):
     class Meta:
         model = EntityModel
     
-    tasks = graphene.List(Task, resolver=DefaultChildResolver(Task, TaskModel, "Shot"))
+    tasks = graphene.List(Task, resolver=DefaultChildResolver(Task, TaskModel, "entity_id"))
 
 class Sequence(SQLAlchemyObjectType):
     class Meta:
         model = EntityModel
 
     shots = graphene.List(Shot, resolver=EntityChildResolver(Shot, "Shot"))
+    tasks = graphene.List(Task, resolver=DefaultChildResolver(Task, TaskModel, "entity_id"))
+
+class Asset(SQLAlchemyObjectType):
+    class Meta:
+        model = EntityModel
+    
+    tasks = graphene.List(Task, resolver=DefaultChildResolver(Task, TaskModel, "entity_id"))
 
 class ProjectStatus(SQLAlchemyObjectType):
     class Meta:
@@ -104,7 +111,7 @@ class Query(graphene.ObjectType):
     entity_types = graphene.List(EntityType, resolver=DefaultResolver(EntityType))
     shots = graphene.List(Shot, resolver=EntityResolver(Shot, "Shot"))
     sequences = graphene.List(Sequence, resolver=EntityResolver(Sequence, "Sequence"))
-    assets = graphene.List(Sequence, resolver=EntityResolver(Sequence, "Asset"))
+    assets = graphene.List(Asset, resolver=EntityResolver(Asset, "Asset"))
     project_status = graphene.List(ProjectStatus, resolver=DefaultResolver(ProjectStatus))
     projects = graphene.List(Project, resolver=DefaultResolver(Project))
     attachment_files = graphene.List(AttachmentFile, resolver=DefaultResolver(AttachmentFile))
