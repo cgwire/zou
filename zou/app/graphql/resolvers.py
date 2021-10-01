@@ -14,7 +14,7 @@ class DefaultResolver():
         self.query_all = query_all
 
     def get_query(self, root, info):
-        query = self.graphql_type.get_query(info)
+        query = self.model_type.query
         if all([root, self.model_type, self.foreign_key]):
             query = query.filter(getattr(self.model_type, self.foreign_key) == getattr(root, self.parent_key))
         return query
