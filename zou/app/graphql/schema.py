@@ -17,6 +17,7 @@ from zou.app.models.comment import Comment as CommentModel
 from zou.app.models.department import Department as DepartmentModel
 from zou.app.models.person import Person as PersonModel
 from zou.app.graphql.resolvers import DefaultResolver, EntityResolver, EntityChildResolver, PreviewUrlResolver
+from zou.app.graphql.filter import FilterSet
 from zou.app.graphql import converters
 
 class Software(SQLAlchemyObjectType):
@@ -41,6 +42,8 @@ class Comment(SQLAlchemyObjectType):
     class Meta:
         model = CommentModel
 
+    person = graphene.Field("zou.app.graphql.schema.Person", resolver=DefaultResolver(PersonModel, "id", "person_id"), filters=FilterSet(required=False))
+
 class TaskType(SQLAlchemyObjectType):
     class Meta:
         model = TaskTypeModel
@@ -53,9 +56,9 @@ class Task(SQLAlchemyObjectType):
     class Meta:
         model = TaskModel
 
-    previews = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFile, PreviewFileModel, "task_id"))
-    status = graphene.Field(TaskStatus, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_status_id"))
-    type = graphene.Field(TaskType, resolver=DefaultResolver(TaskStatus, TaskStatusModel, "id", "task_type_id"))
+    previews = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFileModel, "task_id"))
+    status = graphene.Field(TaskStatus, resolver=DefaultResolver(TaskStatusModel, "id", "task_status_id"))
+    type = graphene.Field(TaskType, resolver=DefaultResolver(TaskStatusModel, "id", "task_type_id"))
 
 class EntityType(SQLAlchemyObjectType):
     class Meta:
@@ -65,19 +68,19 @@ class Shot(SQLAlchemyObjectType):
     class Meta:
         model = EntityModel
     
-    tasks = graphene.List(Task, resolver=DefaultResolver(Task, TaskModel, "entity_id"))
+    tasks = graphene.List(Task, resolver=DefaultResolver(TaskModel, "entity_id"))
 
 class Sequence(SQLAlchemyObjectType):
     class Meta:
         model = EntityModel
 
-    shots = graphene.List(Shot, resolver=EntityChildResolver("Shot", Shot))
+    shots = graphene.List(Shot, resolver=EntityChildResolver("Shot", EntityModel))
 
 class Asset(SQLAlchemyObjectType):
     class Meta:
         model = EntityModel
     
-    tasks = graphene.List(Task, resolver=DefaultResolver(Task, TaskModel, "entity_id"))
+    tasks = graphene.List(Task, resolver=DefaultResolver(TaskModel, "entity_id"))
 
 class ProjectStatus(SQLAlchemyObjectType):
     class Meta:
@@ -87,8 +90,8 @@ class Project(SQLAlchemyObjectType):
     class Meta:
         model = ProjectModel
 
-    sequences = graphene.List(Sequence, resolver=EntityResolver("Sequence", Sequence))
-    assets = graphene.List(Sequence, resolver=EntityResolver("Asset", Asset))
+    sequences = graphene.List(Sequence, resolver=EntityResolver("Sequence", EntityModel))
+    assets = graphene.List(Sequence, resolver=EntityResolver("Asset", EntityModel))
 
 class AttachmentFile(SQLAlchemyObjectType):
     class Meta:
@@ -102,24 +105,24 @@ class Person(SQLAlchemyObjectType):
     class Meta:
         model = PersonModel
 
-    comments = graphene.List(Task, resolver=DefaultResolver(Comment, CommentModel, "person_id"))
+    comments = graphene.List(Task, resolver=DefaultResolver(CommentModel, "person_id"))
 
 class Query(graphene.ObjectType):
-    softwares = graphene.List(Software, resolver=DefaultResolver(Software))
-    output_types = graphene.List(OutputType, resolver=DefaultResolver(OutputType))
-    output_files = graphene.List(OutputFile, resolver=DefaultResolver(OutputFile))
-    preview_files = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFile))
-    task_types = graphene.List(TaskType, resolver=DefaultResolver(TaskType))
-    task_status = graphene.List(TaskStatus, resolver=DefaultResolver(TaskStatus))
-    tasks = graphene.List(Task, resolver=DefaultResolver(Task, TaskModel))
-    entity_types = graphene.List(EntityType, resolver=DefaultResolver(EntityType))
-    shots = graphene.List(Shot, resolver=EntityResolver("Shot", Shot))
-    sequences = graphene.List(Sequence, resolver=EntityResolver("Sequence", Sequence))
-    assets = graphene.List(Asset, resolver=EntityResolver("Asset", Asset))
-    project_status = graphene.List(ProjectStatus, resolver=DefaultResolver(ProjectStatus))
-    projects = graphene.List(Project, resolver=DefaultResolver(Project))
-    attachment_files = graphene.List(AttachmentFile, resolver=DefaultResolver(AttachmentFile))
-    comments = graphene.List(Comment, resolver=DefaultResolver(Comment))
-    persons = graphene.List(Person, resolver=DefaultResolver(Person))
+    softwares = graphene.List(Software, resolver=DefaultResolver(SoftwareModel))
+    output_types = graphene.List(OutputType, resolver=DefaultResolver(OutputTypeModel))
+    output_files = graphene.List(OutputFile, resolver=DefaultResolver(OutputFileModel))
+    preview_files = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFileModel))
+    task_types = graphene.List(TaskType, resolver=DefaultResolver(TaskTypeModel))
+    task_status = graphene.List(TaskStatus, resolver=DefaultResolver(TaskStatusModel))
+    tasks = graphene.List(Task, resolver=DefaultResolver(TaskModel))
+    entity_types = graphene.List(EntityType, resolver=DefaultResolver(EntityTypeModel))
+    shots = graphene.List(Shot, resolver=EntityResolver("Shot", EntityModel))
+    sequences = graphene.List(Sequence, resolver=EntityResolver("Sequence", EntityModel))
+    assets = graphene.List(Asset, resolver=EntityResolver("Asset", EntityModel))
+    project_status = graphene.List(ProjectStatus, resolver=DefaultResolver(ProjectStatusModel))
+    projects = graphene.List(Project, resolver=DefaultResolver(ProjectModel))
+    attachment_files = graphene.List(AttachmentFile, resolver=DefaultResolver(AttachmentFileModel))
+    comments = graphene.List(Comment, resolver=DefaultResolver(CommentModel))
+    persons = graphene.List(Person, resolver=DefaultResolver(PersonModel))
 
 schema = graphene.Schema(query=Query)
