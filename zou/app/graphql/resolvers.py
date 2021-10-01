@@ -33,9 +33,12 @@ class DefaultResolver():
         query = self.get_query(root)
 
         print(kwargs)
+        for filter_set in kwargs.get("filters", []):
+            for filter in filter_set.get("filters", []):
+                query = query.filter(self.add_filter(getattr(self.model_type, filter_set["field"]), getattr(root, filter["filter_value"]), filter["filter_type"]))
+
         for key, filters in kwargs.get("filters", {}).get("field", {}).items():
             for filter in filters:
-                query = query.filter(self.add_filter(getattr(self.model_type, key), getattr(root, filter["filter_value"]), filter["filter_type"]))
 
         if self.query_all:
             return query.all()

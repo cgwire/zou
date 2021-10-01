@@ -110,7 +110,7 @@ class Person(SQLAlchemyObjectType):
     class Meta:
         model = PersonModel
 
-    comments = graphene.List(Task, resolver=DefaultResolver(CommentModel, "person_id"), filters=graphene.List(FilterSet, required=False))
+    comments = graphene.List(Comment, resolver=DefaultResolver(CommentModel, "person_id"), filters=graphene.List(FilterSet, required=False))
 
 class Query(graphene.ObjectType):
     softwares = graphene.List(Software, resolver=DefaultResolver(SoftwareModel), filters=graphene.List(FilterSet, required=False))
