@@ -5,4 +5,5 @@ class Filter(graphene.InputObjectType):
     filter_value = graphene.String()
 
 class FilterSet(graphene.InputObjectType):
-    field_name = Filter()
+    filters = graphene.List(Filter)
+    field = graphene.String()
