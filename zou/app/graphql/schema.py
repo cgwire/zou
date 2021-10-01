@@ -36,7 +36,11 @@ class PreviewFile(SQLAlchemyObjectType):
         model = PreviewFileModel
         
     file_url = graphene.Field(graphene.String, resolver=PreviewUrlResolver(lod="originals"), args={"lod": graphene.String(required=False)})
-    
+
+class Comment(SQLAlchemyObjectType):
+    class Meta:
+        model = CommentModel
+
 class TaskType(SQLAlchemyObjectType):
     class Meta:
         model = TaskTypeModel
@@ -98,13 +102,7 @@ class Person(SQLAlchemyObjectType):
     class Meta:
         model = PersonModel
 
-    comments = graphene.List("zou.app.graphql.schema.Comment", resolver=EntityResolver("Asset", Asset))
-
-class Comment(SQLAlchemyObjectType):
-    class Meta:
-        model = CommentModel
-
-    person = graphene.Field(Person, resolver=DefaultResolver(Person, PersonModel, "id", "person_id"))
+    comments = graphene.List(Task, resolver=DefaultResolver(Comment, CommentModel, "person_id"))
 
 class Query(graphene.ObjectType):
     softwares = graphene.List(Software, resolver=DefaultResolver(Software))
@@ -113,7 +111,7 @@ class Query(graphene.ObjectType):
     preview_files = graphene.List(PreviewFile, resolver=DefaultResolver(PreviewFile))
     task_types = graphene.List(TaskType, resolver=DefaultResolver(TaskType))
     task_status = graphene.List(TaskStatus, resolver=DefaultResolver(TaskStatus))
-    tasks = graphene.List(Task, resolver=DefaultResolver(Task))
+    tasks = graphene.List(Task, resolver=DefaultResolver(Task, TaskModel))
     entity_types = graphene.List(EntityType, resolver=DefaultResolver(EntityType))
     shots = graphene.List(Shot, resolver=EntityResolver("Shot", Shot))
     sequences = graphene.List(Sequence, resolver=EntityResolver("Sequence", Sequence))
