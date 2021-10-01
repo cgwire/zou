@@ -98,7 +98,7 @@ class Person(SQLAlchemyObjectType):
     class Meta:
         model = PersonModel
 
-    comments = graphene.List("Comment", resolver=EntityResolver("Asset", Asset))
+    comments = graphene.List("zou.app.graphql.schema.Comment", resolver=EntityResolver("Asset", Asset))
 
 class Comment(SQLAlchemyObjectType):
     class Meta:
