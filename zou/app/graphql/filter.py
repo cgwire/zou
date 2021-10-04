@@ -1,22 +1,23 @@
+import uuid
 import graphene
 from sqlalchemy import inspection
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 from sqlalchemy.orm.properties import ColumnProperty
 
 
+# TODO: Use this class to allow multiple filter types like
+# equal, not equal, less than, more than...
 class Filter(graphene.InputObjectType):
     filter_type = graphene.String()
     filter_value = graphene.String()
 
 
 class FilterSet(graphene.InputObjectType):
-    filters = graphene.List(Filter)
-    field = graphene.String()
+    id = graphene.String()
 
 
-def create_filters(model):
-    extra_filters = {}
+def create_filter_set(model):
+    filters = {}
     inspected = inspection.inspect(model)
     for descriptor in inspected.all_orm_descriptors:
         if not isinstance(descriptor.property, ColumnProperty):
@@ -26,18 +27,15 @@ def create_filters(model):
         column = descriptor.property.columns[0]
         column_type = getattr(column, "type", None)
         graphql_type = convert_sqlalchemy_type(column_type, column)
-        extra_filters[name] = graphql_type
+        filters[name] = graphql_type(required=False)
 
-    print(extra_filters)
-
-    MyType = type(
-        "MyType",
+    uid = uuid.uuid1()
+    filter_set_type = type(
+        f"FilterSet_{model.__name__}_{uid}",
         (graphene.InputObjectType,),
         {
-            "something": graphene.String(),
-            "field": graphene.String(),
-            "filters": graphene.List(Filter),
+            **filters,
         },
     )
 
-    return MyType
+    return filter_set_type

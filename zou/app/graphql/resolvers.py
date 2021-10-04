@@ -18,17 +18,6 @@ class DefaultResolver:
         self.parent_key = parent_key
         self.query_all = query_all
 
-    @staticmethod
-    def add_filter(a, b, operator):
-        if operator == "eq":
-            return a == b
-        elif operator == "ne":
-            return a != b
-        elif operator == "lt":
-            return a < b
-        elif operator == "gt":
-            return a > b
-
     def get_query(self, root):
         query = self.model_type.query
         if all([root, self.model_type, self.foreign_key]):
@@ -42,14 +31,8 @@ class DefaultResolver:
         query = self.get_query(root)
 
         for filter_set in kwargs.get("filters", []):
-            for filter in filter_set.get("filters", []):
-                query = query.filter(
-                    self.add_filter(
-                        getattr(self.model_type, filter_set["field"]),
-                        filter["filter_value"],
-                        filter["filter_type"],
-                    )
-                )
+            for key, value in filter_set.items():
+                query = query.filter(getattr(self.model_type, key) == value)
 
         if self.query_all:
             return query.all()
