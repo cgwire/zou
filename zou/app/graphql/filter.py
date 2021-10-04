@@ -1,6 +1,8 @@
 import graphene
 from sqlalchemy import inspection
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from graphene_sqlalchemy.converter import convert_sqlalchemy_type
+from sqlalchemy.orm.properties import ColumnProperty
 
 
 class Filter(graphene.InputObjectType):
@@ -13,44 +15,29 @@ class FilterSet(graphene.InputObjectType):
     field = graphene.String()
 
 
-def get_model_fields_data(model):
-    """
-    Get model columns.
-
-    Args:
-        model: SQLAlchemy model.
-        only_fields: Filter of fields.
-
-    Returns:
-        Fields info.
-
-    """
-    model_fields = {}
-
+def create_filters(model):
+    extra_filters = {}
     inspected = inspection.inspect(model)
-    for descr in inspected.all_orm_descriptors:
-        print(descr)
-        print(type(descr))
+    for descriptor in inspected.all_orm_descriptors:
+        if not isinstance(descriptor.property, ColumnProperty):
+            continue
 
-        if isinstance(descr, InstrumentedAttribute):
-            attr = descr.property
-            name = attr.key
+        name = descriptor.property.key
+        column = descriptor.property.columns[0]
+        column_type = getattr(column, "type", None)
+        graphql_type = convert_sqlalchemy_type(column_type, column)
+        extra_filters[name] = graphql_type
 
-            column = attr.columns[0]
-            model_fields[name] = {
-                "column": column,
-                "type": column.type,
-                "nullable": column.nullable,
-            }
+    print(extra_filters)
 
-    return model_fields
+    MyType = type(
+        "MyType",
+        (graphene.InputObjectType,),
+        {
+            "something": graphene.String(),
+            "field": graphene.String(),
+            "filters": graphene.List(Filter),
+        },
+    )
 
-
-def test_dynamic(model):
-    data = get_model_fields_data(model)
-    print(data)
-
-    def dynamic_type():
-        return graphene.Argument(graphene.String)
-
-    return graphene.Dynamic(dynamic_type)
+    return MyType

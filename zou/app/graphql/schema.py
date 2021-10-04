@@ -25,7 +25,7 @@ from zou.app.graphql.resolvers import (
     EntityChildResolver,
     PreviewUrlResolver,
 )
-from zou.app.graphql.filter import FilterSet, test_dynamic
+from zou.app.graphql.filter import FilterSet, create_filters
 from zou.app.graphql import converters
 
 
@@ -125,7 +125,7 @@ class Sequence(SQLAlchemyObjectType):
     shots = graphene.List(
         Shot,
         resolver=EntityChildResolver("Shot", EntityModel),
-        filters=test_dynamic(EntityModel),
+        filters=graphene.List(create_filters(EntityModel), required=False),
     )
 
 
