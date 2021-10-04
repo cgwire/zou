@@ -1,6 +1,5 @@
 import graphene
 from sqlalchemy import inspection
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 
@@ -30,17 +29,10 @@ def get_model_fields_data(model):
 
     inspected = inspection.inspect(model)
     for descr in inspected.all_orm_descriptors:
-        if isinstance(descr, hybrid_property):
-            attr = descr
-            name = attr.__name__
+        print(descr)
+        print(type(descr))
 
-            model_fields[name] = {
-                "column": attr,
-                "type": None,
-                "nullable": True,
-            }
-
-        elif isinstance(descr, InstrumentedAttribute):
+        if isinstance(descr, InstrumentedAttribute):
             attr = descr.property
             name = attr.key
 
@@ -59,6 +51,6 @@ def test_dynamic(model):
     print(data)
 
     def dynamic_type():
-        return graphene.Field(graphene.String)
+        return graphene.Argument(graphene.String)
 
     return graphene.Dynamic(dynamic_type)
