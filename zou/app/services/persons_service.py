@@ -141,12 +141,12 @@ def get_person_by_desktop_login(desktop_login):
     return person.serialize()
 
 
-def get_current_user():
+def get_current_user(relations=False):
     """
     Return person from its auth token (the one that does the request) as a
     dictionary.
     """
-    return get_person_by_email(get_jwt_identity())
+    return get_person_by_email(get_jwt_identity(), relations=relations)
 
 
 def get_current_user_raw():

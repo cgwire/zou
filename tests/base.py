@@ -464,7 +464,7 @@ class ApiDBTestCase(ApiTestCase):
             email=u"john.did.cg.artist@gmail.com",
             role="user",
             password=auth.encrypt_password("mypassword"),
-        ).serialize()
+        ).serialize(relations=True)
         return self.user_cg_artist
 
     def generate_fixture_user_client(self):

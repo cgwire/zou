@@ -129,6 +129,29 @@ class TaskRoutesTestCase(ApiDBTestCase):
         notifications = notifications_service.get_last_notifications()
         self.assertEqual(len(notifications), 2)
 
+    def test_multiple_task_assign_artist(self):
+        self.generate_fixture_task()
+        self.generate_fixture_shot_task()
+        self.generate_fixture_user_cg_artist()
+        task_id = str(self.task.id)
+        shot_task_id = str(self.shot_task.id)
+        person_id = str(self.user_cg_artist["id"])
+        department_id = str(self.department.id)
+        data = {"task_ids": [task_id, shot_task_id]}
+        self.put("/actions/tasks/clear-assignation", data)
+        self.log_in_cg_artist()
+        self.put("/actions/persons/%s/assign" % person_id, data)
+        task = tasks_service.get_task_with_relations(task_id)
+        self.assertEqual(len(task["assignees"]), 0)
+        task = tasks_service.get_task_with_relations(shot_task_id)
+        self.assertEqual(len(task["assignees"]), 0)
+        persons_service.add_to_department(department_id, person_id)
+        self.put("/actions/persons/%s/assign" % person_id, data)
+        task = tasks_service.get_task_with_relations(task_id)
+        self.assertEqual(len(task["assignees"]), 0)
+        task = tasks_service.get_task_with_relations(shot_task_id)
+        self.assertEqual(len(task["assignees"]), 0)
+
     def test_clear_assignation(self):
         self.generate_fixture_task()
         self.generate_fixture_shot_task()

@@ -363,14 +363,16 @@ class TasksAssignResource(Resource):
     @jwt_required
     def put(self, person_id):
         (task_ids) = self.get_arguments()
-
-        if len(task_ids) > 0:
-            task = tasks_service.get_task(task_ids[0])
-            user_service.check_manager_project_access(task["project_id"])
+        print("ok")
 
         tasks = []
         for task_id in task_ids:
             try:
+                user_service.check_project_departement_access(
+                    task_id,
+                    person_id
+                )
+                print("hyey")
                 task = self.assign_task(task_id, person_id)
                 author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(
@@ -379,9 +381,10 @@ class TasksAssignResource(Resource):
                 tasks.append(task)
             except TaskNotFoundException:
                 pass
+            except permissions.PermissionDenied:
+                pass
             except PersonNotFoundException:
                 return {"error": "Assignee doesn't exist in database."}, 400
-
         if len(tasks) > 0:
             projects_service.add_team_member(tasks[0]["project_id"], person_id)
 
