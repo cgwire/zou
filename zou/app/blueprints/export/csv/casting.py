@@ -36,7 +36,7 @@ class CastingCsvExport(Resource, ArgsMixin):
 
     def build_headers(self, episode_id=None):
         headers = [
-            "Parent/Type",
+            "Parent",
             "Name",
             "Asset Type",
             "Asset",

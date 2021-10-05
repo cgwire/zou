@@ -521,13 +521,22 @@ def get_entity_casting(entity_id):
     return Entity.serialize_list(entity.entities_out, obj_type="Asset")
 
 
-def get_entity_link(entity_in_id, entity_out_id):
+
+def get_entity_link_raw(entity_in_id, entity_out_id):
     """
     Get link matching given entities.
     """
     link = EntityLink.get_by(
         entity_in_id=entity_in_id, entity_out_id=entity_out_id
     )
+    return link
+
+
+def get_entity_link(entity_in_id, entity_out_id):
+    """
+    Get link matching given entities.
+    """
+    link = get_entity_link_raw(entity_in_id, entity_out_id)
     if link:
         return link.serialize()
     else:
