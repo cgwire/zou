@@ -134,7 +134,10 @@ class AuthenticatedResource(Resource):
     @jwt_required
     def get(self):
         try:
-            person = persons_service.get_person_by_email(get_jwt_identity())
+            person = persons_service.get_person_by_email(
+                get_jwt_identity(),
+                relations=True
+            )
             organisation = persons_service.get_organisation()
             return {
                 "authenticated": True,
