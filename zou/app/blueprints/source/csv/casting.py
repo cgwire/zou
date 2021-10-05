@@ -59,19 +59,21 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
         occurences = 1
         if len(row["Occurences"]) > 0:
             occurences = int(row["Occurences"])
-        label = slugify(row["Label"])
 
         asset_id = self.asset_map.get(asset_key, None)
         target_id = self.shot_map.get(target_key, None)
-        print(asset_key, target_key)
+        label = slugify(row.get("Label", "fixed"))
         if target_id is None:
             target_id = self.asset_map.get(target_key, None)
-        print(asset_key, target_key, asset_id, target_id)
-        print(self.asset_map)
 
         if asset_id is not None and target_id is not None:
-            link = breakdown_service.get_entity_link(target_id, asset_id)
+            link = breakdown_service.get_entity_link_raw(target_id, asset_id)
             if link is None:
                 breakdown_service.create_casting_link(
                     target_id, asset_id, occurences, label
                 )
+            else:
+                link.update({
+                    "nb_occurences": occurences,
+                    "label": label
+                })

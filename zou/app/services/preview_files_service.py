@@ -86,7 +86,11 @@ def set_preview_file_as_ready(preview_file_id):
     return update_preview_file(preview_file_id, {"status": "ready"})
 
 
-def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
+def prepare_and_store_movie(
+    preview_file_id,
+    uploaded_movie_path,
+    normalize=True
+):
     """
     Prepare movie preview, normalize the movie as a .mp4, build the thumbnails
     and store the files.
@@ -111,62 +115,71 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
         fps = get_preview_file_fps(project)
         (width, height) = get_preview_file_dimensions(project)
 
-        # Build movie
-        current_app.logger.info("start normalization")
-        try:
-            if (
-                config.ENABLE_JOB_QUEUE_REMOTE
-                and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
-            ):
-                file_store.add_movie(
-                    "source", preview_file_id, uploaded_movie_path
-                )
-                result = _run_remote_normalize_movie(
-                    current_app, preview_file_id, fps, width, height
-                )
-                if result is True:
-                    err = None
+        if normalize:
+            # Build movie
+            current_app.logger.info("start normalization")
+            try:
+                if (
+                    config.ENABLE_JOB_QUEUE_REMOTE
+                    and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
+                ):
+                    file_store.add_movie(
+                        "source", preview_file_id, uploaded_movie_path
+                    )
+                    result = _run_remote_normalize_movie(
+                        current_app, preview_file_id, fps, width, height
+                    )
+                    if result is True:
+                        err = None
+                    else:
+                        err = result
+
+                    normalized_movie_path = fs.get_file_path_and_file(
+                        config,
+                        file_store.get_local_movie_path,
+                        file_store.open_movie,
+                        "previews",
+                        preview_file_id,
+                        ".mp4",
+                    )
                 else:
-                    err = result
+                    (
+                        normalized_movie_path,
+                        normalized_movie_low_path,
+                        err,
+                    ) = movie.normalize_movie(
+                        uploaded_movie_path, fps=fps, width=width, height=height
+                    )
+                    file_store.add_movie(
+                        "previews", preview_file_id, normalized_movie_path
+                    )
+                    file_store.add_movie(
+                        "lowdef", preview_file_id, normalized_movie_low_path
+                    )
+                if err:
+                    current_app.logger.error(
+                        "Fail to normalize: %s" % uploaded_movie_path
+                    )
+                    current_app.logger.error(err)
 
-                normalized_movie_path = fs.get_file_path_and_file(
-                    config,
-                    file_store.get_local_movie_path,
-                    file_store.open_movie,
-                    "previews",
-                    preview_file_id,
-                    ".mp4",
+                current_app.logger.info(
+                    "file normalized %s" % normalized_movie_path
                 )
-            else:
-                (
-                    normalized_movie_path,
-                    normalized_movie_low_path,
-                    err,
-                ) = movie.normalize_movie(
-                    uploaded_movie_path, fps=fps, width=width, height=height
-                )
-                file_store.add_movie(
-                    "previews", preview_file_id, normalized_movie_path
-                )
-                file_store.add_movie(
-                    "lowdef", preview_file_id, normalized_movie_low_path
-                )
-            if err:
-                current_app.logger.error(
-                    "Fail to normalize: %s" % uploaded_movie_path
-                )
-                current_app.logger.error(err)
-
-            current_app.logger.info(
-                "file normalized %s" % normalized_movie_path
+                current_app.logger.info("file stored")
+            except Exception as exc:
+                if isinstance(exc, ffmpeg.Error):
+                    current_app.logger.error(exc.stderr)
+                current_app.logger.error("failed", exc_info=1)
+                preview_file = set_preview_file_as_broken(preview_file_id)
+                return preview_file
+        else:
+            file_store.add_movie(
+                "previews", preview_file_id, uploaded_movie_path
             )
-            current_app.logger.info("file stored")
-        except Exception as exc:
-            if isinstance(exc, ffmpeg.Error):
-                current_app.logger.error(exc.stderr)
-            current_app.logger.error("failed", exc_info=1)
-            preview_file = set_preview_file_as_broken(preview_file_id)
-            return preview_file
+            file_store.add_movie(
+                "lowdef", preview_file_id, uploaded_movie_path
+            )
+            normalized_movie_path = uploaded_movie_path
 
         # Build thumbnails
         size = movie.get_movie_size(normalized_movie_path)
@@ -178,7 +191,8 @@ def prepare_and_store_movie(preview_file_id, uploaded_movie_path):
 
         # Remove files and update status
         os.remove(uploaded_movie_path)
-        os.remove(normalized_movie_path)
+        if normalize:
+            os.remove(normalized_movie_path)
         preview_file = update_preview_file(
             preview_file_id, {"status": "ready", "file_size": file_size}
         )

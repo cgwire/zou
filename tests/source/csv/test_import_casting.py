@@ -73,6 +73,11 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
         self.upload_csv(path, "casting")
         path = "/import/csv/projects/%s/casting" % self.project_id
         self.upload_csv(path, "casting")
-
         links = EntityLink.query.all()
         self.assertEqual(len(links), 12)
+
+        path = "/import/csv/projects/%s/casting" % self.project_id
+        self.upload_csv(path, "casting_02")
+        links = EntityLink.query.all()
+        self.assertEqual(len(links), 12)
+        self.assertEqual(links[0].label, "fixed")

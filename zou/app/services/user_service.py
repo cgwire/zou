@@ -404,6 +404,31 @@ def check_manager_project_access(project_id):
     return is_allowed
 
 
+def check_project_departement_access(task_id, person_id):
+    """
+    Return true if current user is admin or is manager and is in team
+    or is artist in the task department.
+    """
+    user = persons_service.get_current_user(relations=True)
+    task = tasks_service.get_task(task_id)
+    task_type = tasks_service.get_task_type(task["task_type_id"])
+    is_allowed = (
+        permissions.has_admin_permissions()
+        or (
+            permissions.has_manager_permissions()
+            and check_belong_to_project(task["project_id"])
+        )
+        or (
+            check_belong_to_project(task["project_id"])
+            and task_type["department_id"] in user["departments"]
+            and person_id == user["id"]
+        )
+    )
+    if not is_allowed:
+        raise permissions.PermissionDenied
+    return is_allowed
+
+
 def check_playlist_access(playlist):
     check_project_access(playlist["project_id"])
     is_manager = permissions.has_manager_permissions()
@@ -711,7 +736,7 @@ def get_sequence_subscriptions(project_id, task_type_id):
 def get_timezone():
     try:
         timezone = persons_service.get_current_user()["timezone"]
-    except:
+    except Exception:
         timezone = "Europe/Paris"
     return timezone or "Europe/Paris"
 
