@@ -207,7 +207,10 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
 
         elif extension in ALLOWED_MOVIE_EXTENSION:
             try:
-                self.save_movie_preview(instance_id, uploaded_file)
+                normalize = True
+                if "normalize" in request.args:
+                    normalize = self.get_bool_parameter("normalize")
+                self.save_movie_preview(instance_id, uploaded_file, normalize)
             except Exception as e:
                 current_app.logger.error(e, exc_info=1)
                 current_app.logger.error("Normalization failed.")
@@ -253,7 +256,12 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             instance_id, original_tmp_path
         )
 
-    def save_movie_preview(self, preview_file_id, uploaded_file):
+    def save_movie_preview(
+        self,
+        preview_file_id,
+        uploaded_file,
+        normalize=True
+    ):
         """
         Get uploaded movie, normalize it then build thumbnails then save
         everything in the file storage.
@@ -263,7 +271,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         uploaded_movie_path = movie.save_file(
             tmp_folder, preview_file_id, uploaded_file
         )
-        if config.ENABLE_JOB_QUEUE and not no_job:
+        if normalize and config.ENABLE_JOB_QUEUE and not no_job:
             queue_store.job_queue.enqueue(
                 preview_files_service.prepare_and_store_movie,
                 args=(preview_file_id, uploaded_movie_path),
@@ -271,7 +279,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             )
         else:
             preview_files_service.prepare_and_store_movie(
-                preview_file_id, uploaded_movie_path
+                preview_file_id, uploaded_movie_path, normalize=normalize
             )
         return preview_file_id
 
