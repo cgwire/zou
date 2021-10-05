@@ -8,7 +8,6 @@ from zou.app.models.working_file import WorkingFile
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
 from zou.app.models.software import Software
 from zou.app.models.task import Task
 
@@ -699,7 +698,7 @@ def get_preview_files_for_task(task_id):
     """
     Get all preview files for given task.
     """
-    previews = PreviewFile.filter_by(task_id=task_id).order_by(
+    previews = PreviewFile.query.filter_by(task_id=task_id).order_by(
         PreviewFile.revision.desc()
     )
     return fields.serialize_models(previews)
