@@ -15,33 +15,19 @@ class PreviewFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, PreviewFile)
 
-    def all_entries(self, query=None, relations=False):
-        """
-        If the user has at least manager permissions, return all previews.
-        If he's a vendor, return only previews for the tasks he's assigned to.
-        If he's an artist, return only previews for projects he's a part of.
-        """
-        if query is None:
-            query = self.model.query
-
-        if permissions.has_admin_permissions():
-            pass
-        elif permissions.has_vendor_permissions():
-            query = (
-                PreviewFile.query.join(Task)
-                .filter(user_service.build_assignee_filter())
-                .filter(user_service.build_open_project_filter())
-                .filter(Task.id == PreviewFile.task_id)
+    def add_project_permission_filter(self, query):
+        if permissions.has_vendor_permissions():
+            query = query.filter(user_service.build_assignee_filter()).filter(
+                user_service.build_open_project_filter()
             )
-        else:
+        elif not permissions.has_admin_permissions():
             query = (
-                PreviewFile.query.join(Task, Project)
+                query.join(Task, Project)
                 .filter(user_service.build_related_projects_filter())
                 .filter(user_service.build_open_project_filter())
             )
 
-        previews = query.all()
-        return self.model.serialize_list(previews, relations=relations)
+        return query
 
     def check_read_permissions(self):
         return True
