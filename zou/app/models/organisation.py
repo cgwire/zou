@@ -14,17 +14,19 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     has_avatar = db.Column(db.Boolean(), default=False)
     use_original_file_name = db.Column(db.Boolean(), default=False)
     timesheets_locked = db.Column(db.Boolean(), default=False)
+    hd_by_default = db.Column(db.Boolean(), default=False)
     chat_token_slack = db.Column(db.String(80), default="")
 
     def present(self):
         return fields.serialize_dict(
             {
                 "id": self.id,
+                "chat_token_slack": self.chat_token_slack,
                 "name": self.name,
                 "has_avatar": self.has_avatar,
                 "hours_by_day": self.hours_by_day,
+                "hd_by_default": self.hd_by_default,
                 "use_original_file_name": self.use_original_file_name,
                 "timesheets_locked": self.timesheets_locked,
-                "chat_token_slack": self.chat_token_slack,
             }
         )
