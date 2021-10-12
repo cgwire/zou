@@ -9,6 +9,7 @@ from shutil import copyfile
 from zipfile import ZipFile
 
 from flask import current_app
+from flask_fs.errors import FileNotFound
 from flask_mail import Message
 from slugify import slugify
 from sqlalchemy import or_
@@ -434,14 +435,17 @@ def retrieve_playlist_tmp_file(preview_file):
     if preview_file["extension"] == "mp4":
         get_path_func = file_store.get_local_movie_path
         open_func = file_store.open_movie
+        exists_func = file_store.exists_movie
         prefix = "previews"
     elif preview_file["extension"] == "png":
         get_path_func = file_store.get_local_picture_path
         open_func = file_store.open_picture
+        exists_func = file_store.exists_picture
         prefix = "original"
     else:
         get_path_func = file_store.get_local_file_path
         open_func = file_store.open_file
+        exists_func = file_store.exists_file
         prefix = "previews"
 
     if config.FS_BACKEND == "local":
@@ -453,9 +457,13 @@ def retrieve_playlist_tmp_file(preview_file):
             % (preview_file["id"], preview_file["extension"]),
         )
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
-            with open(file_path, "wb") as tmp_file:
-                for chunk in open_func(prefix, preview_file["id"]):
-                    tmp_file.write(chunk)
+            if exists_func(prefix, preview_file["id"]):
+                with open(file_path, "wb") as tmp_file:
+                    try:
+                        for chunk in open_func(prefix, preview_file["id"]):
+                            tmp_file.write(chunk)
+                    except FileNotFound:
+                        pass
     file_name = names_service.get_preview_file_name(preview_file["id"])
     tmp_file_path = os.path.join(config.TMP_DIR, file_name)
     copyfile(file_path, tmp_file_path)
