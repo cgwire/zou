@@ -199,7 +199,7 @@ def sync_with_ldap_server():
         ]
 
     def search_ldap_users(conn, excluded_accounts):
-        attributes = ["givenName", "sn", "mail", "cn", "uid"]
+        attributes = ["givenName", "sn", "mail", "cn", "uid", "jpegPhoto"]
         conn.search(
             LDAP_BASE_DN, "(objectclass=person)", attributes=attributes
         )
@@ -209,6 +209,7 @@ def sync_with_ldap_server():
                 "last_name": clean_value(entry.sn),
                 "email": clean_value(entry.mail),
                 "desktop_login": clean_value(entry.uid),
+                "thumbnail": entry.jpegPhoto.raw_values,
             }
             for entry in conn.entries
             if clean_value(entry.uid) not in excluded_accounts
