@@ -1,0 +1,15 @@
+Episode,Parent,Name,Asset Type,Asset,Occurences,Label
+MP,Environment,Lake,Props,Boat,1,fixed
+MP,Environment,Lake,Props,Pool,1,fixed
+,Environment,Lake,Props,Flowers,12,fixed
+,Environment,Mine,Props,Block,2,fixed
+,Environment,Mine,Props,Wagon,3,fixed
+E01,SEQ01,SH01,Character,Victor,1,fixed
+E01,SEQ01,SH01,Character,John,1,fixed
+E01,SEQ02,SH01,Environment,Lake,1,fixed
+E01,SEQ01,SH02,Character,Victor,1,fixed
+E01,SEQ01,SH02,Environment,Mine,1,fixed
+E02,SEQ02,SH01,Character,John,1,fixed
+E02,SEQ02,SH01,Environment,Lake,1,fixed
+E02,SEQ01,SH01,Character,Victor,1,fixed
+E02,SEQ01,SH01,Environment,Mine,1,fixed
