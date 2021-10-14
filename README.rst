@@ -11,7 +11,7 @@ artistic side.
 
 A dedicated Python client, `Gazu <https://gazu.cg-wire.com>`_, allows users to integrate Zou into the tools. 
 
-|Build badge|
+|Build badge| |Downloads badge|
 
 Features
 ~~~~~~~~
@@ -86,3 +86,5 @@ Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
    :target: https://gitter.im/cgwire/Lobby
 .. |CGWire Logo| image:: https://zou.cg-wire.com/cgwire.png
    :target: https://cgwire.com
+.. |Downloads badge| image:: https://static.pepy.tech/personalized-badge/zou?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads
+   :target: https://pepy.tech/project/zou
