@@ -30,6 +30,7 @@ JWT_TOKEN_LOCATION = ["cookies", "headers"]
 JWT_REFRESH_COOKIE_PATH = "/auth/refresh-token"
 JWT_COOKIE_CSRF_PROTECT = False
 JWT_SESSION_COOKIE = False
+JWT_COOKIE_SAMESITE = "Lax"
 
 DATABASE = {
     "drivername": os.getenv("DB_DRIVER", "postgresql"),
