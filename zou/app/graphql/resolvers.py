@@ -27,18 +27,36 @@ class DefaultResolver:
             )
         return query
 
-    def __call__(self, root, info, **kwargs):
-        query = self.get_query(root)
-
-        print(kwargs)
+    def apply_filter(self, query, **kwargs):
         for filter_set in kwargs.get("filters", []):
             for key, value in filter_set.items():
                 query = query.filter(getattr(self.model_type, key) == value)
+
+        return query
+
+    def __call__(self, root, info, **kwargs):
+        query = self.get_query(root)
+        query = self.apply_filter(query, **kwargs)
 
         if self.query_all:
             return query.all()
         else:
             return query.first()
+
+
+class IDResolver(DefaultResolver):
+    def __init__(
+        self,
+        model_type: db.Model = None,
+    ):
+        super().__init__(model_type, query_all=False)
+
+    def apply_filter(self, query, **kwargs):
+        if kwargs.get("id") is None:
+            return query
+
+        query = query.filter(self.model_type.id == kwargs.get("id"))
+        return query
 
 
 class EntityResolver(DefaultResolver):

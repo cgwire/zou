@@ -21,11 +21,11 @@ from zou.app.models.department import Department as DepartmentModel
 from zou.app.models.person import Person as PersonModel
 from zou.app.graphql.resolvers import (
     DefaultResolver,
+    IDResolver,
     EntityResolver,
     EntityChildResolver,
     PreviewUrlResolver,
 )
-from zou.app.graphql.filter import FilterID
 from zou.app.graphql import converters
 
 
@@ -175,8 +175,8 @@ class Person(SQLAlchemyObjectType):
 class Query(graphene.ObjectType):
     software = graphene.Field(
         Software,
-        resolver=DefaultResolver(SoftwareModel, query_all=False),
-        filters=graphene.List(FilterID),
+        resolver=IDResolver(SoftwareModel),
+        id=graphene.String(),
     )
     softwares = graphene.List(
         Software,
@@ -237,6 +237,11 @@ class Query(graphene.ObjectType):
     comments = graphene.List(
         Comment,
         resolver=DefaultResolver(CommentModel),
+    )
+    person = graphene.Field(
+        Person,
+        resolver=IDResolver(SoftwareModel),
+        id=graphene.String(),
     )
     persons = graphene.List(
         Person,
