@@ -30,6 +30,7 @@ class DefaultResolver:
     def __call__(self, root, info, **kwargs):
         query = self.get_query(root)
 
+        print(kwargs)
         for filter_set in kwargs.get("filters", []):
             for key, value in filter_set.items():
                 query = query.filter(getattr(self.model_type, key) == value)
