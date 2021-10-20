@@ -84,6 +84,19 @@ class EntityResolver(DefaultResolver):
         return query
 
 
+class IDEntityResolver(EntityResolver):
+    def __init__(self, entity_type: str, *args, **kwargs):
+        super().__init__(entity_type, *args, **kwargs)
+        self.query_all = False
+
+    def apply_filter(self, query, **kwargs):
+        if kwargs.get("id") is None:
+            return query
+
+        query = query.filter(self.model_type.id == kwargs.get("id"))
+        return query
+
+
 class EntityChildResolver(EntityResolver):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

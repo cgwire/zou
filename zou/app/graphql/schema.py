@@ -23,6 +23,7 @@ from zou.app.graphql.resolvers import (
     DefaultResolver,
     IDResolver,
     EntityResolver,
+    IDEntityResolver,
     EntityChildResolver,
     PreviewUrlResolver,
 )
@@ -218,21 +219,46 @@ class Query(graphene.ObjectType):
         Sequence,
         resolver=EntityResolver("Sequence", EntityModel),
     )
+    asset = graphene.List(
+        Asset,
+        resolver=IDEntityResolver("Asset", EntityModel),
+        id=graphene.String(),
+    )
     assets = graphene.List(
         Asset,
         resolver=EntityResolver("Asset", EntityModel),
     )
-    project_status = graphene.List(
+    project_status = graphene.Field(
+        ProjectStatus,
+        resolver=IDResolver(ProjectStatusModel),
+        id=graphene.String(),
+    )
+    project_statuses = graphene.List(
         ProjectStatus,
         resolver=DefaultResolver(ProjectStatusModel),
+    )
+    project = graphene.Field(
+        Project,
+        resolver=IDResolver(ProjectModel),
+        id=graphene.String(),
     )
     projects = graphene.List(
         Project,
         resolver=DefaultResolver(ProjectModel),
     )
+    attachment_file = graphene.Field(
+        Comment,
+        resolver=IDResolver(AttachmentFileModel),
+        id=graphene.String(),
+    )
     attachment_files = graphene.List(
         AttachmentFile,
         resolver=DefaultResolver(AttachmentFileModel),
+    )
+    comment = graphene.Field(
+        Comment,
+        resolver=IDResolver(CommentModel),
+        id=graphene.String(),
     )
     comments = graphene.List(
         Comment,
@@ -240,7 +266,7 @@ class Query(graphene.ObjectType):
     )
     person = graphene.Field(
         Person,
-        resolver=IDResolver(SoftwareModel),
+        resolver=IDResolver(PersonModel),
         id=graphene.String(),
     )
     persons = graphene.List(
