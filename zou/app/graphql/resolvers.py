@@ -2,6 +2,7 @@ from zou.app import db
 from zou.app.models.entity import Entity as EntityModel
 from zou.app.services import (
     entities_service,
+    assets_service,
 )
 
 
@@ -79,9 +80,12 @@ class EntityResolver(DefaultResolver):
 
     def get_query(self, root):
         query = super().get_query(root)
-        query = query.filter(
-            self.model_type.entity_type_id == self.entity_type["id"]
-        )
+        if self.entity_type_name == "Asset":
+            query = query.filter(assets_service.build_asset_type_filter())
+        else:
+            query = query.filter(
+                self.model_type.entity_type_id == self.entity_type["id"]
+            )
         return query
 
 

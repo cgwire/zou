@@ -116,6 +116,18 @@ class Shot(SQLAlchemyObjectType):
         Task,
         resolver=DefaultResolver(TaskModel, "entity_id"),
     )
+    type = graphene.Field(
+        EntityType,
+        resolver=DefaultResolver(
+            EntityTypeModel, "id", "entity_type_id", query_all=False
+        ),
+    )
+    preview_file_id = graphene.Field(
+        PreviewFile,
+        resolver=DefaultResolver(
+            PreviewFileModel, "id", "preview_file_id", query_all=False
+        ),
+    )
 
 
 class Sequence(SQLAlchemyObjectType):
@@ -135,6 +147,12 @@ class Asset(SQLAlchemyObjectType):
     tasks = graphene.List(
         Task,
         resolver=DefaultResolver(TaskModel, "entity_id"),
+    )
+    preview_file_id = graphene.Field(
+        PreviewFile,
+        resolver=DefaultResolver(
+            PreviewFileModel, "id", "preview_file_id", query_all=False
+        ),
     )
 
 
@@ -187,29 +205,64 @@ class Query(graphene.ObjectType):
         Software,
         resolver=DefaultResolver(SoftwareModel),
     )
+    output_type = graphene.Field(
+        OutputType,
+        resolver=DefaultResolver(OutputTypeModel),
+        id=graphene.String(),
+    )
     output_types = graphene.List(
         OutputType,
         resolver=DefaultResolver(OutputTypeModel),
+    )
+    output_file = graphene.Field(
+        OutputFile,
+        resolver=DefaultResolver(OutputFileModel),
+        id=graphene.String(),
     )
     output_files = graphene.List(
         OutputFile,
         resolver=DefaultResolver(OutputFileModel),
     )
+    preview_file = graphene.Field(
+        PreviewFile,
+        resolver=DefaultResolver(PreviewFileModel),
+        id=graphene.String(),
+    )
     preview_files = graphene.List(
         PreviewFile,
         resolver=DefaultResolver(PreviewFileModel),
+    )
+    task_type = graphene.Field(
+        TaskType,
+        resolver=DefaultResolver(TaskTypeModel),
+        id=graphene.String(),
     )
     task_types = graphene.List(
         TaskType,
         resolver=DefaultResolver(TaskTypeModel),
     )
-    task_status = graphene.List(
+    task_status = graphene.Field(
         TaskStatus,
         resolver=DefaultResolver(TaskStatusModel),
+        id=graphene.String(),
+    )
+    task_statuses = graphene.List(
+        TaskStatus,
+        resolver=DefaultResolver(TaskStatusModel),
+    )
+    task = graphene.Field(
+        Task,
+        resolver=DefaultResolver(TaskModel),
+        id=graphene.String(),
     )
     tasks = graphene.List(
         Task,
         resolver=DefaultResolver(TaskModel),
+    )
+    entity_type = graphene.Field(
+        EntityType,
+        resolver=DefaultResolver(EntityTypeModel),
+        id=graphene.String(),
     )
     entity_types = graphene.List(
         EntityType,
@@ -289,4 +342,4 @@ class Query(graphene.ObjectType):
     )
 
 
-schema = graphene.Schema(query=Query)
+schema = graphene.Schema(query=Query, auto_camelcase=False)
