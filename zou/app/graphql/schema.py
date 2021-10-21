@@ -205,7 +205,7 @@ class Query(graphene.ObjectType):
     software = graphene.Field(
         Software,
         resolver=IDResolver(SoftwareModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     softwares = graphene.List(
         Software,
@@ -214,7 +214,7 @@ class Query(graphene.ObjectType):
     output_type = graphene.Field(
         OutputType,
         resolver=DefaultResolver(OutputTypeModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     output_types = graphene.List(
         OutputType,
@@ -223,7 +223,7 @@ class Query(graphene.ObjectType):
     output_file = graphene.Field(
         OutputFile,
         resolver=DefaultResolver(OutputFileModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     output_files = graphene.List(
         OutputFile,
@@ -232,7 +232,7 @@ class Query(graphene.ObjectType):
     preview_file = graphene.Field(
         PreviewFile,
         resolver=DefaultResolver(PreviewFileModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     preview_files = graphene.List(
         PreviewFile,
@@ -241,7 +241,7 @@ class Query(graphene.ObjectType):
     task_type = graphene.Field(
         TaskType,
         resolver=DefaultResolver(TaskTypeModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     task_types = graphene.List(
         TaskType,
@@ -250,7 +250,7 @@ class Query(graphene.ObjectType):
     task_status = graphene.Field(
         TaskStatus,
         resolver=DefaultResolver(TaskStatusModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     task_statuses = graphene.List(
         TaskStatus,
@@ -259,7 +259,7 @@ class Query(graphene.ObjectType):
     task = graphene.Field(
         Task,
         resolver=DefaultResolver(TaskModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     tasks = graphene.List(
         Task,
@@ -268,7 +268,7 @@ class Query(graphene.ObjectType):
     entity_type = graphene.Field(
         EntityType,
         resolver=DefaultResolver(EntityTypeModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     entity_types = graphene.List(
         EntityType,
@@ -277,7 +277,7 @@ class Query(graphene.ObjectType):
     shot = graphene.Field(
         Shot,
         resolver=IDEntityResolver("Shot", EntityModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     shots = graphene.List(
         Shot,
@@ -286,7 +286,7 @@ class Query(graphene.ObjectType):
     sequence = graphene.Field(
         Sequence,
         resolver=IDEntityResolver("Sequence", EntityModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     sequences = graphene.List(
         Sequence,
@@ -295,7 +295,7 @@ class Query(graphene.ObjectType):
     asset = graphene.Field(
         Asset,
         resolver=IDEntityResolver("Asset", EntityModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     assets = graphene.List(
         Asset,
@@ -304,7 +304,7 @@ class Query(graphene.ObjectType):
     project_status = graphene.Field(
         ProjectStatus,
         resolver=IDResolver(ProjectStatusModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     project_statuses = graphene.List(
         ProjectStatus,
@@ -313,7 +313,7 @@ class Query(graphene.ObjectType):
     project = graphene.Field(
         Project,
         resolver=IDResolver(ProjectModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     projects = graphene.List(
         Project,
@@ -322,7 +322,7 @@ class Query(graphene.ObjectType):
     attachment_file = graphene.Field(
         Comment,
         resolver=IDResolver(AttachmentFileModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     attachment_files = graphene.List(
         AttachmentFile,
@@ -331,7 +331,7 @@ class Query(graphene.ObjectType):
     comment = graphene.Field(
         Comment,
         resolver=IDResolver(CommentModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     comments = graphene.List(
         Comment,
@@ -340,7 +340,7 @@ class Query(graphene.ObjectType):
     person = graphene.Field(
         Person,
         resolver=IDResolver(PersonModel),
-        id=graphene.String(),
+        id=graphene.ID(),
     )
     persons = graphene.List(
         Person,
