@@ -90,13 +90,13 @@ class Task(SQLAlchemyObjectType):
         PreviewFile,
         resolver=DefaultResolver(PreviewFileModel, "task_id"),
     )
-    status = graphene.Field(
+    taskStatus = graphene.Field(
         TaskStatus,
         resolver=DefaultResolver(
             TaskStatusModel, "id", "task_status_id", query_all=False
         ),
     )
-    type = graphene.Field(
+    taskType = graphene.Field(
         TaskType,
         resolver=DefaultResolver(
             TaskTypeModel, "id", "task_type_id", query_all=False
