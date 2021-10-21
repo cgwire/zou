@@ -176,7 +176,7 @@ class Project(SQLAlchemyObjectType):
         resolver=EntityResolver("Sequence", EntityModel),
     )
     assets = graphene.List(
-        Sequence,
+        Asset,
         resolver=EntityResolver("Asset", EntityModel),
     )
 
