@@ -4,7 +4,7 @@ from graphene_sqlalchemy.converter import convert_sqlalchemy_type
 
 from zou.app import db
 
-@convert_sqlalchemy_type.register(UUIDType)
+
 @convert_sqlalchemy_type.register(EmailType)
 @convert_sqlalchemy_type.register(LocaleType)
 @convert_sqlalchemy_type.register(TimezoneType)
@@ -12,3 +12,7 @@ from zou.app import db
 def convert_unknown(type, column, registry=None):
     return graphene.String
 
+
+@convert_sqlalchemy_type.register(UUIDType)
+def convert_id(type, column, registry=None):
+    return graphene.ID

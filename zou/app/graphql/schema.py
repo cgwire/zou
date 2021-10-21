@@ -122,7 +122,7 @@ class Shot(SQLAlchemyObjectType):
             EntityTypeModel, "id", "entity_type_id", query_all=False
         ),
     )
-    preview_file_id = graphene.Field(
+    preview_file = graphene.Field(
         PreviewFile,
         resolver=DefaultResolver(
             PreviewFileModel, "id", "preview_file_id", query_all=False
@@ -148,7 +148,13 @@ class Asset(SQLAlchemyObjectType):
         Task,
         resolver=DefaultResolver(TaskModel, "entity_id"),
     )
-    preview_file_id = graphene.Field(
+    type = graphene.Field(
+        EntityType,
+        resolver=DefaultResolver(
+            EntityTypeModel, "id", "entity_type_id", query_all=False
+        ),
+    )
+    preview_file = graphene.Field(
         PreviewFile,
         resolver=DefaultResolver(
             PreviewFileModel, "id", "preview_file_id", query_all=False

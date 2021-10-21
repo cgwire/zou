@@ -36,7 +36,6 @@ class DefaultResolver:
         return query
 
     def __call__(self, root, info, **kwargs):
-        print(info)
         query = self.get_query(root)
         query = self.apply_filter(query, **kwargs)
 
