@@ -26,6 +26,7 @@ from zou.app.graphql.resolvers import (
     IDEntityResolver,
     EntityChildResolver,
     PreviewUrlResolver,
+    EntityTypeNameResolver,
 )
 from zou.app.graphql import converters
 
@@ -117,10 +118,8 @@ class Shot(SQLAlchemyObjectType):
         resolver=DefaultResolver(TaskModel, "entity_id"),
     )
     type = graphene.Field(
-        EntityType,
-        resolver=DefaultResolver(
-            EntityTypeModel, "id", "entity_type_id", query_all=False
-        ),
+        graphene.String,
+        resolver=EntityTypeNameResolver("id", "entity_type_id"),
     )
     preview_file = graphene.Field(
         PreviewFile,
@@ -150,9 +149,7 @@ class Asset(SQLAlchemyObjectType):
     )
     type = graphene.Field(
         EntityType,
-        resolver=DefaultResolver(
-            EntityTypeModel, "id", "entity_type_id", query_all=False
-        ),
+        resolver=EntityTypeNameResolver("id", "entity_type_id"),
     )
     preview_file = graphene.Field(
         PreviewFile,

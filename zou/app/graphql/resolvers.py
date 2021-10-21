@@ -1,5 +1,6 @@
 from zou.app import db
 from zou.app.models.entity import Entity as EntityModel
+from zou.app.models.entity_type import EntityType as EntityTypeModel
 from zou.app.services import (
     entities_service,
     assets_service,
@@ -50,7 +51,8 @@ class IDResolver(DefaultResolver):
         self,
         model_type: db.Model = None,
     ):
-        super().__init__(model_type, query_all=False)
+        super().__init__(model_type)
+        self.query_all = False
 
     def apply_filter(self, query, **kwargs):
         if kwargs.get("id") is None:
@@ -119,3 +121,24 @@ class PreviewUrlResolver(DefaultResolver):
             return f"/movies/{lod}/preview-files/{root.id}.{root.extension}"
         else:
             return f"/pictures/{lod}/preview-files/{root.id}.{root.extension}"
+
+
+class EntityTypeNameResolver(DefaultResolver):
+    def __init__(
+        self,
+        foreign_key: str = "",
+        parent_key: str = "id",
+    ):
+        super().__init__(EntityTypeModel, foreign_key, parent_key)
+        self.query_all = False
+
+    def __call__(self, root, info, **kwargs):
+        query = self.get_query(root)
+        query = self.apply_filter(query, **kwargs)
+
+        entity_type = query.first()
+
+        print(entity_type)
+        if not hasattr(entity_type, "name"):
+            return ""
+        return entity_type.name
