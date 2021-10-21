@@ -148,8 +148,8 @@ class Asset(SQLAlchemyObjectType):
         resolver=DefaultResolver(TaskModel, "entity_id"),
     )
     type = graphene.Field(
-        EntityType,
-        resolver=EntityTypeNameResolver("id", "entity_type_id"),
+        graphene.String,
+        resolver=lambda: "Asset",
     )
     preview_file = graphene.Field(
         PreviewFile,

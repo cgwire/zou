@@ -138,7 +138,6 @@ class EntityTypeNameResolver(DefaultResolver):
 
         entity_type = query.first()
 
-        print(entity_type)
         if not hasattr(entity_type, "name"):
             return ""
         return entity_type.name
