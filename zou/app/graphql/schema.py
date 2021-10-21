@@ -91,11 +91,15 @@ class Task(SQLAlchemyObjectType):
     )
     status = graphene.Field(
         TaskStatus,
-        resolver=DefaultResolver(TaskStatusModel, "id", "task_status_id"),
+        resolver=DefaultResolver(
+            TaskStatusModel, "id", "task_status_id", query_all=False
+        ),
     )
     type = graphene.Field(
         TaskType,
-        resolver=DefaultResolver(TaskStatusModel, "id", "task_type_id"),
+        resolver=DefaultResolver(
+            TaskTypeModel, "id", "task_type_id", query_all=False
+        ),
     )
 
 
@@ -211,15 +215,25 @@ class Query(graphene.ObjectType):
         EntityType,
         resolver=DefaultResolver(EntityTypeModel),
     )
+    shot = graphene.Field(
+        Shot,
+        resolver=IDEntityResolver("Shot", EntityModel),
+        id=graphene.String(),
+    )
     shots = graphene.List(
         Shot,
         resolver=EntityResolver("Shot", EntityModel),
+    )
+    sequence = graphene.Field(
+        Sequence,
+        resolver=IDEntityResolver("Sequence", EntityModel),
+        id=graphene.String(),
     )
     sequences = graphene.List(
         Sequence,
         resolver=EntityResolver("Sequence", EntityModel),
     )
-    asset = graphene.List(
+    asset = graphene.Field(
         Asset,
         resolver=IDEntityResolver("Asset", EntityModel),
         id=graphene.String(),
