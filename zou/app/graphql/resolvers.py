@@ -1,6 +1,6 @@
+from typing import Callable
 from zou.app import db
 from zou.app.models.entity import Entity as EntityModel
-from zou.app.models.entity_type import EntityType as EntityTypeModel
 from zou.app.services import (
     entities_service,
     assets_service,
@@ -123,21 +123,16 @@ class PreviewUrlResolver(DefaultResolver):
             return f"/pictures/{lod}/preview-files/{root.id}.{root.extension}"
 
 
-class EntityTypeNameResolver(DefaultResolver):
+class FieldResolver(DefaultResolver):
     def __init__(
         self,
-        foreign_key: str = "",
-        parent_key: str = "id",
+        call: Callable,
+        model_type: db.Model = None,
     ):
-        super().__init__(EntityTypeModel, foreign_key, parent_key)
+        super().__init__(model_type)
         self.query_all = False
+        self.call = call
 
     def __call__(self, root, info, **kwargs):
-        query = self.get_query(root)
-        query = self.apply_filter(query, **kwargs)
-
-        entity_type = query.first()
-
-        if not hasattr(entity_type, "name"):
-            return ""
-        return entity_type.name
+        result = super().__call__(root, info, **kwargs)
+        return self.call(result)

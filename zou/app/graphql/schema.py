@@ -26,7 +26,7 @@ from zou.app.graphql.resolvers import (
     IDEntityResolver,
     EntityChildResolver,
     PreviewUrlResolver,
-    EntityTypeNameResolver,
+    FieldResolver,
 )
 from zou.app.graphql import converters
 
@@ -102,6 +102,10 @@ class Task(SQLAlchemyObjectType):
             TaskTypeModel, "id", "task_type_id", query_all=False
         ),
     )
+    type = graphene.Field(
+        graphene.String,
+        resolver=lambda: "Task",
+    )
 
 
 class EntityType(SQLAlchemyObjectType):
@@ -119,13 +123,17 @@ class Shot(SQLAlchemyObjectType):
     )
     type = graphene.Field(
         graphene.String,
-        resolver=EntityTypeNameResolver("id", "entity_type_id"),
+        resolver=lambda: "Shot",
     )
     preview_file = graphene.Field(
         PreviewFile,
         resolver=DefaultResolver(
             PreviewFileModel, "id", "preview_file_id", query_all=False
         ),
+    )
+    sequence = graphene.Field(
+        "zou.app.graphql.schema.Sequence",
+        resolver=EntityResolver("Sequence", EntityModel, "id", "parent_id"),
     )
 
 
@@ -136,6 +144,10 @@ class Sequence(SQLAlchemyObjectType):
     shots = graphene.List(
         Shot,
         resolver=EntityChildResolver("Shot", EntityModel),
+    )
+    type = graphene.Field(
+        graphene.String,
+        resolver=lambda: "Sequence",
     )
 
 
@@ -195,6 +207,10 @@ class Person(SQLAlchemyObjectType):
     comments = graphene.List(
         Comment,
         resolver=DefaultResolver(CommentModel, "person_id"),
+    )
+    full_name = graphene.Field(
+        graphene.String,
+        resolver=FieldResolver(lambda x: x.full_name(), PersonModel),
     )
 
 
