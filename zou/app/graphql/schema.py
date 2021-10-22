@@ -104,7 +104,7 @@ class Task(SQLAlchemyObjectType):
     )
     type = graphene.Field(
         graphene.String,
-        resolver=lambda: "Task",
+        resolver=lambda root, info: "Task",
     )
 
 
@@ -123,7 +123,7 @@ class Shot(SQLAlchemyObjectType):
     )
     type = graphene.Field(
         graphene.String,
-        resolver=lambda: "Shot",
+        resolver=lambda root, info: "Shot",
     )
     preview_file = graphene.Field(
         PreviewFile,
@@ -133,7 +133,7 @@ class Shot(SQLAlchemyObjectType):
     )
     sequence = graphene.Field(
         "zou.app.graphql.schema.Sequence",
-        resolver=EntityResolver("Sequence", EntityModel, "id", "parent_id"),
+        resolver=EntityResolver("Sequence", EntityModel, "id", "parent_id", query_all=False),
     )
 
 
@@ -147,7 +147,7 @@ class Sequence(SQLAlchemyObjectType):
     )
     type = graphene.Field(
         graphene.String,
-        resolver=lambda: "Sequence",
+        resolver=lambda root, info: "Sequence",
     )
 
 
@@ -161,7 +161,7 @@ class Asset(SQLAlchemyObjectType):
     )
     type = graphene.Field(
         graphene.String,
-        resolver=lambda: "Asset",
+        resolver=lambda root, info: "Asset",
     )
     preview_file = graphene.Field(
         PreviewFile,
