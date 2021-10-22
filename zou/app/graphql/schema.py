@@ -226,7 +226,7 @@ class Query(graphene.ObjectType):
     )
     output_type = graphene.Field(
         OutputType,
-        resolver=DefaultResolver(OutputTypeModel),
+        resolver=IDResolver(OutputTypeModel),
         id=graphene.ID(),
     )
     output_types = graphene.List(
@@ -235,7 +235,7 @@ class Query(graphene.ObjectType):
     )
     output_file = graphene.Field(
         OutputFile,
-        resolver=DefaultResolver(OutputFileModel),
+        resolver=IDResolver(OutputFileModel),
         id=graphene.ID(),
     )
     output_files = graphene.List(
@@ -244,7 +244,7 @@ class Query(graphene.ObjectType):
     )
     preview_file = graphene.Field(
         PreviewFile,
-        resolver=DefaultResolver(PreviewFileModel),
+        resolver=IDResolver(PreviewFileModel),
         id=graphene.ID(),
     )
     preview_files = graphene.List(
@@ -253,7 +253,7 @@ class Query(graphene.ObjectType):
     )
     task_type = graphene.Field(
         TaskType,
-        resolver=DefaultResolver(TaskTypeModel),
+        resolver=IDResolver(TaskTypeModel),
         id=graphene.ID(),
     )
     task_types = graphene.List(
@@ -262,7 +262,7 @@ class Query(graphene.ObjectType):
     )
     task_status = graphene.Field(
         TaskStatus,
-        resolver=DefaultResolver(TaskStatusModel),
+        resolver=IDResolver(TaskStatusModel),
         id=graphene.ID(),
     )
     task_statuses = graphene.List(
@@ -271,7 +271,7 @@ class Query(graphene.ObjectType):
     )
     task = graphene.Field(
         Task,
-        resolver=DefaultResolver(TaskModel),
+        resolver=IDResolver(TaskModel),
         id=graphene.ID(),
     )
     tasks = graphene.List(
@@ -280,7 +280,7 @@ class Query(graphene.ObjectType):
     )
     entity_type = graphene.Field(
         EntityType,
-        resolver=DefaultResolver(EntityTypeModel),
+        resolver=IDResolver(EntityTypeModel),
         id=graphene.ID(),
     )
     entity_types = graphene.List(
