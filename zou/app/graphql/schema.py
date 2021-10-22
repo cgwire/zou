@@ -133,7 +133,7 @@ class Shot(SQLAlchemyObjectType):
     )
     sequence = graphene.Field(
         "zou.app.graphql.schema.Sequence",
-        resolver=EntityResolver("Sequence", EntityModel, "id", "parent_id", query_all=False),
+        resolver=DefaultResolver(EntityModel, foreign_key="id", parent_key="parent_id", query_all=False),
     )
 
 
