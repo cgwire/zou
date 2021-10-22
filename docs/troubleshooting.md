@@ -50,8 +50,8 @@ put his password back to "default" with the following command:
 
 ```bash
 cd /opt/zou
-. zou/bin/activate
-zou set-default-password email@studio.com
+. zouenv/bin/activate
+DB_PASSWORD=yourdbpassword zou set-default-password email@studio.com
 ```
 
 ## Installing on Ubuntu server or minimal desktop
