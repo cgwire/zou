@@ -119,6 +119,12 @@ sudo mkdir /opt/zou/previews
 sudo chown -R zou:www-data /opt/zou
 ```
 
+Then create a folder to store the temp files:
+
+```
+sudo mkdir /opt/zou/tmp
+sudo chown -R zou:www-data /opt/zou/tmp
+```
 
 ### Prepare database
 
@@ -229,6 +235,7 @@ Environment="DB_PASSWORD=yourdbpassword"
 Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 Environment="PREVIEW_FOLDER=/opt/zou/previews"
+Environment="TMP_DIR=/opt/zou/tmp"
 ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
 
 [Install]
@@ -444,7 +451,7 @@ log in and to create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
-DB_PASSWORD=yourdbpassword zou create_admin adminemail@yourstudio.com
+DB_PASSWORD=yourdbpassword zou create-admin adminemail@yourstudio.com
 ```
 
 It expects the password as first argument. Then your user will be created with
@@ -456,7 +463,7 @@ last name.
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-DB_PASSWORD=yourdbpassword zou init_data
+DB_PASSWORD=yourdbpassword zou init-data
 ```
 
 # Configuration 
