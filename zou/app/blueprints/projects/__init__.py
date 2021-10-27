@@ -10,6 +10,7 @@ from .resources import (
     ProductionAssetTypeRemoveResource,
     ProductionTaskTypeResource,
     ProductionTaskTypeRemoveResource,
+    ProductionTaskTypesResource,
     ProductionTaskStatusResource,
     ProductionTaskStatusRemoveResource,
     ProductionMetadataDescriptorResource,
@@ -27,6 +28,10 @@ routes = [
     ("/data/projects/open", OpenProjectsResource),
     ("/data/projects/all", AllProjectsResource),
     ("/data/projects/<project_id>/team", ProductionTeamResource),
+    (
+        "/data/projects/<project_id>/task-types",
+        ProductionTaskTypesResource,
+    ),
     (
         "/data/projects/<project_id>/team/<person_id>",
         ProductionTeamRemoveResource,

@@ -1,6 +1,5 @@
 import slugify
 
-from zou.app import db
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -278,7 +277,7 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
-    link = ProjectTaskTypeLink.create(
+    ProjectTaskTypeLink.create(
         task_type_id=task_type_id, project_id=project_id, priority=priority
     )
     return _save_project(get_project_raw(project_id))
@@ -460,3 +459,8 @@ def create_project_task_type_link(project_id, task_type_id, priority):
         task_type_link.update({"priority": priority})
 
     return task_type_link.serialize()
+
+
+def get_project_task_types(project_id):
+    project = get_project_raw(project_id)
+    return Project.serialize_list(project.task_types)

@@ -122,9 +122,20 @@ class ProductionAssetTypeRemoveResource(Resource):
         return "", 204
 
 
+class ProductionTaskTypesResource(Resource, ArgsMixin):
+    """
+    Retrieve task types linked to the production
+    """
+
+    @jwt_required
+    def get(self, project_id):
+        user_service.check_manager_project_access(project_id)
+        return projects_service.get_project_task_types(project_id)
+
+
 class ProductionTaskTypeResource(Resource, ArgsMixin):
     """
-    Allow to add an task type linked to a production.
+    Allow to add a task type linked to a production.
     """
 
     @jwt_required

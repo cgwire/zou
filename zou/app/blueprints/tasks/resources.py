@@ -363,7 +363,6 @@ class TasksAssignResource(Resource):
     @jwt_required
     def put(self, person_id):
         (task_ids) = self.get_arguments()
-        print("ok")
 
         tasks = []
         for task_id in task_ids:
@@ -372,7 +371,6 @@ class TasksAssignResource(Resource):
                     task_id,
                     person_id
                 )
-                print("hyey")
                 task = self.assign_task(task_id, person_id)
                 author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(
