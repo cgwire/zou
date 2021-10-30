@@ -56,10 +56,10 @@ class ProjectResource(BaseModelResource):
         user_service.check_project_access(project["id"])
 
     def pre_update(self, project_dict, data):
-        del data["team"]
-        del data["asset_types"]
-        del data["task_statuses"]
-        del data["task_types"]
+        data.pop("team")
+        data.pop("asset_types")
+        data.pop("task_statuses")
+        data.pop("task_types")
         return project_dict
 
     def post_update(self, project_dict):
