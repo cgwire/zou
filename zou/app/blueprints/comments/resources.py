@@ -4,6 +4,7 @@ from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
+from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions
 
 from zou.app.services import (
@@ -33,7 +34,7 @@ class DownloadAttachmentResource(Resource):
                 as_attachment=False,
                 attachment_filename=attachment_file["name"],
             )
-        except:
+        except Exception:
             abort(404)
 
 
@@ -164,6 +165,37 @@ class CommentManyTasksResource(Resource):
             except KeyError:
                 pass
         return allowed_comments
+
+
+class ReplyCommentResource(Resource, ArgsMixin):
+    """
+    Reply to given comment. Add comment to its replies list.
+    """
+
+    @jwt_required
+    def post(self, task_id, comment_id):
+        args = self.get_args(
+            [
+                ("text", "", False),
+            ]
+        )
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return comments_service.reply_comment(comment_id, args["text"])
+
+
+class DeleteReplyCommentResource(Resource):
+    """
+    Delete given comment reply.
+    """
+
+    @jwt_required
+    def delete(self, task_id, comment_id, reply_id):
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return comments_service.delete_reply(comment_id, reply_id)
 
 
 class ProjectAttachmentFiles(Resource):

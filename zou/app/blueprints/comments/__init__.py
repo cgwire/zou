@@ -8,11 +8,21 @@ from .resources import (
     CommentManyTasksResource,
     DownloadAttachmentResource,
     ProjectAttachmentFiles,
+    ReplyCommentResource,
+    DeleteReplyCommentResource
 )
 
 
 routes = [
     ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
+    (
+        "/data/tasks/<task_id>/comments/<comment_id>/reply",
+        ReplyCommentResource
+    ),
+    (
+        "/data/tasks/<task_id>/comments/<comment_id>/reply/<reply_id>",
+        DeleteReplyCommentResource
+    ),
     (
         "/data/attachment-files/<attachment_file_id>/file/<file_name>",
         DownloadAttachmentResource,
