@@ -5,6 +5,10 @@ from datetime import date, datetime, timedelta
 from dateutil import relativedelta
 
 
+def get_now():
+    return get_string_with_timezone_from_date(datetime.now(), "UTC")
+
+
 def get_date_from_now(nb_days):
     return date.today() - timedelta(days=nb_days)
 

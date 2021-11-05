@@ -72,6 +72,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     object_type = db.Column(db.String(80), nullable=False, index=True)
     text = db.Column(db.Text())
     data = db.Column(JSONB)
+    replies = db.Column(JSONB, default=[])
     checklist = db.Column(JSONB)
     pinned = db.Column(db.Boolean)
 

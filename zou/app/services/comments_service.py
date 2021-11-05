@@ -17,7 +17,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import AttachmentFileNotFoundException
 
-from zou.app.utils import cache, events, fs, fields
+from zou.app.utils import cache, date_helpers, events, fields, fs, fields
 from zou.app.stores import file_store
 from zou.app import config
 
@@ -288,3 +288,34 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
         project_id=project_id,
         persist=False,
     )
+
+
+def reply_comment(comment_id, text):
+    person = persons_service.get_current_user()
+    comment = tasks_service.get_comment_raw(comment_id)
+    if comment.replies is None:
+        comment.replies = []
+    reply = {
+        "id": str(fields.gen_uuid()),
+        "date": date_helpers.get_now(),
+        "person_id": person["id"],
+        "text": text
+    }
+    replies = comment.replies
+    replies.append(reply)
+    comment.replies = []
+    comment.save()
+    comment.update({"replies": replies})
+    return reply
+
+
+def delete_reply(comment_id, reply_id):
+    comment = tasks_service.get_comment_raw(comment_id)
+    if comment.replies is None:
+        comment.replies = []
+    comment.replies = [
+        reply for reply in comment.replies
+        if reply["id"] != reply_id
+    ]
+    comment.save()
+    return comment.serialize()
