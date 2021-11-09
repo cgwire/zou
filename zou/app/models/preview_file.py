@@ -14,6 +14,12 @@ STATUSES = [
     ("broken", "Broken"),
 ]
 
+VALIDATION_STATUSES = [
+    ("validated", "Validated"),
+    ("rejected", "Rejected"),
+    ("neutral", "Neutral"),
+]
+
 
 class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     """
@@ -31,6 +37,9 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     source = db.Column(db.String(40))
     file_size = db.Column(db.Integer(), default=0)
     status = db.Column(ChoiceType(STATUSES), default="processing")
+    validation_status = db.Column(
+        ChoiceType(VALIDATION_STATUSES), default="neutral"
+    )
     annotations = db.Column(JSONB)
 
     task_id = db.Column(
