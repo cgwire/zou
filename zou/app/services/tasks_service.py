@@ -575,6 +575,9 @@ def _build_preview_map_for_comments(comment_ids):
         status = "ready"
         if preview.status is not None:
             status = preview.status.code
+        validation_status = "neutral"
+        if preview.validation_status is not None:
+            validation_status = preview.validation_status.code
 
         preview_map[comment_id].append(
             {
@@ -583,6 +586,7 @@ def _build_preview_map_for_comments(comment_ids):
                 "revision": preview.revision,
                 "extension": preview.extension,
                 "status": status,
+                "validation_status": validation_status,
                 "original_name": preview.original_name,
                 "position": preview.position,
                 "annotations": preview.annotations,

@@ -293,6 +293,7 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
 def reply_comment(comment_id, text):
     person = persons_service.get_current_user()
     comment = tasks_service.get_comment_raw(comment_id)
+    task = tasks_service.get_task(comment.object_id)
     if comment.replies is None:
         comment.replies = []
     reply = {
@@ -301,11 +302,17 @@ def reply_comment(comment_id, text):
         "person_id": person["id"],
         "text": text
     }
-    replies = comment.replies
+    replies = list(comment.replies)
     replies.append(reply)
-    comment.replies = []
-    comment.save()
     comment.update({"replies": replies})
+    events.emit(
+        "comment:reply",
+        {
+            "task_id": task["id"],
+            "comment_id": str(comment.id)
+        },
+        project_id=task["project_id"],
+    )
     return reply
 
 
