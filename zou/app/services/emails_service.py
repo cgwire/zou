@@ -45,6 +45,17 @@ def send_notification(person_id, subject, messages):
         else:
             chats.send_to_slack(token, userid, slack_message)
 
+    if person["notifications_mattermost_enabled"]:
+        organisation = persons_service.get_organisation()
+        userid = person["notifications_mattermost_userid"]
+        webhook = organisation.get("chat_webhook_mattermost", "")
+        if config.ENABLE_JOB_QUEUE:
+            queue_store.job_queue.enqueue(
+                chats.send_to_slack, args=(webhook, userid, slack_message)
+            )
+        else:
+            chats.send_to_slack(webhook, userid, slack_message)
+
     return True
 
 
@@ -57,6 +68,7 @@ def send_comment_notification(person_id, author_id, comment, task):
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
+        or person["notifications_mattermost_enabled"]
     ):
         task_status = tasks_service.get_task_status(task["task_status_id"])
         task_status_name = task_status["short_name"].upper()
@@ -106,6 +118,7 @@ _%s_
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
+            "mattermost_message": slack_message,
         }
         send_notification(person_id, subject, messages)
 
@@ -121,6 +134,7 @@ def send_mention_notification(person_id, author_id, comment, task):
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
+        or person["notifications_mattermost_enabled"]
     ):
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
         subject = "[Kitsu] %s mentioned you on %s" % (
@@ -149,6 +163,7 @@ _%s_
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
+            "mattermost_message": slack_message,
         }
         return send_notification(person_id, subject, messages)
     else:
@@ -164,6 +179,7 @@ def send_assignation_notification(person_id, author_id, task):
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
+        or person["notifications_mattermost_enabled"]
     ):
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
         subject = "[Kitsu] You were assigned to %s" % task_name
@@ -182,6 +198,7 @@ def send_assignation_notification(person_id, author_id, task):
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
+            "mattermost_message": slack_message,
         }
         return send_notification(person_id, subject, messages)
     return True
