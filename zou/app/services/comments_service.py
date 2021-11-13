@@ -305,11 +305,13 @@ def reply_comment(comment_id, text):
     replies = list(comment.replies)
     replies.append(reply)
     comment.update({"replies": replies})
+    tasks_service.clear_comment_cache(comment_id)
     events.emit(
         "comment:reply",
         {
             "task_id": task["id"],
-            "comment_id": str(comment.id)
+            "comment_id": str(comment.id),
+            "reply_id": reply["id"]
         },
         project_id=task["project_id"],
     )
