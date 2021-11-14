@@ -580,6 +580,7 @@ def get_last_notifications(notification_id=None, after=None, before=None):
             Comment.id,
             Comment.task_status_id,
             Comment.text,
+            Comment.replies,
             Task.entity_id,
         )
     )
@@ -603,6 +604,7 @@ def get_last_notifications(notification_id=None, after=None, before=None):
         comment_id,
         task_status_id,
         comment_text,
+        comment_replies,
         task_entity_id,
     ) in notifications:
         (full_entity_name, episode_id) = names_service.get_full_entity_name(
@@ -615,6 +617,15 @@ def get_last_notifications(notification_id=None, after=None, before=None):
             if len(comment.previews) > 0:
                 preview_file_id = comment.previews[0].id
             mentions = comment.mentions or []
+
+        reply_text = ""
+        if notification.type == "reply":
+            reply = next((
+                reply for reply in comment_replies
+                if reply["id"] == str(notification.reply_id)
+            ), None)
+            if reply is not None:
+                reply_text = reply["text"]
 
         result.append(
             fields.serialize_dict(
@@ -632,6 +643,7 @@ def get_last_notifications(notification_id=None, after=None, before=None):
                     "project_id": project_id,
                     "project_name": project_name,
                     "comment_text": comment_text,
+                    "reply_text": reply_text,
                     "created_at": notification.created_at,
                     "read": notification.read,
                     "change": notification.change,

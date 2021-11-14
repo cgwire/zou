@@ -10,6 +10,7 @@ TYPES = [
     ("comment", "Comment"),
     ("mention", "Mention"),
     ("assignation", "Assignation"),
+    ("reply", "Reply"),
 ]
 
 
@@ -45,12 +46,18 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
         nullable=False,
         index=True,
     )
+    reply_id = db.Column(
+        UUIDType(binary=False),
+        nullable=True,
+        index=True
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
             "person_id",
             "author_id",
             "comment_id",
+            "reply_id",
             "type",
             name="notification_uc",
         ),

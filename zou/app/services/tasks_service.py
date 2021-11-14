@@ -195,11 +195,11 @@ def get_task_raw(task_id):
 
 
 @cache.memoize_function(120)
-def get_task(task_id):
+def get_task(task_id, relations=False):
     """
     Get task matching given id as a dictionary.
     """
-    return get_task_raw(task_id).serialize()
+    return get_task_raw(task_id).serialize(relations=relations)
 
 
 @cache.memoize_function(120)
