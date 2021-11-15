@@ -10,10 +10,10 @@ def send_to_slack(app_token, userid, message):
     )
 
 def send_to_mattermost(webhook, userid, message):
-    
     arg = webhook.split('/')
     server = '%s%s//%s' % (arg[0], arg[1], arg[2])
     hook = arg[4]
+   
     # mandatory parameters are url and your webhook API key
     mwh = Webhook(server, hook)
 

@@ -51,10 +51,10 @@ def send_notification(person_id, subject, messages):
         webhook = organisation.get("chat_webhook_mattermost", "")
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
-                chats.send_to_slack, args=(webhook, userid, slack_message)
+                chats.send_to_mattermost, args=(webhook, userid, slack_message)
             )
         else:
-            chats.send_to_slack(webhook, userid, slack_message)
+            chats.send_to_mattermost(webhook, userid, slack_message)
 
     return True
 
