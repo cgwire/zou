@@ -132,6 +132,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "active": data["active"],
             "departments": data.get("departments", []),
             "role": data["role"],
+            "desktop_login": data["desktop_login"],
         }
 
     def set_departments(self, department_ids):
