@@ -19,6 +19,7 @@ def send_notification(person_id, subject, messages):
     person = persons_service.get_person(person_id)
     email_message = messages["email_message"]
     slack_message = messages["slack_message"]
+    mattermost_message = messages["mattermost_message"]
     if person["notifications_enabled"]:
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
@@ -51,10 +52,10 @@ def send_notification(person_id, subject, messages):
         webhook = organisation.get("chat_webhook_mattermost", "")
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
-                chats.send_to_mattermost, args=(webhook, userid, slack_message)
+                chats.send_to_mattermost, args=(webhook, userid, mattermost_message)
             )
         else:
-            chats.send_to_mattermost(webhook, userid, slack_message)
+            chats.send_to_mattermost(webhook, userid, mattermost_message)
 
     return True
 
@@ -65,6 +66,7 @@ def send_comment_notification(person_id, author_id, comment, task):
     matching given person id.
     """
     person = persons_service.get_person(person_id)
+    project = projects_service.get_project(task["project_id"])
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -118,7 +120,10 @@ _%s_
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
-            "mattermost_message": slack_message,
+            "mattermost_message": {
+                "message": slack_message, 
+                "project_name": project["name"]
+            }
         }
         send_notification(person_id, subject, messages)
 
@@ -131,6 +136,7 @@ def send_mention_notification(person_id, author_id, comment, task):
     person matching given person id.
     """
     person = persons_service.get_person(person_id)
+    project = projects_service.get_project(task["project_id"])
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -163,7 +169,10 @@ _%s_
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
-            "mattermost_message": slack_message,
+            "mattermost_message": {
+                "message": slack_message, 
+                "project_name": project["name"]
+            }
         }
         return send_notification(person_id, subject, messages)
     else:
@@ -176,6 +185,7 @@ def send_assignation_notification(person_id, author_id, task):
     person matching given person id.
     """
     person = persons_service.get_person(person_id)
+    project = projects_service.get_project(task["project_id"])
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -198,7 +208,10 @@ def send_assignation_notification(person_id, author_id, task):
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
-            "mattermost_message": slack_message,
+            "mattermost_message": {
+                "message": slack_message, 
+                "project_name": project["name"]
+            }
         }
         return send_notification(person_id, subject, messages)
     return True
