@@ -207,6 +207,7 @@ def get_assets_and_tasks(criterions={}, page=1):
                 "asset_type_name": entity_type_name,
                 "asset_type_id": str(asset.entity_type_id),
                 "canceled": asset.canceled,
+                "ready_for": str(asset.ready_for),
                 "episode_id": source_id,
                 "data": fields.serialize_value(asset.data),
                 "tasks": [],

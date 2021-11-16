@@ -235,3 +235,49 @@ def get_task_descriptors(person_id, task):
         task["id"],
     )
     return (author, task_name, task_url)
+
+
+
+def send_reply_notification(person_id, author_id, comment, task, reply):
+    """
+    Send a notification emali telling that a new reply was posted to person
+    matching given person id.
+    """
+    person = persons_service.get_person(person_id)
+    if (
+        person["notifications_enabled"]
+        or person["notifications_slack_enabled"]
+    ):
+        task_status = tasks_service.get_task_status(task["task_status_id"])
+        (author, task_name, task_url) = get_task_descriptors(author_id, task)
+        subject = "[Kitsu] %s replied on %s" % (
+            author["first_name"],
+            task_name,
+        )
+        email_message = """<p><strong>%s</strong> wrote a reply on <a href="%s">%s</a>.</p>
+
+<p><em>%s</em></p>
+""" % (
+            author["full_name"],
+            task_url,
+            task_name,
+            reply["text"],
+        )
+        slack_message = """*%s* wrote a reply on <%s|%s>.
+
+_%s_
+""" % (
+            author["full_name"],
+            task_url,
+            task_name,
+            reply["text"],
+        )
+
+        messages = {
+            "email_message": email_message,
+            "slack_message": slack_message,
+        }
+        send_notification(person_id, subject, messages)
+    return True
+
+

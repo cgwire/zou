@@ -293,6 +293,7 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
 def reply_comment(comment_id, text):
     person = persons_service.get_current_user()
     comment = tasks_service.get_comment_raw(comment_id)
+    task = tasks_service.get_task(comment.object_id, relations=True)
     if comment.replies is None:
         comment.replies = []
     reply = {
@@ -301,16 +302,28 @@ def reply_comment(comment_id, text):
         "person_id": person["id"],
         "text": text
     }
-    replies = comment.replies
+    replies = list(comment.replies)
     replies.append(reply)
-    comment.replies = []
-    comment.save()
     comment.update({"replies": replies})
+    tasks_service.clear_comment_cache(comment_id)
+    events.emit(
+        "comment:reply",
+        {
+            "task_id": task["id"],
+            "comment_id": str(comment.id),
+            "reply_id": reply["id"]
+        },
+        project_id=task["project_id"],
+    )
+    notifications_service.create_notifications_for_task_and_reply(
+        task, comment.serialize(), reply
+    )
     return reply
 
 
 def delete_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
+    task = tasks_service.get_task(comment.object_id)
     if comment.replies is None:
         comment.replies = []
     comment.replies = [
@@ -318,4 +331,14 @@ def delete_reply(comment_id, reply_id):
         if reply["id"] != reply_id
     ]
     comment.save()
+    events.emit(
+        "comment:delete-reply",
+        {
+            "task_id": task["id"],
+            "comment_id": str(comment.id),
+            "reply_id": reply_id
+        },
+        project_id=task["project_id"],
+        persist=False
+    )
     return comment.serialize()

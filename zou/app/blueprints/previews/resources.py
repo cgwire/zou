@@ -68,6 +68,10 @@ ALLOWED_FILE_EXTENSION = [
     ".svg",
     ".swf",
     ".zip",
+    ".mp3",
+    ".wav",
+    ".glb",
+    ".gltf",
     ".AE",
     ".AI",
     ".BLEND",
@@ -88,6 +92,10 @@ ALLOWED_FILE_EXTENSION = [
     ".SVG",
     ".SWF",
     ".ZIP",
+    ".MP3",
+    ".WAV",
+    ".GLB",
+    ".GLTF",
 ]
 
 

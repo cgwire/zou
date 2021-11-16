@@ -18,6 +18,7 @@ def create_notification(
     comment_id=None,
     author_id=None,
     task_id=None,
+    reply_id=None,
     read=False,
     change=False,
     type="comment",
@@ -32,15 +33,16 @@ def create_notification(
         change=change,
         person_id=person_id,
         author_id=author_id,
-        comment_id=comment_id,
         task_id=task_id,
+        comment_id=comment_id,
+        reply_id=reply_id,
         type=type,
         created_at=creation_date,
     )
     return notification.serialize()
 
 
-def get_notification_recipients(task):
+def get_notification_recipients(task, replies=[]):
     """
     Get the list of notification recipients for given task: assignees and
     every people who commented the task.
@@ -58,6 +60,9 @@ def get_notification_recipients(task):
 
     for subscription in sequence_subscriptions:
         recipients.add(str(subscription.person_id))
+
+    for reply in replies:
+        recipients.add(reply["person_id"])
 
     return recipients
 
@@ -145,6 +150,45 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
     return recipient_ids
 
 
+def create_notifications_for_task_and_reply(task, comment, reply):
+    """
+    For given task, comment and reply, create a notification for every assignee
+    to the task and to every person participating to this task and comment.
+    """
+    recipient_ids = get_notification_recipients(task, comment["replies"])
+    if reply["person_id"] in recipient_ids:
+        recipient_ids.remove(reply["person_id"])
+    author_id = reply["person_id"]
+    task = tasks_service.get_task(comment["object_id"])
+    for recipient_id in recipient_ids:
+        try:
+            notification = create_notification(
+                recipient_id,
+                comment_id=comment["id"],
+                author_id=author_id,
+                task_id=task["id"],
+                reply_id=reply["id"],
+                read=False,
+                type="reply",
+            )
+            emails_service.send_reply_notification(
+                recipient_id, author_id, comment, task, reply
+            )
+            events.emit(
+                "notification:new",
+                {
+                    "notification_id": notification["id"],
+                    "person_id": recipient_id,
+                },
+                project_id=task["project_id"],
+                persist=False,
+            )
+        except PersonNotFoundException:
+            pass
+    return recipient_ids
+
+
+
 def reset_notifications_for_mentions(comment):
     """
     For given task and comment, delete all mention notifications related
@@ -152,6 +196,7 @@ def reset_notifications_for_mentions(comment):
     comment.
     """
     Notification.delete_all_by(type="mention", comment_id=comment["id"])
+    Notification.delete_all_by(type="reply", comment_id=comment["id"])
     notifications = []
     task = tasks_service.get_task(comment["object_id"])
     author_id = comment["person_id"]

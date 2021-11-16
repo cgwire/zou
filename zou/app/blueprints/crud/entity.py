@@ -109,6 +109,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             data = self.update_data(data, instance_id)
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
+            print(data)
             entity.update(data)
             entity_dict = self.serialize_instance(entity)
 
