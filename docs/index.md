@@ -60,7 +60,7 @@ The installation requires:
 
 * An up and running Postgres instance (version >= 9.2)
 * An up and running Redis server instance (version >= 2.0)
-* Python (version >= 2.7, version 3 is prefered)
+* Python (version >= 3.5)
 * A Nginx instance
 * Uwsgi
 
