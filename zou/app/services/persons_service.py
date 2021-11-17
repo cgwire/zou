@@ -165,7 +165,7 @@ def create_person(
     phone="",
     role="user",
     desktop_login="",
-    departments=None,
+    departments=[],
 ):
     """
     Create a new person entry in the database. No operation are performed on
@@ -179,6 +179,7 @@ def create_person(
     try:
         departments_objects = [
             Department.get(department_id) for department_id in departments
+            if department_id is not None
         ]
     except StatementError:
         raise DepartmentNotFoundException()
