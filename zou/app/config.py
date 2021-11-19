@@ -109,7 +109,7 @@ LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "zou.local")
 LDAP_FALLBACK = os.getenv("LDAP_FALLBACK", "False").lower() == "true"
 LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
 LDAP_IS_AD_SIMPLE = os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
-LDAP_SSL = os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
+LDAP_SSL = os.getenv("LDAP_SSL", "False").lower() == "true"
 
 
 LOGS_MODE = os.getenv("LOGS_MODE", "default")
