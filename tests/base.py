@@ -642,7 +642,7 @@ class ApiDBTestCase(ApiTestCase):
 
     def generate_fixture_shot_task(self, name="Master", task_type_id=None):
         if task_type_id is None:
-            task_type_id = self.task_type_animation.id,
+            task_type_id = self.task_type_animation.id
 
         self.shot_task = Task.create(
             name=name,
