@@ -147,13 +147,20 @@ def get_department(department_id):
     return department.serialize()
 
 
+def get_department_from_task_type(task_type_id):
+    """
+    Get department of given task type as dictionary
+    """
+    task_type = get_task_type_raw(task_type_id)
+    return get_department(task_type.department_id)
+
+
 def get_department_from_task(task_id):
     """
     Get department of given task as dictionary
     """
     task = get_task_raw(task_id)
-    task_type = get_task_type_raw(task.task_type_id)
-    return get_department(task_type.department_id)
+    return get_department_from_task_type(task.task_type_id)
 
 
 def get_task_type_raw(task_type_id):

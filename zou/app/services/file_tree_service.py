@@ -479,7 +479,7 @@ def get_folder_from_datatype(
     elif datatype == "TaskType":
         folder = get_folder_from_task_type(task, task_type, field)
     elif datatype == "Department":
-        folder = get_folder_from_department(task, field)
+        folder = get_folder_from_department(task, task_type, field)
     elif datatype == "Shot":
         folder = get_folder_from_shot(entity)
     elif datatype == "TemporalEntity":
@@ -540,10 +540,14 @@ def get_folder_from_output_type(output_type, field="name"):
     return output_type[field].lower()
 
 
-def get_folder_from_department(task, field="name"):
+def get_folder_from_department(task, task_type, field="name"):
     folder = ""
-    department = tasks_service.get_department_from_task(task["id"])
-    folder = department[field]
+    if task_type is None and task is not None:
+        department = tasks_service.get_department_from_task(task["id"])
+        folder = department[field]
+    elif task_type is not None:
+        department = tasks_service.get_department_from_task_type(task_type["id"])
+        folder = department[field]
     return folder
 
 
