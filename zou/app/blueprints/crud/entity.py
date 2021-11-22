@@ -9,6 +9,7 @@ from zou.app.models.entity import Entity, EntityVersion
 from zou.app.models.subscription import Subscription
 from zou.app.services import (
     assets_service,
+    breakdown_service,
     persons_service,
     shots_service,
     user_service,
@@ -109,7 +110,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             data = self.update_data(data, instance_id)
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
-            print(data)
+
+            is_ready_for_changed = \
+                str(entity.ready_for) != data.get("ready_for", "")
             entity.update(data)
             entity_dict = self.serialize_instance(entity)
 
@@ -117,6 +120,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
             elif assets_service.is_asset(entity):
+                if is_ready_for_changed:
+                    breakdown_service.refresh_casting_stats(entity_dict)
                 assets_service.clear_asset_cache(entity_dict["id"])
             elif shots_service.is_sequence(entity_dict):
                 shots_service.clear_sequence_cache(entity_dict["id"])

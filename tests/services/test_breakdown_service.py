@@ -1,6 +1,11 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import breakdown_service
+from zou.app.services import (
+    assets_service,
+    breakdown_service,
+    projects_service,
+    tasks_service
+)
 
 
 class BreakdownServiceTestCase(ApiDBTestCase):
@@ -16,6 +21,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.generate_fixture_scene()
         self.generate_fixture_asset()
         self.generate_fixture_asset_character()
+        self.project_id = str(self.project.id)
         self.shot_id = str(self.shot.id)
         self.scene_id = str(self.scene.id)
         self.asset_id = str(self.asset.id)
@@ -208,3 +214,79 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             self.asset.id
         )
         self.assertEqual(len(instances[self.scene_id]), 2)
+
+    def test_is_asset_ready(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.task_type_compositing = tasks_service.get_or_create_task_type(
+            self.department_animation.serialize(),
+            "compositing",
+            color="#FFFFFF",
+            short_name="compo",
+            for_shots=True,
+        )
+        self.task_type_layout_id = str(self.task_type_layout.id)
+        self.task_type_animation_id = str(self.task_type_animation.id)
+        self.task_type_compositing_id = self.task_type_compositing["id"]
+        projects_service.create_project_task_type_link(
+            self.project_id,
+            self.task_type_layout_id,
+            1
+        )
+        projects_service.create_project_task_type_link(
+            self.project_id,
+            self.task_type_animation_id,
+            2
+        )
+        projects_service.create_project_task_type_link(
+            self.project_id,
+            self.task_type_compositing_id,
+            3
+        )
+        self.task_layout = self.generate_fixture_shot_task(
+            task_type_id=self.task_type_layout_id
+        )
+        self.task_animation = self.generate_fixture_shot_task(
+            task_type_id=self.task_type_animation_id
+        )
+        self.task_compositing = self.generate_fixture_shot_task(
+            task_type_id=self.task_type_compositing_id
+        )
+        priority_map = breakdown_service._get_task_type_priority_map(
+            self.project_id
+        )
+        self.assertEquals(priority_map[self.task_type_layout_id], 1)
+        self.assertEquals(priority_map[self.task_type_animation_id], 2)
+        self.assertEquals(priority_map[self.task_type_compositing_id], 3)
+        asset = {"ready_for": str(self.task_type_animation.id)}
+        self.assertTrue(breakdown_service._is_asset_ready(
+            asset, self.task_layout, priority_map))
+        self.assertTrue(breakdown_service._is_asset_ready(
+            asset, self.task_animation, priority_map))
+        self.assertFalse(breakdown_service._is_asset_ready(
+            asset, self.task_compositing, priority_map))
+
+        self.shot_id = str(self.shot.id)
+        self.sequence_id = str(self.sequence.id)
+        self.asset_id = str(self.asset.id)
+        self.asset_character_id = str(self.asset_character.id)
+        new_casting = [
+            {"asset_id": self.asset_id, "nb_occurences": 1},
+            {"asset_id": self.asset_character_id, "nb_occurences": 3},
+        ]
+        breakdown_service.update_casting(self.shot_id, new_casting)
+        asset = assets_service.get_asset_raw(self.asset_id)
+        asset.update({"ready_for": self.task_type_animation_id})
+        char = assets_service.get_asset_raw(self.asset_character_id)
+        char.update({"ready_for": self.task_type_compositing_id})
+
+        breakdown_service.refresh_casting_stats(asset.serialize())
+        self.task_layout = tasks_service.get_task(self.task_layout.id)
+        self.task_animation = tasks_service.get_task(self.task_animation.id)
+        self.task_compositing = tasks_service.get_task(self.task_compositing.id)
+        self.assertEquals(self.task_layout["nb_assets_ready"], 2)
+        self.assertEquals(self.task_animation["nb_assets_ready"], 2)
+        self.assertEquals(self.task_compositing["nb_assets_ready"], 1)

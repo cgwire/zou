@@ -79,6 +79,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     canceled = db.Column(db.Boolean, default=False)
 
     nb_frames = db.Column(db.Integer)  # Specific to shots
+    nb_entities_out = db.Column(db.Integer, default=0)
 
     project_id = db.Column(
         UUIDType(binary=False),

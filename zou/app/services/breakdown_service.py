@@ -5,16 +5,23 @@ from sqlalchemy.orm import aliased
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
+from zou.app.models.project import Project, ProjectTaskTypeLink
 
 from zou.app.utils import fields, events
 
-from zou.app.services import assets_service, entities_service, shots_service
+from zou.app.services import (
+    assets_service,
+    entities_service,
+    shots_service,
+)
 
 """
 Breakdown can be represented in two ways:
 
-* Relation entries linking an asset and a shot. A number of number of occurences
-  can be mentioned.
+* Relation entries linking an asset and a shot. A number of number of
+  occurences can be mentioned.
 * Storing an entry for each instance of an asset casted in a shot or a scene.
 
 Warning: These two representations are not linked. Data are not synchronized.
@@ -37,6 +44,7 @@ def get_casting(shot_id):
             EntityType.name,
             Entity.preview_file_id,
             Entity.source_id,
+            Entity.ready_for,
         )
         .order_by(EntityType.name, Entity.name)
     )
@@ -47,12 +55,14 @@ def get_casting(shot_id):
         entity_type_name,
         entity_preview_file_id,
         episode_id,
+        entity_ready_for,
     ) in links:
         casting.append(
             {
                 "asset_id": fields.serialize_value(link.entity_out_id),
                 "asset_name": entity_name,
                 "asset_type_name": entity_type_name,
+                "ready_for": fields.serialize_value(entity_ready_for),
                 "episode_id": fields.serialize_value(episode_id),
                 "preview_file_id": fields.serialize_value(
                     entity_preview_file_id
@@ -147,7 +157,7 @@ def update_casting(entity_id, casting):
     two fields: `asset_id` and `nb_occurences`.
     """
     entity = entities_service.get_entity_raw(entity_id)
-    entity.update({"entities_out": []})
+    entity.update({"entities_out": [], "entities_out_length": 0})
     for cast in casting:
         if "asset_id" in cast and "nb_occurences" in cast:
             create_casting_link(
@@ -157,10 +167,16 @@ def update_casting(entity_id, casting):
                 label=cast.get("label", ""),
             )
     entity_id = str(entity.id)
+    nb_entities_out = len(casting)
+    entity.update({"nb_entities_out": nb_entities_out})
+    refresh_shot_casting_stats(entity.serialize())
     if shots_service.is_shot(entity.serialize()):
         events.emit(
             "shot:casting-update",
-            {"shot_id": entity_id},
+            {
+                "shot_id": entity_id,
+                "nb_entities_out": nb_entities_out
+            },
             project_id=str(entity.project_id),
         )
     else:
@@ -541,3 +557,70 @@ def get_entity_link(entity_in_id, entity_out_id):
         return link.serialize()
     else:
         return None
+
+
+def refresh_casting_stats(asset):
+    """
+    For each shot including given asset, for all related tasks, it computes
+    how many assets are available for this task and saves the result
+    on the task level.
+    """
+
+    cast_in = get_cast_in(asset["id"])
+    shots = [
+        entity for entity in cast_in
+        if "shot_id" in entity
+    ]
+    priority_map = _get_task_type_priority_map(asset["project_id"])
+    for shot in shots:
+        refresh_shot_casting_stats({
+                "id": shot["shot_id"],
+                "project_id": asset["project_id"]
+            },
+            priority_map
+        )
+    return asset
+
+
+def refresh_shot_casting_stats(shot, priority_map=None):
+    """
+    For all tasks related to given shot, it computes how many assets are
+    available for this task and saves the result on the task level.
+    """
+
+    if priority_map is None:
+        priority_map = _get_task_type_priority_map(shot["project_id"])
+    casting = get_entity_casting(shot["id"])
+    tasks = Task.get_all_by(entity_id=shot["id"])
+    for task in tasks:
+        nb_ready = 0
+        for asset in casting:
+            if _is_asset_ready(asset, task, priority_map):
+                nb_ready += 1
+        task.update({
+            "nb_assets_ready": nb_ready
+        })
+        events.emit("task:update-casting-stats", {
+            "task_id": str(task.id),
+            "nb_assets_ready": nb_ready
+        }, persist=False, project_id=shot["project_id"])
+
+
+def _get_task_type_priority_map(project_id):
+    priority_map = {
+        str(task_type_link.task_type_id): task_type_link.priority
+        for task_type_link in ProjectTaskTypeLink.query
+            .filter(Project.id == project_id)
+            .filter(TaskType.for_shots == True)
+            .join(TaskType)
+    }
+    return priority_map
+
+
+def _is_asset_ready(asset, task, priority_map):
+    is_ready = False
+    if "ready_for" in asset and asset["ready_for"] is not None:
+        priority_ready = priority_map.get(asset["ready_for"], -1) or -1
+        priority_task = priority_map.get(str(task.task_type_id), 0) or 0
+        is_ready = priority_task <= priority_ready
+    return is_ready

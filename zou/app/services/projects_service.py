@@ -258,7 +258,6 @@ def add_asset_type_setting(project_id, asset_type_id):
     """
     Add an asset type listed in database to the the project asset types.
     """
-    print(project_id, asset_type_id)
     return _add_to_list_attr(
         project_id, EntityType, asset_type_id, "asset_types"
     )
@@ -277,9 +276,13 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
-    ProjectTaskTypeLink.create(
-        task_type_id=task_type_id, project_id=project_id, priority=priority
+    link = ProjectTaskTypeLink.get_by(
+        task_type_id=task_type_id, project_id=project_id
     )
+    if not link:
+        ProjectTaskTypeLink.create(
+            task_type_id=task_type_id, project_id=project_id, priority=priority
+        )
     return _save_project(get_project_raw(project_id))
 
 
@@ -313,8 +316,11 @@ def remove_task_status_setting(project_id, task_status_id):
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
-    getattr(project, list_attr).append(model)
-    return _save_project(project)
+    if str(model.id) not in [str(m.id) for m in getattr(project, list_attr)]:
+        getattr(project, list_attr).append(model)
+        return _save_project(project)
+    else:
+        return project.serialize()
 
 
 def _remove_from_list_attr(project_id, model_class, model_id, list_attr):

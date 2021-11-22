@@ -97,6 +97,16 @@ class PersonServiceTestCase(ApiDBTestCase):
         person = persons_service.get_person_by_email("john.doe3@gmail.com")
         self.assertEqual(person["first_name"], "John")
 
+        person = persons_service.create_person(
+            " john.doe4@gmail.com \n",
+            auth.encrypt_password("passwordhash"),
+            "John",
+            "Doe",
+            departments=[None]
+        )
+        person = persons_service.get_person_by_email("john.doe4@gmail.com")
+        self.assertEqual(person["first_name"], "John")
+
     def test_add_destktop_login_logs(self):
         person = self.person.serialize()
         date_1 = self.now()

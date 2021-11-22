@@ -45,7 +45,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
             .join(Entity, Task.entity_id == Entity.id)
             .join(EntityType)
             .join(Project, Task.project_id == Project.id)
-            .join(TaskType)
+            .join(TaskType, Task.task_type_id == TaskType.id)
             .join(Person, TimeSpent.person_id == Person.id)
             .add_columns(Project.name)
             .add_columns(EntityType.name)
