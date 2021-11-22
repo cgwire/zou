@@ -233,6 +233,7 @@ def get_shots_and_tasks(criterions={}):
             Task.start_date,
             Task.due_date,
             Task.last_comment_date,
+            Task.nb_assets_ready,
             assignees_table.columns.person,
             Project.id,
             Project.name,
@@ -270,6 +271,7 @@ def get_shots_and_tasks(criterions={}):
         task_start_date,
         task_due_date,
         task_last_comment_date,
+        task_nb_assets_ready,
         person_id,
         project_id,
         project_name,
@@ -301,6 +303,7 @@ def get_shots_and_tasks(criterions={}):
                     "sequence_id": sequence_id,
                     "sequence_name": sequence_name,
                     "source_id": shot.source_id,
+                    "nb_entities_out": shot.nb_entities_out,
                     "tasks": [],
                     "type": "Shot",
                 }
@@ -323,6 +326,7 @@ def get_shots_and_tasks(criterions={}):
                         "start_date": task_start_date,
                         "due_date": task_due_date,
                         "last_comment_date": task_last_comment_date,
+                        "nb_assets_ready": task_nb_assets_ready,
                         "assignees": [],
                     }
                 )

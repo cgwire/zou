@@ -43,6 +43,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     due_date = db.Column(db.DateTime)
     real_start_date = db.Column(db.DateTime)
     last_comment_date = db.Column(db.DateTime)
+    nb_assets_ready = db.Column(db.Integer, default=0)
     data = db.Column(JSONB)
     shotgun_id = db.Column(db.Integer)
 
