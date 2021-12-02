@@ -158,6 +158,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
     recipient_ids = get_notification_recipients(task, comment["replies"])
     if reply["person_id"] in recipient_ids:
         recipient_ids.remove(reply["person_id"])
+    recipient_ids.add(comment["person_id"])
     author_id = reply["person_id"]
     task = tasks_service.get_task(comment["object_id"])
     for recipient_id in recipient_ids:
