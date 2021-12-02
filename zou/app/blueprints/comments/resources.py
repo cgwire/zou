@@ -195,6 +195,10 @@ class DeleteReplyCommentResource(Resource):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
+        reply = comments_service.get_reply(comment_id, reply_id)
+        current_user = persons_service.get_current_user()
+        if reply["person_id"] != current_user["id"]:
+            permissions.check_admin_permissions()
         return comments_service.delete_reply(comment_id, reply_id)
 
 

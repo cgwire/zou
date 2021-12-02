@@ -321,6 +321,15 @@ def reply_comment(comment_id, text):
     return reply
 
 
+def get_reply(comment_id, reply_id):
+    comment = tasks_service.get_comment_raw(comment_id)
+    reply = next(
+        reply for reply in comment.replies
+        if reply["id"] == reply_id
+    )
+    return reply
+
+
 def delete_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id)
