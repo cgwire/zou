@@ -5,6 +5,7 @@ from flask import current_app
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
+from zou.app.models.notification import Notification
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 
@@ -291,6 +292,10 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
 
 
 def reply_comment(comment_id, text):
+    """
+    Add a reply entry to the JSONB field of given comment model. Create
+    notifications needed for this.
+    """
     person = persons_service.get_current_user()
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id, relations=True)
@@ -321,6 +326,15 @@ def reply_comment(comment_id, text):
     return reply
 
 
+def get_reply(comment_id, reply_id):
+    comment = tasks_service.get_comment_raw(comment_id)
+    reply = next(
+        reply for reply in comment.replies
+        if reply["id"] == reply_id
+    )
+    return reply
+
+
 def delete_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id)
@@ -331,6 +345,7 @@ def delete_reply(comment_id, reply_id):
         if reply["id"] != reply_id
     ]
     comment.save()
+    Notification.delete_all_by(reply_id=reply_id)
     events.emit(
         "comment:delete-reply",
         {
