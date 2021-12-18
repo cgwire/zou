@@ -171,6 +171,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
                 reply_id=reply["id"],
                 read=False,
                 type="reply",
+                created_at=comment["created_at"]
             )
             emails_service.send_reply_notification(
                 recipient_id, author_id, comment, task, reply
