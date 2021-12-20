@@ -176,16 +176,24 @@ def new_comment(
     )
 
     comment = comment.serialize(relations=True)
-    comment["attachment_files"] = []
-    for uploaded_file in files.values():
-        attachment_file = create_attachment(comment, uploaded_file)
-        comment["attachment_files"].append(attachment_file)
-
+    add_attachments_to_comment(comment, files)
     events.emit(
         "comment:new",
         {"comment_id": comment["id"], "task_id": task_id},
         project_id=task["project_id"],
     )
+    return comment
+
+
+def add_attachments_to_comment(comment, files):
+    """
+    Create an attachment entry and for each given uploaded files and tie it
+    to given comment.
+    """
+    comment["attachment_files"] = []
+    for uploaded_file in files.values():
+        attachment_file = create_attachment(comment, uploaded_file)
+        comment["attachment_files"].append(attachment_file)
     return comment
 
 

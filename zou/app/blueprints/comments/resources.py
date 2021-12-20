@@ -118,6 +118,23 @@ class CommentTaskResource(Resource):
         )
 
 
+class AddAttachmentToCommentResource(Resource):
+    """
+    Add given files to the comment entry as attachments.
+    """
+
+    @jwt_required
+    def post(self, task_id, comment_id):
+        files = request.files
+        permissions.check_admin_permissions()
+        comment = tasks_service.get_comment(comment_id)
+        comment = comments_service.add_attachments_to_comment(
+            comment,
+            files
+        )
+        return comment["attachment_files"], 201
+
+
 class CommentManyTasksResource(Resource):
     """
     Create several comments at once. Each comment, requires a text, a task id,
