@@ -482,6 +482,19 @@ def get_comments(task_id, is_client=False, is_manager=False):
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
+
+    if is_client:
+        tmp_comments = []
+        for comment in comments:
+            person = persons_service.get_person(comment["person_id"])
+            is_author_client = person["role"] == "client"
+            if len(comment["previews"]) > 0 or is_author_client:
+                tmp_comments.append(comment)
+            if not is_author_client:
+                comment["text"] = ""
+                comment["attachment_files"] = []
+                comment["checklist"] = []
+        comments = tmp_comments
     return comments
 
 
@@ -499,9 +512,7 @@ def _prepare_query(task_id, is_client, is_manager):
             Person.has_avatar,
         )
     )
-    if is_client:
-        query = query.filter(Person.role == "client")
-    if not is_client and not is_manager:
+    if not is_manager and not is_client:
         query = query.filter(Person.role != "client")
     return query
 
