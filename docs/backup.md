@@ -9,8 +9,8 @@ about how to restore them.
 To run a backup of the Zou database, run the following command:
 
 ```bash
+. /opt/zou/zouenv/bin/activate
 cd /opt/zou/backups
-. zouenv/bin/activate
 DB_PASSWORD=yourdbpassword zou dump-database
 ```
 
