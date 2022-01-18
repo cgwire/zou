@@ -99,6 +99,8 @@ Create zou user:
 sudo useradd --home /opt/zou zou 
 mkdir /opt/zou
 chown zou: /opt/zou
+mkdir /opt/zou/backups
+chown zou: /opt/zou/backups
 ```
 
 Install Zou and its dependencies:
