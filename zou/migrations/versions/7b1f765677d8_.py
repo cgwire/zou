@@ -1,4 +1,4 @@
-"""empty message
+"""add column chat_webhook_mattermost
 
 Revision ID: 7b1f765677d8
 Revises: 3e0538ddf80f

@@ -1,4 +1,4 @@
-"""empty message
+"""add columns: notifications_mattermost_{enabled,userid}
 
 Revision ID: 3e0538ddf80f
 Revises: 3b0d1321079e
