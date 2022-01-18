@@ -121,7 +121,7 @@ _%s_
             "email_message": email_message,
             "slack_message": slack_message,
             "mattermost_message": {
-                "message": slack_message, 
+                "message": slack_message,
                 "project_name": project["name"]
             }
         }
@@ -170,7 +170,7 @@ _%s_
             "email_message": email_message,
             "slack_message": slack_message,
             "mattermost_message": {
-                "message": slack_message, 
+                "message": slack_message,
                 "project_name": project["name"]
             }
         }
@@ -209,7 +209,7 @@ def send_assignation_notification(person_id, author_id, task):
             "email_message": email_message,
             "slack_message": slack_message,
             "mattermost_message": {
-                "message": slack_message, 
+                "message": slack_message,
                 "project_name": project["name"]
             }
         }
