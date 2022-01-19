@@ -6,12 +6,11 @@ about how to restore them.
 
 ## Backup database
 
-To run a backup of the Zou database, run the following command:
+To run a backup of the Zou database, run the following command (get all variables from your environment):
 
 ```bash
-. /opt/zou/zouenv/bin/activate
 cd /opt/zou/backups
-DB_PASSWORD=yourdbpassword zou dump-database
+sudo -u zou KV_HOST=127.0.0.1 DB_HOST=server DB_DATABASE=dbname DB_USERNAME=username DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou dump-database
 ```
 
 All data will be stored in a file in the current directory.  The generated file
