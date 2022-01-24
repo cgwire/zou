@@ -1068,6 +1068,9 @@ def get_base_entity_type_name(entity_dict):
         type_name = "Sequence"
     elif is_episode(entity_dict):
         type_name = "Episode"
+    elif is_scene(entity_dict):
+        type_name = "Scene"
+
     return type_name
 
 
