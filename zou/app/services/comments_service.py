@@ -99,7 +99,7 @@ def _manage_status_change(task_status, task, comment):
                 retake_count = 0
             new_data["retake_count"] = retake_count + 1
 
-        if task_status["is_done"]:
+        if task_status["is_feedback_request"]:
             new_data["end_date"] = datetime.datetime.now()
         else:
             new_data["end_date"] = None

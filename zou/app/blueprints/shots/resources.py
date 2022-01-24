@@ -667,3 +667,16 @@ class ShotVersionsResource(Resource):
         user_service.check_project_access(shot["project_id"])
         user_service.check_entity_access(shot["id"])
         return shots_service.get_shot_versions(shot_id)
+
+
+class ProjectQuotasResource(Resource, ArgsMixin):
+    """
+    Retrieve quotas statistics for shots
+    """
+
+    @jwt_required
+    def get(self, project_id, task_type_id):
+        project = projects_service.get_project(project_id)
+        user_service.check_project_access(project_id)
+        detail_level = self.get_text_parameter("detail")
+        return shots_service.get_quotas(project_id, task_type_id, detail_level)

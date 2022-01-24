@@ -79,6 +79,12 @@ class ArgsMixin(object):
         """
         return self.get_text_parameter("episode_id")
 
+    def get_task_type_id(self):
+        """
+        Returns Task type ID parameter.
+        """
+        return self.get_text_parameter("task_type_id")
+
     def get_no_job(self):
         """
         Returns no_job parameter.

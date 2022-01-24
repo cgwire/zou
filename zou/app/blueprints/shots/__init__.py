@@ -40,6 +40,7 @@ from .resources import (
     SequenceTaskTypesResource,
     EpisodeShotTasksResource,
     SequenceShotTasksResource,
+    ProjectQuotasResource
 )
 
 routes = [
@@ -87,6 +88,7 @@ routes = [
         "/data/projects/<project_id>/episodes/retake-stats",
         ProjectEpisodeRetakeStatsResource,
     ),
+    ("/data/projects/<project_id>/quotas/<task_type_id>", ProjectQuotasResource),
 ]
 
 

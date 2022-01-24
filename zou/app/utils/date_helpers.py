@@ -3,6 +3,7 @@ import isoweek
 from babel.dates import format_datetime
 from datetime import date, datetime, timedelta
 from dateutil import relativedelta
+from zou.app.services.exception import WrongDateFormatException
 
 
 def get_now():
@@ -112,3 +113,13 @@ def get_day_interval(year, month, day):
     start = datetime(year, month, day)
     end = start + relativedelta.relativedelta(days=1)
     return start, end
+
+
+def get_timezoned_interval(start, end, timezone):
+    """
+    Get interval between two dates based on timezones.
+    """
+    return (
+        get_string_with_timezone_from_date(start, timezone),
+        get_string_with_timezone_from_date(end, timezone),
+    )

@@ -21,7 +21,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.news import News
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
@@ -718,7 +718,6 @@ def get_person_related_tasks(person_id, task_type_id):
     projects = projects_service.open_projects()
     project_ids = [project["id"] for project in projects]
 
-    AssignedTask = aliased(Entity, name="sequence")
     entities = (
         Entity.query.join(Task, Entity.id == Task.entity_id)
         .filter(Task.assignees.contains(person))
@@ -982,7 +981,12 @@ def update_task(task_id, data):
 
 
 def get_or_create_status(
-    name, short_name="", color="#f5f5f5", is_done=False, is_retake=False
+    name,
+    short_name="",
+    color="#f5f5f5",
+    is_done=False,
+    is_retake=False,
+    is_feedback_request=False
 ):
     """
     Create a new task status if it doesn't exist. If it exists, it returns the
@@ -1000,6 +1004,7 @@ def get_or_create_status(
             is_reviewable=True,
             is_done=is_done,
             is_retake=is_retake,
+            is_feedback_request=is_feedback_request,
         )
         events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
@@ -1355,6 +1360,7 @@ def reset_tasks_data(project_id):
 
 
 def reset_task_data(task_id):
+    print("change")
     clear_task_cache(task_id)
     task = Task.get(task_id)
     retake_count = 0
@@ -1367,7 +1373,9 @@ def reset_task_data(task_id):
         .filter(Comment.object_id == task_id)
         .order_by(Comment.created_at)
         .add_columns(
-            TaskStatus.is_retake, TaskStatus.is_done, TaskStatus.short_name
+            TaskStatus.is_retake,
+            TaskStatus.is_feedback_request,
+            TaskStatus.short_name
         )
         .all()
     )
@@ -1376,7 +1384,7 @@ def reset_task_data(task_id):
     for (
         comment,
         task_status_is_retake,
-        task_status_is_done,
+        task_status_is_feedback_request,
         task_status_short_name,
     ) in comments:
         if task_status_is_retake and not previous_is_retake:
@@ -1386,7 +1394,9 @@ def reset_task_data(task_id):
         if task_status_short_name.lower() == "wip" and real_start_date is None:
             real_start_date = comment.created_at
 
-        if task_status_is_done:
+        print("let's go ")
+        if task_status_is_feedback_request:
+            print("let's go fedback")
             end_date = comment.created_at
         else:
             end_date = None

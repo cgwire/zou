@@ -10,6 +10,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     time_spents_service,
+    shots_service,
     user_service,
 )
 from zou.app.utils import auth, permissions, csv_utils
@@ -219,6 +220,74 @@ class PersonDayTimeSpentsResource(Resource, ArgsMixin):
             )
         except WrongDateFormatException:
             abort(404)
+
+
+class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
+    """
+    Get ended shots used for quota calculation of this month.
+    """
+
+    @jwt_required
+    def get(self, person_id, year, month):
+        project_id = self.get_project_id()
+        task_type_id = self.get_task_type_id()
+        user_service.check_person_access(person_id)
+        try:
+            return shots_service.get_month_quota_shots(
+                person_id,
+                year,
+                month,
+                project_id=project_id,
+                task_type_id=task_type_id
+            )
+        except WrongDateFormatException:
+            abort(404)
+
+
+class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
+    """
+    Get ended shots used for quota calculation of this week.
+    """
+
+    @jwt_required
+    def get(self, person_id, year, week):
+        project_id = self.get_project_id()
+        task_type_id = self.get_task_type_id()
+        user_service.check_person_access(person_id)
+        try:
+            return shots_service.get_week_quota_shots(
+                person_id,
+                year,
+                week,
+                project_id=project_id,
+                task_type_id=task_type_id
+            )
+        except WrongDateFormatException:
+            abort(404)
+
+
+class PersonDayQuotaShotsResource(Resource, ArgsMixin):
+    """
+    Get ended shots used for quota calculation of this day.
+    """
+
+    @jwt_required
+    def get(self, person_id, year, month, day):
+        project_id = self.get_project_id()
+        task_type_id = self.get_task_type_id()
+        user_service.check_person_access(person_id)
+        try:
+            return shots_service.get_day_quota_shots(
+                person_id,
+                year,
+                month,
+                day,
+                project_id=project_id,
+                task_type_id=task_type_id
+            )
+        except WrongDateFormatException:
+            abort(404)
+
 
 
 class TimeSpentMonthResource(Resource, ArgsMixin):

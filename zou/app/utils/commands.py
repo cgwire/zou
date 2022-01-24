@@ -137,7 +137,10 @@ def init_data():
     tasks_service.get_or_create_status("Todo", "todo", "#f5f5f5")
     tasks_service.get_or_create_status("Work In Progress", "wip", "#3273dc")
     tasks_service.get_or_create_status(
-        "Waiting For Approval", "wfa", "#ab26ff"
+        "Waiting For Approval",
+        "wfa",
+        "#ab26ff",
+        is_feedback_request=True
     )
     tasks_service.get_or_create_status(
         "Retake", "retake", "#ff3860", is_retake=True

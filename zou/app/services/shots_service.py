@@ -1,21 +1,30 @@
-import re
-
+from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
 
-from zou.app.utils import cache, events, fields, query as query_utils
+from zou.app.utils import (
+    cache,
+    date_helpers,
+    events,
+    fields,
+    query as query_utils
+)
 
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
+from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task import assignees_table
+from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import (
     deletion_service,
     entities_service,
+    persons_service,
     projects_service,
+    names_service,
     user_service,
 )
 from zou.app.services.exception import (
@@ -1015,3 +1024,266 @@ def get_base_entity_type_name(entity_dict):
     elif is_episode(entity_dict):
         type_name = "Episode"
     return type_name
+
+
+def get_quotas(project_id, task_type_id, detail_level):
+    """
+    Build quota statistics. It counts the number of frames done for each day.
+    A shot is considered done at the first feedback request. If time spent is
+    filled for it, it weights the result with the frame number with the time
+    spents. If there is no time spent, it considers that all the work was done
+    at the end date.
+    It computes the shot count and the number of seconds too.
+    """
+    fps = projects_service.get_project_fps(project_id)
+    timezone = user_service.get_timezone()
+    shot_type = get_shot_type()
+    quotas = {}
+    query = (
+        Task
+        .query
+        .filter(Task.project_id == project_id)
+        .filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Task.end_date != None)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+        .join(TimeSpent, Task.id == TimeSpent.task_id)
+        .add_columns(
+            Entity.nb_frames,
+            TimeSpent.date,
+            TimeSpent.duration,
+            TimeSpent.person_id
+        )
+    )
+    result = query.all()
+    for (task, nb_frames, date, duration, person_id) in result:
+        person_id = str(person_id)
+        if nb_frames is not None:
+            nb_frames = round(nb_frames * (duration / task.duration))
+        else:
+            nb_frames = 0
+        _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps)
+
+    query = (
+        Task
+        .query
+        .filter(Task.project_id == project_id)
+        .filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Task.end_date != None)
+        .filter(TimeSpent.id == None)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+        .outerjoin(TimeSpent, Task.id == TimeSpent.task_id)
+        .join(Task.assignees)
+        .add_columns(
+            Entity.nb_frames,
+            Person.id
+        )
+    )
+    result = query.all()
+
+    print(result)
+    for (task, nb_frames, person_id) in result:
+        nb_frames = nb_frames or 0
+        _add_quota_entry(
+            quotas, str(person_id), task.end_date, timezone, nb_frames, fps
+        )
+    return quotas
+
+
+def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps):
+    nb_seconds = nb_frames / fps
+    date_str = date_helpers.get_simple_string_with_timezone_from_date(
+        date,
+        timezone
+    )
+    year = date_str[:4]
+    week = year + "-" + str(date.isocalendar()[1])
+    month = date_str[:7]
+    if person_id not in quotas:
+        _init_quota_person(quotas, person_id)
+    _init_quota_date(quotas, person_id, date_str, week, month)
+    quotas[person_id]["day"]["frames"][date_str] += nb_frames
+    quotas[person_id]["day"]["seconds"][date_str] += nb_seconds
+    quotas[person_id]["day"]["count"][date_str] += 1
+    quotas[person_id]["week"]["frames"][week] += nb_frames
+    quotas[person_id]["week"]["seconds"][week] += nb_seconds
+    quotas[person_id]["week"]["count"][week] += 1
+    quotas[person_id]["month"]["frames"][month] += nb_frames
+    quotas[person_id]["month"]["seconds"][month] += nb_seconds
+    quotas[person_id]["month"]["count"][month] += 1
+    quotas[person_id]["year"]["frames"][year] += nb_frames
+    quotas[person_id]["year"]["seconds"][year] += nb_seconds
+    quotas[person_id]["year"]["count"][year] += 1
+
+
+def _init_quota_date(quotas, person_id, date_str, week, month):
+    year = week[:4]
+    if date_str not in quotas[person_id]["day"]["frames"]:
+        quotas[person_id]["day"]["frames"][date_str] = 0
+        quotas[person_id]["day"]["seconds"][date_str] = 0
+        quotas[person_id]["day"]["count"][date_str] = 0
+        if month not in quotas[person_id]["day"]["entries"]:
+            quotas[person_id]["day"]["entries"][month] = 0
+        quotas[person_id]["day"]["entries"][month] += 1
+    if week not in quotas[person_id]["week"]["frames"]:
+        quotas[person_id]["week"]["frames"][week] = 0
+        quotas[person_id]["week"]["seconds"][week] = 0
+        quotas[person_id]["week"]["count"][week] = 0
+        if year not in quotas[person_id]["week"]["entries"]:
+            quotas[person_id]["week"]["entries"][year] = 0
+        quotas[person_id]["week"]["entries"][year] += 1
+    if month not in quotas[person_id]["month"]["frames"]:
+        quotas[person_id]["month"]["frames"][month] = 0
+        quotas[person_id]["month"]["seconds"][month] = 0
+        quotas[person_id]["month"]["count"][month] = 0
+        if year not in quotas[person_id]["month"]["entries"]:
+            quotas[person_id]["month"]["entries"][year] = 0
+        quotas[person_id]["month"]["entries"][year] += 1
+    if year not in quotas[person_id]["year"]["frames"]:
+        quotas[person_id]["year"]["frames"][year] = 0
+        quotas[person_id]["year"]["seconds"][year] = 0
+        quotas[person_id]["year"]["count"][year] = 0
+
+
+def _init_quota_person(quotas, person_id):
+    quotas[person_id] = {}
+    quotas[person_id] = {
+        "day": {
+            "frames": {},
+            "seconds": {},
+            "count": {},
+            "entries": {}
+        },
+        "week": {
+            "frames": {},
+            "seconds": {},
+            "count": {},
+            "entries": {}
+        },
+        "month": {
+            "frames": {},
+            "seconds": {},
+            "count": {},
+            "entries": {}
+        },
+        "year": {
+            "frames": {},
+            "seconds": {},
+            "count": {}
+        }
+    }
+
+
+def get_month_quota_shots(
+    person_id, year, month, project_id=None, task_type_id=None
+):
+    """
+    Return shots that are included in quota comptutation for given
+    person and month.
+    """
+    start, end = date_helpers.get_month_interval(year, month)
+    start, end = _get_timezoned_interval(start, end)
+    return get_quota_shots_between(
+        person_id,
+        start,
+        end,
+        project_id=project_id,
+        task_type_id=task_type_id,
+    )
+
+
+def get_week_quota_shots(
+    person_id, year, week, project_id=None, task_type_id=None
+):
+    """
+    Return shots that are included in quota comptutation for given
+    person and week.
+    """
+    start, end = date_helpers.get_week_interval(year, week)
+    start, end = _get_timezoned_interval(start, end)
+    return get_quota_shots_between(
+        person_id,
+        start,
+        end,
+        project_id=project_id,
+        task_type_id=task_type_id,
+    )
+
+
+def get_day_quota_shots(
+    person_id, year, month, day, project_id=None, task_type_id=None
+):
+    """
+    Return shots that are included in quota comptutation for given
+    person and day.
+    """
+    start, end = date_helpers.get_day_interval(year, month, day)
+    start, end = _get_timezoned_interval(start, end)
+    return get_quota_shots_between(
+        person_id,
+        start,
+        end,
+        project_id=project_id,
+        task_type_id=task_type_id,
+    )
+
+
+def get_quota_shots_between(
+    person_id, start, end, project_id=None, task_type_id=None
+):
+    """
+    Get all shots leading to a quota computation during the given period.
+    """
+    shot_type = get_shot_type()
+    person = persons_service.get_person_raw(person_id)
+    query = (
+        Entity
+        .query
+        .filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.project_id == project_id)
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Task.end_date != None)
+        .filter(TimeSpent.person_id == person_id)
+        .filter(TimeSpent.date >= start)
+        .filter(TimeSpent.date < end)
+        .join(Task, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+        .join(TimeSpent, Task.id == TimeSpent.task_id)
+    )
+    query_shots = query.all()
+    query = (
+        Entity
+        .query
+        .filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.project_id == project_id)
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Task.end_date >= start)
+        .filter(Task.end_date < end)
+        .filter(Task.assignees.contains(person))
+        .join(Task, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+    )
+    query_shots += query.all()
+
+    shots = []
+    already_listed = {}
+    for entity in query_shots:
+        shot = entity.serialize()
+        if shot["id"] not in already_listed:
+            full_name, _ = names_service.get_full_entity_name(shot["id"])
+            shot["full_name"] = full_name
+            shots.append(shot)
+            already_listed[shot["id"]] = True
+
+    return sorted(shots, key=itemgetter("full_name"))
+
+
+def _get_timezoned_interval(start, end):
+    """
+    Get time intervals adapted to the user timezone.
+    """
+    timezone = user_service.get_timezone()
+    return date_helpers.get_timezoned_interval(start, end, timezone)
