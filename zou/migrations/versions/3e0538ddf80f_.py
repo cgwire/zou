@@ -1,7 +1,7 @@
 """add columns: notifications_mattermost_{enabled,userid}
 
 Revision ID: 3e0538ddf80f
-Revises: 3b0d1321079e
+Revises: a66508788c53
 Create Date: 2021-11-12 15:31:19.621953
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy_utils
 
 # revision identifiers, used by Alembic.
 revision = '3e0538ddf80f'
-down_revision = '3b0d1321079e'
+down_revision = 'a66508788c53'
 branch_labels = None
 depends_on = None
 
