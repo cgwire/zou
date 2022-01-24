@@ -26,6 +26,7 @@ from .resources import (
     SetTreeResource,
     FileResource,
     WorkingFileFileResource,
+    GuessFromPathResource,
 )
 
 routes = [
@@ -95,6 +96,7 @@ routes = [
         "/data/entities/<entity_id>/output-file-path",
         EntityOutputFilePathResource,
     ),
+    ("/data/entities/guess_from_path", GuessFromPathResource),
     (
         "/data/working-files/<working_file_id>/file",
         WorkingFileFileResource,

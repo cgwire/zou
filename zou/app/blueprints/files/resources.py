@@ -1890,3 +1890,32 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
         return files_service.get_working_files_for_entity(
             entity_id, task_id=task_id, name=name, relations=relations
         )
+
+
+class GuessFromPathResource(Resource):
+    """
+    Get list of possible project file tree templates matching a file path
+    and data ids corresponding to template tokens.
+    """
+
+    @jwt_required
+    def post(self):
+        data = self.get_arguments()
+
+        return file_tree_service.guess_from_path(
+            project_id=data["project_id"],
+            file_path=data["file_path"],
+            sep=data["sep"],
+        )
+
+    def get_arguments(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument(
+            "project_id", help="The project id is required.", required=True
+        )
+        parser.add_argument(
+            "file_path", help="The file path is required.", required=True
+        )
+        parser.add_argument("sep", default="/")
+        args = parser.parse_args()
+        return args
