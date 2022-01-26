@@ -40,7 +40,7 @@ class EditTasksTestCase(BaseEditTestCase):
     def test_get_task_types_for_edit(self):
         task_types = self.get("data/edits/%s/task-types" % self.edit_id)
         self.assertEqual(len(task_types), 1)
-        self.assertDictEqual(task_types[0], self.task_type_dict)
+        self.assertDictEqual(task_types[0], self.task_type_edit_dict)
 
     def test_get_task_types_for_edit_not_found(self):
         self.get("data/edits/no-edit/task-types", 404)

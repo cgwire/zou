@@ -21,6 +21,8 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(edit["name"], "Edit")
         self.assertEqual(edit["project_name"], self.project_name)
         self.assertEqual(edit["parent_id"], self.episode_id)
+        self.assertEqual(edit["episode_id"], self.episode_id)
+        self.assertEqual(edit["episode_name"], self.episode_name)
         self.assertEqual(len(edit["tasks"]), 2)
 
     def test_get_edit_by_name(self):
@@ -29,12 +31,14 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(edits[0]["id"], str(self.edit.id))
         self.assertEqual(edits[0]["type"], "Edit")
         self.assertEqual(edits[0]["name"], "Edit")
+        self.assertEqual(edits[0]["parent_id"], self.episode_id)
 
     def test_get_project_edits(self):
         edits = self.get("data/projects/%s/edits" % self.project.id)
         self.assertEqual(len(edits), 1)
         self.assertEqual(edits[0]["type"], "Edit")
         self.assertEqual(edits[0]["name"], "Edit")
+        self.assertEqual(edits[0]["parent_id"], self.episode_id)
 
     def test_create_edit(self):
         events.register("edit:new", "handle_event", self)

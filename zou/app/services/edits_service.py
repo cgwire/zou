@@ -1,3 +1,4 @@
+from sqlalchemy.orm import aliased
 from sqlalchemy.exc import StatementError
 
 from zou.app.utils import cache, events, fields, query as query_utils
@@ -70,11 +71,16 @@ def get_edits_and_tasks(criterions={}):
     edit_map = {}
     task_map = {}
 
+    Episode = aliased(Entity, name="episode")
+
     query = (
         Entity.query.join(Project)
+        .outerjoin(Episode, Episode.id == Entity.parent_id)
         .outerjoin(Task, Task.entity_id == Entity.id)
         .outerjoin(assignees_table)
         .add_columns(
+            Episode.id,
+            Episode.name,
             Task.id,
             Task.task_type_id,
             Task.task_status_id,
@@ -109,6 +115,8 @@ def get_edits_and_tasks(criterions={}):
 
     for (
         edit,
+        episode_id,
+        episode_name,
         task_id,
         task_type_id,
         task_status_id,
@@ -138,6 +146,8 @@ def get_edits_and_tasks(criterions={}):
                     "data": edit.data,
                     "description": edit.description,
                     "entity_type_id": edit.entity_type_id,
+                    "episode_id": episode_id,
+                    "episode_name": episode_name or "",
                     "id": edit.id,
                     "name": edit.name,
                     "parent_id": edit.parent_id,

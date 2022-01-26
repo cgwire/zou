@@ -15,6 +15,7 @@ class BaseEditTestCase(ApiDBTestCase):
 
         episode = self.generate_fixture_episode()
         self.episode_id = str(episode.id)
+        self.episode_name = episode.name
 
         self.generate_fixture_edit(parent_id=episode.id)
         self.edit_id = self.edit.id
@@ -27,11 +28,19 @@ class BaseEditTestCase(ApiDBTestCase):
         self.generate_fixture_task_status()
         self.generate_fixture_department()
         self.generate_fixture_task_type()
-        self.task_type_dict = self.task_type.serialize()
+        self.task_type_edit_dict = self.task_type_edit.serialize()
 
         self.generate_fixture_task()
-        self.generate_fixture_task(name="Edit", entity_id=self.edit_id)
-        self.generate_fixture_task(name="DCP", entity_id=self.edit_id)
+        self.generate_fixture_task(
+            name="Edit",
+            entity_id=self.edit_id,
+            task_type_id=self.task_type_edit.id,
+        )
+        self.generate_fixture_task(
+            name="DCP",
+            entity_id=self.edit_id,
+            task_type_id=self.task_type_edit.id,
+        )
 
         self.maxDiff = None
 
