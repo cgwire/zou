@@ -221,7 +221,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             if field in data:
                 del data[field]
 
-        if model_type in ["Shot", "Sequence", "Episode"]:
+        if model_type in ["Shot", "Sequence", "Episode", "Edit"]:
             entity_type = EntityType.get_by(name=model_type)
             data["entity_type_id"] = entity_type.id
 

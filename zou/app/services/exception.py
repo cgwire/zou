@@ -175,3 +175,7 @@ class WrongParameterException(Exception):
 
 class ModelWithRelationsDeletionException(Exception):
     pass
+
+
+class EditNotFoundException(NotFound):
+    pass

@@ -12,6 +12,7 @@ from zou.app.services import (
     assets_service,
     backup_service,
     deletion_service,
+    edits_service,
     persons_service,
     projects_service,
     shots_service,
@@ -68,6 +69,9 @@ def init_data():
     shots_service.get_sequence_type()
     shots_service.get_shot_type()
     print("Shot types initialized.")
+
+    edits_service.get_edit_type()
+    print("Edit type initialized.")
 
     modeling = tasks_service.get_or_create_department("Modeling")
     animation = tasks_service.get_or_create_department("Animation")
@@ -131,6 +135,14 @@ def init_data():
         priority=7,
         for_shots=True,
         for_entity="Shot",
+    )
+    tasks_service.get_or_create_task_type(
+        compositing,
+        "Edit",
+        "#9b298c",
+        priority=8,
+        for_shots=False,
+        for_entity="Edit",
     )
     print("Task types initialized.")
 

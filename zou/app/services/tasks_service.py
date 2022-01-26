@@ -47,6 +47,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     entities_service,
+    edits_service,
 )
 
 
@@ -267,6 +268,14 @@ def get_tasks_for_episode(episode_id, relations=False):
     return get_task_dicts_for_entity(episode.id, relations=relations)
 
 
+def get_tasks_for_edit(edit_id, relations=False):
+    """
+    Get all tasks for given edit.
+    """
+    edit = edits_service.get_edit(edit_id)
+    return get_task_dicts_for_entity(edit["id"], relations=relations)
+
+
 def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
     Get all shot tasks for given sequence.
@@ -413,6 +422,13 @@ def get_task_types_for_project(project_id):
         .all()
     )
     return fields.serialize_models(task_types)
+
+
+def get_task_types_for_edit(edit_id):
+    """
+    Return all task types for which there is a task related to given edit.
+    """
+    return get_task_types_for_entity(edit_id)
 
 
 def get_task_type_map():
@@ -1053,6 +1069,7 @@ def get_or_create_task_type(
             color=color,
             priority=priority,
             for_shots=for_shots,
+            for_entity=for_entity,
             shotgun_id=shotgun_id,
         )
         events.emit("task-type:new", {"task_type_id": task_type.id})
@@ -1340,10 +1357,14 @@ def get_full_task(task_id):
         pass
 
     if entity["parent_id"] is not None:
-        sequence = shots_service.get_sequence(entity["parent_id"])
-        task["sequence"] = sequence
-        if sequence["parent_id"] is not None:
-            episode = shots_service.get_episode(sequence["parent_id"])
+        if entity_type["name"] == "Edit":
+            episode_id = entity["parent_id"]
+        else:
+            sequence = shots_service.get_sequence(entity["parent_id"])
+            task["sequence"] = sequence
+            episode_id = sequence["parent_id"]
+        if episode_id is not None:
+            episode = shots_service.get_episode(episode_id)
             task["episode"] = episode
 
     return task

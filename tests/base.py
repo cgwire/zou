@@ -512,6 +512,7 @@ class ApiDBTestCase(ApiTestCase):
         self.sequence_type = EntityType.create(name="Sequence")
         self.episode_type = EntityType.create(name="Episode")
         self.scene_type = EntityType.create(name="Scene")
+        self.edit_type = EntityType.create(name="Edit")
 
     def generate_fixture_asset_types(self):
         self.asset_type_character = EntityType.create(name="Character")
@@ -545,6 +546,13 @@ class ApiDBTestCase(ApiTestCase):
             color="#FFFFFF",
             for_shots=True,
             department_id=self.department_animation.id,
+        )
+        self.task_type_edit = TaskType.create(
+            name="Edit",
+            short_name="edit",
+            color="#FFFFFF",
+            for_shots=False,
+            for_entity="Edit",
         )
 
     def generate_fixture_task_status(self):
@@ -656,6 +664,23 @@ class ApiDBTestCase(ApiTestCase):
         self.project.team.append(self.person)
         self.project.save()
         return self.shot_task
+
+    def generate_fixture_edit_task(self, name="Edit", task_type_id=None):
+        if task_type_id is None:
+            task_type_id = self.task_type_edit.id
+
+        self.edit_task = Task.create(
+            name=name,
+            project_id=self.project.id,
+            task_type_id=task_type_id,
+            task_status_id=self.task_status.id,
+            entity_id=self.edit.id,
+            assignees=[self.person],
+            assigner_id=self.assigner.id,
+        )
+        self.project.team.append(self.person)
+        self.project.save()
+        return self.edit_task
 
     def generate_fixture_episode_task(self, name="Master"):
         self.episode_task = Task.create(
@@ -928,6 +953,16 @@ class ApiDBTestCase(ApiTestCase):
             person_id = self.person.id
         self.day_off = DayOff.create(date=date, person_id=person_id)
         return self.day_off.serialize()
+
+    def generate_fixture_edit(self, name="Edit", parent_id=None):
+        self.edit = Entity.create(
+            name=name,
+            description="Description of the Edit",
+            project_id=self.project.id,
+            entity_type_id=self.edit_type.id,
+            parent_id=parent_id,
+        )
+        return self.edit
 
     def generate_base_context(self):
         self.generate_fixture_project_status()

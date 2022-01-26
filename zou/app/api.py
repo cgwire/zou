@@ -23,6 +23,7 @@ from .blueprints.source import blueprint as import_blueprint
 from .blueprints.shots import blueprint as shots_blueprint
 from .blueprints.tasks import blueprint as tasks_blueprint
 from .blueprints.user import blueprint as user_blueprint
+from .blueprints.edits import blueprint as edits_blueprint
 
 
 def configure(app):
@@ -60,6 +61,7 @@ def configure_api_routes(app):
     app.register_blueprint(tasks_blueprint)
     app.register_blueprint(previews_blueprint)
     app.register_blueprint(user_blueprint)
+    app.register_blueprint(edits_blueprint)
     return app
 
 

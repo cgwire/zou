@@ -13,6 +13,7 @@ from zou.app.services.exception import (
 from zou.app.services import (
     assets_service,
     deletion_service,
+    edits_service,
     entities_service,
     files_service,
     file_tree_service,
@@ -255,6 +256,32 @@ class CreateAssetTasksResource(Resource):
         return tasks, 201
 
 
+class CreateEditTasksResource(Resource):
+    """
+    Create a new task for given edit and task type.
+    """
+
+    @jwt_required
+    def post(self, project_id, task_type_id):
+        user_service.check_manager_project_access(project_id)
+        task_type = tasks_service.get_task_type(task_type_id)
+
+        edit_ids = request.json
+        edits = []
+        if type(edit_ids) == list and len(edit_ids) > 0:
+            for edit_id in edit_ids:
+                edit = edits_service.get_edit(edit_id)
+                if edit["project_id"] == project_id:
+                    edits.append(edit)
+        else:
+            criterions = query.get_query_criterions_from_request(request)
+            criterions["project_id"] = project_id
+            edits = edits_service.get_edits(criterions)
+
+        tasks = tasks_service.create_tasks(task_type, edits)
+        return tasks, 201
+
+
 class ToReviewResource(Resource):
     """
     Change a task status to "to review". It creates a new preview file entry
@@ -368,8 +395,7 @@ class TasksAssignResource(Resource):
         for task_id in task_ids:
             try:
                 user_service.check_project_departement_access(
-                    task_id,
-                    person_id
+                    task_id, person_id
                 )
                 task = self.assign_task(task_id, person_id)
                 author = persons_service.get_current_user()
