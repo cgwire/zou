@@ -87,9 +87,7 @@ def set_preview_file_as_ready(preview_file_id):
 
 
 def prepare_and_store_movie(
-    preview_file_id,
-    uploaded_movie_path,
-    normalize=True
+    preview_file_id, uploaded_movie_path, normalize=True
 ):
     """
     Prepare movie preview, normalize the movie as a .mp4, build the thumbnails
@@ -148,7 +146,10 @@ def prepare_and_store_movie(
                         normalized_movie_low_path,
                         err,
                     ) = movie.normalize_movie(
-                        uploaded_movie_path, fps=fps, width=width, height=height
+                        uploaded_movie_path,
+                        fps=fps,
+                        width=width,
+                        height=height,
                     )
                     file_store.add_movie(
                         "previews", preview_file_id, normalized_movie_path

@@ -128,10 +128,7 @@ class AddAttachmentToCommentResource(Resource):
         files = request.files
         permissions.check_admin_permissions()
         comment = tasks_service.get_comment(comment_id)
-        comment = comments_service.add_attachments_to_comment(
-            comment,
-            files
-        )
+        comment = comments_service.add_attachments_to_comment(comment, files)
         return comment["attachment_files"], 201
 
 

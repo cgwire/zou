@@ -173,10 +173,7 @@ def update_casting(entity_id, casting):
     if shots_service.is_shot(entity.serialize()):
         events.emit(
             "shot:casting-update",
-            {
-                "shot_id": entity_id,
-                "nb_entities_out": nb_entities_out
-            },
+            {"shot_id": entity_id, "nb_entities_out": nb_entities_out},
             project_id=str(entity.project_id),
         )
     else:
@@ -537,7 +534,6 @@ def get_entity_casting(entity_id):
     return Entity.serialize_list(entity.entities_out, obj_type="Asset")
 
 
-
 def get_entity_link_raw(entity_in_id, entity_out_id):
     """
     Get link matching given entities.
@@ -567,17 +563,12 @@ def refresh_casting_stats(asset):
     """
 
     cast_in = get_cast_in(asset["id"])
-    shots = [
-        entity for entity in cast_in
-        if "shot_id" in entity
-    ]
+    shots = [entity for entity in cast_in if "shot_id" in entity]
     priority_map = _get_task_type_priority_map(asset["project_id"])
     for shot in shots:
-        refresh_shot_casting_stats({
-                "id": shot["shot_id"],
-                "project_id": asset["project_id"]
-            },
-            priority_map
+        refresh_shot_casting_stats(
+            {"id": shot["shot_id"], "project_id": asset["project_id"]},
+            priority_map,
         )
     return asset
 
@@ -597,22 +588,23 @@ def refresh_shot_casting_stats(shot, priority_map=None):
         for asset in casting:
             if _is_asset_ready(asset, task, priority_map):
                 nb_ready += 1
-        task.update({
-            "nb_assets_ready": nb_ready
-        })
-        events.emit("task:update-casting-stats", {
-            "task_id": str(task.id),
-            "nb_assets_ready": nb_ready
-        }, persist=False, project_id=shot["project_id"])
+        task.update({"nb_assets_ready": nb_ready})
+        events.emit(
+            "task:update-casting-stats",
+            {"task_id": str(task.id), "nb_assets_ready": nb_ready},
+            persist=False,
+            project_id=shot["project_id"],
+        )
 
 
 def _get_task_type_priority_map(project_id):
     priority_map = {
         str(task_type_link.task_type_id): task_type_link.priority
-        for task_type_link in ProjectTaskTypeLink.query
-            .filter(Project.id == project_id)
-            .filter(TaskType.for_shots == True)
-            .join(TaskType)
+        for task_type_link in ProjectTaskTypeLink.query.filter(
+            Project.id == project_id
+        )
+        .filter(TaskType.for_shots == True)
+        .join(TaskType)
     }
     return priority_map
 

@@ -102,7 +102,7 @@ class PersonServiceTestCase(ApiDBTestCase):
             auth.encrypt_password("passwordhash"),
             "John",
             "Doe",
-            departments=[None]
+            departments=[None],
         )
         person = persons_service.get_person_by_email("john.doe4@gmail.com")
         self.assertEqual(person["first_name"], "John")

@@ -73,7 +73,4 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
                     target_id, asset_id, occurences, label
                 )
             else:
-                link.update({
-                    "nb_occurences": occurences,
-                    "label": label
-                })
+                link.update({"nb_occurences": occurences, "label": label})

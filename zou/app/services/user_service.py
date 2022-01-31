@@ -620,10 +620,14 @@ def get_last_notifications(notification_id=None, after=None, before=None):
 
         reply_text = ""
         if notification.type == "reply":
-            reply = next((
-                reply for reply in comment_replies
-                if reply["id"] == str(notification.reply_id)
-            ), None)
+            reply = next(
+                (
+                    reply
+                    for reply in comment_replies
+                    if reply["id"] == str(notification.reply_id)
+                ),
+                None,
+            )
             if reply is not None:
                 reply_text = reply["text"]
 

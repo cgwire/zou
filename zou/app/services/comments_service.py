@@ -318,7 +318,7 @@ def reply_comment(comment_id, text):
         "id": str(fields.gen_uuid()),
         "date": date_helpers.get_now(),
         "person_id": person["id"],
-        "text": text
+        "text": text,
     }
     replies = list(comment.replies)
     replies.append(reply)
@@ -329,7 +329,7 @@ def reply_comment(comment_id, text):
         {
             "task_id": task["id"],
             "comment_id": str(comment.id),
-            "reply_id": reply["id"]
+            "reply_id": reply["id"],
         },
         project_id=task["project_id"],
     )
@@ -341,10 +341,7 @@ def reply_comment(comment_id, text):
 
 def get_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
-    reply = next(
-        reply for reply in comment.replies
-        if reply["id"] == reply_id
-    )
+    reply = next(reply for reply in comment.replies if reply["id"] == reply_id)
     return reply
 
 
@@ -354,8 +351,7 @@ def delete_reply(comment_id, reply_id):
     if comment.replies is None:
         comment.replies = []
     comment.replies = [
-        reply for reply in comment.replies
-        if reply["id"] != reply_id
+        reply for reply in comment.replies if reply["id"] != reply_id
     ]
     comment.save()
     Notification.delete_all_by(reply_id=reply_id)
@@ -364,9 +360,9 @@ def delete_reply(comment_id, reply_id):
         {
             "task_id": task["id"],
             "comment_id": str(comment.id),
-            "reply_id": reply_id
+            "reply_id": reply_id,
         },
         project_id=task["project_id"],
-        persist=False
+        persist=False,
     )
     return comment.serialize()

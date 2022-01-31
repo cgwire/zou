@@ -92,14 +92,13 @@ def normalize_movie(movie_path, fps, width, height):
     if not has_soundtrack(movie_path):
         error_code, _, err = add_empty_soundtrack(movie_path)
         if error_code != 0:
-            print('Err in soundtrack: {}'.format(err))
-            print('Err code: {}'.format(error_code))
+            print("Err in soundtrack: {}".format(err))
+            print("Err code: {}".format(error_code))
             return file_target_path, low_file_target_path, err
         else:
             err = None
 
-
-    print('Compute high def version')
+    print("Compute high def version")
     # High def version
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
@@ -120,7 +119,7 @@ def normalize_movie(movie_path, fps, width, height):
     )
     stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
 
-    print('Compute low def version')
+    print("Compute low def version")
     # Low def version
     low_width = 1280
     low_height = math.floor((height / width) * low_width)
@@ -145,7 +144,7 @@ def normalize_movie(movie_path, fps, width, height):
     )
     stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
 
-    print('Err: {}'.format(err))
+    print("Err: {}".format(err))
     return file_target_path, low_file_target_path, err
 
 
@@ -184,7 +183,7 @@ def add_empty_soundtrack(file_path):
     if error:
         err = "\n".join(str(error).split("\\n"))
 
-    print('sp.returncode: {}'.format(sp.returncode))
+    print("sp.returncode: {}".format(sp.returncode))
     if sp.returncode == 0:
         shutil.copyfile(tmp_file_path, file_path)
 

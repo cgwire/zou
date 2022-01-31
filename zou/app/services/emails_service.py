@@ -52,7 +52,8 @@ def send_notification(person_id, subject, messages):
         webhook = organisation.get("chat_webhook_mattermost", "")
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
-                chats.send_to_mattermost, args=(webhook, userid, mattermost_message)
+                chats.send_to_mattermost,
+                args=(webhook, userid, mattermost_message),
             )
         else:
             chats.send_to_mattermost(webhook, userid, mattermost_message)
@@ -122,8 +123,8 @@ _%s_
             "slack_message": slack_message,
             "mattermost_message": {
                 "message": slack_message,
-                "project_name": project["name"]
-            }
+                "project_name": project["name"],
+            },
         }
         send_notification(person_id, subject, messages)
 
@@ -171,8 +172,8 @@ _%s_
             "slack_message": slack_message,
             "mattermost_message": {
                 "message": slack_message,
-                "project_name": project["name"]
-            }
+                "project_name": project["name"],
+            },
         }
         return send_notification(person_id, subject, messages)
     else:
@@ -210,8 +211,8 @@ def send_assignation_notification(person_id, author_id, task):
             "slack_message": slack_message,
             "mattermost_message": {
                 "message": slack_message,
-                "project_name": project["name"]
-            }
+                "project_name": project["name"],
+            },
         }
         return send_notification(person_id, subject, messages)
     return True
@@ -267,7 +268,6 @@ def get_task_descriptors(person_id, task):
     return (author, task_name, task_url)
 
 
-
 def send_reply_notification(person_id, author_id, comment, task, reply):
     """
     Send a notification emali telling that a new reply was posted to person
@@ -309,5 +309,3 @@ _%s_
         }
         send_notification(person_id, subject, messages)
     return True
-
-

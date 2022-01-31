@@ -111,8 +111,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             if data.get("source_id", None) == "null":
                 data["source_id"] = None
 
-            is_ready_for_changed = \
-                str(entity.ready_for) != data.get("ready_for", "")
+            is_ready_for_changed = str(entity.ready_for) != data.get(
+                "ready_for", ""
+            )
             entity.update(data)
             entity_dict = self.serialize_instance(entity)
 

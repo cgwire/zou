@@ -582,7 +582,7 @@ def _run_remote_job_build_playlist(
         "width": params.width,
         "height": params.height,
         "fps": params.fps,
-        "full": str(full).lower()
+        "full": str(full).lower(),
     }
     nomad_job = config.JOB_QUEUE_NOMAD_PLAYLIST_JOB
     remote_job.run_job(app, config, nomad_job, params)
