@@ -92,7 +92,7 @@ def main():
             input_paths,
             output_movie_path,
             enc_params,
-            config["full"] == "true"
+            config["full"] == "true",
         )
 
         if result["success"]:

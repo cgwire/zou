@@ -3,7 +3,7 @@ from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
     verify_jwt_in_request,
-    JWTManager
+    JWTManager,
 )
 from flask_socketio import SocketIO, disconnect, join_room, emit
 from zou.app import config
@@ -28,8 +28,8 @@ def _get_empty_room():
             "task_type": None,
             "revision": None,
             "mode": "sidebyside",
-            "comparison_preview_index": 0
-        }
+            "comparison_preview_index": 0,
+        },
     }
 
 

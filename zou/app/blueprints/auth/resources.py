@@ -135,8 +135,7 @@ class AuthenticatedResource(Resource):
     def get(self):
         try:
             person = persons_service.get_person_by_email(
-                get_jwt_identity(),
-                relations=True
+                get_jwt_identity(), relations=True
             )
             organisation = persons_service.get_organisation()
             return {

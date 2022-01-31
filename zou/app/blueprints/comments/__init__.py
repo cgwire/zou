@@ -10,7 +10,7 @@ from .resources import (
     DownloadAttachmentResource,
     ProjectAttachmentFiles,
     ReplyCommentResource,
-    DeleteReplyCommentResource
+    DeleteReplyCommentResource,
 )
 
 
@@ -18,11 +18,11 @@ routes = [
     ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
     (
         "/data/tasks/<task_id>/comments/<comment_id>/reply",
-        ReplyCommentResource
+        ReplyCommentResource,
     ),
     (
         "/data/tasks/<task_id>/comments/<comment_id>/reply/<reply_id>",
-        DeleteReplyCommentResource
+        DeleteReplyCommentResource,
     ),
     (
         "/data/attachment-files/<attachment_file_id>/file/<file_name>",
@@ -30,7 +30,7 @@ routes = [
     ),
     (
         "/actions/tasks/<task_id>/comments/<comment_id>/add-attachment",
-        AddAttachmentToCommentResource
+        AddAttachmentToCommentResource,
     ),
     ("/data/projects/<project_id>/attachment-files", ProjectAttachmentFiles),
     ("/actions/tasks/<task_id>/comment", CommentTaskResource),

@@ -546,7 +546,9 @@ def get_folder_from_department(task, task_type, field="name"):
         department = tasks_service.get_department_from_task(task["id"])
         folder = department[field]
     elif task_type is not None:
-        department = tasks_service.get_department_from_task_type(task_type["id"])
+        department = tasks_service.get_department_from_task_type(
+            task_type["id"]
+        )
         folder = department[field]
     return folder
 

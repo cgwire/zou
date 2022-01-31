@@ -178,7 +178,8 @@ def create_person(
 
     try:
         departments_objects = [
-            Department.get(department_id) for department_id in departments
+            Department.get(department_id)
+            for department_id in departments
             if department_id is not None
         ]
     except StatementError:

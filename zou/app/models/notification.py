@@ -46,11 +46,7 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
         nullable=False,
         index=True,
     )
-    reply_id = db.Column(
-        UUIDType(binary=False),
-        nullable=True,
-        index=True
-    )
+    reply_id = db.Column(UUIDType(binary=False), nullable=True, index=True)
 
     __table_args__ = (
         db.UniqueConstraint(

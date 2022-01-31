@@ -170,7 +170,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                     params,
                     current_user["email"],
                     full,
-                    remote
+                    remote,
                 ),
                 job_timeout=3600,
             )

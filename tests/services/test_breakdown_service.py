@@ -4,7 +4,7 @@ from zou.app.services import (
     assets_service,
     breakdown_service,
     projects_service,
-    tasks_service
+    tasks_service,
 )
 
 
@@ -232,19 +232,13 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.task_type_animation_id = str(self.task_type_animation.id)
         self.task_type_compositing_id = self.task_type_compositing["id"]
         projects_service.create_project_task_type_link(
-            self.project_id,
-            self.task_type_layout_id,
-            1
+            self.project_id, self.task_type_layout_id, 1
         )
         projects_service.create_project_task_type_link(
-            self.project_id,
-            self.task_type_animation_id,
-            2
+            self.project_id, self.task_type_animation_id, 2
         )
         projects_service.create_project_task_type_link(
-            self.project_id,
-            self.task_type_compositing_id,
-            3
+            self.project_id, self.task_type_compositing_id, 3
         )
         self.task_layout = self.generate_fixture_shot_task(
             task_type_id=self.task_type_layout_id
@@ -262,12 +256,21 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEquals(priority_map[self.task_type_animation_id], 2)
         self.assertEquals(priority_map[self.task_type_compositing_id], 3)
         asset = {"ready_for": str(self.task_type_animation.id)}
-        self.assertTrue(breakdown_service._is_asset_ready(
-            asset, self.task_layout, priority_map))
-        self.assertTrue(breakdown_service._is_asset_ready(
-            asset, self.task_animation, priority_map))
-        self.assertFalse(breakdown_service._is_asset_ready(
-            asset, self.task_compositing, priority_map))
+        self.assertTrue(
+            breakdown_service._is_asset_ready(
+                asset, self.task_layout, priority_map
+            )
+        )
+        self.assertTrue(
+            breakdown_service._is_asset_ready(
+                asset, self.task_animation, priority_map
+            )
+        )
+        self.assertFalse(
+            breakdown_service._is_asset_ready(
+                asset, self.task_compositing, priority_map
+            )
+        )
 
         self.shot_id = str(self.shot.id)
         self.sequence_id = str(self.sequence.id)
@@ -286,7 +289,9 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         breakdown_service.refresh_casting_stats(asset.serialize())
         self.task_layout = tasks_service.get_task(self.task_layout.id)
         self.task_animation = tasks_service.get_task(self.task_animation.id)
-        self.task_compositing = tasks_service.get_task(self.task_compositing.id)
+        self.task_compositing = tasks_service.get_task(
+            self.task_compositing.id
+        )
         self.assertEquals(self.task_layout["nb_assets_ready"], 2)
         self.assertEquals(self.task_animation["nb_assets_ready"], 2)
         self.assertEquals(self.task_compositing["nb_assets_ready"], 1)
