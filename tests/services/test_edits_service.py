@@ -14,7 +14,7 @@ class EditUtilsTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
         self.generate_fixture_episode()
-        self.generate_fixture_edit()
+        self.generate_fixture_edit(parent_id=self.episode.id)
         self.generate_fixture_asset()
 
     def test_get_edit_type(self):
@@ -70,7 +70,8 @@ class EditUtilsTestCase(ApiDBTestCase):
 
         edit = edits_service.get_full_edit(self.edit.id)
         self.assertEqual(edit["id"], str(self.edit.id))
-        self.assertEqual(edit["episode_name"], str(self.episode.name))
+        self.assertEqual(edit["episode_id"], str(self.episode.id))
+        self.assertEqual(edit["episode_name"], self.episode.name)
         self.assertEqual(len(edit["tasks"]), 1)
 
     def test_get_episode(self):
