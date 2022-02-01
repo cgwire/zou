@@ -471,6 +471,7 @@ def get_project_task_types(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_types)
 
+
 def get_project_task_statuses(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
