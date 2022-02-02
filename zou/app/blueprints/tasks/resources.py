@@ -109,6 +109,19 @@ class TaskCommentResource(Resource):
     Remove given comment and update linked task accordingly.
     """
 
+    @jwt_required
+    def get(self, task_id, comment_id):
+        """
+        Get comment corresponding at given ID.
+        """
+        comment = tasks_service.get_comment(comment_id)
+        task = tasks_service.get_task(comment["object_id"])
+        if permissions.has_manager_permissions():
+            user_service.check_project_access(task["project_id"])
+        else:
+            user_service.check_person_access(comment["person_id"])
+        return comment
+
     def pre_delete(self, comment):
         task = tasks_service.get_task(comment["object_id"])
         self.previous_task_status_id = task["task_status_id"]
