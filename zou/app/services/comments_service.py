@@ -257,6 +257,18 @@ def get_all_attachment_files_for_project(project_id):
     return fields.serialize_models(attachment_files)
 
 
+def get_all_attachment_files_for_task(task_id):
+    """
+    Return all attachment files listed into given task.
+    """
+    attachment_files = (
+        AttachmentFile.query.join(Comment)
+        .join(Task, Task.id == Comment.object_id)
+        .filter(Task.id == task_id)
+    )
+    return fields.serialize_models(attachment_files)
+
+
 def acknowledge_comment(comment_id):
     """
     Add current user to the list of people who acknowledged given comment.
