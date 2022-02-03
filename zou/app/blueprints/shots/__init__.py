@@ -39,6 +39,7 @@ from .resources import (
     SequenceTasksResource,
     SequenceTaskTypesResource,
     EpisodeShotTasksResource,
+    EpisodeAssetTasksResource,
     SequenceShotTasksResource,
 )
 
@@ -67,6 +68,7 @@ routes = [
     ("/data/episodes/<episode_id>/tasks", EpisodeTasksResource),
     ("/data/episodes/<episode_id>/task-types", EpisodeTaskTypesResource),
     ("/data/episodes/<episode_id>/shot-tasks", EpisodeShotTasksResource),
+    ("/data/episodes/<episode_id>/asset-tasks", EpisodeAssetTasksResource),
     ("/data/sequences", SequencesResource),
     ("/data/sequences/with-tasks", SequenceAndTasksResource),
     ("/data/sequences/<sequence_id>", SequenceResource),

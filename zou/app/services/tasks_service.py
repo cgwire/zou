@@ -278,12 +278,24 @@ def get_shot_tasks_for_sequence(sequence_id, relations=False):
 
 def get_shot_tasks_for_episode(episode_id, relations=False):
     """
-    Get all shot tasks for given episode.
+    Get all shots tasks for given episode.
     """
     query = _get_entity_task_query()
     Sequence = aliased(Entity, name="sequence")
     query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
         Sequence.parent_id == episode_id
+    )
+    return _convert_rows_to_detailed_tasks(query.all(), relations)
+
+
+def get_asset_tasks_for_episode(episode_id, relations=False):
+    """
+    Get all assets tasks for given episode.
+    """
+    query = (
+        _get_entity_task_query()
+        .filter(assets_service.build_asset_type_filter())
+        .filter(Entity.source_id == episode_id)
     )
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
