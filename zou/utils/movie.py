@@ -14,6 +14,18 @@ EncodingParameters = namedtuple(
 )
 
 
+def print_ffmpeg_error(e):
+    print("Error:")
+    if e.stdout:
+        print("stdout:")
+        print(e.stdout.decode())
+        print("======")
+    if e.stderr:
+        print("stderr:")
+        print(e.stderr.decode())
+        print("======")
+
+
 def save_file(tmp_folder, instance_id, file_to_save):
     """
     Save given flask file in given path. This function should only be used for
@@ -41,15 +53,7 @@ def generate_thumbnail(movie_path):
             file_target_path, vframes=1
         ).run(quiet=True)
     except ffmpeg._run.Error as e:
-        print("Error:")
-        if e.stdout:
-            print("stdout:")
-            print(e.stdout.decode())
-            print("======")
-        if e.stderr:
-            print("stderr:")
-            print(e.stderr.decode())
-            print("======")
+        print_ffmpeg_error(e)
         raise(e)
     return file_target_path
 
@@ -132,15 +136,7 @@ def normalize_movie(movie_path, fps, width, height):
     try:
         stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
     except ffmpeg._run.Error as e:
-        print("Error:")
-        if e.stdout:
-            print("stdout:")
-            print(e.stdout.decode())
-            print("======")
-        if e.stderr:
-            print("stderr:")
-            print(e.stderr.decode())
-            print("======")
+        print_ffmpeg_error(e)
         raise(e)
 
     print("Compute low def version")
@@ -169,15 +165,7 @@ def normalize_movie(movie_path, fps, width, height):
     try:
         stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
     except ffmpeg._run.Error as e:
-        print("Error:")
-        if e.stdout:
-            print("stdout:")
-            print(e.stdout.decode())
-            print("======")
-        if e.stderr:
-            print("stderr:")
-            print(e.stderr.decode())
-            print("======")
+        print_ffmpeg_error(e)
         raise(e)
 
     print("Err: {}".format(err))
@@ -344,15 +332,7 @@ def run_ffmpeg(stream, *args):
         stream.overwrite_output().run(cmd=("ffmpeg",) + args)
         result["success"] = True
     except ffmpeg._run.Error as e:
-        print("Error:")
-        if e.stdout:
-            print("stdout:")
-            print(e.stdout.decode())
-            print("======")
-        if e.stderr:
-            print("stderr:")
-            print(e.stderr.decode())
-            print("======")
+        print_ffmpeg_error(e)
         result["success"] = False
         result["message"] = str(e)
     except Exception as e:
