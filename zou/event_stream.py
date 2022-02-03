@@ -13,6 +13,9 @@ from gevent import monkey
 
 monkey.patch_all()
 
+server_stats = {
+    "nb_connections": 0
+}
 rooms_data = {}
 
 
@@ -56,14 +59,19 @@ def create_app(redis_url):
 
     # Application events (feed)
 
-    @app.route("/", methods=["GET", "POST"])
+    @app.route("/", methods=["GET"])
     def index():
         return jsonify({"name": "%s Event stream" % config.APP_NAME})
+
+    @app.route("/stats", methods=["GET"])
+    def stats():
+        return jsonify(server_stats)
 
     @socketio.on("connect", namespace="/events")
     def connected():
         try:
             verify_jwt_in_request()
+            server_stats["nb_connections"] += 1
             app.logger.info("New websocket client connected")
         except Exception:
             app.logger.info("New websocket client failed to connect")
@@ -79,10 +87,14 @@ def create_app(redis_url):
         user_id = get_jwt_identity()
         for room_id in rooms_data:
             _leave_room(room_id, user_id)
+        server_stats["nb_connections"] -= 1
         app.logger.info("Websocket client disconnected")
 
     @socketio.on_error("/events")
     def on_error(error):
+        server_stats["nb_connections"] -= 1
+        if stats["nb_connections"] < 0:
+            stats["nb_connections"] = 0
         app.logger.error(error)
 
     # Review rooms (real-time)
