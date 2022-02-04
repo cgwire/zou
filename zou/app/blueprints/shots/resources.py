@@ -178,7 +178,7 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
         """
-        Retrieve all tasks related to a given episode.
+        Retrieve all shots tasks related to a given episode.
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -187,6 +187,23 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
             raise permissions.PermissionDenied
         relations = self.get_relations()
         return tasks_service.get_shot_tasks_for_episode(
+            episode_id, relations=relations
+        )
+
+
+class EpisodeAssetTasksResource(Resource, ArgsMixin):
+    @jwt_required
+    def get(self, episode_id):
+        """
+        Retrieve all assets tasks related to a given episode.
+        """
+        episode = shots_service.get_episode(episode_id)
+        user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
+        relations = self.get_relations()
+        return tasks_service.get_asset_tasks_for_episode(
             episode_id, relations=relations
         )
 

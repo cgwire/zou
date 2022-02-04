@@ -9,6 +9,7 @@ from .resources import (
     CommentManyTasksResource,
     DownloadAttachmentResource,
     ProjectAttachmentFiles,
+    TaskAttachmentFiles,
     ReplyCommentResource,
     DeleteReplyCommentResource,
 )
@@ -33,6 +34,7 @@ routes = [
         AddAttachmentToCommentResource,
     ),
     ("/data/projects/<project_id>/attachment-files", ProjectAttachmentFiles),
+    ("/data/tasks/<task_id>/attachment-files", TaskAttachmentFiles),
     ("/actions/tasks/<task_id>/comment", CommentTaskResource),
     (
         "/actions/projects/<project_id>/tasks/comment-many",

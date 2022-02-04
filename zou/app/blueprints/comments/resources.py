@@ -227,3 +227,14 @@ class ProjectAttachmentFiles(Resource):
         return comments_service.get_all_attachment_files_for_project(
             project_id
         )
+
+
+class TaskAttachmentFiles(Resource):
+    """
+    Return all attachment files related to given task.
+    """
+
+    @jwt_required
+    def get(self, task_id):
+        permissions.check_admin_permissions()
+        return comments_service.get_all_attachment_files_for_task(task_id)
