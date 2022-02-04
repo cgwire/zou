@@ -14,6 +14,18 @@ EncodingParameters = namedtuple(
 )
 
 
+def print_ffmpeg_error(e):
+    print("Error:")
+    if e.stdout:
+        print("stdout:")
+        print(e.stdout.decode())
+        print("======")
+    if e.stderr:
+        print("stderr:")
+        print(e.stderr.decode())
+        print("======")
+
+
 def save_file(tmp_folder, instance_id, file_to_save):
     """
     Save given flask file in given path. This function should only be used for
@@ -36,9 +48,13 @@ def generate_thumbnail(movie_path):
     file_target_name = "%s.png" % file_source_name[:-4]
     file_target_path = os.path.join(folder_path, file_target_name)
 
-    ffmpeg.input(movie_path, ss="00:00:00").output(
-        file_target_path, vframes=1
-    ).run(quiet=True)
+    try:
+        ffmpeg.input(movie_path, ss="00:00:00").output(
+            file_target_path, vframes=1
+        ).run(quiet=True)
+    except ffmpeg._run.Error as e:
+        print_ffmpeg_error(e)
+        raise(e)
     return file_target_path
 
 
@@ -117,7 +133,11 @@ def normalize_movie(movie_path, fps, width, height):
         movflags="+faststart",
         s="%sx%s" % (width, height),
     )
-    stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+    try:
+        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+    except ffmpeg._run.Error as e:
+        print_ffmpeg_error(e)
+        raise(e)
 
     print("Compute low def version")
     # Low def version
@@ -142,7 +162,11 @@ def normalize_movie(movie_path, fps, width, height):
         movflags="+faststart",
         s="%sx%s" % (low_width, low_height),
     )
-    stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+    try:
+        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+    except ffmpeg._run.Error as e:
+        print_ffmpeg_error(e)
+        raise(e)
 
     print("Err: {}".format(err))
     return file_target_path, low_file_target_path, err
@@ -307,6 +331,10 @@ def run_ffmpeg(stream, *args):
     try:
         stream.overwrite_output().run(cmd=("ffmpeg",) + args)
         result["success"] = True
+    except ffmpeg._run.Error as e:
+        print_ffmpeg_error(e)
+        result["success"] = False
+        result["message"] = str(e)
     except Exception as e:
         print(e)
         result["success"] = False
