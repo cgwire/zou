@@ -354,10 +354,7 @@ def get_day_offs_between(start, end, person_id=None):
 
 def get_timezoned_interval(start, end):
     """
-    Get all day off entries for given person, year.
+    Get time intervals adapted to the user timezone.
     """
     timezone = user_service.get_timezone()
-    return (
-        date_helpers.get_string_with_timezone_from_date(start, timezone),
-        date_helpers.get_string_with_timezone_from_date(end, timezone),
-    )
+    return date_helpers.get_timezoned_interval(start, end, timezone)

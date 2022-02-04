@@ -31,7 +31,8 @@ def init_db():
 
 
 @cli.command()
-def migrate_db():
+@click.option("--message", default="")
+def migrate_db(message):
     """
     Generate migration files to describe a new revision of the database schema
     (for development only).
@@ -43,7 +44,7 @@ def migrate_db():
         import zou
 
         directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.migrate(directory=directory)
+        flask_migrate.migrate(directory=directory, message=message)
 
 
 @cli.command()

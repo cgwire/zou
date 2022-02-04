@@ -475,3 +475,11 @@ def get_project_task_types(project_id):
 def get_project_task_statuses(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
+
+
+def get_project_fps(project_id):
+    """
+    Return fps set at project level or default fps if it not set.
+    """
+    project= get_project(project_id)
+    return float(project["fps"] or "24.00")

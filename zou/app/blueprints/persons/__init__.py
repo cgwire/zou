@@ -7,6 +7,9 @@ from .resources import (
     DesktopLoginsResource,
     InvitePersonResource,
     NewPersonResource,
+    PersonMonthQuotaShotsResource,
+    PersonWeekQuotaShotsResource,
+    PersonDayQuotaShotsResource,
     PersonMonthTimeSpentsResource,
     PersonWeekTimeSpentsResource,
     PersonDayTimeSpentsResource,
@@ -45,6 +48,18 @@ routes = [
     (
         "/data/persons/<person_id>/time-spents/day/<year>/<month>/<day>",
         PersonDayTimeSpentsResource,
+    ),
+    (
+        "/data/persons/<person_id>/quota-shots/month/<year>/<month>",
+        PersonMonthQuotaShotsResource,
+    ),
+    (
+        "/data/persons/<person_id>/quota-shots/week/<year>/<week>",
+        PersonWeekQuotaShotsResource,
+    ),
+    (
+        "/data/persons/<person_id>/quota-shots/day/<year>/<month>/<day>",
+        PersonDayQuotaShotsResource,
     ),
     ("/data/persons/time-spents/year-table/", TimeSpentYearsResource),
     ("/data/persons/time-spents/month-table/<year>", TimeSpentMonthsResource),
