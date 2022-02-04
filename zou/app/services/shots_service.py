@@ -52,34 +52,24 @@ def clear_episode_cache(episode_id):
     cache.cache.delete_memoized(get_episode, episode_id)
 
 
-def get_temporal_entity_type_by_name(name):
-    entity_type = entities_service.get_entity_type_by_name(name)
-    if entity_type is None:
-        cache.cache.delete_memoized(
-            entities_service.get_entity_type_by_name, name
-        )
-        entity_type = entities_service.get_entity_type_by_name(name)
-    return entity_type
-
-
 @cache.memoize_function(1200)
 def get_episode_type():
-    return get_temporal_entity_type_by_name("Episode")
+    return entities_service.get_temporal_entity_type_by_name("Episode")
 
 
 @cache.memoize_function(1200)
 def get_sequence_type():
-    return get_temporal_entity_type_by_name("Sequence")
+    return entities_service.get_temporal_entity_type_by_name("Sequence")
 
 
 @cache.memoize_function(1200)
 def get_shot_type():
-    return get_temporal_entity_type_by_name("Shot")
+    return entities_service.get_temporal_entity_type_by_name("Shot")
 
 
 @cache.memoize_function(1200)
 def get_scene_type():
-    return get_temporal_entity_type_by_name("Scene")
+    return entities_service.get_temporal_entity_type_by_name("Scene")
 
 
 @cache.memoize_function(1200)

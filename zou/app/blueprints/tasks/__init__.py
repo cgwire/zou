@@ -26,6 +26,7 @@ from .resources import (
     ProjectTasksResource,
     CreateShotTasksResource,
     CreateAssetTasksResource,
+    CreateEditTasksResource,
     GetTimeSpentResource,
     SetTimeSpentResource,
     AddTimeSpentResource,
@@ -96,6 +97,10 @@ routes = [
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/assets/create-tasks",
         CreateAssetTasksResource,
+    ),
+    (
+        "/actions/projects/<project_id>/task-types/<task_type_id>/edits/create-tasks",
+        CreateEditTasksResource,
     ),
 ]
 

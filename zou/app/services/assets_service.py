@@ -13,6 +13,7 @@ from zou.app.models.task import assignees_table
 from zou.app.services import (
     base_service,
     deletion_service,
+    edits_service,
     projects_service,
     shots_service,
     user_service,
@@ -56,7 +57,17 @@ def get_temporal_type_ids():
         cache.cache.delete_memoized(shots_service.get_episode_type)
         episode_type = shots_service.get_episode_type()
 
-    ids_to_exclude = [shot_type["id"], sequence_type["id"], episode_type["id"]]
+    edit_type = edits_service.get_edit_type()
+    if edit_type is None:
+        cache.cache.delete_memoized(edits_service.get_edit_type)
+        edit_type = edits_service.get_edit_type()
+
+    ids_to_exclude = [
+        shot_type["id"],
+        sequence_type["id"],
+        episode_type["id"],
+        edit_type["id"],
+    ]
     if scene_type is not None:
         ids_to_exclude.append(scene_type["id"])
 
