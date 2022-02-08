@@ -1152,17 +1152,28 @@ def is_finished(task, data):
         return False
 
 
-def clear_assignation(task_id):
+def clear_assignation(task_id, person_id=None):
     """
     Clear task assignation and emit a *task:unassign* event.
     """
     task = get_task_raw(task_id)
     project_id = str(task.project_id)
-    assignees = [person.serialize() for person in task.assignees]
-    task.update({"assignees": []})
+
+    removed_assignments = []
+    if person_id is None:
+        removed_assignments = [person.serialize() for person in task.assignees]
+        task.update({"assignees": []})
+    else:
+        assignees = [
+            person for person in task.assignees
+            if str(person.id) != person_id
+        ]
+        task.update({"assignees": assignees})
+        removed_assignments = [{"id": person_id}]
+
     clear_task_cache(task_id)
     task_dict = task.serialize()
-    for assignee in assignees:
+    for assignee in removed_assignments:
         events.emit(
             "task:unassign",
             {"person_id": assignee["id"], "task_id": task_id},

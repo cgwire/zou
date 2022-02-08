@@ -369,7 +369,7 @@ class ClearAssignationResource(Resource):
 
     @jwt_required
     def put(self):
-        (task_ids) = self.get_arguments()
+        (task_ids, person_id) = self.get_arguments()
 
         if len(task_ids) > 0:
             task = tasks_service.get_task(task_ids[0])
@@ -377,7 +377,7 @@ class ClearAssignationResource(Resource):
 
         for task_id in task_ids:
             try:
-                tasks_service.clear_assignation(task_id)
+                tasks_service.clear_assignation(task_id, person_id=person_id)
             except TaskNotFoundException:
                 pass
         return task_ids
@@ -390,8 +390,12 @@ class ClearAssignationResource(Resource):
             required=True,
             action="append",
         )
+        parser.add_argument(
+            "person_id",
+            default=None
+        )
         args = parser.parse_args()
-        return args["task_ids"]
+        return args["task_ids"], args["person_id"]
 
 
 class TasksAssignResource(Resource):
