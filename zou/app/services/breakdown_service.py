@@ -603,7 +603,7 @@ def _get_task_type_priority_map(project_id):
         for task_type_link in ProjectTaskTypeLink.query.filter(
             Project.id == project_id
         )
-        .filter(TaskType.for_shots == True)
+        .filter(TaskType.for_entity == "Shot")
         .join(TaskType)
     }
     return priority_map

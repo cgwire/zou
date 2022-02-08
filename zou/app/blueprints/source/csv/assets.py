@@ -100,7 +100,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         task_types_in_project_for_assets = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_shots == False)
+            .filter(TaskType.for_entity == "Asset")
         )
         for task_type in task_types_in_project_for_assets:
             create_tasks(task_type.serialize(), self.created_assets)

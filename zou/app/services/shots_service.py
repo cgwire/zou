@@ -1,3 +1,4 @@
+from datetime import timedelta
 from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
@@ -1061,6 +1062,7 @@ def get_quotas(project_id, task_type_id, detail_level):
         .filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.task_type_id == task_type_id)
+        .filter(Task.real_start_date != None)
         .filter(Task.end_date != None)
         .filter(TimeSpent.id == None)
         .join(Entity, Entity.id == Task.entity_id)
@@ -1076,10 +1078,17 @@ def get_quotas(project_id, task_type_id, detail_level):
 
     print(result)
     for (task, nb_frames, person_id) in result:
-        nb_frames = nb_frames or 0
-        _add_quota_entry(
-            quotas, str(person_id), task.end_date, timezone, nb_frames, fps
-        )
+        business_days = date_helpers.get_business_days(
+            task.real_start_date,
+            task.end_date
+        ) + 1
+        nb_frames = round(nb_frames / business_days) or 0
+        date = task.real_start_date
+        for x in range((task.end_date - task.real_start_date).days + 1):
+            _add_quota_entry(
+                quotas, str(person_id), date, timezone, nb_frames, fps
+            )
+            date = date + timedelta(x + 1)
     return quotas
 
 
