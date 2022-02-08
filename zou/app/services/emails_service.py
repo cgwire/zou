@@ -247,8 +247,10 @@ def get_task_descriptors(person_id, task):
 
     episode_segment = ""
     entity_type = "assets"
-    if task_type["for_shots"]:
+    if task_type["for_entity"] == "Shot":
         entity_type = "shots"
+    if task_type["for_entity"] == "Edit":
+        entity_type = "edits"
     if project["production_type"] == "tvshow":
         episode_segment = "/episodes/%s" % episode_id
 

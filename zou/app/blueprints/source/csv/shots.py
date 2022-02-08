@@ -129,7 +129,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         task_types_in_project_for_shots = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_shots == True)
+            .filter(TaskType.for_entity == "Shot")
         )
         for task_type in task_types_in_project_for_shots:
             create_tasks(task_type.serialize(), self.created_shots)

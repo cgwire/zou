@@ -14,7 +14,7 @@ class TaskType(db.Model, BaseMixin, SerializerMixin):
     short_name = db.Column(db.String(20))
     color = db.Column(db.String(7), default="#FFFFFF")
     priority = db.Column(db.Integer, default=1)
-    for_shots = db.Column(db.Boolean, default=False)
+    for_shots = db.Column(db.Boolean, default=False) # deprecated
     for_entity = db.Column(db.String(30), default="Asset")
     allow_timelog = db.Column(db.Boolean, default=True)
     shotgun_id = db.Column(db.Integer, index=True)
