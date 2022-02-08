@@ -123,3 +123,13 @@ def get_timezoned_interval(start, end, timezone):
         get_string_with_timezone_from_date(start, timezone),
         get_string_with_timezone_from_date(end, timezone),
     )
+
+
+def get_business_days(start, end):
+    """
+    Returns the number of business days between two dates.
+    """
+    daygenerator = (
+        start + timedelta(x + 1) for x in range((end - start).days)
+    )
+    return sum(1 for day in daygenerator if day.weekday() < 5)
