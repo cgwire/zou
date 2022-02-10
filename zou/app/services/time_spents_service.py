@@ -149,6 +149,19 @@ def get_time_spents(person_id, date):
     return fields.serialize_list(time_spents)
 
 
+def get_time_spent(person_id, task_id, date):
+    """
+    Return time spents for given person, task and date.
+    """
+    try:
+        time_spent = TimeSpent.query.filter_by(
+            person_id=person_id, task_id=task_id, date=date
+        ).all()
+    except DataError:
+        raise WrongDateFormatException
+    return fields.serialize_list(time_spent)
+
+
 def get_day_off(person_id, date):
     """
     Return day off for given person and date.

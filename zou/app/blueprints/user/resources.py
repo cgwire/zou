@@ -437,6 +437,22 @@ class TimeSpentsResource(Resource):
             abort(404)
 
 
+class TaskTimeSpentResource(Resource):
+    """
+    Get time spents on for current user and given date.
+    """
+
+    @jwt_required
+    def get(self, task_id, date):
+        try:
+            current_user = persons_service.get_current_user()
+            return time_spents_service.get_time_spent(
+                current_user["id"], task_id, date
+            )
+        except WrongDateFormatException:
+            abort(404)
+
+
 class DayOffResource(Resource):
     """
     Get day off object for current user and given date.
