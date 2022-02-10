@@ -1048,6 +1048,7 @@ def get_quotas(project_id, task_type_id, detail_level):
         )
     )
     result = query.all()
+
     for (task, nb_frames, date, duration, person_id) in result:
         person_id = str(person_id)
         if nb_frames is not None:
@@ -1076,7 +1077,6 @@ def get_quotas(project_id, task_type_id, detail_level):
     )
     result = query.all()
 
-    print(result)
     for (task, nb_frames, person_id) in result:
         business_days = date_helpers.get_business_days(
             task.real_start_date,
@@ -1235,9 +1235,18 @@ def get_quota_shots_between(
 ):
     """
     Get all shots leading to a quota computation during the given period.
+    Set a weight on each one:
+        * If there is time spent filled, weight it by the sum of duration
+          divided py the overall task duration.
+        * If there is no time spent, weight it by the number of business days
+          in the time interval spent between WIP date (start) and
+          feedback date (end).
     """
     shot_type = get_shot_type()
     person = persons_service.get_person_raw(person_id)
+    shots = []
+    already_listed = {}
+
     query = (
         Entity
         .query
@@ -1251,31 +1260,63 @@ def get_quota_shots_between(
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
+        .add_columns(Task.duration, TimeSpent.duration)
     )
     query_shots = query.all()
+    for (entity, task_duration, duration) in query_shots:
+        shot = entity.serialize()
+        if shot["id"] not in already_listed:
+            full_name, _ = names_service.get_full_entity_name(shot["id"])
+            shot["full_name"] = full_name
+            shot["weight"] = round(duration / task_duration, 2) or 0
+            shots.append(shot)
+            already_listed[shot["id"]] = shot
+        else:
+            shot = already_listed[shot["id"]]
+            shot["weight"] += round(duration / task_duration, 2)
+
     query = (
         Entity
         .query
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
-        .filter(Task.end_date >= start)
-        .filter(Task.end_date < end)
+        .filter(Task.end_date != None)
+        .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
+        .filter(
+            Task.real_start_date.between(start, end) |
+            Task.end_date.between(start, end)
+        )
+        .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
+        .outerjoin(TimeSpent, TimeSpent.task_id == Task.id)
+        .add_columns(Task.real_start_date, Task.end_date)
     )
-    query_shots += query.all()
+    query_shots = query.all()
 
-    shots = []
-    already_listed = {}
-    for entity in query_shots:
+    start = date_helpers.get_datetime_from_string(start)
+    end = date_helpers.get_datetime_from_string(end)
+    for (entity, task_start, task_end) in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
+            business_days = \
+                date_helpers.get_business_days(task_start, task_end) + 1
             full_name, _ = names_service.get_full_entity_name(shot["id"])
             shot["full_name"] = full_name
-            shots.append(shot)
+            multiplicator = 1
+            if task_start >= start and task_end <= end:
+                multiplicator = business_days
+            elif task_start >= start:
+                multiplicator = \
+                    date_helpers.get_business_days(task_start, end) + 1
+            elif task_end <= end:
+                multiplicator = \
+                    date_helpers.get_business_days(start, task_end) + 1
+            shot["weight"] = round(multiplicator / business_days, 2)
             already_listed[shot["id"]] = True
+            shots.append(shot)
 
     return sorted(shots, key=itemgetter("full_name"))
 
