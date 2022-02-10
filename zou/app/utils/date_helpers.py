@@ -53,6 +53,12 @@ def get_date_from_string(date_str):
     """
     return datetime.strptime(date_str, "%Y-%m-%d")
 
+def get_datetime_from_string(date_str):
+    """
+    Parse a datetime string and returns a datetime object.
+    """
+    return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S")
+
 
 def get_year_interval(year):
     """
