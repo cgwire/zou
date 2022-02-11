@@ -476,7 +476,7 @@ def get_sequence_from_shot(shot):
     """
     try:
         sequence = Entity.get(shot["parent_id"])
-    except:
+    except Exception:
         raise SequenceNotFoundException("Wrong parent_id for given shot.")
     return sequence.serialize(obj_type="Sequence")
 
@@ -525,7 +525,7 @@ def get_episode_from_sequence(sequence):
     """
     try:
         episode = Entity.get(sequence["parent_id"])
-    except:
+    except Exception:
         raise EpisodeNotFoundException("Wrong parent_id for given sequence.")
     return episode.serialize(obj_type="Episode")
 
@@ -1082,7 +1082,10 @@ def get_quotas(project_id, task_type_id, detail_level):
             task.real_start_date,
             task.end_date
         ) + 1
-        nb_frames = round(nb_frames / business_days) or 0
+        if nb_frames is not None:
+            nb_frames = round(nb_frames / business_days) or 0
+        else:
+            nb_frames = 0
         date = task.real_start_date
         for x in range((task.end_date - task.real_start_date).days + 1):
             _add_quota_entry(
