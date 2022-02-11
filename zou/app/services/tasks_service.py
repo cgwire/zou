@@ -1014,7 +1014,7 @@ def get_or_create_status(
     color="#f5f5f5",
     is_done=False,
     is_retake=False,
-    is_feedback_request=False
+    is_feedback_request=False,
 ):
     """
     Create a new task status if it doesn't exist. If it exists, it returns the
@@ -1165,8 +1165,7 @@ def clear_assignation(task_id, person_id=None):
         task.update({"assignees": []})
     else:
         assignees = [
-            person for person in task.assignees
-            if str(person.id) != person_id
+            person for person in task.assignees if str(person.id) != person_id
         ]
         task.update({"assignees": assignees})
         removed_assignments = [{"id": person_id}]
@@ -1419,7 +1418,7 @@ def reset_task_data(task_id):
         .add_columns(
             TaskStatus.is_retake,
             TaskStatus.is_feedback_request,
-            TaskStatus.short_name
+            TaskStatus.short_name,
         )
         .all()
     )

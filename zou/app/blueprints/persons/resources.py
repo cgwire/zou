@@ -238,7 +238,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
                 year,
                 month,
                 project_id=project_id,
-                task_type_id=task_type_id
+                task_type_id=task_type_id,
             )
         except WrongDateFormatException:
             abort(404)
@@ -260,7 +260,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
                 year,
                 week,
                 project_id=project_id,
-                task_type_id=task_type_id
+                task_type_id=task_type_id,
             )
         except WrongDateFormatException:
             abort(404)
@@ -283,11 +283,10 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
                 month,
                 day,
                 project_id=project_id,
-                task_type_id=task_type_id
+                task_type_id=task_type_id,
             )
         except WrongDateFormatException:
             abort(404)
-
 
 
 class TimeSpentMonthResource(Resource, ArgsMixin):

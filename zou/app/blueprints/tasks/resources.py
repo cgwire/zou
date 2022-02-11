@@ -390,10 +390,7 @@ class ClearAssignationResource(Resource):
             required=True,
             action="append",
         )
-        parser.add_argument(
-            "person_id",
-            default=None
-        )
+        parser.add_argument("person_id", default=None)
         args = parser.parse_args()
         return args["task_ids"], args["person_id"]
 
