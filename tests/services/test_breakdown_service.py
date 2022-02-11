@@ -226,7 +226,7 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             "compositing",
             color="#FFFFFF",
             short_name="compo",
-            for_shots=True,
+            for_entity="Shot",
         )
         self.task_type_layout_id = str(self.task_type_layout.id)
         self.task_type_animation_id = str(self.task_type_animation.id)

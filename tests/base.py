@@ -531,27 +531,27 @@ class ApiDBTestCase(ApiTestCase):
             name="Shaders",
             short_name="shd",
             color="#FFFFFF",
+            for_entity="Asset",
             department_id=self.department.id,
         )
         self.task_type_animation = TaskType.create(
             name="Animation",
             short_name="anim",
             color="#FFFFFF",
-            for_shots=True,
+            for_entity="Shot",
             department_id=self.department_animation.id,
         )
         self.task_type_layout = TaskType.create(
             name="Layout",
             short_name="layout",
             color="#FFFFFF",
-            for_shots=True,
+            for_entity="Shot",
             department_id=self.department_animation.id,
         )
         self.task_type_edit = TaskType.create(
             name="Edit",
             short_name="edit",
             color="#FFFFFF",
-            for_shots=False,
             for_entity="Edit",
         )
 
