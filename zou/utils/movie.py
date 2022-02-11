@@ -54,7 +54,7 @@ def generate_thumbnail(movie_path):
         ).run(quiet=True)
     except ffmpeg._run.Error as e:
         print_ffmpeg_error(e)
-        raise(e)
+        raise (e)
     return file_target_path
 
 
@@ -70,7 +70,7 @@ def get_movie_size(movie_path):
         probe = ffmpeg.probe(movie_path)
     except ffmpeg._run.Error as e:
         print_ffmpeg_error(e)
-        raise(e)
+        raise (e)
     video = next(
         (
             stream
@@ -141,7 +141,7 @@ def normalize_movie(movie_path, fps, width, height):
         stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
     except ffmpeg._run.Error as e:
         print_ffmpeg_error(e)
-        raise(e)
+        raise (e)
 
     print("Compute low def version")
     # Low def version
@@ -170,7 +170,7 @@ def normalize_movie(movie_path, fps, width, height):
         stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
     except ffmpeg._run.Error as e:
         print_ffmpeg_error(e)
-        raise(e)
+        raise (e)
 
     print("Err: {}".format(err))
     return file_target_path, low_file_target_path, err
@@ -223,7 +223,7 @@ def has_soundtrack(file_path):
         audio = ffmpeg.probe(file_path, select_streams="a")
     except ffmpeg._run.Error as e:
         print_ffmpeg_error(e)
-        raise(e)
+        raise (e)
     return len(audio["streams"]) > 0
 
 
@@ -273,7 +273,7 @@ def concat_demuxer(in_files, output_path, *args):
             info = ffmpeg.probe(input_path)
         except ffmpeg._run.Error as e:
             print_ffmpeg_error(e)
-            raise(e)
+            raise (e)
         streams = info["streams"]
         if len(streams) != 2:
             return {

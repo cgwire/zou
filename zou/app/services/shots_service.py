@@ -8,7 +8,7 @@ from zou.app.utils import (
     date_helpers,
     events,
     fields,
-    query as query_utils
+    query as query_utils,
 )
 
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
@@ -1031,9 +1031,7 @@ def get_quotas(project_id, task_type_id, detail_level):
     shot_type = get_shot_type()
     quotas = {}
     query = (
-        Task
-        .query
-        .filter(Task.project_id == project_id)
+        Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.task_type_id == task_type_id)
         .filter(Task.end_date != None)
@@ -1044,7 +1042,7 @@ def get_quotas(project_id, task_type_id, detail_level):
             Entity.nb_frames,
             TimeSpent.date,
             TimeSpent.duration,
-            TimeSpent.person_id
+            TimeSpent.person_id,
         )
     )
     result = query.all()
@@ -1058,9 +1056,7 @@ def get_quotas(project_id, task_type_id, detail_level):
         _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps)
 
     query = (
-        Task
-        .query
-        .filter(Task.project_id == project_id)
+        Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.task_type_id == task_type_id)
         .filter(Task.real_start_date != None)
@@ -1070,18 +1066,15 @@ def get_quotas(project_id, task_type_id, detail_level):
         .join(Project, Project.id == Task.project_id)
         .outerjoin(TimeSpent, Task.id == TimeSpent.task_id)
         .join(Task.assignees)
-        .add_columns(
-            Entity.nb_frames,
-            Person.id
-        )
+        .add_columns(Entity.nb_frames, Person.id)
     )
     result = query.all()
 
     for (task, nb_frames, person_id) in result:
-        business_days = date_helpers.get_business_days(
-            task.real_start_date,
-            task.end_date
-        ) + 1
+        business_days = (
+            date_helpers.get_business_days(task.real_start_date, task.end_date)
+            + 1
+        )
         if nb_frames is not None:
             nb_frames = round(nb_frames / business_days) or 0
         else:
@@ -1098,8 +1091,7 @@ def get_quotas(project_id, task_type_id, detail_level):
 def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps):
     nb_seconds = nb_frames / fps
     date_str = date_helpers.get_simple_string_with_timezone_from_date(
-        date,
-        timezone
+        date, timezone
     )
     year = date_str[:4]
     week = year + "-" + str(date.isocalendar()[1])
@@ -1153,29 +1145,10 @@ def _init_quota_date(quotas, person_id, date_str, week, month):
 def _init_quota_person(quotas, person_id):
     quotas[person_id] = {}
     quotas[person_id] = {
-        "day": {
-            "frames": {},
-            "seconds": {},
-            "count": {},
-            "entries": {}
-        },
-        "week": {
-            "frames": {},
-            "seconds": {},
-            "count": {},
-            "entries": {}
-        },
-        "month": {
-            "frames": {},
-            "seconds": {},
-            "count": {},
-            "entries": {}
-        },
-        "year": {
-            "frames": {},
-            "seconds": {},
-            "count": {}
-        }
+        "day": {"frames": {}, "seconds": {}, "count": {}, "entries": {}},
+        "week": {"frames": {}, "seconds": {}, "count": {}, "entries": {}},
+        "month": {"frames": {}, "seconds": {}, "count": {}, "entries": {}},
+        "year": {"frames": {}, "seconds": {}, "count": {}},
     }
 
 
@@ -1251,9 +1224,7 @@ def get_quota_shots_between(
     already_listed = {}
 
     query = (
-        Entity
-        .query
-        .filter(Entity.entity_type_id == shot_type["id"])
+        Entity.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
         .filter(Task.end_date != None)
@@ -1279,17 +1250,15 @@ def get_quota_shots_between(
             shot["weight"] += round(duration / task_duration, 2)
 
     query = (
-        Entity
-        .query
-        .filter(Entity.entity_type_id == shot_type["id"])
+        Entity.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
         .filter(Task.end_date != None)
         .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
         .filter(
-            Task.real_start_date.between(start, end) |
-            Task.end_date.between(start, end)
+            Task.real_start_date.between(start, end)
+            | Task.end_date.between(start, end)
         )
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
@@ -1304,19 +1273,22 @@ def get_quota_shots_between(
     for (entity, task_start, task_end) in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
-            business_days = \
+            business_days = (
                 date_helpers.get_business_days(task_start, task_end) + 1
+            )
             full_name, _ = names_service.get_full_entity_name(shot["id"])
             shot["full_name"] = full_name
             multiplicator = 1
             if task_start >= start and task_end <= end:
                 multiplicator = business_days
             elif task_start >= start:
-                multiplicator = \
+                multiplicator = (
                     date_helpers.get_business_days(task_start, end) + 1
+                )
             elif task_end <= end:
-                multiplicator = \
+                multiplicator = (
                     date_helpers.get_business_days(start, task_end) + 1
+                )
             shot["weight"] = round(multiplicator / business_days, 2)
             already_listed[shot["id"]] = True
             shots.append(shot)

@@ -13,9 +13,7 @@ from gevent import monkey
 
 monkey.patch_all()
 
-server_stats = {
-    "nb_connections": 0
-}
+server_stats = {"nb_connections": 0}
 rooms_data = {}
 
 

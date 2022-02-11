@@ -481,5 +481,5 @@ def get_project_fps(project_id):
     """
     Return fps set at project level or default fps if it not set.
     """
-    project= get_project(project_id)
+    project = get_project(project_id)
     return float(project["fps"] or "24.00")
