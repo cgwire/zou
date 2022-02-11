@@ -66,7 +66,11 @@ def get_movie_size(movie_path):
     """
     Returns movie resolution (extract a frame and returns its size).
     """
-    probe = ffmpeg.probe(movie_path)
+    try:
+        probe = ffmpeg.probe(movie_path)
+    except ffmpeg._run.Error as e:
+        print_ffmpeg_error(e)
+        raise(e)
     video = next(
         (
             stream
@@ -215,7 +219,11 @@ def add_empty_soundtrack(file_path):
 
 
 def has_soundtrack(file_path):
-    audio = ffmpeg.probe(file_path, select_streams="a")
+    try:
+        audio = ffmpeg.probe(file_path, select_streams="a")
+    except ffmpeg._run.Error as e:
+        print_ffmpeg_error(e)
+        raise(e)
     return len(audio["streams"]) > 0
 
 
@@ -261,7 +269,11 @@ def concat_demuxer(in_files, output_path, *args):
     """
 
     for input_path in in_files:
-        info = ffmpeg.probe(input_path)
+        try:
+            info = ffmpeg.probe(input_path)
+        except ffmpeg._run.Error as e:
+            print_ffmpeg_error(e)
+            raise(e)
         streams = info["streams"]
         if len(streams) != 2:
             return {
