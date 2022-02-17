@@ -283,7 +283,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             queue_store.job_queue.enqueue(
                 preview_files_service.prepare_and_store_movie,
                 args=(preview_file_id, uploaded_movie_path),
-                job_timeout=600,
+                job_timeout=3600,
             )
         else:
             preview_files_service.prepare_and_store_movie(
