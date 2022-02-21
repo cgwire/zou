@@ -16,14 +16,16 @@ monkey.patch_all()
 server_stats = {"nb_connections": 0}
 rooms_data = {}
 
+# Review room helpers
 
-def _get_empty_room():
+def _get_empty_room(current_frame=0):
     return {
         "people": [],
         "is_playing": False,
         "current_entity_index": None,
-        "current_frame_number": 0,
+        "current_frame": current_frame,
         "is_repeating": None,
+        "speed": None,
         "comparing": {
             "enable": False,
             "task_type": None,
@@ -34,12 +36,35 @@ def _get_empty_room():
     }
 
 
+def _get_room_from_data(data):
+    room_id = data["playlist_id"]
+    return rooms_data.get(room_id, _get_empty_room()), room_id
+
+
 def _leave_room(room_id, user_id):
     room = rooms_data.get(room_id, _get_empty_room())
     room["people"] = list(set(room["people"]) - {user_id})
-    rooms_data[room_id] = room
+    if len(room["people"]) > 0:
+        rooms_data[room_id] = room
+    else:
+        del rooms_data[room_id]
     emit("preview-room:room-people-updated", room, room=room_id)
 
+
+def _update_room_playing_status(data, room):
+    room["is_playing"] = data.get("is_playing", False)
+    room["is_repeating"] = data.get("is_repeating", False)
+    room["current_entity_index"] = data["current_entity_index"]
+    if "current_frame" in data:
+        room["current_frame"] = data["current_frame"]
+    if "comparing" in data:
+        room["comparing"] = data["comparing"]
+    if "speed" in data:
+        room["speed"] = data["speed"]
+    return room
+
+
+# Database helpers
 
 def get_redis_url():
     redis_host = config.KEY_VALUE_STORE["host"]
@@ -47,16 +72,9 @@ def get_redis_url():
     return "redis://%s:%s/2" % (redis_host, redis_port)
 
 
-def create_app(redis_url):
-    socketio = SocketIO(
-        logger=True, cors_allowed_origins=[], cors_credentials=False
-    )
+# Routes
 
-    app = Flask(__name__)
-    app.config.from_object(config)
-
-    # Application events (feed)
-
+def set_info_routes(socketio, app):
     @app.route("/", methods=["GET"])
     def index():
         return jsonify({"name": "%s Event stream" % config.APP_NAME})
@@ -65,6 +83,8 @@ def create_app(redis_url):
     def stats():
         return jsonify(server_stats)
 
+
+def set_application_routes(socketio, app):
     @socketio.on("connect", namespace="/events")
     def connected():
         try:
@@ -83,7 +103,9 @@ def create_app(redis_url):
         except Exception:
             pass
         user_id = get_jwt_identity()
-        for room_id in rooms_data:
+        # needed to be able to clear empty rooms
+        tmp_rooms_data = dict(rooms_data)
+        for room_id in tmp_rooms_data:
             _leave_room(room_id, user_id)
         server_stats["nb_connections"] -= 1
         app.logger.info("Websocket client disconnected")
@@ -91,12 +113,12 @@ def create_app(redis_url):
     @socketio.on_error("/events")
     def on_error(error):
         server_stats["nb_connections"] -= 1
-        if stats["nb_connections"] < 0:
-            stats["nb_connections"] = 0
+        if server_stats["nb_connections"] < 0:
+            server_stats["nb_connections"] = 0
         app.logger.error(error)
 
-    # Review rooms (real-time)
 
+def set_playlist_room_routes(socketio, app):
     @app.route("/rooms", methods=["GET", "POST"])
     @jwt_required
     def rooms():
@@ -111,32 +133,10 @@ def create_app(redis_url):
         review room. The user still has to explicitly enter the review room
         to actually be in sync with the other users
         """
-        room_id = data["playlist_id"]
-        room = rooms_data.get(room_id, _get_empty_room())
+        room, room_id = _get_room_from_data(data)
         rooms_data[room_id] = room
         join_room(room_id)
         emit("preview-room:room-people-updated", room, room=room_id)
-
-    def _update_room_playing_status(data, room):
-        room["is_playing"] = data.get("is_playing", False)
-        room["is_repeating"] = data.get("is_repeating", False)
-        room["current_entity_index"] = data["current_entity_index"]
-        if "current_frame_number" in data:
-            room["current_frame_number"] = data["current_frame_number"]
-        if "comparing" in data:
-            room["comparing"] = data["comparing"]
-        return room
-
-    @socketio.on("preview-room:sync-newcomer", namespace="/events")
-    @jwt_required
-    def on_sync_newcomer(data):
-        """
-        once a new person joins the room, all the people in the room are
-        alerted (see `on_join` and the emitted
-        preview-room:room-people-updated) we then listen for their replies,
-        telling the newcomer where they are in the playlist
-        """
-        on_playing_status_updated(data, only_newcomer=True)
 
     @socketio.on("preview-room:join", namespace="/events")
     @jwt_required
@@ -144,12 +144,11 @@ def create_app(redis_url):
         """
         When a person joins the review room, we notify all its members that a
         new person is added to the room.
-        All the members will then send back the current status of the playlist,
-        so that the newcomer will be in sync
         """
         user_id = get_jwt_identity()
-        room_id = data["playlist_id"]
-        room = rooms_data.get(room_id, _get_empty_room())
+        room, room_id = _get_room_from_data(data)
+        if len(room["people"]) == 0:
+            _update_room_playing_status(data, room)
         room["people"] = list(set(room["people"] + [user_id]))
         rooms_data[room_id] = room
         emit("preview-room:room-people-updated", room, room=room_id)
@@ -164,24 +163,55 @@ def create_app(redis_url):
     @socketio.on("preview-room:update-playing-status", namespace="/events")
     @jwt_required
     def on_playing_status_updated(data, only_newcomer=False):
-        room_id = data["playlist_id"]
-        room = rooms_data.get(room_id, _get_empty_room())
+        room, room_id = _get_room_from_data(data)
         rooms_data[room_id] = _update_room_playing_status(data, room)
         event_data = {"only_newcomer": only_newcomer, **rooms_data[room_id]}
         emit("preview-room:room-updated", event_data, room=room_id)
 
+    @socketio.on("preview-room:add-annotation", namespace="/events")
+    @jwt_required
+    def on_add_annotation(data):
+        room_id = data["playlist_id"]
+        emit("preview-room:add-annotation", data, room=room_id)
+
+    @socketio.on("preview-room:remove-annotation", namespace="/events")
+    @jwt_required
+    def on_remove_annotation(data):
+        room_id = data["playlist_id"]
+        emit("preview-room:remove-annotation", data, room=room_id)
+
+    @socketio.on("preview-room:update-annotation", namespace="/events")
+    @jwt_required
+    def on_update_annotation(data):
+        room_id = data["playlist_id"]
+        emit("preview-room:update-annotation", data, room=room_id)
+    return app
+
+
+def create_app():
+    redis_url = get_redis_url()
+    socketio = SocketIO(
+        logger=True, cors_allowed_origins=[], cors_credentials=False
+    )
+    app = Flask(__name__)
+    app.config.from_object(config)
+    set_info_routes(socketio, app)
+    set_application_routes(socketio, app)
+    set_playlist_room_routes(socketio, app)
     socketio.init_app(app, message_queue=redis_url, async_mode="gevent")
     return (app, socketio)
 
 
-redis_url = get_redis_url()
-(app, socketio) = create_app(redis_url)
-jwt = JWTManager(app)  # JWT auth tokens
+def set_auth(app):
+    jwt = JWTManager(app)  # JWT auth tokens
+
+    @jwt.token_in_blacklist_loader
+    def check_if_token_is_revoked(decrypted_token):
+        return auth_tokens_store.is_revoked(decrypted_token)
 
 
-@jwt.token_in_blacklist_loader
-def check_if_token_is_revoked(decrypted_token):
-    return auth_tokens_store.is_revoked(decrypted_token)
+(app, socketio) = create_app()
+set_auth(app)
 
 
 if __name__ == "__main__":
