@@ -138,7 +138,10 @@ class CommentResource(BaseModelResource):
         """
         comment = tasks_service.get_comment(instance_id)
         task = tasks_service.get_task(comment["object_id"])
-        user_service.check_manager_project_access(task["project_id"])
+        if permissions.has_manager_permissions():
+            user_service.check_project_access(task["project_id"])
+        else:
+            user_service.check_person_access(comment["person_id"])
         self.pre_delete(comment)
         deletion_service.remove_comment(comment["id"])
         tasks_service.reset_task_data(comment["object_id"])
