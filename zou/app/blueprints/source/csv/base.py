@@ -99,7 +99,7 @@ class BaseCsvImportResource(Resource):
 
 class BaseCsvProjectImportResource(BaseCsvImportResource):
     @jwt_required
-    def post(self, project_id):
+    def post(self, project_id, **kwargs):
         uploaded_file = request.files["file"]
         file_name = "%s.csv" % uuid.uuid4()
         file_path = os.path.join(app.config["TMP_DIR"], file_name)
@@ -107,22 +107,22 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
         self.is_update = request.args.get("update", "false") == "true"
 
         try:
-            result = self.run_import(project_id, file_path)
+            result = self.run_import(project_id, file_path, **kwargs)
             return result, 201
         except ImportRowException as e:
             return self.format_error(e), 400
 
-    def run_import(self, project_id, file_path):
+    def run_import(self, project_id, file_path, **kwargs):
         result = []
         self.check_project_permissions(project_id)
-        self.prepare_import(project_id)
+        self.prepare_import(project_id, **kwargs)
         delimiter = self.get_delimiter(file_path)
         with open(file_path) as csvfile:
             reader = csv.DictReader(csvfile, delimiter=delimiter)
             line_number = 1
             for row in reader:
                 try:
-                    row = self.import_row(row, project_id)
+                    row = self.import_row(row, project_id, **kwargs)
                     result.append(row)
                 except IntegrityError as e:
                     raise ImportRowException(e._message(), line_number)
@@ -136,7 +136,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
     def check_project_permissions(self, project_id):
         return user_service.check_manager_project_access(project_id)
 
-    def import_row(self, project_id):
+    def import_row(self, project_id, **kwargs):
         pass
 
     def get_descriptor_field_map(self, project_id, entity_type):

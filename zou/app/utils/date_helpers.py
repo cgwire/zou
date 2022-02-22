@@ -140,3 +140,11 @@ def get_business_days(start, end):
         start + timedelta(x + 1) for x in range((end - start).days)
     )
     return sum(1 for day in daygenerator if day.weekday() < 5)
+
+
+def add_business_days_to_date(date, nb_days):
+    while nb_days > 0:
+        date += timedelta(days=1)
+        if date.weekday() < 5:
+            nb_days -= 1
+    return date

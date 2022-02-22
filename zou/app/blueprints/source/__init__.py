@@ -66,6 +66,10 @@ from .csv.persons import PersonsCsvImportResource
 from .csv.assets import AssetsCsvImportResource
 from .csv.shots import ShotsCsvImportResource
 from .csv.casting import CastingCsvImportResource
+from .csv.task_type_estimations import (
+    TaskTypeEstimationsCsvImportResource,
+    TaskTypeEstimationsEpisodeCsvImportResource,
+)
 from .kitsu import (
     ImportKitsuCommentsResource,
     ImportKitsuEntitiesResource,
@@ -113,6 +117,14 @@ routes = [
     ("/import/csv/projects/<project_id>/assets", AssetsCsvImportResource),
     ("/import/csv/projects/<project_id>/shots", ShotsCsvImportResource),
     ("/import/csv/projects/<project_id>/casting", CastingCsvImportResource),
+    (
+        "/import/csv/projects/<project_id>/task-types/<task_type_id>/estimations",
+        TaskTypeEstimationsCsvImportResource,
+    ),
+    (
+        "/import/csv/projects/<project_id>/episodes/<episode_id>/task-types/<task_type_id>/estimations",
+        TaskTypeEstimationsEpisodeCsvImportResource,
+    ),
     ("/import/kitsu/comments", ImportKitsuCommentsResource),
     ("/import/kitsu/entities", ImportKitsuEntitiesResource),
     ("/import/kitsu/entity-links", ImportKitsuEntityLinksResource),
