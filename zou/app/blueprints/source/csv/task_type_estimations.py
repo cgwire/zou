@@ -69,9 +69,12 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
         new_data = {}
 
-        new_data["estimation"] = round(
-            float(row["Estimation"]) * self.organisation.hours_by_day * 60
-        )
+        try:
+            new_data["estimation"] = round(
+                float(row["Estimation"]) * self.organisation.hours_by_day * 60
+            )
+        except:
+            pass
 
         try:
             new_data["start_date"] = date_helpers.get_date_from_string(
@@ -85,7 +88,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 row["Due date"]
             )
         except:
-            if new_data.get("start_date"):
+            if new_data.get("start_date") and new_data.get("estimation"):
                 new_data["due_date"] = date_helpers.add_business_days_to_date(
                     new_data["start_date"], float(row["Estimation"]) - 1
                 )

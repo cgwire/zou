@@ -18,6 +18,7 @@ rooms_data = {}
 
 # Review room helpers
 
+
 def _get_empty_room(current_frame=0):
     return {
         "people": [],
@@ -66,6 +67,7 @@ def _update_room_playing_status(data, room):
 
 # Database helpers
 
+
 def get_redis_url():
     redis_host = config.KEY_VALUE_STORE["host"]
     redis_port = config.KEY_VALUE_STORE["port"]
@@ -73,6 +75,7 @@ def get_redis_url():
 
 
 # Routes
+
 
 def set_info_routes(socketio, app):
     @app.route("/", methods=["GET"])
@@ -185,6 +188,7 @@ def set_playlist_room_routes(socketio, app):
     def on_update_annotation(data):
         room_id = data["playlist_id"]
         emit("preview-room:update-annotation", data, room=room_id)
+
     return app
 
 
