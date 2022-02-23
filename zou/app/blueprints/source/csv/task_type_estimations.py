@@ -15,6 +15,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         self.organisation = Organisation.query.first()
         self.assets_map = {}
         self.shots_map = {}
+        self.tasks_map = {}
 
         asset_types_map = {}
         asset_types = assets_service.get_asset_types_for_project(project_id)
@@ -47,6 +48,11 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 key = "%s%s" % (sequence_key, slugify(shot["name"]))
                 self.shots_map[key] = shot["id"]
 
+        for task in tasks_service.get_tasks_for_project_and_task_type(
+            project_id, task_type_id
+        ):
+            self.tasks_map[task["entity_id"]] = task["id"]
+
     def import_row(self, row, project_id, task_type_id, episode_id=None):
         key = slugify("%s%s" % (row["Parent"], row["Entity"]))
 
@@ -54,18 +60,6 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             entity_id = self.assets_map[key]
         if self.shots_map.get(key):
             entity_id = self.shots_map[key]
-
-        task_id = (
-            Task.query.filter(
-                and_(
-                    Task.project_id == project_id,
-                    Task.task_type_id == task_type_id,
-                    Task.entity_id == entity_id,
-                )
-            )
-            .one()
-            .id
-        )
 
         new_data = {}
 
@@ -93,7 +87,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                     new_data["start_date"], float(row["Estimation"]) - 1
                 )
 
-        tasks_service.update_task(task_id, new_data)
+        tasks_service.update_task(self.tasks_map[entity_id], new_data)
 
 
 class TaskTypeEstimationsEpisodeCsvImportResource(

@@ -722,6 +722,18 @@ def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
     return Task.serialize_list(tasks)
 
 
+def get_tasks_for_project_and_task_type(project_id, task_type_id):
+    """
+    For a project and a task type returns all tasks.
+    """
+    tasks = (
+        Task.query.filter_by(project_id=project_id, task_type_id=task_type_id)
+        .order_by(Task.name)
+        .all()
+    )
+    return Task.serialize_list(tasks)
+
+
 def get_task_status_map():
     """
     Return a dict of which keys are task status ids and values are task
