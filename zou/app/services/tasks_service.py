@@ -141,7 +141,6 @@ def get_department(department_id):
     """
     Get department matching given id as a dictionary.
     """
-    print(department_id)
     try:
         department = Department.get(department_id)
     except StatementError:
@@ -1408,7 +1407,6 @@ def reset_tasks_data(project_id):
 
 
 def reset_task_data(task_id):
-    print("change")
     clear_task_cache(task_id)
     task = Task.get(task_id)
     retake_count = 0
@@ -1442,9 +1440,7 @@ def reset_task_data(task_id):
         if task_status_short_name.lower() == "wip" and real_start_date is None:
             real_start_date = comment.created_at
 
-        print("let's go ")
         if task_status_is_feedback_request:
-            print("let's go fedback")
             end_date = comment.created_at
         else:
             end_date = None

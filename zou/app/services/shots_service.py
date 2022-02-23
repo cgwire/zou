@@ -1049,11 +1049,9 @@ def get_quotas(project_id, task_type_id, detail_level):
 
     for (task, nb_frames, date, duration, person_id) in result:
         person_id = str(person_id)
-        if nb_frames is not None:
+        if task.duration > 0 and nb_frames is not None:
             nb_frames = round(nb_frames * (duration / task.duration))
-        else:
-            nb_frames = 0
-        _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps)
+            _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps)
 
     query = (
         Task.query.filter(Task.project_id == project_id)
@@ -1081,10 +1079,11 @@ def get_quotas(project_id, task_type_id, detail_level):
             nb_frames = 0
         date = task.real_start_date
         for x in range((task.end_date - task.real_start_date).days + 1):
-            _add_quota_entry(
-                quotas, str(person_id), date, timezone, nb_frames, fps
-            )
-            date = date + timedelta(x + 1)
+            if date.weekday() < 5:
+                _add_quota_entry(
+                    quotas, str(person_id), date, timezone, nb_frames, fps
+                )
+            date = date + timedelta(1)
     return quotas
 
 
@@ -1249,6 +1248,8 @@ def get_quota_shots_between(
             shot = already_listed[shot["id"]]
             shot["weight"] += round(duration / task_duration, 2)
 
+    start = date_helpers.get_datetime_from_string(start)
+    end = date_helpers.get_datetime_from_string(end)
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
@@ -1257,8 +1258,8 @@ def get_quota_shots_between(
         .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
         .filter(
-            Task.real_start_date.between(start, end)
-            | Task.end_date.between(start, end)
+            (Task.real_start_date <= end)
+            & (Task.end_date >= start)
         )
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
@@ -1268,8 +1269,6 @@ def get_quota_shots_between(
     )
     query_shots = query.all()
 
-    start = date_helpers.get_datetime_from_string(start)
-    end = date_helpers.get_datetime_from_string(end)
     for (entity, task_start, task_end) in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
