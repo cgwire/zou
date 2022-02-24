@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import logging
 import os
 import sys
 import tempfile
@@ -11,6 +12,11 @@ from zou.remote.config_payload import (
 )
 
 from zou.utils.movie import normalize_movie
+
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -45,9 +51,9 @@ def main():
                 bucket_prefix + "movies",
                 "lowdef-" + preview_file_id,
             )
-            print("Normalization succeded", high_def_path)
+            logger.info("Normalization succeded", high_def_path)
         else:
-            print("Normalization failed: %s" % err, file=sys.stderr)
+            logger.error("Normalization failed: %s" % err)
             sys.exit(1)
     return None
 
