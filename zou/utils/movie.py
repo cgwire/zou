@@ -145,8 +145,6 @@ def normalize_movie(movie_path, fps, width, height):
     if not has_soundtrack(movie_path):
         error_code, _, err = add_empty_soundtrack(movie_path)
         if error_code != 0:
-            logger.error("Err in soundtrack: {}".format(err))
-            logger.error("Err code: {}".format(error_code))
             return file_target_path, low_file_target_path, err
         else:
             err = None
@@ -164,7 +162,7 @@ def normalize_movie(movie_path, fps, width, height):
     return file_target_path, low_file_target_path, err
 
 
-def add_empty_soundtrack(file_path):
+def add_empty_soundtrack(file_path, try_count=1):
     extension = file_path.split(".")[-1]
     if extension == "tmp":
         extension = file_path.split(".")[-2]
@@ -201,9 +199,34 @@ def add_empty_soundtrack(file_path):
     if error:
         err = "\n".join(str(error).split("\\n"))
 
-    logger.info("add_empty_soundtrack.sp.returncode: {}".format(sp.returncode))
+    logger.info(f"add_empty_soundtrack.sp.returncode: {sp.returncode}")
     if sp.returncode == 0:
         shutil.copyfile(tmp_file_path, file_path)
+    else:
+        logger.error(f"Err in soundtrack: {err}")
+        logger.error(f"Err code: {sp.returncode}")
+        if try_count <= 1:
+            stream = ffmpeg.input(file_path)
+            stream = ffmpeg.output(
+                stream.video,
+                tmp_file_path,
+                pix_fmt="yuv420p",
+                format="mp4",
+                preset="slow",
+                vcodec="libx264",
+                color_primaries=1,
+                color_trc=1,
+                colorspace=1,
+                movflags="+faststart",
+            )
+            try:
+                logger.info(f"ffmpeg {' '.join(stream.get_args())}")
+                stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+            except ffmpeg._run.Error as e:
+                log_ffmpeg_error(e, 'Try to convert video after fisrt add_empty_soundtrack fail')
+                raise (e)
+            shutil.copyfile(tmp_file_path, file_path)
+            return add_empty_soundtrack(file_path, try_count=2)
 
     return sp.returncode, out, err
 

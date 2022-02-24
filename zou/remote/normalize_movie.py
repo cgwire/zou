@@ -51,9 +51,9 @@ def main():
                 bucket_prefix + "movies",
                 "lowdef-" + preview_file_id,
             )
-            logger.info("Normalization succeded", high_def_path)
+            logger.info(f"Normalization succeded {high_def_path}")
         else:
-            logger.error("Normalization failed: %s" % err)
+            logger.error(f"Normalization failed: {err}")
             sys.exit(1)
     return None
 
