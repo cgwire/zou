@@ -90,6 +90,33 @@ def get_movie_size(movie_path):
     return (width, height)
 
 
+def ffmpeg_normalize(movie_path, task, file_target_path, fps, b, width, height):
+    logger.info(task)
+    stream = ffmpeg.input(movie_path)
+    stream = ffmpeg.output(
+        stream.video,
+        stream.audio,
+        file_target_path,
+        pix_fmt="yuv420p",
+        format="mp4",
+        r=fps,
+        b=b,
+        preset="slow",
+        vcodec="libx264",
+        color_primaries=1,
+        color_trc=1,
+        colorspace=1,
+        movflags="+faststart",
+        s="%sx%s" % (width, height),
+    )
+    try:
+        logger.info(f"ffmpeg {' '.join(stream.get_args())}")
+        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+    except ffmpeg._run.Error as e:
+        log_ffmpeg_error(e, task)
+        raise (e)
+
+
 def normalize_movie(movie_path, fps, width, height):
     """
     Normalize movie using resolution, width and height given in parameter.
@@ -124,64 +151,16 @@ def normalize_movie(movie_path, fps, width, height):
         else:
             err = None
 
-    logger.info("Compute high def version")
     # High def version
-    stream = ffmpeg.input(movie_path)
-    stream = ffmpeg.output(
-        stream.video,
-        stream.audio,
-        file_target_path,
-        pix_fmt="yuv420p",
-        format="mp4",
-        r=fps,
-        b="28M",
-        preset="slow",
-        vcodec="libx264",
-        color_primaries=1,
-        color_trc=1,
-        colorspace=1,
-        movflags="+faststart",
-        s="%sx%s" % (width, height),
-    )
-    try:
-        logger.info(f"ffmpeg {' '.join(stream.get_args())}")
-        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
-    except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, 'Compute high def version')
-        raise (e)
+    ffmpeg_normalize(movie_path, "Compute high def version", file_target_path, fps, "28M", width, height)
 
-    logger.info("Compute low def version")
     # Low def version
     low_width = 1280
     low_height = math.floor((height / width) * low_width)
     if low_height % 2 == 1:
         low_height = low_height + 1
-    stream = ffmpeg.input(movie_path)
-    stream = ffmpeg.output(
-        stream.video,
-        stream.audio,
-        low_file_target_path,
-        pix_fmt="yuv420p",
-        format="mp4",
-        r=fps,
-        b="1M",
-        preset="slow",
-        vcodec="libx264",
-        color_primaries=1,
-        color_trc=1,
-        colorspace=1,
-        movflags="+faststart",
-        s="%sx%s" % (low_width, low_height),
-    )
-    try:
-        logger.info(f"ffmpeg {' '.join(stream.get_args())}")
-        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
-    except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, 'Compute low def version')
-        raise (e)
+    ffmpeg_normalize(movie_path, "Compute low def version", low_file_target_path, fps, "1M", low_width, low_height)
 
-    if err:
-        logger.info("Err: {}".format(err))
     return file_target_path, low_file_target_path, err
 
 
