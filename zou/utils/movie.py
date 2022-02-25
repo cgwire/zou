@@ -206,6 +206,9 @@ def add_empty_soundtrack(file_path, try_count=1):
         logger.error(f"Err in soundtrack: {err}")
         logger.error(f"Err code: {sp.returncode}")
         if try_count <= 1:
+            (width, height) = get_movie_size(file_path)
+            if height % 2 == 1:
+                height = height + 1
             stream = ffmpeg.input(file_path)
             stream = ffmpeg.output(
                 stream.video,
@@ -218,6 +221,7 @@ def add_empty_soundtrack(file_path, try_count=1):
                 color_trc=1,
                 colorspace=1,
                 movflags="+faststart",
+                s="%sx%s" % (width, height),
             )
             try:
                 logger.info(f"ffmpeg {' '.join(stream.get_args())}")
