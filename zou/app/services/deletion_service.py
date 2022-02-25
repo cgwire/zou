@@ -368,6 +368,7 @@ def remove_episode(episode_id, force=False):
         ScheduleItem.delete_all_by(object_id=episode_id)
     try:
         episode.delete()
+        events.emit("episode:delete", {"episode_id": episode_id})
     except IntegrityError:
         raise ModelWithRelationsDeletionException(
             "Some data are still linked to this episode."
