@@ -11,7 +11,7 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.utils import permissions, fields
+from zou.app.utils import events, permissions, fields
 
 from .base import BaseModelResource, BaseModelsResource
 
@@ -100,6 +100,7 @@ class ProjectResource(BaseModelResource):
                 deletion_service.remove_project(instance_id)
             else:
                 project.delete()
+                events.emit("project:delete", {"project_id": project.id})
             self.post_delete(project_dict)
             return "", 204
 
