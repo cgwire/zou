@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import base64
 import json
+import logging
 import os
 import sys
 import tempfile
@@ -20,6 +21,11 @@ from zou.utils.movie import (
     concat_demuxer,
     concat_filter,
 )
+
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def fetch_inputs(storage, outdir, preview_file_ids, bucket_prefix):
@@ -102,7 +108,7 @@ def main():
                 config["output_key"],
             )
         else:
-            print(
+            logger.info(
                 "Playlist creation failed: %s" % result.get("message"),
                 file=sys.stderr,
             )

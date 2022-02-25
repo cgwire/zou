@@ -1,5 +1,6 @@
 from collections import namedtuple
 import contextlib
+import logging
 import os
 import math
 import shutil
@@ -8,22 +9,27 @@ import tempfile
 
 import ffmpeg
 
+logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
+    datefmt='%Y-%m-%d:%H:%M:%S',
+    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 EncodingParameters = namedtuple(
     "EncodingParameters", ["width", "height", "fps"]
 )
 
 
-def print_ffmpeg_error(e):
-    print("Error:")
+def log_ffmpeg_error(e, action):
+    logger.info(f"Error (in action {action}):")
     if e.stdout:
-        print("stdout:")
-        print(e.stdout.decode())
-        print("======")
+        logger.info("stdout:")
+        logger.info(e.stdout.decode())
+        logger.info("======")
     if e.stderr:
-        print("stderr:")
-        print(e.stderr.decode())
-        print("======")
+        logger.error("stderr:")
+        logger.error(e.stderr.decode())
+        logger.error("======")
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
@@ -53,7 +59,7 @@ def generate_thumbnail(movie_path):
             file_target_path, vframes=1
         ).run(quiet=True)
     except ffmpeg._run.Error as e:
-        print_ffmpeg_error(e)
+        log_ffmpeg_error(e, 'generate_thumbnail')
         raise (e)
     return file_target_path
 
@@ -69,7 +75,7 @@ def get_movie_size(movie_path):
     try:
         probe = ffmpeg.probe(movie_path)
     except ffmpeg._run.Error as e:
-        print_ffmpeg_error(e)
+        log_ffmpeg_error(e, 'get_movie_size')
         raise (e)
     video = next(
         (
@@ -82,6 +88,33 @@ def get_movie_size(movie_path):
     width = int(video["width"])
     height = int(video["height"])
     return (width, height)
+
+
+def normalize_encoding(movie_path, task, file_target_path, fps, b, width, height):
+    logger.info(task)
+    stream = ffmpeg.input(movie_path)
+    stream = ffmpeg.output(
+        stream.video,
+        stream.audio,
+        file_target_path,
+        pix_fmt="yuv420p",
+        format="mp4",
+        r=fps,
+        b=b,
+        preset="slow",
+        vcodec="libx264",
+        color_primaries=1,
+        color_trc=1,
+        colorspace=1,
+        movflags="+faststart",
+        s="%sx%s" % (width, height),
+    )
+    try:
+        logger.info(f"ffmpeg {' '.join(stream.get_args())}")
+        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+    except ffmpeg._run.Error as e:
+        log_ffmpeg_error(e, task)
+        raise (e)
 
 
 def normalize_movie(movie_path, fps, width, height):
@@ -112,71 +145,24 @@ def normalize_movie(movie_path, fps, width, height):
     if not has_soundtrack(movie_path):
         error_code, _, err = add_empty_soundtrack(movie_path)
         if error_code != 0:
-            print("Err in soundtrack: {}".format(err))
-            print("Err code: {}".format(error_code))
             return file_target_path, low_file_target_path, err
         else:
             err = None
 
-    print("Compute high def version")
     # High def version
-    stream = ffmpeg.input(movie_path)
-    stream = ffmpeg.output(
-        stream.video,
-        stream.audio,
-        file_target_path,
-        pix_fmt="yuv420p",
-        format="mp4",
-        r=fps,
-        b="28M",
-        preset="slow",
-        vcodec="libx264",
-        color_primaries=1,
-        color_trc=1,
-        colorspace=1,
-        movflags="+faststart",
-        s="%sx%s" % (width, height),
-    )
-    try:
-        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
-    except ffmpeg._run.Error as e:
-        print_ffmpeg_error(e)
-        raise (e)
+    normalize_encoding(movie_path, "Compute high def version", file_target_path, fps, "28M", width, height)
 
-    print("Compute low def version")
     # Low def version
     low_width = 1280
     low_height = math.floor((height / width) * low_width)
     if low_height % 2 == 1:
         low_height = low_height + 1
-    stream = ffmpeg.input(movie_path)
-    stream = ffmpeg.output(
-        stream.video,
-        stream.audio,
-        low_file_target_path,
-        pix_fmt="yuv420p",
-        format="mp4",
-        r=fps,
-        b="1M",
-        preset="slow",
-        vcodec="libx264",
-        color_primaries=1,
-        color_trc=1,
-        colorspace=1,
-        movflags="+faststart",
-        s="%sx%s" % (low_width, low_height),
-    )
-    try:
-        stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
-    except ffmpeg._run.Error as e:
-        print_ffmpeg_error(e)
-        raise (e)
+    normalize_encoding(movie_path, "Compute low def version", low_file_target_path, fps, "1M", low_width, low_height)
 
-    print("Err: {}".format(err))
     return file_target_path, low_file_target_path, err
 
 
-def add_empty_soundtrack(file_path):
+def add_empty_soundtrack(file_path, try_count=1):
     extension = file_path.split(".")[-1]
     if extension == "tmp":
         extension = file_path.split(".")[-2]
@@ -187,6 +173,7 @@ def add_empty_soundtrack(file_path):
 
     args = [
         "ffmpeg",
+        "-hide_banner",
         "-f",
         "lavfi",
         "-i",
@@ -204,6 +191,7 @@ def add_empty_soundtrack(file_path):
         "-shortest",
         tmp_file_path,
     ]
+    logger.info(f"Launch ffmpeg with args: {' '.join(args)}")
     sp = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, error = sp.communicate()
 
@@ -211,9 +199,38 @@ def add_empty_soundtrack(file_path):
     if error:
         err = "\n".join(str(error).split("\\n"))
 
-    print("sp.returncode: {}".format(sp.returncode))
+    logger.info(f"add_empty_soundtrack.sp.returncode: {sp.returncode}")
     if sp.returncode == 0:
         shutil.copyfile(tmp_file_path, file_path)
+    else:
+        logger.error(f"Err in soundtrack: {err}")
+        logger.error(f"Err code: {sp.returncode}")
+        if try_count <= 1:
+            (width, height) = get_movie_size(file_path)
+            if height % 2 == 1:
+                height = height + 1
+            stream = ffmpeg.input(file_path)
+            stream = ffmpeg.output(
+                stream.video,
+                tmp_file_path,
+                pix_fmt="yuv420p",
+                format="mp4",
+                preset="slow",
+                vcodec="libx264",
+                color_primaries=1,
+                color_trc=1,
+                colorspace=1,
+                movflags="+faststart",
+                s="%sx%s" % (width, height),
+            )
+            try:
+                logger.info(f"ffmpeg {' '.join(stream.get_args())}")
+                stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+            except ffmpeg._run.Error as e:
+                log_ffmpeg_error(e, 'Try to convert video after fisrt add_empty_soundtrack fail')
+                raise (e)
+            shutil.copyfile(tmp_file_path, file_path)
+            return add_empty_soundtrack(file_path, try_count=2)
 
     return sp.returncode, out, err
 
@@ -222,7 +239,7 @@ def has_soundtrack(file_path):
     try:
         audio = ffmpeg.probe(file_path, select_streams="a")
     except ffmpeg._run.Error as e:
-        print_ffmpeg_error(e)
+        log_ffmpeg_error(e, 'has_soundtrack')
         raise (e)
     return len(audio["streams"]) > 0
 
@@ -272,7 +289,7 @@ def concat_demuxer(in_files, output_path, *args):
         try:
             info = ffmpeg.probe(input_path)
         except ffmpeg._run.Error as e:
-            print_ffmpeg_error(e)
+            log_ffmpeg_error(e, 'concat_demuxer')
             raise (e)
         streams = info["streams"]
         if len(streams) != 2:
@@ -344,11 +361,11 @@ def run_ffmpeg(stream, *args):
         stream.overwrite_output().run(cmd=("ffmpeg",) + args)
         result["success"] = True
     except ffmpeg._run.Error as e:
-        print_ffmpeg_error(e)
+        log_ffmpeg_error(e, 'run_ffmpeg/ffmpeg._run.Error')
         result["success"] = False
         result["message"] = str(e)
     except Exception as e:
-        print(e)
+        logger.error(e)
         result["success"] = False
         result["message"] = str(e)
     return result
