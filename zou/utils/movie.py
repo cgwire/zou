@@ -90,7 +90,7 @@ def get_movie_size(movie_path):
     return (width, height)
 
 
-def ffmpeg_normalize(movie_path, task, file_target_path, fps, b, width, height):
+def normalize_encoding(movie_path, task, file_target_path, fps, b, width, height):
     logger.info(task)
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
@@ -150,14 +150,14 @@ def normalize_movie(movie_path, fps, width, height):
             err = None
 
     # High def version
-    ffmpeg_normalize(movie_path, "Compute high def version", file_target_path, fps, "28M", width, height)
+    normalize_encoding(movie_path, "Compute high def version", file_target_path, fps, "28M", width, height)
 
     # Low def version
     low_width = 1280
     low_height = math.floor((height / width) * low_width)
     if low_height % 2 == 1:
         low_height = low_height + 1
-    ffmpeg_normalize(movie_path, "Compute low def version", low_file_target_path, fps, "1M", low_width, low_height)
+    normalize_encoding(movie_path, "Compute low def version", low_file_target_path, fps, "1M", low_width, low_height)
 
     return file_target_path, low_file_target_path, err
 
