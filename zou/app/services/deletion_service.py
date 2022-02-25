@@ -265,6 +265,7 @@ def remove_project(project_id):
     News.commit()
     project = Project.get(project_id)
     project.delete()
+    events.emit("project:delete", {"project_id": project.id})
     return project_id
 
 
