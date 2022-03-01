@@ -117,12 +117,17 @@ def remove_task(task_id, force=False):
 
     task.delete()
     tasks_service.clear_task_cache(task_id)
+    task_serialized = task.serialize()
     events.emit(
         "task:delete",
-        {"task_id": task_id, "entity_id": str(task.entity_id)},
-        project_id=str(task.project_id),
+        {
+            "task_id": task_id,
+            "entity_id": task_serialized["entity_id"],
+            "task_type_id": task_serialized["task_type_id"],
+        },
+        project_id=task_serialized["project_id"],
     )
-    return task.serialize()
+    return task_serialized
 
 
 def remove_preview_file_by_id(preview_file_id):
