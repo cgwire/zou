@@ -1324,10 +1324,7 @@ def get_weighted_quota_shots_between(
         .filter(Task.end_date != None)
         .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
-        .filter(
-            (Task.real_start_date <= end)
-            & (Task.end_date >= start)
-        )
+        .filter((Task.real_start_date <= end) & (Task.end_date >= start))
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
