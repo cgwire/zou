@@ -118,7 +118,9 @@ def remove_task(task_id, force=False):
     task.delete()
     tasks_service.clear_task_cache(task_id)
     events.emit(
-        "task:delete", {"task_id": task_id, "entity_id": str(task.entity_id)}, project_id=str(task.project_id)
+        "task:delete",
+        {"task_id": task_id, "entity_id": str(task.entity_id)},
+        project_id=str(task.project_id),
     )
     return task.serialize()
 
