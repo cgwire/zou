@@ -9,9 +9,11 @@ import tempfile
 
 import ffmpeg
 
-logging.basicConfig(format='%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s',
-    datefmt='%Y-%m-%d:%H:%M:%S',
-    level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
+    datefmt="%Y-%m-%d:%H:%M:%S",
+    level=logging.INFO,
+)
 logger = logging.getLogger(__name__)
 
 
@@ -59,7 +61,7 @@ def generate_thumbnail(movie_path):
             file_target_path, vframes=1
         ).run(quiet=True)
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, 'generate_thumbnail')
+        log_ffmpeg_error(e, "generate_thumbnail")
         raise (e)
     return file_target_path
 
@@ -75,7 +77,7 @@ def get_movie_size(movie_path):
     try:
         probe = ffmpeg.probe(movie_path)
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, 'get_movie_size')
+        log_ffmpeg_error(e, "get_movie_size")
         raise (e)
     video = next(
         (
@@ -90,7 +92,9 @@ def get_movie_size(movie_path):
     return (width, height)
 
 
-def normalize_encoding(movie_path, task, file_target_path, fps, b, width, height):
+def normalize_encoding(
+    movie_path, task, file_target_path, fps, b, width, height
+):
     logger.info(task)
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
@@ -150,14 +154,30 @@ def normalize_movie(movie_path, fps, width, height):
             err = None
 
     # High def version
-    normalize_encoding(movie_path, "Compute high def version", file_target_path, fps, "28M", width, height)
+    normalize_encoding(
+        movie_path,
+        "Compute high def version",
+        file_target_path,
+        fps,
+        "28M",
+        width,
+        height,
+    )
 
     # Low def version
     low_width = 1280
     low_height = math.floor((height / width) * low_width)
     if low_height % 2 == 1:
         low_height = low_height + 1
-    normalize_encoding(movie_path, "Compute low def version", low_file_target_path, fps, "1M", low_width, low_height)
+    normalize_encoding(
+        movie_path,
+        "Compute low def version",
+        low_file_target_path,
+        fps,
+        "1M",
+        low_width,
+        low_height,
+    )
 
     return file_target_path, low_file_target_path, err
 
@@ -225,9 +245,14 @@ def add_empty_soundtrack(file_path, try_count=1):
             )
             try:
                 logger.info(f"ffmpeg {' '.join(stream.get_args())}")
-                stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+                stream.run(
+                    quiet=False, capture_stderr=True, overwrite_output=True
+                )
             except ffmpeg._run.Error as e:
-                log_ffmpeg_error(e, 'Try to convert video after fisrt add_empty_soundtrack fail')
+                log_ffmpeg_error(
+                    e,
+                    "Try to convert video after fisrt add_empty_soundtrack fail",
+                )
                 raise (e)
             shutil.copyfile(tmp_file_path, file_path)
             return add_empty_soundtrack(file_path, try_count=2)
@@ -239,7 +264,7 @@ def has_soundtrack(file_path):
     try:
         audio = ffmpeg.probe(file_path, select_streams="a")
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, 'has_soundtrack')
+        log_ffmpeg_error(e, "has_soundtrack")
         raise (e)
     return len(audio["streams"]) > 0
 
@@ -289,7 +314,7 @@ def concat_demuxer(in_files, output_path, *args):
         try:
             info = ffmpeg.probe(input_path)
         except ffmpeg._run.Error as e:
-            log_ffmpeg_error(e, 'concat_demuxer')
+            log_ffmpeg_error(e, "concat_demuxer")
             raise (e)
         streams = info["streams"]
         if len(streams) != 2:
@@ -361,7 +386,7 @@ def run_ffmpeg(stream, *args):
         stream.overwrite_output().run(cmd=("ffmpeg",) + args)
         result["success"] = True
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, 'run_ffmpeg/ffmpeg._run.Error')
+        log_ffmpeg_error(e, "run_ffmpeg/ffmpeg._run.Error")
         result["success"] = False
         result["message"] = str(e)
     except Exception as e:

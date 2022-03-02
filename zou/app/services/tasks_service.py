@@ -86,9 +86,7 @@ def get_departments():
 def get_task_types():
     for task_type in TaskType.get_all():
         if task_type.for_shots and task_type.for_entity != "Shot":
-            task_type.update({
-                "for_entity": "Shot"
-            })
+            task_type.update({"for_entity": "Shot"})
     return fields.serialize_models(TaskType.get_all())
 
 
@@ -718,6 +716,18 @@ def get_tasks_for_entity_and_task_type(entity_id, task_type_id):
     """
     tasks = (
         Task.query.filter_by(entity_id=entity_id, task_type_id=task_type_id)
+        .order_by(Task.name)
+        .all()
+    )
+    return Task.serialize_list(tasks)
+
+
+def get_tasks_for_project_and_task_type(project_id, task_type_id):
+    """
+    For a project and a task type returns all tasks.
+    """
+    tasks = (
+        Task.query.filter_by(project_id=project_id, task_type_id=task_type_id)
         .order_by(Task.name)
         .all()
     )

@@ -860,6 +860,7 @@ def remove_sequence(sequence_id, force=False):
         ScheduleItem.delete_all_by(object_id=sequence_id)
     try:
         sequence.delete()
+        events.emit("sequence:delete", {"sequence_id": sequence_id})
     except IntegrityError:
         raise ModelWithRelationsDeletionException(
             "Some data are still linked to this sequence."
@@ -1323,10 +1324,7 @@ def get_weighted_quota_shots_between(
         .filter(Task.end_date != None)
         .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
-        .filter(
-            (Task.real_start_date <= end)
-            & (Task.end_date >= start)
-        )
+        .filter((Task.real_start_date <= end) & (Task.end_date >= start))
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)

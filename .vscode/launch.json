@@ -9,7 +9,7 @@
             "env": {
                 "FLASK_APP": "zou.app",
                 "FLASK_DEBUG": "1",
-                "PREVIEW_FOLDER": "$PWD/previews",
+                "PREVIEW_FOLDER": "${fileDirname}/../previews",
                 "DEBUG": "1",
                 "MAIL_DEBUG": "1",
             },
@@ -18,6 +18,16 @@
                 "--no-reload",
             ],
             "jinja": true
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            "env": {"PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"},
+            "justMyCode": false
         }
     ]
 }
