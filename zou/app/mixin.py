@@ -95,9 +95,9 @@ class ArgsMixin(object):
         options = request.args
         return options.get(field_name, None)
 
-    def get_bool_parameter(self, field_name):
+    def get_bool_parameter(self, field_name, default="false"):
         options = request.args
-        return options.get(field_name, "false") == "true"
+        return options.get(field_name, default) == "true"
 
     def get_date_parameter(self, field_name):
         self.parse_date_parameter(self.get_text_parameter(field_name))
