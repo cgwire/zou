@@ -9,7 +9,7 @@
             "env": {
                 "FLASK_APP": "zou.app",
                 "FLASK_DEBUG": "1",
-                "PREVIEW_FOLDER": "$PWD/previews",
+                "PREVIEW_FOLDER": "${fileDirname}/../previews",
                 "DEBUG": "1",
                 "MAIL_DEBUG": "1",
             },
