@@ -232,6 +232,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
+        weighted = self.get_bool_parameter("weighted", default="true")
         try:
             return shots_service.get_month_quota_shots(
                 person_id,
@@ -239,6 +240,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
                 month,
                 project_id=project_id,
                 task_type_id=task_type_id,
+                weighted=weighted,
             )
         except WrongDateFormatException:
             abort(404)
@@ -254,6 +256,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
+        weighted = self.get_bool_parameter("weighted", default="true")
         try:
             return shots_service.get_week_quota_shots(
                 person_id,
@@ -261,6 +264,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
                 week,
                 project_id=project_id,
                 task_type_id=task_type_id,
+                weighted=weighted,
             )
         except WrongDateFormatException:
             abort(404)
@@ -276,6 +280,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
+        weighted = self.get_bool_parameter("weighted", default="true")
         try:
             return shots_service.get_day_quota_shots(
                 person_id,
@@ -284,6 +289,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
                 day,
                 project_id=project_id,
                 task_type_id=task_type_id,
+                weighted=weighted,
             )
         except WrongDateFormatException:
             abort(404)

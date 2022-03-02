@@ -693,7 +693,19 @@ class ProjectQuotasResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id, task_type_id):
-        project = projects_service.get_project(project_id)
+        projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         detail_level = self.get_text_parameter("detail")
-        return shots_service.get_quotas(project_id, task_type_id, detail_level)
+        weighted = self.get_bool_parameter("weighted", default="true")
+        if weighted:
+            return shots_service.get_weighted_quotas(
+                project_id,
+                task_type_id,
+                detail_level
+            )
+        else:
+            return shots_service.get_raw_quotas(
+                project_id,
+                task_type_id,
+                detail_level
+            )

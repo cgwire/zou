@@ -1017,13 +1017,13 @@ def get_base_entity_type_name(entity_dict):
     return type_name
 
 
-def get_quotas(project_id, task_type_id, detail_level):
+def get_weighted_quotas(project_id, task_type_id, detail_level):
     """
     Build quota statistics. It counts the number of frames done for each day.
     A shot is considered done at the first feedback request. If time spent is
     filled for it, it weights the result with the frame number with the time
-    spents. If there is no time spent, it considers that all the work was done
-    at the end date.
+    spents. If there is no time spent, it considers that the work was done
+    from the wip date to the feedback date.
     It computes the shot count and the number of seconds too.
     """
     fps = projects_service.get_project_fps(project_id)
@@ -1084,6 +1084,39 @@ def get_quotas(project_id, task_type_id, detail_level):
                     quotas, str(person_id), date, timezone, nb_frames, fps
                 )
             date = date + timedelta(1)
+    return quotas
+
+
+def get_raw_quotas(project_id, task_type_id, detail_level):
+    """
+    Build quota statistics in a raw way. It counts the number of frames done
+    for each day. A shot is considered done at the first feedback request (end
+    date). It considers that all the work was done at the end date.
+    It computes the shot count and the number of seconds too.
+    """
+    fps = projects_service.get_project_fps(project_id)
+    timezone = user_service.get_timezone()
+    shot_type = get_shot_type()
+    quotas = {}
+    query = (
+        Task.query.filter(Task.project_id == project_id)
+        .filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Task.end_date != None)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+        .join(Task.assignees)
+        .add_columns(Entity.nb_frames, Person.id)
+    )
+    result = query.all()
+
+    for (task, nb_frames, person_id) in result:
+        date = task.end_date
+        if nb_frames is None:
+            nb_frames = 0
+        _add_quota_entry(
+            quotas, str(person_id), date, timezone, nb_frames, fps
+        )
     return quotas
 
 
@@ -1152,7 +1185,7 @@ def _init_quota_person(quotas, person_id):
 
 
 def get_month_quota_shots(
-    person_id, year, month, project_id=None, task_type_id=None
+    person_id, year, month, project_id=None, task_type_id=None, weighted=True
 ):
     """
     Return shots that are included in quota comptutation for given
@@ -1160,17 +1193,26 @@ def get_month_quota_shots(
     """
     start, end = date_helpers.get_month_interval(year, month)
     start, end = _get_timezoned_interval(start, end)
-    return get_quota_shots_between(
-        person_id,
-        start,
-        end,
-        project_id=project_id,
-        task_type_id=task_type_id,
-    )
+    if weighted:
+        return get_weighted_quota_shots_between(
+            person_id,
+            start,
+            end,
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
+    else:
+        return get_raw_quota_shots_between(
+            person_id,
+            start,
+            end,
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
 
 
 def get_week_quota_shots(
-    person_id, year, week, project_id=None, task_type_id=None
+    person_id, year, week, project_id=None, task_type_id=None, weighted=True
 ):
     """
     Return shots that are included in quota comptutation for given
@@ -1178,17 +1220,32 @@ def get_week_quota_shots(
     """
     start, end = date_helpers.get_week_interval(year, week)
     start, end = _get_timezoned_interval(start, end)
-    return get_quota_shots_between(
-        person_id,
-        start,
-        end,
-        project_id=project_id,
-        task_type_id=task_type_id,
-    )
+    if weighted:
+        return get_weighted_quota_shots_between(
+            person_id,
+            start,
+            end,
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
+    else:
+        return get_raw_quota_shots_between(
+            person_id,
+            start,
+            end,
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
 
 
 def get_day_quota_shots(
-    person_id, year, month, day, project_id=None, task_type_id=None
+    person_id,
+    year,
+    month,
+    day,
+    project_id=None,
+    task_type_id=None,
+    weighted=True
 ):
     """
     Return shots that are included in quota comptutation for given
@@ -1196,16 +1253,25 @@ def get_day_quota_shots(
     """
     start, end = date_helpers.get_day_interval(year, month, day)
     start, end = _get_timezoned_interval(start, end)
-    return get_quota_shots_between(
-        person_id,
-        start,
-        end,
-        project_id=project_id,
-        task_type_id=task_type_id,
-    )
+    if weighted:
+        return get_weighted_quota_shots_between(
+            person_id,
+            start,
+            end,
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
+    else:
+        return get_raw_quota_shots_between(
+            person_id,
+            start,
+            end,
+            project_id=project_id,
+            task_type_id=task_type_id,
+        )
 
 
-def get_quota_shots_between(
+def get_weighted_quota_shots_between(
     person_id, start, end, project_id=None, task_type_id=None
 ):
     """
@@ -1291,6 +1357,37 @@ def get_quota_shots_between(
             shot["weight"] = round(multiplicator / business_days, 2)
             already_listed[shot["id"]] = True
             shots.append(shot)
+
+    return sorted(shots, key=itemgetter("full_name"))
+
+
+def get_raw_quota_shots_between(
+    person_id, start, end, project_id=None, task_type_id=None
+):
+    """
+    Get all shots leading to a quota computation during the given period.
+    """
+    shot_type = get_shot_type()
+    person = persons_service.get_person_raw(person_id)
+    shots = []
+
+    query = (
+        Entity.query.filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.project_id == project_id)
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Task.end_date.between(start, end))
+        .filter(Task.assignees.contains(person))
+        .join(Task, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+    )
+    query_shots = query.all()
+
+    for entity in query_shots:
+        shot = entity.serialize()
+        full_name, _ = names_service.get_full_entity_name(shot["id"])
+        shot["full_name"] = full_name
+        shot["weight"] = 1
+        shots.append(shot)
 
     return sorted(shots, key=itemgetter("full_name"))
 
