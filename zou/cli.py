@@ -48,6 +48,23 @@ def migrate_db(message):
 
 
 @cli.command()
+@click.option("--revision", default=None)
+def downgrade_db(revision):
+    """
+    Downgrade db to previous revision of the database schema
+    (for development only). For revision you can use an hash or a relative migration identifier.
+    """
+
+    from zou.app import app
+
+    with app.app_context():
+        import zou
+
+        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
+        flask_migrate.downgrade(directory=directory, revision=revision)
+
+
+@cli.command()
 def clear_db():
     "Drop all tables from database"
 
