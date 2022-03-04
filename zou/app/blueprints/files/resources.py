@@ -1880,7 +1880,7 @@ class EntityWorkingFilesResource(Resource):
         """
         task_id = request.args.get("task_id", None)
         name = request.args.get("name", None)
-        relations = request.args.get("relations", False)
+        relations = request.args.get("relations", "false").lower() == "true"
 
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])

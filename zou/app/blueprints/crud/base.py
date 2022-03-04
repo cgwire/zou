@@ -155,7 +155,7 @@ class BaseModelsResource(Resource):
                 query = self.add_project_permission_filter(query)
                 page = int(options.get("page", "-1"))
                 limit = int(options.get("limit", 0))
-                relations = options.get("relations", "false") == "true"
+                relations = options.get("relations", "false").lower() == "true"
                 is_paginated = page > -1
 
                 if is_paginated:
