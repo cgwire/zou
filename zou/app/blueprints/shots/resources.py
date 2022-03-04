@@ -699,13 +699,9 @@ class ProjectQuotasResource(Resource, ArgsMixin):
         weighted = self.get_bool_parameter("weighted", default="true")
         if weighted:
             return shots_service.get_weighted_quotas(
-                project_id,
-                task_type_id,
-                detail_level
+                project_id, task_type_id, detail_level
             )
         else:
             return shots_service.get_raw_quotas(
-                project_id,
-                task_type_id,
-                detail_level
+                project_id, task_type_id, detail_level
             )
