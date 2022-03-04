@@ -49,6 +49,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_slack_userid = db.Column(db.String(60), default="")
     notifications_mattermost_enabled = db.Column(db.Boolean(), default=False)
     notifications_mattermost_userid = db.Column(db.String(60), default="")
+    notifications_discord_enabled = db.Column(db.Boolean(), default=False)
+    notifications_discord_userid = db.Column(db.String(60), default="")
 
     departments = db.relationship("Department", secondary=department_link)
 

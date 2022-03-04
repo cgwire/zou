@@ -17,6 +17,7 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     hd_by_default = db.Column(db.Boolean(), default=False)
     chat_token_slack = db.Column(db.String(80), default="")
     chat_webhook_mattermost = db.Column(db.String(80), default="")
+    chat_token_discord = db.Column(db.String(80), default="")
 
     def present(self):
         return fields.serialize_dict(
@@ -24,6 +25,7 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
                 "id": self.id,
                 "chat_token_slack": self.chat_token_slack,
                 "chat_webhook_mattermost": self.chat_webhook_mattermost,
+                "chat_token_discord": self.chat_token_discord,
                 "name": self.name,
                 "has_avatar": self.has_avatar,
                 "hours_by_day": self.hours_by_day,
