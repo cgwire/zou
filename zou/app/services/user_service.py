@@ -1,5 +1,6 @@
 from sqlalchemy.orm import aliased
 
+from zou.app import config
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -753,8 +754,8 @@ def get_timezone():
     try:
         timezone = persons_service.get_current_user()["timezone"]
     except Exception:
-        timezone = "Europe/Paris"
-    return timezone or "Europe/Paris"
+        timezone = config.DEFAULT_TIMEZONE
+    return timezone or config.DEFAULT_TIMEZONE
 
 
 def get_context():

@@ -9,6 +9,7 @@ from babel import Locale
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app import config
 
 
 department_link = db.Table(
@@ -37,7 +38,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     desktop_login = db.Column(db.String(80))
     shotgun_id = db.Column(db.Integer, unique=True)
     timezone = db.Column(
-        TimezoneType(backend="pytz"), default=pytz_timezone("Europe/Paris")
+        TimezoneType(backend="pytz"),
+        default=pytz_timezone(config.DEFAULT_TIMEZONE),
     )
     locale = db.Column(LocaleType, default=Locale("en", "US"))
     data = db.Column(JSONB)
