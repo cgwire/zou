@@ -1246,7 +1246,7 @@ def get_day_quota_shots(
     day,
     project_id=None,
     task_type_id=None,
-    weighted=True
+    weighted=True,
 ):
     """
     Return shots that are included in quota comptutation for given
