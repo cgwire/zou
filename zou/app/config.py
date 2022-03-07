@@ -121,6 +121,8 @@ CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 
+DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
+
 # Deprecated
 DONE_TASK_STATUS = "Done"
 WIP_TASK_STATUS = "WIP"
