@@ -866,6 +866,7 @@ def get_person_tasks(person_id, projects, is_done=None):
                 "episode_name": episode_name,
                 "task_estimation": task.estimation,
                 "task_duration": task.duration,
+                "task_start_ðate": fields.serialize_value(task.start_date),
                 "task_due_date": fields.serialize_value(task.due_date),
                 "task_type_name": task_type_name,
                 "task_status_name": task_status_name,
@@ -1161,7 +1162,7 @@ def is_finished(task, data):
     if "task_status_id" in data:
         task_status = get_task_status_raw(task.task_status_id)
         new_task_status = get_task_status_raw(data["task_status_id"])
-        return new_task_status.id != task_status.id and new_task_status.is_done
+        return new_task_status.id != task_status.id and new_task_status.is_feedback_request
     else:
         return False
 
