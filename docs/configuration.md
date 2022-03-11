@@ -114,6 +114,7 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
 * `ENABLE_JOB_QUEUE_REMOTE` (default: "False"): Set to True if you want to send
   playlist builds to a Nomad cluster.
 
+
 ## Misc
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
