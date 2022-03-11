@@ -172,7 +172,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                     full,
                     remote,
                 ),
-                job_timeout=3600,
+                job_timeout=int(config.JOB_QUEUE_TIMEOUT),
             )
             return {"job": "running"}
         else:
