@@ -55,14 +55,14 @@ Data you can store and retrieve are from the following type :
 
 * GET `/data/projects`: Get all projects
 * GET `/data/project-status`: Get all project status
-* GET `/data/persons`: Get all projects
+* GET `/data/persons`: Get all persons
 * GET `/data/episodes`: Get all episodes
 * GET `/data/sequences`: Get all sequences
 * GET `/data/shots`: Get all shots
+* GET `/data/assets`: Get all assets
 * GET `/data/asset-types`: Get all asset types
-* GET `/data/shots`: Get all assets
-* GET `/data/departments`: Get all departements
-* GET `/data/tasks`: Get all projects
+* GET `/data/departments`: Get all departments
+* GET `/data/tasks`: Get all tasks
 * GET `/data/task-types`: Get all task types
 * GET `/data/task-status`: Get all task status
 * GET `/data/file-status`: Get all file status
