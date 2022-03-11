@@ -110,6 +110,7 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
 
 * `ENABLE_JOB_QUEUE` (default: "False"): Set to True if you want to send
   asynchronous tasks to the `zou-rq` service.
+* `JOB_QUEUE_TIMEOUT` (default: 3600): Set the timeout (in seconds) for preview and playlist encoding jobs sent to the `zou-rq` service.
 * `ENABLE_JOB_QUEUE_REMOTE` (default: "False"): Set to True if you want to send
   playlist builds to a Nomad cluster.
 
