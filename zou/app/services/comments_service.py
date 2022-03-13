@@ -1,4 +1,5 @@
 import datetime
+import os
 import re
 
 from flask import current_app
@@ -241,6 +242,7 @@ def create_attachment(comment, uploaded_file):
     size = fs.get_file_size(tmp_file_path)
     attachment_file.update({"size": size})
     file_store.add_file("attachments", attachment_file_id, tmp_file_path)
+    os.remove(tmp_file_path)
     return attachment_file.present()
 
 
