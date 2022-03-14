@@ -1162,7 +1162,10 @@ def is_finished(task, data):
     if "task_status_id" in data:
         task_status = get_task_status_raw(task.task_status_id)
         new_task_status = get_task_status_raw(data["task_status_id"])
-        return new_task_status.id != task_status.id and new_task_status.is_feedback_request
+        return (
+            new_task_status.id != task_status.id
+            and new_task_status.is_feedback_request
+        )
     else:
         return False
 
