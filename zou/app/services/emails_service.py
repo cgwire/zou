@@ -43,10 +43,11 @@ def send_notification(person_id, subject, messages):
         token = organisation.get("chat_token_slack", "")
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
-                chats.send_to_slack, args=(token, userid, slack_message)
+                chats.send_to_slack,
+                args=(current_app, token, userid, slack_message),
             )
         else:
-            chats.send_to_slack(token, userid, slack_message)
+            chats.send_to_slack(current_app, token, userid, slack_message)
 
     if person["notifications_mattermost_enabled"]:
         organisation = persons_service.get_organisation()
@@ -55,10 +56,12 @@ def send_notification(person_id, subject, messages):
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
                 chats.send_to_mattermost,
-                args=(webhook, userid, mattermost_message),
+                args=(current_app, webhook, userid, mattermost_message),
             )
         else:
-            chats.send_to_mattermost(webhook, userid, discord_message)
+            chats.send_to_mattermost(
+                current_app, webhook, userid, mattermost_message
+            )
 
     if person["notifications_discord_enabled"]:
         organisation = persons_service.get_organisation()

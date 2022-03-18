@@ -7,31 +7,71 @@ from discord import (
 )
 from zou.app import config
 import asyncio
+import traceback
 
 
-def send_to_slack(app_token, userid, message):
-    client = SlackClient(token=app_token)
-    blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": message}}]
-    client.api_call(
-        "chat.postMessage", channel="@%s" % userid, blocks=blocks, as_user=True
-    )
+def send_to_slack(current_app, token, userid, message):
+    if token:
+        if userid:
+            try:
+                client = SlackClient(token=token)
+                blocks = [
+                    {
+                        "type": "section",
+                        "text": {"type": "mrkdwn", "text": message},
+                    }
+                ]
+                client.api_call(
+                    "chat.postMessage",
+                    channel="@%s" % userid,
+                    blocks=blocks,
+                    as_user=True,
+                )
+            except Exception:
+                current_app.logger.info(
+                    "Exception when sending a Slack notification:"
+                )
+                current_app.logger.info(traceback.format_exc())
+        else:
+            current_app.logger.info("The userid of Slack user is not defined.")
+    else:
+        current_app.logger.info(
+            "The token of Slack for sending notifications is not defined."
+        )
 
 
-def send_to_mattermost(webhook, userid, message):
-    arg = webhook.split("/")
-    server = "%s%s//%s" % (arg[0], arg[1], arg[2])
-    hook = arg[4]
+def send_to_mattermost(current_app, webhook, userid, message):
+    if webhook:
+        if userid:
+            try:
+                arg = webhook.split("/")
+                server = "%s%s//%s" % (arg[0], arg[1], arg[2])
+                hook = arg[4]
 
-    # mandatory parameters are url and your webhook API key
-    mwh = Webhook(server, hook)
-    mwh.username = "Kitsu - %s" % (message["project_name"])
-    mwh.icon_url = "%s://%s/img/kitsu.b07d6464.png" % (
-        config.DOMAIN_PROTOCOL,
-        config.DOMAIN_NAME,
-    )
+                # mandatory parameters are url and your webhook API key
+                mwh = Webhook(server, hook)
+                mwh.username = "Kitsu - %s" % (message["project_name"])
+                mwh.icon_url = "%s://%s/img/kitsu.b07d6464.png" % (
+                    config.DOMAIN_PROTOCOL,
+                    config.DOMAIN_NAME,
+                )
 
-    # send a message to the API_KEY's channel
-    mwh.send(message["message"], channel="@%s" % userid)
+                # send a message to the API_KEY's channel
+                mwh.send(message["message"], channel="@%s" % userid)
+
+            except Exception:
+                current_app.logger.info(
+                    "Exception when sending a Mattermost notification:"
+                )
+                current_app.logger.info(traceback.format_exc())
+        else:
+            current_app.logger.info(
+                "The userid of Mattermost user is not defined."
+            )
+    else:
+        current_app.logger.info(
+            "The webhook of Mattermost for sending notifications is not defined."
+        )
 
 
 def send_to_discord(current_app, token, userid, message):
@@ -57,16 +97,34 @@ def send_to_discord(current_app, token, userid, message):
                     break
             if not user_found:
                 current_app.logger.info(
-                    "User %s not found by discord bot" % userid
+                    "User %s not found by Discord bot" % userid
                 )
 
             await client.close()
 
         await client.start(token)
 
-    asyncio.set_event_loop(asyncio.new_event_loop())
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        send_to_discord_async(current_app, token, userid, message)
-    )
-    loop.close()
+    if token:
+        if userid:
+            try:
+                asyncio.set_event_loop(asyncio.new_event_loop())
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(
+                    send_to_discord_async(current_app, token, userid, message)
+                )
+            except Exception:
+                current_app.logger.info(
+                    "Exception when sending a Discord notification:"
+                )
+                current_app.logger.info(traceback.format_exc())
+            finally:
+                if loop:
+                    loop.close()
+        else:
+            current_app.logger.info(
+                "The userid of Discord user is not defined."
+            )
+    else:
+        current_app.logger.info(
+            "The token of the Discord bot for sending notifications is not defined."
+        )
