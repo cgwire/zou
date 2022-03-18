@@ -12,9 +12,10 @@ from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
+from zou.app.models.time_spent import TimeSpent
 
-from zou.app.utils import fields, events, cache, emails
 from zou.app import config
+from zou.app.utils import fields, events, cache, emails
 
 from zou.app.services.exception import (
     DepartmentNotFoundException,
@@ -251,7 +252,23 @@ def create_desktop_login_logs(person_id, date):
     """
     Add a new log entry for desktop logins.
     """
-    return DesktopLoginLog.create(person_id=person_id, date=date).serialize()
+    log = DesktopLoginLog.create(person_id=person_id, date=date).serialize()
+    update_person_last_presence(person_id)
+    return log
+
+
+def update_person_last_presence(person_id):
+    """
+    Update person presence field with the most recent time spent or
+    desktop login log.
+    """
+    log = DesktopLoginLog.query.order_by(DesktopLoginLog.date.desc()).first()
+    time_spent = TimeSpent.query.order_by(TimeSpent.date.desc()).first()
+    if log is not None and log.date > time_spent.date:
+        date = log.date
+    else:
+        date = time_spent.date
+    return update_person(person_id, {"last_presence": date})
 
 
 def get_presence_logs(year, month):
