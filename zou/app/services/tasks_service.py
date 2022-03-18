@@ -1138,6 +1138,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
         time_spent = TimeSpent.create(
             task_id=task_id, person_id=person_id, date=date, duration=duration
         )
+        persons_service.update_person_last_presence(person_id)
         events.emit(
             "time-spent:new",
             {"time_spent_id": str(time_spent.id)},
