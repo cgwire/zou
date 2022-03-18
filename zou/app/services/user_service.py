@@ -5,6 +5,7 @@ from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.search_filter import SearchFilter
@@ -568,12 +569,17 @@ def get_last_notifications(notification_id=None, after=None, before=None):
     Return last 100 user notifications.
     """
     current_user = persons_service.get_current_user()
+    Author = aliased(Person, name="author")
+    is_current_user_artist = current_user["role"] == "user"
     result = []
     query = (
-        Notification.query.filter_by(person_id=current_user["id"])
+        Notification.query
+        .filter_by(person_id=current_user["id"])
         .order_by(Notification.created_at.desc())
-        .join(Task, Project)
-        .outerjoin(Comment)
+        .join(Author, Author.id == Notification.author_id)
+        .join(Task, Task.id == Notification.task_id)
+        .join(Project, Project.id == Task.project_id)
+        .outerjoin(Comment, Comment.id == Notification.comment_id)
         .add_columns(
             Project.id,
             Project.name,
@@ -583,6 +589,7 @@ def get_last_notifications(notification_id=None, after=None, before=None):
             Comment.text,
             Comment.replies,
             Task.entity_id,
+            Author.role,
         )
     )
 
@@ -607,6 +614,7 @@ def get_last_notifications(notification_id=None, after=None, before=None):
         comment_text,
         comment_replies,
         task_entity_id,
+        role,
     ) in notifications:
         (full_entity_name, episode_id) = names_service.get_full_entity_name(
             task_entity_id
@@ -631,6 +639,10 @@ def get_last_notifications(notification_id=None, after=None, before=None):
             )
             if reply is not None:
                 reply_text = reply["text"]
+
+        if role == "client" and is_current_user_artist:
+            comment_text = ""
+            reply_text = ""
 
         result.append(
             fields.serialize_dict(
