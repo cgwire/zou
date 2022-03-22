@@ -1019,11 +1019,19 @@ def update_task(task_id, data):
     # Run status automations
     status_automations = status_automations_service.get_status_automations()
     for automation in status_automations:
-        # Match status and type
+        # Match IN status and type
         if data["task_status_id"] == automation["in_task_status_id"] and str(task.task_type_id) == automation["in_task_type_id"]:
-            task_to_update = get_tasks_for_entity_and_task_type(task.entity_id, automation["out_task_type_id"])
-            if task_to_update:
-                update_task(task_to_update[0]["id"], {"task_status_id": automation["out_task_status_id"]})
+            # Output is `status` field
+            if automation["out_field_type"] == "status":
+                task_to_update = get_tasks_for_entity_and_task_type(task.entity_id, automation["out_task_type_id"])
+                if task_to_update:
+                    update_task(task_to_update[0]["id"], {"task_status_id": automation["out_task_status_id"]})
+            
+            # Output is `ready_for` field, can be performed only on assets
+            elif automation["out_field_type"] == "ready_for":
+                assets_service.update_asset(task.entity_id, {"ready_for": automation["out_task_type_id"]})
+
+            # TODO 'Ready for' change event must be added
 
     task.update(data)
     clear_task_cache(task_id)
