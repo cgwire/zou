@@ -193,6 +193,40 @@ class ProductionTaskStatusRemoveResource(Resource):
         return "", 204
 
 
+class ProductionStatusAutomationResource(Resource, ArgsMixin):
+    """
+    Allow to add a status automation linked to a production.
+    """
+
+    @jwt_required
+    def get(self, project_id):
+        user_service.check_manager_project_access(project_id)
+        return projects_service.get_project_status_automations(project_id)
+
+    @jwt_required
+    def post(self, project_id):
+        args = self.get_args(
+            [("status_automation_id", "", True)]
+        )
+        user_service.check_manager_project_access(project_id)
+        project = projects_service.add_status_automation_setting(
+            project_id, args["status_automation_id"]
+        )
+        return project, 201
+
+
+class ProductionStatusAutomationRemoveResource(Resource):
+    """
+    Allow to remove an status automation linked to a production.
+    """
+
+    @jwt_required
+    def delete(self, project_id, status_automation_id):
+        user_service.check_manager_project_access(project_id)
+        projects_service.remove_status_automation_setting(project_id, status_automation_id)
+        return "", 204
+
+
 class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
     """
     Resource to get and create metadata descriptors. It serves to describe
