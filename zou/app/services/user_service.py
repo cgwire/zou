@@ -19,6 +19,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    status_automations_service,
     tasks_service,
 )
 from zou.app.services.exception import (
@@ -766,6 +767,7 @@ def get_context():
 
     asset_types = assets_service.get_asset_types()
     custom_actions = custom_actions_service.get_custom_actions()
+    status_automations = status_automations_service.get_status_automations()
     persons = persons_service.get_persons(
         minimal=not permissions.has_manager_permissions()
     )
@@ -779,6 +781,7 @@ def get_context():
     return {
         "asset_types": asset_types,
         "custom_actions": custom_actions,
+        "status_automations": status_automations,
         "departments": departments,
         "notification_count": notification_count,
         "persons": persons,
