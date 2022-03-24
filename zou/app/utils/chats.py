@@ -8,9 +8,20 @@ from discord import (
 from zou.app import config
 import asyncio
 import traceback
+import logging
+
+logger = logging.getLogger(__name__)
+loghandler = logging.StreamHandler()
+loghandler.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    "%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
+    datefmt="%Y-%m-%d:%H:%M:%S",
+)
+loghandler.setFormatter(formatter)
+logger.addHandler(loghandler)
 
 
-def send_to_slack(current_app, token, userid, message):
+def send_to_slack(token, userid, message):
     if token:
         if userid:
             try:
@@ -28,19 +39,17 @@ def send_to_slack(current_app, token, userid, message):
                     as_user=True,
                 )
             except Exception:
-                current_app.logger.info(
-                    "Exception when sending a Slack notification:"
-                )
-                current_app.logger.info(traceback.format_exc())
+                logger.info("Exception when sending a Slack notification:")
+                logger.info(traceback.format_exc())
         else:
-            current_app.logger.info("The userid of Slack user is not defined.")
+            logger.info("The userid of Slack user is not defined.")
     else:
-        current_app.logger.info(
+        logger.info(
             "The token of Slack for sending notifications is not defined."
         )
 
 
-def send_to_mattermost(current_app, webhook, userid, message):
+def send_to_mattermost(webhook, userid, message):
     if webhook:
         if userid:
             try:
@@ -60,30 +69,26 @@ def send_to_mattermost(current_app, webhook, userid, message):
                 mwh.send(message["message"], channel="@%s" % userid)
 
             except Exception:
-                current_app.logger.info(
+                logger.info(
                     "Exception when sending a Mattermost notification:"
                 )
-                current_app.logger.info(traceback.format_exc())
+                logger.info(traceback.format_exc())
         else:
-            current_app.logger.info(
-                "The userid of Mattermost user is not defined."
-            )
+            logger.info("The userid of Mattermost user is not defined.")
     else:
-        current_app.logger.info(
+        logger.info(
             "The webhook of Mattermost for sending notifications is not defined."
         )
 
 
-def send_to_discord(current_app, token, userid, message):
-    async def send_to_discord_async(current_app, token, userid, message):
+def send_to_discord(token, userid, message):
+    async def send_to_discord_async(token, userid, message):
         intents = DiscordIntents.default()
         intents.members = True
         client = DiscordClient(intents=intents)
 
         @client.event
-        async def on_ready(
-            current_app=current_app, userid=userid, message=message
-        ):
+        async def on_ready(userid=userid, message=message):
             user_found = False
             for user in client.get_all_members():
                 if (
@@ -96,9 +101,7 @@ def send_to_discord(current_app, token, userid, message):
                     user_found = True
                     break
             if not user_found:
-                current_app.logger.info(
-                    "User %s not found by Discord bot" % userid
-                )
+                logger.info("User %s not found by Discord bot" % userid)
 
             await client.close()
 
@@ -110,21 +113,17 @@ def send_to_discord(current_app, token, userid, message):
                 asyncio.set_event_loop(asyncio.new_event_loop())
                 loop = asyncio.get_event_loop()
                 loop.run_until_complete(
-                    send_to_discord_async(current_app, token, userid, message)
+                    send_to_discord_async(token, userid, message)
                 )
             except Exception:
-                current_app.logger.info(
-                    "Exception when sending a Discord notification:"
-                )
-                current_app.logger.info(traceback.format_exc())
+                logger.info("Exception when sending a Discord notification:")
+                logger.info(traceback.format_exc())
             finally:
                 if loop:
                     loop.close()
         else:
-            current_app.logger.info(
-                "The userid of Discord user is not defined."
-            )
+            logger.info("The userid of Discord user is not defined.")
     else:
-        current_app.logger.info(
+        logger.info(
             "The token of the Discord bot for sending notifications is not defined."
         )
