@@ -13,6 +13,8 @@ from .resources import (
     ProductionTaskTypesResource,
     ProductionTaskStatusResource,
     ProductionTaskStatusRemoveResource,
+    ProductionStatusAutomationResource,
+    ProductionStatusAutomationRemoveResource,
     ProductionMetadataDescriptorResource,
     ProductionMetadataDescriptorsResource,
     ProductionMilestonesResource,
@@ -59,6 +61,14 @@ routes = [
     (
         "/data/projects/<project_id>/settings/task-status/<task_status_id>",
         ProductionTaskStatusRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/status-automations",
+        ProductionStatusAutomationResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/status-automations/<status_automation_id>",
+        ProductionStatusAutomationRemoveResource,
     ),
     (
         "/data/projects/<project_id>/metadata-descriptors",

@@ -60,6 +60,7 @@ class ProjectResource(BaseModelResource):
         data.pop("asset_types", [])
         data.pop("task_statuses", [])
         data.pop("task_types", [])
+        data.pop("status_automations", [])
         return project_dict
 
     def post_update(self, project_dict):

@@ -57,6 +57,16 @@ class ProjectAssetTypeLink(db.Model):
         primary_key=True,
     )
 
+class ProjectStatusAutomationLink(db.Model):
+    __tablename__ = "project_status_automation_link"
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+    )
+    status_automation_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("status_automation.id"),
+        primary_key=True,
+    )
 
 class Project(db.Model, BaseMixin, SerializerMixin):
     """
@@ -94,6 +104,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     task_types = db.relationship(
         "TaskType", secondary="project_task_type_link"
     )
+    status_automations = db.relationship(
+        "StatusAutomation", secondary="project_status_automation_link"
+    )
 
     def set_team(self, person_ids):
         for person_id in person_ids:
@@ -125,6 +138,11 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             asset_type_ids, ProjectAssetTypeLink, "project_id", "asset_type_id"
         )
 
+    def set_status_automations(self, status_automation_ids):
+        return self.set_links(
+            status_automation_ids, ProjectStatusAutomationLink, "project_id", "status_automation_id"
+        )
+
     @classmethod
     def create_from_import(cls, data):
         is_update = False
@@ -136,6 +154,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         task_type_ids = data.pop("task_types", None)
         task_status_ids = data.pop("task_statuses", None)
         asset_type_ids = data.pop("asset_types", None)
+        status_automation_ids = data.pop("status_automations", None)
 
         if previous_project is None:
             previous_project = cls.create(**data)
@@ -156,5 +175,8 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
         if asset_type_ids is not None:
             previous_project.set_asset_types(asset_type_ids)
+
+        if status_automation_ids is not None:
+            previous_project.set_status_automations(status_automation_ids)
 
         return (previous_project, is_update)
