@@ -163,25 +163,12 @@ def get_playlist_with_preview_file_revisions(playlist_id):
 
     if playlist_dict["shots"] is None:
         playlist_dict["shots"] = []
-    (playlist_dict, preview_file_map) = set_preview_files_for_entities(
-        playlist_dict
+
+    preview_files_service.set_preview_files_for_entities(
+        playlist_dict["shots"]
     )
 
-    for shot in playlist_dict["shots"]:
-        try:
-            preview_file = preview_file_map.get(shot["preview_file_id"], None)
-            if preview_file is not None:
-                shot["preview_file_id"] = preview_file["id"]
-                shot["preview_file_extension"] = preview_file["extension"]
-                shot["preview_file_status"] = preview_file["status"]
-                shot["preview_file_annotations"] = preview_file["annotations"]
-                shot["preview_file_task_id"] = preview_file["task_id"]
-                shot["preview_file_previews"] = preview_file["previews"]
-            else:
-                del shot["preview_file_id"]
-        except Exception as e:
-            print(e)
-    return playlist_dict
+    return fields.serialize_value(playlist_dict)
 
 
 def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
@@ -189,80 +176,6 @@ def _add_build_job_infos_to_playlist_dict(playlist, playlist_dict):
     for build_job in reversed(playlist.build_jobs):
         playlist_dict["build_jobs"].append(build_job.present())
     return playlist_dict
-
-
-def set_preview_files_for_entities(playlist_dict):
-    """
-    Retrieve all preview files related to entities listed in given playlist.
-    Add to each entity a dict with task as keys and preview list as values.
-    """
-    entity_ids = []
-    for entity in playlist_dict["shots"]:
-        if "id" not in entity:
-            entity_id = entity.get("shot_id", entity.get("entity_id", None))
-            if entity_id is not None:
-                entity_ids.append(entity_id)
-                entity["id"] = entity_id
-        else:
-            entity_ids.append(entity["id"])
-    previews = {}
-    preview_file_map = {}
-
-    preview_files = (
-        PreviewFile.query.join(Task)
-        .join(TaskType)
-        .filter(Task.entity_id.in_(entity_ids))
-        .order_by(TaskType.priority.desc())
-        .order_by(TaskType.name)
-        .order_by(PreviewFile.revision.desc())
-        .order_by(PreviewFile.created_at)
-        .add_column(Task.task_type_id)
-        .add_column(Task.entity_id)
-        .all()
-    )
-
-    is_pictures = False
-    for (preview_file, task_type_id, entity_id) in preview_files:
-        entity_id = str(entity_id)
-        task_type_id = str(task_type_id)
-        if entity_id not in previews:
-            previews[entity_id] = {}
-
-        if task_type_id not in previews[entity_id]:
-            previews[entity_id][task_type_id] = []
-
-        if preview_file.extension == "png":
-            is_pictures = True
-
-        task_id = str(preview_file.task_id)
-        preview_file_id = str(preview_file.id)
-
-        light_preview_file = {
-            "id": preview_file_id,
-            "revision": preview_file.revision,
-            "extension": preview_file.extension,
-            "status": str(preview_file.status),
-            "annotations": preview_file.annotations,
-            "created_at": fields.serialize_value(preview_file.created_at),
-            "task_id": task_id,
-        }  # Do not add too much field to avoid building too big responses
-        previews[entity_id][task_type_id].append(light_preview_file)
-        preview_file_map[preview_file_id] = light_preview_file
-
-    if is_pictures:
-        for entity_id in previews.keys():
-            for task_type_id in previews[entity_id].keys():
-                previews[entity_id][task_type_id] = mix_preview_file_revisions(
-                    previews[entity_id][task_type_id]
-                )
-
-    for entity in playlist_dict["shots"]:
-        if str(entity["id"]) in previews:
-            entity["preview_files"] = previews[str(entity["id"])]
-        else:
-            entity["preview_files"] = []
-
-    return (fields.serialize_value(playlist_dict), preview_file_map)
 
 
 def get_preview_files_for_entity(entity_id):
@@ -329,7 +242,9 @@ def get_preview_files_for_entity(entity_id):
         task_type_id = task_previews[task_id][0]["task_type_id"]
 
         if len(preview_files) > 0:
-            preview_files = mix_preview_file_revisions(preview_files)
+            preview_files = preview_files_service.mix_preview_file_revisions(
+                preview_files
+            )
             previews[task_type_id] = [
                 {
                     "id": preview_file["id"],
@@ -345,25 +260,6 @@ def get_preview_files_for_entity(entity_id):
                 for preview_file in preview_files
             ]  # Do not add too much field to avoid building too big responses
     return previews
-
-
-def mix_preview_file_revisions(preview_files):
-    """
-    The goal here is to group preview files with same revision in a single
-    preview file, which encapsulates other preview_files.
-    """
-    revision_map = {}
-    result = []
-    for preview_file in preview_files:
-        revision = preview_file["revision"]
-        if revision not in revision_map:
-            preview_file["previews"] = []
-            revision_map[revision] = preview_file
-            result.append(preview_file)
-        else:
-            parent_preview_file = revision_map[revision]
-            parent_preview_file["previews"].append(preview_file)
-    return result
 
 
 def get_playlist_raw(playlist_id):
