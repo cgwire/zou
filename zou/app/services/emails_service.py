@@ -9,7 +9,6 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.stores import queue_store
-from flask import current_app
 
 
 def send_notification(person_id, subject, messages):
@@ -44,10 +43,10 @@ def send_notification(person_id, subject, messages):
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
                 chats.send_to_slack,
-                args=(current_app, token, userid, slack_message),
+                args=(token, userid, slack_message),
             )
         else:
-            chats.send_to_slack(current_app, token, userid, slack_message)
+            chats.send_to_slack(token, userid, slack_message)
 
     if person["notifications_mattermost_enabled"]:
         organisation = persons_service.get_organisation()
@@ -56,12 +55,10 @@ def send_notification(person_id, subject, messages):
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
                 chats.send_to_mattermost,
-                args=(current_app, webhook, userid, mattermost_message),
+                args=(webhook, userid, mattermost_message),
             )
         else:
-            chats.send_to_mattermost(
-                current_app, webhook, userid, mattermost_message
-            )
+            chats.send_to_mattermost(webhook, userid, mattermost_message)
 
     if person["notifications_discord_enabled"]:
         organisation = persons_service.get_organisation()
@@ -70,10 +67,10 @@ def send_notification(person_id, subject, messages):
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
                 chats.send_to_discord,
-                args=(current_app, token, userid, discord_message),
+                args=(token, userid, discord_message),
             )
         else:
-            chats.send_to_discord(current_app, token, userid, discord_message)
+            chats.send_to_discord(token, userid, discord_message)
 
     return True
 
