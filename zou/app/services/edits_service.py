@@ -12,6 +12,7 @@ from zou.app.models.task import assignees_table
 from zou.app.services import (
     deletion_service,
     entities_service,
+    preview_files_service,
     user_service,
 )
 from zou.app.services.exception import (
@@ -188,6 +189,8 @@ def get_edits_and_tasks(criterions={}):
 
             if person_id:
                 task_map[task_id]["assignees"].append(str(person_id))
+
+    preview_files_service.set_preview_files_for_entities(edit_map.values())
 
     return list(edit_map.values())
 

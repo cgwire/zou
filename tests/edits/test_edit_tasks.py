@@ -1,3 +1,5 @@
+from unittest.mock import ANY
+
 from .base import BaseEditTestCase
 from zou.app.services import projects_service, tasks_service
 
@@ -36,6 +38,35 @@ class EditTasksTestCase(BaseEditTestCase):
         self.assertEqual(len(edits), 1)
         self.assertEqual(len(edits[0]["tasks"]), 1)
         self.assertTrue(str(person_id) in edits[0]["tasks"][0]["assignees"])
+
+    def test_get_edits_and_tasks_returns_preview_files_per_task_type(self):
+        preview_file = self.generate_fixture_preview_file()
+
+        edits = self.get("data/edits/with-tasks")
+
+        self.assertEqual(len(edits), 1)
+        self.assertEqual(len(edits[0]["tasks"]), 2)
+        task_type_ids = set(_["task_type_id"] for _ in edits[0]["tasks"])
+        preview_files_per_task_type = edits[0]["preview_files"]
+        self.assertTrue(
+            set(preview_files_per_task_type.keys()).issubset(task_type_ids)
+        )
+        self.assertEqual(
+            list(preview_files_per_task_type.values())[0],
+            [
+                {
+                    "id": str(preview_file.id),
+                    "annotations": None,
+                    "created_at": preview_file.created_at.isoformat(
+                        timespec="seconds"
+                    ),
+                    "extension": "mp4",
+                    "revision": 1,
+                    "status": "ready",
+                    "task_id": ANY,
+                }
+            ],
+        )
 
     def test_get_task_types_for_edit(self):
         task_types = self.get("data/edits/%s/task-types" % self.edit_id)
