@@ -89,8 +89,11 @@ def get_movie_size(movie_path):
         ),
         None,
     )
-    width = int(video["width"])
-    height = int(video["height"])
+    width = 1
+    height = 1
+    if video is not None:
+        width = int(video["width"])
+        height = int(video["height"])
     return (width, height)
 
 

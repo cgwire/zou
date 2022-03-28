@@ -585,6 +585,15 @@ class ApiDBTestCase(ApiTestCase):
         )
         return self.task_status_done
 
+    def generate_fixture_task_status_wfa(self):
+        self.task_status_wfa = TaskStatus.create(
+            name="Waiting For Approval",
+            short_name="wfa",
+            color="#FFFFFF",
+            is_feedback_request=True
+        )
+        return self.task_status_wfa.serialize()
+
     def generate_fixture_task_status_todo(self):
         self.task_status_todo = TaskStatus.create(
             name="Todo", short_name="todo", color="#FFFFFF"
