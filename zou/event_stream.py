@@ -24,6 +24,7 @@ def _get_empty_room(current_frame=0):
         "people": [],
         "is_playing": False,
         "current_entity_index": None,
+        "current_preview_file_id": None,
         "current_frame": current_frame,
         "is_repeating": None,
         "speed": None,
@@ -56,6 +57,8 @@ def _update_room_playing_status(data, room):
     room["is_playing"] = data.get("is_playing", False)
     room["is_repeating"] = data.get("is_repeating", False)
     room["current_entity_index"] = data["current_entity_index"]
+    if "current_preview_file_id" in data:
+        room["current_preview_file_id"] = data["current_preview_file_id"]
     if "current_frame" in data:
         room["current_frame"] = data["current_frame"]
     if "comparing" in data:
