@@ -199,6 +199,11 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
     """
 
     @jwt_required
+    def get(self, project_id):
+        user_service.check_manager_project_access(project_id)
+        return projects_service.get_project_status_automations(project_id)
+
+    @jwt_required
     def post(self, project_id):
         args = self.get_args(
             [("status_automation_id", "", True)]

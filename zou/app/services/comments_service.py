@@ -6,14 +6,16 @@ from flask import current_app
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.task import Task
 
 from zou.app.services import (
+    assets_service,
     base_service,
     news_service,
     notifications_service,
     persons_service,
+    projects_service,
     tasks_service,
 )
 from zou.app.services.exception import AttachmentFileNotFoundException
@@ -53,7 +55,7 @@ def get_attachment_file_path(attachment_file):
 
 
 def create_comment(
-    person_id, task_id, task_status_id, comment, checklist, files, created_at
+    person_id, task_id, task_status_id, text, checklist, files, created_at
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -67,7 +69,7 @@ def create_comment(
         files=files,
         person_id=author["id"],
         task_status_id=task_status_id,
-        text=comment,
+        text=text,
         checklist=checklist,
         created_at=created_at,
     )
@@ -75,6 +77,40 @@ def create_comment(
     _manage_subscriptions(task, comment, status_changed)
     comment["task_status"] = task_status
     comment["person"] = author
+
+    # Run status automations
+    status_automations = projects_service.get_project_status_automations(task["project_id"])
+    for automation in status_automations:
+        # Match IN status and type
+        if task_status_id == automation["in_task_status_id"] and str(task["task_type_id"]) == automation["in_task_type_id"]:
+            # Sentinel for project task types which OUT priority is higher than IN's
+            project_task_types_priority = { # TODO shall we make it a function? Used in projects_service.py too
+                str(task_type_link.task_type_id): task_type_link.priority
+                for task_type_link in ProjectTaskTypeLink.query.filter_by(
+                    project_id=task["project_id"]
+                )
+            }
+            if automation["out_field_type"] != "ready_for" and project_task_types_priority[automation["in_task_type_id"]] > project_task_types_priority[automation["out_task_type_id"]]:
+                continue
+
+            # Output is `status` field
+            if automation["out_field_type"] == "status":
+                task_to_update = tasks_service.get_tasks_for_entity_and_task_type(task["entity_id"], automation["out_task_type_id"])
+                if task_to_update:
+                    create_comment(
+                        person_id, 
+                        task_to_update[0]["id"], 
+                        automation["out_task_status_id"], 
+                        "Automated status change",
+                        [],
+                        {},
+                        None
+                    )
+            
+            # Output is `ready_for` field, can be performed only on assets
+            elif automation["out_field_type"] == "ready_for":
+                assets_service.update_asset(task["entity_id"], {"ready_for": automation["out_task_type_id"]})
+        
     return comment
 
 
