@@ -574,8 +574,7 @@ def get_last_notifications(notification_id=None, after=None, before=None):
     is_current_user_artist = current_user["role"] == "user"
     result = []
     query = (
-        Notification.query
-        .filter_by(person_id=current_user["id"])
+        Notification.query.filter_by(person_id=current_user["id"])
         .order_by(Notification.created_at.desc())
         .join(Author, Author.id == Notification.author_id)
         .join(Task, Task.id == Notification.task_id)

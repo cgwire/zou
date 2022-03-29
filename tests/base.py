@@ -606,7 +606,7 @@ class ApiDBTestCase(ApiTestCase):
             name="Waiting For Approval",
             short_name="wfa",
             color="#FFFFFF",
-            is_feedback_request=True
+            is_feedback_request=True,
         )
         return self.task_status_wfa.serialize()
 

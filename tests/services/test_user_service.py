@@ -111,6 +111,7 @@ class UserServiceTestCase(ApiDBTestCase):
 
     def test_get_last_notifications(self):
         from zou.app import app
+
         with app.app_context():
             persons_service.get_current_user = self.get_current_user_artist
             self.generate_fixture_user_cg_artist()
@@ -125,7 +126,9 @@ class UserServiceTestCase(ApiDBTestCase):
                 self.task_id,
                 self.to_review_status_id,
                 "Lets go",
-                [], {}, None
+                [],
+                {},
+                None,
             )
             notifications = user_service.get_last_notifications()
             self.assertEquals(len(notifications), 1)
@@ -135,7 +138,9 @@ class UserServiceTestCase(ApiDBTestCase):
                 self.task_id,
                 self.to_review_status_id,
                 "Wrong picture",
-                [], {}, None
+                [],
+                {},
+                None,
             )
             notifications = user_service.get_last_notifications()
             self.assertEquals(len(notifications), 2)
