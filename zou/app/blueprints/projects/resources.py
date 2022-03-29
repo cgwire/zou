@@ -249,6 +249,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 ("name", "", True),
                 ("for_client", "False", False),
                 ("choices", [], False, "append"),
+                ("departments", [], False, "append"),
             ]
         )
         permissions.check_admin_permissions()
@@ -270,6 +271,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 args["name"],
                 args["choices"],
                 args["for_client"],
+                args["departments"],
             ),
             201,
         )
@@ -293,6 +295,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
                 ("name", "", False),
                 ("for_client", "False", False),
                 ("choices", [], False, "append"),
+                ("departments", [], False, "append"),
             ]
         )
         permissions.check_admin_permissions()

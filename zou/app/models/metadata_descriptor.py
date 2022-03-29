@@ -5,6 +5,18 @@ from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
+department_metadata_descriptor_link = db.Table(
+    "department_metadata_descriptor_link",
+    db.Column(
+        "metadata_descriptor_id",
+        UUIDType(binary=False),
+        db.ForeignKey("metadata_descriptor.id"),
+    ),
+    db.Column(
+        "department_id", UUIDType(binary=False), db.ForeignKey("department.id")
+    ),
+)
+
 
 class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     """
@@ -23,6 +35,9 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     field_name = db.Column(db.String(120), nullable=False)
     choices = db.Column(JSONB)
     for_client = db.Column(db.Boolean(), default=False, index=True)
+    departments = db.relationship(
+        "Department", secondary=department_metadata_descriptor_link
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
