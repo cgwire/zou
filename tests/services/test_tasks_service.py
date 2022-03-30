@@ -355,6 +355,8 @@ class TaskServiceTestCase(ApiDBTestCase):
             self.task.id, self.task_status.id, self.person.id, "last comment"
         )
         tasks = tasks_service.get_person_tasks(self.person.id, projects)
+        # Animation as first task
+        tasks = sorted(tasks, key=lambda t: t['task_type_name'])
         self.assertEqual(len(tasks), 2)
         self.assertEqual(tasks[1]["last_comment"]["text"], "last comment")
         self.assertEqual(
@@ -378,11 +380,11 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
 
     def test_update_task(self):
-        done_status = tasks_service.get_done_status()
+        wfa_status = self.generate_fixture_task_status_wfa()
         tasks_service.update_task(
-            self.task.id, {"task_status_id": done_status["id"]}
+            self.task.id, {"task_status_id": wfa_status["id"]}
         )
-        self.assertEqual(str(self.task.task_status_id), done_status["id"])
+        self.assertEqual(str(self.task.task_status_id), wfa_status["id"])
         self.assertIsNotNone(self.task.end_date)
         self.assertLess(self.task.end_date, datetime.datetime.now())
 

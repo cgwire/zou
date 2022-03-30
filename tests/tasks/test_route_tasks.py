@@ -30,6 +30,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_task_status_wip()
         self.generate_fixture_task_status_retake()
         self.generate_fixture_task_status_done()
+        self.generate_fixture_task_status_wfa()
         self.todo_status = tasks_service.get_or_create_status("Todo")
         self.asset_id = str(self.asset.id)
         self.shot_id = str(self.shot.id)
@@ -39,6 +40,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.wip_status_id = self.task_status_wip.id
         self.retake_status_id = self.task_status_retake.id
         self.done_status_id = self.task_status_done.id
+        self.wfa_status_id = self.task_status_wfa.id
         self.person_id = self.person.id
 
     def test_create_asset_tasks(self):
@@ -285,7 +287,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_task()
         self.task.update({"end_date": None})
         path = "/actions/tasks/%s/comment/" % self.task.id
-        data = {"task_status_id": self.done_status_id, "comment": "wip test"}
+        data = {"task_status_id": self.wfa_status_id, "comment": "wip test"}
         self.post(path, data)
         tasks = self.get("/data/tasks")
         self.assertIsNotNone(tasks[0]["end_date"])

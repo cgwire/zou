@@ -264,9 +264,14 @@ def update_person_last_presence(person_id):
     """
     log = DesktopLoginLog.query.order_by(DesktopLoginLog.date.desc()).first()
     time_spent = TimeSpent.query.order_by(TimeSpent.date.desc()).first()
-    if log is not None and log.date > time_spent.date:
+    date = None
+    if (
+        log is not None
+        and time_spent is not None
+        and log.date > time_spent.date
+    ):
         date = log.date
-    else:
+    elif time_spent is not None:
         date = time_spent.date
     return update_person(person_id, {"last_presence": date})
 
