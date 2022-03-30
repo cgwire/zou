@@ -12,6 +12,7 @@ from zou.app.models.task import Task
 from zou.app.services import (
     assets_service,
     base_service,
+    breakdown_service,
     news_service,
     notifications_service,
     persons_service,
@@ -109,7 +110,10 @@ def create_comment(
             
             # Output is `ready_for` field, can be performed only on assets
             elif automation["out_field_type"] == "ready_for":
-                assets_service.update_asset(task["entity_id"], {"ready_for": automation["out_task_type_id"]})
+                asset = assets_service.update_asset(task["entity_id"], {"ready_for": automation["out_task_type_id"]})
+                
+                # Refresh after ready_for
+                breakdown_service.refresh_casting_stats(asset)
         
     return comment
 
