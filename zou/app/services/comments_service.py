@@ -83,7 +83,7 @@ def create_comment(
     status_automations = projects_service.get_project_status_automations(task["project_id"])
     for automation in status_automations:
         # Match IN status and type
-        if task_status_id == automation["in_task_status_id"] and str(task["task_type_id"]) == automation["in_task_type_id"]:
+        if task_status_id == automation["in_task_status_id"] and task["task_type_id"] == automation["in_task_type_id"]:
             # Sentinel for project task types which OUT priority is higher than IN's
             project_task_types_priority = { # TODO shall we make it a function? Used in projects_service.py too
                 str(task_type_link.task_type_id): task_type_link.priority
@@ -91,7 +91,7 @@ def create_comment(
                     project_id=task["project_id"]
                 )
             }
-            if automation["out_field_type"] != "ready_for" and project_task_types_priority[automation["in_task_type_id"]] > project_task_types_priority[automation["out_task_type_id"]]:
+            if automation["out_field_type"] != "ready_for" and project_task_types_priority and project_task_types_priority[automation["in_task_type_id"]] > project_task_types_priority[automation["out_task_type_id"]]:
                 continue
 
             # Output is `status` field
