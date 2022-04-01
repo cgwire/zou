@@ -74,6 +74,44 @@ def get_casting(shot_id):
     return casting
 
 
+def get_production_episodes_casting(project_id):
+    """
+    Return all assets and their number of occurences listed in episodes of given
+    project. Result is returned as a map where keys are asset IDs and values
+    are casting for given episode.
+    """
+    castings = {}
+    Episode = aliased(Entity, name="episode")
+    links = (
+        EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
+        .join(Entity, EntityLink.entity_out_id == Entity.id)
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
+        .filter(Episode.project_id == project_id)
+        .filter(Entity.canceled != True)
+        .add_columns(Entity.name, EntityType.name, Entity.preview_file_id)
+        .order_by(EntityType.name, Entity.name)
+    )
+
+    for (link, entity_name, entity_type_name, entity_preview_file_id) in links:
+        episode_id = str(link.entity_in_id)
+        if episode_id not in castings:
+            castings[episode_id] = []
+        castings[episode_id].append(
+            {
+                "asset_id": fields.serialize_value(link.entity_out_id),
+                "name": entity_name,
+                "asset_name": entity_name,
+                "asset_type_name": entity_type_name,
+                "preview_file_id": fields.serialize_value(
+                    entity_preview_file_id
+                ),
+                "nb_occurences": link.nb_occurences,
+                "label": link.label,
+            }
+        )
+    return castings
+
+
 def get_sequence_casting(sequence_id):
     """
     Return all assets and their number of occurences listed in shots of given
@@ -166,14 +204,28 @@ def update_casting(entity_id, casting):
                 nb_occurences=cast["nb_occurences"],
                 label=cast.get("label", ""),
             )
+
+            # Emit event to update asset
+            events.emit(
+                "asset:update",
+                {"asset_id": str(entity.id), "episode_id": entity_id},
+                project_id=entity.project_id,
+            )
     entity_id = str(entity.id)
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
-    if shots_service.is_shot(entity.serialize()):
-        refresh_shot_casting_stats(entity.serialize())
+    entity_dict = entity.serialize()
+    if shots_service.is_shot(entity_dict):
+        refresh_shot_casting_stats(entity_dict)
         events.emit(
             "shot:casting-update",
             {"shot_id": entity_id, "nb_entities_out": nb_entities_out},
+            project_id=str(entity.project_id),
+        )
+    elif shots_service.is_episode(entity_dict):
+        events.emit(
+            "episode:casting-update",
+            {"episode_id": entity_id, "nb_entities_out": nb_entities_out},
             project_id=str(entity.project_id),
         )
     else:
