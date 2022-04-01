@@ -74,6 +74,44 @@ def get_casting(shot_id):
     return casting
 
 
+def get_episode_casting(project_id):
+    """
+    Return all assets and their number of occurences listed in episodes of given
+    project. Result is returned as a map where keys are asset IDs and values
+    are casting for given episode.
+    """
+    castings = {}
+    Episode = aliased(Entity, name="episode")
+    links = (
+        EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
+        .join(Entity, EntityLink.entity_out_id == Entity.id)
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
+        .filter(Episode.project_id == project_id)
+        .filter(Entity.canceled != True)
+        .add_columns(Entity.name, EntityType.name, Entity.preview_file_id)
+        .order_by(EntityType.name, Entity.name)
+    )
+
+    for (link, entity_name, entity_type_name, entity_preview_file_id) in links:
+        episode_id = str(link.entity_in_id)
+        if episode_id not in castings:
+            castings[episode_id] = []
+        castings[episode_id].append(
+            {
+                "asset_id": fields.serialize_value(link.entity_out_id),
+                "name": entity_name,
+                "asset_name": entity_name,
+                "asset_type_name": entity_type_name,
+                "preview_file_id": fields.serialize_value(
+                    entity_preview_file_id
+                ),
+                "nb_occurences": link.nb_occurences,
+                "label": link.label,
+            }
+        )
+    return castings
+
+
 def get_sequence_casting(sequence_id):
     """
     Return all assets and their number of occurences listed in shots of given
@@ -170,7 +208,13 @@ def update_casting(entity_id, casting):
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
     refresh_shot_casting_stats(entity.serialize())
-    if shots_service.is_shot(entity.serialize()):
+    if shots_service.is_episode(entity.serialize()):
+        events.emit(
+            "episode:casting-update",
+            {"episode_id": entity_id, "nb_entities_out": nb_entities_out},
+            project_id=str(entity.project_id),
+        )
+    elif shots_service.is_shot(entity.serialize()):
         events.emit(
             "shot:casting-update",
             {"shot_id": entity_id, "nb_entities_out": nb_entities_out},
@@ -326,6 +370,21 @@ def get_asset_instances_for_shot(shot_id):
     return result
 
 
+def get_asset_instances_for_episode(episode_id):
+    """
+    Return asset instances casted in given episode.
+    """
+    episode = shots_service.get_episode_raw(episode_id)
+
+    result = {}
+    for asset_instance in episode.instance_casting:
+        asset_id = str(asset_instance.asset_id)
+        if asset_id not in result:
+            result[asset_id] = []
+        result[asset_id].append(asset_instance.serialize())
+    return result
+
+
 def group_by(models, field):
     result = {}
     for asset_instance in models:
@@ -449,6 +508,37 @@ def remove_asset_instance_for_shot(shot_id, asset_instance_id):
         {"shot_id": shot_id, "asset_instance_id": asset_instance_id},
     )
     return shot.serialize()
+
+
+def add_asset_instance_to_episode(episode_id, asset_instance_id):
+    """
+    Add asset instance to instance casting of given episode.
+    """
+    episode = shots_service.get_episode_raw(episode_id)
+    asset_instance = assets_service.get_asset_instance_raw(asset_instance_id)
+    episode.instance_casting.append(asset_instance)
+    episode.save()
+
+    events.emit(
+        "asset_instance:add-to-episode",
+        {"shot_id": episode_id, "asset_instance_id": asset_instance_id},
+    )
+    return episode.serialize()
+
+
+def remove_asset_instance_from_episode(episode_id, asset_instance_id):
+    """
+    Remove asset instance from instance casting of given episode.
+    """
+    episode = shots_service.get_episode_raw(episode_id)
+    asset_instance = assets_service.get_asset_instance_raw(asset_instance_id)
+    episode.instance_casting.remove(asset_instance)
+    episode.save()
+    events.emit(
+        "asset_instance:remove-from-episode",
+        {"shot_id": episode_id, "asset_instance_id": asset_instance_id},
+    )
+    return episode.serialize()
 
 
 def build_asset_instance_name(asset_id, number):

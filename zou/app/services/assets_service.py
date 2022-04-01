@@ -3,7 +3,7 @@ from sqlalchemy.exc import StatementError
 from zou.app.utils import events, fields, cache
 from zou.app.utils import query as query_utils
 
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -588,6 +588,55 @@ def remove_asset_link(asset_in_id, asset_out_id):
             project_id=str(asset_in.project_id),
         )
     return asset_in.serialize(obj_type="Asset")
+
+
+# def get_episode_links_for_asset(asset_id: str):
+#     """
+#     Retrieve episode links for asset
+#     """
+#     query = EntityLink.query.join(
+#         Entity, EntityLink.entity_in_id == Entity.id
+#     ).filter(Entity.project_id == asset_id)
+#     result = query.all()
+#     return Entity.serialize_list(result)
+
+
+# def add_episode_link(asset_id, episode):
+#     """
+#     Link asset to an episode.
+#     """
+#     asset = get_asset_raw(asset_id)
+#     episode = shots_service.get_episode_raw(episode)
+
+#     if episode not in asset.entities_out:
+#         asset.entities_out.append(episode)
+#         asset.save()
+#         events.emit(
+#             "asset:new-link", #TODO shall we create a different event?
+#             {"asset_id": asset.id, "episode_id": episode.id},
+#             project_id=str(asset.project_id),
+#         )
+#     return asset.serialize(obj_type="Asset")
+
+
+# def remove_episode_link(asset_id, episode_id):
+#     """
+#     Remove asset link to an episode.
+#     """
+#     asset = get_asset_raw(asset_id)
+#     episode = get_asset_raw(episode_id)
+
+#     if episode in asset.entities_out:
+#         asset.entities_out = [
+#             x for x in asset.entities_out if x.id != episode_id
+#         ]
+#         asset.save()
+#         events.emit(
+#             "asset:remove-link", #TODO shall we create a different event?
+#             {"asset_id": asset.id, "episode_id": episode.id},
+#             project_id=str(asset.project_id),
+#         )
+#     return asset.serialize(obj_type="Asset")
 
 
 def cancel_asset(asset_id, force=True):
