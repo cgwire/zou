@@ -227,6 +227,7 @@ def add_empty_soundtrack(file_path, try_count=1):
     logger.info(f"add_empty_soundtrack.sp.returncode: {sp.returncode}")
     if sp.returncode == 0:
         shutil.copyfile(tmp_file_path, file_path)
+        os.remove(tmp_file_path)
     else:
         logger.error(f"Err in soundtrack: {err}")
         logger.error(f"Err code: {sp.returncode}")

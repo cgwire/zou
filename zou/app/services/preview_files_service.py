@@ -96,6 +96,7 @@ def prepare_and_store_movie(
     from zou.app import app as current_app
 
     with current_app.app_context():
+        normalized_movie_low_path = None
         try:
             project = get_project_from_preview_file(preview_file_id)
         except PreviewFileNotFoundException:
@@ -194,6 +195,8 @@ def prepare_and_store_movie(
         os.remove(uploaded_movie_path)
         if normalize:
             os.remove(normalized_movie_path)
+            if normalized_movie_low_path:
+                os.remove(normalized_movie_low_path)
         preview_file = update_preview_file(
             preview_file_id, {"status": "ready", "file_size": file_size}
         )
