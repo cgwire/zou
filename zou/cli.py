@@ -73,12 +73,12 @@ def clear_db():
     with app.app_context():
         import zou
 
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.stamp(directory=directory, revision="base")
-
         print("Deleting database and tables...")
         dbhelpers.drop_all()
         print("Database and tables deleted.")
+
+        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
+        flask_migrate.stamp(directory=directory, revision="base")
 
 
 @cli.command()
@@ -90,12 +90,12 @@ def reset_db():
     with app.app_context():
         import zou
 
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.stamp(directory=directory, revision="base")
-
         print("Deleting database and tables...")
         dbhelpers.drop_all()
         print("Database and tables deleted.")
+
+        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
+        flask_migrate.stamp(directory=directory, revision="base")
 
         flask_migrate.upgrade(directory=directory)
         print("Database and tables created.")
