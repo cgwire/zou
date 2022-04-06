@@ -257,7 +257,7 @@ def add_empty_soundtrack(file_path, try_count=1):
             except ffmpeg._run.Error as e:
                 log_ffmpeg_error(
                     e,
-                    "Try to convert video after fisrt add_empty_soundtrack fail",
+                    "Try to convert video after first add_empty_soundtrack fail",
                 )
                 raise (e)
             shutil.copyfile(tmp_file_path, file_path)
