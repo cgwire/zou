@@ -20,6 +20,19 @@ from zou.app.services import user_service
 from zou.app.services.exception import WrongDateFormatException
 
 
+def get_time_spents_for_entity(entity_id):
+    """
+    Return all time spents related to given entity.
+    """
+    query = (
+        TimeSpent.query
+        .join(Task)
+        .filter(Task.entity_id == entity_id)
+        .order_by(TimeSpent.date.desc())
+    )
+    return TimeSpent.serialize_list(query.all())
+
+
 def get_year_table(person_id=None, project_id=None):
     """
     Return a table giving time spent by user and by month for given year.
