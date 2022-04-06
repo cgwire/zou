@@ -77,3 +77,18 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
         else:
             previous_data.update(data)
             return (previous_data, True)
+
+    def present(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "original_name": self.original_name,
+            "extension": self.extension,
+            "revision": self.revision,
+            "position": self.position,
+            "file_size": self.file_size,
+            "status": str(self.status),
+            "validation_status": str(self.validation_status),
+            "task_id": str(self.task_id),
+            "person_id": str(self.person_id),
+        }
