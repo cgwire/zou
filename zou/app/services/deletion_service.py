@@ -33,6 +33,10 @@ from zou.app.services.exception import (
 
 
 def remove_comment(comment_id):
+    """
+    Remove a comment from database and everything related (notifs, news, and
+    preview files)
+    """
     comment = Comment.get(comment_id)
     task = Task.get(comment.object_id)
     if comment is not None:
