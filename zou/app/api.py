@@ -10,6 +10,7 @@ from .blueprints.auth import blueprint as auth_blueprint
 from .blueprints.breakdown import blueprint as breakdown_blueprint
 from .blueprints.comments import blueprint as comments_blueprint
 from .blueprints.crud import blueprint as crud_blueprint
+from .blueprints.entities import blueprint as entities_blueprint
 from .blueprints.events import blueprint as events_blueprint
 from .blueprints.export import blueprint as export_blueprint
 from .blueprints.files import blueprint as files_blueprint
@@ -48,6 +49,7 @@ def configure_api_routes(app):
     app.register_blueprint(breakdown_blueprint)
     app.register_blueprint(comments_blueprint)
     app.register_blueprint(crud_blueprint)
+    app.register_blueprint(entities_blueprint)
     app.register_blueprint(export_blueprint)
     app.register_blueprint(events_blueprint)
     app.register_blueprint(files_blueprint)
