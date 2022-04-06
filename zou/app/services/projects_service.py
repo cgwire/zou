@@ -502,3 +502,21 @@ def get_project_fps(project_id):
     """
     project = get_project(project_id)
     return float(project["fps"] or "24.00")
+
+
+def get_task_type_priority_map(project_id, for_entity="Asset"):
+    """
+    Return a dict allowing to match a task type id with a priority.
+    """
+    task_types = (
+        ProjectTaskTypeLink
+            .query
+            .join(TaskType)
+            .filter(ProjectTaskTypeLink.project_id == project_id)
+            .filter(TaskType.for_entity == for_entity)
+    ).all()
+    return {
+        str(task_type_link.task_type_id): task_type_link.priority
+        for task_type_link in task_types
+    }
+
