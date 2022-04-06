@@ -68,17 +68,37 @@ def downgrade_db(revision):
 def clear_db():
     "Drop all tables from database"
 
-    print("Deleting database and tables...")
-    dbhelpers.drop_all()
-    print("Database and tables deleted.")
+    from zou.app import app
+
+    with app.app_context():
+        import zou
+
+        print("Deleting database and tables...")
+        dbhelpers.drop_all()
+        print("Database and tables deleted.")
+
+        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
+        flask_migrate.stamp(directory=directory, revision="base")
 
 
 @cli.command()
 def reset_db():
     "Drop all tables then recreates them."
 
-    clear_db()
-    dbhelpers.create_all()
+    from zou.app import app
+
+    with app.app_context():
+        import zou
+
+        print("Deleting database and tables...")
+        dbhelpers.drop_all()
+        print("Database and tables deleted.")
+
+        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
+        flask_migrate.stamp(directory=directory, revision="base")
+
+        flask_migrate.upgrade(directory=directory)
+        print("Database and tables created.")
 
 
 @cli.command()
