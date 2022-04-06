@@ -82,8 +82,9 @@ def delete_news_for_comment(comment_id):
 
 
 def get_last_news_for_project(
-    project_id,
+    project_id=None,
     news_id=None,
+    entity_id=None,
     only_preview=False,
     task_type_id=None,
     task_status_id=None,
@@ -106,11 +107,16 @@ def get_last_news_for_project(
         .join(Entity, Task.entity_id == Entity.id)
         .outerjoin(Comment, News.comment_id == Comment.id)
         .outerjoin(PreviewFile, News.preview_file_id == PreviewFile.id)
-        .filter(Task.project_id == project_id)
     )
 
     if news_id is not None:
         query = query.filter(News.id == news_id)
+
+    if project_id is not None:
+        query = query.filter(Task.project_id == project_id)
+
+    if entity_id is not None:
+        query = query.filter(Entity.id == entity_id)
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id)
@@ -257,3 +263,10 @@ def get_news_stats_for_project(
 @cache.memoize_function(120)
 def get_news(project_id, news_id):
     return get_last_news_for_project(project_id, news_id=news_id)
+
+
+def get_news_for_entity(entity_id):
+    """
+    Get all news related to a given entity.
+    """
+    return get_last_news_for_project(entity_id=entity_id, page_size=2000)
