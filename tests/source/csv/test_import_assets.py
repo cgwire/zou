@@ -28,7 +28,20 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         )
         db.session.add(
             ProjectTaskTypeLink(
-                project_id=self.project_id, task_type_id=self.task_type.id
+                project_id=self.project_id,
+                task_type_id=self.task_type.id
+            )
+        )
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_concept.id
+            )
+        )
+        db.session.add(
+            ProjectTaskTypeLink(
+                project_id=self.project_id,
+                task_type_id=self.task_type_modeling.id
             )
         )
         db.session.add(
@@ -44,7 +57,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             )
         )
         db.session.commit()
-        self.assertEqual(number_of_task_per_entity_to_create, 1)
+        self.assertEqual(number_of_task_per_entity_to_create, 3)
         path = "/import/csv/projects/%s/assets" % self.project.id
 
         file_path_fixture = self.get_fixture_file_path(

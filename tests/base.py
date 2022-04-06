@@ -625,7 +625,10 @@ class ApiDBTestCase(ApiTestCase):
             out_task_type_id = self.task_type_modeling.id,
             out_task_status_id = self.task_status_wip.id,
         )
-        projects_service.add_status_automation_setting(self.project_id, self.status_automation_to_status.id)
+        projects_service.add_status_automation_setting(
+            self.project_id,
+            self.status_automation_to_status.id
+        )
         return self.status_automation_to_status
 
     def generate_fixture_status_automation_to_ready_for(self):
@@ -635,9 +638,12 @@ class ApiDBTestCase(ApiTestCase):
             in_task_status_id = self.task_status_done.id,
             out_field_type = "ready_for",
             out_task_type_id = self.task_type_layout.id,
-            out_task_status_id = self.task_status_wip.id,
+            out_task_status_id = None
         )
-        projects_service.add_status_automation_setting(self.project_id, self.status_automation_to_ready_for.id)
+        projects_service.add_status_automation_setting(
+            self.project_id,
+            self.status_automation_to_ready_for.id
+        )
         return self.status_automation_to_ready_for
 
     def generate_fixture_assigner(self):

@@ -148,8 +148,6 @@ def _manage_subscriptions(task, comment, status_changed):
 
 
 def _run_status_automation(automation, task, person_id):
-    print("run automation type", task["task_type_id"], automation["in_task_type_id"])
-    print("run automation status", task["task_status_id"], automation["in_task_status_id"])
     is_automation_to_run = \
         task["task_type_id"] == automation["in_task_type_id"] and \
         task["task_status_id"] == automation["in_task_status_id"]
@@ -162,7 +160,6 @@ def _run_status_automation(automation, task, person_id):
     )
     in_priority = priorities.get(automation["in_task_type_id"], 0)
     out_priority = priorities.get(automation["out_task_type_id"], 0) or 0
-    print(priorities, in_priority, out_priority, automation["out_task_type_id"])
     is_rollback = priorities is not None \
         and automation["out_field_type"] != "ready_for" \
         and in_priority > out_priority
@@ -193,7 +190,7 @@ def _run_status_automation(automation, task, person_id):
                 {},
                 None
             )
-    elif automation["out_field_type"] == "r!eady_for":
+    elif automation["out_field_type"] == "ready_for":
         try:
             asset = assets_service.update_asset(task["entity_id"], {
                 "ready_for": automation["out_task_type_id"]
