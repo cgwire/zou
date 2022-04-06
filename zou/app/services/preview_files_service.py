@@ -11,6 +11,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.services import names_service, files_service
 from zou.utils import movie
 from zou.app.utils import (
@@ -421,3 +422,21 @@ def get_running_preview_files():
         )
         results.append(result)
     return results
+
+
+def get_preview_files_for_entity(entity_id):
+    """
+    Return all preview files related to given entity.
+    """
+    query = (
+        PreviewFile.query
+        .join(Task)
+        .join(TaskType)
+        .filter(Task.entity_id == entity_id)
+        .order_by(
+            TaskType.name,
+            PreviewFile.revision.desc(),
+            PreviewFile.position
+        )
+    )
+    return [preview_file.present() for preview_file in query.all()]
