@@ -7,7 +7,7 @@ from zou.app.models.base import BaseMixin
 
 class News(db.Model, BaseMixin, SerializerMixin):
     """
-    A notification is stored each time a comment is posted.
+    A news is created each time a comment is posted.
     """
 
     change = db.Column(db.Boolean, nullable=False, default=False)
