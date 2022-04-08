@@ -28,20 +28,19 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         )
         db.session.add(
             ProjectTaskTypeLink(
-                project_id=self.project_id,
-                task_type_id=self.task_type.id
+                project_id=self.project_id, task_type_id=self.task_type.id
             )
         )
         db.session.add(
             ProjectTaskTypeLink(
                 project_id=self.project_id,
-                task_type_id=self.task_type_concept.id
+                task_type_id=self.task_type_concept.id,
             )
         )
         db.session.add(
             ProjectTaskTypeLink(
                 project_id=self.project_id,
-                task_type_id=self.task_type_modeling.id
+                task_type_id=self.task_type_modeling.id,
             )
         )
         db.session.add(

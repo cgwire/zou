@@ -4,6 +4,7 @@ from .base import BaseModelsResource, BaseModelResource
 
 from zou.app.services import status_automations_service, user_service
 
+
 class StatusAutomationsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, StatusAutomation)

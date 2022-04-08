@@ -14,7 +14,7 @@ from zou.app.services import (
     comments_service,
     file_tree_service,
     tasks_service,
-    projects_service
+    projects_service,
 )
 
 from zou.app.models.asset_instance import AssetInstance
@@ -619,30 +619,28 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_status_automation_to_status(self):
         self.status_automation_to_status = StatusAutomation.create(
             entity_type="asset",
-            in_task_type_id = self.task_type_concept.id,
-            in_task_status_id = self.task_status_done.id,
-            out_field_type = "status",
-            out_task_type_id = self.task_type_modeling.id,
-            out_task_status_id = self.task_status_wip.id,
+            in_task_type_id=self.task_type_concept.id,
+            in_task_status_id=self.task_status_done.id,
+            out_field_type="status",
+            out_task_type_id=self.task_type_modeling.id,
+            out_task_status_id=self.task_status_wip.id,
         )
         projects_service.add_status_automation_setting(
-            self.project_id,
-            self.status_automation_to_status.id
+            self.project_id, self.status_automation_to_status.id
         )
         return self.status_automation_to_status
 
     def generate_fixture_status_automation_to_ready_for(self):
         self.status_automation_to_ready_for = StatusAutomation.create(
             entity_type="asset",
-            in_task_type_id = self.task_type_modeling.id,
-            in_task_status_id = self.task_status_done.id,
-            out_field_type = "ready_for",
-            out_task_type_id = self.task_type_layout.id,
-            out_task_status_id = None
+            in_task_type_id=self.task_type_modeling.id,
+            in_task_status_id=self.task_status_done.id,
+            out_field_type="ready_for",
+            out_task_type_id=self.task_type_layout.id,
+            out_task_status_id=None,
         )
         projects_service.add_status_automation_setting(
-            self.project_id,
-            self.status_automation_to_ready_for.id
+            self.project_id, self.status_automation_to_ready_for.id
         )
         return self.status_automation_to_ready_for
 

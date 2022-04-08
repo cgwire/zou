@@ -319,21 +319,30 @@ def remove_task_status_setting(project_id, task_status_id):
         project_id, TaskStatus, task_status_id, "task_statuses"
     )
 
+
 def add_status_automation_setting(project_id, status_automation_id):
     """
     Add a status automation listed in database to the project status automations.
     """
     return _add_to_list_attr(
-        project_id, StatusAutomation, status_automation_id, "status_automations"
+        project_id,
+        StatusAutomation,
+        status_automation_id,
+        "status_automations",
     )
+
 
 def remove_status_automation_setting(project_id, status_automation_id):
     """
     Remove a status automation listed in database from the project status automations.
     """
     return _remove_from_list_attr(
-        project_id, StatusAutomation, status_automation_id, "status_automations"
+        project_id,
+        StatusAutomation,
+        status_automation_id,
+        "status_automations",
     )
+
 
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
@@ -529,9 +538,11 @@ def get_project_task_statuses(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
 
+
 def get_project_status_automations(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)
+
 
 def get_project_fps(project_id):
     """
@@ -546,14 +557,11 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
     Return a dict allowing to match a task type id with a priority.
     """
     task_types = (
-        ProjectTaskTypeLink
-            .query
-            .join(TaskType)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == for_entity)
+        ProjectTaskTypeLink.query.join(TaskType)
+        .filter(ProjectTaskTypeLink.project_id == project_id)
+        .filter(TaskType.for_entity == for_entity)
     ).all()
     return {
         str(task_type_link.task_type_id): task_type_link.priority
         for task_type_link in task_types
     }
-

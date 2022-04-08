@@ -205,9 +205,7 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, project_id):
-        args = self.get_args(
-            [("status_automation_id", "", True)]
-        )
+        args = self.get_args([("status_automation_id", "", True)])
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_status_automation_setting(
             project_id, args["status_automation_id"]
@@ -223,7 +221,9 @@ class ProductionStatusAutomationRemoveResource(Resource):
     @jwt_required
     def delete(self, project_id, status_automation_id):
         user_service.check_manager_project_access(project_id)
-        projects_service.remove_status_automation_setting(project_id, status_automation_id)
+        projects_service.remove_status_automation_setting(
+            project_id, status_automation_id
+        )
         return "", 204
 
 

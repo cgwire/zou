@@ -7,7 +7,7 @@ from zou.app.services import (
     news_service,
     preview_files_service,
     time_spents_service,
-    user_service
+    user_service,
 )
 
 

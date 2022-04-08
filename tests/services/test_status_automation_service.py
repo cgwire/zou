@@ -27,12 +27,12 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         self.task_concept = self.generate_fixture_task(
             name="Concept",
             entity_id=self.entity.id,
-            task_type_id=self.task_type_concept.id
+            task_type_id=self.task_type_concept.id,
         )
         self.task_modeling = self.generate_fixture_task(
             name="Modeling",
             entity_id=self.entity.id,
-            task_type_id=self.task_type_modeling.id
+            task_type_id=self.task_type_modeling.id,
         )
         self.generate_fixture_task_status_wip()
         self.generate_fixture_task_status_done()
@@ -51,9 +51,13 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
             self.task_concept.id,
             str(self.task_status_done.id),
             "Test",
-            [], {}, None
+            [],
+            {},
+            None,
         )
-        self.assertEqual(str(self.task_modeling.task_status_id), wip_status["id"])
+        self.assertEqual(
+            str(self.task_modeling.task_status_id), wip_status["id"]
+        )
 
     def test_status_automation_to_ready_for(self):
         comments_service.create_comment(
@@ -63,6 +67,6 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
             "Test",
             [],
             {},
-            None
+            None,
         )
         self.assertEqual(self.asset.ready_for, self.task_type_layout.id)

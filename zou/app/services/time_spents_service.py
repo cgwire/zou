@@ -25,8 +25,7 @@ def get_time_spents_for_entity(entity_id):
     Return all time spents related to given entity.
     """
     query = (
-        TimeSpent.query
-        .join(Task)
+        TimeSpent.query.join(Task)
         .filter(Task.entity_id == entity_id)
         .order_by(TimeSpent.date.desc())
     )
