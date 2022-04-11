@@ -6,6 +6,8 @@ from zou.app.models.task_type import TaskType
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
 from zou.app.services.tasks_service import create_tasks
+from zou.app.services.comments_service import create_comment
+from zou.app.services.persons_service import get_current_user
 from zou.app.utils import events
 
 
@@ -103,5 +105,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             .filter(TaskType.for_entity == "Asset")
         )
         for task_type in task_types_in_project_for_assets:
-            create_tasks(task_type.serialize(), self.created_assets)
+            tasks = create_tasks(task_type.serialize(), self.created_assets)
+            
+            for task in tasks:
+                create_comment(get_current_user()["id"], task["id"], task["task_status_id"], "testou", [], {}, "")
+
         return entities
