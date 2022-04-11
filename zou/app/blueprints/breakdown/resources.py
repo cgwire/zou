@@ -36,12 +36,12 @@ class CastingResource(Resource):
 
 class EpisodeCastingResource(Resource):
     @jwt_required
-    def get(self, project_id):
+    def get(self, project_id, episode_id):
         """
         Resource to retrieve the casting of episodes.
         """
         user_service.check_project_access(project_id)
-        return breakdown_service.get_episode_casting(project_id)
+        return breakdown_service.get_production_episodes_casting(project_id, episode_id)
 
 
 class SequenceCastingResource(Resource):
