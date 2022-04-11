@@ -34,6 +34,7 @@ class EntityLink(db.Model, BaseMixin, SerializerMixin):
         primary_key=True,
         index=True,
     )
+    data = db.Column(JSONB)
     nb_occurences = db.Column(db.Integer, default=1)
     label = db.Column(db.String(80), default="")
 
