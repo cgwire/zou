@@ -22,7 +22,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
-    AssetNotFoundException
+    AssetNotFoundException,
 )
 
 from zou.app.utils import cache, date_helpers, events, fs, fields
@@ -83,8 +83,9 @@ def create_comment(
     comment["task_status"] = task_status
     comment["person"] = author
 
-    status_automations = \
-        projects_service.get_project_status_automations(task["project_id"])
+    status_automations = projects_service.get_project_status_automations(
+        task["project_id"]
+    )
     for automation in status_automations:
         _run_status_automation(automation, task, person_id)
     return comment
@@ -148,56 +149,57 @@ def _manage_subscriptions(task, comment, status_changed):
 
 
 def _run_status_automation(automation, task, person_id):
-    print("run automation type", task["task_type_id"], automation["in_task_type_id"])
-    print("run automation status", task["task_status_id"], automation["in_task_status_id"])
-    is_automation_to_run = \
-        task["task_type_id"] == automation["in_task_type_id"] and \
-        task["task_status_id"] == automation["in_task_status_id"]
+    is_automation_to_run = (
+        task["task_type_id"] == automation["in_task_type_id"]
+        and task["task_status_id"] == automation["in_task_status_id"]
+    )
     if not is_automation_to_run:
         return
 
     priorities = projects_service.get_task_type_priority_map(
-        task["project_id"],
-        automation["entity_type"].capitalize()
+        task["project_id"], automation["entity_type"].capitalize()
     )
     in_priority = priorities.get(automation["in_task_type_id"], 0)
     out_priority = priorities.get(automation["out_task_type_id"], 0) or 0
-    print(priorities, in_priority, out_priority, automation["out_task_type_id"])
-    is_rollback = priorities is not None \
-        and automation["out_field_type"] != "ready_for" \
+    is_rollback = (
+        priorities is not None
+        and automation["out_field_type"] != "ready_for"
         and in_priority > out_priority
-    if is_rollback: # Do not apply rollback to avoid change cycles.
+    )
+    if is_rollback:  # Do not apply rollback to avoid change cycles.
         return
 
     if automation["out_field_type"] == "status":
-        tasks_to_update = \
-            tasks_service.get_tasks_for_entity_and_task_type(
-                task["entity_id"],
-                automation["out_task_type_id"]
-            )
+        tasks_to_update = tasks_service.get_tasks_for_entity_and_task_type(
+            task["entity_id"], automation["out_task_type_id"]
+        )
         if len(tasks_to_update) > 0:
             task_to_update = tasks_to_update[0]
-            task_type = \
-                tasks_service.get_task_type(automation["in_task_type_id"])
-            task_status = \
-                tasks_service.get_task_status(automation["in_task_status_id"])
+            task_type = tasks_service.get_task_type(
+                automation["in_task_type_id"]
+            )
+            task_status = tasks_service.get_task_status(
+                automation["in_task_status_id"]
+            )
             create_comment(
                 person_id,
                 task_to_update["id"],
                 automation["out_task_status_id"],
-                "Change triggered by %s set to %s" % (
+                "Change triggered by %s set to %s"
+                % (
                     task_type["name"],
                     task_status["name"],
                 ),
                 [],
                 {},
-                None
+                None,
             )
-    elif automation["out_field_type"] == "r!eady_for":
+    elif automation["out_field_type"] == "ready_for":
         try:
-            asset = assets_service.update_asset(task["entity_id"], {
-                "ready_for": automation["out_task_type_id"]
-            })
+            asset = assets_service.update_asset(
+                task["entity_id"],
+                {"ready_for": automation["out_task_type_id"]},
+            )
             breakdown_service.refresh_casting_stats(asset)
         except AssetNotFoundException:
             pass

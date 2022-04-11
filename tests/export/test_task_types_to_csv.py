@@ -16,6 +16,8 @@ class TasksCsvExportTestCase(ApiDBTestCase):
         expected_result = """Department;Name\r
 Animation;Animation\r
 Animation;Layout\r
+Modeling;Concept\r
+Modeling;Modeling\r
 Modeling;Shaders\r
 """
         self.assertEqual(csv_task_types, expected_result)

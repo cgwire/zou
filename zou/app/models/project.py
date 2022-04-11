@@ -57,6 +57,7 @@ class ProjectAssetTypeLink(db.Model):
         primary_key=True,
     )
 
+
 class ProjectStatusAutomationLink(db.Model):
     __tablename__ = "project_status_automation_link"
     project_id = db.Column(
@@ -67,6 +68,7 @@ class ProjectStatusAutomationLink(db.Model):
         db.ForeignKey("status_automation.id"),
         primary_key=True,
     )
+
 
 class Project(db.Model, BaseMixin, SerializerMixin):
     """
@@ -140,7 +142,10 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
     def set_status_automations(self, status_automation_ids):
         return self.set_links(
-            status_automation_ids, ProjectStatusAutomationLink, "project_id", "status_automation_id"
+            status_automation_ids,
+            ProjectStatusAutomationLink,
+            "project_id",
+            "status_automation_id",
         )
 
     @classmethod

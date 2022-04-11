@@ -356,7 +356,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         )
         tasks = tasks_service.get_person_tasks(self.person.id, projects)
         # Animation as first task
-        tasks = sorted(tasks, key=lambda t: t['task_type_name'])
+        tasks = sorted(tasks, key=lambda t: t["task_type_name"])
         self.assertEqual(len(tasks), 2)
         self.assertEqual(tasks[1]["last_comment"]["text"], "last comment")
         self.assertEqual(

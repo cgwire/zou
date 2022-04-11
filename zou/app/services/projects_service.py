@@ -9,10 +9,12 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
+from zou.app.models.department import Department
 from zou.app.services import base_service
 from zou.app.services.exception import (
     ProjectNotFoundException,
     MetadataDescriptorNotFoundException,
+    DepartmentNotFoundException,
 )
 
 from zou.app.utils import fields, events, cache
@@ -71,6 +73,10 @@ def get_projects_with_extra_data(query, for_client=False):
                     "choices": descriptor.choices,
                     "for_client": descriptor.for_client or False,
                     "entity_type": descriptor.entity_type,
+                    "departments": [
+                        str(department.id)
+                        for department in descriptor.departments
+                    ],
                 }
             )
 
@@ -313,21 +319,30 @@ def remove_task_status_setting(project_id, task_status_id):
         project_id, TaskStatus, task_status_id, "task_statuses"
     )
 
+
 def add_status_automation_setting(project_id, status_automation_id):
     """
     Add a status automation listed in database to the project status automations.
     """
     return _add_to_list_attr(
-        project_id, StatusAutomation, status_automation_id, "status_automations"
+        project_id,
+        StatusAutomation,
+        status_automation_id,
+        "status_automations",
     )
+
 
 def remove_status_automation_setting(project_id, status_automation_id):
     """
     Remove a status automation listed in database from the project status automations.
     """
     return _remove_from_list_attr(
-        project_id, StatusAutomation, status_automation_id, "status_automations"
+        project_id,
+        StatusAutomation,
+        status_automation_id,
+        "status_automations",
     )
+
 
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
@@ -357,14 +372,27 @@ def _save_project(project):
 
 
 def add_metadata_descriptor(
-    project_id, entity_type, name, choices, for_client
+    project_id, entity_type, name, choices, for_client, departments=[]
 ):
+    if not departments:
+        departments = []
+
+    try:
+        departments_objects = [
+            Department.get(department_id)
+            for department_id in departments
+            if department_id is not None
+        ]
+    except StatementError:
+        raise DepartmentNotFoundException()
+
     descriptor = MetadataDescriptor.create(
         project_id=project_id,
         entity_type=entity_type,
         name=name,
         choices=choices,
         for_client=for_client,
+        departments=departments_objects,
         field_name=slugify.slugify(name, separator="_"),
     )
     events.emit(
@@ -387,7 +415,7 @@ def get_metadata_descriptors(project_id, for_client=False):
         query = query.filter(MetadataDescriptor.for_client == True)
 
     descriptors = query.all()
-    return fields.serialize_models(descriptors)
+    return fields.serialize_models(descriptors, relations=True)
 
 
 def get_metadata_descriptor_raw(metadata_descriptor_id):
@@ -405,7 +433,9 @@ def get_metadata_descriptor(metadata_descriptor_id):
     """
     Get metadata descriptor for given id as dict.
     """
-    return get_metadata_descriptor_raw(metadata_descriptor_id).serialize()
+    return get_metadata_descriptor_raw(metadata_descriptor_id).serialize(
+        relations=True
+    )
 
 
 def update_metadata_descriptor(metadata_descriptor_id, changes):
@@ -422,6 +452,22 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
             if value is not None:
                 metadata[changes["field_name"]] = value
                 entity.update({"data": metadata})
+
+    if "departments" in changes:
+        if not changes["departments"]:
+            changes["departments"] = []
+
+        try:
+            departments_objects = [
+                Department.get(department_id)
+                for department_id in changes["departments"]
+                if department_id is not None
+            ]
+        except StatementError:
+            raise DepartmentNotFoundException()
+
+        changes["departments"] = departments_objects
+
     descriptor.update(changes)
     events.emit(
         "metadata-descriptor:update",
@@ -492,9 +538,11 @@ def get_project_task_statuses(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.task_statuses)
 
+
 def get_project_status_automations(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)
+
 
 def get_project_fps(project_id):
     """
@@ -509,14 +557,11 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
     Return a dict allowing to match a task type id with a priority.
     """
     task_types = (
-        ProjectTaskTypeLink
-            .query
-            .join(TaskType)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == for_entity)
+        ProjectTaskTypeLink.query.join(TaskType)
+        .filter(ProjectTaskTypeLink.project_id == project_id)
+        .filter(TaskType.for_entity == for_entity)
     ).all()
     return {
         str(task_type_link.task_type_id): task_type_link.priority
         for task_type_link in task_types
     }
-
