@@ -3,7 +3,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 
 from .resources import (
     EpisodeAssetInstancesResource,
-    EpisodeCastingResource,
+    EpisodesCastingResource,
     ProjectEntityLinkResource,
     ProjectEntityLinksResource,
     RemoveEpisodeAssetInstanceResource,
@@ -32,8 +32,8 @@ routes = [
         RemoveEpisodeAssetInstanceResource,
     ),
     (
-        "/data/projects/<project_id>/episodes/<episode_id>/casting",
-        EpisodeCastingResource,
+        "/data/projects/<project_id>/episodes/casting",
+        EpisodesCastingResource,
     ),
     (
         "/data/projects/<project_id>/sequences/<sequence_id>/casting",

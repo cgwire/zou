@@ -74,7 +74,7 @@ def get_casting(shot_id):
     return casting
 
 
-def get_production_episodes_casting(project_id, episode_id):
+def get_production_episodes_casting(project_id):
     """
     Return all assets and their number of occurences listed in episodes of given
     project. Result is returned as a map where keys are asset IDs and values
