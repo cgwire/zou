@@ -5,7 +5,7 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
-from zou.app.services.tasks_service import create_tasks
+from zou.app.services.tasks_service import create_task, get_tasks_for_asset, get_task_statuses
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
 from zou.app.utils import events
@@ -25,7 +25,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.episodes = {
                 episode["name"]: episode["id"] for episode in episodes
             }
-        self.created_assets = []
+        self.task_types_in_project_for_assets = (
+            TaskType.query.join(ProjectTaskTypeLink)
+            .filter(ProjectTaskTypeLink.project_id == project_id)
+            .filter(TaskType.for_entity == "Asset")
+        )
+        self.task_statuses = get_task_statuses()
+        self.current_user_id = get_current_user()["id"]
 
     def import_row(self, row, project_id):
         asset_name = row["Name"]
@@ -71,6 +77,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 data[field_name] = entity.data[field_name]
 
+        tasks = []
         if entity is None:
             entity = Entity.create(
                 name=asset_name,
@@ -80,12 +87,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 source_id=episode_id,
                 data=data,
             )
-            self.created_assets.append(entity.serialize())
             events.emit(
                 "asset:new",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
                 project_id=project_id,
             )
+            for task_type in self.task_types_in_project_for_assets:
+                tasks.append(create_task(task_type.serialize(), entity.serialize()))
 
         elif self.is_update:
             entity.update({"description": description, "data": data})
@@ -94,20 +102,27 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 {"asset_id": str(entity.id), "episode_id": episode_id},
                 project_id=project_id,
             )
+            tasks = get_tasks_for_asset(entity.serialize())
+
+        for task in tasks:
+            task_name = task["task_type_name"].title()
+            task_status_name = row.get(task_name)
+            task_status_id = task["task_status_id"]
+            task_comment = row.get(f"{task_name} Comment", "")
+            if task_status_name:
+                for status in self.task_statuses:
+                    print(status)
+                    if task_status_name.lower() in (status["name"].lower(), status["short_name"].lower()):
+                        task_status_id = status["id"]
+            if task_status_id != task["task_status_id"] or task_comment:
+                create_comment(
+                    self.current_user_id,
+                    task["id"],
+                    task_status_id,
+                    task_comment,
+                    [],
+                    {},
+                    "",
+                )
 
         return entity.serialize()
-
-    def run_import(self, project_id, file_path):
-        entities = super().run_import(project_id, file_path)
-        task_types_in_project_for_assets = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Asset")
-        )
-        for task_type in task_types_in_project_for_assets:
-            tasks = create_tasks(task_type.serialize(), self.created_assets)
-            
-            for task in tasks:
-                create_comment(get_current_user()["id"], task["id"], task["task_status_id"], "testou", [], {}, "")
-
-        return entities
