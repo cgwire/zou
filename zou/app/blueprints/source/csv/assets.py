@@ -5,7 +5,11 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
-from zou.app.services.tasks_service import create_task, get_tasks_for_asset, get_task_statuses
+from zou.app.services.tasks_service import (
+    create_task,
+    get_tasks_for_asset,
+    get_task_statuses,
+)
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
 from zou.app.utils import events
