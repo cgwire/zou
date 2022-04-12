@@ -93,7 +93,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 project_id=project_id,
             )
             for task_type in self.task_types_in_project_for_assets:
-                tasks.append(create_task(task_type.serialize(), entity.serialize()))
+                tasks.append(
+                    create_task(task_type.serialize(), entity.serialize())
+                )
 
         elif self.is_update:
             entity.update({"description": description, "data": data})
@@ -111,8 +113,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             task_comment = row.get(f"{task_name} Comment", "")
             if task_status_name:
                 for status in self.task_statuses:
-                    print(status)
-                    if task_status_name.lower() in (status["name"].lower(), status["short_name"].lower()):
+                    if task_status_name.lower() in (
+                        status["name"].lower(),
+                        status["short_name"].lower(),
+                    ):
                         task_status_id = status["id"]
             if task_status_id != task["task_status_id"] or task_comment:
                 create_comment(
