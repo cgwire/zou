@@ -104,7 +104,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 {"asset_id": str(entity.id), "episode_id": episode_id},
                 project_id=project_id,
             )
-            tasks = get_tasks_for_asset(entity.serialize())
+            tasks = get_tasks_for_asset(str(entity.id))
 
         for task in tasks:
             task_name = task["task_type_name"].title()
