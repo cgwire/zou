@@ -60,16 +60,17 @@ def get_project_from_preview_file(preview_file_id):
     return project.serialize()
 
 
-def update_preview_file(preview_file_id, data):
+def update_preview_file(preview_file_id, data, silent=False):
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     preview_file.update(data)
     files_service.clear_preview_file_cache(preview_file_id)
-    task = Task.get(preview_file.task_id)
-    events.emit(
-        "preview-file:update",
-        {"preview_file_id": preview_file_id},
-        project_id=str(task.project_id),
-    )
+    if not silent:
+        task = Task.get(preview_file.task_id)
+        events.emit(
+            "preview-file:update",
+            {"preview_file_id": preview_file_id},
+            project_id=str(task.project_id),
+        )
     return preview_file.serialize()
 
 
