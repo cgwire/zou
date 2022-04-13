@@ -145,7 +145,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         for task in tasks:
             task_name = task["task_type_name"].title()
             task_status_id = task["task_status_id"]
-            task_status_name = row.get(task_name).lower()
+            task_status_name = row.get(task_name, "").lower()
             task_comment_text = row.get(f"{task_name} Comment", "")
 
             for status_id, status_names in self.task_statuses.items():
