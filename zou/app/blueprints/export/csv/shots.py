@@ -1,4 +1,5 @@
 from flask_restful import Resource
+from flask import request
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
@@ -8,7 +9,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
-from zou.app.utils import csv_utils
+from zou.app.utils import csv_utils, query
 
 
 class ShotsCsvExport(Resource):
@@ -17,11 +18,14 @@ class ShotsCsvExport(Resource):
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])
 
+        criterions = query.get_query_criterions_from_request(request)
+        criterions["project_id"] = project["id"]
+
         self.task_status_map = tasks_service.get_task_status_map()
         self.task_type_map = tasks_service.get_task_type_map()
 
         csv_content = []
-        results = self.get_shots_data(project_id)
+        results = self.get_shots_data(criterions)
         metadata_infos = self.get_metadata_infos(project_id)
         validation_columns = self.get_validation_columns(results)
         headers = self.build_headers(metadata_infos, validation_columns)
@@ -58,8 +62,8 @@ class ShotsCsvExport(Resource):
 
         return headers + metadata_headers + validation_columns
 
-    def get_shots_data(self, project_id):
-        results = shots_service.get_shots_and_tasks({"project_id": project_id})
+    def get_shots_data(self, criterions):
+        results = shots_service.get_shots_and_tasks(criterions)
         return sorted(
             results,
             key=lambda shot: (
