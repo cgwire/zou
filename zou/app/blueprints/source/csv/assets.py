@@ -1,6 +1,5 @@
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
@@ -34,7 +33,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             .filter(ProjectTaskTypeLink.project_id == project_id)
             .filter(TaskType.for_entity == "Asset")
         )
-        self.task_statuses = get_task_statuses()
+        self.task_statuses = {
+            status["id"]: [status[n].lower() for n in ("name", "short_name")]
+            for status in get_task_statuses()
+        }
         self.current_user_id = get_current_user()["id"]
 
     def import_row(self, row, project_id):
@@ -112,22 +114,20 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         for task in tasks:
             task_name = task["task_type_name"].title()
-            task_status_name = row.get(task_name)
             task_status_id = task["task_status_id"]
-            task_comment = row.get(f"{task_name} Comment", "")
-            if task_status_name:
-                for status in self.task_statuses:
-                    if task_status_name.lower() in (
-                        status["name"].lower(),
-                        status["short_name"].lower(),
-                    ):
-                        task_status_id = status["id"]
-            if task_status_id != task["task_status_id"] or task_comment:
+            task_status_name = row.get(task_name).lower()
+            task_comment_text = row.get(f"{task_name} Comment", "")
+
+            for status_id, status_names in self.task_statuses.items():
+                if task_status_name in status_names:
+                    task_status_id = status_id
+
+            if task_status_id != task["task_status_id"] or task_comment_text:
                 create_comment(
                     self.current_user_id,
                     task["id"],
                     task_status_id,
-                    task_comment,
+                    task_comment_text,
                     [],
                     {},
                     "",
