@@ -1,4 +1,5 @@
 from flask_restful import Resource
+from flask import request
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
@@ -8,20 +9,23 @@ from zou.app.services import (
     user_service,
     tasks_service,
 )
-from zou.app.utils import csv_utils
+from zou.app.utils import csv_utils, query
 
 
 class AssetsCsvExport(Resource):
     @jwt_required
     def get(self, project_id):
-        self.task_type_map = tasks_service.get_task_type_map()
-        self.task_status_map = tasks_service.get_task_status_map()
-
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])
 
+        criterions = query.get_query_criterions_from_request(request)
+        criterions["project_id"] = project["id"]
+
+        self.task_type_map = tasks_service.get_task_type_map()
+        self.task_status_map = tasks_service.get_task_status_map()
+
         csv_content = []
-        results = self.get_assets_data(project_id)
+        results = self.get_assets_data(criterions)
         metadata_infos = self.get_metadata_infos(project_id)
         validation_columns = self.get_validation_columns(results)
         headers = self.build_headers(metadata_infos, validation_columns)
@@ -71,10 +75,8 @@ class AssetsCsvExport(Resource):
 
         return row
 
-    def get_assets_data(self, project_id):
-        results = assets_service.get_assets_and_tasks(
-            {"project_id": project_id}
-        )
+    def get_assets_data(self, criterions):
+        results = assets_service.get_assets_and_tasks(criterions)
         return sorted(
             results,
             key=lambda asset: (asset["asset_type_name"], asset["name"]),
