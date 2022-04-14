@@ -260,6 +260,9 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         original_tmp_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
         )
+        file_size = fs.get_file_size(original_tmp_path)
+        preview_files_service.update_preview_file(
+            instance_id, {"file_size": file_size}, silent=True)
         return preview_files_service.save_variants(
             instance_id, original_tmp_path
         )
@@ -300,6 +303,9 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         file_path = os.path.join(tmp_folder, file_name)
         uploaded_file.save(file_path)
         file_store.add_file("previews", instance_id, file_path)
+        file_size = fs.get_file_size(file_path)
+        preview_files_service.update_preview_file(
+            instance_id, {"file_size": file_size}, silent=True)
         os.remove(file_path)
         return file_path
 
