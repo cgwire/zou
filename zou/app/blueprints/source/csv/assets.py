@@ -85,17 +85,22 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 data[field_name] = entity.data[field_name]
 
-        tasks_update = []
+        # Searsh for task name ans comment column and append values to update
+        # in a dictionnary using task name as key.
+        tasks_update = {}
         for task_type in self.task_types_in_project_for_assets:
+            # search for status update and get this id if found
             task_status_name = row.get(task_type.name.title(), "").lower()
-            task_comment_text = row.get(
-                "{} Comment".format(task_type.name.title()), ""
-            )
             task_status_id = ""
             for status_id, status_names in self.task_statuses.items():
                 if task_status_name in status_names:
                     task_status_id = status_id
                     break
+            # search for comment
+            task_comment_text = row.get(
+                "{} Comment".format(task_type.name.title()), ""
+            )
+            # append updates if valided
             if task_status_id or task_comment_text:
                 tasks_update[task_type.name] = {
                     "status": task_status_id,
@@ -118,11 +123,17 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 project_id=project_id,
             )
             if tasks_update:
+                # if task updates are required we need to create entity tasks
+                # imediatly and update this at the end of current row import
+                # process.
                 for task_type in self.task_types_in_project_for_assets:
                     tasks.append(
                         create_task(task_type.serialize(), entity.serialize())
                     )
             else:
+                # if there is no update for task we append the entity in the
+                # created entities list in order to optimize task creation in
+                # the run_import method call when all rows are imported.
                 self.created_assets.append(entity.serialize())
 
         elif self.is_update:
@@ -135,6 +146,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             if tasks_update:
                 tasks = get_tasks_for_asset(str(entity.id))
 
+        # Update task status and/or comment using the created tasks list and
+        # the tasks_update dictionnary.
         for task in tasks:
             task_name = task["task_type_name"]
             if task_name in tasks_update:
