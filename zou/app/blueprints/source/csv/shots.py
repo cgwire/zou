@@ -24,7 +24,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         )
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
-        self.created_assets = []
+        self.created_shots = []
         self.task_types_in_project_for_shots = (
             TaskType.query.join(ProjectTaskTypeLink)
             .filter(ProjectTaskTypeLink.project_id == project_id)
@@ -116,7 +116,6 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     "status": task_status_id,
                     "comment": task_comment_text,
                 }
-        print(tasks_update)
 
         tasks = []
         if entity is None:
@@ -148,7 +147,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         create_task(task_type.serialize(), entity.serialize())
                     )
             else:
-                self.created_assets.append(entity.serialize())
+                self.created_shots.append(entity.serialize())
 
         elif self.is_update:
             entity.update(
@@ -187,5 +186,5 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
     def run_import(self, project_id, file_path):
         entities = super().run_import(project_id, file_path)
         for task_type in self.task_types_in_project_for_shots:
-            create_tasks(task_type.serialize(), self.created_assets)
+            create_tasks(task_type.serialize(), self.created_shots)
         return entities
