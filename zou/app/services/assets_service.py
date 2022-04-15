@@ -1,4 +1,5 @@
 from sqlalchemy.exc import StatementError
+from sqlalchemy.orm import aliased
 
 from zou.app.utils import events, fields, cache
 from zou.app.utils import query as query_utils
@@ -12,6 +13,7 @@ from zou.app.models.task import assignees_table
 
 from zou.app.services import (
     base_service,
+    breakdown_service,
     deletion_service,
     edits_service,
     projects_service,
@@ -186,6 +188,26 @@ def get_assets_and_tasks(criterions={}, page=1):
         query = query.filter(user_service.build_assignee_filter())
         del criterions["assigned_to"]
 
+    # Get episodes the asset is casted in
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    Asset = aliased(Entity, name="asset_type")
+    cast_in_episodes_names = [(asset_id, name) for _link, asset_id, name in (
+        EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
+        .join(EntityType, EntityType.id == Episode.entity_type_id)
+        .join(Asset, EntityLink.entity_out_id == Asset.id)
+        # TODO Also make it available for shots via sequences
+        # .join(Sequence, Entity.parent_id == Sequence.id)
+        # .outerjoin(Episode, Sequence.parent_id == Episode.id)
+        # Filter only episodes
+        # .filter(EntityLink.entity_in_id == Asset.id)
+        .filter(EntityType.name == "Episode")
+        .filter(Episode.canceled != True)
+        # Get only names sorted
+        .add_columns(Asset.id, Episode.name)
+        .order_by(Episode.name)
+    )]
+
     for (
         asset,
         entity_type_name,
@@ -219,7 +241,8 @@ def get_assets_and_tasks(criterions={}, page=1):
                 "asset_type_id": str(asset.entity_type_id),
                 "canceled": asset.canceled,
                 "ready_for": str(asset.ready_for),
-                "episode_id": source_id,
+                "episode_id": source_id, # TODO delete
+                "episodes_names": [name for asset_id, name in cast_in_episodes_names if asset_id == asset.id],
                 "data": fields.serialize_value(asset.data),
                 "tasks": [],
             }
