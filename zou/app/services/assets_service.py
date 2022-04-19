@@ -196,17 +196,29 @@ def get_assets_and_tasks(criterions={}, page=1):
         EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
         .join(EntityType, EntityType.id == Episode.entity_type_id)
         .join(Asset, EntityLink.entity_out_id == Asset.id)
-        # TODO Also make it available for shots via sequences
-        # .join(Sequence, Entity.parent_id == Sequence.id)
-        # .outerjoin(Episode, Sequence.parent_id == Episode.id)
         # Filter only episodes
-        # .filter(EntityLink.entity_in_id == Asset.id)
         .filter(EntityType.name == "Episode")
-        .filter(Episode.canceled != True)
         # Get only names sorted
         .add_columns(Asset.id, Episode.name)
         .order_by(Episode.name)
     )]
+
+    # Get episodes from shots
+    Shot = aliased(Entity, name="shot")
+    cast_in_episodes_names.extend([(asset_id, name) for _link, asset_id, name in (
+        EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
+        .join(Sequence, Shot.parent_id == Sequence.id)
+        .outerjoin(Episode, Sequence.parent_id == Episode.id)
+        # Filter only episodes
+        .filter(EntityType.name == "Episode")
+        .filter(Shot.canceled != True)
+        # Get only names sorted
+        .add_columns(Asset.id, Episode.name)
+        .order_by(Episode.name)
+    )])
+
+    # Sort cast in
+    cast_in_episodes_names.sort()
 
     for (
         asset,
