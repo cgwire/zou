@@ -307,25 +307,3 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
             asset_id, args["asset_to_instantiate_id"], args["description"]
         )
         return asset_instance, 201
-
-
-# class AssetEpisodeLinksResource(Resource):
-#     @jwt_required
-#     def get(self, project_id):
-#         """
-#         Retrieve all entity links related to given project.
-#         It's mainly used for synchronisation purpose.
-#         """
-#         user_service.check_manager_project_access(project_id)
-#         projects_service.get_project(project_id)
-#         return entities_service.get_entity_links_for_project(project_id)
-
-
-# class AssetEpisodeLinkResource(Resource):
-#     @jwt_required
-#     def delete(self, project_id, entity_link_id):
-#         """
-#         Delete given entity link.
-#         """
-#         user_service.check_manager_project_access(project_id)
-#         return entities_service.remove_entity_link(entity_link_id)
