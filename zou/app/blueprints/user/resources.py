@@ -955,6 +955,46 @@ class SequenceSubscriptionsResource(Resource):
 
 class TimeSpentsResource(Resource):
     """
+    Get all time spents for the current user.
+    Optionnaly can accept date range parameters.
+    """
+
+    @jwt_required
+    def get(self):
+        arguments = self.get_arguments()
+        start_date, end_date = arguments["start_date"], arguments["end_date"]
+        current_user = persons_service.get_current_user()
+        if not start_date and not end_date:
+            return time_spents_service.get_time_spents(current_user["id"])
+
+        if None in [start_date, end_date]:
+            abort(
+                400,
+                "If querying for a range of dates, both a `start_date` and"
+                " an `end_date` must be given.",
+            )
+
+        try:
+            return time_spents_service.get_time_spents_range(
+                current_user["id"], start_date, end_date
+            )
+        except WrongDateFormatException:
+            abort(
+                400,
+                "Wrong date format for {} and/or {}".format(
+                    start_date, end_date
+                ),
+            )
+
+    def get_arguments(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("start_date", default=None)
+        parser.add_argument("end_date", default=None)
+        return parser.parse_args()
+
+
+class DateTimeSpentsResource(Resource):
+    """
     Get time spents on for current user and given date.
     """
 
