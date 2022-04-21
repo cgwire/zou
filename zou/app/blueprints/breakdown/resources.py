@@ -106,44 +106,6 @@ class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
         return "", 204
 
 
-class EpisodeAssetInstancesResource(Resource, ArgsMixin):
-    @jwt_required
-    def get(self, episode_id):
-        """
-        Retrieve all asset instances linked to episode.
-        """
-        episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        return breakdown_service.get_asset_instances_for_episode(episode_id) #TODO
-
-    @jwt_required
-    def post(self, episode_id):
-        """
-        Add an asset instance to given episode.
-        """
-        args = self.get_args([("asset_instance_id", None, True)])
-        episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        episode = breakdown_service.add_asset_instance_to_episode(
-            episode_id, args["asset_instance_id"]
-        )
-        return episode, 201
-
-
-class RemoveEpisodeAssetInstanceResource(Resource, ArgsMixin):
-    @jwt_required
-    def delete(self, episode_id, asset_instance_id):
-        """
-        Remove an asset instance from given episode.
-        """
-        episode = shots_service.get_episode(episode_id)
-        user_service.check_project_access(episode["project_id"])
-        episode = breakdown_service.remove_asset_instance_from_episode(
-            episode_id, asset_instance_id
-        )
-        return "", 204
-
-
 class SceneAssetInstancesResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, scene_id):

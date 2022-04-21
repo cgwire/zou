@@ -370,21 +370,6 @@ def get_asset_instances_for_shot(shot_id):
     return result
 
 
-def get_asset_instances_for_episode(episode_id):
-    """
-    Return asset instances casted in given episode.
-    """
-    episode = shots_service.get_episode_raw(episode_id)
-
-    result = {}
-    for asset_instance in episode.instance_casting:
-        asset_id = str(asset_instance.asset_id)
-        if asset_id not in result:
-            result[asset_id] = []
-        result[asset_id].append(asset_instance.serialize())
-    return result
-
-
 def group_by(models, field):
     result = {}
     for asset_instance in models:
@@ -508,37 +493,6 @@ def remove_asset_instance_for_shot(shot_id, asset_instance_id):
         {"shot_id": shot_id, "asset_instance_id": asset_instance_id},
     )
     return shot.serialize()
-
-
-def add_asset_instance_to_episode(episode_id, asset_instance_id):
-    """
-    Add asset instance to instance casting of given episode.
-    """
-    episode = shots_service.get_episode_raw(episode_id)
-    asset_instance = assets_service.get_asset_instance_raw(asset_instance_id)
-    episode.instance_casting.append(asset_instance)
-    episode.save()
-
-    events.emit(
-        "asset_instance:add-to-episode",
-        {"shot_id": episode_id, "asset_instance_id": asset_instance_id},
-    )
-    return episode.serialize()
-
-
-def remove_asset_instance_from_episode(episode_id, asset_instance_id):
-    """
-    Remove asset instance from instance casting of given episode.
-    """
-    episode = shots_service.get_episode_raw(episode_id)
-    asset_instance = assets_service.get_asset_instance_raw(asset_instance_id)
-    episode.instance_casting.remove(asset_instance)
-    episode.save()
-    events.emit(
-        "asset_instance:remove-from-episode",
-        {"shot_id": episode_id, "asset_instance_id": asset_instance_id},
-    )
-    return episode.serialize()
 
 
 def build_asset_instance_name(asset_id, number):
