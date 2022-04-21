@@ -209,8 +209,10 @@ def get_assets_and_tasks(criterions={}, page=1):
         EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
         .join(Sequence, Shot.parent_id == Sequence.id)
         .outerjoin(Episode, Sequence.parent_id == Episode.id)
+        .join(Asset, EntityLink.entity_out_id == Asset.id)
         # Filter only episodes
         .filter(EntityType.name == "Episode")
+        .filter(EntityLink.entity_out_id == Asset.id)
         .filter(Shot.canceled != True)
         # Get only names sorted
         .add_columns(Asset.id, Episode.name)
