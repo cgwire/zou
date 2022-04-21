@@ -7,16 +7,10 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
-from zou.app.services.tasks_service import (
-    create_task,
-    create_tasks,
-    get_tasks_for_asset,
-    get_task_statuses,
-    get_task_type,
-)
+from zou.app.services import tasks_service
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
-from zou.app.utils import events
+from zou.app.utils import events, cache
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
@@ -41,7 +35,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         )
         self.task_statuses = {
             status["id"]: [status[n] for n in ("name", "short_name")]
-            for status in get_task_statuses()
+            for status in tasks_service.get_task_statuses()
         }
         self.current_user_id = get_current_user()["id"]
         self.task_types_for_ready_for_map = {
@@ -81,28 +75,29 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         return tasks_update
 
     def create_and_update_tasks(
-        self, tasks_update, entity, asset_created=False
+        self, tasks_update, entity, asset_creation=False
     ):
         if tasks_update:
-            if asset_created:
-                tasks_map = {
-                    str(task_type.id): create_task(
-                        task_type.serialize(), entity.serialize()
+            tasks_map = {}
+            if asset_creation:
+                task_type_ids = \
+                    self.get_task_types_for_asset_type(entity.entity_type_id)
+                for task_type_id in task_type_ids:
+                    task = tasks_service.create_task(
+                        {"id": task_type_id}, [entity.serialize()]
                     )
-                    for task_type in self.task_types_in_project_for_assets
-                }
+                    tasks_map[task_type_id] = task
             else:
-                tasks_map = {
-                    task["task_type_id"]: task
-                    for task in get_tasks_for_asset(str(entity.id))
-                }
+                for task in tasks_service.get_tasks_for_asset(str(entity.id)):
+                    tasks_map[task["task_type_id"]] = task
 
             for task_update in tasks_update:
                 if task_update["task_type_id"] not in tasks_map:
-                    tasks_map[task_update["task_type_id"]] = create_task(
-                        get_task_type(task_update["task_type_id"]),
-                        entity.serialize(),
+                    task = tasks_service.create_task(
+                        tasks_service.get_task_type(task_update["task_type_id"]),
+                        [entity.serialize()],
                     )
+                    tasks_map[task_update["task_type_id"]] = task
                 task = tasks_map[task_update["task_type_id"]]
                 if (
                     task_update["comment"] is not None
@@ -118,7 +113,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         {},
                         "",
                     )
-        elif asset_created:
+        elif asset_creation:
             self.created_assets.append(entity.serialize())
 
     def import_row(self, row, project_id):
@@ -133,9 +128,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     episode_name
                 ] = shots_service.get_or_create_episode(
                     project_id, episode_name
-                )[
-                    "id"
-                ]
+                )["id"]
             episode_id = self.episodes.get(episode_name, None)
         elif episode_name is not None:
             raise RowException(
@@ -178,11 +171,11 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         ready_for = row.get("Ready for", None)
         if ready_for is not None:
             try:
-                asset_new_values[
-                    "ready_for"
-                ] = self.task_types_for_ready_for_map[ready_for]
+                asset_new_values["ready_for"] = \
+                    self.task_types_for_ready_for_map[ready_for]
             except KeyError:
-                raise RowException("Task type not found for %s" % ready_for)
+                asset_new_values["ready_for"] = None
+                # raise RowException("Task type not found for %s" % ready_for)
 
         tasks_update = self.get_tasks_update(row)
 
@@ -195,7 +188,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, asset_created=True
+                tasks_update, entity, asset_creation=True
             )
 
         elif self.is_update:
@@ -207,13 +200,38 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, asset_created=False
+                tasks_update, entity, asset_creation=False
             )
 
         return entity.serialize()
 
+    @cache.memoize_function(10)
+    def get_task_types_for_asset_type(self, asset_type_id):
+        task_type_ids = [
+            str(task_type.id)
+            for task_type in self.task_types_in_project_for_assets
+        ]
+        asset_type = \
+            assets_service.get_asset_type(asset_type_id)
+        type_task_type_ids = asset_type["task_types"]
+        type_task_types_map = {
+            task_type_id: True for task_type_id in type_task_type_ids
+        }
+        if len(type_task_type_ids) > 0:
+            task_type_ids = [
+                task_type_id for task_type_id in task_type_ids
+                if task_type_id in type_task_types_map
+            ]
+        return task_type_ids
+
     def run_import(self, project_id, file_path):
         entities = super().run_import(project_id, file_path)
-        for task_type in self.task_types_in_project_for_assets:
-            create_tasks(task_type.serialize(), self.created_assets)
+        for asset in entities:
+            task_type_ids = \
+                self.get_task_types_for_asset_type(asset["entity_type_id"])
+            for task_type_id in task_type_ids:
+                tasks_service.create_tasks(
+                    {"id": task_type_id},
+                    [asset]
+                )
         return entities

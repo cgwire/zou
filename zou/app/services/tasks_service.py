@@ -987,9 +987,9 @@ def _finalize_task_creation(task_type, task_status, task):
             "task_status_short_name": task_status["short_name"],
             "task_status_color": task_status["color"],
             "task_type_id": task_type["id"],
-            "task_type_name": task_type["name"],
-            "task_type_color": task_type["color"],
-            "task_type_priority": task_type["priority"],
+            "task_type_name": task_type.get("name", ""),
+            "task_type_color": task_type.get("color", ""),
+            "task_type_priority": task_type.get("priority", ""),
         }
     )
     events.emit(
