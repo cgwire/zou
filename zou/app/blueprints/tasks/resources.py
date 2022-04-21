@@ -294,6 +294,31 @@ class CreateEditTasksResource(Resource):
         return tasks, 201
 
 
+class TaskTypeAssetTypeResource(Resource, ArgsMixin):
+    """
+    Allow to add an asset type linked to a task type.
+    """
+
+    @jwt_required
+    def post(self, task_type_id):
+        args = self.get_args([("asset_type_id", "", True)])
+        task_type = tasks_service.add_asset_type_dedication(
+            task_type_id, args["asset_type_id"]
+        )
+        return task_type, 201
+
+
+class TaskTypeAssetTypeRemoveResource(Resource):
+    """
+    Allow to remove an asset type linked to a task type.
+    """
+
+    @jwt_required
+    def delete(self, task_type_id, asset_type_id):
+        tasks_service.remove_asset_type_dedication(task_type_id, asset_type_id)
+        return "", 204
+
+
 class ToReviewResource(Resource):
     """
     Change a task status to "to review". It creates a new preview file entry

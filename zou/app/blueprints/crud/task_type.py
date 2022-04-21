@@ -35,6 +35,10 @@ class TaskTypeResource(BaseModelResource):
     def check_read_permissions(self, instance):
         return True
 
+    def pre_update(self, project_dict, data):
+        data.pop("asset_types", [])
+        return project_dict
+
     def update_data(self, data, instance_id):
         name = data.get("name", None)
         if name is not None:
