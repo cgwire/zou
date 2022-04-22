@@ -252,7 +252,10 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 ("departments", [], False, "append"),
             ]
         )
-        permissions.check_admin_permissions()
+
+        user_service.check_manager_supervisor_project_all_departments_access(
+            project_id, args["departments"]
+        )
 
         args["for_client"] = args["for_client"] == "True"
 
@@ -298,7 +301,13 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
                 ("departments", [], False, "append"),
             ]
         )
-        permissions.check_admin_permissions()
+        user_service.check_manager_supervisor_project_all_departments_access(
+            project_id,
+            projects_service.get_metadata_descriptor(descriptor_id)[
+                "departments"
+            ]
+            + args["departments"],
+        )
 
         if len(args["name"]) == 0:
             raise WrongParameterException("Name cannot be empty.")
@@ -309,7 +318,12 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
     @jwt_required
     def delete(self, project_id, descriptor_id):
-        permissions.check_admin_permissions()
+        user_service.check_manager_supervisor_project_all_departments_access(
+            project_id,
+            projects_service.get_metadata_descriptor(descriptor_id)[
+                "departments"
+            ],
+        )
         projects_service.remove_metadata_descriptor(descriptor_id)
         return "", 204
 

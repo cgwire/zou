@@ -4,6 +4,7 @@ from werkzeug.exceptions import Forbidden
 
 admin_permission = Permission(RoleNeed("admin"))
 manager_permission = Permission(RoleNeed("manager"))
+supervisor_permission = Permission(RoleNeed("supervisor"))
 client_permission = Permission(RoleNeed("client"))
 vendor_permission = Permission(RoleNeed("vendor"))
 
@@ -14,21 +15,21 @@ class PermissionDenied(Forbidden):
 
 def has_manager_permissions():
     """
-    Return True if user is admin or manager.
+    Return True if user is an admin or a manager.
     """
     return admin_permission.can() or manager_permission.can()
 
 
 def has_admin_permissions():
     """
-    Return True if user is admin.
+    Return True if user is an admin.
     """
     return admin_permission.can()
 
 
 def has_client_permissions():
     """
-    Return True if user is client.
+    Return True if user is a client.
     """
     return client_permission.can()
 
@@ -38,6 +39,13 @@ def has_vendor_permissions():
     Return True if user is a vendor.
     """
     return vendor_permission.can()
+
+
+def has_supervisor_permissions():
+    """
+    Return True if user is a supervisor.
+    """
+    return supervisor_permission.can()
 
 
 def check_manager_permissions():
