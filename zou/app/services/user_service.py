@@ -411,8 +411,8 @@ def check_manager_project_access(project_id):
 
 def check_supervisor_project_access(project_id):
     """
-    Return true if current user is a manager or a supervisor and has a task assigned for this
-    project.
+    Return true if current user is a manager or a supervisor and has a task
+    assigned for this project.
     """
     is_allowed = permissions.has_admin_permissions() or (
         (
@@ -428,8 +428,9 @@ def check_supervisor_project_access(project_id):
 
 def check_supervisor_task_access(task, new_data={}):
     """
-    Return true if current user is a manager and has a task assigned related to the project of this task or is a supervisor
-    and can modify data accorded to his departments
+    Return true if current user is a manager and has a task assigned related
+    to the project of this task or is a supervisor and can modify data accorded
+    to his departments
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
@@ -437,22 +438,26 @@ def check_supervisor_task_access(task, new_data={}):
         and check_belong_to_project(task["project_id"])
     ):
         is_allowed = True
-    elif (
-        permissions.has_supervisor_permissions()
-        and check_belong_to_project(task["project_id"])
-        and len(set(new_data.keys()) - set(["priority"])) == 0
+    elif permissions.has_supervisor_permissions() and check_belong_to_project(
+        task["project_id"]
     ):
-        user_departments = persons_service.get_current_user(relations=True)[
-            "departments"
-        ]
-        if (
-            user_departments == []
-            or tasks_service.get_task_type(task["task_type_id"])[
-                "department_id"
-            ]
-            in user_departments
-        ):
-            is_allowed = True
+        # checks that the supervisor only modifies columns
+        # for which he is authorized
+        only_allowed_columns = (
+            len(set(new_data.keys()) - set(["priority"])) == 0
+        )
+        if only_allowed_columns:
+            user_departments = persons_service.get_current_user(
+                relations=True
+            )["departments"]
+            if (
+                user_departments == []
+                or tasks_service.get_task_type(task["task_type_id"])[
+                    "department_id"
+                ]
+                in user_departments
+            ):
+                is_allowed = True
 
     if not is_allowed:
         raise permissions.PermissionDenied
@@ -462,7 +467,8 @@ def check_supervisor_task_access(task, new_data={}):
 def check_metadata_department_access(entity, new_data={}):
     """
     Return true if current user is a manager and has a task assigned for this
-    project or is a supervisor and is allowed to modify data accorded to his departments
+    project or is a supervisor and is allowed to modify data accorded to
+    his departments
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
@@ -470,51 +476,53 @@ def check_metadata_department_access(entity, new_data={}):
         and check_belong_to_project(entity["project_id"])
     ):
         is_allowed = True
-    elif (
-        permissions.has_supervisor_permissions()
-        and check_belong_to_project(entity["project_id"])
-        and len(set(new_data.keys()) - set(["data"])) == 0
+    elif permissions.has_supervisor_permissions() and check_belong_to_project(
+        entity["project_id"]
     ):
-        user_departments = persons_service.get_current_user(relations=True)[
-            "departments"
-        ]
-        if user_departments == []:
-            is_allowed = True
-        else:
-            entity_type = None
-            if shots_service.is_shot(entity):
-                entity_type = "Shot"
-            elif assets_service.is_asset(
-                entities_service.get_entity_raw(entity["id"])
-            ):
-                entity_type = "Asset"
-            elif edits_service.is_edit(entity):
-                entity_type = "Edit"
-            if entity_type:
-                descriptors = [
-                    descriptor
-                    for descriptor in projects_service.get_metadata_descriptors(
-                        entity["project_id"]
-                    )
-                    if descriptor["entity_type"] == entity_type
-                ]
-                found_and_in_departments = False
-                for descriptor_name in new_data["data"].keys():
+        # checks that the supervisor only modifies columns
+        # for which he is authorized
+        only_allowed_columns = len(set(new_data.keys()) - set(["data"])) == 0
+        if only_allowed_columns:
+            user_departments = persons_service.get_current_user(
+                relations=True
+            )["departments"]
+            if user_departments == []:
+                is_allowed = True
+            else:
+                entity_type = None
+                if shots_service.is_shot(entity):
+                    entity_type = "Shot"
+                elif assets_service.is_asset(
+                    entities_service.get_entity_raw(entity["id"])
+                ):
+                    entity_type = "Asset"
+                elif edits_service.is_edit(entity):
+                    entity_type = "Edit"
+                if entity_type:
+                    descriptors = [
+                        descriptor
+                        for descriptor in projects_service.get_metadata_descriptors(
+                            entity["project_id"]
+                        )
+                        if descriptor["entity_type"] == entity_type
+                    ]
                     found_and_in_departments = False
-                    for descriptor in descriptors:
-                        if descriptor["field_name"] == descriptor_name:
-                            found_and_in_departments = (
-                                len(
-                                    set(descriptor["departments"])
-                                    & set(user_departments)
+                    for descriptor_name in new_data["data"].keys():
+                        found_and_in_departments = False
+                        for descriptor in descriptors:
+                            if descriptor["field_name"] == descriptor_name:
+                                found_and_in_departments = (
+                                    len(
+                                        set(descriptor["departments"])
+                                        & set(user_departments)
+                                    )
+                                    > 0
                                 )
-                                > 0
-                            )
+                                break
+                        if not found_and_in_departments:
                             break
-                    if not found_and_in_departments:
-                        break
-                if found_and_in_departments:
-                    is_allowed = True
+                    if found_and_in_departments:
+                        is_allowed = True
 
     if not is_allowed:
         raise permissions.PermissionDenied
