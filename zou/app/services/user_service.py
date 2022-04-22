@@ -1,4 +1,3 @@
-from math import perm
 from sqlalchemy.orm import aliased
 
 from zou.app import config
@@ -460,7 +459,7 @@ def check_supervisor_task_access(task, new_data={}):
     return is_allowed
 
 
-def check_entity_metadata_descriptor_department_access(entity, new_data={}):
+def check_metadata_department_access(entity, new_data={}):
     """
     Return true if current user is a manager and has a task assigned for this
     project or is a supervisor and is allowed to modify data accorded to his departments
@@ -522,7 +521,7 @@ def check_entity_metadata_descriptor_department_access(entity, new_data={}):
     return is_allowed
 
 
-def check_person_project_departement_access(task_id, person_id):
+def check_task_departement_access(task_id, person_id):
     """
     Return true if current user is an admin or is a manager and is in team
     or is a supervisor in the department of the task or is an artist assigning
@@ -567,9 +566,7 @@ def check_person_project_departement_access(task_id, person_id):
     return is_allowed
 
 
-def check_manager_supervisor_project_all_departments_access(
-    project_id, departments=[]
-):
+def check_all_departments_access(project_id, departments=[]):
     """
     Return true if current user is admin or is manager and is in team or is
     supervisor and is in team and have access to all departments.

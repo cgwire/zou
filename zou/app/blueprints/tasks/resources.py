@@ -408,9 +408,7 @@ class TasksAssignResource(Resource):
         tasks = []
         for task_id in task_ids:
             try:
-                user_service.check_person_project_departement_access(
-                    task_id, person_id
-                )
+                user_service.check_task_departement_access(task_id, person_id)
                 task = self.assign_task(task_id, person_id)
                 author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(

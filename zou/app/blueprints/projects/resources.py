@@ -253,7 +253,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             ]
         )
 
-        user_service.check_manager_supervisor_project_all_departments_access(
+        user_service.check_all_departments_access(
             project_id, args["departments"]
         )
 
@@ -301,7 +301,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
                 ("departments", [], False, "append"),
             ]
         )
-        user_service.check_manager_supervisor_project_all_departments_access(
+        user_service.check_all_departments_access(
             project_id,
             projects_service.get_metadata_descriptor(descriptor_id)[
                 "departments"
@@ -318,7 +318,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
     @jwt_required
     def delete(self, project_id, descriptor_id):
-        user_service.check_manager_supervisor_project_all_departments_access(
+        user_service.check_all_departments_access(
             project_id,
             projects_service.get_metadata_descriptor(descriptor_id)[
                 "departments"
