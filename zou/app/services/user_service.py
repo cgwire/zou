@@ -443,10 +443,10 @@ def check_supervisor_task_access(task, new_data={}):
     ):
         # checks that the supervisor only modifies columns
         # for which he is authorized
-        only_allowed_columns = (
-            len(set(new_data.keys()) - set(["priority"])) == 0
+        allowed_columns = set(
+            ["priority", "start_date", "due_date", "estimation"]
         )
-        if only_allowed_columns:
+        if len(set(new_data.keys()) - allowed_columns) == 0:
             user_departments = persons_service.get_current_user(
                 relations=True
             )["departments"]
@@ -481,8 +481,8 @@ def check_metadata_department_access(entity, new_data={}):
     ):
         # checks that the supervisor only modifies columns
         # for which he is authorized
-        only_allowed_columns = len(set(new_data.keys()) - set(["data"])) == 0
-        if only_allowed_columns:
+        allowed_columns = set(["data"])
+        if len(set(new_data.keys()) - allowed_columns) == 0:
             user_departments = persons_service.get_current_user(
                 relations=True
             )["departments"]
