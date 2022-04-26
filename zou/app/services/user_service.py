@@ -464,6 +464,38 @@ def check_supervisor_task_access(task, new_data={}):
     return is_allowed
 
 
+def check_supervisor_schedule_item_access(schedule_item, new_data={}):
+    """
+    Return true if current user is a manager and has a task assigned related
+    to the project of this task or is a supervisor and can modify data accorded
+    to his departments
+    """
+    is_allowed = False
+    if permissions.has_admin_permissions() or (
+        permissions.has_manager_permissions()
+        and check_belong_to_project(schedule_item["project_id"])
+    ):
+        is_allowed = True
+    elif permissions.has_supervisor_permissions() and check_belong_to_project(
+        schedule_item["project_id"]
+    ):
+        user_departments = persons_service.get_current_user(relations=True)[
+            "departments"
+        ]
+        if (
+            user_departments == []
+            or tasks_service.get_task_type(schedule_item["task_type_id"])[
+                "department_id"
+            ]
+            in user_departments
+        ):
+            is_allowed = True
+
+    if not is_allowed:
+        raise permissions.PermissionDenied
+    return is_allowed
+
+
 def check_metadata_department_access(entity, new_data={}):
     """
     Return true if current user is a manager and has a task assigned for this
