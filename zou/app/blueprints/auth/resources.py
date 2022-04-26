@@ -99,6 +99,9 @@ def on_identity_loaded(sender, identity):
             if identity.user["role"] == "manager":
                 identity.provides.add(RoleNeed("manager"))
 
+            if identity.user["role"] == "supervisor":
+                identity.provides.add(RoleNeed("supervisor"))
+
             if identity.user["role"] == "client":
                 identity.provides.add(RoleNeed("client"))
 

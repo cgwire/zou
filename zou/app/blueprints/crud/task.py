@@ -71,7 +71,7 @@ class TaskResource(BaseModelResource):
         user_service.check_entity_access(task["entity_id"])
 
     def check_update_permissions(self, task, data):
-        user_service.check_manager_project_access(task["project_id"])
+        user_service.check_supervisor_task_access(task, data)
 
     def check_delete_permissions(self, task):
         user_service.check_manager_project_access(task["project_id"])
