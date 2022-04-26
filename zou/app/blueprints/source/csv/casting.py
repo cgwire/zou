@@ -1,7 +1,12 @@
 from slugify import slugify
 from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
 
-from zou.app.services import assets_service, shots_service, breakdown_service
+from zou.app.services import (
+    assets_service,
+    projects_service,
+    shots_service,
+    breakdown_service,
+)
 
 
 class CastingCsvImportResource(BaseCsvProjectImportResource):
@@ -21,9 +26,12 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
             key = self.get_asset_key(asset)
             self.asset_map[key] = asset["id"]
 
-        episodes = shots_service.get_episodes({"project_id": project_id})
-        for episode in episodes:
-            self.episode_map[episode["id"]] = slugify(episode["name"])
+        project = projects_service.get_project(project_id)
+        self.is_tv_show = projects_service.is_tv_show(project)
+        if self.is_tv_show:
+            episodes = shots_service.get_episodes({"project_id": project_id})
+            for episode in episodes:
+                self.episode_map[episode["id"]] = slugify(episode["name"])
 
         sequences = shots_service.get_sequences({"project_id": project_id})
         for sequence in sequences:
@@ -51,10 +59,10 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         asset_key = slugify("%s%s" % (row["Asset Type"], row["Asset"]))
-        if row["Episode"] == "MP":
+        if row.get("Episode") == "MP":
             row["Episode"] = ""
         target_key = slugify(
-            "%s%s%s" % (row["Episode"], row["Parent"], row["Name"])
+            "%s%s%s" % (row.get("Episode", ""), row["Parent"], row["Name"])
         )
         occurences = 1
         if len(row["Occurences"]) > 0:
