@@ -1,3 +1,4 @@
+from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm import aliased
 
@@ -13,7 +14,6 @@ from zou.app.models.task import assignees_table
 
 from zou.app.services import (
     base_service,
-    breakdown_service,
     deletion_service,
     edits_service,
     projects_service,
@@ -148,12 +148,28 @@ def get_assets_and_tasks(criterions={}, page=1):
     asset_map = {}
     task_map = {}
 
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    Asset = aliased(Entity, name="asset_type")
+    Shot = aliased(Entity, name="shot")
+
     query = (
         Entity.query.filter(build_asset_type_filter())
-        .join(EntityType)
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
         .outerjoin(Task)
         .outerjoin(assignees_table)
-        .add_columns(
+        # Get episodes the asset is casted in
+        .join(EntityLink, EntityLink.entity_out_id == Entity.id)
+        # .join(Episode, EntityLink.entity_in_id == Episode.id)
+        # .join(Asset, EntityLink.entity_out_id == Asset.id)
+        .outerjoin(Shot, EntityLink.entity_in_id == Shot.id)
+        .outerjoin(Sequence, Shot.parent_id == Sequence.id)
+        .outerjoin(Episode, Sequence.parent_id == Episode.id)
+        # .join(Asset, EntityLink.entity_out_id == Asset.id)
+    )
+
+    # Tasks query
+    tasks_query = query.add_columns(
             EntityType.name,
             Task.id,
             Task.task_type_id,
@@ -168,59 +184,72 @@ def get_assets_and_tasks(criterions={}, page=1):
             Task.due_date,
             Task.last_comment_date,
             assignees_table.columns.person,
-        )
-        .order_by(EntityType.name, Entity.name)
-    )
+        ).order_by(EntityType.name, Entity.name)
 
     if "id" in criterions:
-        query = query.filter(Entity.id == criterions["id"])
+        tasks_query = tasks_query.filter(Entity.id == criterions["id"])
 
     if "project_id" in criterions:
-        query = query.filter(Entity.project_id == criterions["project_id"])
+        tasks_query = tasks_query.filter(Entity.project_id == criterions["project_id"])
 
     if "episode_id" in criterions:
         if criterions["episode_id"] == "main":
-            query = query.filter(Entity.source_id == None)
+            tasks_query = tasks_query.filter(Entity.source_id == None)
         elif criterions["episode_id"] != "all":
-            query = query.filter(Entity.source_id == criterions["episode_id"])
+            tasks_query = tasks_query.filter(or_(Entity.source_id == criterions["episode_id"], EntityLink.entity_in_id == criterions["episode_id"], Sequence.parent_id == criterions["episode_id"]))
 
     if "assigned_to" in criterions:
-        query = query.filter(user_service.build_assignee_filter())
+        tasks_query = tasks_query.filter(user_service.build_assignee_filter())
         del criterions["assigned_to"]
+    
+    # TODO currently trying to simplify this query to have all episodes of an asset
 
+    episodes_query = (query
+    .outerjoin(Episode, Sequence.parent_id == Episode.id)
+    ).add_columns(
+
+    )
     # Get episodes the asset is casted in
-    Sequence = aliased(Entity, name="sequence")
-    Episode = aliased(Entity, name="episode")
-    Asset = aliased(Entity, name="asset_type")
-    cast_in_episodes_names = [(asset_id, name) for _link, asset_id, name in (
-        EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
-        .join(EntityType, EntityType.id == Episode.entity_type_id)
-        .join(Asset, EntityLink.entity_out_id == Asset.id)
-        # Filter only episodes
-        .filter(EntityType.name == "Episode")
-        # Get only names sorted
-        .add_columns(Asset.id, Episode.name)
-        .order_by(Episode.name)
-    )]
+    EpisodeType = aliased(EntityType, name="episode_type")
+    # episodes_query = (Episode.query.join(EntityLink, EntityLink.entity_in_id == Episode.id)
+    # .
+    # .outerjoin(Episode, EntityLink.entity_in_id == Episode.id)
+    # .join(EpisodeType)
+    # .join(Episode, Sequence.parent_id == Episode.id)
+    # .filter(EpisodeType.id == Episode.entity_type_id)
+    # Get only names sorted
+    # # .add_columns(Entity.id, Episode.id, Episode.name)
+    # # .order_by(Episode.name)
+    # # )
+    # episodes_query = (query
+    # cast_in_episodes_names = {(asset_id, ep_id, ep_name) for _link, asset_id, ep_id, ep_name in episodes_query}
+    # cast_in_episodes_names = {(asset_id, ep_id, ep_name) for _link, asset_id, ep_id, ep_name in (
+    #     EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
+    #     .join(EntityType, EntityType.id == Episode.entity_type_id)
+    #     .join(Asset, EntityLink.entity_out_id == Asset.id)
+    #     # Filter only episodes
+    #     .filter(EntityType.name == "Episode")
+    #     # Get only names sorted
+    #     .add_columns(Asset.id, Episode.id, Episode.name)
+    #     .order_by(Episode.name)
+    # )}
+    # print(cast_in_episodes_names)
 
-    # Get episodes from shots
-    Shot = aliased(Entity, name="shot")
-    cast_in_episodes_names.extend([(asset_id, name) for _link, asset_id, name in (
-        EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
-        .join(Sequence, Shot.parent_id == Sequence.id)
-        .outerjoin(Episode, Sequence.parent_id == Episode.id)
-        .join(Asset, EntityLink.entity_out_id == Asset.id)
-        # Filter only episodes
-        .filter(EntityType.name == "Episode")
-        .filter(EntityLink.entity_out_id == Asset.id)
-        .filter(Shot.canceled != True)
-        # Get only names sorted
-        .add_columns(Asset.id, Episode.name)
-        .order_by(Episode.name)
-    )])
-
-    # Sort cast in
-    cast_in_episodes_names.sort()
+    # # Get episodes from shots
+    # Shot = aliased(Entity, name="shot")
+    # cast_in_episodes_names.update({(asset_id, ep_id, ep_name) for _link, asset_id, ep_id, ep_name in (
+    #     EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
+    #     .join(Sequence, Shot.parent_id == Sequence.id)
+    #     .outerjoin(Episode, Sequence.parent_id == Episode.id)
+    #     .join(Asset, EntityLink.entity_out_id == Asset.id)
+    #     # Filter only episodes
+    #     .filter(EntityType.name == "Episode")
+    #     .filter(EntityLink.entity_out_id == Asset.id)
+    #     .filter(Shot.canceled != True)
+    #     # Get only names sorted
+    #     .add_columns(Asset.id, Episode.id, Episode.name)
+    #     .order_by(Episode.name)
+    # )})
 
     for (
         asset,
@@ -238,7 +267,7 @@ def get_assets_and_tasks(criterions={}, page=1):
         task_due_date,
         task_last_comment_date,
         person_id,
-    ) in query.all():
+    ) in tasks_query.all():
 
         if asset.source_id is None:
             source_id = ""
@@ -256,7 +285,7 @@ def get_assets_and_tasks(criterions={}, page=1):
                 "canceled": asset.canceled,
                 "ready_for": str(asset.ready_for),
                 "episode_id": source_id, # TODO delete?
-                "episodes_names": [name for asset_id, name in cast_in_episodes_names if asset_id == asset.id],
+                "episodes_names": sorted([ep_name for asset_id, _ep_id, ep_name in cast_in_episodes_names if asset_id == asset.id]),
                 "data": fields.serialize_value(asset.data),
                 "tasks": [],
             }
