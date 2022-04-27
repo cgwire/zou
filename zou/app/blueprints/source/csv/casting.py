@@ -6,7 +6,10 @@ from zou.app.services import (
     projects_service,
     shots_service,
     breakdown_service,
+    entities_service,
 )
+
+from zou.app.utils import events
 
 
 class CastingCsvImportResource(BaseCsvProjectImportResource):
@@ -75,10 +78,29 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
             target_id = self.asset_map.get(target_key, None)
 
         if asset_id is not None and target_id is not None:
+            entity = entities_service.get_entity_raw(target_id)
             link = breakdown_service.get_entity_link_raw(target_id, asset_id)
             if link is None:
                 breakdown_service.create_casting_link(
                     target_id, asset_id, occurences, label
                 )
+                entity.update({"nb_entities_out": entity.nb_entities_out + 1})
             else:
                 link.update({"nb_occurences": occurences, "label": label})
+            breakdown_service.refresh_shot_casting_stats(entity.serialize())
+            entity_id = str(entity.id)
+            if shots_service.is_shot(entity.serialize()):
+                events.emit(
+                    "shot:casting-update",
+                    {
+                        "shot_id": entity_id,
+                        "nb_entities_out": entity.nb_entities_out,
+                    },
+                    project_id=str(entity.project_id),
+                )
+            else:
+                events.emit(
+                    "asset:casting-update",
+                    {"asset_id": entity_id},
+                    project_id=str(entity.project_id),
+                )
