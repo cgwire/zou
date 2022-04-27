@@ -38,8 +38,8 @@ def remove_comment(comment_id):
     preview files)
     """
     comment = Comment.get(comment_id)
-    task = Task.get(comment.object_id)
     if comment is not None:
+        task = Task.get(comment.object_id)
         notifications = Notification.query.filter_by(comment_id=comment.id)
         for notification in notifications:
             notification.delete()
