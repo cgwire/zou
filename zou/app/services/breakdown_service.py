@@ -204,6 +204,13 @@ def update_casting(entity_id, casting):
                 nb_occurences=cast["nb_occurences"],
                 label=cast.get("label", ""),
             )
+
+            # Emit event to update asset
+            events.emit(
+                "asset:update",
+                {"asset_id": str(entity.id), "episode_id": entity_id},
+                project_id=entity.project_id,
+            )
     entity_id = str(entity.id)
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
