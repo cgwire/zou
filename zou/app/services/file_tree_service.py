@@ -114,7 +114,7 @@ def get_working_file_name(
         revision=revision,
     )
 
-    return u"%s" % file_name
+    return "%s" % file_name
 
 
 def get_output_file_name(
@@ -144,7 +144,7 @@ def get_output_file_name(
     if nb_elements > 1:
         file_name += "_[1-%s]" % nb_elements
 
-    return u"%s" % file_name
+    return "%s" % file_name
 
 
 def get_instance_file_name(
@@ -176,7 +176,7 @@ def get_instance_file_name(
     if nb_elements > 1:
         file_name += "_[1-%s]" % nb_elements
 
-    return u"%s" % file_name
+    return "%s" % file_name
 
 
 def get_working_folder_path(

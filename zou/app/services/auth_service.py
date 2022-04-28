@@ -63,7 +63,7 @@ def check_credentials(email, password, app=None):
             raise WrongPasswordException()
 
     try:
-        password_hash = person["password"] or u""
+        password_hash = person["password"] or ""
 
         if bcrypt.check_password_hash(password_hash, password):
             return person

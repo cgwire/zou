@@ -25,7 +25,7 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_repr(self):
         self.assertEqual(str(self.person), "<Person John Doe>")
-        self.person.first_name = u"Léon"
+        self.person.first_name = "Léon"
         self.assertEqual(str(self.person), "<Person Léon Doe>")
 
     def test_get_persons(self):

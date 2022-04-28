@@ -444,7 +444,7 @@ class ApiDBTestCase(ApiTestCase):
             first_name="John",
             last_name="Did",
             role="admin",
-            email=u"john.did@gmail.com",
+            email="john.did@gmail.com",
             password=auth.encrypt_password("mypassword"),
         ).serialize()
         return self.user
@@ -454,7 +454,7 @@ class ApiDBTestCase(ApiTestCase):
             first_name="John",
             last_name="Did2",
             role="manager",
-            email=u"john.did.manager@gmail.com",
+            email="john.did.manager@gmail.com",
             password=auth.encrypt_password("mypassword"),
         ).serialize()
         return self.user_manager
@@ -463,7 +463,7 @@ class ApiDBTestCase(ApiTestCase):
         self.user_cg_artist = Person.create(
             first_name="John",
             last_name="Did3",
-            email=u"john.did.cg.artist@gmail.com",
+            email="john.did.cg.artist@gmail.com",
             role="user",
             password=auth.encrypt_password("mypassword"),
         ).serialize(relations=True)
@@ -474,7 +474,7 @@ class ApiDBTestCase(ApiTestCase):
             first_name="John",
             last_name="Did4",
             role="client",
-            email=u"john.did.client@gmail.com",
+            email="john.did.client@gmail.com",
             password=auth.encrypt_password("mypassword"),
         ).serialize()
         return self.user_client
@@ -484,7 +484,7 @@ class ApiDBTestCase(ApiTestCase):
             first_name="John",
             last_name="Did5",
             role="vendor",
-            email=u"john.did.vendor@gmail.com",
+            email="john.did.vendor@gmail.com",
             password=auth.encrypt_password("mypassword"),
         ).serialize()
         return self.user_vendor
