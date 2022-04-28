@@ -8,6 +8,7 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
         super(ImportCsvCastingTestCase, self).setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
+        self.project.update({"production_type": "tvshow"})
         self.generate_fixture_asset_type()
         self.generate_fixture_asset_types()
         for (name, asset_type_id) in [
