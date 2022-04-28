@@ -87,9 +87,9 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
                 entity.update({"nb_entities_out": entity.nb_entities_out + 1})
             else:
                 link.update({"nb_occurences": occurences, "label": label})
-            breakdown_service.refresh_shot_casting_stats(entity.serialize())
             entity_id = str(entity.id)
             if shots_service.is_shot(entity.serialize()):
+                breakdown_service.refresh_shot_casting_stats(entity.serialize())
                 events.emit(
                     "shot:casting-update",
                     {
