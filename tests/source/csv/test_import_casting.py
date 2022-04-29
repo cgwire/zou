@@ -2,12 +2,15 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.entity import EntityLink
 
+from zou.app.services.shots_service import get_shot
+
 
 class ImportCsvCastingTestCase(ApiDBTestCase):
     def setUp(self):
         super(ImportCsvCastingTestCase, self).setUp()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
+        self.project.update({"production_type": "tvshow"})
         self.generate_fixture_asset_type()
         self.generate_fixture_asset_types()
         for (name, asset_type_id) in [
@@ -75,9 +78,11 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
         self.upload_csv(path, "casting")
         links = EntityLink.query.all()
         self.assertEqual(len(links), 12)
+        self.assertEqual(get_shot(self.e01seq01sh01_id)["nb_entities_out"], 2)
 
         path = "/import/csv/projects/%s/casting" % self.project_id
         self.upload_csv(path, "casting_02")
         links = EntityLink.query.all()
         self.assertEqual(len(links), 12)
         self.assertEqual(links[0].label, "fixed")
+        self.assertEqual(get_shot(self.e01seq01sh01_id)["nb_entities_out"], 2)

@@ -9,12 +9,12 @@ class SpecialCharTestCase(ApiDBTestCase):
         self.generate_fixture_project()
 
     def test_repr(self):
-        self.project.name = u"Battle 360°"
+        self.project.name = "Battle 360°"
         self.project.save()
-        self.assertEqual(self.project.name, u"Battle 360°")
+        self.assertEqual(self.project.name, "Battle 360°")
 
     def test_get_special_char(self):
-        self.project.name = u"Battle 360°"
+        self.project.name = "Battle 360°"
         self.project.save()
         projects = self.get("data/projects")
-        self.assertEqual(projects[0]["name"], u"Battle 360°")
+        self.assertEqual(projects[0]["name"], "Battle 360°")
