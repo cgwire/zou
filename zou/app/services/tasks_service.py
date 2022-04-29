@@ -1044,7 +1044,6 @@ def get_or_create_status(
             name=name,
             short_name=short_name or name.lower(),
             color=color,
-            is_reviewable=True,
             is_done=is_done,
             is_retake=is_retake,
             is_feedback_request=is_feedback_request,

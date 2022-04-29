@@ -22,4 +22,3 @@ class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     is_feedback_request = db.Column(db.Boolean(), default=False, index=True)
 
     shotgun_id = db.Column(db.Integer)
-    is_reviewable = db.Column(db.Boolean(), default=False)  # deprecated
