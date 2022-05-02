@@ -1,8 +1,9 @@
-from zou.app import db
-from zou.app.models.project import ProjectTaskTypeLink
+from sqlalchemy.exc import StatementError
+
+from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
-from zou.app.services.exception import ArgumentsException
-from zou.app.services import tasks_service, projects_service
+from zou.app.services.exception import ArgumentsException, TaskTypeNotFoundException
+from zou.app.services import tasks_service
 
 from .base import BaseModelResource, BaseModelsResource
 
@@ -10,6 +11,14 @@ from .base import BaseModelResource, BaseModelsResource
 class TaskTypesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, TaskType)
+
+    def all_entries(self, query=None):
+        if query is None:
+            query = self.model.query
+
+        return [
+                    task_type.serialize(relations=True) for task_type in query.all()
+                ]
 
     def check_read_permissions(self):
         return True
@@ -35,10 +44,6 @@ class TaskTypeResource(BaseModelResource):
     def check_read_permissions(self, instance):
         return True
 
-    def pre_update(self, project_dict, data):
-        data.pop("asset_types", [])
-        return project_dict
-
     def update_data(self, data, instance_id):
         name = data.get("name", None)
         if name is not None:
@@ -47,10 +52,25 @@ class TaskTypeResource(BaseModelResource):
                 raise ArgumentsException(
                     "A task type with similar name already exists"
                 )
+
+        # Handle asset types the task type is dedicated to
+        if "asset_types" in data:
+            try:
+                asset_types = []
+                for asset_type_id in data["asset_types"]:
+                    asset_type = EntityType.get(asset_type_id)
+                    if asset_type is not None:
+                        asset_types.append(asset_type)
+            except StatementError:
+                raise TaskTypeNotFoundException()
+            data["asset_types"] = asset_types
         return data
 
     def post_update(self, instance_dict):
         tasks_service.clear_task_type_cache(instance_dict["id"])
+        instance_dict["asset_types"] = [
+            str(asset_types.id) for asset_types in self.instance.asset_types
+        ]
         return instance_dict
 
     def post_delete(self, instance_dict):

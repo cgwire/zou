@@ -44,8 +44,3 @@ class TaskType(db.Model, BaseMixin, SerializerMixin):
             "name", "for_entity", "department_id", name="task_type_uc"
         ),
     )
-
-    # def set_asset_types(self, asset_type_ids):
-    #     return self.set_links(
-    #         asset_type_ids, TaskTypeAssetTypeLink, "task_type_id", "asset_type_id"
-    #     )
