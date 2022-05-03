@@ -87,7 +87,7 @@ def get_task_types():
     for task_type in TaskType.get_all():
         if task_type.for_shots and task_type.for_entity != "Shot":
             task_type.update({"for_entity": "Shot"})
-    return fields.serialize_models(TaskType.get_all())
+    return fields.serialize_models(TaskType.get_all(), relations=True)
 
 
 @cache.memoize_function(120)
