@@ -85,8 +85,8 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task_status["name"], "Done")
 
     def test_get_todo_status(self):
-        task_status = tasks_service.get_todo_status()
-        self.assertEqual(task_status["name"], "Todo")
+        task_status = tasks_service.get_default_status()
+        self.assertEqual(task_status["is_default"], True)
 
     def test_get_to_review_status(self):
         task_status = tasks_service.get_to_review_status()
@@ -95,7 +95,7 @@ class TaskServiceTestCase(ApiDBTestCase):
     def test_create_task(self):
         shot = self.shot.serialize()
         task_type = self.task_type.serialize()
-        status = tasks_service.get_todo_status()
+        status = tasks_service.get_default_status()
         task = tasks_service.create_task(task_type, shot)
         task = tasks_service.get_task(task["id"])
         self.assertEqual(task["entity_id"], shot["id"])
@@ -107,7 +107,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         shot = self.shot.serialize()
         shot_2 = self.generate_fixture_shot("S02").serialize()
         task_type = self.task_type.serialize()
-        status = tasks_service.get_todo_status()
+        status = tasks_service.get_default_status()
         tasks = tasks_service.create_tasks(task_type, [shot, shot_2])
         self.assertEqual(len(tasks), 2)
         task = tasks[0]

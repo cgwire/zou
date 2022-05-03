@@ -31,7 +31,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_task_status_retake()
         self.generate_fixture_task_status_done()
         self.generate_fixture_task_status_wfa()
-        self.todo_status = tasks_service.get_or_create_status("Todo")
+        self.todo_status = self.generate_fixture_task_status_todo()
         self.asset_id = str(self.asset.id)
         self.shot_id = str(self.shot.id)
         self.task_type_id = str(self.task_type.id)

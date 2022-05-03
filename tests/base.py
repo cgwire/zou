@@ -611,9 +611,7 @@ class ApiDBTestCase(ApiTestCase):
         return self.task_status_wfa.serialize()
 
     def generate_fixture_task_status_todo(self):
-        self.task_status_todo = TaskStatus.create(
-            name="Todo", short_name="todo", color="#FFFFFF"
-        )
+        self.task_status_todo = tasks_service.get_default_status()
         return self.task_status_todo
 
     def generate_fixture_status_automation_to_status(self):

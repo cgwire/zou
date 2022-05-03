@@ -97,14 +97,24 @@ def get_task_statuses():
 
 @cache.memoize_function(120)
 def get_done_status():
-    return get_or_create_status(
-        app.config["DONE_TASK_STATUS"], "done", is_done=True
-    )
+    return get_or_create_status("Done", "done", "#22d160", is_done=True)
 
 
 @cache.memoize_function(120)
 def get_wip_status():
-    return get_or_create_status(app.config["WIP_TASK_STATUS"], "wip")
+    return get_or_create_status("Work In Progress", "wip", "#3273dc")
+
+
+@cache.memoize_function(120)
+def get_retake_status():
+    return get_or_create_status("Retake", "retake", "#ff3860", is_retake=True)
+
+
+@cache.memoize_function(120)
+def get_wfa_status():
+    return get_or_create_status(
+        "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
+    )
 
 
 @cache.memoize_function(120)
@@ -113,8 +123,8 @@ def get_to_review_status():
 
 
 @cache.memoize_function(120)
-def get_todo_status():
-    return get_or_create_status("Todo")
+def get_default_status():
+    return get_or_create_status("Todo", "todo", "#f5f5f5", is_default=True)
 
 
 def get_task_status_raw(task_status_id):
@@ -912,7 +922,7 @@ def create_tasks(task_type, entities):
     """
     Create a new task for given task type and for each entity.
     """
-    task_status = get_todo_status()
+    task_status = get_default_status()
     current_user_id = None
     try:
         current_user_id = persons_service.get_current_user()["id"]
@@ -956,7 +966,7 @@ def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
     """
-    task_status = get_todo_status()
+    task_status = get_default_status()
     try:
         try:
             current_user_id = persons_service.get_current_user()["id"]
@@ -1030,12 +1040,18 @@ def get_or_create_status(
     is_done=False,
     is_retake=False,
     is_feedback_request=False,
+    is_default=False,
 ):
     """
     Create a new task status if it doesn't exist. If it exists, it returns the
     status from database.
     """
-    task_status = TaskStatus.get_by(name=name)
+    if is_default:
+        task_status = TaskStatus.get_by(
+            is_default=is_default,
+        )
+    else:
+        task_status = TaskStatus.get_by(name=name)
     if task_status is None and len(short_name) > 0:
         task_status = TaskStatus.get_by(short_name=short_name)
 
@@ -1047,6 +1063,7 @@ def get_or_create_status(
             is_done=is_done,
             is_retake=is_retake,
             is_feedback_request=is_feedback_request,
+            is_default=is_default,
         )
         events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
@@ -1427,7 +1444,7 @@ def reset_task_data(task_id):
     real_start_date = None
     last_comment_date = None
     end_date = None
-    task_status_id = TaskStatus.get_by(short_name="todo").id
+    task_status_id = get_default_status
     comments = (
         Comment.query.join(TaskStatus)
         .filter(Comment.object_id == task_id)
@@ -1436,6 +1453,7 @@ def reset_task_data(task_id):
             TaskStatus.is_retake,
             TaskStatus.is_feedback_request,
             TaskStatus.short_name,
+            TaskStatus.is_default,
         )
         .all()
     )
