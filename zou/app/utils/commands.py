@@ -151,6 +151,7 @@ def init_data():
     tasks_service.get_wfa_status()
     tasks_service.get_retake_status()
     tasks_service.get_done_status()
+
     print("Task status initialized.")
 
 

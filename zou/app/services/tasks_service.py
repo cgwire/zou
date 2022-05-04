@@ -1040,7 +1040,7 @@ def get_or_create_status(
     is_done=False,
     is_retake=False,
     is_feedback_request=False,
-    is_default=False,
+    is_default=None,
 ):
     """
     Create a new task status if it doesn't exist. If it exists, it returns the
@@ -1453,7 +1453,6 @@ def reset_task_data(task_id):
             TaskStatus.is_retake,
             TaskStatus.is_feedback_request,
             TaskStatus.short_name,
-            TaskStatus.is_default,
         )
         .all()
     )
