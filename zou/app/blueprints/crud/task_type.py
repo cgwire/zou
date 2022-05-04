@@ -1,3 +1,4 @@
+from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
 
 from zou.app.models.entity_type import EntityType
@@ -30,6 +31,10 @@ class TaskTypesResource(BaseModelsResource):
             raise ArgumentsException(
                 "A task type with similar name already exists"
             )
+        
+        # Handle asset types the task type is dedicated to
+        data["asset_types"] = tasks_service.get_asset_types_from_task_type(data)
+        
         return data
 
     def post_creation(self, instance):
@@ -54,16 +59,8 @@ class TaskTypeResource(BaseModelResource):
                 )
 
         # Handle asset types the task type is dedicated to
-        if "asset_types" in data:
-            try:
-                asset_types = []
-                for asset_type_id in data["asset_types"]:
-                    asset_type = EntityType.get(asset_type_id)
-                    if asset_type is not None:
-                        asset_types.append(asset_type)
-            except StatementError:
-                raise TaskTypeNotFoundException()
-            data["asset_types"] = asset_types
+        data["asset_types"] = tasks_service.get_asset_types_from_task_type(data)
+        
         return data
 
     def post_update(self, instance_dict):
