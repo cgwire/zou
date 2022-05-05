@@ -100,12 +100,12 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 data[field_name] = entity.data[field_name]
 
-        # Searsh for task name ans comment column and append values to update
+        # Search for task name and comment column and append values for update
         # in a dictionnary using task name as key.
         tasks_update = {}
         for task_type in self.task_types_in_project_for_shots:
             # search for status update and get this id if found
-            task_status_name = row.get(task_type.name.title(), "").lower()
+            task_status_name = row.get(task_type.name, "").lower()
             task_status_id = ""
             for status_id, status_names in self.task_statuses.items():
                 if task_status_name in status_names:
@@ -113,7 +113,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     break
             # search for comment
             task_comment_text = row.get(
-                "{} Comment".format(task_type.name.title()), ""
+                "{} Comment".format(task_type.name), ""
             )
             # append updates if valided
             if task_status_id or task_comment_text:
