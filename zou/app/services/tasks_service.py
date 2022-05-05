@@ -96,28 +96,6 @@ def get_task_statuses():
 
 
 @cache.memoize_function(120)
-def get_done_status():
-    return get_or_create_status("Done", "done", "#22d160", is_done=True)
-
-
-@cache.memoize_function(120)
-def get_wip_status():
-    return get_or_create_status("Work In Progress", "wip", "#3273dc")
-
-
-@cache.memoize_function(120)
-def get_retake_status():
-    return get_or_create_status("Retake", "retake", "#ff3860", is_retake=True)
-
-
-@cache.memoize_function(120)
-def get_wfa_status():
-    return get_or_create_status(
-        "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
-    )
-
-
-@cache.memoize_function(120)
 def get_to_review_status():
     return get_or_create_status(app.config["TO_REVIEW_TASK_STATUS"], "pndng")
 
@@ -1237,40 +1215,6 @@ def assign_task(task_id, person_id):
     return task_dict
 
 
-def start_task(task_id):
-    """
-    Deprecated
-    Change the task status to wip if it is not already the case. It emits a
-    *task:start* event. Change the real start date time to now.
-    """
-    task = get_task_raw(task_id)
-    wip_status = get_wip_status()
-    task_is_not_already_wip = (
-        task.task_status_id is None or task.task_status_id != wip_status["id"]
-    )
-
-    if task_is_not_already_wip:
-        task_dict_before = task.serialize()
-
-        new_data = {"task_status_id": wip_status["id"]}
-        if task.real_start_date is None:
-            new_data["real_start_date"] = datetime.datetime.now()
-
-        task.update(new_data)
-        clear_task_cache(task_id)
-        events.emit(
-            "task:start",
-            {
-                "task_id": task_id,
-                "previous_task_status_id": task_dict_before["task_status_id"],
-                "real_start_date": task.real_start_date,
-                "shotgun_id": task_dict_before["shotgun_id"],
-            },
-        )
-
-    return task.serialize()
-
-
 def task_to_review(
     task_id, person, comment, preview_path={}, change_status=True
 ):
@@ -1444,7 +1388,7 @@ def reset_task_data(task_id):
     real_start_date = None
     last_comment_date = None
     end_date = None
-    task_status_id = get_default_status
+    task_status_id = get_default_status().id
     comments = (
         Comment.query.join(TaskStatus)
         .filter(Comment.object_id == task_id)

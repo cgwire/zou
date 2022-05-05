@@ -12,7 +12,6 @@ from .resources import (
     PersonRelatedTasksResource,
     PersonTasksResource,
     PersonDoneTasksResource,
-    TaskStartResource,
     ToReviewResource,
     TaskCommentsResource,
     TaskCommentResource,
@@ -70,7 +69,6 @@ routes = [
     ("/actions/tasks/<task_id>/assign", TaskAssignResource),
     ("/actions/tasks/clear-assignation", ClearAssignationResource),
     ("/actions/persons/<person_id>/assign", TasksAssignResource),
-    ("/actions/tasks/<task_id>/start", TaskStartResource),
     ("/actions/tasks/<task_id>/time-spents/<date>", GetTimeSpentResource),
     (
         "/actions/tasks/<task_id>/time-spents/<date>/persons/<person_id>",

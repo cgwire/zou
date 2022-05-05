@@ -399,7 +399,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         tasks = self.get("/data/persons/%s/done-tasks" % self.person.id)
         self.assertEqual(len(tasks), 0)
 
-        done_status = tasks_service.get_done_status()
+        done_status = tasks_service.get_or_create_status(
+            "Done", "done", "#22d160", is_done=True
+        )
         tasks_service.update_task(
             self.task_id, {"task_status_id": done_status["id"]}
         )

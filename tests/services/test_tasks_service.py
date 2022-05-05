@@ -77,11 +77,15 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_wip_status(self):
-        task_status = tasks_service.get_wip_status()
+        task_status = tasks_service.get_or_create_status(
+            "Work In Progress", "wip", "#3273dc"
+        )
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_done_status(self):
-        task_status = tasks_service.get_done_status()
+        task_status = tasks_service.get_or_create_status(
+            "Done", "done", "#22d160", is_done=True
+        )
         self.assertEqual(task_status["name"], "Done")
 
     def test_get_todo_status(self):
@@ -372,7 +376,9 @@ class TaskServiceTestCase(ApiDBTestCase):
         tasks = tasks_service.get_person_done_tasks(self.user["id"], projects)
         self.assertEqual(len(tasks), 0)
 
-        done_status = tasks_service.get_done_status()
+        done_status = tasks_service.get_or_create_status(
+            "Done", "done", "#22d160", is_done=True
+        )
         tasks_service.update_task(
             self.task.id, {"task_status_id": done_status["id"]}
         )
