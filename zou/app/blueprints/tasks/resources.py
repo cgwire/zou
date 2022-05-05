@@ -491,18 +491,6 @@ class TaskFullResource(Resource):
         return task
 
 
-class TaskStartResource(Resource):
-    """
-    Set the status of a given task to Work In Progress.
-    """
-
-    @jwt_required
-    def put(self, task_id):
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        return tasks_service.start_task(task["id"])
-
-
 class TaskForEntityResource(Resource):
     """
     Return tasks related to given entity asset, episode, sequence, shot or
