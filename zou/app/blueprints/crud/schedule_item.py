@@ -26,8 +26,8 @@ class ScheduleItemResource(BaseModelResource):
         BaseModelResource.__init__(self, ScheduleItem)
 
     def check_update_permissions(self, instance, data):
-        return user_service.check_manager_project_access(
-            instance["project_id"]
+        return user_service.check_supervisor_schedule_item_access(
+            instance, data
         )
 
     def update_data(self, data, instance_id):

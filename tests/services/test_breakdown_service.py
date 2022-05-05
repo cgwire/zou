@@ -252,9 +252,9 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         priority_map = breakdown_service._get_task_type_priority_map(
             self.project_id
         )
-        self.assertEquals(priority_map[self.task_type_layout_id], 1)
-        self.assertEquals(priority_map[self.task_type_animation_id], 2)
-        self.assertEquals(priority_map[self.task_type_compositing_id], 3)
+        self.assertEqual(priority_map[self.task_type_layout_id], 1)
+        self.assertEqual(priority_map[self.task_type_animation_id], 2)
+        self.assertEqual(priority_map[self.task_type_compositing_id], 3)
         asset = {"ready_for": str(self.task_type_animation.id)}
         self.assertTrue(
             breakdown_service._is_asset_ready(
@@ -292,6 +292,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.task_compositing = tasks_service.get_task(
             self.task_compositing.id
         )
-        self.assertEquals(self.task_layout["nb_assets_ready"], 2)
-        self.assertEquals(self.task_animation["nb_assets_ready"], 2)
-        self.assertEquals(self.task_compositing["nb_assets_ready"], 1)
+        self.assertEqual(self.task_layout["nb_assets_ready"], 2)
+        self.assertEqual(self.task_animation["nb_assets_ready"], 2)
+        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)

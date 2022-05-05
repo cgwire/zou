@@ -78,7 +78,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         user_service.check_entity_access(entity["id"])
 
     def check_update_permissions(self, entity, data):
-        return user_service.check_manager_project_access(entity["project_id"])
+        return user_service.check_metadata_department_access(entity, data)
 
     def check_delete_permissions(self, entity):
         return user_service.check_manager_project_access(entity["project_id"])

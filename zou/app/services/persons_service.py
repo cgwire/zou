@@ -40,9 +40,9 @@ def get_persons(minimal=False):
     persons = []
     for person in Person.query.all():
         if not minimal:
-            persons.append(person.serialize_safe())
+            persons.append(person.serialize_safe(relations=True))
         else:
-            persons.append(person.present_minimal())
+            persons.append(person.present_minimal(relations=True))
     return persons
 
 

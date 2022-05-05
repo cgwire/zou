@@ -263,8 +263,8 @@ class TaskServiceTestCase(ApiDBTestCase):
 
         tasks = tasks_service.get_task_dicts_for_entity(self.asset.id)
         self.assertEqual(len(tasks), 1)
-        self.assertEqual(tasks[0]["name"], u"Première Tâche")
-        self.assertEqual(tasks[0]["task_type_name"], u"Modélisation")
+        self.assertEqual(tasks[0]["name"], "Première Tâche")
+        self.assertEqual(tasks[0]["task_type_name"], "Modélisation")
 
     def test_get_or_create_time_spents(self):
         person_id = self.person.id

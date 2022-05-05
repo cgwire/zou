@@ -25,7 +25,7 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_repr(self):
         self.assertEqual(str(self.person), "<Person John Doe>")
-        self.person.first_name = u"Léon"
+        self.person.first_name = "Léon"
         self.assertEqual(str(self.person), "<Person Léon Doe>")
 
     def test_get_persons(self):
@@ -90,13 +90,13 @@ class PersonTestCase(ApiDBTestCase):
         }
         person = self.post("data/persons/new", data)
         self.assertIsNotNone(person["id"])
-        self.assertEquals(
+        self.assertEqual(
             set(person["departments"]),
             set(departments),
         )
 
         created_person = Person.get(person["id"])
-        self.assertEquals(
+        self.assertEqual(
             set(
                 str(department.id) for department in created_person.departments
             ),
@@ -125,7 +125,7 @@ class PersonTestCase(ApiDBTestCase):
         }
         self.put("data/persons/%s" % person["id"], data)
         person_again = Person.get(person["id"])
-        self.assertEquals(
+        self.assertEqual(
             set(str(department.id) for department in person_again.departments),
             set(departments),
         )

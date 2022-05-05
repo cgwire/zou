@@ -169,8 +169,8 @@ def update_casting(entity_id, casting):
     entity_id = str(entity.id)
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
-    refresh_shot_casting_stats(entity.serialize())
     if shots_service.is_shot(entity.serialize()):
+        refresh_shot_casting_stats(entity.serialize())
         events.emit(
             "shot:casting-update",
             {"shot_id": entity_id, "nb_entities_out": nb_entities_out},

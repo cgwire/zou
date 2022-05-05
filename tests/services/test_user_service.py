@@ -120,7 +120,7 @@ class UserServiceTestCase(ApiDBTestCase):
             projects_service.add_team_member(self.project_id, person_id)
             tasks_service.assign_task(self.task_id, person_id)
             notifications = user_service.get_last_notifications()
-            self.assertEquals(len(notifications), 0)
+            self.assertEqual(len(notifications), 0)
             comments_service.create_comment(
                 self.user["id"],
                 self.task_id,
@@ -131,7 +131,7 @@ class UserServiceTestCase(ApiDBTestCase):
                 None,
             )
             notifications = user_service.get_last_notifications()
-            self.assertEquals(len(notifications), 1)
+            self.assertEqual(len(notifications), 1)
 
             comments_service.create_comment(
                 self.user_client["id"],
@@ -143,6 +143,6 @@ class UserServiceTestCase(ApiDBTestCase):
                 None,
             )
             notifications = user_service.get_last_notifications()
-            self.assertEquals(len(notifications), 2)
-            self.assertEquals(len(notifications[0]["comment_text"]), 0)
+            self.assertEqual(len(notifications), 2)
+            self.assertEqual(len(notifications[0]["comment_text"]), 0)
             self.assertGreater(len(notifications[1]["comment_text"]), 0)
