@@ -15,7 +15,7 @@ class TaskTypeTestCase(ApiDBTestCase):
 
     def test_get_task_types(self):
         task_types = self.get("data/task-types")
-        self.assertEqual(len(task_types), 4)
+        self.assertEqual(len(task_types), 6)
 
     def test_get_task_type(self):
         task_type = self.get_first("data/task-types")
@@ -31,10 +31,12 @@ class TaskTypeTestCase(ApiDBTestCase):
         }
         self.task_type = self.post("data/task-types", data)
         self.assertIsNotNone(self.task_type["id"])
+
+        # Test to not create twice the same, '400' error code
         self.task_type = self.post("data/task-types", data, 400)
 
         task_types = self.get("data/task-types")
-        self.assertEqual(len(task_types), 5)
+        self.assertEqual(len(task_types), 7)
 
     def test_create_task_type_with_asset_types(self):
         self.generate_fixture_asset_types()
@@ -55,7 +57,7 @@ class TaskTypeTestCase(ApiDBTestCase):
         )
 
         task_types = self.get("data/task-types")
-        self.assertEqual(len(task_types), 5)
+        self.assertEqual(len(task_types), 7)
 
         created_task_type = TaskType.get(self.task_type["id"])
         self.assertEquals(
@@ -92,9 +94,9 @@ class TaskTypeTestCase(ApiDBTestCase):
 
     def test_delete_task_type(self):
         task_types = self.get("data/task-types")
-        self.assertEqual(len(task_types), 4)
+        self.assertEqual(len(task_types), 6)
         task_type = task_types[0]
         self.delete("data/task-types/%s" % task_type["id"])
         task_types = self.get("data/task-types")
-        self.assertEqual(len(task_types), 3)
+        self.assertEqual(len(task_types), 5)
         self.delete_404("data/task-types/%s" % fields.gen_uuid())
