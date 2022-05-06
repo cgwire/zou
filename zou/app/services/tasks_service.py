@@ -447,9 +447,9 @@ def get_asset_types_from_task_type(data):
     Args:
         data (dict): Data from Resource POST
     """
+    asset_types = []
     if "asset_types" in data:
         try:
-            asset_types = []
             for asset_type_id in data["asset_types"]:
                 asset_type = EntityType.get(asset_type_id)
                 if asset_type is not None:

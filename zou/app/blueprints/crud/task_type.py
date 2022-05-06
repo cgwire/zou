@@ -39,7 +39,7 @@ class TaskTypesResource(BaseModelsResource):
 
     def post_creation(self, instance):
         tasks_service.clear_task_type_cache(str(instance.id))
-        return instance.serialize()
+        return instance.serialize(relations=True)
 
 
 class TaskTypeResource(BaseModelResource):
