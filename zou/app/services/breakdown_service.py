@@ -598,13 +598,16 @@ def refresh_shot_casting_stats(shot, priority_map=None):
 
 
 def _get_task_type_priority_map(project_id):
+    task_types = (
+        ProjectTaskTypeLink.query
+        .join(TaskType)
+        .filter(ProjectTaskTypeLink.project_id == project_id)
+        .filter(TaskType.for_entity == "Shot")
+        .all()
+    )
     priority_map = {
         str(task_type_link.task_type_id): task_type_link.priority
-        for task_type_link in ProjectTaskTypeLink.query.filter(
-            Project.id == project_id
-        )
-        .filter(TaskType.for_entity == "Shot")
-        .join(TaskType)
+        for task_type_link in task_types
     }
     return priority_map
 
