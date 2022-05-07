@@ -1388,7 +1388,7 @@ def reset_task_data(task_id):
     real_start_date = None
     last_comment_date = None
     end_date = None
-    task_status_id = get_default_status().id
+    task_status_id = get_default_status()["id"]
     comments = (
         Comment.query.join(TaskStatus)
         .filter(Comment.object_id == task_id)

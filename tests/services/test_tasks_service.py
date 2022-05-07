@@ -121,28 +121,6 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task["project_id"], shot["project_id"])
         self.assertEqual(task["task_status_id"], status["id"])
 
-    def test_status_to_wip(self):
-        events.register("task:start", "mark_event_as_fired", self)
-
-        now = datetime.datetime.now()
-        self.task.update({"real_start_date": None})
-        tasks_service.start_task(self.task.id)
-
-        task = Task.get(self.task.id)
-        self.assertEqual(task.task_status_id, self.wip_status_id)
-        self.assertGreater(task.real_start_date.isoformat(), now.isoformat())
-        self.assert_event_is_fired()
-
-    def test_status_to_wip_twice(self):
-        tasks_service.start_task(self.task.id)
-        task = Task.get(self.task.id)
-        real_start_date = task.real_start_date
-        task.update({"task_status_id": self.task_status.id})
-
-        tasks_service.start_task(self.task.id)
-        task = Task.get(self.task.id)
-        self.assertEqual(task.real_start_date, real_start_date)
-
     def test_publish_task(self):
         handler = ToReviewHandler(
             self.open_status_id, self.to_review_status_id
