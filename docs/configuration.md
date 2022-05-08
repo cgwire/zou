@@ -11,6 +11,11 @@ the list of all expected parameters.
 * `DB_PASSWORD` (default: mysecretpassword): The password used to access the
   database.
 * `DB_DATABASE` (default: zoudb): The name of the database to use.
+* `DB_POOL_SIZE` (default: 30): The number of connections opened simultaneously 
+  to access the database.
+* `DB_MAX_OVERFLOW` (default: 60): The number of additional connections availabe 
+  once the pool is full. They are disconnected when the request is finished. They
+  are not reused.
 
 ## Key Value store
 
