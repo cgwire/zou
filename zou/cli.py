@@ -375,5 +375,21 @@ def remove_old_data(days):
     commands.remove_old_data(days)
 
 
+@cli.command()
+def reset_search_index():
+    """
+    Reset asset search index.
+    """
+    commands.reset_search_index()
+
+
+@cli.command()
+@click.option("--query", default="")
+def search_asset(query):
+    """
+    """
+    commands.search_asset(query)
+
+
 if __name__ == "__main__":
     cli()

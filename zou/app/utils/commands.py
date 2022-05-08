@@ -13,6 +13,7 @@ from zou.app.services import (
     backup_service,
     deletion_service,
     edits_service,
+    index_service,
     persons_service,
     projects_service,
     shots_service,
@@ -466,3 +467,11 @@ def remove_old_data(days_old=90):
     print("Removing old notitfications...")
     deletion_service.remove_old_notifications(days_old)
     print("Old data removed.")
+
+
+def reset_search_index():
+    index_service.reset_index()
+
+
+def search_asset(query):
+    return index_service.search_asset(query)
