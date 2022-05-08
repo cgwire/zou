@@ -83,3 +83,13 @@ To see the job queue logs, run the following command:
 ```bash
 journalctl -u zou-rq.service
 ```
+
+## Postgres connection slots
+
+If your Zou server complains by the lack of connection to Postgres available, 
+you can increase the value of `BD_POOL_SIZE` (default 30) and 
+`DB_MAX_OVERFLOW` (default 60). They are two environment variables that must be
+set in your systemd configuration alongside the others. 
+
+If the problem persists, you can dig into 
+[pgpool](https://pgpool.net/mediawiki/index.php/Main_Page) software.
