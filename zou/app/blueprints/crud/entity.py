@@ -10,6 +10,7 @@ from zou.app.models.subscription import Subscription
 from zou.app.services import (
     assets_service,
     breakdown_service,
+    index_service,
     persons_service,
     shots_service,
     user_service,
@@ -121,6 +122,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
             elif assets_service.is_asset(entity):
+                if "name" in data:
+                    index_service.remove_asset_index(entity_dict["id"])
+                    index_service.index_asset(entity)
                 if is_ready_for_changed:
                     breakdown_service.refresh_casting_stats(entity_dict)
                 assets_service.clear_asset_cache(entity_dict["id"])
@@ -185,3 +189,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
 
     def emit_delete_event(self, entity_dict):
         self.emit_event("delete", entity_dict)
+
+    def post_delete(self, entity_dict):
+        if assets_service.is_asset_dict(entity_dict):
+            index_service.remove_asset_index(entity_dict["id"])

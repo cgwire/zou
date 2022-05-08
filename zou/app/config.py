@@ -53,6 +53,9 @@ PREVIEW_FOLDER = os.getenv(
     "PREVIEW_FOLDER", os.getenv("THUMBNAIL_FOLDER", "previews")
 )
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(os.sep, "tmp", "zou"))
+INDEXES_FOLDER = os.getenv(
+    "INDEXES_FOLDER", os.getenv("INDEXES_FOLDER", "indexes")
+)
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
 EVENT_STREAM_PORT = os.getenv("EVENT_STREAM_PORT", 5001)

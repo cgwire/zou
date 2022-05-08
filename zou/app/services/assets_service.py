@@ -16,6 +16,7 @@ from zou.app.services import (
     base_service,
     deletion_service,
     edits_service,
+    index_service,
     projects_service,
     shots_service,
     user_service,
@@ -132,6 +133,15 @@ def get_assets(criterions={}):
     else:
         result = query.all()
     return EntityType.serialize_list(result, obj_type="Asset")
+
+
+def get_all_raw_assets():
+    """
+    Get all assets from the database.
+    """
+    query = Entity.query.filter(build_asset_type_filter())
+    return query.all()
+
 
 
 def get_full_assets(criterions={}):
@@ -519,6 +529,25 @@ def is_asset(entity):
     ]
 
 
+def is_asset_dict(entity):
+    """
+    Returns true if given entity is an asset, not a shot.
+    It supposes that the entity is represented as a dict.
+    """
+    shot_type = shots_service.get_shot_type()
+    sequence_type = shots_service.get_sequence_type()
+    scene_type = shots_service.get_scene_type()
+    episode_type = shots_service.get_episode_type()
+
+    return entity["entity_type_id"] not in [
+        shot_type["id"],
+        scene_type["id"],
+        sequence_type["id"],
+        episode_type["id"],
+    ]
+
+
+
 def is_asset_type(entity_type):
     """
     Returns true if given entity type is an asset, not a shot.
@@ -567,6 +596,7 @@ def create_asset(
         source_id=source_id,
     )
     asset_dict = asset.serialize(obj_type="Asset")
+    index_service.index_asset(asset)
     events.emit(
         "asset:new",
         {"asset_id": asset.id, "asset_type": asset_type.id},
@@ -578,6 +608,8 @@ def create_asset(
 def update_asset(asset_id, data):
     asset = get_asset_raw(asset_id)
     asset.update(data)
+    index_service.remove_asset_index(asset_id)
+    index_service.index_asset(asset)
     events.emit(
         "asset:update",
         {"asset_id": asset_id, "data": data},
@@ -607,6 +639,7 @@ def remove_asset(asset_id, force=False):
             tasks_service.clear_task_cache(str(task.id))
         asset.delete()
         clear_asset_cache(str(asset_id))
+        index_service.remove_asset_index(asset_id)
         events.emit(
             "asset:delete",
             {"asset_id": asset_id},
