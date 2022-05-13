@@ -12,6 +12,7 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
+from zou.app.services.exception import TaskStatusNotFoundException
 from zou.app.utils import events
 
 
@@ -92,10 +93,15 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             # search for status update and get this id if found
             task_status_name = row.get(task_type.name.title(), "").lower()
             task_status_id = ""
-            for status_id, status_names in self.task_statuses.items():
-                if task_status_name in status_names:
-                    task_status_id = status_id
-                    break
+            if task_status_name:
+                for status_id, status_names in self.task_statuses.items():
+                    if task_status_name in status_names:
+                        task_status_id = status_id
+                        break
+                else:
+                    raise TaskStatusNotFoundException(
+                        f"Task status not found for {task_status_name}"
+                    )
             # search for comment
             task_comment_text = row.get(
                 "{} Comment".format(task_type.name.title()), ""
@@ -157,7 +163,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     create_comment(
                         self.current_user_id,
                         task["id"],
-                        task_status,
+                        task_status or task["task_status_id"],
                         task_comment,
                         [],
                         {},
