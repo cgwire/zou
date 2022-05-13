@@ -2,6 +2,7 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from .resources import (
+    EpisodesCastingResource,
     ProjectEntityLinkResource,
     ProjectEntityLinksResource,
     ShotAssetInstancesResource,
@@ -22,6 +23,10 @@ routes = [
     (
         "/data/projects/<project_id>/asset-types/<asset_type_id>/casting",
         AssetTypeCastingResource,
+    ),
+    (
+        "/data/projects/<project_id>/episodes/casting",
+        EpisodesCastingResource,
     ),
     (
         "/data/projects/<project_id>/sequences/<sequence_id>/casting",

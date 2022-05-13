@@ -1,9 +1,11 @@
+from sqlalchemy import or_
 from sqlalchemy.exc import StatementError
+from sqlalchemy.orm import aliased
 
 from zou.app.utils import events, fields, cache
 from zou.app.utils import query as query_utils
 
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -101,11 +103,32 @@ def get_assets(criterions={}):
     if "assigned_to" in criterions:
         assigned_to = True
         del criterions["assigned_to"]
+    if "episode_id" in criterions:
+        episode_id = criterions["episode_id"]
+        del criterions["episode_id"]
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     if assigned_to:
         query = query.outerjoin(Task)
         query = query.filter(user_service.build_assignee_filter())
-    result = query.all()
+
+    if episode_id:
+        # Filter based on main episode.
+        query = query.filter(Entity.source_id == episode_id)
+        result = query.all()
+        # Filter based on episode casting.
+        query = (
+            Entity.query
+            .join(EntityLink, EntityLink.entity_out_id == Entity.id)
+            .filter(EntityLink.entity_in_id == episode_id)
+            .filter(build_asset_type_filter())
+        )
+        query = query_utils.apply_criterions_to_db_query(
+            Entity, query, criterions
+        )
+        # Add non duplicated assets to the list.
+        result += [a for a in query.all() if a.source_id != episode_id]
+    else:
+        result = query.all()
     return EntityType.serialize_list(result, obj_type="Asset")
 
 
@@ -146,45 +169,76 @@ def get_assets_and_tasks(criterions={}, page=1):
     asset_map = {}
     task_map = {}
 
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    Asset = aliased(Entity, name="asset")
+    Shot = aliased(Entity, name="shot")
+
     query = (
-        Entity.query.filter(build_asset_type_filter())
-        .join(EntityType)
+        Entity.query
+        .filter(build_asset_type_filter())
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
         .outerjoin(Task)
         .outerjoin(assignees_table)
-        .add_columns(
-            EntityType.name,
-            Task.id,
-            Task.task_type_id,
-            Task.task_status_id,
-            Task.priority,
-            Task.estimation,
-            Task.duration,
-            Task.retake_count,
-            Task.real_start_date,
-            Task.end_date,
-            Task.start_date,
-            Task.due_date,
-            Task.last_comment_date,
-            assignees_table.columns.person,
-        )
-        .order_by(EntityType.name, Entity.name)
+        .outerjoin(EntityLink, EntityLink.entity_out_id == Entity.id)
     )
 
+    # Tasks query
+    tasks_query = query.add_columns(
+        EntityType.name,
+        Task.id,
+        Task.task_type_id,
+        Task.task_status_id,
+        Task.priority,
+        Task.estimation,
+        Task.duration,
+        Task.retake_count,
+        Task.real_start_date,
+        Task.end_date,
+        Task.start_date,
+        Task.due_date,
+        Task.last_comment_date,
+        assignees_table.columns.person,
+    ).order_by(EntityType.name, Entity.name)
+
     if "id" in criterions:
-        query = query.filter(Entity.id == criterions["id"])
+        tasks_query = tasks_query.filter(Entity.id == criterions["id"])
 
     if "project_id" in criterions:
-        query = query.filter(Entity.project_id == criterions["project_id"])
+        tasks_query = tasks_query.filter(Entity.project_id == criterions["project_id"])
 
     if "episode_id" in criterions:
-        if criterions["episode_id"] == "main":
-            query = query.filter(Entity.source_id == None)
-        elif criterions["episode_id"] != "all":
-            query = query.filter(Entity.source_id == criterions["episode_id"])
+        episode_id = criterions["episode_id"]
+        if episode_id == "main":
+            tasks_query = tasks_query.filter(Entity.source_id == None)
+        elif episode_id != "all":
+            tasks_query = tasks_query.filter(
+                or_(
+                    Entity.source_id == episode_id,
+                    EntityLink.entity_in_id == episode_id
+                )
+            )
 
     if "assigned_to" in criterions:
-        query = query.filter(user_service.build_assignee_filter())
+        tasks_query = tasks_query.filter(user_service.build_assignee_filter())
         del criterions["assigned_to"]
+
+    cast_in_episode_ids = {}
+    if "project_id" in criterions:
+        episode_links_query = (
+            EntityLink
+            .query
+            .join(Episode, EntityLink.entity_in_id == Episode.id)
+            .join(EntityType, EntityType.id == Episode.entity_type_id)
+            .filter(EntityType.name == "Episode")
+            .filter(Episode.project_id == criterions["project_id"])
+            .order_by(Episode.name)
+        )
+        for link in episode_links_query.all():
+            if str(link.entity_out_id) not in cast_in_episode_ids:
+                cast_in_episode_ids[str(link.entity_out_id)] = []
+            cast_in_episode_ids[str(link.entity_out_id)] \
+                .append(str(link.entity_in_id))
 
     for (
         asset,
@@ -202,16 +256,18 @@ def get_assets_and_tasks(criterions={}, page=1):
         task_due_date,
         task_last_comment_date,
         person_id,
-    ) in query.all():
+    ) in tasks_query.all():
 
         if asset.source_id is None:
             source_id = ""
         else:
             source_id = str(asset.source_id)
 
-        if asset.id not in asset_map:
-            asset_map[asset.id] = {
-                "id": str(asset.id),
+        asset_id = str(asset.id)
+
+        if asset_id not in asset_map:
+            asset_map[asset_id] = {
+                "id": asset_id,
                 "name": asset.name,
                 "preview_file_id": str(asset.preview_file_id or ""),
                 "description": asset.description,
@@ -220,6 +276,7 @@ def get_assets_and_tasks(criterions={}, page=1):
                 "canceled": asset.canceled,
                 "ready_for": str(asset.ready_for),
                 "episode_id": source_id,
+                "casting_episode_ids": cast_in_episode_ids.get(asset_id, []),
                 "data": fields.serialize_value(asset.data),
                 "tasks": [],
             }
@@ -228,7 +285,7 @@ def get_assets_and_tasks(criterions={}, page=1):
             if task_id not in task_map:
                 task_dict = {
                     "id": str(task_id),
-                    "entity_id": str(asset.id),
+                    "entity_id": asset_id,
                     "task_status_id": str(task_status_id),
                     "task_type_id": str(task_type_id),
                     "priority": task_priority or 0,
@@ -247,7 +304,7 @@ def get_assets_and_tasks(criterions={}, page=1):
                     "assignees": [],
                 }
                 task_map[task_id] = task_dict
-                asset_dict = asset_map[asset.id]
+                asset_dict = asset_map[asset_id]
                 asset_dict["tasks"].append(task_dict)
 
             if person_id:
