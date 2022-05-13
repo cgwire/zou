@@ -47,31 +47,6 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
     def assert_event_is_fired(self):
         self.assertTrue(self.is_event_fired)
 
-    def test_status_to_wip(self):
-        self.task.real_start_date = None
-        events.register("task:start", "mark_event_as_fired", self)
-
-        now = self.now()
-        time.sleep(1)
-        self.put("/actions/tasks/%s/start" % self.task.id, {})
-        task = self.get("data/tasks/%s" % self.task.id)
-
-        self.assertEqual(task["task_status_id"], self.wip_status_id)
-        self.assertGreater(task["real_start_date"], now)
-        self.assert_event_is_fired()
-
-    def test_status_to_wip_again(self):
-        self.task.real_start_date = None
-        task_id = str(self.task.id)
-        self.put("/actions/tasks/%s/start" % task_id, {})
-        real_start_date = Task.get(task_id).real_start_date
-        self.put("/actions/tasks/%s/start" % task_id, {})
-        task = self.get("data/tasks/%s" % task_id)
-        self.assertEqual(
-            real_start_date.replace(microsecond=0).isoformat(),
-            task["real_start_date"],
-        )
-
     def test_retake_count(self):
         task_id = str(self.task.id)
         self.post(

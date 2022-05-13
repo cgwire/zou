@@ -146,7 +146,7 @@ def init_data():
     )
     print("Task types initialized.")
 
-    tasks_service.get_or_create_status("Todo", "todo", "#f5f5f5")
+    tasks_service.get_default_status()
     tasks_service.get_or_create_status("Work In Progress", "wip", "#3273dc")
     tasks_service.get_or_create_status(
         "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
@@ -155,6 +155,7 @@ def init_data():
         "Retake", "retake", "#ff3860", is_retake=True
     )
     tasks_service.get_or_create_status("Done", "done", "#22d160", is_done=True)
+
     print("Task status initialized.")
 
 
