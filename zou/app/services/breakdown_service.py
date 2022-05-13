@@ -194,7 +194,13 @@ def update_casting(entity_id, casting):
     Update casting for given entity. Casting is an array of dictionaries made of
     two fields: `asset_id` and `nb_occurences`.
     """
+
     entity = entities_service.get_entity_raw(entity_id)
+    entity_dict = entity.serialize(relations=True)
+    if shots_service.is_episode(entity_dict):
+        assets = _extract_removal(entity_dict, casting)
+        for asset_id in assets:
+            _remove_asset_from_episode_shots(asset_id, entity_id)
     entity.update({"entities_out": [], "entities_out_length": 0})
     for cast in casting:
         if "asset_id" in cast and "nb_occurences" in cast:
@@ -204,11 +210,9 @@ def update_casting(entity_id, casting):
                 nb_occurences=cast["nb_occurences"],
                 label=cast.get("label", ""),
             )
-
-            # Emit event to update asset
             events.emit(
                 "asset:update",
-                {"asset_id": str(entity.id), "episode_id": entity_id},
+                {"asset_id": cast["asset_id"]},
                 project_id=entity.project_id,
             )
     entity_id = str(entity.id)
@@ -245,6 +249,7 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     entity = entities_service.get_entity(entity_in_id)
     project_id = str(entity["project_id"])
     if link is None:
+        _create_episode_casting_link(entity, asset_id, 1, label)
         link = EntityLink.create(
             entity_in_id=entity_in_id,
             entity_out_id=asset_id,
@@ -269,6 +274,62 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
             project_id=project_id,
         )
     return link
+
+
+def _extract_removal(entity, casting):
+    assets = []
+    asset_map = {}
+    for cast in casting:
+        asset_map[cast["asset_id"]] = True
+    for entity_id in entity["entities_out"]:
+        if entity_id not in asset_map:
+            assets.append(entity_id)
+    return assets
+
+
+def _remove_asset_from_episode_shots(asset_id, episode_id):
+    shots = shots_service.get_shots_for_episode(episode_id)
+    shot_ids = [shot["id"] for shot in shots]
+    links = (
+        EntityLink.query
+        .filter(EntityLink.entity_in_id.in_(shot_ids))
+        .filter(EntityLink.entity_out_id == asset_id)
+    )
+    for link in links:
+        shot = shots_service.get_shot_raw(str(link.entity_in_id))
+        shot.update({"nb_entities_out": shot.nb_entities_out - 1})
+        refresh_shot_casting_stats(shot.serialize())
+        link.delete()
+        events.emit(
+            "shot:casting-update",
+            {"shot_id": str(shot.id), "nb_entities_out": shot.nb_entities_out},
+            project_id=str(shot.project_id),
+        )
+    return shots
+
+
+def _create_episode_casting_link(
+    entity, asset_id, nb_occurences=1, label=""
+):
+    """
+    When an asset is casted in a shot, the asset is automatically casted in
+    the episode.
+    """
+    if shots_service.is_shot(entity):
+        sequence = shots_service.get_sequence(entity["parent_id"])
+        if sequence["parent_id"] is not None:
+            link = EntityLink.get_by(
+                entity_in_id=sequence["parent_id"],
+                entity_out_id=asset_id
+            )
+            if link is None:
+                link = EntityLink.create(
+                    entity_in_id=sequence["parent_id"],
+                    entity_out_id=asset_id,
+                    nb_occurences=1,
+                    label=label,
+                )
+    return entity
 
 
 def get_cast_in(asset_id):
