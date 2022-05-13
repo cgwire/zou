@@ -100,6 +100,7 @@ def get_assets(criterions={}):
     """
     query = Entity.query.filter(build_asset_type_filter())
     assigned_to = False
+    episode_id = None
     if "assigned_to" in criterions:
         assigned_to = True
         del criterions["assigned_to"]
@@ -111,7 +112,7 @@ def get_assets(criterions={}):
         query = query.outerjoin(Task)
         query = query.filter(user_service.build_assignee_filter())
 
-    if episode_id:
+    if episode_id is not None:
         # Filter based on main episode.
         query = query.filter(Entity.source_id == episode_id)
         result = query.all()
