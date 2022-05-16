@@ -32,7 +32,7 @@ from zou.app.utils import (
 )
 
 
-ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".PNG", ".JPG", ".JPEG"]
+ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".jpe"]
 ALLOWED_MOVIE_EXTENSION = [
     ".avi",
     ".mp4",
@@ -40,12 +40,6 @@ ALLOWED_MOVIE_EXTENSION = [
     ".mkv",
     ".mov",
     ".wmv",
-    ".AVI",
-    ".MP4",
-    ".MOV",
-    ".WMV",
-    ".M4V",
-    ".MKV",
 ]
 ALLOWED_FILE_EXTENSION = [
     ".ae",
@@ -72,30 +66,6 @@ ALLOWED_FILE_EXTENSION = [
     ".wav",
     ".glb",
     ".gltf",
-    ".AE",
-    ".AI",
-    ".BLEND",
-    ".COMP",
-    ".EXR",
-    ".FBX",
-    ".FLA",
-    ".FLV",
-    ".GIF",
-    ".HIP",
-    ".MA",
-    ".MB",
-    ".OBJ",
-    ".PDF",
-    ".PSD",
-    ".RAR",
-    ".SBBKP",
-    ".SVG",
-    ".SWF",
-    ".ZIP",
-    ".MP3",
-    ".WAV",
-    ".GLB",
-    ".GLTF",
 ]
 
 
