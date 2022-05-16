@@ -232,16 +232,14 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         )
         file_size = fs.get_file_size(original_tmp_path)
         preview_files_service.update_preview_file(
-            instance_id, {"file_size": file_size}, silent=True)
+            instance_id, {"file_size": file_size}, silent=True
+        )
         return preview_files_service.save_variants(
             instance_id, original_tmp_path
         )
 
     def save_movie_preview(
-        self,
-        preview_file_id,
-        uploaded_file,
-        normalize=True
+        self, preview_file_id, uploaded_file, normalize=True
     ):
         """
         Get uploaded movie, normalize it then build thumbnails then save
@@ -275,7 +273,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         file_store.add_file("previews", instance_id, file_path)
         file_size = fs.get_file_size(file_path)
         preview_files_service.update_preview_file(
-            instance_id, {"file_size": file_size}, silent=True)
+            instance_id, {"file_size": file_size}, silent=True
+        )
         os.remove(file_path)
         return file_path
 
@@ -586,7 +585,8 @@ class BaseCreatePictureResource(Resource):
     def emit_event(self, instance_id):
         model_name = self.data_type[:-1]
         events.emit(
-            "%s:set-thumbnail" % model_name, {"%s_id" % model_name: instance_id}
+            "%s:set-thumbnail" % model_name,
+            {"%s_id" % model_name: instance_id},
         )
 
     @jwt_required
@@ -815,7 +815,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
             preview_file_id,
             additions=additions,
             updates=updates,
-            deletions=deletions
+            deletions=deletions,
         )
 
 
