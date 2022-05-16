@@ -88,7 +88,7 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
         self.assertEqual(len(links), 18)
         link = EntityLink.get_by(
             entity_in_id=self.e01seq01sh01_id,
-            entity_out_id=self.asset_victor_id
+            entity_out_id=self.asset_victor_id,
         )
         self.assertEqual(link.label, "fixed")
         self.assertEqual(get_shot(self.e01seq01sh01_id)["nb_entities_out"], 2)

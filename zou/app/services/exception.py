@@ -179,3 +179,7 @@ class ModelWithRelationsDeletionException(Exception):
 
 class EditNotFoundException(NotFound):
     pass
+
+
+class StatusAutomationNotFoundException(NotFound):
+    pass
