@@ -45,6 +45,8 @@ class DepartmentResource(BaseModelResource):
 
     def post_update(self, instance_dict):
         tasks_service.clear_department_cache(instance_dict["id"])
+        return instance_dict
 
     def post_delete(self, instance_dict):
         tasks_service.clear_department_cache(instance_dict["id"])
+        return instance_dict

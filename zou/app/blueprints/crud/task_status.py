@@ -24,6 +24,8 @@ class TaskStatusResource(BaseModelResource):
 
     def post_update(self, instance_dict):
         tasks_service.clear_task_status_cache(instance_dict["id"])
+        return instance_dict
 
     def post_delete(self, instance_dict):
         tasks_service.clear_task_status_cache(instance_dict["id"])
+        return instance_dict

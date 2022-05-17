@@ -67,6 +67,7 @@ class CommentResource(BaseModelResource):
         if instance_dict["task_status_id"] != data.get("task_status_id", None):
             self.task_status_change = True
             self.previous_task_status_id = instance_dict["task_status_id"]
+        return data
 
     def post_update(self, instance_dict):
         comment = comments_service.reset_mentions(instance_dict)

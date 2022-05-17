@@ -83,6 +83,7 @@ class TaskResource(BaseModelResource):
 
     def post_update(self, instance_dict):
         tasks_service.clear_task_cache(instance_dict["id"])
+        return instance_dict
 
     def pre_update(self, instance_dict, data):
         if "assignees" in data:
@@ -90,6 +91,7 @@ class TaskResource(BaseModelResource):
                 persons_service.get_person_raw(assignee)
                 for assignee in data["assignees"]
             ]
+        return data
 
     @jwt_required
     def delete(self, instance_id):

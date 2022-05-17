@@ -275,16 +275,16 @@ class BaseModelResource(Resource):
         return result, 200
 
     def pre_update(self, instance_dict, data):
-        pass
+        return data
 
     def post_update(self, instance_dict):
-        pass
+        return instance_dict
 
     def post_delete(self, instance_dict):
-        pass
+        return instance_dict
 
     def pre_delete(self, instance_dict):
-        pass
+        return instance_dict
 
     @jwt_required
     def put(self, instance_id):
