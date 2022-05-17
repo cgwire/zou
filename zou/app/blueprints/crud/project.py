@@ -114,7 +114,6 @@ class ProjectResource(BaseModelResource):
                 )
                 for task_type_id in data["status_automations"]
             ]
-        return project_dict
 
     def post_update(self, project_dict):
         if project_dict["production_type"] == "tvshow":

@@ -48,7 +48,6 @@ class PlaylistResource(BaseModelResource):
                 if "preview_file_id" in shot
             ]
             data["shots"] = shots
-        return data
 
     def delete(self, instance_id):
         playlists_service.remove_playlist(instance_id)
