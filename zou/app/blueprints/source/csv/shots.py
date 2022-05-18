@@ -115,12 +115,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         break
                 else:
                     raise TaskStatusNotFoundException(
-                        f"Task status not found for {task_status_name}"
+                        "Task status not found for %s" % task_status_name
                     )
             # search for comment
-            task_comment_text = row.get(
-                "{} Comment".format(task_type.name), ""
-            )
+            task_comment_text = row.get("%s comment" % task_type.name, "")
             # append updates if valided
             if task_status_id or task_comment_text:
                 tasks_update[task_type.name] = {

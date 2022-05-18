@@ -77,7 +77,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 data[field_name] = entity.data[field_name]
 
-        # Searsh for task name ans comment column and append values to update
+        # Search for task name and comment column and append values to update
         # in a dictionnary using task name as key.
         tasks_update = {}
         for task_type in self.task_types_in_project_for_edits:
@@ -91,11 +91,11 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
                         break
                 else:
                     raise TaskStatusNotFoundException(
-                        f"Task status not found for {task_status_name}"
+                        "Task status not found for %s" % task_status_name
                     )
             # search for comment
             task_comment_text = row.get(
-                "{} Comment".format(task_type.name.title()), ""
+                "%s comment" % task_type.name.title(), ""
             )
             # append updates if valided
             if task_status_id or task_comment_text:

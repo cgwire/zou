@@ -12,7 +12,10 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
-from zou.app.services.exception import TaskStatusNotFoundException
+from zou.app.services.exception import (
+    TaskStatusNotFoundException,
+    TaskTypeNotFoundException,
+)
 from zou.app.utils import events
 
 
@@ -41,6 +44,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             for status in get_task_statuses()
         }
         self.current_user_id = get_current_user()["id"]
+        self.task_types_for_ready_for_map = {
+            task_type.name: str(task_type.id)
+            for task_type in TaskType.query.join(ProjectTaskTypeLink)
+            .filter(ProjectTaskTypeLink.project_id == project_id)
+            .filter(TaskType.for_entity == "Shot")
+            .all()
+        }
 
     def import_row(self, row, project_id):
         asset_name = row["Name"]
@@ -86,7 +96,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 data[field_name] = entity.data[field_name]
 
-        # Searsh for task name ans comment column and append values to update
+        # Search for task name and comment column and append values to update
         # in a dictionnary using task name as key.
         tasks_update = {}
         for task_type in self.task_types_in_project_for_assets:
@@ -100,11 +110,11 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         break
                 else:
                     raise TaskStatusNotFoundException(
-                        f"Task status not found for {task_status_name}"
+                        "Task status not found for %s" % task_status_name
                     )
             # search for comment
             task_comment_text = row.get(
-                "{} Comment".format(task_type.name.title()), ""
+                "%s comment" % task_type.name.title(), ""
             )
             # append updates if valided
             if task_status_id or task_comment_text:
@@ -112,6 +122,15 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     "status": task_status_id,
                     "comment": task_comment_text,
                 }
+        ready_for_id = None
+        ready_for = row.get("Ready for", None)
+        if ready_for:
+            try:
+                ready_for_id = self.task_types_for_ready_for_map[ready_for]
+            except KeyError:
+                raise TaskTypeNotFoundException(
+                    "Task type not found for %s" % ready_for
+                )
 
         tasks = []
         if entity is None:
@@ -121,6 +140,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 project_id=project_id,
                 entity_type_id=entity_type_id,
                 source_id=episode_id,
+                ready_for=ready_for_id,
                 data=data,
             )
             events.emit(
@@ -143,7 +163,13 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 self.created_assets.append(entity.serialize())
 
         elif self.is_update:
-            entity.update({"description": description, "data": data})
+            entity.update(
+                {
+                    "description": description,
+                    "data": data,
+                    "ready_for": ready_for_id,
+                }
+            )
             events.emit(
                 "asset:update",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
