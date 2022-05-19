@@ -118,8 +118,9 @@ def get_assets(criterions={}):
         result = query.all()
         # Filter based on episode casting.
         query = (
-            Entity.query
-            .join(EntityLink, EntityLink.entity_out_id == Entity.id)
+            Entity.query.join(
+                EntityLink, EntityLink.entity_out_id == Entity.id
+            )
             .filter(EntityLink.entity_in_id == episode_id)
             .filter(build_asset_type_filter())
         )
@@ -176,8 +177,7 @@ def get_assets_and_tasks(criterions={}, page=1):
     Shot = aliased(Entity, name="shot")
 
     query = (
-        Entity.query
-        .filter(build_asset_type_filter())
+        Entity.query.filter(build_asset_type_filter())
         .join(EntityType, Entity.entity_type_id == EntityType.id)
         .outerjoin(Task)
         .outerjoin(assignees_table)
@@ -206,7 +206,9 @@ def get_assets_and_tasks(criterions={}, page=1):
         tasks_query = tasks_query.filter(Entity.id == criterions["id"])
 
     if "project_id" in criterions:
-        tasks_query = tasks_query.filter(Entity.project_id == criterions["project_id"])
+        tasks_query = tasks_query.filter(
+            Entity.project_id == criterions["project_id"]
+        )
 
     if "episode_id" in criterions:
         episode_id = criterions["episode_id"]
@@ -216,7 +218,7 @@ def get_assets_and_tasks(criterions={}, page=1):
             tasks_query = tasks_query.filter(
                 or_(
                     Entity.source_id == episode_id,
-                    EntityLink.entity_in_id == episode_id
+                    EntityLink.entity_in_id == episode_id,
                 )
             )
 
@@ -227,9 +229,9 @@ def get_assets_and_tasks(criterions={}, page=1):
     cast_in_episode_ids = {}
     if "project_id" in criterions:
         episode_links_query = (
-            EntityLink
-            .query
-            .join(Episode, EntityLink.entity_in_id == Episode.id)
+            EntityLink.query.join(
+                Episode, EntityLink.entity_in_id == Episode.id
+            )
             .join(EntityType, EntityType.id == Episode.entity_type_id)
             .filter(EntityType.name == "Episode")
             .filter(Episode.project_id == criterions["project_id"])
@@ -238,8 +240,9 @@ def get_assets_and_tasks(criterions={}, page=1):
         for link in episode_links_query.all():
             if str(link.entity_out_id) not in cast_in_episode_ids:
                 cast_in_episode_ids[str(link.entity_out_id)] = []
-            cast_in_episode_ids[str(link.entity_out_id)] \
-                .append(str(link.entity_in_id))
+            cast_in_episode_ids[str(link.entity_out_id)].append(
+                str(link.entity_in_id)
+            )
 
     for (
         asset,

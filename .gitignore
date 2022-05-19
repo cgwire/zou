@@ -92,8 +92,8 @@ ENV/
 Vagrantfile
 .vagrant
 
-previews
-thumbnails
+/previews/
+/thumbnails/
 release.sh
 
 tmp

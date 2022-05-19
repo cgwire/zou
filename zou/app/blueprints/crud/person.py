@@ -88,7 +88,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and persons_service.is_user_limit_reached()
         ):
             raise WrongParameterException("User limit reached.")
-        return instance_dict
+        return data
 
     def post_update(self, instance_dict):
         persons_service.clear_person_cache()

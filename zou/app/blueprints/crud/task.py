@@ -8,7 +8,12 @@ from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 
-from zou.app.services import user_service, tasks_service, deletion_service
+from zou.app.services import (
+    user_service,
+    tasks_service,
+    deletion_service,
+    persons_service,
+)
 from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
@@ -78,6 +83,15 @@ class TaskResource(BaseModelResource):
 
     def post_update(self, instance_dict):
         tasks_service.clear_task_cache(instance_dict["id"])
+        return instance_dict
+
+    def pre_update(self, instance_dict, data):
+        if "assignees" in data:
+            data["assignees"] = [
+                persons_service.get_person_raw(assignee)
+                for assignee in data["assignees"]
+            ]
+        return data
 
     @jwt_required
     def delete(self, instance_id):

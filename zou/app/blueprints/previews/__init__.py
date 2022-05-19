@@ -27,7 +27,10 @@ from .resources import (
 
 routes = [
     ("/data/playlists/preview-files/running", RunningPreviewFiles),
-    ("/pictures/preview-files/<instance_id>", CreatePreviewFilePictureResource),
+    (
+        "/pictures/preview-files/<instance_id>",
+        CreatePreviewFilePictureResource,
+    ),
     (
         "/movies/originals/preview-files/<instance_id>.mp4",
         PreviewFileMovieResource,
@@ -78,7 +81,7 @@ routes = [
     ),
     (
         "/pictures/thumbnails/persons/<instance_id>.png",
-        PersonThumbnailResource
+        PersonThumbnailResource,
     ),
     (
         "/pictures/thumbnails/projects/<instance_id>",
@@ -103,7 +106,7 @@ routes = [
     (
         "/actions/preview-files/<preview_file_id>/update-annotations",
         UpdateAnnotationsResource,
-    )
+    ),
 ]
 blueprint = Blueprint("thumbnails", "thumbnails")
 api = configure_api_from_blueprint(blueprint, routes)

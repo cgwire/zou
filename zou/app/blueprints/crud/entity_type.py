@@ -40,7 +40,9 @@ class EntityTypeResource(BaseModelResource):
     def post_update(self, instance_dict):
         entities_service.clear_entity_type_cache(instance_dict["id"])
         assets_service.clear_asset_type_cache()
+        return instance_dict
 
     def post_delete(self, instance_dict):
         entities_service.clear_entity_type_cache(instance_dict["id"])
         assets_service.clear_asset_type_cache()
+        return instance_dict

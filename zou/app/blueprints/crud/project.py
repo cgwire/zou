@@ -10,6 +10,10 @@ from zou.app.services import (
     projects_service,
     shots_service,
     user_service,
+    persons_service,
+    assets_service,
+    tasks_service,
+    status_automations_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -33,6 +37,33 @@ class ProjectsResource(BaseModelsResource):
         open_status = projects_service.get_or_create_open_status()
         if "project_status_id" not in data:
             data["project_status_id"] = open_status["id"]
+        if "team" in data:
+            data["team"] = [
+                persons_service.get_person_raw(person_id)
+                for person_id in data["team"]
+            ]
+        if "asset_types" in data:
+            data["asset_types"] = [
+                assets_service.get_asset_type_raw(asset_type_id)
+                for asset_type_id in data["asset_types"]
+            ]
+        if "task_statuses" in data:
+            data["task_statuses"] = [
+                tasks_service.get_task_status_raw(task_status_id)
+                for task_status_id in data["task_statuses"]
+            ]
+        if "task_types" in data:
+            data["task_types"] = [
+                tasks_service.get_task_type_raw(task_type_id)
+                for task_type_id in data["task_types"]
+            ]
+        if "status_automations" in data:
+            data["status_automations"] = [
+                status_automations_service.get_status_automation_raw(
+                    task_type_id
+                )
+                for task_type_id in data["status_automations"]
+            ]
         return data
 
     def post_creation(self, project):
@@ -56,12 +87,34 @@ class ProjectResource(BaseModelResource):
         user_service.check_project_access(project["id"])
 
     def pre_update(self, project_dict, data):
-        data.pop("team", [])
-        data.pop("asset_types", [])
-        data.pop("task_statuses", [])
-        data.pop("task_types", [])
-        data.pop("status_automations", [])
-        return project_dict
+        if "team" in data:
+            data["team"] = [
+                persons_service.get_person_raw(person_id)
+                for person_id in data["team"]
+            ]
+        if "asset_types" in data:
+            data["asset_types"] = [
+                assets_service.get_asset_type_raw(asset_type_id)
+                for asset_type_id in data["asset_types"]
+            ]
+        if "task_statuses" in data:
+            data["task_statuses"] = [
+                tasks_service.get_task_status_raw(task_status_id)
+                for task_status_id in data["task_statuses"]
+            ]
+        if "task_types" in data:
+            data["task_types"] = [
+                tasks_service.get_task_type_raw(task_type_id)
+                for task_type_id in data["task_types"]
+            ]
+        if "status_automations" in data:
+            data["status_automations"] = [
+                status_automations_service.get_status_automation_raw(
+                    task_type_id
+                )
+                for task_type_id in data["status_automations"]
+            ]
+        return data
 
     def post_update(self, project_dict):
         if project_dict["production_type"] == "tvshow":
@@ -81,6 +134,7 @@ class ProjectResource(BaseModelResource):
 
     def post_delete(self, project_dict):
         projects_service.clear_project_cache(project_dict["id"])
+        return project_dict
 
     @jwt_required
     def delete(self, instance_id):

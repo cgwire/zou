@@ -290,11 +290,9 @@ def _extract_removal(entity, casting):
 def _remove_asset_from_episode_shots(asset_id, episode_id):
     shots = shots_service.get_shots_for_episode(episode_id)
     shot_ids = [shot["id"] for shot in shots]
-    links = (
-        EntityLink.query
-        .filter(EntityLink.entity_in_id.in_(shot_ids))
-        .filter(EntityLink.entity_out_id == asset_id)
-    )
+    links = EntityLink.query.filter(
+        EntityLink.entity_in_id.in_(shot_ids)
+    ).filter(EntityLink.entity_out_id == asset_id)
     for link in links:
         shot = shots_service.get_shot_raw(str(link.entity_in_id))
         shot.update({"nb_entities_out": shot.nb_entities_out - 1})
@@ -308,9 +306,7 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
     return shots
 
 
-def _create_episode_casting_link(
-    entity, asset_id, nb_occurences=1, label=""
-):
+def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
     """
     When an asset is casted in a shot, the asset is automatically casted in
     the episode.
@@ -319,8 +315,7 @@ def _create_episode_casting_link(
         sequence = shots_service.get_sequence(entity["parent_id"])
         if sequence["parent_id"] is not None:
             link = EntityLink.get_by(
-                entity_in_id=sequence["parent_id"],
-                entity_out_id=asset_id
+                entity_in_id=sequence["parent_id"], entity_out_id=asset_id
             )
             if link is None:
                 link = EntityLink.create(
@@ -712,8 +707,7 @@ def refresh_shot_casting_stats(shot, priority_map=None):
 
 def _get_task_type_priority_map(project_id):
     task_types = (
-        ProjectTaskTypeLink.query
-        .join(TaskType)
+        ProjectTaskTypeLink.query.join(TaskType)
         .filter(ProjectTaskTypeLink.project_id == project_id)
         .filter(TaskType.for_entity == "Shot")
         .all()
