@@ -4,7 +4,15 @@ from zou.app.models.entity import Entity
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 from zou.app.services import shots_service, projects_service
-from zou.app.services.tasks_service import create_tasks
+from zou.app.services.tasks_service import (
+    create_task,
+    create_tasks,
+    get_tasks_for_shot,
+    get_task_statuses,
+)
+from zou.app.services.comments_service import create_comment
+from zou.app.services.persons_service import get_current_user
+from zou.app.services.exception import TaskStatusNotFoundException
 from zou.app.utils import events
 
 
@@ -18,6 +26,16 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(project)
         self.created_shots = []
+        self.task_types_in_project_for_shots = (
+            TaskType.query.join(ProjectTaskTypeLink)
+            .filter(ProjectTaskTypeLink.project_id == project_id)
+            .filter(TaskType.for_entity == "Shot")
+        )
+        self.task_statuses = {
+            status["id"]: [status[n].lower() for n in ("name", "short_name")]
+            for status in get_task_statuses()
+        }
+        self.current_user_id = get_current_user()["id"]
 
     def import_row(self, row, project_id):
         if self.is_tv_show:
@@ -83,6 +101,32 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             ):
                 data[field_name] = entity.data[field_name]
 
+        # Search for task name and comment column and append values for update
+        # in a dictionnary using task name as key.
+        tasks_update = {}
+        for task_type in self.task_types_in_project_for_shots:
+            # search for status update and get this id if found
+            task_status_name = row.get(task_type.name, "").lower()
+            task_status_id = ""
+            if task_status_name:
+                for status_id, status_names in self.task_statuses.items():
+                    if task_status_name in status_names:
+                        task_status_id = status_id
+                        break
+                else:
+                    raise TaskStatusNotFoundException(
+                        "Task status not found for %s" % task_status_name
+                    )
+            # search for comment
+            task_comment_text = row.get("%s comment" % task_type.name, "")
+            # append updates if valided
+            if task_status_id or task_comment_text:
+                tasks_update[task_type.name] = {
+                    "status": task_status_id,
+                    "comment": task_comment_text,
+                }
+
+        tasks = []
         if entity is None:
             if nb_frames is None or len(nb_frames) == 0:
                 entity = Entity.create(
@@ -103,10 +147,22 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     nb_frames=nb_frames,
                     data=data,
                 )
-            self.created_shots.append(entity.serialize())
             events.emit(
                 "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
             )
+            if tasks_update:
+                # if task updates are required we need to create the entity
+                # tasks immediately and append it in the task list in order
+                # to update it at the end of this current row import process.
+                for task_type in self.task_types_in_project_for_shots:
+                    tasks.append(
+                        create_task(task_type.serialize(), entity.serialize())
+                    )
+            else:
+                # if there is no update for task we append the entity in the
+                # created entities list in order to optimize task creation in
+                # the run_import method call when all rows are imported.
+                self.created_shots.append(entity.serialize())
 
         elif self.is_update:
             entity.update(
@@ -121,16 +177,31 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 {"shot_id": str(entity.id)},
                 project_id=project_id,
             )
+            if tasks_update:
+                tasks = get_tasks_for_shot(str(entity.id))
+
+        # Update task status and/or comment using the created tasks list and
+        # the tasks_update dictionnary.
+        for task in tasks:
+            task_name = task["task_type_name"]
+            if task_name in tasks_update:
+                task_status = tasks_update[task_name]["status"]
+                task_comment = tasks_update[task_name]["comment"]
+                if task_status != task["task_status_id"] or task_comment:
+                    create_comment(
+                        self.current_user_id,
+                        task["id"],
+                        task_status or task["task_status_id"],
+                        task_comment,
+                        [],
+                        {},
+                        "",
+                    )
 
         return entity.serialize()
 
     def run_import(self, project_id, file_path):
         entities = super().run_import(project_id, file_path)
-        task_types_in_project_for_shots = (
-            TaskType.query.join(ProjectTaskTypeLink)
-            .filter(ProjectTaskTypeLink.project_id == project_id)
-            .filter(TaskType.for_entity == "Shot")
-        )
-        for task_type in task_types_in_project_for_shots:
+        for task_type in self.task_types_in_project_for_shots:
             create_tasks(task_type.serialize(), self.created_shots)
         return entities
