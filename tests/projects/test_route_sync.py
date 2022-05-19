@@ -73,7 +73,7 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
 
     def test_get_entity_links(self):
         links = self.get("/data/projects/%s/entity-links" % self.project_id)
-        self.assertEqual(len(links), 1)
+        self.assertEqual(len(links), 2)
 
     def test_get_milestones(self):
         milestones = self.get("/data/projects/%s/milestones" % self.project_id)
