@@ -210,11 +210,13 @@ def update_casting(entity_id, casting):
                 nb_occurences=cast["nb_occurences"],
                 label=cast.get("label", ""),
             )
-            events.emit(
-                "asset:update",
-                {"asset_id": cast["asset_id"]},
-                project_id=entity.project_id,
-            )
+            if shots_service.is_episode(entity_dict):
+                events.emit(
+                    "asset:update",
+                    {"asset_id": cast["asset_id"]},
+                    project_id=entity.project_id,
+                )
+
     entity_id = str(entity.id)
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
@@ -323,6 +325,11 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
                     entity_out_id=asset_id,
                     nb_occurences=1,
                     label=label,
+                )
+                events.emit(
+                    "asset:update",
+                    {"asset_id": asset_id},
+                    project_id=entity["project_id"],
                 )
     return entity
 

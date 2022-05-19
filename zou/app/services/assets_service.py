@@ -164,17 +164,14 @@ def get_full_assets(criterions={}):
     return assets
 
 
-def get_assets_and_tasks(criterions={}, page=1):
+def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
     """
     Get all assets for given criterions with related tasks for each asset.
     """
     asset_map = {}
     task_map = {}
 
-    Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
-    Asset = aliased(Entity, name="asset")
-    Shot = aliased(Entity, name="shot")
 
     query = (
         Entity.query.filter(build_asset_type_filter())
@@ -227,16 +224,19 @@ def get_assets_and_tasks(criterions={}, page=1):
         del criterions["assigned_to"]
 
     cast_in_episode_ids = {}
-    if "project_id" in criterions:
+    if "project_id" in criterions or with_episode_ids:
         episode_links_query = (
             EntityLink.query.join(
                 Episode, EntityLink.entity_in_id == Episode.id
             )
             .join(EntityType, EntityType.id == Episode.entity_type_id)
             .filter(EntityType.name == "Episode")
-            .filter(Episode.project_id == criterions["project_id"])
             .order_by(Episode.name)
         )
+
+        if "project_id" in criterions:
+            episode_links_query = episode_links_query \
+                .filter(Episode.project_id == criterions["project_id"])
         for link in episode_links_query.all():
             if str(link.entity_out_id) not in cast_in_episode_ids:
                 cast_in_episode_ids[str(link.entity_out_id)] = []
@@ -416,7 +416,7 @@ def get_full_asset(asset_id):
     Return asset matching given id with additional information (project name,
     asset type name and tasks).
     """
-    assets = get_assets_and_tasks({"id": asset_id})
+    assets = get_assets_and_tasks({"id": asset_id}, with_episode_ids=True)
     if len(assets) > 0:
         asset = get_asset_with_relations(asset_id)
         asset_type_id = asset["entity_type_id"]
@@ -429,6 +429,8 @@ def get_full_asset(asset_id):
         del asset["source_id"]
         del asset["nb_frames"]
         asset.update(assets[0])
+        print(assets[0])
+        print(asset)
         return asset
     else:
         raise AssetNotFoundException
