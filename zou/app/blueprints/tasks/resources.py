@@ -102,7 +102,10 @@ class TaskCommentsResource(Resource):
         user_service.check_entity_access(task["entity_id"])
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
-        return tasks_service.get_comments(task_id, is_client, is_manager)
+        is_supervisor = permissions.has_supervisor_permissions()
+        return tasks_service.get_comments(
+            task_id, is_client, is_manager or is_supervisor
+        )
 
 
 class TaskCommentResource(Resource):
