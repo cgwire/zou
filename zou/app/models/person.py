@@ -86,6 +86,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "has_avatar": data["has_avatar"],
             "active": data["active"],
             "departments": data["departments"],
+            "role": data["role"],
         }
 
     def set_departments(self, department_ids):
