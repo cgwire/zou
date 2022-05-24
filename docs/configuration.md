@@ -37,8 +37,8 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 
 ## Emails
 
-Email configuration is required for mail sents after a password reset. In the
-future, we expect to propose email notifications too.
+The emails configuration is required for email sent after a password reset and,
+email notifications.
 
 * `MAIL_SERVER` (default: "localhost"): the host of your email server
 * `MAIL_PORT` (default: "25"): the port of your email server
