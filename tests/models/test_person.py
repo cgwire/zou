@@ -33,6 +33,14 @@ class PersonTestCase(ApiDBTestCase):
         self.assertEqual(len(persons), 4)
         self.assertEqual(persons[0]["type"], "Person")
 
+    def test_present(self):
+        person = self.get_first("data/persons")
+        person_model = Person.get(person["id"])
+        person_dict = person_model.present_minimal()
+        self.assertEquals(person_dict["departments"], [])
+        person_dict = person_model.present_minimal(relations=True)
+        self.assertEquals(person_dict["departments"], [])
+
     def test_get_person(self):
         person = self.get_first("data/persons")
         person_again = self.get("data/persons/%s" % person["id"])
