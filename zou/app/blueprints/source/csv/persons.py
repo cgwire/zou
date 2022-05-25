@@ -14,48 +14,32 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         first_name = row["First Name"]
         last_name = row["Last Name"]
         email = row["Email"]
-        phone = row["Phone"]
+        phone = row.get("Phone", None)
         role = row.get("Role", None)
 
-        if role == "Studio Manager":
-            role = "admin"
-        elif role == "Supervisor":
-            role = "manager"
-        elif role == "Client":
-            role = "client"
+        role_map = {
+            "Studio Manager": "admin",
+            "Production Manager": "manager",
+            "Supervisor": "supervisor",
+            "Artist": "user",
+            "Client": "client",
+            "Vendor": "vendor",
+        }
 
-        if (
-            role is not None
-            and len(role) > 0
-            and role not in ["admin", "manager"]
-        ):
-            role = "user"
+        data = {"first_name": first_name, "last_name": last_name}
+        if role is not None and role != "":
+            if role in role_map.keys():
+                role = role_map[role]
+            data["role"] = role
+        if phone is not None and phone != "":
+            data["phone"] = phone
 
-        try:
-            person = Person.get_by(email=email)
-
-            if person is None:
-                if role is None:
-                    role = "user"
-                password = auth.encrypt_password("default")
-                person = Person.create(
-                    email=email,
-                    password=password,
-                    first_name=first_name,
-                    last_name=last_name,
-                    phone=phone,
-                    role=role,
-                )
-            elif self.is_update:
-                data = {
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "phone": phone,
-                }
-                if role is not None and len(role) > 0:
-                    data["role"] = role
-                person.update(data)
-        except IntegrityError:
-            person = Person.get_by(email=email)
+        person = Person.get_by(email=email)
+        if person is None:
+            data["email"] = email
+            data["password"] = auth.encrypt_password("default")
+            person = Person.create(**data)
+        elif self.is_update:
+            person.update(data)
 
         return person.serialize_safe()
