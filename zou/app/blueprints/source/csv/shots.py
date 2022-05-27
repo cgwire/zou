@@ -188,7 +188,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
 
         for name, field_name in self.descriptor_fields.items():
             if name in row:
-                shot_new_values[field_name] = row[name]
+                shot_new_values["data"][field_name] = row[name]
 
         tasks_update = self.get_tasks_update(row)
 

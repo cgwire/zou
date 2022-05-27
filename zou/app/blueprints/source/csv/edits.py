@@ -158,7 +158,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
 
         for name, field_name in self.descriptor_fields.items():
             if name in row:
-                edit_new_values[field_name] = row[name]
+                edit_new_values["data"][field_name] = row[name]
 
         tasks_update = self.get_tasks_update(row)
 
