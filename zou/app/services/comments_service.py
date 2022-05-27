@@ -159,7 +159,7 @@ def _run_status_automation(automation, task, person_id):
     priorities = projects_service.get_task_type_priority_map(
         task["project_id"], automation["entity_type"].capitalize()
     )
-    in_priority = priorities.get(automation["in_task_type_id"], 0)
+    in_priority = priorities.get(automation["in_task_type_id"], 0) or 0
     out_priority = priorities.get(automation["out_task_type_id"], 0) or 0
     is_rollback = (
         priorities is not None
