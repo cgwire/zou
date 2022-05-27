@@ -1,6 +1,6 @@
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
-    ImportRowException,
+    RowException,
 )
 
 from zou.app.models.entity import Entity
@@ -16,7 +16,6 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
-from zou.app.services.exception import TaskStatusNotFoundException
 from zou.app.utils import events
 
 
@@ -52,7 +51,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         task_status_id = status_id
                         break
                 if task_status_id is None:
-                    raise TaskStatusNotFoundException(
+                    raise RowException(
                         "Task status not found for %s" % task_status_name
                     )
 

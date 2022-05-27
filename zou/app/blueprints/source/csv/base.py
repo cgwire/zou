@@ -23,6 +23,14 @@ class ImportRowException(Exception):
         self.line_number = line_number
 
 
+class RowException(Exception):
+    message = ""
+
+    def __init__(self, message):
+        Exception.__init__(self, message)
+        self.message = message
+
+
 class BaseCsvImportResource(Resource):
     def __init__(self):
         Resource.__init__(self)
@@ -126,6 +134,8 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
                     result.append(row)
                 except IntegrityError as e:
                     raise ImportRowException(e._message(), line_number)
+                except RowException as e:
+                    raise ImportRowException(e.message, line_number)
                 except KeyError as e:
                     raise ImportRowException(
                         "A columns is missing: %s" % e.args, line_number

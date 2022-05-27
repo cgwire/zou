@@ -1,6 +1,6 @@
 from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
-    ImportRowException,
+    RowException,
 )
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
@@ -16,10 +16,6 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
-from zou.app.services.exception import (
-    TaskStatusNotFoundException,
-    TaskTypeNotFoundException,
-)
 from zou.app.utils import events
 
 
@@ -67,7 +63,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         task_status_id = status_id
                         break
                 if task_status_id is None:
-                    raise TaskStatusNotFoundException(
+                    raise RowException(
                         "Task status not found for %s" % task_status_name
                     )
 
@@ -142,7 +138,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 ]
             episode_id = self.episodes.get(episode_name, None)
         elif episode_name is not None:
-            raise ImportRowException(
+            raise RowException(
                 "An episode column is present for a production that isn't a TV Show"
             )
 
@@ -186,9 +182,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     "ready_for"
                 ] = self.task_types_for_ready_for_map[ready_for]
             except KeyError:
-                raise TaskTypeNotFoundException(
-                    "Task type not found for %s" % ready_for
-                )
+                raise RowException("Task type not found for %s" % ready_for)
 
         tasks_update = self.get_tasks_update(row)
 
