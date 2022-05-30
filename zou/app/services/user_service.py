@@ -395,6 +395,38 @@ def check_entity_access(entity_id):
     return is_allowed
 
 
+def check_comment_access(comment_id):
+    """
+    Return true if current user can have access to a comment.
+    """
+    if permissions.has_admin_permissions():
+        return True
+    else:
+        comment = tasks_service.get_comment(comment_id)
+        task_id = comment["object_id"]
+        task = tasks_service.get_task(task_id)
+        if task is None:
+            tasks_service.clear_task_cache(task_id)
+            task = tasks_service.get_task(task_id)
+        check_project_access(task["project_id"])
+        check_entity_access(task["entity_id"])
+        if not (
+            permissions.has_supervisor_permissions()
+            or permissions.has_manager_permissions()
+        ):
+            if permissions.has_client_permissions():
+                current_user = persons_service.get_current_user()
+                if not comment["person_id"] == current_user["id"]:
+                    raise permissions.PermissionDenied
+            elif (
+                persons_service.get_person(comment["person_id"])["role"]
+                == "client"
+            ):
+                raise permissions.PermissionDenied
+
+        return True
+
+
 def check_manager_project_access(project_id):
     """
     Return true if current user is a manager and has a task assigned for this
