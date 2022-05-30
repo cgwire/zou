@@ -1,4 +1,7 @@
-from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
+from zou.app.blueprints.source.csv.base import (
+    BaseCsvProjectImportResource,
+    RowException,
+)
 
 from zou.app.models.entity import Entity
 from zou.app.models.project import ProjectTaskTypeLink
@@ -9,10 +12,10 @@ from zou.app.services.tasks_service import (
     create_tasks,
     get_tasks_for_shot,
     get_task_statuses,
+    get_task_type,
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
-from zou.app.services.exception import TaskStatusNotFoundException
 from zou.app.utils import events
 
 
@@ -32,23 +35,85 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             .filter(TaskType.for_entity == "Shot")
         )
         self.task_statuses = {
-            status["id"]: [status[n].lower() for n in ("name", "short_name")]
+            status["id"]: [status[n] for n in ("name", "short_name")]
             for status in get_task_statuses()
         }
         self.current_user_id = get_current_user()["id"]
+
+    def get_tasks_update(self, row):
+        tasks_update = []
+        for task_type in self.task_types_in_project_for_shots:
+            task_status_name = row.get(task_type.name, None)
+            task_status_id = None
+            if task_status_name is not None:
+                for status_id, status_names in self.task_statuses.items():
+                    if task_status_name in status_names:
+                        task_status_id = status_id
+                        break
+                if task_status_id is None:
+                    raise RowException(
+                        "Task status not found for %s" % task_status_name
+                    )
+
+            task_comment_text = row.get("%s comment" % task_type.name, None)
+
+            if task_status_id is not None or task_comment_text is not None:
+                tasks_update.append(
+                    {
+                        "task_type_id": str(task_type.id),
+                        "task_status_id": task_status_id,
+                        "comment": task_comment_text,
+                    }
+                )
+
+        return tasks_update
+
+    def create_and_update_tasks(
+        self, tasks_update, entity, shot_created=False
+    ):
+        if tasks_update:
+            if shot_created:
+                tasks_map = {
+                    str(task_type.id): create_task(
+                        task_type.serialize(), entity.serialize()
+                    )
+                    for task_type in self.task_types_in_project_for_shots
+                }
+            else:
+                tasks_map = {
+                    task["task_type_id"]: task
+                    for task in get_tasks_for_shot(str(entity.id))
+                }
+
+            for task_update in tasks_update:
+                if task_update["task_type_id"] not in tasks_map:
+                    tasks_map[task_update["task_type_id"]] = create_task(
+                        get_task_type(task_update["task_type_id"]),
+                        entity.serialize(),
+                    )
+                task = tasks_map[task_update["task_type_id"]]
+                if (
+                    task_update["comment"] is not None
+                    or task_update["task_status_id"] != task["task_status_id"]
+                ):
+                    create_comment(
+                        self.current_user_id,
+                        task["id"],
+                        task_update["task_status_id"]
+                        or task["task_status_id"],
+                        task_update["comment"] or "",
+                        [],
+                        {},
+                        "",
+                    )
+        elif shot_created:
+            self.created_shots.append(entity.serialize())
 
     def import_row(self, row, project_id):
         if self.is_tv_show:
             episode_name = row["Episode"]
         sequence_name = row["Sequence"]
         shot_name = row["Name"]
-        description = row.get("Description", "")
-        nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
-        data = {
-            "frame_in": row.get("Frame In", None) or row.get("In", None),
-            "frame_out": row.get("Frame Out", None) or row.get("Out", None),
-            "fps": row.get("FPS", None),
-        }
 
         if self.is_tv_show:
             episode_key = "%s-%s" % (project_id, episode_name)
@@ -84,119 +149,70 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         sequence_id = self.get_id_from_cache(self.sequences, sequence_key)
 
         shot_type = shots_service.get_shot_type()
-        entity = Entity.get_by(
-            name=shot_name,
-            project_id=project_id,
-            parent_id=sequence_id,
-            entity_type_id=shot_type["id"],
-        )
+
+        shot_values = {
+            "name": shot_name,
+            "project_id": project_id,
+            "parent_id": sequence_id,
+            "entity_type_id": shot_type["id"],
+        }
+
+        entity = Entity.get_by(**shot_values)
+
+        shot_new_values = {}
+
+        description = row.get("Description", None)
+        if description is not None:
+            shot_new_values["description"] = description
+
+        nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
+        if nb_frames is not None:
+            shot_new_values["nb_frames"] = nb_frames
+
+        if entity is None:
+            shot_new_values["data"] = {}
+        else:
+            shot_new_values["data"] = entity.data or {}
+
+        frame_in = row.get("Frame In", None) or row.get("In", None)
+        if frame_in is not None:
+            shot_new_values["data"]["frame_in"] = frame_in
+
+        frame_out = row.get("Frame Out", None) or row.get("Out", None)
+        if frame_out is not None:
+            shot_new_values["data"]["frame_out"] = frame_out
+
+        fps = row.get("FPS", None)
+        if fps is not None:
+            shot_new_values["data"]["fps"] = fps
 
         for name, field_name in self.descriptor_fields.items():
             if name in row:
-                data[field_name] = row[name]
-            elif (
-                entity is not None
-                and entity.data is not None
-                and field_name in entity.data
-            ):
-                data[field_name] = entity.data[field_name]
+                shot_new_values["data"][field_name] = row[name]
 
-        # Search for task name and comment column and append values for update
-        # in a dictionnary using task name as key.
-        tasks_update = {}
-        for task_type in self.task_types_in_project_for_shots:
-            # search for status update and get this id if found
-            task_status_name = row.get(task_type.name, "").lower()
-            task_status_id = ""
-            if task_status_name:
-                for status_id, status_names in self.task_statuses.items():
-                    if task_status_name in status_names:
-                        task_status_id = status_id
-                        break
-                else:
-                    raise TaskStatusNotFoundException(
-                        "Task status not found for %s" % task_status_name
-                    )
-            # search for comment
-            task_comment_text = row.get("%s comment" % task_type.name, "")
-            # append updates if valided
-            if task_status_id or task_comment_text:
-                tasks_update[task_type.name] = {
-                    "status": task_status_id,
-                    "comment": task_comment_text,
-                }
+        tasks_update = self.get_tasks_update(row)
 
-        tasks = []
         if entity is None:
-            if nb_frames is None or len(nb_frames) == 0:
-                entity = Entity.create(
-                    name=shot_name,
-                    description=description,
-                    project_id=project_id,
-                    parent_id=sequence_id,
-                    entity_type_id=shot_type["id"],
-                    data=data,
-                )
-            else:
-                entity = Entity.create(
-                    name=shot_name,
-                    description=description,
-                    project_id=project_id,
-                    parent_id=sequence_id,
-                    entity_type_id=shot_type["id"],
-                    nb_frames=nb_frames,
-                    data=data,
-                )
+            entity = Entity.create(**{**shot_values, **shot_new_values})
             events.emit(
                 "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
             )
-            if tasks_update:
-                # if task updates are required we need to create the entity
-                # tasks immediately and append it in the task list in order
-                # to update it at the end of this current row import process.
-                for task_type in self.task_types_in_project_for_shots:
-                    tasks.append(
-                        create_task(task_type.serialize(), entity.serialize())
-                    )
-            else:
-                # if there is no update for task we append the entity in the
-                # created entities list in order to optimize task creation in
-                # the run_import method call when all rows are imported.
-                self.created_shots.append(entity.serialize())
+
+            self.create_and_update_tasks(
+                tasks_update, entity, shot_created=True
+            )
 
         elif self.is_update:
-            entity.update(
-                {
-                    "description": description,
-                    "nb_frames": nb_frames,
-                    "data": data,
-                }
-            )
+            entity.update(shot_new_values)
             events.emit(
                 "shot:update",
                 {"shot_id": str(entity.id)},
                 project_id=project_id,
             )
-            if tasks_update:
-                tasks = get_tasks_for_shot(str(entity.id))
 
-        # Update task status and/or comment using the created tasks list and
-        # the tasks_update dictionnary.
-        for task in tasks:
-            task_name = task["task_type_name"]
-            if task_name in tasks_update:
-                task_status = tasks_update[task_name]["status"]
-                task_comment = tasks_update[task_name]["comment"]
-                if task_status != task["task_status_id"] or task_comment:
-                    create_comment(
-                        self.current_user_id,
-                        task["id"],
-                        task_status or task["task_status_id"],
-                        task_comment,
-                        [],
-                        {},
-                        "",
-                    )
+            self.create_and_update_tasks(
+                tasks_update, entity, shot_created=False
+            )
 
         return entity.serialize()
 
