@@ -51,6 +51,11 @@ class CommentResource(BaseModelResource):
         return result, 200
 
     def clean_get_result(self, result):
+        if permissions.has_client_permissions():
+            if result["person_id"] != persons_service.get_current_user("id"):
+                result["text"] = ""
+                result["attachment_files"] = []
+                result["checklist"] = []
         attachment_files = []
         if (
             "attachment_files" in result
@@ -90,18 +95,7 @@ class CommentResource(BaseModelResource):
         return comment
 
     def check_read_permissions(self, instance):
-        if permissions.has_admin_permissions():
-            return True
-        else:
-            comment = self.get_model_or_404(instance["id"])
-            task_id = str(comment.object_id)
-            task = tasks_service.get_task(task_id)
-            if task is None:
-                tasks_service.clear_task_cache(task_id)
-                task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-            return True
+        return user_service.check_comment_access(instance["id"])
 
     def check_update_permissions(self, instance, data):
         if permissions.has_admin_permissions():

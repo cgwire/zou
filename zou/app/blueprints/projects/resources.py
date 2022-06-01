@@ -169,12 +169,13 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id):
-        user_service.check_manager_project_access(project_id)
+        user_service.check_project_access(project_id)
         return projects_service.get_project_task_statuses(project_id)
 
     @jwt_required
     def post(self, project_id):
         args = self.get_args([("task_status_id", "", True)])
+        user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_status_setting(
             project_id, args["task_status_id"]
         )

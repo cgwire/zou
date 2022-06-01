@@ -504,14 +504,15 @@ def get_comments(task_id, is_client=False, is_manager=False):
     if is_client:
         tmp_comments = []
         for comment in comments:
-            person = persons_service.get_person(comment["person_id"])
-            is_author_client = person["role"] == "client"
-            if len(comment["previews"]) > 0 or is_author_client:
-                tmp_comments.append(comment)
-            if not is_author_client:
+            current_user = persons_service.get_current_user()
+            is_author = comment["person_id"] == current_user["id"]
+            if len(comment["previews"]) > 0:
                 comment["text"] = ""
                 comment["attachment_files"] = []
                 comment["checklist"] = []
+                tmp_comments.append(comment)
+            if is_author:
+                tmp_comments.append(comment)
         comments = tmp_comments
     return comments
 
