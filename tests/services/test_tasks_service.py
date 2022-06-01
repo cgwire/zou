@@ -12,6 +12,7 @@ from zou.app.services import (
     deletion_service,
     preview_files_service,
     tasks_service,
+    persons_service,
 )
 from zou.app.utils import events, fields
 
@@ -434,6 +435,9 @@ class TaskServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(mentions[0], self.person)
 
+    def get_current_user(self):
+        return self.user_client
+
     def test_get_comments(self):
         self.generate_fixture_user_client()
         self.generate_fixture_comment()
@@ -444,8 +448,12 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(comments), 4)
         comments = tasks_service.get_comments(self.task_id, is_manager=False)
         self.assertEqual(len(comments), 3)
+
+        old_get_current_user = persons_service.get_current_user
+        persons_service.get_current_user = self.get_current_user
         comments = tasks_service.get_comments(self.task_id, is_client=True)
         self.assertEqual(len(comments), 1)
+        persons_service.get_current_user = old_get_current_user
 
     def test_new_comment(self):
         comment = comments_service.new_comment(
