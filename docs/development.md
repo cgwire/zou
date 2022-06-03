@@ -99,6 +99,13 @@ PREVIEW_FOLDER=$PWD/previews DEBUG=1 MAIL_DEBUG=1 FLASK_DEBUG=1 FLASK_APP=zou.ap
 You can now use the API by requesting `http://localhost:5000`.
 
 
+## Update database
+In case of adding/removing attributes of models, you must generate the DB update file:
+
+```
+python zou/cli.py migrate-db
+```
+
 ### Event server
 
 To run the Server Events server used to update the web GUI in realtime, use the
@@ -110,9 +117,28 @@ gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -
 
 ## Tests
 
-To run unit tests we recommend to use another database. For that set the
-`DB_DATABASE` environment variable:
+To run unit tests we recommend to use another database. 
 
-```bash
-DB_DATABASE=zou-test py.test
+### Create testing database
+
+In the CLI of the hosting the PostgreSQL DB execute the following:
+*If Docker, connect with: `docker exec -it postgres bash`*
+
+```
+sudo su -l postgres
+psql -c 'create database zoutest;' -U postgres
+```
+
+### Run the tests
+
+In your zou environment `workon zou`, execute the tests with the `DB_DATABASE` environment variable:
+
+```
+DB_DATABASE=zoutest py.test
+```
+
+If you want to run a specific test (you can list several):
+
+```
+DB_DATABASE=zoutest py.test tests/models/test_entity_type.py
 ```
