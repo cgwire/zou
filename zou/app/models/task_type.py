@@ -5,19 +5,6 @@ from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
 
-asset_type_link = db.Table(
-    "asset_types",
-    db.Column(
-        "task_type_id", UUIDType(binary=False), db.ForeignKey("task_type.id"), 
-        ),
-    db.Column(
-        "asset_type_id",
-        UUIDType(binary=False),
-        db.ForeignKey("entity_type.id"),
-    ),
-)
-
-
 class TaskType(db.Model, BaseMixin, SerializerMixin):
     """
     Categorize tasks in domain areas: modeling, animation, etc.
@@ -34,10 +21,6 @@ class TaskType(db.Model, BaseMixin, SerializerMixin):
 
     department_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("department.id")
-    )
-
-    asset_types = db.relationship(
-        "EntityType", secondary=asset_type_link
     )
 
     __table_args__ = (

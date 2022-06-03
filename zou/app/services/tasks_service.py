@@ -87,7 +87,7 @@ def get_task_types():
     for task_type in TaskType.get_all():
         if task_type.for_shots and task_type.for_entity != "Shot":
             task_type.update({"for_entity": "Shot"})
-    return fields.serialize_models(TaskType.get_all(), relations=True)
+    return fields.serialize_models(TaskType.get_all())
 
 
 @cache.memoize_function(120)
@@ -376,6 +376,8 @@ def get_task_types_for_sequence(sequence_id):
     )
     return fields.serialize_models(task_types)
 
+    return get_task_types_for_entity(sequence_id)
+
 
 def get_task_types_for_asset(asset_id):
     """
@@ -439,25 +441,6 @@ def get_task_type_map():
     return {
         str(task_type.id): task_type.serialize() for task_type in task_types
     }
-
-def get_asset_types_from_task_type(data):
-    """
-    Return a list of asset types objects from ids `asset_types` list of data dict.
-
-    Args:
-        data (dict): Data from Resource POST
-    """
-    asset_types = []
-    if "asset_types" in data:
-        try:
-            for asset_type_id in data["asset_types"]:
-                asset_type = EntityType.get(asset_type_id)
-                if asset_type is not None:
-                    asset_types.append(asset_type)
-        except StatementError:
-            raise TaskTypeNotFoundException()
-
-    return asset_types
 
 
 def get_next_preview_revision(task_id):

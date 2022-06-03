@@ -9,6 +9,7 @@ from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import Project
 from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.task import assignees_table
 
@@ -25,6 +26,7 @@ from zou.app.services.exception import (
     AssetNotFoundException,
     AssetInstanceNotFoundException,
     AssetTypeNotFoundException,
+    TaskTypeNotFoundException,
 )
 
 
@@ -325,7 +327,7 @@ def get_asset_types(criterions={}):
     """
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
-    return EntityType.serialize_list(query.all(), obj_type="AssetType")
+    return EntityType.serialize_list(query.all(), obj_type="AssetType", relations=True)
 
 
 def get_asset_types_for_project(project_id):
@@ -390,6 +392,26 @@ def get_asset_with_relations(entity_id):
     Return a given asset as a dict.
     """
     return get_asset_raw(entity_id).serialize(obj_type="Asset", relations=True)
+
+
+def get_task_types_from_asset_type(data):
+    """
+    Return a list of task types objects from ids `task_types` list of data dict.
+
+    Args:
+        data (dict): Data from Resource POST
+    """
+    task_types = []
+    if "task_types" in data:
+        try:
+            for task_type_id in data["task_types"]:
+                task_type = TaskType.get(task_type_id)
+                if task_type is not None:
+                    task_types.append(task_type)
+        except StatementError:
+            raise TaskTypeNotFoundException()
+
+    return task_types
 
 
 def get_asset_by_shotgun_id(shotgun_id):
@@ -473,7 +495,7 @@ def get_asset_type(asset_type_id):
     """
     Return given asset type instance as a dict.
     """
-    return get_asset_type_raw(asset_type_id).serialize(obj_type="AssetType")
+    return get_asset_type_raw(asset_type_id).serialize(obj_type="AssetType", relations=True)
 
 
 def get_or_create_asset_type(name):
