@@ -63,6 +63,7 @@ def index_asset(asset, index=None):
     return indexing.index_data(index, {
         "name": asset.name,
         "project_id": str(asset.project_id),
+        "episode_id": str(asset.source_id),
         "id": str(asset.id)
     })
 
