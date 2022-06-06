@@ -22,6 +22,12 @@ class TaskStatusResource(BaseModelResource):
     def check_read_permissions(self, instance):
         return True
 
+    def pre_update(self, instance_dict, data):
+        if data.get("is_default", False):
+            status = TaskStatus.get_by(is_default=True)
+            status.update({"is_default": None})
+        return instance_dict
+
     def post_update(self, instance_dict):
         tasks_service.clear_task_status_cache(instance_dict["id"])
         return instance_dict
