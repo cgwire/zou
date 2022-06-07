@@ -369,10 +369,15 @@ class ClearAssignationResource(Resource):
     @jwt_required
     def put(self):
         (task_ids, person_id) = self.get_arguments()
+        current_user = persons_service.get_current_user()
 
-        if len(task_ids) > 0:
-            task = tasks_service.get_task(task_ids[0])
-            user_service.check_manager_project_access(task["project_id"])
+        for task_id in task_ids:
+            task = tasks_service.get_task(task_id, relations=True)
+            if not(
+                current_user["id"] in task["assignees"] and
+                current_user["id"] == task["assigner_id"]
+            ):
+                user_service.check_manager_project_access(task["project_id"])
 
         for task_id in task_ids:
             try:
@@ -405,10 +410,15 @@ class TasksAssignResource(Resource):
         (task_ids) = self.get_arguments()
 
         tasks = []
+        current_user = persons_service.get_current_user()
         for task_id in task_ids:
             try:
                 user_service.check_task_departement_access(task_id, person_id)
-                task = self.assign_task(task_id, person_id)
+                task = self.assign_task(
+                    task_id,
+                    person_id,
+                    current_user["id"]
+                )
                 author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(
                     task_id, person_id, author["id"]
@@ -436,8 +446,8 @@ class TasksAssignResource(Resource):
         args = parser.parse_args()
         return args["task_ids"]
 
-    def assign_task(self, task_id, person_id):
-        return tasks_service.assign_task(task_id, person_id)
+    def assign_task(self, task_id, person_id, assigner_id):
+        return tasks_service.assign_task(task_id, person_id, assigner_id)
 
 
 class TaskAssignResource(Resource):

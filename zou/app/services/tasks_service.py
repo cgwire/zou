@@ -1199,7 +1199,7 @@ def clear_assignation(task_id, person_id=None):
     return task_dict
 
 
-def assign_task(task_id, person_id):
+def assign_task(task_id, person_id, assigner_id):
     """
     Assign given person to given task. Emit a *task:assign* event.
     """
@@ -1208,7 +1208,9 @@ def assign_task(task_id, person_id):
     person = persons_service.get_person_raw(person_id)
     task.assignees.append(person)
     task.save()
+    task.update({"assigner_id": assigner_id})
     task_dict = task.serialize()
+    clear_task_cache(task_id)
     events.emit(
         "task:assign",
         {"task_id": task.id, "person_id": person.id},
