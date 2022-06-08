@@ -144,8 +144,11 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(data["comment"], "my comment")
 
     def test_assign_task(self):
-        tasks_service.assign_task(self.task.id, self.assigner.id)
-        self.assertEqual(self.task.assignees[1].id, self.assigner.id)
+        tasks_service.assign_task(
+            self.task.id, self.person.id, self.assigner.id
+        )
+        self.assertEqual(self.task.assignees[1].id, self.person.id)
+        self.assertEqual(self.task.assigner_id, self.assigner.id)
 
     def test_get_department_from_task(self):
         department = tasks_service.get_department_from_task(self.task.id)
