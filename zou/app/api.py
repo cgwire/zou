@@ -15,6 +15,7 @@ from .blueprints.events import blueprint as events_blueprint
 from .blueprints.export import blueprint as export_blueprint
 from .blueprints.files import blueprint as files_blueprint
 from .blueprints.index import blueprint as index_blueprint
+from .blueprints.search import blueprint as search_blueprint
 from .blueprints.news import blueprint as news_blueprint
 from .blueprints.persons import blueprint as persons_blueprint
 from .blueprints.playlists import blueprint as playlists_blueprint
@@ -64,6 +65,7 @@ def configure_api_routes(app):
     app.register_blueprint(previews_blueprint)
     app.register_blueprint(user_blueprint)
     app.register_blueprint(edits_blueprint)
+    app.register_blueprint(search_blueprint)
     return app
 
 
