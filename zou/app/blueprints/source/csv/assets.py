@@ -7,8 +7,7 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
-from zou.app.services import tasks_service
-from zou.app.services.comments_service import create_comment
+from zou.app.services import comments_service, index_service, tasks_service
 from zou.app.services.persons_service import get_current_user
 from zou.app.utils import events, cache
 
@@ -103,7 +102,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     task_update["comment"] is not None
                     or task_update["task_status_id"] != task["task_status_id"]
                 ):
-                    create_comment(
+                    comments_service.create_comment(
                         self.current_user_id,
                         task["id"],
                         task_update["task_status_id"]
@@ -181,6 +180,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         if entity is None:
             entity = Entity.create(**{**asset_values, **asset_new_values})
+            index_service.index_asset(entity)
+
             events.emit(
                 "asset:new",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
