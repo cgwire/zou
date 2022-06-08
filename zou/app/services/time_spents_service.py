@@ -196,7 +196,6 @@ def get_year_time_spents(person_id, year, project_id=None):
     Return aggregated time spents at task level for given person and month.
     """
     start, end = date_helpers.get_year_interval(year)
-    print(start, end)
     start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
