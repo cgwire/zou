@@ -54,7 +54,11 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_discord_enabled = db.Column(db.Boolean(), default=False)
     notifications_discord_userid = db.Column(db.String(60), default="")
 
-    departments = db.relationship("Department", secondary=department_link)
+    departments = db.relationship(
+        "Department",
+        secondary=department_link,
+        lazy="joined"
+    )
 
     def __repr__(self):
         if sys.version_info[0] < 3:
