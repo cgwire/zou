@@ -115,7 +115,8 @@ def upgrade_db():
 
 
 @cli.command()
-def stamp_db():
+@click.option("--revision", default=None)
+def stamp_db(revision):
     "Set the database schema revision to current one."
 
     from zou.app import app
@@ -124,7 +125,10 @@ def stamp_db():
         import zou
 
         directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.stamp(directory=directory)
+        if revision is None:
+            flask_migrate.stamp(directory=directory)
+        else:
+            flask_migrate.stamp(directory=directory, revision=revision)
 
 
 @cli.command()
