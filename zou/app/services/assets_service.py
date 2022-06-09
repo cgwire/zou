@@ -659,7 +659,7 @@ def remove_asset(asset_id, force=False):
             tasks_service.clear_task_cache(str(task.id))
         asset.delete()
         clear_asset_cache(str(asset_id))
-        index_service.remove_asset_index(asset_id)
+        index_service.remove_asset_index(str(asset_id))
         events.emit(
             "asset:delete",
             {"asset_id": asset_id},

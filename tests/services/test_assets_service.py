@@ -109,7 +109,8 @@ class AssetServiceTestCase(ApiDBTestCase):
     def test_get_asset_type(self):
         asset_type = assets_service.get_asset_type(self.asset_type.id)
         self.assertDictEqual(
-            asset_type, self.asset_type.serialize(obj_type="AssetType")
+            asset_type,
+            self.asset_type.serialize(obj_type="AssetType", relations=True)
         )
 
     def test_get_asset_type_by_name(self):

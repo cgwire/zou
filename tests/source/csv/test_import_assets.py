@@ -10,6 +10,8 @@ from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
+from zou.app.services import assets_service
+
 
 class ImportCsvAssetsTestCase(ApiDBTestCase):
     def setUp(self):
@@ -67,8 +69,8 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
 
-        entity_types = EntityType.query.all()
-        self.assertEqual(len(entity_types), 2)
+        asset_types = assets_service.get_asset_types()
+        self.assertEqual(len(asset_types), 2)
 
         tasks = Task.query.all()
         self.assertEqual(
