@@ -390,8 +390,7 @@ def reset_search_index():
 @cli.command()
 @click.option("--query", default="")
 def search_asset(query):
-    """
-    """
+    """ """
     commands.search_asset(query)
 
 

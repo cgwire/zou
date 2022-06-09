@@ -27,13 +27,9 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def create_girafe_asset(self):
         return self.post(
-            "data/projects/%s/asset-types/%s/assets/new" % (
-                self.project_id,
-                self.asset_type_id
-            ), {
-                "name": "Girafe",
-                "description": ""
-            }
+            "data/projects/%s/asset-types/%s/assets/new"
+            % (self.project_id, self.asset_type_id),
+            {"name": "Girafe", "description": ""},
         )
 
     def test_search_assets_exact(self):

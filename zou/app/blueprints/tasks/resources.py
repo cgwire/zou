@@ -373,9 +373,9 @@ class ClearAssignationResource(Resource):
 
         for task_id in task_ids:
             task = tasks_service.get_task(task_id, relations=True)
-            if not(
-                current_user["id"] in task["assignees"] and
-                current_user["id"] == task["assigner_id"]
+            if not (
+                current_user["id"] in task["assignees"]
+                and current_user["id"] == task["assigner_id"]
             ):
                 user_service.check_manager_project_access(task["project_id"])
 
@@ -414,11 +414,7 @@ class TasksAssignResource(Resource):
         for task_id in task_ids:
             try:
                 user_service.check_task_departement_access(task_id, person_id)
-                task = self.assign_task(
-                    task_id,
-                    person_id,
-                    current_user["id"]
-                )
+                task = self.assign_task(task_id, person_id, current_user["id"])
                 author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(
                     task_id, person_id, author["id"]

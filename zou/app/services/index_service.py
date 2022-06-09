@@ -6,11 +6,7 @@ from zou.app import app
 from zou.app.index_schema import asset_schema
 from zou.app.utils import permissions
 
-from zou.app.services import (
-    assets_service,
-    projects_service,
-    user_service
-)
+from zou.app.services import assets_service, projects_service, user_service
 
 
 def get_index():
@@ -60,12 +56,15 @@ def index_asset(asset, index=None):
     """
     if index is None:
         index = get_index()
-    return indexing.index_data(index, {
-        "name": asset.name,
-        "project_id": str(asset.project_id),
-        "episode_id": str(asset.source_id),
-        "id": str(asset.id)
-    })
+    return indexing.index_data(
+        index,
+        {
+            "name": asset.name,
+            "project_id": str(asset.project_id),
+            "episode_id": str(asset.source_id),
+            "id": str(asset.id),
+        },
+    )
 
 
 def remove_asset_index(asset_id):

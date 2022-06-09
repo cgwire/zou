@@ -1,9 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import (
-    assets_service,
-    index_service
-)
+from zou.app.services import assets_service, index_service
 
 
 class IndexServiceTestCase(ApiDBTestCase):
@@ -42,22 +39,14 @@ class IndexServiceTestCase(ApiDBTestCase):
         assets = index_service.search_assets("girafe", self.project_ids)
         self.assertEqual(len(assets), 0)
         assets_service.create_asset(
-            self.project_id,
-            self.asset_type_id,
-            "Girafe",
-            "",
-            {}
+            self.project_id, self.asset_type_id, "Girafe", "", {}
         )
         assets = index_service.search_assets("girafe", self.project_ids)
         self.assertEqual(len(assets), 1)
 
     def test_search_assets_after_update(self):
         asset = assets_service.create_asset(
-            self.project_id,
-            self.asset_type_id,
-            "Girafe",
-            "",
-            {}
+            self.project_id, self.asset_type_id, "Girafe", "", {}
         )
         assets = index_service.search_assets("girafe")
         self.assertEqual(len(assets), 1)
@@ -69,11 +58,7 @@ class IndexServiceTestCase(ApiDBTestCase):
 
     def test_search_assets_after_deletion(self):
         asset = assets_service.create_asset(
-            self.project_id,
-            self.asset_type_id,
-            "Girafe",
-            "",
-            {}
+            self.project_id, self.asset_type_id, "Girafe", "", {}
         )
         assets = index_service.search_assets("girafe")
         self.assertEqual(len(assets), 1)
