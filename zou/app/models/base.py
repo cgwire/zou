@@ -198,6 +198,16 @@ class BaseMixin(object):
             db.session.remove()
             raise
 
+    def update_no_commit(self, data):
+        """
+        Shorthand to update an entry via the database session based on current
+        instance fields. It doesn't generate a commit.
+        """
+        self.updated_at = datetime.datetime.now()
+        for key, value in data.items():
+            setattr(self, key, value)
+        db.session.add(self)
+
     def set_links(self, ids, LinkTable, field_left, field_right):
         for id in ids:
             link = LinkTable.query.filter_by(

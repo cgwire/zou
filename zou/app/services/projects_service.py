@@ -10,7 +10,12 @@ from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.department import Department
-from zou.app.services import base_service
+from zou.app.services import (
+    assets_service,
+    base_service,
+    edits_service,
+    shots_service
+)
 from zou.app.services.exception import (
     ProjectNotFoundException,
     MetadataDescriptorNotFoundException,
@@ -443,15 +448,30 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     Update metadata descriptor information for given id.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
-    entities = Entity.get_all_by(project_id=descriptor.project_id)
+
     if "name" in changes and len(changes["name"]) > 0:
         changes["field_name"] = slugify.slugify(changes["name"])
-        for entity in entities:
-            metadata = fields.serialize_value(entity.data) or {}
-            value = metadata.pop(descriptor.field_name, None)
-            if value is not None:
-                metadata[changes["field_name"]] = value
-                entity.update({"data": metadata})
+        if descriptor.field_name != changes["field_name"]:
+            query = Entity.query.filter(
+                Entity.project_id == descriptor.project_id
+            )
+            if descriptor.entity_type == "Shot":
+                shot_type = shots_service.get_shot_type()
+                query = query.filter(Entity.entity_type_id == shot_type["id"])
+            elif descriptor.entity_type == "Asset":
+                query = query.filter(assets_service.build_asset_type_filter())
+            elif descriptor.entity_type == "Edit":
+                edit_type = edits_service.get_edit_type()
+                query = query.filter(Entity.entity_type_id == edit_type["id"])
+
+            entities = query.all()
+            for entity in entities:
+                metadata = fields.serialize_value(entity.data) or {}
+                value = metadata.pop(descriptor.field_name, None)
+                if value is not None:
+                    metadata[changes["field_name"]] = value
+                    entity.update_no_commit({"data": metadata})
+            Entity.commit()
 
     if "departments" in changes:
         if not changes["departments"]:
