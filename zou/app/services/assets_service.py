@@ -190,7 +190,6 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         .join(EntityType, Entity.entity_type_id == EntityType.id)
         .outerjoin(Task)
         .outerjoin(assignees_table)
-        .outerjoin(EntityLink, EntityLink.entity_out_id == Entity.id)
     )
 
     # Tasks query
@@ -224,6 +223,12 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         if episode_id == "main":
             tasks_query = tasks_query.filter(Entity.source_id == None)
         elif episode_id != "all":
+
+            tasks_query = \
+                tasks_query.outerjoin(
+                    EntityLink,
+                    EntityLink.entity_out_id == Entity.id
+                )
             tasks_query = tasks_query.filter(
                 or_(
                     Entity.source_id == episode_id,

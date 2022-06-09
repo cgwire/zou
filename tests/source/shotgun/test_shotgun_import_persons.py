@@ -40,6 +40,8 @@ class ImportShotgunPersonTestCase(ShotgunTestCase):
         self.assertEqual(len(self.persons), 2)
 
         person = self.persons[0]
+        if person["first_name"] != "James":
+            person = self.persons[1]
         self.assertEqual(person["first_name"], sg_person["firstname"])
         self.assertEqual(person["last_name"], sg_person["lastname"])
         self.assertEqual(person["shotgun_id"], sg_person["id"])

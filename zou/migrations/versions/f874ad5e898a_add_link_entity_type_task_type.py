@@ -1,7 +1,7 @@
 """Add link entity type -> task type
 
 Revision ID: f874ad5e898a
-Revises: 5ab9d7a75887
+Revises: d80267806131
 Create Date: 2022-06-06 22:33:26.331874
 
 """
