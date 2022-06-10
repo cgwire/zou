@@ -27,7 +27,9 @@ class EntityTypesResource(BaseModelsResource):
     def update_data(self, data):
 
         # Handle asset types the task type is dedicated to
-        data["task_types"] = assets_service.get_task_types_from_asset_type(data)
+        data["task_types"] = assets_service.get_task_types_from_asset_type(
+            data
+        )
 
         return data
 
@@ -55,7 +57,9 @@ class EntityTypeResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         # Handle task types dedicated task type is dedicated to
-        data["task_types"] = assets_service.get_task_types_from_asset_type(data)
+        data["task_types"] = assets_service.get_task_types_from_asset_type(
+            data
+        )
 
         return data
 

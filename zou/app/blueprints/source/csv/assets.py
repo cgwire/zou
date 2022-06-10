@@ -179,8 +179,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     "ready_for"
                 ] = self.task_types_for_ready_for_map[ready_for]
             except KeyError:
-                asset_new_values["ready_for"] = None
-                # raise RowException("Task type not found for %s" % ready_for)
+                raise RowException("Task type not found for %s" % ready_for)
 
         tasks_update = self.get_tasks_update(row)
 

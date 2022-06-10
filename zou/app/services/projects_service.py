@@ -14,7 +14,7 @@ from zou.app.services import (
     assets_service,
     base_service,
     edits_service,
-    shots_service
+    shots_service,
 )
 from zou.app.services.exception import (
     ProjectNotFoundException,
