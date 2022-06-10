@@ -74,11 +74,11 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         return tasks_update
 
     def create_and_update_tasks(
-        self, tasks_update, entity, asset_creation=False
+        self, tasks_update, entity, asset_created=False
     ):
         if tasks_update:
             tasks_map = {}
-            if asset_creation:
+            if asset_created:
                 task_type_ids = self.get_task_types_for_asset_type(
                     entity.entity_type_id
                 )
@@ -115,7 +115,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         {},
                         "",
                     )
-        elif asset_creation:
+        elif asset_created:
             self.created_assets.append(entity.serialize())
 
     def import_row(self, row, project_id):
@@ -194,7 +194,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, asset_creation=True
+                tasks_update, entity, asset_created=True
             )
 
         elif self.is_update:
@@ -206,7 +206,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, asset_creation=False
+                tasks_update, entity, asset_created=False
             )
 
         return entity.serialize()
