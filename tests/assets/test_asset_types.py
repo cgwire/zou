@@ -19,6 +19,15 @@ class AssetTypesTestCase(ApiDBTestCase):
             self.asset_type.serialize(obj_type="AssetType", relations=True)
         )
 
+    def test_get_entity_types(self):
+        asset_types = self.get("data/entity-types?name=Props&relations=true")
+        self.assertEqual(len(asset_types), 1)
+        asset_types[0]["type"] = "AssetType"
+        self.assertDictEqual(
+            asset_types[0],
+            self.asset_type.serialize(obj_type="AssetType", relations=True)
+        )
+
     def test_get_asset_type(self):
         asset_type = self.get("data/asset-types/%s" % self.asset_type.id)
         self.assertDictEqual(

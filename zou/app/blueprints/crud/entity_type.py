@@ -9,25 +9,26 @@ class EntityTypesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, EntityType)
 
-    def all_entries(self, query=None):
+    def all_entries(self, query=None, relations=False):
         if query is None:
             query = self.model.query
 
         return [
-                    asset_type.serialize(relations=True) for asset_type in query.all()
-                ]
+            asset_type.serialize(relations=relations)
+            for asset_type in query.all()
+        ]
 
     def check_read_permissions(self):
         return True
 
     def emit_create_event(self, instance_dict):
         events.emit("asset-type:new", {"asset_type_id": instance_dict["id"]})
-         
+
     def update_data(self, data):
-        
+
         # Handle asset types the task type is dedicated to
         data["task_types"] = assets_service.get_task_types_from_asset_type(data)
-        
+
         return data
 
     def post_creation(self, instance):
@@ -53,10 +54,9 @@ class EntityTypeResource(BaseModelResource):
         )
 
     def update_data(self, data, instance_id):
-        
         # Handle task types dedicated task type is dedicated to
         data["task_types"] = assets_service.get_task_types_from_asset_type(data)
-        
+
         return data
 
     def post_update(self, instance_dict):
