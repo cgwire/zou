@@ -69,10 +69,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         return tasks_update
 
     def create_and_update_tasks(
-        self, tasks_update, entity, shot_created=False
+        self, tasks_update, entity, shot_creation=False
     ):
         if tasks_update:
-            if shot_created:
+            if shot_creation:
                 tasks_map = {
                     str(task_type.id): create_task(
                         task_type.serialize(), entity.serialize()
@@ -106,7 +106,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         {},
                         "",
                     )
-        elif shot_created:
+        elif shot_creation:
             self.created_shots.append(entity.serialize())
 
     def import_row(self, row, project_id):
@@ -199,7 +199,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, shot_created=True
+                tasks_update, entity, shot_creation=True
             )
 
         elif self.is_update:
@@ -211,7 +211,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, shot_created=False
+                tasks_update, entity, shot_creation=False
             )
 
         return entity.serialize()
