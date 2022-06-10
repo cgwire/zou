@@ -85,7 +85,7 @@ def get_departments():
 @cache.memoize_function(120)
 def get_task_types():
     for task_type in TaskType.get_all():
-        if task_type.for_shots and task_type.for_entity != "Shot":
+        if task_type.for_entity != "Shot":
             task_type.update({"for_entity": "Shot"})
     return fields.serialize_models(TaskType.get_all())
 
@@ -1081,7 +1081,6 @@ def get_or_create_task_type(
     name,
     color="#888888",
     priority=1,
-    for_shots=False,
     for_entity="Asset",
     short_name="",
     shotgun_id=None,
@@ -1098,7 +1097,6 @@ def get_or_create_task_type(
             department_id=department["id"],
             color=color,
             priority=priority,
-            for_shots=for_shots,
             for_entity=for_entity,
             shotgun_id=shotgun_id,
         )
