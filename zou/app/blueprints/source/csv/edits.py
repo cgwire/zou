@@ -120,7 +120,9 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         episode_id = None
 
         if self.is_tv_show:
-            if episode_name not in self.episodes.keys():
+            if episode_name is not None and episode_name not in list(
+                self.episodes.keys()
+            ):
                 self.episodes[
                     episode_name
                 ] = shots_service.get_or_create_episode(
@@ -140,7 +142,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             "name": edit_name,
             "project_id": project_id,
             "entity_type_id": edit_type_id,
-            "source_id": episode_id,
+            "parent_id": episode_id,
         }
 
         entity = Entity.get_by(**edit_values)
