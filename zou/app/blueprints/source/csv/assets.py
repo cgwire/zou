@@ -163,10 +163,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         if description is not None:
             asset_new_values["description"] = description
 
-        if entity is None:
+        if entity is None or not entity.data:
             asset_new_values["data"] = {}
         else:
-            asset_new_values["data"] = entity.data or {}
+            asset_new_values["data"] = entity.data.copy()
 
         for name, field_name in self.descriptor_fields.items():
             if name in row:

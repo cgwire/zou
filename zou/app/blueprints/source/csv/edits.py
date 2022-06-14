@@ -153,10 +153,10 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         if description is not None:
             edit_new_values["description"] = description
 
-        if entity is None:
+        if entity is None or not entity.data:
             edit_new_values["data"] = {}
         else:
-            edit_new_values["data"] = entity.data or {}
+            edit_new_values["data"] = entity.data.copy()
 
         for name, field_name in self.descriptor_fields.items():
             if name in row:

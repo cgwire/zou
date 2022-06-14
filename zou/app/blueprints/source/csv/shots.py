@@ -169,10 +169,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if nb_frames is not None:
             shot_new_values["nb_frames"] = nb_frames
 
-        if entity is None:
+        if entity is None or not entity.data:
             shot_new_values["data"] = {}
         else:
-            shot_new_values["data"] = entity.data or {}
+            shot_new_values["data"] = entity.data.copy()
 
         frame_in = row.get("Frame In", None) or row.get("In", None)
         if frame_in is not None:
