@@ -84,9 +84,6 @@ def get_departments():
 
 @cache.memoize_function(120)
 def get_task_types():
-    for task_type in TaskType.get_all():
-        if task_type.for_shots and task_type.for_entity != "Shot":
-            task_type.update({"for_entity": "Shot"})
     return fields.serialize_models(TaskType.get_all())
 
 
@@ -796,6 +793,7 @@ def get_person_tasks(person_id, projects, is_done=None):
             Episode.id,
             Episode.name,
             TaskType.name,
+            TaskType.for_entity,
             TaskStatus.name,
             TaskType.color,
             TaskStatus.color,
@@ -826,6 +824,7 @@ def get_person_tasks(person_id, projects, is_done=None):
         episode_id,
         episode_name,
         task_type_name,
+        task_type_for_entity,
         task_status_name,
         task_type_color,
         task_status_color,
@@ -861,6 +860,7 @@ def get_person_tasks(person_id, projects, is_done=None):
                 "task_start_date": fields.serialize_value(task.start_date),
                 "task_due_date": fields.serialize_value(task.due_date),
                 "task_type_name": task_type_name,
+                "task_type_for_entity": task_type_for_entity,
                 "task_status_name": task_status_name,
                 "task_type_color": task_type_color,
                 "task_status_color": task_status_color,
@@ -1081,7 +1081,6 @@ def get_or_create_task_type(
     name,
     color="#888888",
     priority=1,
-    for_shots=False,
     for_entity="Asset",
     short_name="",
     shotgun_id=None,
@@ -1098,7 +1097,6 @@ def get_or_create_task_type(
             department_id=department["id"],
             color=color,
             priority=priority,
-            for_shots=for_shots,
             for_entity=for_entity,
             shotgun_id=shotgun_id,
         )

@@ -860,7 +860,11 @@ def remove_sequence(sequence_id, force=False):
         ScheduleItem.delete_all_by(object_id=sequence_id)
     try:
         sequence.delete()
-        events.emit("sequence:delete", {"sequence_id": sequence_id})
+        events.emit(
+            "sequence:delete",
+            {"sequence_id": sequence_id},
+            project_id=str(sequence.project_id),
+        )
     except IntegrityError:
         raise ModelWithRelationsDeletionException(
             "Some data are still linked to this sequence."

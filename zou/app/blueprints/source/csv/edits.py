@@ -74,10 +74,10 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         return tasks_update
 
     def create_and_update_tasks(
-        self, tasks_update, entity, edit_created=False
+        self, tasks_update, entity, edit_creation=False
     ):
         if tasks_update:
-            if edit_created:
+            if edit_creation:
                 tasks_map = {
                     str(task_type.id): create_task(
                         task_type.serialize(), entity.serialize()
@@ -111,7 +111,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
                         {},
                         "",
                     )
-        elif edit_created:
+        elif edit_creation:
             self.created_edits.append(entity.serialize())
 
     def import_row(self, row, project_id):
@@ -120,7 +120,9 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         episode_id = None
 
         if self.is_tv_show:
-            if episode_name not in self.episodes.keys():
+            if episode_name is not None and episode_name not in list(
+                self.episodes.keys()
+            ):
                 self.episodes[
                     episode_name
                 ] = shots_service.get_or_create_episode(
@@ -140,7 +142,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             "name": edit_name,
             "project_id": project_id,
             "entity_type_id": edit_type_id,
-            "source_id": episode_id,
+            "parent_id": episode_id,
         }
 
         entity = Entity.get_by(**edit_values)
@@ -151,10 +153,10 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         if description is not None:
             edit_new_values["description"] = description
 
-        if entity is None:
+        if entity is None or not entity.data:
             edit_new_values["data"] = {}
         else:
-            edit_new_values["data"] = entity.data or {}
+            edit_new_values["data"] = entity.data.copy()
 
         for name, field_name in self.descriptor_fields.items():
             if name in row:
@@ -171,7 +173,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, edit_created=True
+                tasks_update, entity, edit_creation=True
             )
 
         elif self.is_update:
@@ -183,7 +185,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             )
 
             self.create_and_update_tasks(
-                tasks_update, entity, edit_created=False
+                tasks_update, entity, edit_creation=False
             )
 
         return entity.serialize()

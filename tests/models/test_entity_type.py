@@ -36,15 +36,13 @@ class EntityTypeTestCase(ApiDBTestCase):
         self.department_id = self.department.id
         self.generate_fixture_task_type()
 
+        task_types = [str(task_type.id) for task_type in TaskType.query.all()]
         task_types = [
-            str(task_type.id) for task_type in TaskType.query.all()
+            str(self.task_type_concept.id),
+            str(self.task_type_modeling.id),
         ]
-        task_types = [str(self.task_type_concept.id), str(self.task_type_modeling.id)]
 
-        data = {
-            "name": "FX",
-            "task_types": task_types
-        }
+        data = {"name": "FX", "task_types": task_types}
         self.asset_type = self.post("data/entity-types", data)
         self.assertIsNotNone(self.asset_type["id"])
         self.assertEquals(
@@ -58,7 +56,8 @@ class EntityTypeTestCase(ApiDBTestCase):
         created_asset_type = EntityType.get(self.asset_type["id"])
         self.assertEquals(
             set(
-                str(task_type.id) for task_type in created_asset_type.task_types
+                str(task_type.id)
+                for task_type in created_asset_type.task_types
             ),
             set(task_types),
         )
@@ -79,13 +78,8 @@ class EntityTypeTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
 
         asset_type = self.get_first("data/entity-types")
-        task_types = [
-            str(task_type.id) for task_type in TaskType.query.all()
-        ]
-        data = {
-            "name": "FX",
-            "task_types": task_types
-        }
+        task_types = [str(task_type.id) for task_type in TaskType.query.all()]
+        data = {"name": "FX", "task_types": task_types}
         self.put("data/entity-types/%s" % asset_type["id"], data)
         asset_type_again = self.get("data/entity-types/%s" % asset_type["id"])
         self.assertEquals(

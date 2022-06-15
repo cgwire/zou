@@ -91,7 +91,6 @@ def init_data():
         "Storyboard",
         "#43A047",
         priority=1,
-        for_shots=True,
         for_entity="Shot",
     )
     tasks_service.get_or_create_task_type(
@@ -99,7 +98,6 @@ def init_data():
         "Layout",
         "#7CB342",
         priority=2,
-        for_shots=True,
         for_entity="Shot",
     )
     tasks_service.get_or_create_task_type(
@@ -107,7 +105,6 @@ def init_data():
         "Animation",
         "#009688",
         priority=3,
-        for_shots=True,
         for_entity="Shot",
     )
     tasks_service.get_or_create_task_type(
@@ -115,18 +112,16 @@ def init_data():
         "Lighting",
         "#F9A825",
         priority=4,
-        for_shots=True,
         for_entity="Shot",
     )
     tasks_service.get_or_create_task_type(
-        fx, "FX", "#26C6DA", priority=5, for_shots=True, for_entity="Shot"
+        fx, "FX", "#26C6DA", priority=5, for_entity="Shot"
     )
     tasks_service.get_or_create_task_type(
         compositing,
         "Rendering",
         "#F06292",
         priority=6,
-        for_shots=True,
         for_entity="Shot",
     )
     tasks_service.get_or_create_task_type(
@@ -134,7 +129,6 @@ def init_data():
         "Compositing",
         "#ff5252",
         priority=7,
-        for_shots=True,
         for_entity="Shot",
     )
     tasks_service.get_or_create_task_type(
@@ -142,7 +136,6 @@ def init_data():
         "Edit",
         "#9b298c",
         priority=8,
-        for_shots=False,
         for_entity="Edit",
     )
     print("Task types initialized.")

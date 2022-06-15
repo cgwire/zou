@@ -40,9 +40,7 @@ def search(ix, query, project_ids, limit=10):
     ids = []
     with ix.searcher() as searcher:
         results = searcher.search(
-            whoosh_query,
-            filter=project_id_terms,
-            limit=limit
+            whoosh_query, filter=project_id_terms, limit=limit
         )
         for result in results:
             ids.append(result["id"])

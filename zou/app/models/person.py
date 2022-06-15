@@ -55,9 +55,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_discord_userid = db.Column(db.String(60), default="")
 
     departments = db.relationship(
-        "Department",
-        secondary=department_link,
-        lazy="joined"
+        "Department", secondary=department_link, lazy="joined"
     )
 
     def __repr__(self):
@@ -90,7 +88,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "has_avatar": data["has_avatar"],
             "active": data["active"],
             "departments": data.get("departments", []),
-            "role": data["role"]
+            "role": data["role"],
         }
 
     def set_departments(self, department_ids):

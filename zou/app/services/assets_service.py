@@ -145,7 +145,6 @@ def get_all_raw_assets():
     return query.all()
 
 
-
 def get_full_assets(criterions={}):
     """
     Get all assets for given criterions with additional informations: project
@@ -224,11 +223,9 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
             tasks_query = tasks_query.filter(Entity.source_id == None)
         elif episode_id != "all":
 
-            tasks_query = \
-                tasks_query.outerjoin(
-                    EntityLink,
-                    EntityLink.entity_out_id == Entity.id
-                )
+            tasks_query = tasks_query.outerjoin(
+                EntityLink, EntityLink.entity_out_id == Entity.id
+            )
             tasks_query = tasks_query.filter(
                 or_(
                     Entity.source_id == episode_id,
@@ -342,7 +339,9 @@ def get_asset_types(criterions={}):
     """
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
-    return EntityType.serialize_list(query.all(), obj_type="AssetType", relations=True)
+    return EntityType.serialize_list(
+        query.all(), obj_type="AssetType", relations=True
+    )
 
 
 def get_asset_types_for_project(project_id):
@@ -508,7 +507,9 @@ def get_asset_type(asset_type_id):
     """
     Return given asset type instance as a dict.
     """
-    return get_asset_type_raw(asset_type_id).serialize(obj_type="AssetType", relations=True)
+    return get_asset_type_raw(asset_type_id).serialize(
+        obj_type="AssetType", relations=True
+    )
 
 
 def get_or_create_asset_type(name):
@@ -570,7 +571,6 @@ def is_asset_dict(entity):
         sequence_type["id"],
         episode_type["id"],
     ]
-
 
 
 def is_asset_type(entity_type):

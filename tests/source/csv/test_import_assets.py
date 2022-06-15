@@ -26,7 +26,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
     def test_import_assets(self):
         self.assertEqual(len(Task.query.all()), 0)
         number_of_task_per_entity_to_create = len(
-            TaskType.query.filter_by(for_shots=False, for_entity="Asset").all()
+            TaskType.query.filter_by(for_entity="Asset").all()
         )
         db.session.add(
             ProjectTaskTypeLink(
