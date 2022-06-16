@@ -50,7 +50,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         for task_type in self.task_types_in_project_for_edits:
             task_status_name = row.get(task_type.name, None)
             task_status_id = None
-            if task_status_name is not None:
+            if task_status_name not in [None, ""]:
                 for status_id, status_names in self.task_statuses.items():
                     if task_status_name in status_names:
                         task_status_id = status_id
@@ -62,7 +62,10 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
 
             task_comment_text = row.get("%s comment" % task_type.name, None)
 
-            if task_status_id is not None or task_comment_text is not None:
+            if task_status_id is not None or task_comment_text not in [
+                None,
+                "",
+            ]:
                 tasks_update.append(
                     {
                         "task_type_id": str(task_type.id),

@@ -14,6 +14,13 @@ class TaskStatusesResource(BaseModelsResource):
         tasks_service.clear_task_status_cache(str(instance.id))
         return instance.serialize()
 
+    def check_creation_integrity(self, data):
+        if data.get("is_default", False):
+            status = TaskStatus.get_by(is_default=True)
+            if status:
+                status.update({"is_default": False})
+        return data
+
 
 class TaskStatusResource(BaseModelResource):
     def __init__(self):
@@ -25,7 +32,8 @@ class TaskStatusResource(BaseModelResource):
     def pre_update(self, instance_dict, data):
         if data.get("is_default", False):
             status = TaskStatus.get_by(is_default=True)
-            status.update({"is_default": None})
+            if status:
+                status.update({"is_default": False})
         return instance_dict
 
     def post_update(self, instance_dict):

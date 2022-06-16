@@ -20,5 +20,5 @@ class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     is_client_allowed = db.Column(db.Boolean(), default=True)
     is_retake = db.Column(db.Boolean(), default=False)
     is_feedback_request = db.Column(db.Boolean(), default=False, index=True)
-    is_default = db.Column(db.Boolean(), unique=True, index=True)
+    is_default = db.Column(db.Boolean(), default=False, index=True)
     shotgun_id = db.Column(db.Integer)
