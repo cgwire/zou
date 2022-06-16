@@ -16,7 +16,7 @@ class EntityTypeTestCase(ApiDBTestCase):
         self.assertEqual(len(entity_types), 3)
 
     def test_get_entity_types_again(self):
-        entity_types = self.get_first("data/entity-types")
+        entity_types = self.get_first("data/entity-types?relations=true")
         entity_types_again = self.get(
             "data/entity-types/%s" % entity_types["id"]
         )
