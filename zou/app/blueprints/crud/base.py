@@ -119,7 +119,7 @@ class BaseModelsResource(Resource):
         return permissions.check_admin_permissions()
 
     def check_creation_integrity(self, data):
-        pass
+        return data
 
     def update_data(self, data):
         return data
