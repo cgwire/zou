@@ -72,7 +72,7 @@ class ProjectStatusAutomationLink(db.Model):
 
 class Project(db.Model, BaseMixin, SerializerMixin):
     """
-    Describes a CG production the studio works on.
+    Describes a production the studio works on.
     """
 
     name = db.Column(db.String(80), nullable=False, unique=True, index=True)
@@ -91,6 +91,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     man_days = db.Column(db.Integer)
     nb_episodes = db.Column(db.Integer, default=0)
     episode_span = db.Column(db.Integer, default=0)
+    is_clients_isolated = db.Column(db.Boolean(), default=False)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True

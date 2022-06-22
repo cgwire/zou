@@ -403,6 +403,7 @@ def check_comment_access(comment_id):
         return True
     else:
         comment = tasks_service.get_comment(comment_id)
+        person_id = comment["person_id"]
         task_id = comment["object_id"]
         task = tasks_service.get_task(task_id)
         if task is None:
@@ -410,19 +411,24 @@ def check_comment_access(comment_id):
             task = tasks_service.get_task(task_id)
         check_project_access(task["project_id"])
         check_entity_access(task["entity_id"])
-        if not (
+
+        if (
             permissions.has_supervisor_permissions()
             or permissions.has_manager_permissions()
         ):
-            if permissions.has_client_permissions():
-                current_user = persons_service.get_current_user()
+            return True
+        elif permissions.has_client_permissions():
+            current_user = persons_service.get_current_user()
+            project = projects_service.get_project(task["project_id"])
+            if project.get("is_clients_isolated", False):
                 if not comment["person_id"] == current_user["id"]:
                     raise permissions.PermissionDenied
-            elif (
-                persons_service.get_person(comment["person_id"])["role"]
-                == "client"
-            ):
+            if persons_service.get_person(person_id)["role"] == "client":
+                return True
+            else:
                 raise permissions.PermissionDenied
+        elif (persons_service.get_person(person_id)["role"] == "client"):
+            raise permissions.PermissionDenied
 
         return True
 

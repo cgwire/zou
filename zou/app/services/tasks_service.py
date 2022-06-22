@@ -500,15 +500,24 @@ def get_comments(task_id, is_client=False, is_manager=False):
 
     if is_client:
         tmp_comments = []
+        task = get_task(task_id)
+        project = projects_service.get_project(task["project_id"])
         for comment in comments:
+            person = persons_service.get_person(comment["person_id"])
             current_user = persons_service.get_current_user()
             is_author = comment["person_id"] == current_user["id"]
+            is_author_client = person["role"] == "client"
+            is_clients_isolated = project.get("is_clients_isolated", False)
+            is_allowed = (
+                (is_clients_isolated and is_author)
+                or (not is_clients_isolated and is_author_client)
+            )
             if len(comment["previews"]) > 0:
                 comment["text"] = ""
                 comment["attachment_files"] = []
                 comment["checklist"] = []
                 tmp_comments.append(comment)
-            if is_author:
+            if is_allowed:
                 tmp_comments.append(comment)
         comments = tmp_comments
     return comments
