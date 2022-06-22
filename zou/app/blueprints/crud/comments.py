@@ -11,6 +11,7 @@ from zou.app.services import (
     deletion_service,
     notifications_service,
     persons_service,
+    projects_service,
     tasks_service,
     user_service,
 )
@@ -52,7 +53,8 @@ class CommentResource(BaseModelResource):
 
     def clean_get_result(self, result):
         if permissions.has_client_permissions():
-            if result["person_id"] != persons_service.get_current_user("id"):
+            person = persons_service.get_person(result["person_id"])
+            if person["role"] != "client":
                 result["text"] = ""
                 result["attachment_files"] = []
                 result["checklist"] = []
