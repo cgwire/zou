@@ -198,7 +198,7 @@ def sync_with_ldap_server():
                 "email": clean_value(entry.mail),
                 "desktop_login": clean_value(entry.sAMAccountName),
                 "thumbnail": entry.thumbnailPhoto.raw_values,
-                "active": bool(int(clean_value(entry.userAccountControl)) & 2) is False,
+                "active": bool(entry.userAccountControl.value & 2) is False,
             }
             for entry in conn.entries
             if clean_value(entry.sAMAccountName) not in excluded_accounts
