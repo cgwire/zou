@@ -1,7 +1,7 @@
 """add is clients isolated flag to projects
 
 Revision ID: 4095103c7d01
-Revises: 0cf5e0e035fa
+Revises: 05ac7e8caa21
 Create Date: 2022-06-22 15:09:56.585117
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy_utils
 
 # revision identifiers, used by Alembic.
 revision = '4095103c7d01'
-down_revision = '0cf5e0e035fa'
+down_revision = '05ac7e8caa21'
 branch_labels = None
 depends_on = None
 
