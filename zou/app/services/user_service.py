@@ -678,6 +678,18 @@ def check_playlist_access(playlist):
     return True
 
 
+def check_day_off_access(day_off):
+    """
+    Return true if current user is admin or day_off is for itself
+    """
+    user = persons_service.get_current_user()
+    is_admin = permissions.has_admin_permissions()
+    is_same_person = user["id"] == day_off["person_id"]
+    if not (is_admin or is_same_person):
+        raise permissions.PermissionDenied
+    return True
+
+
 def get_filters():
     """
     Retrieve search filters used by current user. It groups them by
