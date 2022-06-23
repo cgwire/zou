@@ -61,7 +61,13 @@ def get_project_from_preview_file(preview_file_id):
 
 
 def update_preview_file(preview_file_id, data, silent=False):
-    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    try:
+        preview_file = files_service.get_preview_file_raw(preview_file_id)
+    except:
+        # Dirty hack because sometimes the preview file retrieval crashes.
+        time.sleep(1)
+        preview_file = files_service.get_preview_file_raw(preview_file_id)
+
     preview_file.update(data)
     files_service.clear_preview_file_cache(preview_file_id)
     if not silent:
@@ -199,6 +205,7 @@ def prepare_and_store_movie(
             os.remove(normalized_movie_path)
             if normalized_movie_low_path:
                 os.remove(normalized_movie_low_path)
+
         preview_file = update_preview_file(
             preview_file_id, {"status": "ready", "file_size": file_size}
         )
