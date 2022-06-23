@@ -339,7 +339,8 @@ def add_status_automation_setting(project_id, status_automation_id):
 
 def remove_status_automation_setting(project_id, status_automation_id):
     """
-    Remove a status automation listed in database from the project status automations.
+    Remove a status automation listed in database from the project status
+    automations.
     """
     return _remove_from_list_attr(
         project_id,

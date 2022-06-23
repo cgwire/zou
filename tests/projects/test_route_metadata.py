@@ -47,7 +47,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
         projects = self.get("data/projects/open/")
         self.assertEqual(len(projects), 1)
-        self.assertEqual(projects[0]["descriptors"][0]["id"], descriptor["id"])
+        self.assertEqual(len(projects[0]["descriptors"]), 2)
 
     def test_unallowed_add_asset_metadata_descriptor(self):
         self.generate_fixture_user_manager()
@@ -66,7 +66,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         descriptor = self.post(
             "data/projects/%s/metadata-descriptors" % self.project_id,
             {
-                "entity_type": "Shot",
+                "entity_type": "Asset",
                 "name": "Contractor",
                 "choices": ["contractor 1", "contractor 2"],
             },
@@ -83,7 +83,6 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(descriptors), 1)
         asset = self.get("data/entities/%s" % self.asset_id)
-        print(asset)
         self.assertEqual(asset["data"].get("team"), "contractor 1")
 
     def test_unallowed_update_metadata_descriptor(self):
