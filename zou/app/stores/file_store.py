@@ -95,9 +95,22 @@ def clear_bucket(bucket):
         os.remove(os.path.join(bucket.root, filename))
 
 
+def read_swift(self, filename):
+    """
+    Monkey patch to download files with chunks instead of getting it fully.
+    """
+    _, data = self.conn.get_object(
+        self.name,
+        filename,
+        resp_chunk_size=1024 * 1024
+    )
+    return data
+
+
 LocalBackend.read = read
 LocalBackend.path = path
 SwiftBackend.__init__ = init_swift
+SwiftBackend.read = read_swift
 S3Backend.__init__ = init_s3
 
 
@@ -109,7 +122,7 @@ def make_read_generator(bucket, key):
     read_stream = bucket.read(key)
 
     def read_generator(read_stream):
-        for chunk in io.BytesIO(read_stream):
+        for chunk in read_stream:
             yield chunk
 
     return read_generator(read_stream)
