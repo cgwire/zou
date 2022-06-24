@@ -1071,14 +1071,14 @@ def update_task_status(task_status_id, data):
     return task_status.serialize()
 
 
-def get_or_create_department(name):
+def get_or_create_department(name, color="#000000"):
     """
     Create a new department it doesn't exist. If it exists, it returns the
     department from database.
     """
     department = Department.get_by(name=name)
     if department is None:
-        department = Department(name=name, color="#000000")
+        department = Department(name=name, color=color)
         department.save()
         clear_department_cache(department.id)
         events.emit("department:new", {"department_id": department.id})
