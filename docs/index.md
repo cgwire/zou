@@ -97,10 +97,10 @@ Create zou user:
 
 ```bash
 sudo useradd --home /opt/zou zou 
-mkdir /opt/zou
-chown zou: /opt/zou
-mkdir /opt/zou/backups
-chown zou: /opt/zou/backups
+sudo mkdir /opt/zou
+sudo chown zou: /opt/zou
+sudo mkdir /opt/zou/backups
+sudo chown zou: /opt/zou/backups
 ```
 
 Install Zou and its dependencies:
@@ -166,7 +166,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-DB_PASSWORD=yourdbpassword zou init-db
+sudo -u zou DB_PASSWORD=yourdbpassword zou init-db
 ```
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
@@ -315,7 +315,7 @@ server {
 }
 ```
 
-*NB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
+*sudo service zou-events startNB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
 
 Finally, make sure that default configuration is removed: 
 
@@ -333,9 +333,11 @@ sudo ln -s /etc/nginx/sites-available/zou /etc/nginx/sites-enabled
 Finally we can start our daemon and restart Nginx:
 
 ```bash
-sudo service zou start
-sudo service zou-events start
-sudo service nginx restart
+sudo systemctl enable zou
+sudo systemctl enable zou-events
+sudo systemctl start zou
+sudo systemctl start zou-events
+sudo systemctl restart nginx
 ```
 
 ## Update
@@ -356,7 +358,7 @@ sudo zouenv/bin/pip3 install --upgrade zou
 Then, you need to upgrade the database schema:
 
 ```bash
-DB_PASSWORD=yourdbpassword zou upgrade-db
+sudo -u zou DB_PASSWORD=yourdbpassword zou upgrade-db
 ```
 
 
@@ -366,8 +368,8 @@ Finally, restart the Zou service:
 
 ```bash
 sudo chown -R zou:www-data .
-sudo service zou restart
-sudo service zou-events restart
+sudo systemctl restart zou
+sudo systemctl restart zou-events
 ```
 
 That's it! Your Zou instance is now up to date. 
@@ -387,8 +389,9 @@ from Github:
 cd /opt/
 sudo git clone -b build https://github.com/cgwire/kitsu
 cd kitsu
+git config --global --add safe.directory /opt/kitsu
+sudo git config --global --add safe.directory /opt/kitsu
 sudo git checkout build
-sudo chown -R zou:www-data /opt/kitsu
 ```
 
 Then we need to adapt the Nginx configuration to allow it to serve it properly:
@@ -429,7 +432,7 @@ server {
 Restart your Nginx server:
 
 ```bash
-sudo service nginx restart
+sudo systemctl restart nginx
 ```
 
 You can now connect directly to your server IP through your browser and enjoy
@@ -442,8 +445,8 @@ To update Kitsu, update the files through Git:
 
 ```
 cd /opt/kitsu
-git reset --hard
-git pull --rebase origin build
+sudo git reset --hard
+sudo git pull --rebase origin build
 ```
 
 
@@ -454,7 +457,8 @@ log in and to create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
-DB_PASSWORD=yourdbpassword zou create-admin adminemail@yourstudio.com
+cd /opt/zou/
+sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
 ```
 
 It expects the password as first argument. Then your user will be created with
@@ -466,7 +470,8 @@ last name.
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-DB_PASSWORD=yourdbpassword zou init-data
+cd /opt/zou/
+sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-data
 ```
 
 # Configuration 
