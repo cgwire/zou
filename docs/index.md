@@ -109,8 +109,7 @@ Install Zou and its dependencies:
 sudo pip3 install virtualenv
 cd /opt/zou
 sudo virtualenv zouenv
-. zouenv/bin/activate
-sudo zouenv/bin/pip3 install zou
+sudo /opt/zou/zouenv/bin/pip3 install zou
 sudo chown -R zou:www-data .
 ```
 
@@ -166,7 +165,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-sudo -u zou DB_PASSWORD=yourdbpassword zou init-db
+sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-db
 ```
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
@@ -348,8 +347,7 @@ First, you have to upgrade the zou package:
 
 ```bash
 cd /opt/zou
-. zouenv/bin/activate
-sudo zouenv/bin/pip3 install --upgrade zou
+sudo /opt/zou/zouenv/bin/pip3 install --upgrade zou
 ```
 
 
@@ -358,7 +356,8 @@ sudo zouenv/bin/pip3 install --upgrade zou
 Then, you need to upgrade the database schema:
 
 ```bash
-sudo -u zou DB_PASSWORD=yourdbpassword zou upgrade-db
+cd /opt/zou
+sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou upgrade-db
 ```
 
 
