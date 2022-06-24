@@ -191,7 +191,6 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         .outerjoin(assignees_table)
     )
 
-    # Tasks query
     tasks_query = query.add_columns(
         EntityType.name,
         Task.id,

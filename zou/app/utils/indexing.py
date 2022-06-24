@@ -1,7 +1,7 @@
 from whoosh import index
 from whoosh.query import Or, Term
 from whoosh.qparser import QueryParser
-from whoosh.fields import Schema, NGRAMWORDS, ID
+from whoosh.fields import Schema, BOOLEAN, NGRAMWORDS, ID
 
 
 def get_schema(schema):
@@ -13,6 +13,8 @@ def get_schema(schema):
             kwargs[key] = ID(stored=True)
         elif value == "unique_id_stored":
             kwargs[key] = ID(unique=True, stored=True)
+        elif value == "boolean":
+            kwargs[key] = BOOLEAN(stored=True)
     return Schema(**kwargs)
 
 
@@ -31,17 +33,23 @@ def index_data(ix, data):
     return writer
 
 
-def search(ix, query, project_ids, limit=10):
+def search(ix, query, project_ids=[], limit=10):
     query_parser = QueryParser("name", schema=ix.schema)
     whoosh_query = query_parser.parse(query)
-    project_id_terms = Or(
-        [Term("project_id", project_id) for project_id in project_ids]
-    )
+    is_project_filter = len(project_ids) > 0
     ids = []
     with ix.searcher() as searcher:
-        results = searcher.search(
-            whoosh_query, filter=project_id_terms, limit=limit
-        )
+        if is_project_filter:
+            project_id_terms = Or(
+                [Term("project_id", project_id) for project_id in project_ids]
+            )
+            results = searcher.search(
+                whoosh_query,
+                filter=project_id_terms,
+                limit=limit
+            )
+        else:
+            results = searcher.search(whoosh_query, limit=limit)
         for result in results:
             ids.append(result["id"])
     return ids

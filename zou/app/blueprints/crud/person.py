@@ -92,6 +92,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
 
     def post_update(self, instance_dict):
         persons_service.clear_person_cache()
+        index_service.remove_person_index(instance_dict["id"])
+        person = persons_service.get_person_raw(instance_dict["id"])
+        if person.active:
+            index_service.index_person(person)
         instance_dict["departments"] = [
             str(department.id) for department in self.instance.departments
         ]

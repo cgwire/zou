@@ -18,6 +18,10 @@ class SearchResource(Resource, ArgsMixin):
             projects = projects_service.open_projects()
         else:
             projects = user_service.get_open_projects()
+        persons = index_service.search_persons(query)
         open_project_ids = [project["id"] for project in projects]
 
-        return {"assets": index_service.search_assets(query, open_project_ids)}
+        return {
+            "assets": index_service.search_assets(query, open_project_ids),
+            "persons": persons
+        }
