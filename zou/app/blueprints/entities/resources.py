@@ -9,8 +9,10 @@ from zou.app.services import (
     time_spents_service,
     user_service,
 )
+from zou.app import name_space_entities
 
 
+@name_space_entities.route('/<entity_id>/news')
 class EntityNewsResource(Resource):
     @jwt_required
     def get(self, entity_id):
@@ -19,6 +21,7 @@ class EntityNewsResource(Resource):
         return news_service.get_news_for_entity(entity_id)
 
 
+@name_space_entities.route('/<entity_id>/preview-files')
 class EntityPreviewFilesResource(Resource):
     @jwt_required
     def get(self, entity_id):
@@ -27,6 +30,7 @@ class EntityPreviewFilesResource(Resource):
         return preview_files_service.get_preview_files_for_entity(entity_id)
 
 
+@name_space_entities.route('/<entity_id>/time-spents')
 class EntityTimeSpentsResource(Resource):
     @jwt_required
     def get(self, entity_id):

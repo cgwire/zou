@@ -13,8 +13,10 @@ from zou.app.services import (
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions, query
+from zou.app import name_space_edits, name_space_episodes, name_space_projects
 
 
+@name_space_edits.route('/<edit_id>')
 class EditResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, edit_id):
@@ -41,11 +43,13 @@ class EditResource(Resource, ArgsMixin):
         return "", 204
 
 
+@name_space_edits.route('/all')
 class EditsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all edit entries. Filters can be specified in the query string.
+        Retrieve all edit entries. 
+        Filters can be specified in the query string.
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -56,11 +60,13 @@ class EditsResource(Resource):
         return edits_service.get_edits(criterions)
 
 
+@name_space_edits.route('/')
 class AllEditsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all edit entries. Filters can be specified in the query string.
+        Retrieve all edit entries. 
+        Filters can be specified in the query string.
         """
         criterions = query.get_query_criterions_from_request(request)
         if permissions.has_vendor_permissions():
@@ -71,6 +77,7 @@ class AllEditsResource(Resource):
         return edits_service.get_edits(criterions)
 
 
+@name_space_edits.route('/<edit_id>/task-types')
 class EditTaskTypesResource(Resource):
     @jwt_required
     def get(self, edit_id):
@@ -83,6 +90,7 @@ class EditTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_edit(edit_id)
 
 
+@name_space_edits.route('/<edit_id>/tasks')
 class EditTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, edit_id):
@@ -96,6 +104,7 @@ class EditTasksResource(Resource, ArgsMixin):
         return tasks_service.get_tasks_for_edit(edit_id, relations=relations)
 
 
+@name_space_episodes.route('/<episode_id>/edit-tasks')
 class EpisodeEditTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
@@ -113,6 +122,7 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
         )
 
 
+@name_space_episodes.route('/<episode_id>/edits')
 class EpisodeEditsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
@@ -128,6 +138,7 @@ class EpisodeEditsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_edits.route('/<edit_id>/preview-files')
 class EditPreviewsResource(Resource):
     @jwt_required
     def get(self, edit_id):
@@ -142,6 +153,7 @@ class EditPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(edit_id)
 
 
+@name_space_edits.route('/with-tasks')
 class EditsAndTasksResource(Resource):
     @jwt_required
     def get(self):
@@ -157,6 +169,7 @@ class EditsAndTasksResource(Resource):
         return edits_service.get_edits_and_tasks(criterions)
 
 
+@name_space_projects.route('/edits')
 class ProjectEditsResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -172,7 +185,7 @@ class ProjectEditsResource(Resource):
     @jwt_required
     def post(self, project_id):
         """
-        Create a edit for given project.
+        Create an edit for given project.
         """
         (name, description, data, parent_id) = self.get_arguments()
         projects_service.get_project(project_id)
@@ -204,13 +217,14 @@ class ProjectEditsResource(Resource):
         )
 
 
+@name_space_edits.route('/<edit_id>/versions')
 class EditVersionsResource(Resource):
-    """
-    Retrieve data versions of given edit.
-    """
 
     @jwt_required
     def get(self, edit_id):
+        """
+        Retrieve data versions of given edit.
+        """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
         user_service.check_entity_access(edit["id"])

@@ -6,8 +6,10 @@ from zou.app.utils import fields, permissions
 
 from zou.app.services import events_service
 from zou.app.services.exception import WrongParameterException
+from zou.app import name_space_events
 
 
+@name_space_events.route('/last')
 class EventsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
@@ -40,6 +42,7 @@ class EventsResource(Resource, ArgsMixin):
             )
 
 
+@name_space_events.route('/login-logs/last')
 class LoginLogsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
