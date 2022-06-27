@@ -3,13 +3,16 @@ from zou.app.models.attachment_file import AttachmentFile
 from .base import BaseModelResource, BaseModelsResource
 
 from zou.app.services import tasks_service, user_service
+from zou.app import name_space_attachment_files
 
 
+@name_space_attachment_files.route('/')
 class AttachmentFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, AttachmentFile)
 
 
+@name_space_attachment_files.route('/<instance_id>')
 class AttachmentFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, AttachmentFile)

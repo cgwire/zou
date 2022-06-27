@@ -4,13 +4,16 @@ from zou.app.services import assets_service, user_service
 from zou.app.utils import permissions
 
 from .base import BaseModelResource, BaseModelsResource
+from zou.app import name_space_asset_instances
 
 
+@name_space_asset_instances.route('/')
 class AssetInstancesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, AssetInstance)
 
 
+@name_space_asset_instances.route('/<instance_id>')
 class AssetInstanceResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, AssetInstance)
