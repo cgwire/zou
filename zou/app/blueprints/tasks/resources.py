@@ -27,15 +27,26 @@ from zou.app.services import (
 from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
+from zou.app import (
+    name_space_tasks,
+    name_space_actions_tasks,
+    name_space_entities,
+    name_space_projects,
+    name_space_actions_projects,
+    name_space_persons,
+    name_space_actions_persons,
+    name_space_preview_file_id
+)
 
+@name_space_actions_tasks.route('/<task_id>/comments/<comment_id>/add-preview')
 class AddPreviewResource(Resource):
-    """
-    Add a preview to given task. Revision is automatically set: it is
-    equal to last revision + 1.
-    """
 
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Add a preview to given task. Revision is automatically set: it is
+        equal to last revision + 1.
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -49,13 +60,14 @@ class AddPreviewResource(Resource):
         return preview_file, 201
 
 
+@name_space_actions_tasks.route('/<task_id>/comments/<comment_id>/preview-files/')
+@name_space_preview_file_id.route('/<preview_file_id>')
 class AddExtraPreviewResource(Resource):
-    """
-    Add a preview to given comment.
-    """
-
     @jwt_required
     def post(self, task_id, comment_id, preview_file_id):
+        """
+        Add a preview to given comment.
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -77,26 +89,26 @@ class AddExtraPreviewResource(Resource):
         return "", 204
 
 
+@name_space_tasks.route('/<task_id>/previews')
 class TaskPreviewsResource(Resource):
-    """
-    Return previews linked to given task.
-    """
-
     @jwt_required
     def get(self, task_id):
+        """
+        Return previews linked to given task.
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         return files_service.get_preview_files_for_task(task_id)
 
 
+@name_space_tasks.route('/<task_id>/comments')
 class TaskCommentsResource(Resource):
-    """
-    Return comments link to given task.
-    """
-
     @jwt_required
     def get(self, task_id):
+        """
+        Return comments link to given task.
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -108,6 +120,7 @@ class TaskCommentsResource(Resource):
         )
 
 
+@name_space_tasks.route('/<task_id>/comments/<comment_id>')
 class TaskCommentResource(Resource):
     """
     Remove given comment and update linked task accordingly.
@@ -162,14 +175,14 @@ class TaskCommentResource(Resource):
         return "", 204
 
 
+@name_space_persons.route('/<person_id>/tasks')
 class PersonTasksResource(Resource):
-    """
-    Return task assigned to given user of which status has is_done flag sets
-    to false.
-    """
-
     @jwt_required
     def get(self, person_id):
+        """
+        Return task assigned to given user of which status has is_done flag sets
+        to false.
+        """
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -181,14 +194,15 @@ class PersonTasksResource(Resource):
         return tasks_service.get_person_tasks(person_id, projects)
 
 
+@name_space_persons.route('/<person_id>/related-tasks/<task_type_id>')
 class PersonRelatedTasksResource(Resource):
-    """
-    For all entities assigned to given person (that have at least one task
-    assigned to given person), returns all tasks for given task type.
-    """
 
     @jwt_required
     def get(self, person_id, task_type_id):
+        """
+        For all entities assigned to given person (that have at least one task
+        assigned to given person), returns all tasks for given task type.
+        """
         user = persons_service.get_current_user()
         if person_id != user["id"]:
             permissions.check_admin_permissions()
@@ -196,14 +210,14 @@ class PersonRelatedTasksResource(Resource):
         return tasks_service.get_person_related_tasks(person_id, task_type_id)
 
 
+@name_space_persons.route('/<person_id>/done-tasks')
 class PersonDoneTasksResource(Resource):
-    """
-    Return task assigned to given user of which status has is_done flag sets
-    to true. It return only tasks related to open projects.
-    """
-
     @jwt_required
     def get(self, person_id):
+        """
+        Return task assigned to given user of which status has is_done flag sets
+        to true. It return only tasks related to open projects.
+        """
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -215,13 +229,13 @@ class PersonDoneTasksResource(Resource):
         return tasks_service.get_person_done_tasks(person_id, projects)
 
 
+@name_space_actions_projects.route('/<project_id>/task-types/<task_type_id>/shots/create-tasks')
 class CreateShotTasksResource(Resource):
-    """
-    Create a new task for given shot and task type.
-    """
-
     @jwt_required
     def post(self, project_id, task_type_id):
+        """
+        Create a new task for given shot and task type.
+        """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
@@ -242,6 +256,7 @@ class CreateShotTasksResource(Resource):
         return tasks, 201
 
 
+@name_space_actions_projects.route('/<project_id>/task-types/<task_type_id>/assets/create-tasks')
 class CreateAssetTasksResource(Resource):
     """
     Create a new task for given asset and task type.
@@ -268,13 +283,14 @@ class CreateAssetTasksResource(Resource):
         return tasks, 201
 
 
+@name_space_actions_projects.route('/<project_id>/task-types/<task_type_id>/edits/create-tasks')
 class CreateEditTasksResource(Resource):
-    """
-    Create a new task for given edit and task type.
-    """
 
     @jwt_required
     def post(self, project_id, task_type_id):
+        """
+        Create a new task for given edit and task type.
+        """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
@@ -294,14 +310,15 @@ class CreateEditTasksResource(Resource):
         return tasks, 201
 
 
+@name_space_actions_tasks.route('/<task_id>/to-review')
 class ToReviewResource(Resource):
-    """
-    Change a task status to "to review". It creates a new preview file entry
-    and set path from the hard disk.
-    """
 
     @jwt_required
     def put(self, task_id):
+        """
+        Change a task status to "to review". It creates a new preview file entry
+        and set path from the hard disk.
+        """
         (
             person_id,
             comment,
@@ -361,13 +378,14 @@ class ToReviewResource(Resource):
         )
 
 
+@name_space_actions_tasks.route('/clear-assignation')
 class ClearAssignationResource(Resource):
-    """
-    Remove all assignations set to given task.
-    """
 
     @jwt_required
     def put(self):
+        """
+        Remove all assignations set to given task.
+        """
         (task_ids, person_id) = self.get_arguments()
         current_user = persons_service.get_current_user()
 
@@ -399,14 +417,15 @@ class ClearAssignationResource(Resource):
         return args["task_ids"], args["person_id"]
 
 
+@name_space_actions_persons.route('/<person_id>/assign')
 class TasksAssignResource(Resource):
-    """
-    Assign given task lists to given person. If a given task ID is wrong,
-    it ignores it.
-    """
 
     @jwt_required
     def put(self, person_id):
+        """
+        Assign given task lists to given person. If a given task ID is wrong,
+        it ignores it.
+        """
         (task_ids) = self.get_arguments()
 
         tasks = []
@@ -446,13 +465,14 @@ class TasksAssignResource(Resource):
         return tasks_service.assign_task(task_id, person_id, assigner_id)
 
 
+@name_space_actions_tasks.route('/<task_id>/assign')
 class TaskAssignResource(Resource):
-    """
-    Assign given task to given person.
-    """
 
     @jwt_required
     def put(self, task_id):
+        """
+        Assign given task to given person.
+        """
         (person_id) = self.get_arguments()
 
         try:
@@ -482,28 +502,29 @@ class TaskAssignResource(Resource):
         return tasks_service.assign_task(task_id, person_id)
 
 
+@name_space_tasks.route('/<task_id>/full')
 class TaskFullResource(Resource):
-    """
-    Return a task with many information: full details for assignees, full
-    details for task type, full details for task status, etc.
-    """
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return a task with many information: full details for assignees, full
+        details for task type, full details for task status, etc.
+        """
         task = tasks_service.get_full_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         return task
 
 
+@name_space_entities.route('/<entity_id>/task-types/<task_type_id>/tasks')
 class TaskForEntityResource(Resource):
-    """
-    Return tasks related to given entity asset, episode, sequence, shot or
-    scene.
-    """
 
     @jwt_required
     def get(self, entity_id, task_type_id):
+        """
+        Return tasks related to given entity asset, episode, sequence, shot or scene.
+        """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
         return tasks_service.get_tasks_for_entity_and_task_type(
@@ -511,13 +532,14 @@ class TaskForEntityResource(Resource):
         )
 
 
+@name_space_actions_tasks.route('/<task_id>/time-spents/<date>/persons/<person_id>')
 class SetTimeSpentResource(Resource):
-    """
-    Set time spent by a person on a task for a given day.
-    """
 
     @jwt_required
     def post(self, task_id, date, person_id):
+        """
+        Set time spent by a person on a task for a given day.
+        """
         args = self.get_arguments()
 
         try:
@@ -544,13 +566,14 @@ class SetTimeSpentResource(Resource):
         return args
 
 
+@name_space_actions_tasks.route('/<task_id>/time-spents/<date>/persons/<person_id>/add')
 class AddTimeSpentResource(Resource):
-    """
-    Add given timeframe to time spent by a person on a task for a given day.
-    """
 
     @jwt_required
     def post(self, task_id, date, person_id):
+        """
+        Add given timeframe to time spent by a person on a task for a given day.
+        """
         args = self.get_arguments()
 
         try:
@@ -575,13 +598,14 @@ class AddTimeSpentResource(Resource):
         return args
 
 
+@name_space_actions_tasks.route('/<task_id>/time-spents/<date>')
 class GetTimeSpentResource(Resource):
-    """
-    Get time spent on a given task by a given person.
-    """
 
     @jwt_required
     def get(self, task_id, date):
+        """
+        Get time spent on a given task by a given person.
+        """
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
@@ -591,14 +615,15 @@ class GetTimeSpentResource(Resource):
             abort(404)
 
 
+@name_space_actions_projects.route('/<project_id>/task-types/<task_type_id>/delete-tasks')
 class DeleteAllTasksForTaskTypeResource(Resource):
-    """
-    Delete all tasks for a given task type and project. It's mainly used
-    when tasks are created by mistake at the beginning of the project.
-    """
 
     @jwt_required
     def delete(self, project_id, task_type_id):
+        """
+        Delete all tasks for a given task type and project. It's mainly used
+        when tasks are created by mistake at the beginning of the project.
+        """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         task_ids = deletion_service.remove_tasks_for_project_and_task_type(
@@ -609,14 +634,15 @@ class DeleteAllTasksForTaskTypeResource(Resource):
         return "", 204
 
 
+@name_space_actions_projects.route('/<project_id>/delete-tasks')
 class DeleteTasksResource(Resource):
-    """
-    Delete tasks matching id list given in parameter. See it as a way to batch
-    delete tasks.
-    """
 
     @jwt_required
     def post(self, project_id):
+        """
+        Delete tasks matching id list given in parameter. See it as a way to batch
+        delete tasks.
+        """
         user_service.check_manager_project_access(project_id)
         task_ids = request.json
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
@@ -625,28 +651,28 @@ class DeleteTasksResource(Resource):
         return task_ids, 200
 
 
+@name_space_projects.route('/<project_id>/subscriptions')
 class ProjectSubscriptionsResource(Resource):
-    """
-    Retrieve all subcriptions to tasks related to given project.
-    It's mainly used for synchronisation purpose.
-    """
-
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all subcriptions to tasks related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         projects_service.get_project(project_id)
         return notifications_service.get_subscriptions_for_project(project_id)
 
-
+@name_space_projects.route('/<project_id>/notifications')
 class ProjectNotificationsResource(Resource, ArgsMixin):
-    """
-    Retrieve all notifications related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all notifications related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return notifications_service.get_notifications_for_project(
@@ -654,43 +680,46 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_projects.route('/<project_id>/tasks')
 class ProjectTasksResource(Resource, ArgsMixin):
-    """
-    Retrieve all tasks related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all tasks related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return tasks_service.get_tasks_for_project(project_id, page)
 
 
+@name_space_projects.route('/<project_id>/comments')
 class ProjectCommentsResource(Resource, ArgsMixin):
-    """
-    Retrieve all comments to tasks related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all comments to tasks related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return tasks_service.get_comments_for_project(project_id, page)
 
 
+@name_space_projects.route('/<project_id>/preview-files')
 class ProjectPreviewFilesResource(Resource, ArgsMixin):
-    """
-    Retrieve all comments to tasks related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all comments to tasks related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return files_service.get_preview_files_for_project(project_id, page)

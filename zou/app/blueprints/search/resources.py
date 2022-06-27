@@ -4,8 +4,10 @@ from flask_jwt_extended import jwt_required
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions
 from zou.app.services import index_service, projects_service, user_service
+from zou.app import name_space_search
 
 
+@name_space_search.route('/')
 class SearchResource(Resource, ArgsMixin):
     @jwt_required
     def post(self):

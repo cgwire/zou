@@ -8,13 +8,14 @@ from flask import Response, abort
 from flask_restful import Resource
 from zou import __version__
 
-from zou.app import app, config
+from zou.app import app, config, name_space_index, name_space_status, name_space_stats, name_space_config, name_space_status_txt
 from zou.app.utils import permissions, shell
 from zou.app.services import projects_service, stats_service
 
 from flask_jwt_extended import jwt_required
 
 
+@name_space_index.route('/')
 class IndexResource(Resource):
     def get(self):
         return {"api": app.config["APP_NAME"], "version": __version__}
@@ -71,6 +72,7 @@ class BaseStatusResource(Resource):
         return (api_name, version, is_db_up, is_kv_up, is_es_up, is_jq_up)
 
 
+@name_space_status.route('/')
 class StatusResource(BaseStatusResource):
     def get(self):
         (
@@ -92,6 +94,7 @@ class StatusResource(BaseStatusResource):
         }
 
 
+@name_space_status.route('/resources')
 class StatusResourcesResource(BaseStatusResource):
     def get(self):
         loadavg = list(psutil.getloadavg())
@@ -130,6 +133,7 @@ class StatusResourcesResource(BaseStatusResource):
         }
 
 
+@name_space_status_txt.route('/')
 class TxtStatusResource(BaseStatusResource):
     def get(self):
         (
@@ -158,6 +162,7 @@ job-queue-up: %s
         return Response(text, mimetype="text")
 
 
+@name_space_status.route('/influx')
 class InfluxStatusResource(BaseStatusResource):
     def get(self):
         (
@@ -178,6 +183,7 @@ class InfluxStatusResource(BaseStatusResource):
         }
 
 
+@name_space_stats.route('/')
 class StatsResource(Resource):
     @jwt_required
     def get(self):
@@ -186,6 +192,7 @@ class StatsResource(Resource):
         return stats_service.get_main_stats()
 
 
+@name_space_config.route('/')
 class ConfigResource(Resource):
     def get(self):
         return {"crisp_token": app.config["CRISP_TOKEN"]}

@@ -4,7 +4,7 @@ from flask import request, send_file as flask_send_file
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
-from zou.app import config
+from zou.app import config, name_space_projects, name_space_playlists
 from zou.app.mixin import ArgsMixin
 
 from zou.app.services import (
@@ -21,14 +21,15 @@ from zou.app.utils import fs, permissions
 from zou.utils.movie import EncodingParameters
 
 
+@name_space_projects.route('/<project_id>/playlists')
 class ProjectPlaylistsResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given project. Result is paginated and
-    can be sorted.
-    """
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve all playlists related to given project. Result is paginated and
+        can be sorted.
+        """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         page = self.get_page()
@@ -43,14 +44,15 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_projects.route('/<project_id>/episodes/<episode_id>/playlists')
 class EpisodePlaylistsResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given episode. The full list is returned
-    because the number of playlists in an episode is not that big.
-    """
 
     @jwt_required
     def get(self, project_id, episode_id):
+        """
+        Retrieve all playlists related to given episode. The full list is returned
+        because the number of playlists in an episode is not that big.
+        """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         sort_by = self.get_sort_by()
@@ -66,6 +68,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_projects.route('/<project_id>/playlists/<playlist_id>')
 class ProjectPlaylistResource(Resource):
     @jwt_required
     def get(self, project_id, playlist_id):
@@ -76,6 +79,7 @@ class ProjectPlaylistResource(Resource):
         )
 
 
+@name_space_playlists.route('/entities/<entity_id>/preview-files')
 class EntityPreviewsResource(Resource):
     @jwt_required
     def get(self, entity_id):
@@ -89,6 +93,7 @@ class EntityPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(entity_id)
 
 
+@name_space_playlists.route('/<playlist_id>/jobs/<build_job_id>/build/mp4')
 class PlaylistDownloadResource(Resource):
     @jwt_required
     def get(self, playlist_id, build_job_id):
@@ -137,6 +142,7 @@ class PlaylistDownloadResource(Resource):
             )
 
 
+@name_space_playlists.route('/<playlist_id>/build/mp4')
 class BuildPlaylistMovieResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, playlist_id):
@@ -182,6 +188,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             return {"job": job["status"]}
 
 
+@name_space_playlists.route('/<playlist_id>/download/zip')
 class PlaylistZipDownloadResource(Resource):
     @jwt_required
     def get(self, playlist_id):
@@ -218,6 +225,7 @@ class PlaylistZipDownloadResource(Resource):
         )
 
 
+@name_space_playlists.route('/<playlist_id>/jobs/<build_job_id>')
 class BuildJobResource(Resource):
     @jwt_required
     def get(self, playlist_id, build_job_id):
@@ -235,41 +243,44 @@ class BuildJobResource(Resource):
         return "", 204
 
 
+@name_space_projects.route('/<project_id>/build-jobs')
 class ProjectBuildJobsResource(Resource):
-    """
-    Retrieve all build jobs related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve all build jobs related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         return playlists_service.get_build_jobs_for_project(project_id)
 
 
+@name_space_projects.route('/<project_id>/playlists/all')
 class ProjectAllPlaylistsResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve all playlists related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         page = self.get_page()
         return playlists_service.get_playlists_for_project(project_id, page)
 
 
+@name_space_projects.route('/<project_id>/playlists/temp')
 class TempPlaylistResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required
     def post(self, project_id):
+        """
+        Retrieve all playlists related to given project.
+        It's mainly used for synchronisation purpose.
+        """
         user_service.check_project_access(project_id)
         task_ids = request.json.get("task_ids", [])
         return playlists_service.generate_temp_playlist(task_ids) or []

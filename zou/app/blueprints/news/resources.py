@@ -4,8 +4,10 @@ from flask_jwt_extended import jwt_required
 from zou.app.mixin import ArgsMixin
 from zou.app.services import news_service, projects_service, user_service
 from zou.app.services.exception import NewsNotFoundException
+from zou.app import name_space_projects
 
 
+@name_space_projects.route('/<project_id>/news')
 class ProjectNewsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, project_id):
@@ -70,6 +72,7 @@ class ProjectNewsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_projects.route('/<project_id>/news/<news_id>')
 class ProjectSingleNewsResource(Resource):
     @jwt_required
     def get(self, project_id, news_id):

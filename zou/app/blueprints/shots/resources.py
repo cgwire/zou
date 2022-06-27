@@ -18,8 +18,16 @@ from zou.app.services import (
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions, query
+from zou.app import (
+    name_space_projects,
+    name_space_shots,
+    name_space_episodes,
+    name_space_scenes,
+    name_space_sequences
+)
 
 
+@name_space_shots.route('/<shot_id>')
 class ShotResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, shot_id):
@@ -46,6 +54,7 @@ class ShotResource(Resource, ArgsMixin):
         return "", 204
 
 
+@name_space_scenes.route('/<scene_id>')
 class SceneResource(Resource):
     @jwt_required
     def get(self, scene_id):
@@ -68,6 +77,7 @@ class SceneResource(Resource):
         return "", 204
 
 
+@name_space_shots.route('/all')
 class ShotsResource(Resource):
     @jwt_required
     def get(self):
@@ -88,6 +98,7 @@ class ShotsResource(Resource):
         return shots_service.get_shots(criterions)
 
 
+@name_space_shots.route('/')
 class AllShotsResource(Resource):
     @jwt_required
     def get(self):
@@ -108,6 +119,7 @@ class AllShotsResource(Resource):
         return shots_service.get_shots(criterions)
 
 
+@name_space_scenes.route('/all')
 class ScenesResource(Resource):
     @jwt_required
     def get(self):
@@ -120,6 +132,7 @@ class ScenesResource(Resource):
         return shots_service.get_scenes(criterions)
 
 
+@name_space_shots.route('/<shot_id>/assets')
 class ShotAssetsResource(Resource):
     @jwt_required
     def get(self, shot_id):
@@ -132,6 +145,7 @@ class ShotAssetsResource(Resource):
         return breakdown_service.get_entity_casting(shot_id)
 
 
+@name_space_shots.route('/<shot_id>/task-types')
 class ShotTaskTypesResource(Resource):
     @jwt_required
     def get(self, shot_id):
@@ -144,6 +158,7 @@ class ShotTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_shot(shot_id)
 
 
+@name_space_shots.route('/<shot_id>/tasks')
 class ShotTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, shot_id):
@@ -157,6 +172,7 @@ class ShotTasksResource(Resource, ArgsMixin):
         return tasks_service.get_tasks_for_shot(shot_id, relations=relations)
 
 
+@name_space_sequences.route('/<sequence_id>/shot-tasks')
 class SequenceShotTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, sequence_id):
@@ -174,6 +190,7 @@ class SequenceShotTasksResource(Resource, ArgsMixin):
         )
 
 
+@name_space_episodes.route('/<episode_id>/shot-tasks')
 class EpisodeShotTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
@@ -191,6 +208,7 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
         )
 
 
+@name_space_episodes.route('/<episode_id>/asset-tasks')
 class EpisodeAssetTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
@@ -208,6 +226,7 @@ class EpisodeAssetTasksResource(Resource, ArgsMixin):
         )
 
 
+@name_space_episodes.route('/<episode_id>/shots')
 class EpisodeShotsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
@@ -223,6 +242,7 @@ class EpisodeShotsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_shots.route('/<shot_id>/preview-files')
 class ShotPreviewsResource(Resource):
     @jwt_required
     def get(self, shot_id):
@@ -237,6 +257,7 @@ class ShotPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(shot_id)
 
 
+@name_space_sequences.route('/<sequence_id>/tasks')
 class SequenceTasksResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, sequence_id):
@@ -251,6 +272,7 @@ class SequenceTasksResource(Resource, ArgsMixin):
         )
 
 
+@name_space_sequences.route('/<sequence_id>/task-types')
 class SequenceTaskTypesResource(Resource):
     @jwt_required
     def get(self, sequence_id):
@@ -262,6 +284,7 @@ class SequenceTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_sequence(sequence_id)
 
 
+@name_space_shots.route('/with-tasks')
 class ShotsAndTasksResource(Resource):
     @jwt_required
     def get(self):
@@ -278,6 +301,7 @@ class ShotsAndTasksResource(Resource):
         return shots_service.get_shots_and_tasks(criterions)
 
 
+@name_space_scenes.route('/with-tasks')
 class SceneAndTasksResource(Resource):
     @jwt_required
     def get(self):
@@ -291,6 +315,7 @@ class SceneAndTasksResource(Resource):
         return entities_service.get_entities_and_tasks(criterions)
 
 
+@name_space_sequences.route('/with-tasks')
 class SequenceAndTasksResource(Resource):
     @jwt_required
     def get(self):
@@ -304,6 +329,7 @@ class SequenceAndTasksResource(Resource):
         return entities_service.get_entities_and_tasks(criterions)
 
 
+@name_space_episodes.route('/with-tasks')
 class EpisodeAndTasksResource(Resource):
     @jwt_required
     def get(self):
@@ -317,6 +343,7 @@ class EpisodeAndTasksResource(Resource):
         return entities_service.get_entities_and_tasks(criterions)
 
 
+@name_space_projects.route('/<project_id>/shots')
 class ProjectShotsResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -371,6 +398,7 @@ class ProjectShotsResource(Resource):
         )
 
 
+@name_space_projects.route('/<project_id>/sequences')
 class ProjectSequencesResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -402,6 +430,7 @@ class ProjectSequencesResource(Resource):
         return (args["episode_id"], args["name"])
 
 
+@name_space_projects.route('/<project_id>/episodes')
 class ProjectEpisodesResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -431,6 +460,7 @@ class ProjectEpisodesResource(Resource):
         return args["name"]
 
 
+@name_space_projects.route('/<project_id>/episodes/stats')
 class ProjectEpisodeStatsResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -445,6 +475,7 @@ class ProjectEpisodeStatsResource(Resource):
         )
 
 
+@name_space_projects.route('/<project_id>/episodes/retake-stats')
 class ProjectEpisodeRetakeStatsResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -459,6 +490,7 @@ class ProjectEpisodeRetakeStatsResource(Resource):
         )
 
 
+@name_space_episodes.route('/<episode_id>')
 class EpisodeResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, episode_id):
@@ -481,6 +513,7 @@ class EpisodeResource(Resource, ArgsMixin):
         return "", 204
 
 
+@name_space_episodes.route('/')
 class EpisodesResource(Resource):
     @jwt_required
     def get(self):
@@ -493,6 +526,7 @@ class EpisodesResource(Resource):
         return shots_service.get_episodes(criterions)
 
 
+@name_space_episodes.route('/<episode_id>/sequences')
 class EpisodeSequencesResource(Resource):
     @jwt_required
     def get(self, episode_id):
@@ -512,6 +546,7 @@ class EpisodeSequencesResource(Resource):
             return shots_service.get_sequences(criterions)
 
 
+@name_space_episodes.route('/<episode_id>/task-types')
 class EpisodeTaskTypesResource(Resource):
     @jwt_required
     def get(self, episode_id):
@@ -523,6 +558,7 @@ class EpisodeTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_episode(episode_id)
 
 
+@name_space_episodes.route('/<episode_id>/tasks')
 class EpisodeTasksResource(Resource):
     @jwt_required
     def get(self, episode_id):
@@ -534,6 +570,7 @@ class EpisodeTasksResource(Resource):
         return tasks_service.get_tasks_for_episode(episode_id)
 
 
+@name_space_sequences.route('/<sequence_id>')
 class SequenceResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, sequence_id):
@@ -556,12 +593,13 @@ class SequenceResource(Resource, ArgsMixin):
         return "", 204
 
 
+@name_space_sequences.route('/')
 class SequencesResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all sequence entries. Filters can be specified in the query
-        string.
+        Retrieve all sequence entries. 
+        Filters can be specified in the query string.
         """
         criterions = query.get_query_criterions_from_request(request)
         if "episode_id" in criterions:
@@ -573,6 +611,7 @@ class SequencesResource(Resource):
         return shots_service.get_sequences(criterions)
 
 
+@name_space_sequences.route('/<sequence_id>/shots')
 class SequenceShotsResource(Resource):
     @jwt_required
     def get(self, sequence_id):
@@ -591,6 +630,7 @@ class SequenceShotsResource(Resource):
         return shots_service.get_shots(criterions)
 
 
+@name_space_projects.route('/<project_id>/scenes')
 class ProjectScenesResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -620,6 +660,7 @@ class ProjectScenesResource(Resource):
         return (args["sequence_id"], args["name"])
 
 
+@name_space_sequences.route('/<sequence_id>/scenes')
 class SequenceScenesResource(Resource):
     @jwt_required
     def get(self, sequence_id):
@@ -631,6 +672,7 @@ class SequenceScenesResource(Resource):
         return shots_service.get_scenes_for_sequence(sequence_id)
 
 
+@name_space_scenes.route('/<scene_id>/task-types')
 class SceneTaskTypesResource(Resource):
     @jwt_required
     def get(self, scene_id):
@@ -643,6 +685,7 @@ class SceneTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_scene(scene_id)
 
 
+@name_space_scenes.route('/<scene_id>/tasks')
 class SceneTasksResource(Resource):
     @jwt_required
     def get(self, scene_id):
@@ -654,6 +697,7 @@ class SceneTasksResource(Resource):
         return tasks_service.get_tasks_for_scene(scene_id)
 
 
+@name_space_scenes.route('/<scene_id>/shots')
 class SceneShotsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, scene_id):
@@ -676,6 +720,7 @@ class SceneShotsResource(Resource, ArgsMixin):
         return scenes_service.add_shot_to_scene(scene, shot), 201
 
 
+@name_space_scenes.route('/<scene_id>/shots/<shot_id>')
 class RemoveShotFromSceneResource(Resource):
     @jwt_required
     def delete(self, scene_id, shot_id):
@@ -686,26 +731,28 @@ class RemoveShotFromSceneResource(Resource):
         return "", 204
 
 
+@name_space_shots.route('/<shot_id>/versions')
 class ShotVersionsResource(Resource):
-    """
-    Retrieve data versions of given shot.
-    """
 
     @jwt_required
     def get(self, shot_id):
+        """
+        Retrieve data versions of given shot.
+        """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
         user_service.check_entity_access(shot["id"])
         return shots_service.get_shot_versions(shot_id)
 
 
+@name_space_projects.route('/<project_id>/quotas/<task_type_id>')
 class ProjectQuotasResource(Resource, ArgsMixin):
-    """
-    Retrieve quotas statistics for shots
-    """
 
     @jwt_required
     def get(self, project_id, task_type_id):
+        """
+        Retrieve quotas statistics for shots
+        """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         detail_level = self.get_text_parameter("detail")

@@ -6,7 +6,7 @@ from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 
-from zou.app import config
+from zou.app import config, name_space_playlists, name_space_pictures, name_space_movies, name_space_actions_preview_files, name_space_actions_entities
 from zou.app.mixin import ArgsMixin
 from zou.app.stores import file_store
 from zou.app.services import (
@@ -149,15 +149,15 @@ def send_storage_file(
         raise FileNotFound
 
 
+@name_space_pictures.route('/preview-files/<instance_id>')
 class CreatePreviewFilePictureResource(Resource, ArgsMixin):
-    """
-    Main resource to add a preview. It stores the preview file and generates
-    three picture files matching preview when it's possible: a square thumbnail,
-    a rectangle thumbnail and a midsize file.
-    """
 
     @jwt_required
     def post(self, instance_id):
+        """
+        Main resource to add a preview. 
+        It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file.
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -326,10 +326,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         return files_service.get_preview_file(preview_file_id) is not None
 
 
+@name_space_movies.route('/originals/preview-files/<instance_id>.mp4')
 class PreviewFileMovieResource(Resource):
-    """
-    Allow to download a movie preview.
-    """
 
     def __init__(self):
         Resource.__init__(self)
@@ -349,6 +347,9 @@ class PreviewFileMovieResource(Resource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Allow to download a movie preview.
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -364,13 +365,14 @@ class PreviewFileMovieResource(Resource):
             abort(404)
 
 
+@name_space_movies.route('/low/preview-files/<instance_id>.mp4')
 class PreviewFileLowMovieResource(PreviewFileMovieResource):
-    """
-    Allow to download a lowdef movie preview.
-    """
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Allow to download a lowdef movie preview.
+        """
         if not self.is_allowed(instance_id):
             abort(403)
 
@@ -386,13 +388,14 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
                 abort(404)
 
 
+@name_space_movies.route('/originals/preview-files/<instance_id>/download')
 class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
-    """
-    Allow to download a movie preview.
-    """
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Allow to download a movie preview.
+        """
         if not self.is_allowed(instance_id):
             abort(403)
 
@@ -405,10 +408,8 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
             abort(404)
 
 
+@name_space_pictures.route('/originals/preview-files/<instance_id>.<extension>')
 class PreviewFileResource(Resource):
-    """
-    Allow to download a generic file preview.
-    """
 
     def __init__(self):
         Resource.__init__(self)
@@ -431,6 +432,9 @@ class PreviewFileResource(Resource):
 
     @jwt_required
     def get(self, instance_id, extension):
+        """
+        Allow to download a generic file preview.
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -453,16 +457,17 @@ class PreviewFileResource(Resource):
             abort(404)
 
 
+@name_space_pictures.route('/originals/preview-files/<instance_id>/download')
 class PreviewFileDownloadResource(PreviewFileResource):
-    """
-    Allow to download a generic file preview as attachment.
-    """
 
     def __init__(self):
         PreviewFileResource.__init__(self)
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Allow to download a generic file preview as attachment.
+        """
         if not self.is_allowed(instance_id):
             abort(403)
 
@@ -532,11 +537,13 @@ class BasePreviewPictureResource(Resource):
             abort(404)
 
 
+@name_space_pictures.route('/thumbnails/preview-files/<instance_id>.png')
 class PreviewFileThumbnailResource(BasePreviewPictureResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "thumbnails")
 
 
+@name_space_pictures.route('/previews/preview-files/<instance_id>.png')
 class PreviewFilePreviewResource(BasePreviewPictureResource):
     """
     Smaller version of uploaded image.
@@ -546,11 +553,13 @@ class PreviewFilePreviewResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "previews")
 
 
+@name_space_pictures.route('/thumbnails-square/preview-files/<instance_id>.png')
 class PreviewFileThumbnailSquareResource(BasePreviewPictureResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "thumbnails-square")
 
 
+@name_space_pictures.route('/originals/preview-files/<instance_id>.png')
 class PreviewFileOriginalResource(BasePreviewPictureResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "original")
@@ -651,6 +660,7 @@ class BasePictureResource(Resource):
             abort(404)
 
 
+@name_space_pictures.route('/thumbnails/persons/<instance_id>')
 class CreatePersonThumbnailResource(BaseCreatePictureResource):
     def __init__(self):
         BaseCreatePictureResource.__init__(
@@ -671,6 +681,7 @@ class CreatePersonThumbnailResource(BaseCreatePictureResource):
         return persons_service.update_person(instance_id, {"has_avatar": True})
 
 
+@name_space_pictures.route('/thumbnails/persons/<instance_id>.png')
 class PersonThumbnailResource(BasePictureResource):
     def __init__(self):
         BasePictureResource.__init__(self, "persons")
@@ -679,6 +690,7 @@ class PersonThumbnailResource(BasePictureResource):
         return persons_service.get_person(person_id) is not None
 
 
+@name_space_pictures.route('/thumbnails/organisations/<instance_id>')
 class CreateOrganisationThumbnailResource(BaseCreatePictureResource):
     def __init__(self):
         BaseCreatePictureResource.__init__(
@@ -698,6 +710,7 @@ class CreateOrganisationThumbnailResource(BaseCreatePictureResource):
         )
 
 
+@name_space_pictures.route('/thumbnails/organisations/<instance_id>.png')
 class OrganisationThumbnailResource(BasePictureResource):
     def __init__(self):
         BasePictureResource.__init__(self, "organisations")
@@ -706,6 +719,7 @@ class OrganisationThumbnailResource(BasePictureResource):
         return True
 
 
+@name_space_pictures.route('/thumbnails/projects/<instance_id>')
 class CreateProjectThumbnailResource(BaseCreatePictureResource):
     def __init__(self):
         BaseCreatePictureResource.__init__(
@@ -721,6 +735,7 @@ class CreateProjectThumbnailResource(BaseCreatePictureResource):
         )
 
 
+@name_space_pictures.route('/thumbnails/projects/<instance_id>.png')
 class ProjectThumbnailResource(BasePictureResource):
     def __init__(self):
         BasePictureResource.__init__(self, "projects")
@@ -736,6 +751,7 @@ class ProjectThumbnailResource(BasePictureResource):
             return False
 
 
+@name_space_actions_entities.route('/<entity_id>/set-main-preview/<preview_file_id>')
 class LegacySetMainPreviewResource(Resource):
     @jwt_required
     def put(self, entity_id, preview_file_id):
@@ -747,14 +763,15 @@ class LegacySetMainPreviewResource(Resource):
         )
 
 
+@name_space_actions_preview_files.route('/<preview_file_id>/set-main-preview')
 class SetMainPreviewResource(Resource):
-    """
-    Set given preview as main preview of the related entity. This preview will
-    be used to illustrate the entity.
-    """
 
     @jwt_required
     def put(self, preview_file_id):
+        """
+        Set given preview as main preview of the related entity. 
+        This preview will be used to illustrate the entity.
+        """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -767,13 +784,14 @@ class SetMainPreviewResource(Resource):
         return asset
 
 
+@name_space_actions_preview_files.route('/<preview_file_id>/update-position')
 class UpdatePreviewPositionResource(Resource, ArgsMixin):
-    """
-    Allow to change orders of previews for a single revision.
-    """
 
     @jwt_required
     def put(self, preview_file_id):
+        """
+        Allow to change orders of previews for a single revision.
+        """
         parser = reqparse.RequestParser()
         parser.add_argument("position", default=0, type=int)
         args = parser.parse_args()
@@ -786,17 +804,18 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         )
 
 
+@name_space_actions_preview_files.route('/<preview_file_id>/update-annotations')
 class UpdateAnnotationsResource(Resource, ArgsMixin):
-    """
-    Allow to modify the annotations stored at the preview level.
-    Modifications are applied via three fields:
-    * `annotation`s to give all the annotations that need to be added.
-    * `updates` that list annotations that needs to be modified.
-    * `deletions` to list the IDs of annotations that needs to be removed.
-    """
 
     @jwt_required
     def put(self, preview_file_id):
+        """
+        Allow to modify the annotations stored at the preview level.
+        Modifications are applied via three fields:
+        * `annotation`s to give all the annotations that need to be added.
+        * `updates` that list annotations that needs to be modified.
+        * `deletions` to list the IDs of annotations that needs to be removed.
+        """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -833,13 +852,13 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         )
 
 
+@name_space_playlists.route('/preview-files/running')
 class RunningPreviewFiles(Resource, ArgsMixin):
-    """
-    Retrieve all preview files from open productions with states equals
-    to processing or broken
-    """
 
     @jwt_required
     def get(self):
+        """
+        Retrieve all preview files from open productions with states equals to processing or broken
+        """
         permissions.check_admin_permissions()
         return preview_files_service.get_running_preview_files()

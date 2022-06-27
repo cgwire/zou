@@ -31,6 +31,18 @@ from zou.app.services.exception import (
     EntryAlreadyExistsException,
 )
 
+from zou.app import (
+    name_space_files,
+    name_space_tasks,
+    name_space_asset_instances,
+    name_space_entities_not_data,
+    name_space_output_type,
+    name_space_entities,
+    name_space_working_files,
+    name_space_actions_projects,
+    name_space_actions_working_files
+)
+
 
 def send_storage_file(working_file_id, as_attachment=False):
     """
@@ -78,6 +90,7 @@ def send_storage_file(working_file_id, as_attachment=False):
         )
 
 
+@name_space_working_files.route('/<working_file_id>/file')
 class WorkingFileFileResource(Resource):
     """
     Allow to download and store a working file.
@@ -114,15 +127,16 @@ class WorkingFileFileResource(Resource):
         return working_file, 201
 
 
+@name_space_tasks.route('/<task_id>/working-file-path')
 class WorkingFilePathResource(Resource):
-    """
-    Generate from file tree template a working file path based on several
-    parameters: task, software, mode, revision and separator. Revision can be
-    computed automatically as next revision if not given.
-    """
 
     @jwt_required
     def post(self, task_id):
+        """
+        Generate from file tree template a working file path based on several
+        parameters: task, software, mode, revision and separator. Revision can be
+        computed automatically as next revision if not given.
+        """
         (
             name,
             mode,
@@ -190,6 +204,7 @@ class WorkingFilePathResource(Resource):
         )
 
 
+@name_space_entities.route('/<entity_id>/output-file-path')
 class EntityOutputFilePathResource(Resource, ArgsMixin):
     """
     Generate from file tree template an output file path based on several
@@ -258,16 +273,18 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         )
 
 
+@name_space_asset_instances.route('/<asset_instance_id>')
+@name_space_entities_not_data.route('/<temporal_entity_id>/output-file-path')
 class InstanceOutputFilePathResource(Resource, ArgsMixin):
-    """
-    Generate from file tree template an output file path based on several
-    parameters: asset instance, output type, task type, revision, mode,
-    revision, name and separator. Revision can be computed automatically as next
-    revision in case no revision is given in parameter.
-    """
 
     @jwt_required
     def post(self, asset_instance_id, temporal_entity_id):
+        """
+        Generate from file tree template an output file path based on several
+        parameters: asset instance, output type, task type, revision, mode,
+        revision, name and separator. Revision can be computed automatically as next
+        revision in case no revision is given in parameter.
+        """
         args = self.get_arguments()
 
         try:
@@ -324,6 +341,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
         )
 
 
+@name_space_tasks.route('/<task_id>/working-files/last-revisions')
 class LastWorkingFilesResource(Resource):
     """
     Return last working files revision for each file name for given task.
@@ -340,13 +358,14 @@ class LastWorkingFilesResource(Resource):
         return result
 
 
+@name_space_tasks.route('/<task_id>/working-files')
 class TaskWorkingFilesResource(Resource):
-    """
-    Return all working file revisions for a given task.
-    """
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return all working file revisions for a given task.
+        """
         result = {}
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
@@ -355,18 +374,18 @@ class TaskWorkingFilesResource(Resource):
 
         return result
 
-
+@name_space_tasks.route('/<task_id>/working-files/new')
 class NewWorkingFileResource(Resource):
-    """
-    A working file is a file used to produce output files. It is the file the CG
-    artist is working on. It is versioned, tied to a task and a software and
-    requires a comment each time it is created.
-    A path is generated for each file created. The path format is defined
-    in the file tree template file.
-    """
 
     @jwt_required
     def post(self, task_id):
+        """
+        A working file is a file used to produce output files. 
+        It is the file the CG artist is working on. It is versioned, tied to a task and a software and
+        requires a comment each time it is created.
+        A path is generated for each file created. The path format is defined
+        in the file tree template file.
+        """
         (
             name,
             mode,
@@ -447,13 +466,14 @@ class NewWorkingFileResource(Resource):
         )
 
 
+@name_space_actions_working_files.route('/<working_file_id>/modified')
 class ModifiedFileResource(Resource):
-    """
-    Update working file modification date with current date.
-    """
-
     @jwt_required
     def put(self, working_file_id):
+        """
+        Update working file modification date with current date.
+        """
+        
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -464,13 +484,14 @@ class ModifiedFileResource(Resource):
         return working_file
 
 
+@name_space_actions_working_files.route('/<working_file_id>/comment')
 class CommentWorkingFileResource(Resource):
-    """
-    Update comment on given working file.
-    """
 
     @jwt_required
     def put(self, working_file_id):
+        """
+        Update comment on given working file.
+        """
         comment = self.get_comment_from_args()
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
@@ -495,6 +516,7 @@ class CommentWorkingFileResource(Resource):
         return working_file
 
 
+@name_space_entities.route('/<entity_id>/output-files/new')
 class NewEntityOutputFileResource(Resource, ArgsMixin):
     """
     Output files are linked to entities. Each time a CG artist is satisfied
@@ -636,6 +658,8 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
         return output_file
 
 
+@name_space_asset_instances.route('/<asset_instance_id>')
+@name_space_entities_not_data.route('/<temporal_entity_id>/output-files/new')
 class NewInstanceOutputFileResource(Resource, ArgsMixin):
     """
     Some output files are linked to assets through an instance of this asset
@@ -786,13 +810,14 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
         return output_file
 
 
+@name_space_entities.route('/<entity_id>/output-files/next-revision')
 class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
-    """
-    Get next revision for given entity, output type, task type and name.
-    """
 
     @jwt_required
     def post(self, entity_id):
+        """
+        Get next revision for given entity, output type, task type and name.
+        """
         args = self.get_arguments()
         entity = entities_service.get_entity(entity_id)
         output_type = files_service.get_output_type(args["output_type_id"])
@@ -814,14 +839,15 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
             ]
         )
 
-
+@name_space_asset_instances.route('/<asset_instance_id>')
+@name_space_entities_not_data.route('/<temporal_entity_id>/output-files/next-revision')
 class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
-    """
-    Get next revision for given asset instance, output type, task type and name.
-    """
 
     @jwt_required
     def post(self, asset_instance_id, temporal_entity_id):
+        """
+        Get next revision for given asset instance, output type, task type and name.
+        """
         args = self.get_arguments()
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -851,6 +877,7 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
         )
 
 
+@name_space_entities.route('/<entity_id>/output-files/last-revisions')
 class LastEntityOutputFilesResource(Resource):
     """
     Last revisions of output files for given entity grouped by output type
@@ -871,14 +898,16 @@ class LastEntityOutputFilesResource(Resource):
         )
 
 
+@name_space_asset_instances.route('/<asset_instance_id>')
+@name_space_entities_not_data.route('/<temporal_entity_id>/output-files/last-revisions')
 class LastInstanceOutputFilesResource(Resource):
-    """
-    Last revisions of output files for given instance grouped by output type
-    and file name.
-    """
 
     @jwt_required
     def get(self, asset_instance_id, temporal_entity_id):
+        """
+        Last revisions of output files for given instance grouped by output type
+        and file name.
+        """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
@@ -893,6 +922,7 @@ class LastInstanceOutputFilesResource(Resource):
         )
 
 
+@name_space_entities.route('/<entity_id>/output-types')
 class EntityOutputTypesResource(Resource):
     """
     Return all types of output generated for given entity.
@@ -905,13 +935,15 @@ class EntityOutputTypesResource(Resource):
         return files_service.get_output_types_for_entity(entity_id)
 
 
+@name_space_asset_instances.route('/<asset_instance_id>')
+@name_space_entities_not_data.route('/<temporal_entity_id>/output-types')
 class InstanceOutputTypesResource(Resource):
-    """
-    Return all types of output generated for given instance.
-    """
 
     @jwt_required
     def get(self, asset_instance_id, temporal_entity_id):
+        """
+        Return all types of output generated for given instance.
+        """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
@@ -920,13 +952,14 @@ class InstanceOutputTypesResource(Resource):
         )
 
 
+@name_space_entities.route('/<entity_id>/output-types/<output_type_id>/output-files')
 class EntityOutputTypeOutputFilesResource(Resource):
-    """
-    Get all output files for given entity and given output type.
-    """
 
     @jwt_required
     def get(self, entity_id, output_type_id):
+        """
+        Get all output files for given entity and given output type.
+        """
         representation = request.args.get("representation", None)
 
         entity = entities_service.get_entity(entity_id)
@@ -941,13 +974,16 @@ class EntityOutputTypeOutputFilesResource(Resource):
         return output_files
 
 
+@name_space_asset_instances.route('/<asset_instance_id>')
+@name_space_entities_not_data.route('/<temporal_entity_id>/output-types')
+@name_space_output_type.route('/')
 class InstanceOutputTypeOutputFilesResource(Resource):
-    """
-    Get all output files for given asset instance and given output type.
-    """
 
     @jwt_required
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
+        """
+        Get all output files for given asset instance and given output type.
+        """
         representation = request.args.get("representation", None)
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -965,6 +1001,7 @@ class InstanceOutputTypeOutputFilesResource(Resource):
         )
 
 
+@name_space_entities.route('/<entity_id>/output-files')
 class EntityOutputFilesResource(Resource):
     """
     Get all output files for given asset instance and given output type.
@@ -991,13 +1028,14 @@ class EntityOutputFilesResource(Resource):
         )
 
 
+@name_space_asset_instances.route('/<asset_instance_id>/output-files')
 class InstanceOutputFilesResource(Resource):
-    """
-    Get all output files for given asset instance and given output type.
-    """
 
     @jwt_required
     def get(self, asset_instance_id):
+        """
+        Get all output files for given asset instance and given output type.
+        """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = assets_service.get_asset(asset_instance["asset_id"])
         user_service.check_project_access(asset["project_id"])
@@ -1020,14 +1058,15 @@ class InstanceOutputFilesResource(Resource):
         )
 
 
+@name_space_files.route('/<file_id>')
 class FileResource(Resource):
-    """
-    Get information about a file that could be a working file as much as an
-    output file.
-    """
 
     @jwt_required
     def get(self, file_id):
+        """
+        Get information about a file that could be a working file as much as an
+        output file.
+        """
         try:
             file_dict = files_service.get_working_file(file_id)
             task = tasks_service.get_task(file_dict["task_id"])
@@ -1041,6 +1080,7 @@ class FileResource(Resource):
         return file_dict
 
 
+@name_space_actions_projects.route('/<project_id>/set-file-tree')
 class SetTreeResource(Resource):
     """
     Define a template file to use for given project. Template files are located
@@ -1075,13 +1115,14 @@ class SetTreeResource(Resource):
         return args.get("tree_name", "")
 
 
+@name_space_entities.route('/<entity_id>/working-files')
 class EntityWorkingFilesResource(Resource):
-    """
-    Get all working files for a given entity and possibly a task and a name
-    """
 
     @jwt_required
     def get(self, entity_id):
+        """
+        Get all working files for a given entity and possibly a task and a name
+        """
         task_id = request.args.get("task_id", None)
         name = request.args.get("name", None)
         relations = request.args.get("relations", False)
