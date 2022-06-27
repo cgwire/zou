@@ -7,8 +7,10 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/status')
 class ImportShotgunStatusResource(BaseImportShotgunResource):
     def import_entry(self, data):
         task_status = self.get_existing_status(data)
@@ -41,6 +43,7 @@ class ImportShotgunStatusResource(BaseImportShotgunResource):
         return task_status
 
 
+@name_space_shotgun.route('/remove/status')
 class ImportRemoveShotgunStatusResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, TaskStatus)

@@ -17,8 +17,10 @@ from zou.app.services.tasks_service import (
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
 from zou.app.utils import events
+from zou.app import name_space_import_csv
 
 
+@name_space_import_csv.route('/projects/<project_id>/edits')
 class EditsCsvImportResource(BaseCsvProjectImportResource):
     def prepare_import(self, project_id):
         self.episodes = {}

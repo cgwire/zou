@@ -11,8 +11,10 @@ from zou.app.blueprints.source.shotgun.base import (
 )
 
 from zou.app.services.exception import WrongFileTreeFileException
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/projects')
 class ImportShotgunProjectsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
@@ -74,6 +76,7 @@ class ImportShotgunProjectsResource(BaseImportShotgunResource):
         return project
 
 
+@name_space_shotgun.route('/remove/project')
 class ImportRemoveShotgunProjectResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, Project)

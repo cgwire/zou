@@ -8,8 +8,10 @@ from zou.app.services import assets_service, shots_service, tasks_service
 from sqlalchemy import and_
 
 from zou.app.utils import date_helpers
+from zou.app import name_space_import_csv
 
 
+@name_space_import_csv.route('/projects/<project_id>/task-types/<task_type_id>/estimations')
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
     def prepare_import(self, project_id, task_type_id, episode_id=None):
         self.organisation = Organisation.query.first()
@@ -90,6 +92,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         tasks_service.update_task(self.tasks_map[entity_id], new_data)
 
 
+@name_space_import_csv.route('/projects/<project_id>/episodes/<episode_id>/task-types/<task_type_id>/estimations')
 class TaskTypeEstimationsEpisodeCsvImportResource(
     TaskTypeEstimationsCsvImportResource
 ):

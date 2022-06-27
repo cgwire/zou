@@ -1,3 +1,4 @@
+from unicodedata import name
 from flask_restful import Resource, current_app
 
 from zou.app.models.department import Department
@@ -10,7 +11,9 @@ from zou.app.blueprints.source.shotgun.base import (
     ImportRemoveShotgunBaseResource,
 )
 
+from zou.app import name_space_shotgun
 
+@name_space_shotgun.route('/steps')
 class ImportShotgunStepsResource(BaseImportShotgunResource):
     def __init__(self):
         Resource.__init__(self)
@@ -81,6 +84,7 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
         return task_type
 
 
+@name_space_shotgun.route('/remove/step')
 class ImportRemoveShotgunStepResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, TaskType)

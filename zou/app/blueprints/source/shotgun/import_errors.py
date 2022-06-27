@@ -5,8 +5,10 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
 
 from zou.app.models.data_import_error import DataImportError
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/errors')
 class ShotgunImportErrorsResource(Resource):
     def __init__(self):
         Resource.__init__(self)
@@ -24,6 +26,7 @@ class ShotgunImportErrorsResource(Resource):
         return error.serialize(), 201
 
 
+@name_space_shotgun.route('/errors/<error_id>')
 class ShotgunImportErrorResource(Resource):
     def __init__(self):
         Resource.__init__(self)

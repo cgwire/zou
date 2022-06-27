@@ -10,8 +10,10 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/notes')
 class ImportShotgunNotesResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.person_ids = Person.get_id_map()
@@ -55,6 +57,7 @@ class ImportShotgunNotesResource(BaseImportShotgunResource):
         return comment
 
 
+@name_space_shotgun.route('/remove/note')
 class ImportRemoveShotgunNoteResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, Comment)

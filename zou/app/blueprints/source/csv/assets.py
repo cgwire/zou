@@ -10,8 +10,10 @@ from zou.app.models.entity import Entity
 from zou.app.services import comments_service, index_service, tasks_service
 from zou.app.services.persons_service import get_current_user
 from zou.app.utils import events, cache
+from zou.app import name_space_import_csv
 
 
+@name_space_import_csv.route('/projects/<project_id>/assets')
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
     def prepare_import(self, project_id):
         self.episodes = {}

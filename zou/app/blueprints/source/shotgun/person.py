@@ -1,6 +1,6 @@
 from flask_restful import current_app
 
-from zou.app import db
+from zou.app import db, name_space_shotgun
 from zou.app.models.department import Department
 from zou.app.models.person import Person, department_link as DepartmentLink
 from zou.app.utils import auth
@@ -14,6 +14,7 @@ from zou.app.blueprints.source.shotgun.base import (
 from zou.app.services import tasks_service
 
 
+@name_space_shotgun.route('/persons')
 class ImportShotgunPersonsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
@@ -100,6 +101,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
             raise ShotgunEntryImportFailed("This entry is not a real person.")
 
 
+@name_space_shotgun.route('/remove/person')
 class ImportRemoveShotgunPersonResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, Person)

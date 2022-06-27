@@ -10,8 +10,10 @@ from zou.app.services import (
 )
 
 from zou.app.utils import events
+from zou.app import name_space_import_csv
 
 
+@name_space_import_csv.route('/projects/<project_id>/casting')
 class CastingCsvImportResource(BaseCsvProjectImportResource):
     def prepare_import(self, project_id):
         self.asset_type_map = {}

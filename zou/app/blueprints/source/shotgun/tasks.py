@@ -12,8 +12,10 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/tasks')
 class ImportShotgunTasksResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.project_ids = Project.get_id_map()
@@ -118,6 +120,7 @@ class ImportShotgunTasksResource(BaseImportShotgunResource):
         return task
 
 
+@name_space_shotgun.route('/remove/task')
 class ImportRemoveShotgunTaskResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, Task, self.delete_func)

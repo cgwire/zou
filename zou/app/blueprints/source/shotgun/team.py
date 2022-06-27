@@ -8,8 +8,10 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/projectconnections')
 class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
@@ -50,6 +52,7 @@ class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
         return project
 
 
+@name_space_shotgun.route('/remove/projectconnection')
 class ImportRemoveShotgunProjectConnectionResource(
     ImportRemoveShotgunBaseResource
 ):

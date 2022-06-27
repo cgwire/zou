@@ -9,8 +9,10 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/scenes')
 class ImportShotgunScenesResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
@@ -72,6 +74,7 @@ class ImportShotgunScenesResource(BaseImportShotgunResource):
         return self.sg_entries
 
 
+@name_space_shotgun.route('/remove/scene')
 class ImportRemoveShotgunSceneResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(

@@ -19,8 +19,10 @@ from zou.app.services import (
 )
 
 from zou.app.services.exception import AssetNotFoundException
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/assets')
 class ImportShotgunAssetsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
@@ -112,6 +114,7 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
         return self.parent_map
 
 
+@name_space_shotgun.route('/remove/asset')
 class ImportRemoveShotgunAssetResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(

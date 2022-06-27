@@ -16,6 +16,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
+from zou.app import name_space_kitsu
 
 
 class BaseImportKitsuResource(Resource, ArgsMixin):
@@ -52,6 +53,7 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         return permissions.has_admin_permissions()
 
 
+@name_space_kitsu.route('/comments')
 class ImportKitsuCommentsResource(BaseImportKitsuResource):
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Entity)
@@ -76,6 +78,7 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
         )
 
 
+@name_space_kitsu.route('/entities')
 class ImportKitsuEntitiesResource(BaseImportKitsuResource):
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Entity)
@@ -98,6 +101,7 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         )
 
 
+@name_space_kitsu.route('/projects')
 class ImportKitsuProjectsResource(BaseImportKitsuResource):
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Project)
@@ -106,6 +110,7 @@ class ImportKitsuProjectsResource(BaseImportKitsuResource):
         events.emit("project:%s" % event_type, project_id=entry["id"])
 
 
+@name_space_kitsu.route('/tasks')
 class ImportKitsuTasksResource(BaseImportKitsuResource):
     def __init__(self):
         BaseImportKitsuResource.__init__(self, Task)
@@ -122,6 +127,7 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         events.emit("task:%s" % event_type, project_id=entry["project_id"])
 
 
+@name_space_kitsu.route('/entity-links')
 class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
     def __init__(self):
         BaseImportKitsuResource.__init__(self, EntityLink)

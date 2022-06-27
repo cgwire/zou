@@ -8,8 +8,10 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
+from zou.app import name_space_shotgun
 
 
+@name_space_shotgun.route('/versions')
 class ImportShotgunVersionsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
@@ -66,6 +68,7 @@ class ImportShotgunVersionsResource(BaseImportShotgunResource):
         return preview_file
 
 
+@name_space_shotgun.route('/remove/version')
 class ImportRemoveShotgunVersionResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, PreviewFile)

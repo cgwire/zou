@@ -11,7 +11,10 @@ from zou.app.blueprints.source.shotgun.exception import (
     ShotgunEntryImportFailed,
 )
 
+from zou.app import name_space_shotgun
 
+
+@name_space_shotgun.route('/episodes')
 class ImportShotgunEpisodesResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.episode_type = shots_service.get_episode_type()
@@ -56,6 +59,7 @@ class ImportShotgunEpisodesResource(BaseImportShotgunResource):
         return episode
 
 
+@name_space_shotgun.route('/remove/episode')
 class ImportRemoveShotgunEpisodeResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(

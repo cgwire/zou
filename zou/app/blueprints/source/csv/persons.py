@@ -4,8 +4,10 @@ from zou.app.models.person import Person
 from zou.app.utils import auth, permissions
 
 from sqlalchemy.exc import IntegrityError
+from zou.app import name_space_import_csv
 
 
+@name_space_import_csv.route('/persons')
 class PersonsCsvImportResource(BaseCsvImportResource):
     def check_permissions(self):
         return permissions.check_admin_permissions()
