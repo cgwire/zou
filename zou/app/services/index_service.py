@@ -142,11 +142,11 @@ def remove_asset_index(asset_id):
     """
     Remove document matching given asset id from asset index.
     """
-    return remove_entry_index(get_asset_index(), asset_id)
+    return remove_entry_index(get_asset_index(), str(asset_id))
 
 
 def remove_person_index(person_id):
     """
     Remove document matching given person id from person index.
     """
-    return remove_entry_index(get_person_index(), person_id)
+    return remove_entry_index(get_person_index(), str(person_id))
