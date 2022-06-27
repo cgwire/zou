@@ -14,8 +14,12 @@ from zou.app.services import (
     user_service,
 )
 
+from zou.app import name_space_attachment_files, name_space_tasks, name_space_actions_tasks, name_space_projects, name_space_actions_projects
 
+
+@name_space_attachment_files.route('/<attachment_file_id>/file/<file_name>')
 class DownloadAttachmentResource(Resource):
+    @name_space_attachment_files.doc(responses={200:'OK'})
     @jwt_required
     def get(self, attachment_file_id, file_name):
         attachment_file = comments_service.get_attachment_file(
@@ -38,30 +42,33 @@ class DownloadAttachmentResource(Resource):
             abort(404)
 
 
+@name_space_tasks.route('/<task_id>/comments/<comment_id>/ack')
 class AckCommentResource(Resource):
-    """
-    Acknowledge given comment. If it's already acknowledged, remove
-    acknowledgement.
-    """
-
+    
+    @name_space_tasks.doc(responses={200:'OK'})
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Acknowledge given comment
+        If it's already acknowledged, remove acknowledgement.
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         return comments_service.acknowledge_comment(comment_id)
 
 
+@name_space_actions_tasks.route('/<task_id>/comment')
 class CommentTaskResource(Resource):
-    """
-    Creates a new comment for given task. It requires a text, a task_status
-    and a person as arguments. This way, comments keep history of status
-    changes. When the comment is created, it updates the task status with
-    given task status.
-    """
-
+    @name_space_actions_tasks.doc(responses={201:'OK'})
     @jwt_required
     def post(self, task_id):
+        """
+        Creates a new comment for given task
+        It requires a text, a task_status and a person as arguments. 
+        This way, comments keep history of status changes. 
+        When the comment is created, it updates the task status with given task status.
+        """
         (
             task_status_id,
             comment,
@@ -118,13 +125,14 @@ class CommentTaskResource(Resource):
         )
 
 
+@name_space_actions_tasks.route('/<task_id>/comments/<comment_id>/add-attachment')
 class AddAttachmentToCommentResource(Resource):
-    """
-    Add given files to the comment entry as attachments.
-    """
-
+    @name_space_actions_tasks.doc(responses={200:'OK'})
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Add given files to the comment entry as attachments.
+        """
         files = request.files
         permissions.check_admin_permissions()
         comment = tasks_service.get_comment(comment_id)
@@ -132,16 +140,17 @@ class AddAttachmentToCommentResource(Resource):
         return comment["attachment_files"], 201
 
 
+@name_space_actions_projects.route('/<project_id>/tasks/comment-many')
 class CommentManyTasksResource(Resource):
-    """
-    Create several comments at once. Each comment, requires a text, a task id,
-    task_status and a person as arguments. This way, comments keep history of
-    status changes. When the comment is created, it updates the task status with
-    given task status.
-    """
-
+    @name_space_actions_projects.doc(responses={201:'OK'})
     @jwt_required
     def post(self, project_id):
+        """
+        Create several comments at once
+        Each comment, requires a text, a task id, task_status and a person as arguments. 
+        This way, comments keep history of status changes.
+        When the comment is created, it updates the task status with given task status.
+        """
         comments = request.json
         person_id = persons_service.get_current_user()["id"]
         try:
@@ -181,13 +190,15 @@ class CommentManyTasksResource(Resource):
         return allowed_comments
 
 
+@name_space_tasks.route('/<task_id>/comments/<comment_id>/reply')
 class ReplyCommentResource(Resource, ArgsMixin):
-    """
-    Reply to given comment. Add comment to its replies list.
-    """
-
+    @name_space_tasks.doc(responses={200:'OK'})
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Reply to given comment
+        Add comment to its replies list.
+        """
         args = self.get_args(
             [
                 ("text", "", False),
@@ -199,13 +210,14 @@ class ReplyCommentResource(Resource, ArgsMixin):
         return comments_service.reply_comment(comment_id, args["text"])
 
 
+@name_space_tasks.route('/<task_id>/comments/<comment_id>/reply/<reply_id>')
 class DeleteReplyCommentResource(Resource):
-    """
-    Delete given comment reply.
-    """
-
+    @name_space_tasks.doc(responses={200:'OK'})
     @jwt_required
     def delete(self, task_id, comment_id, reply_id):
+        """
+        Delete given comment reply
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -216,25 +228,27 @@ class DeleteReplyCommentResource(Resource):
         return comments_service.delete_reply(comment_id, reply_id)
 
 
+@name_space_projects.route('/<project_id>/attachment-files')
 class ProjectAttachmentFiles(Resource):
-    """
-    Return all attachment files related to given project.
-    """
-
+    @name_space_projects.doc(responses={200:'OK'})
     @jwt_required
     def get(self, project_id):
+        """
+        Return all attachment files related to given project.
+        """
         permissions.check_admin_permissions()
         return comments_service.get_all_attachment_files_for_project(
             project_id
         )
 
 
+@name_space_tasks.route('/<task_id>/attachment-files')
 class TaskAttachmentFiles(Resource):
-    """
-    Return all attachment files related to given task.
-    """
-
+    @name_space_tasks.doc(responses={200:'OK'})
     @jwt_required
     def get(self, task_id):
+        """
+        Return all attachment files related to given task.
+        """
         permissions.check_admin_permissions()
         return comments_service.get_all_attachment_files_for_task(task_id)
