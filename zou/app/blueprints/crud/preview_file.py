@@ -9,8 +9,10 @@ from zou.app.services import (
 from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
+from zou.app import name_space_preview_files
 
 
+@name_space_preview_files.route('/')
 class PreviewFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, PreviewFile)
@@ -35,6 +37,7 @@ class PreviewFilesResource(BaseModelsResource):
         return True
 
 
+@name_space_preview_files.route('/<instance_id>')
 class PreviewFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, PreviewFile)

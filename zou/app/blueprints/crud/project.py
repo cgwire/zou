@@ -18,8 +18,9 @@ from zou.app.services import (
 from zou.app.utils import events, permissions, fields
 
 from .base import BaseModelResource, BaseModelsResource
+from zou.app import name_space_projects, name_space_task_type_links
 
-
+@name_space_projects.route('/')
 class ProjectsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Project)
@@ -78,6 +79,7 @@ class ProjectsResource(BaseModelsResource):
         return project_dict
 
 
+@name_space_projects.route('/<instance_id>')
 class ProjectResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Project)
@@ -136,6 +138,7 @@ class ProjectResource(BaseModelResource):
         projects_service.clear_project_cache(project_dict["id"])
         return project_dict
 
+    @name_space_projects.doc(responses={204:'OK', 400 : 'Only closed projects can be deleted'})
     @jwt_required
     def delete(self, instance_id):
         parser = reqparse.RequestParser()
@@ -160,7 +163,9 @@ class ProjectResource(BaseModelResource):
             return "", 204
 
 
+@name_space_task_type_links.route('/')
 class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
+    @name_space_task_type_links.doc(responses={200:'OK'})
     @jwt_required
     def post(self):
         data = self.get_args(

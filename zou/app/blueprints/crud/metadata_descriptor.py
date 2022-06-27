@@ -7,8 +7,10 @@ from .base import BaseModelResource, BaseModelsResource
 from sqlalchemy.exc import StatementError
 
 from zou.app.services.exception import DepartmentNotFoundException
+from zou.app import name_space_metadata_descriptors
 
 
+@name_space_metadata_descriptors.route('/')
 class MetadataDescriptorsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, MetadataDescriptor)
@@ -23,6 +25,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
         ]
 
 
+@name_space_metadata_descriptors.route('/<instance_id>')
 class MetadataDescriptorResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, MetadataDescriptor)

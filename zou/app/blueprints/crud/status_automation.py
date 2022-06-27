@@ -7,8 +7,10 @@ from .base import BaseModelsResource, BaseModelResource
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.project import ProjectStatusAutomationLink
 from zou.app.services import status_automations_service, user_service
+from zou.app import name_space_status_automations
 
 
+@name_space_status_automations.route('/')
 class StatusAutomationsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, StatusAutomation)
@@ -22,6 +24,7 @@ class StatusAutomationsResource(BaseModelsResource):
         return status_automation.serialize()
 
 
+@name_space_status_automations.route('/<instance_id>')
 class StatusAutomationResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, StatusAutomation)
@@ -30,6 +33,7 @@ class StatusAutomationResource(BaseModelResource):
         status_automations_service.clear_status_automation_cache()
         return status_automation
 
+    @name_space_status_automations.doc(responses={204:'OK', 400:'Exception error'})
     @jwt_required
     def delete(self, instance_id):
         """

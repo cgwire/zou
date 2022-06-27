@@ -4,8 +4,10 @@ from .base import BaseModelResource, BaseModelsResource
 
 from zou.app.services import user_service
 from zou.app.services.exception import ArgumentsException
+from zou.app import name_space_schedule_items
 
 
+@name_space_schedule_items.route('/')
 class ScheduleItemsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, ScheduleItem)
@@ -21,6 +23,7 @@ class ScheduleItemsResource(BaseModelsResource):
         return schedule_item
 
 
+@name_space_schedule_items.route('/<instance_id>')
 class ScheduleItemResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, ScheduleItem)

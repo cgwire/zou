@@ -1,4 +1,4 @@
-from zou.app import db
+from zou.app import db, name_space_task_types
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 from zou.app.services.exception import ArgumentsException
@@ -7,6 +7,7 @@ from zou.app.services import tasks_service, projects_service
 from .base import BaseModelResource, BaseModelsResource
 
 
+@name_space_task_types.route('/')
 class TaskTypesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, TaskType)
@@ -28,6 +29,7 @@ class TaskTypesResource(BaseModelsResource):
         return instance.serialize()
 
 
+@name_space_task_types.route('/<instance_id>')
 class TaskTypeResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, TaskType)

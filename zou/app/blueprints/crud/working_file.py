@@ -2,13 +2,16 @@ from .base import BaseModelsResource, BaseModelResource
 
 from zou.app.models.working_file import WorkingFile
 from zou.app.services import user_service, tasks_service, files_service
+from zou.app import name_space_working_files
 
 
+@name_space_working_files.route('/')
 class WorkingFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, WorkingFile)
 
 
+@name_space_working_files.route('/<instance_id>')
 class WorkingFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, WorkingFile)

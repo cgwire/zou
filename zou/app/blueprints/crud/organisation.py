@@ -1,8 +1,10 @@
 from zou.app.models.organisation import Organisation
 from zou.app.utils import fields
 from .base import BaseModelResource, BaseModelsResource
+from zou.app import name_space_organisations
 
 
+@name_space_organisations.route('/')
 class OrganisationsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Organisation)
@@ -14,6 +16,7 @@ class OrganisationsResource(BaseModelsResource):
         return True
 
 
+@name_space_organisations.route('/<instance_id>')
 class OrganisationResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Organisation)

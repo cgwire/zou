@@ -1,8 +1,10 @@
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import tasks_service
 from .base import BaseModelResource, BaseModelsResource
+from zou.app import name_space_task_status
 
 
+@name_space_task_status.route('/')
 class TaskStatusesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, TaskStatus)
@@ -22,6 +24,7 @@ class TaskStatusesResource(BaseModelsResource):
         return data
 
 
+@name_space_task_status.route('/<instance_id>')
 class TaskStatusResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, TaskStatus)

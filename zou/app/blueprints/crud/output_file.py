@@ -5,8 +5,10 @@ from zou.app.services import user_service, entities_service
 from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
+from zou.app import name_space_output_files
 
 
+@name_space_output_files.route('/')
 class OutputFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, OutputFile)
@@ -27,6 +29,7 @@ class OutputFilesResource(BaseModelsResource):
             return query
 
 
+@name_space_output_files.route('/<instance_id>')
 class OutputFileResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, OutputFile)

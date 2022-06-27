@@ -3,8 +3,10 @@ from .base import BaseModelResource, BaseModelsResource
 from zou.app.models.entity_type import EntityType
 from zou.app.utils import events
 from zou.app.services import entities_service, assets_service
+from zou.app import name_space_entity_types
 
 
+@name_space_entity_types.route('/')
 class EntityTypesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, EntityType)
@@ -38,6 +40,7 @@ class EntityTypesResource(BaseModelsResource):
         return instance.serialize(relations=True)
 
 
+@name_space_entity_types.route('/<instance_id>')
 class EntityTypeResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, EntityType)

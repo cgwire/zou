@@ -20,7 +20,7 @@ from zou.app.utils import events, fields, date_helpers
 from werkzeug.exceptions import NotFound
 
 from .base import BaseModelResource, BaseModelsResource
-
+from zou.app import name_space_entities
 
 class EntityEventMixin(object):
     def emit_event(self, event_name, entity_dict):
@@ -38,6 +38,7 @@ class EntityEventMixin(object):
         )
 
 
+@name_space_entities.route('/')
 class EntitiesResource(BaseModelsResource, EntityEventMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Entity)
@@ -57,6 +58,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         return entities
 
 
+@name_space_entities.route('/<instance_id>')
 class EntityResource(BaseModelResource, EntityEventMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Entity)

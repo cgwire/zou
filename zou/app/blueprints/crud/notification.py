@@ -2,8 +2,10 @@ from zou.app.models.notification import Notification
 from zou.app.utils import permissions
 
 from .base import BaseModelResource, BaseModelsResource
+from zou.app import name_space_notifications
 
 
+@name_space_notifications.route('/')
 class NotificationsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Notification)
@@ -12,6 +14,7 @@ class NotificationsResource(BaseModelsResource):
         return permissions.check_admin_permissions()
 
 
+@name_space_notifications.route('/<instance_id>')
 class NotificationResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Notification)

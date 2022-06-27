@@ -17,8 +17,10 @@ from zou.app.services import (
 from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
+from zou.app import name_space_tasks
 
 
+@name_space_tasks.route('/')
 class TasksResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Task)
@@ -35,11 +37,12 @@ class TasksResource(BaseModelsResource):
             )
         return query
 
+    @name_space_tasks.doc(responses={200:'OK', 400 :'Task already exists.'})
     def post(self):
         """
-        Create a task with data given in the request body. JSON format is
-        expected. The model performs the validation automatically when
-        instantiated.
+        Create a task with data given in the request body. 
+        JSON format is expected. 
+        The model performs the validation automatically when instantiated.
         """
         try:
             data = request.json
@@ -67,6 +70,7 @@ class TasksResource(BaseModelsResource):
             return {"message": "Task already exists."}, 400
 
 
+@name_space_tasks.route('/<instance_id>')
 class TaskResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Task)
@@ -93,11 +97,11 @@ class TaskResource(BaseModelResource):
             ]
         return data
 
+    @name_space_tasks.doc(responses={204:'OK', 400:'Error'})
     @jwt_required
     def delete(self, instance_id):
         """
-        Delete a model corresponding at given ID and return it as a JSON
-        object.
+        Delete a model corresponding at given ID and return it as a JSON object.
         """
         parser = reqparse.RequestParser()
         parser.add_argument("force", default=False, type=bool)

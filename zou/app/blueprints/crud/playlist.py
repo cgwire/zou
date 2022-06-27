@@ -3,8 +3,10 @@ from zou.app.services import user_service, playlists_service
 
 from .base import BaseModelResource, BaseModelsResource
 from zou.app.utils import fields
+from zou.app import name_space_playlists
 
 
+@name_space_playlists.route('/')
 class PlaylistsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Playlist)
@@ -25,6 +27,7 @@ class PlaylistsResource(BaseModelsResource):
         return data
 
 
+@name_space_playlists.route('/<instance_id>')
 class PlaylistResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Playlist)
@@ -50,6 +53,7 @@ class PlaylistResource(BaseModelResource):
             data["shots"] = shots
         return data
 
+    @name_space_playlists.doc(responses={204:'OK'})
     def delete(self, instance_id):
         playlists_service.remove_playlist(instance_id)
         return "", 204

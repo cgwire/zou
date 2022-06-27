@@ -16,7 +16,9 @@ from zou.app.services.exception import (
 )
 from zou.app.models.department import Department
 
+from zou.app import *
 
+@name_space_persons.route('')
 class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
@@ -41,6 +43,7 @@ class PersonsResource(BaseModelsResource):
                 for person in query.all()
             ]
 
+    @name_space_persons.doc(responses={405:'Abort'})
     def post(self):
         abort(405)
 
@@ -48,6 +51,7 @@ class PersonsResource(BaseModelsResource):
         return True
 
 
+@name_space_persons.route('/<instance_id>')
 class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
@@ -116,11 +120,12 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data["departments"] = departments
         return data
 
+    @name_space_persons.doc(responses={204 : 'OK'})
     @jwt_required
     def delete(self, instance_id):
         """
-        Delete a person corresponding at given ID and return it as a JSON
-        object.
+        Delete a person corresponding at given ID
+        Return it as a JSON object.
         """
         force = self.get_force()
         person = self.get_model_or_404(instance_id)
