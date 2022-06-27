@@ -3,8 +3,10 @@ from zou.app.models.custom_action import CustomAction
 from .base import BaseModelsResource, BaseModelResource
 
 from zou.app.services import custom_actions_service, user_service
+from zou.app import name_space_custom_actions
 
 
+@name_space_custom_actions.route('/')
 class CustomActionsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, CustomAction)
@@ -18,6 +20,7 @@ class CustomActionsResource(BaseModelsResource):
         return custom_action.serialize()
 
 
+@name_space_custom_actions.route('/<instance_id>')
 class CustomActionResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, CustomAction)

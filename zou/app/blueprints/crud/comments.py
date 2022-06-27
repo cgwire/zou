@@ -20,22 +20,25 @@ from zou.app.utils import events, permissions
 from .base import BaseModelResource, BaseModelsResource
 
 from zou.app.services.exception import CommentNotFoundException
+from zou.app import name_space_comments
 
 
+@name_space_comments.route('/')
 class CommentsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Comment)
 
 
+@name_space_comments.route('/<instance_id>')
 class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
 
+    @name_space_comments.doc(responses={200:'OK', 400:'Exception error'})
     @jwt_required
     def get(self, instance_id):
         """
-        Retrieve a model corresponding at given ID and return it as a JSON
-        object.
+        Retrieve a model corresponding at given ID and return it as a JSON object.
         """
         try:
             instance = tasks_service.get_comment_with_relations(instance_id)
@@ -128,6 +131,7 @@ class CommentResource(BaseModelResource):
             )
         return comment
 
+    @name_space_comments.doc(responses={204 :'OK'})
     @jwt_required
     def delete(self, instance_id):
         """
