@@ -2,6 +2,7 @@ from flask import request
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
+from zou.app import name_space_assets, name_space_asset_types, name_space_projects, name_space_shots
 from zou.app.utils import permissions, query
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -24,6 +25,7 @@ def check_criterion_access(criterions):
     return user_service.check_project_access(project_id)
 
 
+@name_space_assets.route('/<asset_id>')
 class AssetResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -37,6 +39,9 @@ class AssetResource(Resource):
 
     @jwt_required
     def delete(self, asset_id):
+        """
+        Delete given asset.
+        """
         parser = reqparse.RequestParser()
         parser.add_argument("force", default=False, type=bool)
         args = parser.parse_args()
@@ -49,10 +54,12 @@ class AssetResource(Resource):
         return "", 204
 
 
+@name_space_assets.route('/all')
 class AllAssetsResource(Resource):
     @jwt_required
     def get(self):
         """
+        Retrieve all assets.
         Retrieve all entities that are not shot or sequence.
         Adds project name and asset type name.
         """
@@ -64,15 +71,16 @@ class AllAssetsResource(Resource):
             ]
         return assets_service.get_assets(criterions)
 
-
+@name_space_assets.route('')
 class AllAssetsAliasResource(AllAssetsResource):
     pass
 
-
+@name_space_assets.route('/with-tasks')
 class AssetsAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
+        Retrieves all assets with tasks.
         Retrieve all entities that are not shot or sequence.
         Adds project name and asset type name and all related tasks.
         If episode_id is given as parameter, it returns assets not linked
@@ -88,6 +96,7 @@ class AssetsAndTasksResource(Resource):
         return assets_service.get_assets_and_tasks(criterions, page)
 
 
+@name_space_asset_types.route('/<asset_type_id>')
 class AssetTypeResource(Resource):
     @jwt_required
     def get(self, asset_type_id):
@@ -97,17 +106,19 @@ class AssetTypeResource(Resource):
         return assets_service.get_asset_type(asset_type_id)
 
 
+@name_space_asset_types.route('')
 class AssetTypesResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all asset types (entity types that are not shot, sequence or
-        episode).
+        Retrieve all asset types
+        Retrieve all entity types that are not shot, sequence or episode.
         """
         criterions = query.get_query_criterions_from_request(request)
         return assets_service.get_asset_types(criterions)
 
 
+@name_space_projects.route('/<project_id>/asset-types')
 class ProjectAssetTypesResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -117,18 +128,18 @@ class ProjectAssetTypesResource(Resource):
         user_service.check_project_access(project_id)
         return assets_service.get_asset_types_for_project(project_id)
 
-
+@name_space_shots.route('/<shot_id>/asset-types')
 class ShotAssetTypesResource(Resource):
     @jwt_required
     def get(self, shot_id):
         """
-        Retrieve all asset shots for given soht.
+        Retrieve all asset shots for given shot.
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
         return assets_service.get_asset_types_for_shot(shot_id)
 
-
+@name_space_projects.route('/<project_id>/assets')
 class ProjectAssetsResource(Resource):
     @jwt_required
     def get(self, project_id):
@@ -145,6 +156,7 @@ class ProjectAssetsResource(Resource):
         return assets_service.get_assets(criterions)
 
 
+@name_space_projects.route('/<project_id>/asset-types/<asset_type_id>/assets')
 class ProjectAssetTypeAssetsResource(Resource):
     @jwt_required
     def get(self, project_id, asset_type_id):
@@ -161,7 +173,7 @@ class ProjectAssetTypeAssetsResource(Resource):
             ]
         return assets_service.get_assets(criterions)
 
-
+@name_space_assets.route('/<asset_id>/assets')
 class AssetAssetsResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -173,7 +185,7 @@ class AssetAssetsResource(Resource):
         user_service.check_entity_access(asset_id)
         return breakdown_service.get_entity_casting(asset_id)
 
-
+@name_space_assets.route('/<asset_id>/tasks')
 class AssetTasksResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -184,7 +196,7 @@ class AssetTasksResource(Resource):
         user_service.check_project_access(asset["project_id"])
         return tasks_service.get_tasks_for_asset(asset_id)
 
-
+@name_space_assets.route('/<asset_id>/task-types')
 class AssetTaskTypesResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -195,10 +207,13 @@ class AssetTaskTypesResource(Resource):
         user_service.check_project_access(asset["project_id"])
         return tasks_service.get_task_types_for_asset(asset_id)
 
-
+@name_space_projects.route('/<project_id>/asset-types/<asset_type_id>/assets/new')
 class NewAssetResource(Resource):
     @jwt_required
     def post(self, project_id, asset_type_id):
+        """
+        Create new asset within given project and entity type
+        """
         (name, description, data, source_id) = self.get_arguments()
 
         user_service.check_manager_project_access(project_id)
@@ -223,7 +238,7 @@ class NewAssetResource(Resource):
             args["episode_id"],
         )
 
-
+@name_space_assets.route('/<asset_id>/casting')
 class AssetCastingResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -246,6 +261,7 @@ class AssetCastingResource(Resource):
         return breakdown_service.update_casting(asset_id, casting)
 
 
+@name_space_assets.route('/<asset_id>/cast-in')
 class AssetCastInResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -257,7 +273,7 @@ class AssetCastInResource(Resource):
         user_service.check_entity_access(asset["id"])
         return breakdown_service.get_cast_in(asset_id)
 
-
+@name_space_assets.route('/<asset_id>/shot-asset-instances')
 class AssetShotAssetInstancesResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -268,7 +284,7 @@ class AssetShotAssetInstancesResource(Resource):
         user_service.check_project_access(asset["project_id"])
         return breakdown_service.get_shot_asset_instances_for_asset(asset_id)
 
-
+@name_space_assets.route('/<asset_id>/scene-asset-instances')
 class AssetSceneAssetInstancesResource(Resource):
     @jwt_required
     def get(self, asset_id):
@@ -279,7 +295,7 @@ class AssetSceneAssetInstancesResource(Resource):
         user_service.check_project_access(asset["project_id"])
         return breakdown_service.get_scene_asset_instances_for_asset(asset_id)
 
-
+@name_space_assets.route('/<asset_id>/asset-asset-instances')
 class AssetAssetInstancesResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, asset_id):
