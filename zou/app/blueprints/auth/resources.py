@@ -126,6 +126,9 @@ def on_identity_loaded(sender, identity):
             return wrong_auth_handler()
 
 
+from zou.app import name_space_auth
+
+@name_space_auth.route("/authenticated")
 class AuthenticatedResource(Resource):
     """
     Returns information if the user is authenticated else it returns a 401
@@ -135,6 +138,7 @@ class AuthenticatedResource(Resource):
     """
 
     @jwt_required
+    @name_space_auth.doc(responses={ 200: 'OK', 401: 'Person not found'})
     def get(self):
         try:
             person = persons_service.get_person_by_email(
@@ -150,7 +154,7 @@ class AuthenticatedResource(Resource):
         except PersonNotFoundException:
             abort(401)
 
-
+@name_space_auth.route("/logout")
 class LogoutResource(Resource):
     """
     Log user out by revoking his auth tokens. Once log out, current user
@@ -158,6 +162,7 @@ class LogoutResource(Resource):
     """
 
     @jwt_required
+    @name_space_auth.doc(responses={ 200: 'OK', 500: 'Access token not found'})
     def get(self):
         try:
             logout()
@@ -176,7 +181,7 @@ class LogoutResource(Resource):
         else:
             return logout_data
 
-
+@name_space_auth.route("/login")
 class LoginResource(Resource):
     """
     Log in user by creating and registering auth tokens. Login is based
@@ -185,7 +190,7 @@ class LoginResource(Resource):
     useful for clients that run on desktop tools and that don't know user
     email.
     """
-
+    @name_space_auth.doc(responses={ 200: 'OK', 400: 'Login failed', 500 : 'Database not reachable'})
     def post(self):
         (email, password) = self.get_arguments()
         try:
@@ -300,7 +305,7 @@ class LoginResource(Resource):
 
         return (args["email"], args["password"])
 
-
+@name_space_auth.route("/refresh-token")
 class RefreshTokenResource(Resource):
     """
     Tokens are considered as outdated every two weeks. This route allows to
@@ -308,6 +313,7 @@ class RefreshTokenResource(Resource):
     """
 
     @jwt_refresh_token_required
+    @name_space_auth.doc(responses={ 200: 'OK'})
     def get(self):
         email = get_jwt_identity()
         access_token = create_access_token(identity=email)
@@ -318,12 +324,12 @@ class RefreshTokenResource(Resource):
         else:
             return {"access_token": access_token}
 
-
+@name_space_auth.route("/register")
 class RegistrationResource(Resource):
     """
     Allow an user to register himself to the service.
     """
-
+    @name_space_auth.doc(responses={ 201: 'OK', 400: 'Wrong Password'})
     def post(self):
         (
             email,
@@ -383,7 +389,7 @@ class RegistrationResource(Resource):
             args["last_name"],
         )
 
-
+@name_space_auth.route('/change-password')
 class ChangePasswordResource(Resource):
     """
     Allow the user to change his password. Prior to modify the password,
@@ -437,6 +443,7 @@ class ChangePasswordResource(Resource):
         return (args["old_password"], args["password"], args["password_2"])
 
 
+@name_space_auth.route('/reset-password')
 class ResetPasswordResource(Resource, ArgsMixin):
     """
     Ressource to allow a user to change his password when he forgets it.
