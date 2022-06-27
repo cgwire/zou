@@ -2,8 +2,10 @@ from zou.app.blueprints.export.csv.base import BaseCsvExport
 
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/task-types.csv')
 class TaskTypesCsvExport(BaseCsvExport):
     def __init__(self):
         BaseCsvExport.__init__(self)

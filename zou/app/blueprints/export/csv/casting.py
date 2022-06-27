@@ -10,8 +10,10 @@ from zou.app.services import projects_service, shots_service, user_service
 from zou.app.utils import csv_utils
 
 from zou.app.mixin import ArgsMixin
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/projects/<project_id>/casting.csv')
 class CastingCsvExport(Resource, ArgsMixin):
     @jwt_required
     def get(self, project_id):

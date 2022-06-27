@@ -1,8 +1,10 @@
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 
 from zou.app.models.person import Person
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/persons.csv')
 class PersonsCsvExport(BaseCsvExport):
     def __init__(self):
         BaseCsvExport.__init__(self)

@@ -10,8 +10,10 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import names_service, persons_service
 from zou.app.utils import date_helpers
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/time-spents.csv')
 class TimeSpentsCsvExport(BaseCsvExport):
     def __init__(self):
         BaseCsvExport.__init__(self)

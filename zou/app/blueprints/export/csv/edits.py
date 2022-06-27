@@ -9,8 +9,10 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import csv_utils
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/projects/<project_id>/edits.csv')
 class EditsCsvExport(Resource):
     @jwt_required
     def get(self, project_id):

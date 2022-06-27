@@ -16,8 +16,10 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.utils import csv_utils
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/playlists/<playlist_id>')
 class PlaylistCsvExport(Resource):
     def check_permissions(self, project_id):
         user_service.check_project_access(project_id)

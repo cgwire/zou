@@ -10,8 +10,10 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 
 from zou.app.services import projects_service
+from zou.app import name_space_export_csv
 
 
+@name_space_export_csv.route('/tasks.csv')
 class TasksCsvExport(BaseCsvExport):
     def __init__(self):
         BaseCsvExport.__init__(self)
