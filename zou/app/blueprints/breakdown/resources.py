@@ -14,8 +14,11 @@ from zou.app.services import (
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions
 
+from zou.app import name_space_projects, name_space_scenes, name_space_shots
 
+@name_space_projects.route('/<project_id>/entities/<entity_id>/casting')
 class CastingResource(Resource):
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, project_id, entity_id):
         """
@@ -24,6 +27,7 @@ class CastingResource(Resource):
         user_service.check_project_access(project_id)
         return breakdown_service.get_casting(entity_id)
 
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def put(self, project_id, entity_id):
         """
@@ -34,7 +38,9 @@ class CastingResource(Resource):
         return breakdown_service.update_casting(entity_id, casting)
 
 
+@name_space_projects.route('/<project_id>/episodes/casting')
 class EpisodesCastingResource(Resource):
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, project_id):
         """
@@ -43,8 +49,9 @@ class EpisodesCastingResource(Resource):
         user_service.check_project_access(project_id)
         return breakdown_service.get_production_episodes_casting(project_id)
 
-
+@name_space_projects.route('/<project_id>/sequences/<sequence_id>/casting')
 class SequenceCastingResource(Resource):
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, project_id, sequence_id):
         """
@@ -55,7 +62,9 @@ class SequenceCastingResource(Resource):
         return breakdown_service.get_sequence_casting(sequence_id)
 
 
+@name_space_projects.route('/<project_id>/asset-types/<asset_type_id>/casting')
 class AssetTypeCastingResource(Resource):
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, project_id, asset_type_id):
         """
@@ -68,7 +77,9 @@ class AssetTypeCastingResource(Resource):
         )
 
 
+@name_space_shots.route('/<shot_id>/asset-instances')
 class ShotAssetInstancesResource(Resource, ArgsMixin):
+    @name_space_shots.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, shot_id):
         """
@@ -78,6 +89,7 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
         user_service.check_project_access(shot["project_id"])
         return breakdown_service.get_asset_instances_for_shot(shot_id)
 
+    @name_space_shots.doc(responses={201 : 'OK'})
     @jwt_required
     def post(self, shot_id):
         """
@@ -92,7 +104,9 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
         return shot, 201
 
 
+@name_space_shots.route('/<shot_id>/asset-instances/<asset_instance_id>')
 class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
+    @name_space_shots.doc(responses={204 : 'OK'})
     @jwt_required
     def delete(self, shot_id, asset_instance_id):
         """
@@ -106,7 +120,9 @@ class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
         return "", 204
 
 
+@name_space_scenes.route('/<scene_id>/asset-instances')
 class SceneAssetInstancesResource(Resource, ArgsMixin):
+    @name_space_scenes.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, scene_id):
         """
@@ -116,6 +132,7 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
         user_service.check_project_access(scene["project_id"])
         return breakdown_service.get_asset_instances_for_scene(scene_id)
 
+    @name_space_scenes.doc(responses={201 : 'OK'})
     @jwt_required
     def post(self, scene_id):
         """
@@ -132,7 +149,9 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
         return asset_instance, 201
 
 
+@name_space_scenes.route('/<scene_id>/camera-instances')
 class SceneCameraInstancesResource(Resource):
+    @name_space_scenes.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, scene_id):
         """
@@ -143,7 +162,9 @@ class SceneCameraInstancesResource(Resource):
         return breakdown_service.get_camera_instances_for_scene(scene_id)
 
 
+@name_space_projects.route('/<project_id>/entity-links')
 class ProjectEntityLinksResource(Resource):
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def get(self, project_id):
         """
@@ -155,7 +176,9 @@ class ProjectEntityLinksResource(Resource):
         return entities_service.get_entity_links_for_project(project_id)
 
 
+@name_space_projects.route('/<project_id>/entity-links/<entity_link_id>')
 class ProjectEntityLinkResource(Resource):
+    @name_space_projects.doc(responses={200 : 'OK'})
     @jwt_required
     def delete(self, project_id, entity_link_id):
         """
