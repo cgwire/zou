@@ -7,12 +7,16 @@ from zou.app.services.exception import (
     WrongParameterException,
 )
 
+from zou.app import name_space_entity_links
 
+
+@name_space_entity_links.route('/')
 class EntityLinksResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, EntityLink)
 
 
+@name_space_entity_links.route('/<instance_id>')
 class EntityLinkResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, EntityLink)

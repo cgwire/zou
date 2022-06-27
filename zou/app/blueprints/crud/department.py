@@ -4,7 +4,9 @@ from zou.app.models.department import Department
 
 from zou.app.services import tasks_service
 
+from zou.app import name_space_departments
 
+@name_space_departments.route('')
 class DepartmentsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Department)
@@ -26,6 +28,7 @@ class DepartmentsResource(BaseModelsResource):
         return data
 
 
+@name_space_departments.route('/<instance_id>')
 class DepartmentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Department)

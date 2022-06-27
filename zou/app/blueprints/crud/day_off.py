@@ -1,3 +1,4 @@
+from unicodedata import name
 from zou.app.models.day_off import DayOff
 from zou.app.models.time_spent import TimeSpent
 
@@ -5,8 +6,10 @@ from .base import BaseModelsResource, BaseModelResource
 
 from zou.app.services import user_service
 from zou.app.utils import date_helpers, permissions
+from zou.app import name_space_day_offs
 
 
+@name_space_day_offs.route('/')
 class DayOffsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, DayOff)
@@ -25,6 +28,7 @@ class DayOffsResource(BaseModelsResource):
         return instance.serialize()
 
 
+@name_space_day_offs.route('/<instance_id>')
 class DayOffResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, DayOff)
