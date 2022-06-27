@@ -3,7 +3,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy.exc import StatementError
 
 from zou.app.models.person import Person
-from zou.app.services import persons_service, deletion_service
+from zou.app.services import deletion_service, index_service, persons_service
 from zou.app.utils import permissions
 
 from .base import BaseModelsResource, BaseModelResource
@@ -131,7 +131,8 @@ class PersonResource(BaseModelResource, ArgsMixin):
         person_dict = person.serialize()
         self.check_delete_permissions(person_dict)
         self.pre_delete(person_dict)
-        deletion_service.remove_person(person_dict["id"], force=force)
+        deletion_service.remove_person(instance_id, force=force)
+        index_service.remove_person_index(instance_id)
         self.emit_delete_event(person_dict)
         self.post_delete(person_dict)
         return "", 204

@@ -48,6 +48,28 @@ def has_supervisor_permissions():
     return supervisor_permission.can()
 
 
+def has_at_least_supervisor_permissions():
+    """
+    Return True if user is an admin or a manager.
+    """
+    return (
+        supervisor_permission.can() or
+        admin_permission.can() or
+        manager_permission.can()
+    )
+
+
+def check_at_least_supervisor_permissions():
+    """
+    Return True if user is admin, manager or supervsior. It raises a
+    PermissionDenied exception in case of failure.
+    """
+    if has_at_least_supervisor_permissions():
+        return True
+    else:
+        raise PermissionDenied
+
+
 def check_manager_permissions():
     """
     Return True if user is admin or manager. It raises a PermissionDenied
