@@ -178,6 +178,8 @@ class PersonTasksResource(Resource):
             person = persons_service.get(person_id)
             if person["role"] == "vendor":
                 return []
+        elif permissions.has_client_permissions():
+            return []
         return tasks_service.get_person_tasks(person_id, projects)
 
 
@@ -192,7 +194,6 @@ class PersonRelatedTasksResource(Resource):
         user = persons_service.get_current_user()
         if person_id != user["id"]:
             permissions.check_admin_permissions()
-        projects = projects_service.open_projects()
         return tasks_service.get_person_related_tasks(person_id, task_type_id)
 
 
@@ -212,6 +213,8 @@ class PersonDoneTasksResource(Resource):
             person = persons_service.get(person_id)
             if person["role"] == "vendor":
                 return []
+        elif permissions.has_client_permissions():
+            return []
         return tasks_service.get_person_done_tasks(person_id, projects)
 
 

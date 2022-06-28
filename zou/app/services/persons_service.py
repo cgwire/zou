@@ -16,6 +16,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config
 from zou.app.utils import fields, events, cache, emails
+from zou.app.services import index_service
 
 from zou.app.services.exception import (
     DepartmentNotFoundException,
@@ -44,6 +45,13 @@ def get_persons(minimal=False):
         else:
             persons.append(person.present_minimal(relations=True))
     return persons
+
+
+def get_all_raw_active_persons():
+    """
+    Return all person stored in database without serialization.
+    """
+    return Person.get_all_by(active=True)
 
 
 @cache.memoize_function(120)
@@ -196,6 +204,7 @@ def create_person(
         desktop_login=desktop_login,
         departments=departments_objects,
     )
+    index_service.index_person(person)
     events.emit("person:new", {"person_id": person.id})
     clear_person_cache()
     return person.serialize(relations=True)
@@ -219,6 +228,9 @@ def update_person(person_id, data):
     if "email" in data and data["email"] is not None:
         data["email"] = data["email"].strip()
     person.update(data)
+    index_service.remove_person_index(person_id)
+    if person.active:
+        index_service.index_person(person)
     events.emit("person:update", {"person_id": person_id})
     clear_person_cache()
     return person.serialize()
@@ -231,6 +243,7 @@ def delete_person(person_id):
     person = Person.get(person_id)
     person_dict = person.serialize()
     person.delete()
+    index_service.remove_person_index(person_id)
     events.emit("person:delete", {"person_id": person_id})
     clear_person_cache()
     return person_dict

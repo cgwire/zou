@@ -7,6 +7,7 @@ class AssetSearchTestCase(ApiDBTestCase):
     def setUp(self):
         super(AssetSearchTestCase, self).setUp()
 
+        self.generate_fixture_person()
         self.generate_fixture_project_status()
         self.generate_fixture_project()
         self.generate_fixture_asset_type()
@@ -30,6 +31,17 @@ class AssetSearchTestCase(ApiDBTestCase):
             "data/projects/%s/asset-types/%s/assets/new"
             % (self.project_id, self.asset_type_id),
             {"name": "Girafe", "description": ""},
+        )
+
+    def create_person_alicia(self):
+        return self.post(
+            "data/persons/new",
+            {
+                "email": "alicia@cg-wire.com",
+                "first_name": "Alicia",
+                "last_name": "Parker",
+                "role": "manager"
+            }
         )
 
     def test_search_assets_exact(self):
@@ -70,3 +82,32 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.delete("data/assets/%s" % asset["id"])
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
         self.assertEqual(len(assets), 0)
+
+    def test_search_persons(self):
+        persons = self.post("data/search", {"query": "john"}, 200)["persons"]
+        self.assertEqual(len(persons), 2)
+
+    def test_search_persons_after_creation(self):
+        persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
+        self.assertEqual(len(persons), 0)
+        self.create_person_alicia()
+        persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
+        self.assertEqual(len(persons), 1)
+
+    def test_search_persons_after_update(self):
+        person = self.create_person_alicia()
+        persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
+        self.assertEqual(len(persons), 1)
+        self.put("data/persons/%s" % person["id"], {"first_name": "Ann"})
+        persons = self.post("data/search", {"query": "ann"}, 200)["persons"]
+        self.assertEqual(len(persons), 1)
+        persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
+        self.assertEqual(len(persons), 0)
+
+    def test_search_persons_after_deletion(self):
+        person = self.create_person_alicia()
+        persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
+        self.assertEqual(len(persons), 1)
+        self.delete("data/persons/%s" % person["id"])
+        persons = self.post("data/search", {"query": "girafe"}, 200)["persons"]
+        self.assertEqual(len(persons), 0)

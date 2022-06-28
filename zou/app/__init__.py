@@ -10,11 +10,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
 from jwt import ExpiredSignatureError
-from whoosh import index
 
 from . import config
-from .index_schema import asset_schema
 from .stores import auth_tokens_store
+from .index_schema import init_indexes
 from .services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
@@ -41,10 +40,7 @@ if not app.config["PREVIEW_FOLDER"]:
 if not app.config["INDEXES_FOLDER"]:
     app.config["INDEXES_FOLDER"] = os.path.join(app.instance_path, "indexes")
 
-index_path = os.path.join(app.config["INDEXES_FOLDER"], "assets")
-if not os.path.exists(index_path):
-    fs.mkdir_p(index_path)
-    index.create_in(index_path, asset_schema)
+init_indexes(app.config["INDEXES_FOLDER"])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
