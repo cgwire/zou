@@ -300,6 +300,7 @@ def get_shots_and_tasks(criterions={}):
                     "preview_file_id": shot.preview_file_id or None,
                     "project_id": project_id,
                     "project_name": project_name,
+                    "resolution": shot.data.get("resolution", None),
                     "sequence_id": sequence_id,
                     "sequence_name": sequence_name,
                     "source_id": shot.source_id,
