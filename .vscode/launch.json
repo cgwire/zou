@@ -9,7 +9,7 @@
             "env": {
                 "FLASK_APP": "zou.app",
                 "FLASK_DEBUG": "1",
-                "PREVIEW_FOLDER": "${fileDirname}/../previews",
+                "PREVIEW_FOLDER": "${cwd}/previews",
                 "DEBUG": "1",
                 "MAIL_DEBUG": "1",
             },
@@ -17,7 +17,8 @@
                 "run",
                 "--no-reload",
             ],
-            "jinja": true
+            "jinja": true,
+            "justMyCode": false
         },
         {
             "name": "Python: Current File",
