@@ -10,6 +10,7 @@ from zou.app.models.subscription import Subscription
 from zou.app.services import (
     assets_service,
     breakdown_service,
+    entities_service,
     index_service,
     persons_service,
     shots_service,
@@ -132,6 +133,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 shots_service.clear_sequence_cache(entity_dict["id"])
             elif shots_service.is_episode(entity_dict):
                 shots_service.clear_episode_cache(entity_dict["id"])
+            entities_service.clear_entity_cache(entity_dict["id"])
 
             self.emit_update_event(entity_dict)
             return entity_dict, 200

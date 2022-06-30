@@ -77,6 +77,44 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         task = self.get("data/tasks/%s" % task_id)
         self.assertEqual(task["retake_count"], 2)
 
+    def test_retake_cap(self):
+        task_id = str(self.task.id)
+        asset_id = self.asset.id
+        self.project.update({"max_retakes": 1})
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 1"},
+        )
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.wip_status_id, "comment": "wip"},
+        )
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 2"},
+            400
+        )
+        self.put(
+            "/data/entities/%s" % asset_id,
+            {"data": {"max_retakes": 2}}
+        )
+        entity = self.get(
+            "/data/entities/%s" % asset_id
+        )
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 2"},
+        )
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.wip_status_id, "comment": "wip"},
+        )
+        self.post(
+            "/actions/tasks/%s/comment" % task_id,
+            {"task_status_id": self.retake_status_id, "comment": "retake 3"},
+            400
+        )
+
     def test_comment_many(self):
         project_id = str(self.project.id)
         task_id = str(self.task.id)

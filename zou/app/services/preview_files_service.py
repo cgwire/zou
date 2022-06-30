@@ -7,6 +7,7 @@ import ffmpeg
 from zou.app import config
 from zou.app.stores import file_store
 
+from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
@@ -24,19 +25,49 @@ from zou.app.services.exception import PreviewFileNotFoundException
 from zou.app.utils import fs
 
 
-def get_preview_file_dimensions(project):
+def get_preview_file_dimensions(project, entity):
     """
-    Return dimensions set at project level or default dimensions if the
-    dimensions are not set.
+    Return dimensions set at entity level or project level or default
+    dimensions if the dimensions are not set.
+    Entity resolution has priority over project resolution.
+    The default size is based on 1080 height
     """
     resolution = project["resolution"]
-    height = 1080
+    entity_data = entity.get("data", {}) or {}
+    entity_resolution = entity_data.get("resolution", None)
     width = None
-    if resolution is not None and bool(re.match(r"\d*x\d*", resolution)):
+    height = 1080
+
+    if _is_valid_resolution(entity_resolution):
+        resolution = entity_resolution
+
+    if _is_valid_resolution(resolution):
         [width, height] = resolution.split("x")
         width = int(width)
         height = int(height)
+
+    if _is_valid_partial_resolution(resolution):
+        [width, height] = resolution.split("x")
+        width = None
+        height = int(height)
+
     return (width, height)
+
+
+def _is_valid_resolution(resolution):
+    """
+    Return true if the dimension follows the 1920x1080 pattern.
+    """
+    return resolution is not None and \
+        bool(re.match(r"\d{3,4}x\d{3,4}", resolution))
+
+
+def _is_valid_partial_resolution(resolution):
+    """
+    Return true if the dimension follows the x1080 pattern.
+    """
+    return resolution is not None and \
+        bool(re.match(r"x\d{3,4}", resolution))
 
 
 def get_preview_file_fps(project):
@@ -58,6 +89,16 @@ def get_project_from_preview_file(preview_file_id):
     task = Task.get(preview_file.task_id)
     project = Project.get(task.project_id)
     return project.serialize()
+
+
+def get_entity_from_preview_file(preview_file_id):
+    """
+    Get entity dict of related preview file.
+    """
+    preview_file = files_service.get_preview_file_raw(preview_file_id)
+    task = Task.get(preview_file.task_id)
+    entity = Entity.get(task.entity_id)
+    return entity.serialize()
 
 
 def update_preview_file(preview_file_id, data, silent=False):
@@ -107,10 +148,12 @@ def prepare_and_store_movie(
         normalized_movie_low_path = None
         try:
             project = get_project_from_preview_file(preview_file_id)
+            entity = get_entity_from_preview_file(preview_file_id)
         except PreviewFileNotFoundException:
             time.sleep(2)
             try:
                 project = get_project_from_preview_file(preview_file_id)
+                entity = get_entity_from_preview_file(preview_file_id)
             except PreviewFileNotFoundException:
                 current_app.logger.error(
                     "Data is missing from database", exc_info=1
@@ -120,10 +163,9 @@ def prepare_and_store_movie(
                 return preview_file
 
         fps = get_preview_file_fps(project)
-        (width, height) = get_preview_file_dimensions(project)
+        (width, height) = get_preview_file_dimensions(project, entity)
 
         if normalize:
-            # Build movie
             current_app.logger.info("start normalization")
             try:
                 if (

@@ -91,6 +91,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     man_days = db.Column(db.Integer)
     nb_episodes = db.Column(db.Integer, default=0)
     episode_span = db.Column(db.Integer, default=0)
+    max_retakes = db.Column(db.Integer, default=0)
     is_clients_isolated = db.Column(db.Boolean(), default=False)
 
     project_status_id = db.Column(

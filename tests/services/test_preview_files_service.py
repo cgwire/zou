@@ -1,6 +1,11 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.services import files_service, preview_files_service
+from zou.app.services.preview_files_service import (
+    _is_valid_resolution,
+    _is_valid_partial_resolution,
+    get_preview_file_dimensions
+)
 
 
 class PlaylistTestCase(ApiDBTestCase):
@@ -211,3 +216,25 @@ class PlaylistTestCase(ApiDBTestCase):
             self.modifications + self.annotations_2,
             persisted_preview_file["annotations"],
         )
+
+    def test_get_preview_file_dimensions(self):
+        self.assertFalse(_is_valid_resolution(""))
+        self.assertFalse(_is_valid_resolution(None))
+        self.assertTrue(_is_valid_resolution("203x121"))
+        self.assertTrue(_is_valid_resolution("1920x1080"))
+        self.assertTrue(_is_valid_resolution("3840x2160"))
+        self.assertFalse(_is_valid_partial_resolution("3840x2160"))
+        self.assertTrue(_is_valid_partial_resolution("x2160"))
+        project = self.project.serialize()
+        entity = self.asset.serialize()
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (None, 1080))
+        project["resolution"] = "x2160"
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (None, 2160))
+        project["resolution"] = "3840x2160"
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (3840, 2160))
+        entity["data"] = {"resolution": "800x600"}
+        dimensions = get_preview_file_dimensions(project, entity)
+        self.assertEqual(dimensions, (800, 600))
