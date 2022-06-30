@@ -9,6 +9,7 @@ from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
 from zou.app.services import comments_service, index_service, tasks_service
 from zou.app.services.persons_service import get_current_user
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import events, cache
 
 
@@ -108,16 +109,19 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                     task_update["comment"] is not None
                     or task_update["task_status_id"] != task["task_status_id"]
                 ):
-                    comments_service.create_comment(
-                        self.current_user_id,
-                        task["id"],
-                        task_update["task_status_id"]
-                        or task["task_status_id"],
-                        task_update["comment"] or "",
-                        [],
-                        {},
-                        "",
-                    )
+                    try:
+                        comments_service.create_comment(
+                            self.current_user_id,
+                            task["id"],
+                            task_update["task_status_id"]
+                            or task["task_status_id"],
+                            task_update["comment"] or "",
+                            [],
+                            {},
+                            "",
+                        )
+                    except WrongParameterException:
+                        pass
         elif asset_creation:
             self.created_assets.append(entity.serialize())
 

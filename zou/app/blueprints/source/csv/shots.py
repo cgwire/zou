@@ -16,6 +16,7 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.persons_service import get_current_user
+from zou.app.services.exception import WrongParameterException
 from zou.app.utils import events
 
 
@@ -99,16 +100,19 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     task_update["comment"] is not None
                     or task_update["task_status_id"] != task["task_status_id"]
                 ):
-                    create_comment(
-                        self.current_user_id,
-                        task["id"],
-                        task_update["task_status_id"]
-                        or task["task_status_id"],
-                        task_update["comment"] or "",
-                        [],
-                        {},
-                        "",
-                    )
+                    try:
+                        create_comment(
+                            self.current_user_id,
+                            task["id"],
+                            task_update["task_status_id"]
+                            or task["task_status_id"],
+                            task_update["comment"] or "",
+                            [],
+                            {},
+                            "",
+                        )
+                    except WrongParameterException:
+                        pass
         elif shot_creation:
             self.created_shots.append(entity.serialize())
 

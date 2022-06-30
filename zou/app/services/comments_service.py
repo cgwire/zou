@@ -7,13 +7,14 @@ from flask import current_app
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.notification import Notification
-from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.project import Project
 from zou.app.models.task import Task
 
 from zou.app.services import (
     assets_service,
     base_service,
     breakdown_service,
+    entities_service,
     news_service,
     notifications_service,
     persons_service,
@@ -22,6 +23,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
+    WrongParameterException,
     AssetNotFoundException,
 )
 
@@ -61,6 +63,7 @@ def get_attachment_file_path(attachment_file):
 
 def create_comment(
     person_id, task_id, task_status_id, text, checklist, files, created_at
+
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -68,6 +71,7 @@ def create_comment(
     task = tasks_service.get_task_with_relations(task_id)
     task_status = tasks_service.get_task_status(task_status_id)
     author = _get_comment_author(person_id)
+    _check_retake_capping(task_status, task)
     comment = new_comment(
         task_id=task_id,
         object_type="Task",
@@ -89,6 +93,21 @@ def create_comment(
     for automation in status_automations:
         _run_status_automation(automation, task, person_id)
     return comment
+
+
+def _check_retake_capping(task_status, task):
+    if task_status["is_retake"]:
+        project = projects_service.get_project(task["project_id"])
+        if project["max_retakes"] > 0:
+            entity = entities_service.get_entity_raw(task["entity_id"])
+            entity = entities_service.get_entity(task["entity_id"])
+            entity_data = entity.get("data", {}) or {}
+            entity_max_retakes = entity_data.get("max_retakes", None)
+            max_retakes = int(entity_max_retakes or project["max_retakes"])
+            if task["retake_count"] >= max_retakes and max_retakes > 0:
+                raise WrongParameterException(
+                    "No more retakes allowed on this task")
+    return True
 
 
 def _get_comment_author(person_id):
