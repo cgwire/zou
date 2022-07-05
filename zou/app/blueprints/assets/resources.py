@@ -29,6 +29,23 @@ class AssetResource(Resource):
     def get(self, asset_id):
         """
         Retrieve given asset.
+        ---
+        tags:
+          - assets
+        parameters:
+          - in: path
+            name: asset_id
+            type: integer
+            required: true
+        responses:
+          200:
+            description: A single asset item
+            schema:
+              id: Asset
+              properties:
+                asset_id:
+                  type: UUID
+                  description: The id of the asset
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -55,6 +72,14 @@ class AllAssetsResource(Resource):
         """
         Retrieve all entities that are not shot or sequence.
         Adds project name and asset type name.
+        ---
+        tags:
+          - assets
+        responses:
+          200:
+            description: All asset items
+            schema:
+              id: Asset
         """
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
@@ -150,6 +175,27 @@ class ProjectAssetTypeAssetsResource(Resource):
     def get(self, project_id, asset_type_id):
         """
         Retrieve all assets for given project and entity type.
+        ---
+        parameters:
+          - in: path
+            name: project_id
+            type: integer
+            required: true
+          - in: path
+            name: asset_type_id
+            type: integer
+            required: true
+        tags:
+          - projects
+        responses:
+          200:
+            description: A single asset item for a single project item
+            schema:
+              id: Project
+              properties:
+                project_id:
+                  type: integer
+                
         """
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)

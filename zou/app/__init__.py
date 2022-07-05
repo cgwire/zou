@@ -1,9 +1,12 @@
 import os
+from re import template
 import flask_fs
 import traceback
 
 from flask import Flask, jsonify
-from flask_restful import current_app
+from flasgger import Swagger
+from flask_marshmallow import Marshmallow
+from flask_restful import current_app, Api
 from flask_jwt_extended import JWTManager
 from flask_principal import Principal, identity_changed, Identity
 from flask_sqlalchemy import SQLAlchemy
@@ -28,6 +31,41 @@ from zou.app.utils import cache
 app = Flask(__name__)
 app.config.from_object(config)
 
+template = {
+  "swagger": "2.0",
+  "info": {
+    "title": "Zou API",
+    "description": "this is a test for the documentation of the API",
+    "contact": {
+      "responsibleOrganization": "ME",
+      "responsibleDeveloper": "Me",
+      "email": "support@cg-wire.com",
+      "url": "www.cg-wire.com",
+    },
+    "termsOfService": "https://www.cg-wire.com/terms.html",
+    "version": "0.0.1"
+  },
+  "host": "localhost:8080",  # overrides localhost:500
+  "basePath": "/api",  # base bash for blueprint registration
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "operationId": "getmyData",
+  "tags": [
+    {
+      "name": "assets",
+      "description": "description of assets",
+    },
+    {
+      "name": "projects",
+      "description": "description of projects",
+    }
+  ]
+}
+
+flask_app = Api(app=app)
+
 logs.configure_logs(app)
 
 if not app.config["FILE_TREE_FOLDER"]:
@@ -44,6 +82,7 @@ init_indexes(app.config["INDEXES_FOLDER"])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
+ma = Marshmallow(app)
 
 app.secret_key = app.config["SECRET_KEY"]
 jwt = JWTManager(app)  # JWT auth tokens
@@ -52,6 +91,7 @@ cache.cache.init_app(app)  # Function caching
 flask_fs.init_app(app)  # To save files in object storage
 mail = Mail()
 mail.init_app(app)  # To send emails
+swagger = Swagger(app, template=template)
 
 
 @app.teardown_appcontext
