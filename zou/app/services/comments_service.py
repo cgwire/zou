@@ -98,7 +98,8 @@ def create_comment(
 def _check_retake_capping(task_status, task):
     if task_status["is_retake"]:
         project = projects_service.get_project(task["project_id"])
-        if project["max_retakes"] > 0:
+        project_max_retakes = project["max_retakes"] or 0
+        if project_max_retakes > 0:
             entity = entities_service.get_entity_raw(task["entity_id"])
             entity = entities_service.get_entity(task["entity_id"])
             entity_data = entity.get("data", {}) or {}
