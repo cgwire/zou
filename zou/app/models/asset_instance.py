@@ -56,10 +56,5 @@ class AssetInstance(db.Model, BaseMixin, SerializerMixin):
 
 
 class AssetInstanceSchema(ma.Schema):
-    """
-    Asset Instance Schema
-    ---
-    
-    """
     class Meta:
         model = AssetInstance
