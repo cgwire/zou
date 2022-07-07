@@ -819,7 +819,7 @@ def remove_shot(shot_id, force=False):
         clear_shot_cache(shot_id)
         events.emit(
             "shot:delete",
-            {"shot_id": shot_id},
+            {"shot_id": shot_id, "project_id": shot.project_id},
             project_id=str(shot.project_id),
         )
 
@@ -860,7 +860,7 @@ def remove_sequence(sequence_id, force=False):
         sequence.delete()
         events.emit(
             "sequence:delete",
-            {"sequence_id": sequence_id},
+            {"sequence_id": sequence_id, "project_id": sequence.project_id},
             project_id=str(sequence.project_id),
         )
     except IntegrityError:

@@ -381,7 +381,7 @@ def remove_episode(episode_id, force=False):
         episode.delete()
         events.emit(
             "episode:delete",
-            {"episode_id": episode_id},
+            {"episode_id": episode_id, "project_id": episode.project_id},
             project_id=str(episode.project_id),
         )
     except IntegrityError:
