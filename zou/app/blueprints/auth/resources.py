@@ -178,15 +178,21 @@ class LogoutResource(Resource):
 
 
 class LoginResource(Resource):
-    """
-    Log in user by creating and registering auth tokens. Login is based
-    on email and password. If no user match given email and a destkop ID,
-    it looks in matching the desktop ID with the one stored in database. It is
-    useful for clients that run on desktop tools and that don't know user
-    email.
-    """
 
     def post(self):
+        """
+        Log in user by creating and registering auth tokens. Login is based
+        on email and password. If no user match given email and a destkop ID,
+        it looks in matching the desktop ID with the one stored in database. It is
+        useful for clients that run on desktop tools and that don't know user
+        email.
+        ---
+        tags:
+            - Authentification
+        responses:
+          200:
+            description: Login
+        """
         (email, password) = self.get_arguments()
         try:
             user = auth_service.check_auth(app, email, password)
@@ -302,13 +308,19 @@ class LoginResource(Resource):
 
 
 class RefreshTokenResource(Resource):
-    """
-    Tokens are considered as outdated every two weeks. This route allows to
-    make their lifetime long. Before they get outdated.
-    """
 
     @jwt_refresh_token_required
     def get(self):
+        """
+        Tokens are considered as outdated every two weeks. This route allows to
+        make their lifetime long. Before they get outdated.
+        ---
+        tags:
+            - Authentification
+        responses:
+          200:
+            description: Refresh Token
+        """
         email = get_jwt_identity()
         access_token = create_access_token(identity=email)
         auth_service.register_tokens(app, access_token)
@@ -320,11 +332,20 @@ class RefreshTokenResource(Resource):
 
 
 class RegistrationResource(Resource):
-    """
-    Allow an user to register himself to the service.
-    """
 
     def post(self):
+        """
+        Allow an user to register himself to the service.
+        ---
+        tags:
+            - Authentification
+        parameters:
+          - in: path
+            
+        responses:
+            200:
+              description: Register user
+        """
         (
             email,
             password,

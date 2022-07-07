@@ -54,11 +54,11 @@ template = {
   "operationId": "getmyData",
   "tags": [
     {
-      "name": "assets",
+      "name": "Assets",
       "description": "description of assets",
     },
     {
-      "name": "projects",
+      "name": "Projects",
       "description": "description of projects",
     }
   ]
@@ -82,7 +82,6 @@ init_indexes(app.config["INDEXES_FOLDER"])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
-ma = Marshmallow(app)
 
 app.secret_key = app.config["SECRET_KEY"]
 jwt = JWTManager(app)  # JWT auth tokens

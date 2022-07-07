@@ -31,7 +31,7 @@ class AssetResource(Resource):
         Retrieve given asset.
         ---
         tags:
-          - assets
+          - Assets
         parameters:
           - in: path
             name: asset_id
@@ -44,8 +44,10 @@ class AssetResource(Resource):
               id: Asset
               properties:
                 asset_id:
-                  type: UUID
-                  description: The id of the asset
+                    type: UUID
+                    description: Id of asset
+                    format: int32
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -54,6 +56,28 @@ class AssetResource(Resource):
 
     @jwt_required
     def delete(self, asset_id):
+        """
+        Delete given asset.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            type: integer
+            required: true
+        responses:
+          200:
+            description: A single asset item
+            schema:
+              id: Asset
+              properties:
+                asset_id:
+                    type: UUID
+                    description: Id of asset
+                    format: int32
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+        """
         parser = reqparse.RequestParser()
         parser.add_argument("force", default=False, type=bool)
         args = parser.parse_args()
@@ -74,12 +98,10 @@ class AllAssetsResource(Resource):
         Adds project name and asset type name.
         ---
         tags:
-          - assets
+          - Assets
         responses:
           200:
             description: All asset items
-            schema:
-              id: Asset
         """
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
@@ -102,6 +124,12 @@ class AssetsAndTasksResource(Resource):
         Adds project name and asset type name and all related tasks.
         If episode_id is given as parameter, it returns assets not linked
         to an episode and assets linked to given episode.
+        ---
+        tags:
+          - Assets
+        responses:
+          200:
+            description: All assets with tasks
         """
         criterions = query.get_query_criterions_from_request(request)
         page = query.get_page_from_request(request)
@@ -118,6 +146,25 @@ class AssetTypeResource(Resource):
     def get(self, asset_type_id):
         """
         Retrieve given asset type.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: asset_type_id
+            type: UUID
+            required: true
+        responses:
+          200:
+            description: A single asset type
+            schema:
+              id: Asset Type
+              properties:
+                asset_type_id:
+                    type: UUID
+                    description: ID of asset type
+                    format: int32
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         """
         return assets_service.get_asset_type(asset_type_id)
 
@@ -171,32 +218,42 @@ class ProjectAssetsResource(Resource):
 
 
 class ProjectAssetTypeAssetsResource(Resource):
+    """
+    Retrieve all assets for given project and entity type.
+    ---
+    parameters:
+        - in: path
+        name: project_id
+        type: UUID
+        required: true
+        - in: path
+        name: asset_type_id
+        type: UUID
+        required: true
+    tags:
+        - Projects
+    responses:
+        200:
+        description: A single asset item for a single project item
+        schema:
+            id: Asset Type
+            properties:
+            asset_type_id:
+                type: UUID
+                description: ID of asset type
+                format: int32
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            id: Project
+            properties:
+            project_id:
+                type: UUID
+                description: ID of project
+                format: int32
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            
+    """
     @jwt_required
     def get(self, project_id, asset_type_id):
-        """
-        Retrieve all assets for given project and entity type.
-        ---
-        parameters:
-          - in: path
-            name: project_id
-            type: integer
-            required: true
-          - in: path
-            name: asset_type_id
-            type: integer
-            required: true
-        tags:
-          - projects
-        responses:
-          200:
-            description: A single asset item for a single project item
-            schema:
-              id: Project
-              properties:
-                project_id:
-                  type: integer
-                
-        """
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id

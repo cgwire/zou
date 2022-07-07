@@ -1,7 +1,7 @@
 from sqlalchemy_utils import UUIDType
 from sqlalchemy.dialects.postgresql import JSONB
 
-from zou.app import db, ma
+from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
@@ -53,8 +53,3 @@ class AssetInstance(db.Model, BaseMixin, SerializerMixin):
 
     def __repr__(self):
         return "<AssetInstance %s>" % self.id
-
-
-class AssetInstanceSchema(ma.Schema):
-    class Meta:
-        model = AssetInstance
