@@ -5,7 +5,6 @@ import traceback
 
 from flask import Flask, jsonify
 from flasgger import Swagger
-from flask_marshmallow import Marshmallow
 from flask_restful import current_app, Api
 from flask_jwt_extended import JWTManager
 from flask_principal import Principal, identity_changed, Identity
@@ -35,10 +34,10 @@ template = {
   "swagger": "2.0",
   "info": {
     "title": "Zou API",
-    "description": "this is a test for the documentation of the API",
+    "description": "This is a test for the documentation of the API",
     "contact": {
-      "responsibleOrganization": "ME",
-      "responsibleDeveloper": "Me",
+      "responsibleOrganization": "CGWire",
+      "responsibleDeveloper": "CGWire",
       "email": "support@cg-wire.com",
       "url": "www.cg-wire.com",
     },
@@ -55,16 +54,15 @@ template = {
   "tags": [
     {
       "name": "Assets",
-      "description": "description of assets",
+      "description": "Description of assets",
     },
     {
       "name": "Projects",
-      "description": "description of projects",
+      "description": "Description of projects",
     }
   ]
 }
 
-flask_app = Api(app=app)
 
 logs.configure_logs(app)
 
