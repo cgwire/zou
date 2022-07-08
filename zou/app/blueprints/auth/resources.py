@@ -136,6 +136,18 @@ class AuthenticatedResource(Resource):
 
     @jwt_required
     def get(self):
+        """
+        Returns information if the user is authenticated else it returns a 401 response.
+        ---
+        description:  It can be used by third party tools, especially browser frontend, to know if current user is still logged in.
+        tags:
+            - Authentification
+        responses:
+          200:
+            description: User authenticated
+          401:
+            description: Person not found
+        """
         try:
             person = persons_service.get_person_by_email(
                 get_jwt_identity(), relations=True
@@ -159,6 +171,18 @@ class LogoutResource(Resource):
 
     @jwt_required
     def get(self):
+        """
+        Log user out by revoking his auth tokens.
+        ---
+        description: Once logged out, current user cannot access the API anymore.
+        tags:
+            - Authentification
+        responses:
+          200:
+            description: Logout successful
+          500:
+            description: Access token not found
+        """
         try:
             logout()
             identity_changed.send(
@@ -178,20 +202,44 @@ class LogoutResource(Resource):
 
 
 class LoginResource(Resource):
-
-    def post(self):
-        """
+    """
         Log in user by creating and registering auth tokens. Login is based
         on email and password. If no user match given email and a destkop ID,
         it looks in matching the desktop ID with the one stored in database. It is
         useful for clients that run on desktop tools and that don't know user
         email.
+    """
+
+    def post(self):
+        """
+        Log in user by creating and registering auth tokens.
         ---
+        description: Login is based on email and password. 
+                     If no user match given email and a destkop ID, it looks in matching the desktop ID with the one stored in database. 
+                     It is useful for clients that run on desktop tools and that don't know user email.
         tags:
             - Authentification
+        parameters:
+          - in: body
+            name: Credentials
+            description: The email and password of the user
+            schema:
+                type: object
+                required:
+                - email
+                - password
+                properties:
+                    email:
+                        type: string
+                    password:
+                        type: string
         responses:
           200:
-            description: Login
+            description: Login successful
+          400:
+            description: Login failed
+          500:
+            description: Database not reachable
         """
         (email, password) = self.get_arguments()
         try:
@@ -274,7 +322,7 @@ class LoginResource(Resource):
                 {
                     "error": True,
                     "login": False,
-                    "message": "User is unactive, he cannot log in.",
+                    "message": "User is inactive, he cannot log in.",
                 },
                 400,
             )
@@ -312,14 +360,14 @@ class RefreshTokenResource(Resource):
     @jwt_refresh_token_required
     def get(self):
         """
-        Tokens are considered as outdated every two weeks. This route allows to
-        make their lifetime long. Before they get outdated.
+        Tokens are considered as outdated every two weeks.
         ---
+        description: This route allows to make their lifetime long before they get outdated.
         tags:
             - Authentification
         responses:
           200:
-            description: Refresh Token
+            description: Access Token
         """
         email = get_jwt_identity()
         access_token = create_access_token(identity=email)
@@ -332,19 +380,44 @@ class RefreshTokenResource(Resource):
 
 
 class RegistrationResource(Resource):
-
+    """
+    Allow a user to register himself to the service.
+    """
     def post(self):
         """
-        Allow an user to register himself to the service.
+        Allow a user to register himself to the service.
         ---
         tags:
             - Authentification
         parameters:
-          - in: path
-            
+          - in: body
+            name: Credentials
+            description: The email, password, confirmation password, first name and last name of the user
+            schema:
+                type: object
+                required:
+                - email
+                - password
+                - password_2
+                - first_name
+                - last_name
+                properties:
+                    email:
+                        type: string
+                    password:
+                        type: string
+                    password_2:
+                        type: string
+                    first_name:
+                        type: string
+                    last_name:
+                        type: string
+                    
         responses:
-            200:
-              description: Register user
+          201:
+            description: Registration successful
+          400:
+            description: Invalid password or email
         """
         (
             email,
@@ -416,6 +489,39 @@ class ChangePasswordResource(Resource):
 
     @jwt_required
     def post(self):
+        """
+        Allow the user to change his password.
+        ---
+        description: Prior to modifying the password, it requires to give the current password 
+                     (to make sure the user changing the password is not someone who stealed the session).
+                     The new password requires a confirmation to ensure that the user didn't
+                     make a mistake by typing his new password.
+        tags:
+            - Authentification
+        parameters:
+          - in: body
+            name: Credentials
+            description: The old password, new password and confirmation password of the user
+            schema:
+                type: object
+                required:
+                - old_password
+                - password
+                - password_2
+                properties:
+                    old_password:
+                        type: string
+                    password:
+                        type: string
+                    password_2:
+                        type: string
+                    
+        responses:
+          200:
+            description: Password changed
+          400:
+            description: Invalid password or inactive user
+        """
         (old_password, password, password_2) = self.get_arguments()
 
         try:
@@ -436,9 +542,9 @@ class ChangePasswordResource(Resource):
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
         except UnactiveUserException:
-            return {"error": True, "message": "Old password is wrong."}, 400
-        except WrongPasswordException:
             return {"error": True, "message": "User is unactive."}, 400
+        except WrongPasswordException:
+            return {"error": True, "message": "Old password is wrong."}, 400
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
@@ -466,6 +572,39 @@ class ResetPasswordResource(Resource, ArgsMixin):
     """
 
     def put(self):
+        """
+        Ressource to allow a user to change his password when he forgets it.
+        ---
+        description: "It uses a classic scheme: a token is sent by email to the user. 
+                     Then he can change his password."
+        tags:
+            - Authentification
+        parameters:
+          - in: body
+            name: Credentials
+            description: The token, new password and confirmation password of the user
+            schema:
+                type: object
+                required:
+                - token
+                - password
+                - password_2
+                properties:
+                    token:
+                        type: UUID
+                    password:
+                        type: string
+                    password_2:
+                        type: string
+                    
+        responses:
+          200:
+            description: Password reset
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
         args = self.get_put_arguments()
         try:
             email = auth_tokens_store.get("reset-%s" % args["token"])
@@ -492,9 +631,34 @@ class ResetPasswordResource(Resource, ArgsMixin):
         except auth.PasswordTooShortException:
             return {"error": True, "message": "Password is too short."}, 400
         except UnactiveUserException:
-            return {"error": True, "message": "User is unactive."}, 400
+            return {"error": True, "message": "User is inactive."}, 400
 
     def post(self):
+        """
+        Ressource to allow a user to change his password when he forgets it.
+        ---
+        description: "It uses a classic scheme: a token is sent by email to the user. 
+                     Then he can change his password."
+        tags:
+            - Authentification
+        parameters:
+          - in: body
+            name: Email
+            description: The email of the user
+            schema:
+                type: object
+                required:
+                - email
+                properties:
+                    email:
+                        type: string
+                    
+        responses:
+          200:
+            description: Reset token sent
+          400:
+            description: Email not listed in database
+        """
         args = self.get_arguments()
         try:
             user = persons_service.get_person_by_email(args["email"])

@@ -59,6 +59,10 @@ template = {
     {
       "name": "Projects",
       "description": "Description of projects",
+    },
+    {
+      "name": "Authentification",
+      "description": "Description of authentification",
     }
   ]
 }
