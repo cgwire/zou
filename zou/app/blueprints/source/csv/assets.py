@@ -88,7 +88,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                 )
                 for task_type_id in task_type_ids:
                     task = tasks_service.create_task(
-                        {"id": task_type_id}, [entity.serialize()]
+                        {"id": task_type_id}, entity.serialize()
                     )
                     tasks_map[task_type_id] = task
             else:
@@ -101,7 +101,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         tasks_service.get_task_type(
                             task_update["task_type_id"]
                         ),
-                        [entity.serialize()],
+                        entity.serialize(),
                     )
                     tasks_map[task_update["task_type_id"]] = task
                 task = tasks_map[task_update["task_type_id"]]
