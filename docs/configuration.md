@@ -58,6 +58,12 @@ email notifications.
   for instance).
 
 
+## Indexes
+
+* `INDEXES_FOLDER` (default: "./indexes"): The folder to store your indexes, we
+  recommend to set a full path here.
+
+
 ## S3 Storage
 
 If you want to store you previews in a S3 backend, add the following
