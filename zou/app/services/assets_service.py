@@ -295,6 +295,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
                 "ready_for": str(asset.ready_for),
                 "episode_id": source_id,
                 "casting_episode_ids": cast_in_episode_ids.get(asset_id, []),
+                "is_casting_standby": asset.is_casting_standby,
                 "data": fields.serialize_value(asset.data),
                 "tasks": [],
             }
