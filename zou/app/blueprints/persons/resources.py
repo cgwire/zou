@@ -29,6 +29,42 @@ class NewPersonResource(Resource):
 
     @jwt_required
     def post(self):
+        """
+        Create a new user in the database. 
+        ---
+        tags:
+        - Persons
+        description: Set "default" as password.
+                     User role can be set but only admins can create admin users.
+        parameters:
+          - in: body
+            name: User
+            description: Email, first and last name, phone, role, desktop login and department of user
+            schema:
+                type: object
+                required:
+                - email
+                - first_name
+                properties:
+                    email:
+                        type: string
+                    first_name:
+                        type: string  
+                    last_name:
+                        type: string
+                    phone:
+                        type: integer
+                        example: 06 12 34 56 78
+                    role:
+                        type: string
+                    desktop_login:
+                        type: string
+                    departments:
+                        type: string
+        responses:
+            201:
+                description: User created
+        """
         permissions.check_admin_permissions()
         data = self.get_arguments()
 
@@ -76,6 +112,23 @@ class DesktopLoginsResource(Resource):
 
     @jwt_required
     def get(self, person_id):
+        """
+        Retrieve desktop login logs.
+        ---
+        tags:
+        - Persons
+        description: Desktop login logs can only be created by current user.
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Desktop login logs
+        """
         current_user = persons_service.get_current_user()
         if (
             current_user["id"] != person_id
@@ -88,6 +141,34 @@ class DesktopLoginsResource(Resource):
 
     @jwt_required
     def post(self, person_id):
+        """
+        Create desktop login logs.
+        ---
+        tags:
+        - Persons
+        description: Set "default" as password.
+                     User role can be set but only admins can create admin users.
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Date
+            schema:
+                type: object
+                required:
+                - date
+                properties:
+                    date:
+                        type: timestamp
+                        example: 2022-07-12
+        responses:
+            201:
+                description: Desktop login logs created
+        """
         arguments = self.get_arguments()
 
         current_user = persons_service.get_current_user()
@@ -116,6 +197,22 @@ class PresenceLogsResource(Resource):
 
     @jwt_required
     def get(self, month_date):
+        """
+        Return a csv file containing the presence logs based on a daily basis.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: month_date
+            required: True
+            schema:
+                type: timestamp
+                example: 2022-07
+        responses:
+            200:
+                description: CSV file containing the presence logs based on a daily basis
+        """
         permissions.check_admin_permissions()
         date = datetime.datetime.strptime(month_date, "%Y-%m")
         presence_logs = persons_service.get_presence_logs(
@@ -131,6 +228,30 @@ class TimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, person_id, date):
+        """
+        Get time spents for given person and date.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            schema:
+                type: timestamp
+                example: 2022-07-12
+        responses:
+            200:
+                description: Time spents for given person and date
+            404:
+                description: Wrong date format
+        """
         current_user = persons_service.get_current_user()
         if current_user["id"] != person_id:
             try:
@@ -150,6 +271,30 @@ class DayOffResource(Resource):
 
     @jwt_required
     def get(self, person_id, date):
+        """
+        Get day off object for given person and date.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            schema:
+                type: timestamp
+                example: 2022-07-12
+        responses:
+            200:
+                description: Day off object for given person and date
+            404:
+                description: Wrong date format
+        """
         current_user = persons_service.get_current_user()
         if current_user["id"] != person_id:
             try:
@@ -169,6 +314,30 @@ class PersonYearTimeSpentsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year):
+        """
+        Get aggregated time spents for given person and year.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+        responses:
+            200:
+                description: Aggregated time spents for given person and year
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
@@ -186,6 +355,36 @@ class PersonMonthTimeSpentsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, month):
+        """
+        Get aggregated time spents for given person and month.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+        responses:
+            200:
+                description: Aggregated time spents for given person and month
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
@@ -203,6 +402,36 @@ class PersonWeekTimeSpentsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, week):
+        """
+        Get aggregated time spents for given person and week.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: week
+            required: True
+            schema:
+                type: integer
+                example: 35 (from 01 to 52)
+        responses:
+            200:
+                description: Aggregated time spents for given person and week
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
@@ -220,6 +449,42 @@ class PersonDayTimeSpentsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, month, day):
+        """
+        Get aggregated time spents for given person and day.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+          - in: path
+            name: day
+            required: True
+            schema:
+                type: integer
+                example: 12 (from 01 to 31)
+        responses:
+            200:
+                description: Aggregated time spents for given person and day
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         user_service.check_person_access(person_id)
         try:
@@ -237,6 +502,36 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, month):
+        """
+        Get ended shots used for quota calculation of this month.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+        responses:
+            200:
+                description: Ended shots used for quota calculation of this month
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
@@ -261,6 +556,36 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, week):
+        """
+        Get ended shots used for quota calculation of this week.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: week
+            required: True
+            schema:
+                type: integer
+                example: 35 (from 01 to 52)
+        responses:
+            200:
+                description: Ended shots used for quota calculation of this week
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
@@ -285,6 +610,42 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, month, day):
+        """
+        Get ended shots used for quota calculation of this day.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+          - in: path
+            name: day
+            required: True
+            schema:
+                type: integer
+                example: 12 (from 01 to 31)
+        responses:
+            200:
+                description: Ended shots used for quota calculation of this day
+            404:
+                description: Wrong date format
+        """
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
@@ -311,6 +672,28 @@ class TimeSpentMonthResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, year, month):
+        """
+        Return a table giving time spent by user and by day for given year and month.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+        responses:
+            200:
+                description: Table giving time spent by user and by day for given year and month
+        """
         project_id = self.get_project_id()
         person_id = None
         if not permissions.has_admin_permissions():
@@ -327,6 +710,15 @@ class TimeSpentYearsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self):
+        """
+        Return a table giving time spent by user and by month for given year.
+        ---
+        tags:
+        - Persons
+        responses:
+            200:
+                description: Table giving time spent by user and by month for given year
+        """
         project_id = self.get_project_id()
         person_id = None
         if not permissions.has_admin_permissions():
@@ -343,6 +735,22 @@ class TimeSpentMonthsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, year):
+        """
+        Return a table giving time spent by user and by month for given year.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+        responses:
+            200:
+                description: Table giving time spent by user and by month for given year
+        """
         project_id = self.get_project_id()
         person_id = None
         if not permissions.has_admin_permissions():
@@ -359,6 +767,22 @@ class TimeSpentWeekResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, year):
+        """
+        Return a table giving time spent by user and by week for given year.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+        responses:
+            200:
+                description: Table giving time spent by user and by week for given year
+        """
         project_id = self.get_project_id()
         person_id = None
         if not permissions.has_admin_permissions():
@@ -375,6 +799,22 @@ class InvitePersonResource(Resource):
 
     @jwt_required
     def get(self, person_id):
+        """
+        Sends an email to given person to invite him/her to connect to Kitsu.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Email sent
+        """
         permissions.check_admin_permissions()
         persons_service.invite_person(person_id)
         return {"success": True, "message": "Email sent"}
@@ -387,6 +827,28 @@ class DayOffForMonthResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, year, month):
+        """
+        Return all day off recorded for given month.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+        responses:
+            200:
+                description: All day off recorded for given month
+        """
         if permissions.has_admin_permissions():
             return time_spents_service.get_day_offs_for_month(year, month)
         else:
@@ -403,6 +865,34 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, week):
+        """
+        Return all day off recorded for given week and person.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: week
+            required: True
+            schema:
+                type: integer
+                example: 35 (from 01 to 52)
+        responses:
+            200:
+                description: All day off recorded for given week and person
+        """
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
@@ -418,6 +908,34 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year, month):
+        """
+        Return all day off recorded for given month and person.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+          - in: path
+            name: month
+            required: True
+            schema:
+                type: integer
+                example: 07 (from 01 to 12)
+        responses:
+            200:
+                description: All day off recorded for given month and person
+        """
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
@@ -433,6 +951,28 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, person_id, year):
+        """
+        Return all day off recorded for given year and person.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: year
+            required: True
+            schema:
+                type: integer
+                example: 2022
+        responses:
+            200:
+                description: All day off recorded for given year and person
+        """
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
@@ -448,6 +988,22 @@ class AddToDepartmentResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, person_id):
+        """
+        Add a user to given department.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: User added to given department
+        """
         permissions.check_admin_permissions()
         args = self.get_args(
             [
@@ -471,6 +1027,28 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
 
     @jwt_required
     def delete(self, person_id, department_id):
+        """
+        Remove a user from given department.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: department_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: User removed from given department
+        """
         permissions.check_admin_permissions()
         try:
             department = tasks_service.get_department(department_id)

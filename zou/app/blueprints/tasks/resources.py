@@ -36,6 +36,29 @@ class AddPreviewResource(Resource):
 
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Add a preview to given task.
+        ---
+        tags:
+        - Tasks
+        description: "Revision is automatically set: it is equal to last revision + 1."
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Preview added to given task
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -56,6 +79,34 @@ class AddExtraPreviewResource(Resource):
 
     @jwt_required
     def post(self, task_id, comment_id, preview_file_id):
+        """
+        Add a preview to given comment.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: preview_file_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Preview added to given comment
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -71,6 +122,34 @@ class AddExtraPreviewResource(Resource):
 
     @jwt_required
     def delete(self, task_id, comment_id, preview_file_id):
+        """
+        Delete preview from given comment.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: preview_file_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Preview deleted from given comment
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         deletion_service.remove_preview_file_by_id(preview_file_id)
@@ -84,6 +163,22 @@ class TaskPreviewsResource(Resource):
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return previews linked to given task.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Previews linked to given task
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -92,11 +187,27 @@ class TaskPreviewsResource(Resource):
 
 class TaskCommentsResource(Resource):
     """
-    Return comments link to given task.
+    Return comments linked to given task.
     """
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return comments linked to given task.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Comments linked to given task
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -117,6 +228,25 @@ class TaskCommentResource(Resource):
     def get(self, task_id, comment_id):
         """
         Get comment corresponding at given ID.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Comment corresponding at given ID
         """
         comment = tasks_service.get_comment(comment_id)
         user_service.check_comment_access(comment)
@@ -147,6 +277,25 @@ class TaskCommentResource(Resource):
     def delete(self, task_id, comment_id):
         """
         Delete a comment corresponding at given ID.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Comment corresponding at given ID deleted
         """
         comment = tasks_service.get_comment(comment_id)
         task = tasks_service.get_task(comment["object_id"])
@@ -170,6 +319,22 @@ class PersonTasksResource(Resource):
 
     @jwt_required
     def get(self, person_id):
+        """
+        Return task assigned to given user of which status has is_done flag sets to false.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Tasks assigned to user that are not done
+        """
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -191,6 +356,28 @@ class PersonRelatedTasksResource(Resource):
 
     @jwt_required
     def get(self, person_id, task_type_id):
+        """
+        For all entities assigned to given person (that have at least one task assigned to given person), returns all tasks for given task type.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All Tasks for given task type
+        """
         user = persons_service.get_current_user()
         if person_id != user["id"]:
             permissions.check_admin_permissions()
@@ -205,6 +392,23 @@ class PersonDoneTasksResource(Resource):
 
     @jwt_required
     def get(self, person_id):
+        """
+        Return task assigned to given user of which status has is_done flag sets to true.      
+        ---
+        tags:
+        - Tasks
+        description: It return only tasks related to open projects. 
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Tasks assigned to user that are done
+        """
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -225,6 +429,28 @@ class CreateShotTasksResource(Resource):
 
     @jwt_required
     def post(self, project_id, task_type_id):
+        """
+        Create a new task for given shot and task type.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: New task for given shot and task type created
+        """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
@@ -252,6 +478,28 @@ class CreateAssetTasksResource(Resource):
 
     @jwt_required
     def post(self, project_id, task_type_id):
+        """
+        Create a new task for given asset and task type.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: New task for given asset and task type created
+        """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
@@ -278,6 +526,28 @@ class CreateEditTasksResource(Resource):
 
     @jwt_required
     def post(self, project_id, task_type_id):
+        """
+        Create a new task for given edit and task type.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: New task for given edit and task type created
+        """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
 
@@ -305,6 +575,42 @@ class ToReviewResource(Resource):
 
     @jwt_required
     def put(self, task_id):
+        """
+        Change a task status to "to review".  
+        ---
+        tags:
+        - Tasks
+        description: It creates a new preview file entry and set path from the hard disk.
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Task
+            description: person ID, name, comment, revision and change status of task
+            schema:
+                type: object
+                properties:
+                    person_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string  
+                    name:
+                        type: string
+                    revision:
+                        type: integer
+                    change_status:
+                        type: bool
+        responses:
+            200:
+                description: Task status changed to "to review"
+            400:
+                description: Given person not found
+        """
         (
             person_id,
             comment,
@@ -371,6 +677,30 @@ class ClearAssignationResource(Resource):
 
     @jwt_required
     def put(self):
+        """
+        Remove all assignations set to given task.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: body
+            name: Task
+            description: List of tasks ID and person ID
+            schema:
+                type: object
+                required:
+                  - task_ids
+                properties:
+                    task_ids:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    person_id:
+                        type: UUID  
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All assignations removed
+        """
         (task_ids, person_id) = self.get_arguments()
         current_user = persons_service.get_current_user()
 
@@ -410,6 +740,34 @@ class TasksAssignResource(Resource):
 
     @jwt_required
     def put(self, person_id):
+        """
+        Assign given task lists to given person.
+        ---
+        tags:
+        - Tasks
+        description: If a given task ID is wrong, it ignores it.
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Task
+            description: List of tasks ID
+            schema:
+                type: object
+                required:
+                  - task_ids
+                properties:
+                    task_ids:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given tasks lists assigned to given person
+        """
         (task_ids) = self.get_arguments()
 
         tasks = []
@@ -456,6 +814,35 @@ class TaskAssignResource(Resource):
 
     @jwt_required
     def put(self, task_id):
+        """
+        Assign given task list to given person.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Person
+            description: Person ID
+            schema:
+                type: object
+                required:
+                  - person_id
+                properties:
+                    person_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given task assigned to given person
+            400:
+                description: Assignee non-existent in database
+        """
         (person_id) = self.get_arguments()
 
         try:
@@ -493,6 +880,23 @@ class TaskFullResource(Resource):
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return a task with many information
+        ---
+        description: full details for assignees, full details for task type, full details for task status, etc.
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Task with many information
+        """
         task = tasks_service.get_full_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -507,6 +911,28 @@ class TaskForEntityResource(Resource):
 
     @jwt_required
     def get(self, entity_id, task_type_id):
+        """
+        Return tasks related to given entity asset, episode, sequence, shot or scene.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: entity_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Tasks related to given entity asset, episode, sequence, shot or scene
+        """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
         return tasks_service.get_tasks_for_entity_and_task_type(
@@ -521,6 +947,43 @@ class SetTimeSpentResource(Resource):
 
     @jwt_required
     def post(self, task_id, date, person_id):
+        """
+        Set time spent by a person on a task for a given day.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            schema:
+                type: timestamp
+                example: 2022-07-12
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Duration
+            schema:
+                type: object
+                properties:
+                    duration:
+                        type: integer
+        responses:
+            201:
+                description: Time spent by given person on given task for given day is set
+            404:
+                description: Wrong date format
+        """
         args = self.get_arguments()
 
         try:
@@ -554,6 +1017,43 @@ class AddTimeSpentResource(Resource):
 
     @jwt_required
     def post(self, task_id, date, person_id):
+        """
+        Add given timeframe to time spent by a person on a task for a given day.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            schema:
+                type: timestamp
+                example: 2022-07-12
+          - in: path
+            name: person_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Duration
+            schema:
+                type: object
+                properties:
+                    duration:
+                        type: integer
+        responses:
+            201:
+                description: Given timeframe added to time spent by given person on given task for given day
+            404:
+                description: Wrong date format
+        """
         args = self.get_arguments()
 
         try:
@@ -585,6 +1085,30 @@ class GetTimeSpentResource(Resource):
 
     @jwt_required
     def get(self, task_id, date):
+        """
+        Get time spent on a given task by a given person.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            schema:
+                type: timestamp
+                example: 2022-07-12
+        responses:
+            200:
+                description: Time spent on given task by given person
+            404:
+                description: Wrong date format
+        """
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
@@ -602,6 +1126,29 @@ class DeleteAllTasksForTaskTypeResource(Resource):
 
     @jwt_required
     def delete(self, project_id, task_type_id):
+        """
+        Delete all tasks for a given task type and project.
+        ---
+        tags:
+        - Tasks
+        description: It's mainly used when tasks are created by mistake at the beginning of the project.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: All tasks for given task type and project deleted
+        """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
         task_ids = deletion_service.remove_tasks_for_project_and_task_type(
@@ -620,6 +1167,23 @@ class DeleteTasksResource(Resource):
 
     @jwt_required
     def post(self, project_id):
+        """
+        Delete tasks matching id list given in parameter.
+        ---
+        tags:
+        - Tasks
+        description: See it as a way to batch delete tasks.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Tasks matching id list given in parameter deleted
+        """
         user_service.check_manager_project_access(project_id)
         task_ids = request.json
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
@@ -637,6 +1201,23 @@ class ProjectSubscriptionsResource(Resource):
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all subcriptions to tasks related to given project.
+        ---
+        tags:
+        - Tasks
+        description: It's mainly used for synchronisation purpose.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All subcriptions to tasks related to given project
+        """
         projects_service.get_project(project_id)
         return notifications_service.get_subscriptions_for_project(project_id)
 
@@ -650,6 +1231,23 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all notifications to tasks related to given project.
+        ---
+        tags:
+        - Tasks
+        description: It's mainly used for synchronisation purpose.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All notifications to tasks related to given project
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return notifications_service.get_notifications_for_project(
@@ -666,6 +1264,23 @@ class ProjectTasksResource(Resource, ArgsMixin):
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all tasks related to given project.
+        ---
+        tags:
+        - Tasks
+        description: It's mainly used for synchronisation purpose.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given project
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return tasks_service.get_tasks_for_project(project_id, page)
@@ -680,6 +1295,23 @@ class ProjectCommentsResource(Resource, ArgsMixin):
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Retrieve all comments to tasks related to given project.
+        ---
+        tags:
+        - Tasks
+        description: It's mainly used for synchronisation purpose.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All comments to tasks related to given project
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return tasks_service.get_comments_for_project(project_id, page)
@@ -687,13 +1319,28 @@ class ProjectCommentsResource(Resource, ArgsMixin):
 
 class ProjectPreviewFilesResource(Resource, ArgsMixin):
     """
-    Retrieve all comments to tasks related to given project.
-    It's mainly used for synchronisation purpose.
+    Preview files related to a given project.
     """
 
     @jwt_required
     @permissions.require_admin
     def get(self, project_id):
+        """
+        Preview files related to a given project.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Preview files related to given project
+        """
         projects_service.get_project(project_id)
         page = self.get_page()
         return files_service.get_preview_files_for_project(project_id, page)

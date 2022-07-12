@@ -53,6 +53,10 @@ template = {
   "operationId": "getmyData",
   "tags": [
     {
+      "name": "Authentification",
+      "description": "Description of authentification",
+    },
+    {
       "name": "Assets",
       "description": "Description of assets",
     },
@@ -61,8 +65,12 @@ template = {
       "description": "Description of projects",
     },
     {
-      "name": "Authentification",
-      "description": "Description of authentification",
+      "name": "Shots",
+      "description": "Description of shots",
+    },
+    {
+      "name": "Search",
+      "description": "Description of search",
     }
   ]
 }

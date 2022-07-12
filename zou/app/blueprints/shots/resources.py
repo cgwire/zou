@@ -25,6 +25,19 @@ class ShotResource(Resource, ArgsMixin):
     def get(self, shot_id):
         """
         Retrieve given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given shot
         """
         shot = shots_service.get_full_shot(shot_id)
         if shot is None:
@@ -38,6 +51,19 @@ class ShotResource(Resource, ArgsMixin):
     def delete(self, shot_id):
         """
         Delete given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Given shot deleted
         """
         force = self.get_force()
         shot = shots_service.get_shot(shot_id)
@@ -51,6 +77,19 @@ class SceneResource(Resource):
     def get(self, scene_id):
         """
         Retrieve given scene.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given scene
         """
         scene = shots_service.get_full_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
@@ -61,6 +100,19 @@ class SceneResource(Resource):
     def delete(self, scene_id):
         """
         Delete given scene.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Given scene deleted
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_manager_project_access(scene["project_id"])
@@ -72,7 +124,33 @@ class ShotsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all shot entries. Filters can be specified in the query string.
+        Retrieve all shot entries.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: sequence_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: parent_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shot entries
         """
         criterions = query.get_query_criterions_from_request(request)
         if "sequence_id" in criterions:
@@ -92,7 +170,33 @@ class AllShotsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all shot entries. Filters can be specified in the query string.
+        Retrieve all shot entries.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: sequence_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: parent_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shot entries
         """
         criterions = query.get_query_criterions_from_request(request)
         if "sequence_id" in criterions:
@@ -112,8 +216,21 @@ class ScenesResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all scene entries. Filters can be specified in the query
-        string.
+        Retrieve all scene entries.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All scene entries
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -125,6 +242,19 @@ class ShotAssetsResource(Resource):
     def get(self, shot_id):
         """
         Retrieve all assets for a given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All assets for given shot
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
@@ -137,6 +267,19 @@ class ShotTaskTypesResource(Resource):
     def get(self, shot_id):
         """
         Retrieve all task types related to a given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All task types related to given shot
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
@@ -149,6 +292,19 @@ class ShotTasksResource(Resource, ArgsMixin):
     def get(self, shot_id):
         """
         Retrieve all tasks related to a given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given shot
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
@@ -162,6 +318,19 @@ class SequenceShotTasksResource(Resource, ArgsMixin):
     def get(self, sequence_id):
         """
         Retrieve all tasks related to a given sequence.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All task types related to given sequence
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
@@ -179,6 +348,19 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
     def get(self, episode_id):
         """
         Retrieve all shots tasks related to a given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shots tasks related to given episode
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -196,6 +378,19 @@ class EpisodeAssetTasksResource(Resource, ArgsMixin):
     def get(self, episode_id):
         """
         Retrieve all assets tasks related to a given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All assets tasks related to given episode
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -213,6 +408,19 @@ class EpisodeShotsResource(Resource, ArgsMixin):
     def get(self, episode_id):
         """
         Retrieve all shots related to a given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shots related to given episode
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -227,9 +435,22 @@ class ShotPreviewsResource(Resource):
     @jwt_required
     def get(self, shot_id):
         """
-        Retrieve all previews related to a given shot. It sends them
-        as a dict. Keys are related task type ids and values are arrays
-        of preview for this task type.
+        Retrieve all previews related to a given shot.
+        ---
+        tags:
+        - Shots
+        description: It sends them as a dict. 
+                     Keys are related task type ids and values are arrays of preview for this task type.
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All previews related to given episode
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
@@ -242,6 +463,19 @@ class SequenceTasksResource(Resource, ArgsMixin):
     def get(self, sequence_id):
         """
         Retrieve all tasks related to a given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given shot
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
@@ -256,6 +490,19 @@ class SequenceTaskTypesResource(Resource):
     def get(self, sequence_id):
         """
         Retrieve all task types related to a given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All task types related to given shot
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
@@ -266,8 +513,20 @@ class ShotsAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all shots, adds project name and asset type name and all
-        related tasks.
+        Retrieve all shots, adds project name and asset type name and all related tasks.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shots
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -282,8 +541,21 @@ class SceneAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all scene, adds project name and asset type name and all
+        Retrieve all scenes, adds project name and asset type name and all
         related tasks.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All scenes
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -295,8 +567,21 @@ class SequenceAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all sequence, adds project name and asset type name and all
+        Retrieve all sequences, adds project name and asset type name and all
         related tasks.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All sequences
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -308,8 +593,21 @@ class EpisodeAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all episode, adds project name and asset type name and all
+        Retrieve all episodes, adds project name and asset type name and all
         related tasks.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All episodes
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -322,6 +620,19 @@ class ProjectShotsResource(Resource):
     def get(self, project_id):
         """
         Retrieve all shots related to a given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shots related to given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -333,6 +644,42 @@ class ProjectShotsResource(Resource):
     def post(self, project_id):
         """
         Create a shot for given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Shot
+            description: ID of sequence and name, description, data, number of frames and ID of asset
+            schema:
+                type: object
+                required:
+                - name
+                - description
+                - data
+                - sequence_id
+                - nb_frames
+                properties:
+                    name:
+                        type: string
+                    description:
+                        type: string  
+                    data:
+                        type: string
+                    sequence_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    nb_frames:
+                        type: integer
+        responses:
+            201:
+                description: Shot created for given project
         """
         (
             sequence_id,
@@ -376,6 +723,19 @@ class ProjectSequencesResource(Resource):
     def get(self, project_id):
         """
         Retrieve all sequences related to a given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All sequences related to given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -387,6 +747,33 @@ class ProjectSequencesResource(Resource):
     def post(self, project_id):
         """
         Create a sequence for given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Sequence
+            description: Name and ID of episode
+            schema:
+                type: object
+                required:
+                - name
+                - episode_id
+                properties:
+                    name:
+                        type: string
+                    episode_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Sequence created for given project
         """
         (episode_id, name) = self.get_arguments()
         projects_service.get_project(project_id)
@@ -407,6 +794,19 @@ class ProjectEpisodesResource(Resource):
     def get(self, project_id):
         """
         Retrieve all episodes related to a given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All episodes related to given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -418,6 +818,29 @@ class ProjectEpisodesResource(Resource):
     def post(self, project_id):
         """
         Create an episode for given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Episode
+            description: Name of episode
+            schema:
+                type: object
+                required:
+                - name
+                properties:
+                    name:
+                        type: string
+        responses:
+            201:
+                description: Episode created for given project
         """
         name = self.get_arguments()
         projects_service.get_project(project_id)
@@ -435,8 +858,20 @@ class ProjectEpisodeStatsResource(Resource):
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve number of tasks by status, task_types and episodes
-        for given project.
+        Retrieve number of tasks by status, task_types and episodes for given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Number of tasks by status, task types and episodes for given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -449,8 +884,20 @@ class ProjectEpisodeRetakeStatsResource(Resource):
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve number of tasks by status, task_types and episodes
-        for given project.
+        Retrieve number of tasks by status, task_types and episodes for given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Number of tasks by status, task types and episodes for given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -464,6 +911,19 @@ class EpisodeResource(Resource, ArgsMixin):
     def get(self, episode_id):
         """
         Retrieve given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given episode
         """
         episode = shots_service.get_full_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -472,7 +932,20 @@ class EpisodeResource(Resource, ArgsMixin):
     @jwt_required
     def delete(self, episode_id):
         """
-        Retrieve given episode.
+        Delete given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Given episode deleted
         """
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
@@ -485,8 +958,21 @@ class EpisodesResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all episode entries. Filters can be specified in the query
-        string.
+        Retrieve all episode entries.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All episode entries
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -498,7 +984,26 @@ class EpisodeSequencesResource(Resource):
     def get(self, episode_id):
         """
         Retrieve all sequence entries for a given episode.
-        Filters can be specified in the query string.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All sequence entries for given episode
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -517,6 +1022,19 @@ class EpisodeTaskTypesResource(Resource):
     def get(self, episode_id):
         """
         Retrieve all task types related to a given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All task types related to given episode
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -528,6 +1046,19 @@ class EpisodeTasksResource(Resource):
     def get(self, episode_id):
         """
         Retrieve all tasks related to a given episode.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given episode
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -539,6 +1070,19 @@ class SequenceResource(Resource, ArgsMixin):
     def get(self, sequence_id):
         """
         Retrieve given sequence.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given sequence
         """
         sequence = shots_service.get_full_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
@@ -548,6 +1092,19 @@ class SequenceResource(Resource, ArgsMixin):
     def delete(self, sequence_id):
         """
         Delete given sequence.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Given sequence deleted
         """
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
@@ -560,8 +1117,21 @@ class SequencesResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all sequence entries. Filters can be specified in the query
-        string.
+        Retrieve all sequence entries.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: episode_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All sequence entries
         """
         criterions = query.get_query_criterions_from_request(request)
         if "episode_id" in criterions:
@@ -578,7 +1148,26 @@ class SequenceShotsResource(Resource):
     def get(self, sequence_id):
         """
         Retrieve all shot entries for a given sequence.
-        Filters can be specified in the query string.
+        ---
+        tags:
+        - Shots
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: project_id
+            required: False
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shot entries for given sequence
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
@@ -596,6 +1185,19 @@ class ProjectScenesResource(Resource):
     def get(self, project_id):
         """
         Retrieve all shots related to a given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shots related to given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -605,6 +1207,32 @@ class ProjectScenesResource(Resource):
     def post(self, project_id):
         """
         Create a shot for given project.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Shot
+            description: Name of shot and ID of sequence
+            schema:
+                type: object
+                required:
+                - name
+                - sequence_id
+                properties:
+                    name:
+                        type: string
+                    sequence_id:
+                        type: UUID
+        responses:
+            201:
+                description: Shot created for given project
         """
         (sequence_id, name) = self.get_arguments()
         projects_service.get_project(project_id)
@@ -625,6 +1253,19 @@ class SequenceScenesResource(Resource):
     def get(self, sequence_id):
         """
         Retrieve all scenes related to a given sequence.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: sequence_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All scenes related to given sequence
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
@@ -636,6 +1277,19 @@ class SceneTaskTypesResource(Resource):
     def get(self, scene_id):
         """
         Retrieve all task types related to a given scene.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All task types related to given scene
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
@@ -648,6 +1302,19 @@ class SceneTasksResource(Resource):
     def get(self, scene_id):
         """
         Retrieve all tasks related to a given scene.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given scene
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_entity_access(scene["id"])
@@ -658,7 +1325,20 @@ class SceneShotsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, scene_id):
         """
-        Retrieve all shots that comes from given scene.
+        Retrieve all shots that come from given scene.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shots that come from given scene
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_entity_access(scene["id"])
@@ -668,6 +1348,29 @@ class SceneShotsResource(Resource, ArgsMixin):
     def post(self, scene_id):
         """
         Mark given scene as source of given shot.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Shot
+            description: ID of shot
+            schema:
+                type: object
+                required:
+                - shot_id
+                properties:
+                    shot_id:
+                        type: UUID
+        responses:
+            200:
+                description: Given scene marked as source of given shot
         """
         args = self.get_args([("shot_id", None, True)])
         scene = shots_service.get_scene(scene_id)
@@ -679,6 +1382,28 @@ class SceneShotsResource(Resource, ArgsMixin):
 class RemoveShotFromSceneResource(Resource):
     @jwt_required
     def delete(self, scene_id, shot_id):
+        """
+        Delete given shot from given scene.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: scene_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Given shot deleted from given scene
+        """
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
         shot = shots_service.get_shot(shot_id)
@@ -693,6 +1418,22 @@ class ShotVersionsResource(Resource):
 
     @jwt_required
     def get(self, shot_id):
+        """
+        Retrieve data versions of given shot.        
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: shot_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Data versions of given shot
+        """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
         user_service.check_entity_access(shot["id"])
@@ -706,6 +1447,28 @@ class ProjectQuotasResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id, task_type_id):
+        """
+        Retrieve quotas statistics for shots.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Quotas statistics for shots
+        """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         detail_level = self.get_text_parameter("detail")
