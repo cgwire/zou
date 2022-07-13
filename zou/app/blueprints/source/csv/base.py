@@ -140,6 +140,8 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
                     raise ImportRowException(
                         "A columns is missing: %s" % e.args, line_number
                     )
+                except Exception as e:
+                    raise ImportRowException(str(e), line_number)
                 line_number += 1
         return result
 

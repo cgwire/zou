@@ -1,5 +1,5 @@
 from slugify import slugify
-from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource
+from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource, RowException
 from zou.app.models.task import Task
 from zou.app.models.organisation import Organisation
 
@@ -58,34 +58,31 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
         if self.assets_map.get(key):
             entity_id = self.assets_map[key]
-        if self.shots_map.get(key):
+        elif self.shots_map.get(key):
             entity_id = self.shots_map[key]
+        else:
+            raise RowException("Entity not found")
 
         new_data = {}
 
-        try:
+        if row.get("Estimation") is not None:
             new_data["estimation"] = round(
                 float(row["Estimation"]) * self.organisation.hours_by_day * 60
             )
-        except:
-            pass
 
-        try:
+        if row.get("Start date") is not None:
             new_data["start_date"] = date_helpers.get_date_from_string(
                 row["Start date"]
             )
-        except:
-            pass
 
-        try:
+        if row.get("Due date") is not None:
             new_data["due_date"] = date_helpers.get_date_from_string(
                 row["Due date"]
             )
-        except:
-            if new_data.get("start_date") and new_data.get("estimation"):
-                new_data["due_date"] = date_helpers.add_business_days_to_date(
-                    new_data["start_date"], float(row["Estimation"]) - 1
-                )
+        elif new_data.get("start_date") and new_data.get("estimation"):
+            new_data["due_date"] = date_helpers.add_business_days_to_date(
+                new_data["start_date"], float(row["Estimation"]) - 1
+            )
 
         tasks_service.update_task(self.tasks_map[entity_id], new_data)
 
