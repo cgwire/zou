@@ -25,7 +25,7 @@ from zou.app.services.exception import PreviewFileNotFoundException
 from zou.app.utils import fs
 
 
-def get_preview_file_dimensions(project, entity):
+def get_preview_file_dimensions(project, entity=None):
     """
     Return dimensions set at entity level or project level or default
     dimensions if the dimensions are not set.
@@ -33,7 +33,9 @@ def get_preview_file_dimensions(project, entity):
     The default size is based on 1080 height
     """
     resolution = project["resolution"]
-    entity_data = entity.get("data", {}) or {}
+    entity_data = {}
+    if entity is not None:
+        entity_data = entity.get("data", {}) or {}
     entity_resolution = entity_data.get("resolution", None)
     width = None
     height = 1080
