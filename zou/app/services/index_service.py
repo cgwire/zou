@@ -5,11 +5,7 @@ from zou.app.utils import indexing
 from zou.app import app
 from zou.app.index_schema import asset_schema, person_schema
 
-from zou.app.services import (
-    assets_service,
-    persons_service,
-    projects_service
-)
+from zou.app.services import assets_service, persons_service, projects_service
 
 
 def get_index(index_name):
@@ -61,10 +57,7 @@ def remove_entry_index(index, entry_id):
 
 def reset_asset_index():
     reset_entry_index(
-        "assets",
-        asset_schema,
-        assets_service.get_all_raw_assets,
-        index_asset
+        "assets", asset_schema, assets_service.get_all_raw_assets, index_asset
     )
 
 
@@ -73,7 +66,7 @@ def reset_person_index():
         "persons",
         person_schema,
         persons_service.get_all_raw_active_persons,
-        index_person
+        index_person,
     )
 
 
@@ -118,12 +111,15 @@ def index_asset(asset, index=None):
     """
     if index is None:
         index = get_asset_index()
-    return indexing.index_data(index, {
-        "name": asset.name,
-        "project_id": str(asset.project_id),
-        "episode_id": str(asset.source_id),
-        "id": str(asset.id)
-    })
+    return indexing.index_data(
+        index,
+        {
+            "name": asset.name,
+            "project_id": str(asset.project_id),
+            "episode_id": str(asset.source_id),
+            "id": str(asset.id),
+        },
+    )
 
 
 def index_person(person, index=None):
@@ -132,10 +128,9 @@ def index_person(person, index=None):
     """
     if index is None:
         index = get_person_index()
-    return indexing.index_data(index, {
-        "name": person.full_name(),
-        "id": str(person.id)
-    })
+    return indexing.index_data(
+        index, {"name": person.full_name(), "id": str(person.id)}
+    )
 
 
 def remove_asset_index(asset_id):

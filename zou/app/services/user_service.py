@@ -427,7 +427,7 @@ def check_comment_access(comment_id):
                 return True
             else:
                 raise permissions.PermissionDenied
-        elif (persons_service.get_person(person_id)["role"] == "client"):
+        elif persons_service.get_person(person_id)["role"] == "client":
             raise permissions.PermissionDenied
 
         return True

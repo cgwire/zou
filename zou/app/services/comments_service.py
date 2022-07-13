@@ -63,7 +63,6 @@ def get_attachment_file_path(attachment_file):
 
 def create_comment(
     person_id, task_id, task_status_id, text, checklist, files, created_at
-
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -107,7 +106,8 @@ def _check_retake_capping(task_status, task):
             max_retakes = int(entity_max_retakes or project["max_retakes"])
             if task["retake_count"] >= max_retakes and max_retakes > 0:
                 raise WrongParameterException(
-                    "No more retakes allowed on this task")
+                    "No more retakes allowed on this task"
+                )
     return True
 
 

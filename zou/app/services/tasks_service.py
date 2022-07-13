@@ -508,9 +508,8 @@ def get_comments(task_id, is_client=False, is_manager=False):
             is_author = comment["person_id"] == current_user["id"]
             is_author_client = person["role"] == "client"
             is_clients_isolated = project.get("is_clients_isolated", False)
-            is_allowed = (
-                (is_clients_isolated and is_author)
-                or (not is_clients_isolated and is_author_client)
+            is_allowed = (is_clients_isolated and is_author) or (
+                not is_clients_isolated and is_author_client
             )
             if len(comment["previews"]) > 0:
                 comment["text"] = ""

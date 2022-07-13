@@ -1,5 +1,8 @@
 from slugify import slugify
-from zou.app.blueprints.source.csv.base import BaseCsvProjectImportResource, RowException
+from zou.app.blueprints.source.csv.base import (
+    BaseCsvProjectImportResource,
+    RowException,
+)
 from zou.app.models.task import Task
 from zou.app.models.organisation import Organisation
 

@@ -44,9 +44,7 @@ def search(ix, query, project_ids=[], limit=10):
                 [Term("project_id", project_id) for project_id in project_ids]
             )
             results = searcher.search(
-                whoosh_query,
-                filter=project_id_terms,
-                limit=limit
+                whoosh_query, filter=project_id_terms, limit=limit
             )
         else:
             results = searcher.search(whoosh_query, limit=limit)

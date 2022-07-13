@@ -58,16 +58,16 @@ def _is_valid_resolution(resolution):
     """
     Return true if the dimension follows the 1920x1080 pattern.
     """
-    return resolution is not None and \
-        bool(re.match(r"\d{3,4}x\d{3,4}", resolution))
+    return resolution is not None and bool(
+        re.match(r"\d{3,4}x\d{3,4}", resolution)
+    )
 
 
 def _is_valid_partial_resolution(resolution):
     """
     Return true if the dimension follows the x1080 pattern.
     """
-    return resolution is not None and \
-        bool(re.match(r"x\d{3,4}", resolution))
+    return resolution is not None and bool(re.match(r"x\d{3,4}", resolution))
 
 
 def get_preview_file_fps(project):

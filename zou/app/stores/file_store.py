@@ -100,9 +100,7 @@ def read_swift(self, filename):
     Monkey patch to download files with chunks instead of getting it fully.
     """
     _, data = self.conn.get_object(
-        self.name,
-        filename,
-        resp_chunk_size=1024 * 1024
+        self.name, filename, resp_chunk_size=1024 * 1024
     )
     return data
 
