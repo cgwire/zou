@@ -53,9 +53,9 @@ def has_at_least_supervisor_permissions():
     Return True if user is an admin or a manager.
     """
     return (
-        supervisor_permission.can() or
-        admin_permission.can() or
-        manager_permission.can()
+        supervisor_permission.can()
+        or admin_permission.can()
+        or manager_permission.can()
     )
 
 

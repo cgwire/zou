@@ -40,8 +40,8 @@ class AssetSearchTestCase(ApiDBTestCase):
                 "email": "alicia@cg-wire.com",
                 "first_name": "Alicia",
                 "last_name": "Parker",
-                "role": "manager"
-            }
+                "role": "manager",
+            },
         )
 
     def test_search_assets_exact(self):

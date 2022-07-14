@@ -77,7 +77,9 @@ def init_data():
     modeling = tasks_service.get_or_create_department("Modeling", "#78909C")
     animation = tasks_service.get_or_create_department("Animation", "#009688")
     fx = tasks_service.get_or_create_department("FX", "#26C6DA")
-    compositing = tasks_service.get_or_create_department("Compositing", "#F06292")
+    compositing = tasks_service.get_or_create_department(
+        "Compositing", "#F06292"
+    )
     concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
     layout = tasks_service.get_or_create_department("Layout", "#7CB342")
 

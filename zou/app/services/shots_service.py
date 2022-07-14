@@ -282,30 +282,33 @@ def get_shots_and_tasks(criterions={}):
 
         if shot_id not in shot_map:
 
-            shot_map[shot_id] = fields.serialize_dict({
-                "canceled": shot.canceled,
-                "data": shot.data,
-                "description": shot.description,
-                "entity_type_id": shot.entity_type_id,
-                "episode_id": episode_id,
-                "episode_name": episode_name or "",
-                "fps": shot.data.get("fps", None),
-                "frame_in": shot.data.get("frame_in", None),
-                "frame_out": shot.data.get("frame_out", None),
-                "id": shot.id,
-                "name": shot.name,
-                "nb_frames": shot.nb_frames,
-                "parent_id": shot.parent_id,
-                "preview_file_id": shot.preview_file_id or None,
-                "project_id": project_id,
-                "project_name": project_name,
-                "sequence_id": sequence_id,
-                "sequence_name": sequence_name,
-                "source_id": shot.source_id,
-                "nb_entities_out": shot.nb_entities_out,
-                "tasks": [],
-                "type": "Shot",
-            })
+            shot_map[shot_id] = fields.serialize_dict(
+                {
+                    "canceled": shot.canceled,
+                    "data": shot.data,
+                    "description": shot.description,
+                    "entity_type_id": shot.entity_type_id,
+                    "episode_id": episode_id,
+                    "episode_name": episode_name or "",
+                    "fps": shot.data.get("fps", None),
+                    "frame_in": shot.data.get("frame_in", None),
+                    "frame_out": shot.data.get("frame_out", None),
+                    "id": shot.id,
+                    "name": shot.name,
+                    "nb_frames": shot.nb_frames,
+                    "parent_id": shot.parent_id,
+                    "preview_file_id": shot.preview_file_id or None,
+                    "project_id": project_id,
+                    "project_name": project_name,
+                    "sequence_id": sequence_id,
+                    "sequence_name": sequence_name,
+                    "source_id": shot.source_id,
+                    "nb_entities_out": shot.nb_entities_out,
+                    "is_casting_standby": shot.is_casting_standby,
+                    "tasks": [],
+                    "type": "Shot",
+                }
+            )
 
         if task_id is not None:
             if task_id not in task_map:

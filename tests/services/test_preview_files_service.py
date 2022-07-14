@@ -4,7 +4,7 @@ from zou.app.services import files_service, preview_files_service
 from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
-    get_preview_file_dimensions
+    get_preview_file_dimensions,
 )
 
 
