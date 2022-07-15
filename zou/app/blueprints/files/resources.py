@@ -100,11 +100,43 @@ class WorkingFileFileResource(Resource):
 
     @jwt_required
     def get(self, working_file_id):
+        """
+        Download a working file.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: working_file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Working file downloaded
+        """
         self.check_access(working_file_id)
         return send_storage_file(working_file_id)
 
     @jwt_required
     def post(self, working_file_id):
+        """
+        Store a working file.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: working_file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Working file stored
+        """
         working_file = self.check_access(working_file_id)
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
@@ -123,6 +155,48 @@ class WorkingFilePathResource(Resource):
 
     @jwt_required
     def post(self, task_id):
+        """
+        Generate a working file path from file tree template.
+        ---
+        tags:
+        - Files
+        description: "Generate file path based on several parameters: task, software, mode, revision and separator.
+                     Revision can be computed automatically as next revision if not given."
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: Filter
+            description: Name, software, mode, revision and separator.
+            schema:
+                type: object
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    mode:
+                        type: string  
+                        default: working
+                    software_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string
+                    revision:
+                        type: integer
+                    separator:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: Working file path generated
+            400:
+                description: Malformed file tree
+        """
         (
             name,
             mode,
@@ -200,6 +274,48 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, entity_id):
+        """
+        Generate an output file path from file tree template
+        ---
+        tags:
+        - Files
+        description: "Generate file path based on several parameters: entity, output type, task type, revision, mode, revision, name and separator.
+                     Revision can be computed automatically as next revision if not given."
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: Filter
+            description: Name, query, list type, project id and entity type
+            schema:
+                type: object
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    mode:
+                        type: string  
+                        default: working
+                    software_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string
+                    revision:
+                        type: integer
+                    separator:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: Working file path generated
+            400:
+                description: Malformed file tree
+        """
         args = self.get_arguments()
         try:
             entity = entities_service.get_entity(entity_id)
