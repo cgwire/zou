@@ -10,9 +10,10 @@ services:
 addons:
   postgresql: "9.4"
   apt:
-    packages: 
+    packages:
       - ffmpeg
-install: 
+install:
+  - "pip install -U setuptools"
   - "pip install -r requirements.txt"
 before_script:
   - psql -c 'create database zoudb;' -U postgres
