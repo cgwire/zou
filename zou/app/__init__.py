@@ -52,26 +52,16 @@ template = {
   ],
   "operationId": "getmyData",
   "tags": [
-    {
-      "name": "Authentification",
-      "description": "Description of authentification",
-    },
-    {
-      "name": "Assets",
-      "description": "Description of assets",
-    },
-    {
-      "name": "Projects",
-      "description": "Description of projects",
-    },
-    {
-      "name": "Shots",
-      "description": "Description of shots",
-    },
-    {
-      "name": "Search",
-      "description": "Description of search",
-    }
+    { "name": "Authentification" },
+    { "name": "Assets" },
+    { "name": "Comments" },
+    { "name": "Persons" },
+    { "name": "Playlists" },
+    { "name": "Projects" },
+    { "name": "Shots" },
+    { "name": "Search" },
+    { "name": "Tasks" },
+    { "name": "User" }
   ]
 }
 

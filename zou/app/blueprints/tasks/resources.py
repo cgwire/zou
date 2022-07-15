@@ -604,7 +604,7 @@ class ToReviewResource(Resource):
                     revision:
                         type: integer
                     change_status:
-                        type: bool
+                        type: boolean
         responses:
             200:
                 description: Task status changed to "to review"
@@ -881,9 +881,9 @@ class TaskFullResource(Resource):
     @jwt_required
     def get(self, task_id):
         """
-        Return a task with many information
+        Return a task with many information.
         ---
-        description: full details for assignees, full details for task type, full details for task status, etc.
+        description: Full details for assignees, full details for task type, full details for task status, etc.
         tags:
         - Tasks
         parameters:

@@ -91,18 +91,13 @@ class ProductionTeamResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: People listed in a production team
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
@@ -124,18 +119,13 @@ class ProductionTeamResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             201:
               description: Person added to production team
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args([("person_id", "", True)])
         user_service.check_manager_project_access(project_id)
@@ -160,25 +150,19 @@ class ProductionTeamRemoveResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: person_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             204:
               description: Person removed from production team
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    person_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
@@ -200,18 +184,13 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             201:
               description: Asset type added to production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args([("asset_type_id", "", True)])
         user_service.check_manager_project_access(project_id)
@@ -236,25 +215,19 @@ class ProductionAssetTypeRemoveResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: asset_type_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             204:
               description: Asset type removed from production
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    asset_type_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
@@ -276,18 +249,13 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: Task types linked to the production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         return projects_service.get_project_task_types(project_id)
@@ -308,18 +276,13 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             201:
               description: Asset type added to production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args(
             [("task_type_id", "", True), ("priority", None, False)]
@@ -346,25 +309,19 @@ class ProductionTaskTypeRemoveResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: task_type_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             204:
               description: Task type removed from production
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    task_type_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
@@ -386,18 +343,13 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: Task statuses linked to production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         return projects_service.get_project_task_statuses(project_id)
@@ -412,18 +364,13 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             201:
               description: Task type added to production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args([("task_status_id", "", True)])
         user_service.check_manager_project_access(project_id)
@@ -448,25 +395,19 @@ class ProductionTaskStatusRemoveResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: task_status_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             204:
               description: Task status removed from production
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    task_status_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
@@ -488,18 +429,13 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: Status automation linked to production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         return projects_service.get_project_status_automations(project_id)
@@ -514,18 +450,13 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             201:
               description: Status automation added to production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args([("status_automation_id", "", True)])
         user_service.check_manager_project_access(project_id)
@@ -550,25 +481,19 @@ class ProductionStatusAutomationRemoveResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: status_automation_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             204:
               description: Status automation removed from production
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    status_automation_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
@@ -594,18 +519,13 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All metadata descriptors
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_manager_project_access(project_id)
         for_client = permissions.has_client_permissions()
@@ -624,18 +544,13 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             201:
               description: Create a new metadata descriptor
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args(
             [
@@ -691,25 +606,19 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: descriptor_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: Metadata descriptor
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    descriptor_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         return projects_service.get_metadata_descriptor(descriptor_id)
@@ -725,25 +634,19 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: descriptor_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: Metadata descriptor updated
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    descriptor_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         args = self.get_args(
             [
@@ -779,25 +682,19 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: descriptor_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             204:
               description: Metadata descriptor deleted
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    descriptor_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_all_departments_access(
             project_id,
@@ -824,18 +721,13 @@ class ProductionTimeSpentsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All time spents of given production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         return tasks_service.get_time_spents_for_project(project_id)
@@ -856,18 +748,13 @@ class ProductionMilestonesResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All milestones of given production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         return schedule_service.get_milestones_for_project(project_id)
@@ -888,18 +775,13 @@ class ProductionScheduleItemsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All schedule items of given production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -921,18 +803,13 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All task types schedule items of given production
-              schema:
-                id: Project
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -954,25 +831,19 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: task_type_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All asset types schedule items for given task type
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    task_type_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -996,25 +867,19 @@ class ProductionEpisodesScheduleItemsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: task_type_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All episodes schedule items for given task type
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    task_type_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -1038,25 +903,19 @@ class ProductionSequencesScheduleItemsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: path
             name: task_type_id
-            type: UUID
             required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         responses:
             200:
               description: All sequences schedule items for given task type
-              schema:
-                properties:
-                    project_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
-                    task_type_id:
-                        type: UUID
-                        format: int32
-                        example: 5dc235ec-125e-4ba5-b1db-604d4babc315
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
