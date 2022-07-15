@@ -267,7 +267,7 @@ class WorkingFilePathResource(Resource):
 class EntityOutputFilePathResource(Resource, ArgsMixin):
     """
     Generate from file tree template an output file path based on several
-    parameters: entity, output type, task type, revision, mode, revision, name
+    parameters: entity, output type, task type, revision, mode, name
     and separator. Revision can be computed automatically as next revision if
     not given.
     """
@@ -279,7 +279,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         ---
         tags:
         - Files
-        description: "Generate file path based on several parameters: entity, output type, task type, revision, mode, revision, name and separator.
+        description: "Generate file path based on several parameters: entity, output type, task type, revision, mode, name and separator.
                      Revision can be computed automatically as next revision if not given."
         parameters:
           - in: path
@@ -290,20 +290,28 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
               example: 5dc235ec-125e-4ba5-b1db-604d4babc315
           - in: body
             name: Filter
-            description: Name, query, list type, project id and entity type
+            description: Entity, output type, task type, revision, mode, name and separator.
             schema:
                 type: object
+                required:
+                  - output_type_id
+                  - task_type_id
                 properties:
                     name:
                         type: string
                         default: main
                     mode:
                         type: string  
-                        default: working
-                    software_id:
+                        default: output
+                    output_type_id:
                         type: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
-                    comment:
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    extension:
+                        type: string
+                    representation:
                         type: string
                     revision:
                         type: integer

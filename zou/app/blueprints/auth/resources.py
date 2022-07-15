@@ -203,11 +203,11 @@ class LogoutResource(Resource):
 
 class LoginResource(Resource):
     """
-        Log in user by creating and registering auth tokens. Login is based
-        on email and password. If no user match given email and a destkop ID,
-        it looks in matching the desktop ID with the one stored in database. It is
-        useful for clients that run on desktop tools and that don't know user
-        email.
+    Log in user by creating and registering auth tokens. Login is based
+    on email and password. If no user match given email and a destkop ID,
+    it looks in matching the desktop ID with the one stored in database. It is
+    useful for clients that run on desktop tools and that don't know user
+    email.
     """
 
     def post(self):
