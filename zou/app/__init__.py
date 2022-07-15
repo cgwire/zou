@@ -55,6 +55,7 @@ template = {
     { "name": "Authentification" },
     { "name": "Assets" },
     { "name": "Comments" },
+    { "name": "Files" },
     { "name": "Persons" },
     { "name": "Playlists" },
     { "name": "Projects" },
