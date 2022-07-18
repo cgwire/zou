@@ -25,10 +25,26 @@ def check_criterion_access(criterions):
 
 
 class AssetResource(Resource):
+    """
+    Retrieve or delete given asset.
+    """
     @jwt_required
     def get(self, asset_id):
         """
         Retrieve given asset.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+        responses:
+          200:
+            description: Given asset
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -37,6 +53,22 @@ class AssetResource(Resource):
 
     @jwt_required
     def delete(self, asset_id):
+        """
+        Delete given asset.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+        responses:
+          204:
+            description: Given asset deleted
+        """
         parser = reqparse.RequestParser()
         parser.add_argument("force", default=False, type=bool)
         args = parser.parse_args()
@@ -50,11 +82,21 @@ class AssetResource(Resource):
 
 
 class AllAssetsResource(Resource):
+    """
+    Retrieve all entities that are not shot or sequence.
+    Adds project name and asset type name.
+    """
     @jwt_required
     def get(self):
         """
         Retrieve all entities that are not shot or sequence.
         Adds project name and asset type name.
+        ---
+        tags:
+          - Assets
+        responses:
+          200:
+            description: All assets
         """
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
@@ -70,13 +112,22 @@ class AllAssetsAliasResource(AllAssetsResource):
 
 
 class AssetsAndTasksResource(Resource):
+    """
+    Retrieve all entities that are not shot or sequence.   
+    """
     @jwt_required
     def get(self):
         """
-        Retrieve all entities that are not shot or sequence.
-        Adds project name and asset type name and all related tasks.
-        If episode_id is given as parameter, it returns assets not linked
-        to an episode and assets linked to given episode.
+        Retrieve all entities that are not shot or sequence.   
+        ---
+        description: Adds project name and asset type name and all related tasks.
+                     If episode_id is given as parameter, it returns assets not linked
+                     to an episode and assets linked to given episode.
+        tags:
+          - Assets
+        responses:
+          200:
+            description: All assets with tasks
         """
         criterions = query.get_query_criterions_from_request(request)
         page = query.get_page_from_request(request)
@@ -89,40 +140,96 @@ class AssetsAndTasksResource(Resource):
 
 
 class AssetTypeResource(Resource):
+    """
+    Retrieve given asset type.
+    """
     @jwt_required
     def get(self, asset_type_id):
         """
         Retrieve given asset type.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: asset_type_id
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+        responses:
+          200:
+            description: Given asset type
         """
         return assets_service.get_asset_type(asset_type_id)
 
 
 class AssetTypesResource(Resource):
+    """
+    Retrieve all asset types (entity types that are not shot, sequence or episode).
+    """
     @jwt_required
     def get(self):
         """
-        Retrieve all asset types (entity types that are not shot, sequence or
-        episode).
+        Retrieve all asset types (entity types that are not shot, sequence or episode).
+        ---
+        tags:
+          - Assets
+        responses:
+          200:
+            description: All asset types
         """
         criterions = query.get_query_criterions_from_request(request)
         return assets_service.get_asset_types(criterions)
 
 
 class ProjectAssetTypesResource(Resource):
+    """
+    Retrieve all asset types for given project.
+    """
     @jwt_required
     def get(self, project_id):
         """
         Retrieve all asset types for given project.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: project_id
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+        responses:
+          200:
+            description: All asset types for given project
         """
         user_service.check_project_access(project_id)
         return assets_service.get_asset_types_for_project(project_id)
 
 
 class ShotAssetTypesResource(Resource):
+    """
+    Retrieve all asset shots for given shot.
+    """
     @jwt_required
     def get(self, shot_id):
         """
-        Retrieve all asset shots for given soht.
+        Retrieve all asset shots for given shot.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: shot_id
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+        responses:
+          200:
+            description: All asset shots for given shot
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
@@ -130,10 +237,26 @@ class ShotAssetTypesResource(Resource):
 
 
 class ProjectAssetsResource(Resource):
+    """
+    Retrieve all assets for given project.
+    """
     @jwt_required
     def get(self, project_id):
         """
         Retrieve all assets for given project.
+        ---
+        tags:
+          - Assets
+        parameters:
+          - in: path
+            name: project_id
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+        responses:
+          200:
+            description: All assets for given project
         """
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
@@ -146,10 +269,32 @@ class ProjectAssetsResource(Resource):
 
 
 class ProjectAssetTypeAssetsResource(Resource):
+    """
+    Retrieve all assets for given project and entity type.
+    """
     @jwt_required
     def get(self, project_id, asset_type_id):
         """
         Retrieve all assets for given project and entity type.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: asset_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25        
+        responses:
+            200:
+                description: All assets for given project and entity type    
         """
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
@@ -163,10 +308,26 @@ class ProjectAssetTypeAssetsResource(Resource):
 
 
 class AssetAssetsResource(Resource):
+    """
+    Retrieve all assets for a given asset.
+    """
     @jwt_required
     def get(self, asset_id):
         """
         Retrieve all assets for a given asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: All assets for a given asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -179,6 +340,19 @@ class AssetTasksResource(Resource):
     def get(self, asset_id):
         """
         Retrieve all tasks related to a given shot.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: All tasks related to given shot   
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -190,6 +364,19 @@ class AssetTaskTypesResource(Resource):
     def get(self, asset_id):
         """
         Retrieve all task types related to a given asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: All task types related to given asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -197,8 +384,53 @@ class AssetTaskTypesResource(Resource):
 
 
 class NewAssetResource(Resource):
+    """
+    Create new asset resource.
+    """
     @jwt_required
     def post(self, project_id, asset_type_id):
+        """
+        Create new asset resource.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: asset_type_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Asset
+            description: Name, description, data and ID of asset
+            schema:
+                type: object
+                required:
+                - name
+                - description
+                - data
+                - source_id
+                properties:
+                    name:
+                        type: string
+                    description:
+                        type: string  
+                    data:
+                        type: string
+                    source_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: New asset resource created    
+        """
         (name, description, data, source_id) = self.get_arguments()
 
         user_service.check_manager_project_access(project_id)
@@ -229,6 +461,19 @@ class AssetCastingResource(Resource):
     def get(self, asset_id):
         """
         Resource to retrieve the casting of a given asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: Casting of given asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -239,6 +484,19 @@ class AssetCastingResource(Resource):
     def put(self, asset_id):
         """
         Resource to allow the modification of assets linked to a asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: Modification of assets linked to given asset    
         """
         casting = request.json
         asset = assets_service.get_asset(asset_id)
@@ -251,6 +509,19 @@ class AssetCastInResource(Resource):
     def get(self, asset_id):
         """
         Resource to retrieve the casting of a given asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: Casting of given asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -263,6 +534,19 @@ class AssetShotAssetInstancesResource(Resource):
     def get(self, asset_id):
         """
         Retrieve all shot asset instances linked to asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: All shot asset instances linked to asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -274,6 +558,19 @@ class AssetSceneAssetInstancesResource(Resource):
     def get(self, asset_id):
         """
         Retrieve all scene asset instances linked to asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: All scene asset instances linked to asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -285,6 +582,19 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
     def get(self, asset_id):
         """
         Retrieve all asset instances instantiated inside this asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: All asset instances instantiated inside given asset    
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -294,6 +604,19 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
     def post(self, asset_id):
         """
         Create an asset instance inside given asset.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: asset_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            201:
+                description: Asset instance created inside given asset    
         """
         args = self.get_args(
             [

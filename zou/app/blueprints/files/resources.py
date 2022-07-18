@@ -100,11 +100,43 @@ class WorkingFileFileResource(Resource):
 
     @jwt_required
     def get(self, working_file_id):
+        """
+        Download a working file.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: working_file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Working file downloaded
+        """
         self.check_access(working_file_id)
         return send_storage_file(working_file_id)
 
     @jwt_required
     def post(self, working_file_id):
+        """
+        Store a working file.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: working_file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Working file stored
+        """
         working_file = self.check_access(working_file_id)
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
@@ -123,6 +155,48 @@ class WorkingFilePathResource(Resource):
 
     @jwt_required
     def post(self, task_id):
+        """
+        Generate a working file path from file tree template.
+        ---
+        tags:
+        - Files
+        description: "Generate file path based on several parameters: task, software, mode, revision and separator.
+                     Revision can be computed automatically as next revision if not given."
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Name, software, mode, revision and separator.
+            schema:
+                type: object
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    mode:
+                        type: string  
+                        default: working
+                    software_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string
+                    revision:
+                        type: integer
+                    separator:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: Working file path generated
+            400:
+                description: Malformed file tree
+        """
         (
             name,
             mode,
@@ -193,13 +267,63 @@ class WorkingFilePathResource(Resource):
 class EntityOutputFilePathResource(Resource, ArgsMixin):
     """
     Generate from file tree template an output file path based on several
-    parameters: entity, output type, task type, revision, mode, revision, name
+    parameters: entity, output type, task type, revision, mode, name
     and separator. Revision can be computed automatically as next revision if
     not given.
     """
 
     @jwt_required
     def post(self, entity_id):
+        """
+        Generate an output file path from file tree template
+        ---
+        tags:
+        - Files
+        description: "Generate file path based on several parameters: entity, output type, task type, revision, mode, name and separator.
+                     Revision can be computed automatically as next revision if not given."
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Entity, output type, task type, revision, mode, name and separator.
+            schema:
+                type: object
+                required:
+                  - output_type_id
+                  - task_type_id
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    mode:
+                        type: string  
+                        default: output
+                    output_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    extension:
+                        type: string
+                    representation:
+                        type: string
+                    revision:
+                        type: integer
+                    separator:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: Output file path generated
+            400:
+                description: Malformed file tree
+        """
         args = self.get_arguments()
         try:
             entity = entities_service.get_entity(entity_id)
@@ -261,13 +385,68 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
 class InstanceOutputFilePathResource(Resource, ArgsMixin):
     """
     Generate from file tree template an output file path based on several
-    parameters: asset instance, output type, task type, revision, mode,
-    revision, name and separator. Revision can be computed automatically as next
-    revision in case no revision is given in parameter.
+    parameters: asset instance, output type, task type, revision, mode, name and separator. 
+    Revision can be computed automatically as next revision in case no revision is given in parameter.
     """
 
     @jwt_required
     def post(self, asset_instance_id, temporal_entity_id):
+        """
+        Generate an output file path from file tree template
+        ---
+        tags:
+        - Files
+        description: "Generate file path based on several parameters: asset instance, output type, task type, revision, mode, name and separator.
+                     Revision can be computed automatically as next revision in case no revision is given in parameter."
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: temporal_entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Asset instance, output type, task type, revision, mode, name and separator. 
+            schema:
+                type: object
+                required:
+                  - output_type_id
+                  - task_type_id
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    mode:
+                        type: string  
+                        default: output
+                    output_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    extension:
+                        type: string
+                    representation:
+                        type: string
+                    revision:
+                        type: integer
+                    separator:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: Output file path generated
+            400:
+                description: Malformed file tree
+        """
         args = self.get_arguments()
 
         try:
@@ -331,6 +510,22 @@ class LastWorkingFilesResource(Resource):
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return last working files revision for each file name for given task.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Last working files revision for each file name for given task
+        """
         result = {}
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
@@ -347,6 +542,22 @@ class TaskWorkingFilesResource(Resource):
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return last working files revision for each file name for given task.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Last working files revision for each file name for given task
+        """
         result = {}
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
@@ -358,15 +569,64 @@ class TaskWorkingFilesResource(Resource):
 
 class NewWorkingFileResource(Resource):
     """
-    A working file is a file used to produce output files. It is the file the CG
-    artist is working on. It is versioned, tied to a task and a software and
-    requires a comment each time it is created.
-    A path is generated for each file created. The path format is defined
-    in the file tree template file.
+    A working file is a file used to produce output files. 
+    It is the file the CG artist is working on. 
+    It is versioned, tied to a task and a software and requires a comment each time it is created.
+    A path is generated for each file created. The path format is defined in the file tree template file.
     """
 
     @jwt_required
     def post(self, task_id):
+        """
+        Create new working file.
+        ---
+        tags:
+        - Files
+        description: A working file is a file used to produce output files. 
+                     It is the file the CG artist is working on. 
+                     It is versioned, tied to a task and a software and requires a comment each time it is created.
+                     A path is generated for each file created. The path format is defined in the file tree template file.
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Name, mode, description, comment, person ID, software ID, revision and separator.
+            schema:
+                type: object
+                required:
+                  - name
+                properties:
+                    name:
+                        type: string
+                    mode:
+                        type: string  
+                        default: working
+                    description:
+                        type: string
+                    comment:
+                        type: string
+                    person_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    software_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    revision:
+                        type: integer
+                    sep:
+                        type: string
+                        default: /
+        responses:
+            201:
+                description: New working file created
+            400:
+                description: Given working file already exists
+        """
         (
             name,
             mode,
@@ -454,6 +714,22 @@ class ModifiedFileResource(Resource):
 
     @jwt_required
     def put(self, working_file_id):
+        """
+        Update working file modification date with current date.
+        ---
+        tags:
+          - Files
+        parameters:
+          - in: path
+            name: working_file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Working file modification date updated
+        """
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -471,6 +747,31 @@ class CommentWorkingFileResource(Resource):
 
     @jwt_required
     def put(self, working_file_id):
+        """
+        Update comment on given working file.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: working_file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: Comment
+            schema:
+                type: object
+                required:
+                  - comment
+                properties:
+                    comment:
+                        type: string
+        responses:
+            200:
+                description: Comment updated on given working file
+        """
         comment = self.get_comment_from_args()
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
@@ -510,6 +811,76 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, entity_id):
+        """
+        Create new output file linked to a given entity.
+        ---
+        tags:
+        - Files
+        description: Output files are linked to entities. 
+                     Each time a CG artist is satisfied by what he did on a working file, 
+                     he can create an output file that will be linked to a target entity (an asset, a shot, a sequence, ...).
+                     It keeps track of the working file at the origin of the output file.
+                     An output type is required for better categorization (textures, caches, ...). 
+                     A task type can be set too to give the department related to the output file.
+                     Revision is automatically set.
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Name, mode, output type ID, task type ID, person ID, working file ID, file status ID, comment, extension, representation, revision, number of elements and separator.
+            schema:
+                type: object
+                required:
+                  - output_type_id
+                  - task_type_id
+                properties:
+                    name:
+                        type: string
+                    mode:
+                        type: string  
+                        default: output
+                    output_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    person_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    working_file_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    file_status_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string
+                    extension:
+                        type: string
+                    representation:
+                        type: string
+                    revision:
+                        type: integer
+                    nb_elements:
+                        type: integer
+                        default: 1
+                    sep:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: New output file created
+            400:
+                description: Given output file already exists
+                             Given person not found
+                             Given output type not found
+        """
         args = self.get_arguments()
 
         try:
@@ -650,6 +1021,85 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, asset_instance_id, temporal_entity_id):
+        """
+        Create new output file linked to assets through an instance of this asset for a given shot.
+        ---
+        tags:
+        - Files
+        description: Some output files are linked to assets through an instance of this asset for a given shot. 
+                     Each time a CG artist is satisfied by what he did on a working file, 
+                     he can create an output file that will be linked to a target instance.
+                     It keeps track of the working file at the origin of the output file.
+                     An output type is required for better categorization (textures, caches, ...).
+                     A task type can be set too to give the department related to the output file.
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: temporal_entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Name, mode, output type ID, task type ID, person ID, working file ID, file status ID, comment, extension, representation, revision, number of elements and separator.
+            schema:
+                type: object
+                required:
+                  - output_type_id
+                  - task_type_id
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    mode:
+                        type: string  
+                        default: output
+                    output_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    person_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    working_file_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    file_status_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    is_sequence:
+                        type: boolean
+                        default: False
+                    comment:
+                        type: string
+                    extension:
+                        type: string
+                    representation:
+                        type: string
+                    revision:
+                        type: integer
+                    nb_elements:
+                        type: integer
+                        default: 1
+                    sep:
+                        type: string
+                        default: /
+        responses:
+            200:
+                description: New output file created
+            400:
+                description: Given output file already exists
+                             Given person not found
+                             Given output type not found
+        """
         args = self.get_arguments()
 
         try:
@@ -793,6 +1243,40 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, entity_id):
+        """
+        Get next revision for given entity, output type, task type and name.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Name, output type ID, task type ID.
+            schema:
+                type: object
+                required:
+                  - output_type_id
+                  - task_type_id
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    output_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Next revision for given entity, output type, task type and name
+        """
         args = self.get_arguments()
         entity = entities_service.get_entity(entity_id)
         output_type = files_service.get_output_type(args["output_type_id"])
@@ -822,6 +1306,46 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, asset_instance_id, temporal_entity_id):
+        """
+        Get next revision for given asset instance, output type, task type and name.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: temporal_entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: File
+            description: Name, output type ID, task type ID.
+            schema:
+                type: object
+                required:
+                  - output_type_id
+                  - task_type_id
+                properties:
+                    name:
+                        type: string
+                        default: main
+                    output_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_type_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Next revision for given asset instance, output type, task type and name
+        """
         args = self.get_arguments()
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -859,6 +1383,22 @@ class LastEntityOutputFilesResource(Resource):
 
     @jwt_required
     def get(self, entity_id):
+        """
+        Get last revisions of output files for given entity grouped by output type and file name.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description: Last revisions of output files for given entity grouped by output type and file name
+        """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
@@ -879,6 +1419,28 @@ class LastInstanceOutputFilesResource(Resource):
 
     @jwt_required
     def get(self, asset_instance_id, temporal_entity_id):
+        """
+        Get last revisions of output files for given instance grouped by output type and file name.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: temporal_entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description: Last revisions of output files for given instance grouped by output type and file name
+        """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
@@ -900,6 +1462,22 @@ class EntityOutputTypesResource(Resource):
 
     @jwt_required
     def get(self, entity_id):
+        """
+        Return all types of output generated for given entity.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description: All types of output generated for given entity
+        """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
         return files_service.get_output_types_for_entity(entity_id)
@@ -912,6 +1490,28 @@ class InstanceOutputTypesResource(Resource):
 
     @jwt_required
     def get(self, asset_instance_id, temporal_entity_id):
+        """
+        Return all types of output generated for given instance.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: temporal_entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description: All types of output generated for given instance
+        """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
@@ -927,6 +1527,28 @@ class EntityOutputTypeOutputFilesResource(Resource):
 
     @jwt_required
     def get(self, entity_id, output_type_id):
+        """
+        Get all output files for given entity and given output type.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: output_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description:  All output files for given entity and given output type
+        """
         representation = request.args.get("representation", None)
 
         entity = entities_service.get_entity(entity_id)
@@ -948,6 +1570,34 @@ class InstanceOutputTypeOutputFilesResource(Resource):
 
     @jwt_required
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
+        """
+        Get all output files for given asset instance and given output type.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: temporal_entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: output_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description:  All output files for given asset instance and given output type
+        """
         representation = request.args.get("representation", None)
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -972,6 +1622,22 @@ class EntityOutputFilesResource(Resource):
 
     @jwt_required
     def get(self, entity_id):
+        """
+        Get all output files for given asset instance and given output type.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description:  All output files for given asset instance and given output type
+        """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
@@ -998,6 +1664,22 @@ class InstanceOutputFilesResource(Resource):
 
     @jwt_required
     def get(self, asset_instance_id):
+        """
+        Get all output files for given asset instance and given output type.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: asset_instance_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description: All output files for given asset instance and given output type
+        """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = assets_service.get_asset(asset_instance["asset_id"])
         user_service.check_project_access(asset["project_id"])
@@ -1028,6 +1710,22 @@ class FileResource(Resource):
 
     @jwt_required
     def get(self, file_id):
+        """
+        Get information about a file that could be a working file as much as an output file.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: file_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description: Information about file
+        """
         try:
             file_dict = files_service.get_working_file(file_id)
             task = tasks_service.get_task(file_dict["task_id"])
@@ -1050,6 +1748,35 @@ class SetTreeResource(Resource):
 
     @jwt_required
     def post(self, project_id):
+        """
+        Define a template file to use for given project. 
+        ---
+        tags:
+        - Files
+        description: Template files are located on the server side. 
+                     Each template has a name which means that you just have to give a name to "select" the template to link with the project.
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: body
+            name: Tree name
+            schema:
+                type: object
+                required:
+                  - tree_name
+                properties:
+                    tree_name:
+                        type: string
+        responses:
+            200:
+                description: Template file defined
+            400:
+                description: Selected tree not available
+        """
         tree_name = self.get_arguments()
 
         try:
@@ -1077,11 +1804,27 @@ class SetTreeResource(Resource):
 
 class EntityWorkingFilesResource(Resource):
     """
-    Get all working files for a given entity and possibly a task and a name
+    Get all working files for a given entity and possibly a task and a name.
     """
 
     @jwt_required
     def get(self, entity_id):
+        """
+        Get all working files for a given entity and possibly a task and a name.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+                description:  All working files for given entity and possibly a task and a name
+        """
         task_id = request.args.get("task_id", None)
         name = request.args.get("name", None)
         relations = request.args.get("relations", False)

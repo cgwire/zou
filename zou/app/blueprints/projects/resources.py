@@ -22,6 +22,16 @@ class OpenProjectsResource(Resource):
 
     @jwt_required
     def get(self):
+        """
+        Return the list of projects currently running.
+        ---
+        tags:
+          - Projects
+        description: Most of the time, past projects are not needed.
+        responses:
+            200:
+              description: All running projects
+        """
         name = request.args.get("name", None)
         try:
             permissions.check_admin_permissions()
@@ -41,6 +51,16 @@ class AllProjectsResource(Resource):
 
     @jwt_required
     def get(self):
+        """
+        Return all projects listed in database. 
+        ---
+        tags:
+          - Projects
+        description: Ensure that user has at least the manager level before that.
+        responses:
+            200:
+              description: All projects listed in database
+        """
         name = request.args.get("name", None)
         try:
             permissions.check_admin_permissions()
@@ -63,6 +83,22 @@ class ProductionTeamResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Return the people listed in a production team.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: People listed in a production team
+        """
         user_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
         persons = []
@@ -75,6 +111,22 @@ class ProductionTeamResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, project_id):
+        """
+        Manage the people listed in a production team.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Person added to production team
+        """
         args = self.get_args([("person_id", "", True)])
         user_service.check_manager_project_access(project_id)
         return (
@@ -90,6 +142,28 @@ class ProductionTeamRemoveResource(Resource):
 
     @jwt_required
     def delete(self, project_id, person_id):
+        """
+        Remove people listed in a production team.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: person_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            204:
+              description: Person removed from production team
+        """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
         return "", 204
@@ -102,6 +176,22 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, project_id):
+        """
+        Add an asset type linked to a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Asset type added to production
+        """
         args = self.get_args([("asset_type_id", "", True)])
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_asset_type_setting(
@@ -117,6 +207,28 @@ class ProductionAssetTypeRemoveResource(Resource):
 
     @jwt_required
     def delete(self, project_id, asset_type_id):
+        """
+        Remove an asset type from a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: asset_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            204:
+              description: Asset type removed from production
+        """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
         return "", 204
@@ -129,6 +241,22 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve task types linked to the production        
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Task types linked to the production
+        """
         user_service.check_manager_project_access(project_id)
         return projects_service.get_project_task_types(project_id)
 
@@ -140,6 +268,22 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, project_id):
+        """
+        Add an task type linked to a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Asset type added to production
+        """
         args = self.get_args(
             [("task_type_id", "", True), ("priority", None, False)]
         )
@@ -152,11 +296,33 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
 
 class ProductionTaskTypeRemoveResource(Resource):
     """
-    Allow to remove an task type linked to a production.
+    Allow to remove a task type linked to a production.
     """
 
     @jwt_required
     def delete(self, project_id, task_type_id):
+        """
+        Remove a task type from a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            204:
+              description: Task type removed from production
+        """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
         return "", 204
@@ -164,16 +330,48 @@ class ProductionTaskTypeRemoveResource(Resource):
 
 class ProductionTaskStatusResource(Resource, ArgsMixin):
     """
-    Allow to add an task type linked to a production.
+    Allow to add a task type linked to a production.
     """
 
     @jwt_required
     def get(self, project_id):
+        """
+        Return task statuses linked to a production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Task statuses linked to production
+        """
         user_service.check_project_access(project_id)
         return projects_service.get_project_task_statuses(project_id)
 
     @jwt_required
     def post(self, project_id):
+        """
+        Add a task type linked to a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Task type added to production
+        """
         args = self.get_args([("task_status_id", "", True)])
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_status_setting(
@@ -189,6 +387,28 @@ class ProductionTaskStatusRemoveResource(Resource):
 
     @jwt_required
     def delete(self, project_id, task_status_id):
+        """
+        Remove a task status from a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: task_status_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            204:
+              description: Task status removed from production
+        """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
         return "", 204
@@ -201,11 +421,43 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Get a status automation linked to a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Status automation linked to production
+        """
         user_service.check_manager_project_access(project_id)
         return projects_service.get_project_status_automations(project_id)
 
     @jwt_required
     def post(self, project_id):
+        """
+        Add a status automation linked to a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Status automation added to production
+        """
         args = self.get_args([("status_automation_id", "", True)])
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_status_automation_setting(
@@ -216,11 +468,33 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
 
 class ProductionStatusAutomationRemoveResource(Resource):
     """
-    Allow to remove an status automation linked to a production.
+    Allow to remove a status automation linked to a production.
     """
 
     @jwt_required
     def delete(self, project_id, status_automation_id):
+        """
+        Remove a status automation from a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: status_automation_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            204:
+              description: Status automation removed from production
+        """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
             project_id, status_automation_id
@@ -236,6 +510,23 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Get all metadata descriptors
+        ---
+        description: It serves to describe extra fields listed in the data attribute of entities.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All metadata descriptors
+        """
         user_service.check_manager_project_access(project_id)
         for_client = permissions.has_client_permissions()
         return projects_service.get_metadata_descriptors(
@@ -244,6 +535,23 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, project_id):
+        """
+        Create a new metadata descriptor
+        ---
+        description: It serves to describe extra fields listed in the data attribute of entities.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            201:
+              description: Create a new metadata descriptor
+        """
         args = self.get_args(
             [
                 ("entity_type", "Asset", False),
@@ -289,11 +597,57 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
     @jwt_required
     def get(self, project_id, descriptor_id):
+        """
+        Get a metadata descriptor.
+        ---
+        description: Descriptors serve to describe extra fields listed in the data attribute of entities.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: descriptor_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Metadata descriptor
+        """
         user_service.check_project_access(project_id)
         return projects_service.get_metadata_descriptor(descriptor_id)
 
     @jwt_required
     def put(self, project_id, descriptor_id):
+        """
+        Update a metadata descriptor.
+        ---
+        description: Descriptors serve to describe extra fields listed in the data attribute of entities.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: descriptor_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: Metadata descriptor updated
+        """
         args = self.get_args(
             [
                 ("name", "", False),
@@ -319,6 +673,29 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
     @jwt_required
     def delete(self, project_id, descriptor_id):
+        """
+        Delete a metadata descriptor.
+        ---
+        description: Descriptors serve to describe extra fields listed in the data attribute of entities.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: descriptor_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            204:
+              description: Metadata descriptor deleted
+        """
         user_service.check_all_departments_access(
             project_id,
             projects_service.get_metadata_descriptor(descriptor_id)[
@@ -336,6 +713,22 @@ class ProductionTimeSpentsResource(Resource):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve time spents for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All time spents of given production
+        """
         user_service.check_project_access(project_id)
         return tasks_service.get_time_spents_for_project(project_id)
 
@@ -347,6 +740,22 @@ class ProductionMilestonesResource(Resource):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve milestones for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All milestones of given production
+        """
         user_service.check_project_access(project_id)
         return schedule_service.get_milestones_for_project(project_id)
 
@@ -358,6 +767,22 @@ class ProductionScheduleItemsResource(Resource):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve schedule items for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All schedule items of given production
+        """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
         return schedule_service.get_schedule_items(project_id)
@@ -370,6 +795,22 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve task type schedule items for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All task types schedule items of given production
+        """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
         return schedule_service.get_task_types_schedule_items(project_id)
@@ -382,6 +823,28 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
 
     @jwt_required
     def get(self, project_id, task_type_id):
+        """
+        Retrieve asset types schedule items for given task type
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All asset types schedule items for given task type
+        """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
         return schedule_service.get_asset_types_schedule_items(
@@ -391,11 +854,33 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
 
 class ProductionEpisodesScheduleItemsResource(Resource):
     """
-    Resource to retrieve asset types schedule items for given task type.
+    Resource to retrieve episodes schedule items for given task type.
     """
 
     @jwt_required
     def get(self, project_id, task_type_id):
+        """
+        Retrieve episodes schedule items for given task type
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All episodes schedule items for given task type
+        """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
         return schedule_service.get_episodes_schedule_items(
@@ -405,11 +890,33 @@ class ProductionEpisodesScheduleItemsResource(Resource):
 
 class ProductionSequencesScheduleItemsResource(Resource):
     """
-    Resource to retrieve asset types schedule items for given task type.
+    Resource to retrieve sequences schedule items for given task type.
     """
 
     @jwt_required
     def get(self, project_id, task_type_id):
+        """
+        Retrieve sequences schedule items for given task type
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: UUID
+              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+        responses:
+            200:
+              description: All sequences schedule items for given task type
+        """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
         return schedule_service.get_sequences_schedule_items(

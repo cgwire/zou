@@ -18,6 +18,30 @@ from zou.app.services import (
 class DownloadAttachmentResource(Resource):
     @jwt_required
     def get(self, attachment_file_id, file_name):
+        """
+        Download attachment file.
+        ---
+        tags:
+        - Comments
+        parameters:
+          - in: path
+            name: attachment_file_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: file_name
+            required: True
+            schema:
+                type: string
+                example: filename
+        responses:
+            200:
+                description: Attachment file downloaded
+            404:
+                description: Download failed
+        """
         attachment_file = comments_service.get_attachment_file(
             attachment_file_id
         )
@@ -46,6 +70,29 @@ class AckCommentResource(Resource):
 
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Acknowledge given comment.
+        ---
+        tags:
+        - Comments
+        description: If it's already acknowledged, remove acknowledgement.
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Comment acknowledged
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -62,6 +109,46 @@ class CommentTaskResource(Resource):
 
     @jwt_required
     def post(self, task_id):
+        """
+        Create a new comment for given task.
+        ---
+        tags:
+        - Comments
+        description: It requires a text, a task_status and a person as arguments. 
+                     This way, comments keep history of status changes. 
+                     When the comment is created, it updates the task status with given task status.
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Comment
+            description: person ID, name, comment, revision and change status of task
+            schema:
+                type: object
+                required:
+                    - task_status_id
+                properties:
+                    task_status_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string  
+                    person_id:
+                        type: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    created_at:
+                        type: timestamp
+                        example: 2022-07-12T13:00:00
+                    checklist:
+                        type: array
+        responses:
+            201:
+                description: New comment created
+        """
         (
             task_status_id,
             comment,
@@ -125,6 +212,28 @@ class AddAttachmentToCommentResource(Resource):
 
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Add given files to the comment entry as attachments.
+        ---
+        tags:
+        - Comments
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Given files added to the comment entry as attachments
+        """
         files = request.files
         permissions.check_admin_permissions()
         comment = tasks_service.get_comment(comment_id)
@@ -134,14 +243,33 @@ class AddAttachmentToCommentResource(Resource):
 
 class CommentManyTasksResource(Resource):
     """
-    Create several comments at once. Each comment, requires a text, a task id,
-    task_status and a person as arguments. This way, comments keep history of
+    Create several comments at once. Each comment requires a text, a task id,
+    a task_status and a person as arguments. This way, comments keep history of
     status changes. When the comment is created, it updates the task status with
     given task status.
     """
 
     @jwt_required
     def post(self, project_id):
+        """
+        Create several comments at once.
+        ---
+        tags:
+        - Comments
+        description: Each comment requires a text, a task id, a task_status and a person as arguments. 
+                     This way, comments keep history of status changes. 
+                     When the comment is created, it updates the task status with given task status.
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Given files added to the comment entry as attachments
+        """
         comments = request.json
         person_id = persons_service.get_current_user()["id"]
         try:
@@ -188,6 +316,29 @@ class ReplyCommentResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, task_id, comment_id):
+        """
+        Reply to given comment.
+        ---
+        tags:
+        - Comments
+        description: Add comment to its replies list.
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Reply to given comment
+        """
         args = self.get_args(
             [
                 ("text", "", False),
@@ -206,6 +357,34 @@ class DeleteReplyCommentResource(Resource):
 
     @jwt_required
     def delete(self, task_id, comment_id, reply_id):
+        """
+        Delete given comment reply.
+        ---
+        tags:
+        - Comments
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: reply_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given comment reply deleted
+        """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -223,6 +402,22 @@ class ProjectAttachmentFiles(Resource):
 
     @jwt_required
     def get(self, project_id):
+        """
+        Return all attachment files related to given project.
+        ---
+        tags:
+        - Comments
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All attachment files related to given project
+        """
         permissions.check_admin_permissions()
         return comments_service.get_all_attachment_files_for_project(
             project_id
@@ -236,5 +431,21 @@ class TaskAttachmentFiles(Resource):
 
     @jwt_required
     def get(self, task_id):
+        """
+        Return all attachment files related to given task.
+        ---
+        tags:
+        - Comments
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All attachment files related to given task
+        """
         permissions.check_admin_permissions()
         return comments_service.get_all_attachment_files_for_task(task_id)

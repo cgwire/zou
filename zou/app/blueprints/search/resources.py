@@ -9,6 +9,22 @@ from zou.app.services import index_service, projects_service, user_service
 class SearchResource(Resource, ArgsMixin):
     @jwt_required
     def post(self):
+        """
+        Search for resource
+        ---
+        tags:
+        - Search
+        parameters:
+          - in: query
+            name: query
+            required: True
+            schema:
+                type: string
+                example: name of asset
+        responses:
+            200:
+                description: Resource
+        """
         args = self.get_args([("query", "", True)])
         query = args.get("query")
         if len(query) < 3:
