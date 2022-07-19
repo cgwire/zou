@@ -15,6 +15,22 @@ from zou.app.utils import csv_utils, query
 class AssetsCsvExport(Resource):
     @jwt_required
     def get(self, project_id):
+        """
+        Export assets linked to a given project as csv.
+        ---
+        tags:
+          - Export
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Assets exported as csv
+        """
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])
 

@@ -27,6 +27,15 @@ class BaseImportShotgunResource(Resource):
 
     @jwt_required
     def post(self):
+        """
+        Import shotgun resource.
+        ---
+        tags:
+          - Source
+        responses:
+            200:
+                description: Resource imported
+        """
         results = []
         self.sg_entries = request.json
 
@@ -148,6 +157,15 @@ class ImportRemoveShotgunBaseResource(Resource):
 
     @jwt_required
     def post(self):
+        """
+        Import remove instance.
+        ---
+        tags:
+          - Source
+        responses:
+            200:
+                description: Instance removed
+        """
         sg_model = request.json
         instance = self.get_instance(sg_model)
 

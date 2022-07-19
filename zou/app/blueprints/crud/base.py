@@ -130,8 +130,18 @@ class BaseModelsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all entries for given model. Filters can be specified in the
-        query string.
+        Retrieve all entries for given model.
+        ---
+        tags:
+          - Crud
+        description: Filters can be specified in the query string.
+        responses:
+            200:
+                description: All entries for given model
+            400:
+                description: Format error
+            403:
+                description: Permission denied
         """
         try:
             self.check_read_permissions()
@@ -171,9 +181,34 @@ class BaseModelsResource(Resource):
     @jwt_required
     def post(self):
         """
-        Create a model with data given in the request body. JSON format is
-        expected. The model performs the validation automatically when
-        instantiated.
+        Create a model with data given in the request body.
+        ---
+        tags:
+          - Crud
+        description: JSON format is expected. The model performs the validation automatically when instantiated.
+        parameters:
+          - in: body
+            name: Model
+            schema:
+                type: object
+                properties:
+                    data:
+                        type: list
+                    total:
+                        type: integer  
+                    nb_pages:
+                        type: integer
+                    limit:
+                        type: integer  
+                    offset:
+                        type: integer
+                    page:
+                        type: integer         
+        responses:
+            200:
+                description: Model created
+            400:
+                description: Error
         """
         try:
             data = request.json
@@ -256,8 +291,24 @@ class BaseModelResource(Resource):
     @jwt_required
     def get(self, instance_id):
         """
-        Retrieve a model corresponding at given ID and return it as a JSON
-        object.
+        Retrieve a model corresponding at given ID and return it as a JSON object.
+        ---
+        tags:
+          - Crud
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            200:
+                description: Model as a JSON object
+            400:
+                description: Statement error
+            404: 
+                description: Value error
         """
         try:
             instance = self.get_model_or_404(instance_id)
@@ -289,9 +340,40 @@ class BaseModelResource(Resource):
     @jwt_required
     def put(self, instance_id):
         """
-        Update a model with data given in the request body. JSON format is
-        expected. Model performs the validation automatically when fields are
-        modified.
+        Update a model with data given in the request body.
+        ---
+        tags:
+          - Crud
+        description: JSON format is expected. Model performs the validation automatically when fields are modified.
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25   
+          - in: body
+            name: Model
+            schema:
+                type: object
+                properties:
+                    data:
+                        type: list
+                    total:
+                        type: integer  
+                    nb_pages:
+                        type: integer
+                    limit:
+                        type: integer  
+                    offset:
+                        type: integer
+                    page:
+                        type: integer    
+        responses:
+            200:
+                description: Model updated
+            400:
+                description: Error
         """
         try:
             data = self.get_arguments()
@@ -330,8 +412,24 @@ class BaseModelResource(Resource):
     @jwt_required
     def delete(self, instance_id):
         """
-        Delete a model corresponding at given ID and return it as a JSON
-        object.
+        Delete a model corresponding at given ID and return it as a JSON object.
+        ---
+        tags:
+          - Crud
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            schema:
+                type: UUID
+                example: a24a6ea4-ce75-4665-a070-57453082c25       
+        responses:
+            204:
+                description: Model deleted
+            400:
+                description: Statement or integrity error
+            404: 
+                description: Instance non-existant
         """
         instance = self.get_model_or_404(instance_id)
 

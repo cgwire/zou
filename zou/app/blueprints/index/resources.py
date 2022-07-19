@@ -17,6 +17,12 @@ from flask_jwt_extended import jwt_required
 
 class IndexResource(Resource):
     def get(self):
+        """
+        Get API name and version.
+        ---
+        tags:
+          - Index
+        """
         return {"api": app.config["APP_NAME"], "version": __version__}
 
 
@@ -72,7 +78,14 @@ class BaseStatusResource(Resource):
 
 
 class StatusResource(BaseStatusResource):
+    
     def get(self):
+        """
+        Retrieve API name, version and status.
+        ---
+        tags:
+          - Index
+        """
         (
             api_name,
             version,
@@ -94,6 +107,12 @@ class StatusResource(BaseStatusResource):
 
 class StatusResourcesResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve date and CPU, memory and jobs stats.
+        ---
+        tags:
+          - Index
+        """
         loadavg = list(psutil.getloadavg())
 
         cpu_stats = {
@@ -132,6 +151,12 @@ class StatusResourcesResource(BaseStatusResource):
 
 class TxtStatusResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve API name, version and status as txt.
+        ---
+        tags:
+          - Index
+        """
         (
             api_name,
             version,
@@ -160,6 +185,12 @@ job-queue-up: %s
 
 class InfluxStatusResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve status of database and time.
+        ---
+        tags:
+          - Index
+        """
         (
             api_name,
             version,
@@ -181,6 +212,17 @@ class InfluxStatusResource(BaseStatusResource):
 class StatsResource(Resource):
     @jwt_required
     def get(self):
+        """
+        Retrieve main stats.
+        ---
+        tags:
+          - Index
+        responses:
+            403:
+                description: Permission denied
+            200: 
+                description: Main stats
+        """
         if not permissions.has_admin_permissions():
             abort(403)
         return stats_service.get_main_stats()
@@ -188,4 +230,10 @@ class StatsResource(Resource):
 
 class ConfigResource(Resource):
     def get(self):
+        """
+        Get crisp token.
+        ---
+        tags:
+          - Index
+        """
         return {"crisp_token": app.config["CRISP_TOKEN"]}

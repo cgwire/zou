@@ -1,4 +1,5 @@
 import os
+import string
 import flask_fs
 import traceback
 
@@ -30,41 +31,454 @@ app = Flask(__name__)
 app.config.from_object(config)
 
 swagger_template = {
-    "swagger": "2.0",
-    "info": {
-        "title": "Zou API",
-        "description": "# Welcome to the Zou (Kitsu API) documentation \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n# Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n# Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n",
-        "contact": {
-            "responsibleOrganization": "CGWire",
-            "responsibleDeveloper": "CGWire",
-            "email": "support@cg-wire.com",
-            "url": "https://www.cg-wire.com",
-        },
-        "termsOfService": "https://www.cg-wire.com/terms.html",
-        "version": "0.0.1",
-        "license": {
-            "name": "AGPL 3.0",
-            "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
-        },
+  "swagger": "2.0",
+  "info": {
+    "title": "Zou",
+    "description": "# Welcome to the Zou (Kitsu API) documentation \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n# Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n# Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n",
+    "contact": {
+      "responsibleOrganization": "CGWire",
+      "responsibleDeveloper": "CGWire",
+      "email": "support@cg-wire.com",
+      "url": "https://www.cg-wire.com",
     },
-    "host": "localhost:8080",  # overrides localhost:500
-    "basePath": "/api",  # base bash for blueprint registration
-    "schemes": ["http", "https"],
-    "operationId": "getmyData",
-    "tags": [
-        {"name": "Authentification"},
-        {"name": "Assets"},
-        {"name": "Comments"},
-        {"name": "Files"},
-        {"name": "Persons"},
-        {"name": "Playlists"},
-        {"name": "Projects"},
-        {"name": "Shots"},
-        {"name": "Search"},
-        {"name": "Tasks"},
-        {"name": "User"},
-    ],
+    "termsOfService": "https://www.cg-wire.com/terms.html",
+    "version": "0.0.1",
+    "license": {
+        "name": "AGPL 3.0",
+        "url": "https://www.gnu.org/licenses/agpl-3.0.en.html"
+    },
+  },
+  "host": "localhost:8080",  # overrides localhost:5000
+  "basePath": "/api",  # base bash for blueprint registration
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "operationId": "getmyData",
+  "tags": [
+    { "name": "Authentification" },
+    { "name": "Assets" },
+    { "name": "Breakdown" },
+    { "name": "Comments" },
+    { "name": "Crud" },
+    { "name": "Edits" },
+    { "name": "Entities" },
+    { "name": "Events" },
+    { "name": "Export" },
+    { "name": "Files" },
+    { "name": "Index" },
+    { "name": "News" },
+    { "name": "Persons" },
+    { "name": "Playlists" },
+    { "name": "Previews" },
+    { "name": "Projects" },
+    { "name": "Search" },
+    { "name": "Shots" },
+    { "name": "Source" },
+    { "name": "Tasks" },
+    { "name": "User" }
+  ],
+	"definitions": {
+		"Assets": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"petId": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"quantity": {
+					"type": "integer",
+					"format": "int32"
+				},
+				"shipDate": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"status": {
+					"type": "string",
+					"description": "Order Status",
+					"enum": [
+						"placed",
+						"approved",
+						"delivered"
+					]
+				},
+				"complete": {
+					"type": "boolean",
+					"default": False
+				}
+			},
+			"xml": {
+				"name": "Order"
+			}
+		},
+		"Asset instances": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Asset types": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Comments": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Episodes": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Events": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "File status": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Metadata": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Notifications": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Output files": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Output types": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Persons": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Playlists": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Preview files": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Projects": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Search filters": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Sequences": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Shots": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Software": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Subscriptions to notifications": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Tasks": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Task status": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Task types": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Time spents": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		},
+        "Working files": {
+			"type": "object",
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int64"
+				},
+				"name": {
+					"type": "string"
+				}
+			},
+			"xml": {
+				"name": "Category"
+			}
+		}
+	}
 }
+
 
 
 logs.configure_logs(app)
