@@ -302,10 +302,13 @@ class CommentManyTasksResource(Resource):
                 )
                 if (
                     person["role"] == "supervisor"
-                    and tasks_service.get_task_type(task["task_type_id"])[
-                        "department_id"
-                    ]
-                    in person["departments"]
+                    and (
+                        len(person["departments"]) == 0
+                        or tasks_service.get_task_type(task["task_type_id"])[
+                            "department_id"
+                        ]
+                        in person["departments"]
+                    )
                 ) or person["id"] in task["assignees"]:
                     allowed_comments.append(comment)
             except permissions.PermissionDenied:
