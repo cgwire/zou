@@ -510,7 +510,7 @@ class FiltersResource(Resource, ArgsMixin):
                     name:
                         type: string
                     query:
-                        type: string  
+                        type: string
                     list_type:
                         type: string
                     project_id:
@@ -758,14 +758,14 @@ class HasTaskSubscribedResource(Resource):
 
 class TaskSubscribeResource(Resource):
     """
-    Create a subscription entry for given task and current user. 
+    Create a subscription entry for given task and current user.
     When a user subscribes, he gets notified everytime a comment is posted on the task.
     """
 
     @jwt_required
     def post(self, task_id):
         """
-        Create a subscription entry for given task and current user. 
+        Create a subscription entry for given task and current user.
         ---
         tags:
         - User
@@ -793,7 +793,7 @@ class TaskUnsubscribeResource(Resource):
     @jwt_required
     def delete(self, task_id):
         """
-        Remove the subscription entry matching given task and current user. 
+        Remove the subscription entry matching given task and current user.
         ---
         tags:
         - User
@@ -821,7 +821,7 @@ class HasSequenceSubscribedResource(Resource):
     @jwt_required
     def get(self, sequence_id, task_type_id):
         """
-        Return true if current user has subscribed to given sequence and task type. 
+        Return true if current user has subscribed to given sequence and task type.
         ---
         tags:
         - User
