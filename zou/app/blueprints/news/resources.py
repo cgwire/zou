@@ -18,9 +18,9 @@ class ProjectNewsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Filter News
             schema:
@@ -30,13 +30,16 @@ class ProjectNewsResource(Resource, ArgsMixin):
                         type: boolean
                         default: False
                     task_type_id:
-                        type: UUID
+                        type: string
+                        format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_status_id:
-                        type: UUID
+                        type: string
+                        format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     person_id:
-                        type: UUID
+                        type: string
+                        format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     page:
                         type: integer
@@ -45,10 +48,12 @@ class ProjectNewsResource(Resource, ArgsMixin):
                         type: integer
                         example: 50
                     after:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
                     before:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
         responses:
             200:
@@ -127,15 +132,15 @@ class ProjectSingleNewsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: news_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25     
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25     
         responses:
             200:
                 description: Single given news related to given project

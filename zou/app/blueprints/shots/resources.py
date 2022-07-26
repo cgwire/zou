@@ -32,9 +32,9 @@ class ShotResource(Resource, ArgsMixin):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given shot
@@ -58,9 +58,9 @@ class ShotResource(Resource, ArgsMixin):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given shot deleted
@@ -84,9 +84,9 @@ class SceneResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given scene
@@ -107,9 +107,9 @@ class SceneResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given scene deleted
@@ -133,21 +133,21 @@ class ShotsResource(Resource):
           - in: query
             name: sequence_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: parent_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shot entries
@@ -179,21 +179,21 @@ class AllShotsResource(Resource):
           - in: query
             name: sequence_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: parent_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shot entries
@@ -225,9 +225,9 @@ class ScenesResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All scene entries
@@ -249,9 +249,9 @@ class ShotAssetsResource(Resource):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assets for given shot
@@ -274,9 +274,9 @@ class ShotTaskTypesResource(Resource):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given shot
@@ -299,9 +299,9 @@ class ShotTasksResource(Resource, ArgsMixin):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given shot
@@ -325,9 +325,9 @@ class SequenceShotTasksResource(Resource, ArgsMixin):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given sequence
@@ -355,9 +355,9 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shots tasks related to given episode
@@ -385,9 +385,9 @@ class EpisodeAssetTasksResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assets tasks related to given episode
@@ -415,9 +415,9 @@ class EpisodeShotsResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shots related to given episode
@@ -445,9 +445,9 @@ class ShotPreviewsResource(Resource):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All previews related to given episode
@@ -470,9 +470,9 @@ class SequenceTasksResource(Resource, ArgsMixin):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given shot
@@ -497,9 +497,9 @@ class SequenceTaskTypesResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given shot
@@ -521,9 +521,9 @@ class ShotsAndTasksResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shots
@@ -550,9 +550,9 @@ class SceneAndTasksResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All scenes
@@ -576,9 +576,9 @@ class SequenceAndTasksResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All sequences
@@ -602,9 +602,9 @@ class EpisodeAndTasksResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All episodes
@@ -627,9 +627,9 @@ class ProjectShotsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shots related to given project
@@ -651,9 +651,9 @@ class ProjectShotsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Shot
             description: ID of sequence and name, description, data, number of frames and ID of asset
@@ -673,8 +673,9 @@ class ProjectShotsResource(Resource):
                     data:
                         type: string
                     sequence_id:
-                        type: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                        type: string
+                        format: UUID
+                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
                     nb_frames:
                         type: integer
         responses:
@@ -730,9 +731,9 @@ class ProjectSequencesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All sequences related to given project
@@ -754,9 +755,9 @@ class ProjectSequencesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Sequence
             description: Name and ID of episode
@@ -769,8 +770,9 @@ class ProjectSequencesResource(Resource):
                     name:
                         type: string
                     episode_id:
-                        type: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                        type: string
+                        format: UUID
+                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Sequence created for given project
@@ -801,9 +803,9 @@ class ProjectEpisodesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All episodes related to given project
@@ -825,9 +827,9 @@ class ProjectEpisodesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Episode
             description: Name of episode
@@ -866,9 +868,9 @@ class ProjectEpisodeStatsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Number of tasks by status, task types and episodes for given project
@@ -892,9 +894,9 @@ class ProjectEpisodeRetakeStatsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Number of tasks by status, task types and episodes for given project
@@ -918,9 +920,9 @@ class EpisodeResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given episode
@@ -940,9 +942,9 @@ class EpisodeResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given episode deleted
@@ -967,9 +969,9 @@ class EpisodesResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All episode entries
@@ -992,15 +994,15 @@ class EpisodeSequencesResource(Resource):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All sequence entries for given episode
@@ -1029,9 +1031,9 @@ class EpisodeTaskTypesResource(Resource):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given episode
@@ -1053,9 +1055,9 @@ class EpisodeTasksResource(Resource):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given episode
@@ -1077,9 +1079,9 @@ class SequenceResource(Resource, ArgsMixin):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given sequence
@@ -1099,9 +1101,9 @@ class SequenceResource(Resource, ArgsMixin):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given sequence deleted
@@ -1126,9 +1128,9 @@ class SequencesResource(Resource):
           - in: query
             name: episode_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All sequence entries
@@ -1156,15 +1158,15 @@ class SequenceShotsResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shot entries for given sequence
@@ -1192,9 +1194,9 @@ class ProjectScenesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shots related to given project
@@ -1214,9 +1216,9 @@ class ProjectScenesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Shot
             description: Name of shot and ID of sequence
@@ -1229,7 +1231,9 @@ class ProjectScenesResource(Resource):
                     name:
                         type: string
                     sequence_id:
-                        type: UUID
+                        type: string
+                        format: UUID
+                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Shot created for given project
@@ -1260,9 +1264,9 @@ class SequenceScenesResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All scenes related to given sequence
@@ -1284,9 +1288,9 @@ class SceneTaskTypesResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given scene
@@ -1309,9 +1313,9 @@ class SceneTasksResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given scene
@@ -1333,9 +1337,9 @@ class SceneShotsResource(Resource, ArgsMixin):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shots that come from given scene
@@ -1355,9 +1359,9 @@ class SceneShotsResource(Resource, ArgsMixin):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Shot
             description: ID of shot
@@ -1367,7 +1371,9 @@ class SceneShotsResource(Resource, ArgsMixin):
                 - shot_id
                 properties:
                     shot_id:
-                        type: UUID
+                        type: string
+                        format: UUID
+                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given scene marked as source of given shot
@@ -1391,15 +1397,15 @@ class RemoveShotFromSceneResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given shot deleted from given scene
@@ -1427,9 +1433,9 @@ class ShotVersionsResource(Resource):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Data versions of given shot
@@ -1456,15 +1462,15 @@ class ProjectQuotasResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Quotas statistics for shots

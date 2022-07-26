@@ -23,10 +23,12 @@ class EventsResource(Resource, ArgsMixin):
                 type: object
                 properties:
                     after:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
                     before:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
                     only_files:
                         type: boolean
@@ -36,7 +38,8 @@ class EventsResource(Resource, ArgsMixin):
                         default: 100 
                         example: 100
                     project_id:
-                        type: UUID
+                        type: string
+                        format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -86,7 +89,8 @@ class LoginLogsResource(Resource, ArgsMixin):
                 type: object
                 properties:
                     before:
-                        type: timestamp
+                        type: string
+                        format: date-time
                         example: 2022-07-12T00:00:00
                     page_size:
                         type: integer

@@ -23,9 +23,9 @@ class EntityNewsResource(Resource):
           - in: path
             name: entity_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All news linked to given entity
@@ -47,9 +47,9 @@ class EntityPreviewFilesResource(Resource):
           - in: path
             name: entity_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All preview files linked to given entity
@@ -71,9 +71,9 @@ class EntityTimeSpentsResource(Resource):
           - in: path
             name: entity_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All time spents linked to given entity

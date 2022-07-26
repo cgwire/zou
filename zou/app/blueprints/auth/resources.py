@@ -231,6 +231,7 @@ class LoginResource(Resource):
                 properties:
                     email:
                         type: string
+                        format: email
                     password:
                         type: string
         responses:
@@ -404,6 +405,7 @@ class RegistrationResource(Resource):
                 properties:
                     email:
                         type: string
+                        format: email
                     password:
                         type: string
                     password_2:
@@ -591,7 +593,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 - password_2
                 properties:
                     token:
-                        type: UUID
+                        type: string
+                        format: UUID
+                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
                     password:
                         type: string
                     password_2:
@@ -652,7 +656,8 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 properties:
                     email:
                         type: string
-
+                        format: email
+                    
         responses:
           200:
             description: Reset token sent

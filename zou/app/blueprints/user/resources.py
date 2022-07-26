@@ -34,9 +34,9 @@ class AssetTasksResource(Resource):
           - in: path
             name: asset_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given asset for current user
@@ -61,9 +61,9 @@ class AssetTaskTypesResource(Resource):
           - in: path
             name: asset_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Task types related to given asset for current user
@@ -88,9 +88,9 @@ class ShotTaskTypesResource(Resource):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given shot for current user
@@ -115,9 +115,9 @@ class SceneTaskTypesResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given scene for current user
@@ -142,9 +142,9 @@ class SequenceTaskTypesResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given sequence for current user
@@ -170,15 +170,15 @@ class AssetTypeAssetsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Assets of which type is given asset type and are listed in given project
@@ -226,9 +226,9 @@ class ProjectSequencesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Sequences related to given project
@@ -254,9 +254,9 @@ class ProjectEpisodesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Episodes related to given project
@@ -281,9 +281,9 @@ class ProjectAssetTypesResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Asset types related to given project
@@ -309,9 +309,9 @@ class SequenceShotsResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Shots related to given sequence
@@ -337,9 +337,9 @@ class SequenceScenesResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Scenes related to given sequence
@@ -364,9 +364,9 @@ class ShotTasksResource(Resource):
           - in: path
             name: shot_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given shot
@@ -391,9 +391,9 @@ class SceneTasksResource(Resource):
           - in: path
             name: scene_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given scene
@@ -418,9 +418,9 @@ class SequenceTasksResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given sequence
@@ -514,7 +514,8 @@ class FiltersResource(Resource, ArgsMixin):
                     list_type:
                         type: string
                     project_id:
-                        type: UUID
+                        type: string
+                        format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     entity_type:
                         type: string
@@ -563,9 +564,9 @@ class FilterResource(Resource, ArgsMixin):
           - in: path
             name: filter_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given filter updated
@@ -591,9 +592,9 @@ class FilterResource(Resource, ArgsMixin):
           - in: path
             name: filter_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given filter deleted
@@ -637,7 +638,8 @@ class DesktopLoginLogsResource(Resource):
                 type: object
                 properties:
                     date:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
         responses:
             201:
@@ -675,10 +677,12 @@ class NotificationsResource(Resource, ArgsMixin):
                 type: object
                 properties:
                     after:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
                     before:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
         responses:
             201:
@@ -720,9 +724,9 @@ class NotificationResource(Resource):
           - in: path
             name: notification_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Notification matching given ID
@@ -746,9 +750,9 @@ class HasTaskSubscribedResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: True if current user has subscribed to given task, False otherwise
@@ -774,9 +778,9 @@ class TaskSubscribeResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Subscription entry created
@@ -802,9 +806,9 @@ class TaskUnsubscribeResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Subscription entry removed
@@ -829,15 +833,15 @@ class HasSequenceSubscribedResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: True if current user has subscribed to given sequence and task type, False otherwise
@@ -865,15 +869,15 @@ class SequenceSubscribeResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Subscription entry created
@@ -900,15 +904,15 @@ class SequenceUnsubscribeResource(Resource):
           - in: path
             name: sequence_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Subscription entry removed
@@ -933,15 +937,15 @@ class SequenceSubscriptionsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description:  List of sequence ids to which the current user has subscribed for given task type
@@ -983,15 +987,15 @@ class TaskTimeSpentResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
             required: True
-            schema:
-                type: string
-                example: 2022-07-12
+            type: string
+            format: date
+            x-example: 2022-07-12
         responses:
             200:
                 description:  Time spents for current user and given date
@@ -1023,9 +1027,9 @@ class DayOffResource(Resource):
           - in: path
             name: date
             required: True
-            schema:
-                type: string
-                example: 2022-07-12
+            type: string
+            format: date
+            x-example: 2022-07-12
         responses:
             200:
                 description:  Day off object for current user and given date

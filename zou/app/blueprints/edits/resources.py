@@ -27,9 +27,9 @@ class EditResource(Resource, ArgsMixin):
           - in: path
             name: edit_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given edit
@@ -53,9 +53,9 @@ class EditResource(Resource, ArgsMixin):
           - in: path
             name: edit_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given edit deleted
@@ -80,9 +80,9 @@ class EditsResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25 
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
         responses:
             200:
                 description: All edit entries
@@ -109,9 +109,9 @@ class AllEditsResource(Resource):
           - in: query
             name: project_id
             required: False
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25 
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
         responses:
             200:
                 description: All edit entries
@@ -137,9 +137,9 @@ class EditTaskTypesResource(Resource):
           - in: path
             name: edit_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given edit
@@ -162,9 +162,9 @@ class EditTasksResource(Resource, ArgsMixin):
           - in: path
             name: edit_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given edit
@@ -188,9 +188,9 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given episode
@@ -218,9 +218,9 @@ class EpisodeEditsResource(Resource, ArgsMixin):
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All efits related to given episode
@@ -247,9 +247,9 @@ class EditPreviewsResource(Resource):
           - in: path
             name: edit_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All previews related to given edit
@@ -271,10 +271,10 @@ class EditsAndTasksResource(Resource):
         parameters:
           - in: query
             name: project_id
-            required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All edits and all related tasks.
@@ -300,9 +300,9 @@ class ProjectEditsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All edits related to given project
@@ -324,9 +324,9 @@ class ProjectEditsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Edit
             description: Name and description of edit, data and ID of episode.
@@ -340,9 +340,12 @@ class ProjectEditsResource(Resource):
                     description:
                         type: string  
                     data:
-                        type: dictionary
+                        type: array
+                        items:
+                            type: string
                     episode_id:
-                        type: UUID
+                        type: string
+                        format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
@@ -394,9 +397,9 @@ class EditVersionsResource(Resource):
           - in: path
             name: edit_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Data versions of given edit

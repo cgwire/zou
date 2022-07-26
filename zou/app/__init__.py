@@ -52,7 +52,6 @@ swagger_template = {
     "http",
     "https"
   ],
-  "operationId": "getmyData",
   "tags": [
     { "name": "Authentification" },
     { "name": "Assets" },
@@ -517,7 +516,6 @@ swagger_template = {
 		}
 	}
 }
-
 
 
 logs.configure_logs(app)

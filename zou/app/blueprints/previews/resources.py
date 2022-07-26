@@ -168,9 +168,9 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Preview added
@@ -376,9 +376,9 @@ class PreviewFileMovieResource(Resource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Movie preview downloaded
@@ -418,9 +418,9 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Lowdef movie preview downloaded
@@ -460,9 +460,9 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Movie preview downloaded
@@ -518,15 +518,14 @@ class PreviewFileResource(Resource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
           - in: path
             name: extension
             required: True
-            schema:
-                type: string
-                example: png, pdf, jpg, jpeg, ...
+            type: string
+            x-example: png, pdf, jpg, jpeg, ...
         responses:
             200:
                 description: Generic file preview downloaded
@@ -576,9 +575,9 @@ class PreviewFileDownloadResource(PreviewFileResource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Generic file preview downloaded as attachment
@@ -650,9 +649,9 @@ class BasePreviewPictureResource(Resource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Thumbnail downloaded
@@ -744,9 +743,9 @@ class BaseCreatePictureResource(Resource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Thumbnail created
@@ -802,9 +801,9 @@ class BasePictureResource(Resource):
           - in: path
             name: instance_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Thumbnail downloaded
@@ -930,15 +929,15 @@ class LegacySetMainPreviewResource(Resource):
           - in: path
             name: entity_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25 
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
           - in: path
             name: preview_file_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Main preview set
@@ -969,9 +968,9 @@ class SetMainPreviewResource(Resource):
           - in: path
             name: preview_file_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Given preview set as main preview
@@ -1005,9 +1004,9 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
           - in: path
             name: preview_file_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Orders of previews changed for a single revision
@@ -1051,9 +1050,9 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
           - in: path
             name: preview_file_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25   
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
         responses:
             200:
                 description: Orders of previews changed for a single revision

@@ -27,15 +27,14 @@ class DownloadAttachmentResource(Resource):
           - in: path
             name: attachment_file_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: file_name
             required: True
-            schema:
-                type: string
-                example: filename
+            type: string
+            x-example: filename
         responses:
             200:
                 description: Attachment file downloaded
@@ -80,15 +79,15 @@ class AckCommentResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Comment acknowledged
@@ -121,9 +120,9 @@ class CommentTaskResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Comment
             description: person ID, name, comment, revision and change status of task
@@ -133,18 +132,23 @@ class CommentTaskResource(Resource):
                     - task_status_id
                 properties:
                     task_status_id:
-                        type: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     comment:
                         type: string
                     person_id:
-                        type: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     created_at:
-                        type: timestamp
+                        type: string
+                        format: date-time
                         example: 2022-07-12T13:00:00
                     checklist:
                         type: array
+                        items:
+                            type: string
         responses:
             201:
                 description: New comment created
@@ -221,15 +225,15 @@ class AddAttachmentToCommentResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Given files added to the comment entry as attachments
@@ -263,9 +267,9 @@ class CommentManyTasksResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Given files added to the comment entry as attachments
@@ -335,15 +339,15 @@ class ReplyCommentResource(Resource, ArgsMixin):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Reply to given comment
@@ -375,21 +379,21 @@ class DeleteReplyCommentResource(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: reply_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given comment reply deleted
@@ -420,9 +424,9 @@ class ProjectAttachmentFiles(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All attachment files related to given project
@@ -449,9 +453,9 @@ class TaskAttachmentFiles(Resource):
           - in: path
             name: task_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All attachment files related to given task

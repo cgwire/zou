@@ -22,6 +22,9 @@ class IndexResource(Resource):
         ---
         tags:
           - Index
+        responses:
+            200:
+                description: API name and version
         """
         return {"api": app.config["APP_NAME"], "version": __version__}
 
@@ -85,6 +88,9 @@ class StatusResource(BaseStatusResource):
         ---
         tags:
           - Index
+        responses:
+            200:
+                description: API name, version and status
         """
         (
             api_name,
@@ -112,6 +118,9 @@ class StatusResourcesResource(BaseStatusResource):
         ---
         tags:
           - Index
+        responses:
+            200:
+                description: Date and CPU, memory and jobs stats
         """
         loadavg = list(psutil.getloadavg())
 
@@ -156,6 +165,9 @@ class TxtStatusResource(BaseStatusResource):
         ---
         tags:
           - Index
+        responses:
+            200:
+                description: API name, version and status as txt
         """
         (
             api_name,
@@ -190,6 +202,9 @@ class InfluxStatusResource(BaseStatusResource):
         ---
         tags:
           - Index
+        responses:
+            200:
+                description: Status of database, key value, event stream, job queue and time
         """
         (
             api_name,
@@ -235,5 +250,8 @@ class ConfigResource(Resource):
         ---
         tags:
           - Index
+        responses:
+            200:
+                description: Crisp token
         """
         return {"crisp_token": app.config["CRISP_TOKEN"]}

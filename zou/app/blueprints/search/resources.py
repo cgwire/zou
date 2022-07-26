@@ -18,9 +18,8 @@ class SearchResource(Resource, ArgsMixin):
           - in: query
             name: query
             required: True
-            schema:
-                type: string
-                example: name of asset
+            type: string
+            x-example: name of asset
         responses:
             200:
                 description: Resource

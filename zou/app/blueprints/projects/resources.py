@@ -92,9 +92,9 @@ class ProductionTeamResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: People listed in a production team
@@ -120,9 +120,9 @@ class ProductionTeamResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Person added to production team
@@ -151,15 +151,15 @@ class ProductionTeamRemoveResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: person_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Person removed from production team
@@ -185,9 +185,9 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Asset type added to production
@@ -216,15 +216,15 @@ class ProductionAssetTypeRemoveResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Asset type removed from production
@@ -250,9 +250,9 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Task types linked to the production
@@ -277,9 +277,9 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Asset type added to production
@@ -310,15 +310,15 @@ class ProductionTaskTypeRemoveResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Task type removed from production
@@ -344,9 +344,9 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Task statuses linked to production
@@ -365,9 +365,9 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Task type added to production
@@ -396,15 +396,15 @@ class ProductionTaskStatusRemoveResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_status_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Task status removed from production
@@ -430,9 +430,9 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Status automation linked to production
@@ -451,9 +451,9 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Status automation added to production
@@ -482,15 +482,15 @@ class ProductionStatusAutomationRemoveResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: status_automation_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Status automation removed from production
@@ -520,9 +520,9 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All metadata descriptors
@@ -545,9 +545,9 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Create a new metadata descriptor
@@ -607,15 +607,15 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: descriptor_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Metadata descriptor
@@ -635,15 +635,15 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: descriptor_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Metadata descriptor updated
@@ -683,15 +683,15 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: descriptor_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Metadata descriptor deleted
@@ -722,9 +722,9 @@ class ProductionTimeSpentsResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All time spents of given production
@@ -749,9 +749,9 @@ class ProductionMilestonesResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All milestones of given production
@@ -776,9 +776,9 @@ class ProductionScheduleItemsResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All schedule items of given production
@@ -804,9 +804,9 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All task types schedule items of given production
@@ -832,15 +832,15 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All asset types schedule items for given task type
@@ -868,15 +868,15 @@ class ProductionEpisodesScheduleItemsResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All episodes schedule items for given task type
@@ -904,15 +904,15 @@ class ProductionSequencesScheduleItemsResource(Resource):
           - in: path
             name: project_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            schema:
-              type: UUID
-              example: 5dc235ec-125e-4ba5-b1db-604d4babc315
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: All sequences schedule items for given task type
