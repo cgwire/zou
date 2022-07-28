@@ -119,34 +119,6 @@ class BaseCsvImportResource(Resource):
 class BaseCsvProjectImportResource(BaseCsvImportResource):
     @jwt_required
     def post(self, project_id, **kwargs):
-        """
-        Import project instance.
-        ---
-        tags:
-          - Source
-        parameters:
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25                 
-          - in: path
-            name: episode_id
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25        
-        responses:
-            201:
-                description: Instance imported
-            400:
-                description: Format error
-        """
         uploaded_file = request.files["file"]
         file_name = "%s.csv" % uuid.uuid4()
         file_path = os.path.join(app.config["TMP_DIR"], file_name)

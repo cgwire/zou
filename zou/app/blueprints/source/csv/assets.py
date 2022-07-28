@@ -14,6 +14,27 @@ from zou.app.utils import events, cache
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
+    def post(self, project_id, *kwargs):
+        """
+        Import project assets.
+        ---
+        tags:
+          - Source
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25      
+        responses:
+            201:
+                description: Assets imported
+            400:
+                description: Format error
+        """
+        super(AssetsCsvImportResource, self).post(project_id, *kwargs)
+        
     def prepare_import(self, project_id):
         self.episodes = {}
         self.entity_types = {}
@@ -220,7 +241,6 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             self.create_and_update_tasks(
                 tasks_update, entity, asset_creation=False
             )
-
         return entity.serialize()
 
     @cache.memoize_function(10)

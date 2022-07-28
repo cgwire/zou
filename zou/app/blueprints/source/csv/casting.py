@@ -13,6 +13,27 @@ from zou.app.utils import events
 
 
 class CastingCsvImportResource(BaseCsvProjectImportResource):
+    def post(self, project_id, *kwargs):
+        """
+        Import project castings.
+        ---
+        tags:
+          - Source
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25      
+        responses:
+            201:
+                description: Castings imported
+            400:
+                description: Format error
+        """
+        super(CastingCsvImportResource, self).post(project_id, *kwargs)
+    
     def prepare_import(self, project_id):
         self.asset_type_map = {}
         self.asset_map = {}
