@@ -33,11 +33,12 @@ app.config.from_object(config)
 swagger_template = {
   "swagger": "2.0",
   "info": {
-    "title": "Zou",
-    "description": "# Welcome to the Zou (Kitsu API) documentation \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n# Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n# Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n",
+    "title": "Kitsu API",
+    "description": "# Welcome to Zou (Kitsu API) documentation \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n# Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n# Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n",
     "contact": {
+      "name": "CGWire",
       "email": "support@cg-wire.com",
-      "url": "https://www.cg-wire.com",
+      "url": "https://www.cg-wire.com"
     },
     "termsOfService": "https://www.cg-wire.com/terms.html",
     "version": __version__,
@@ -80,41 +81,50 @@ swagger_template = {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of asset"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "Utility field for the pipeline to identify the asset"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Asset brief"
           },
           "canceled": {
             "type": "boolean",
-            "default": "False"
+            "default": "False",
+            "description": "True if the asset has been delete one time, False otherwise"
           },
           "project_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Project ID"
           },
           "entity_type_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Asset type ID"
           },
           "source_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Field uset to set the episode_id"
           },
           "preview_file_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "ID of preview file used as thumbnail"
           },
           "data": {
             "type": "string",
-            "format": "json"
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           },
           "shotgun_id": {
-            "type": "string",
-            "format": "UUID"
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
           }
         }
       },
@@ -123,7 +133,8 @@ swagger_template = {
         "properties": {
           "asset_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Instantiated asset"
           },
           "name": {
             "type": "string"
@@ -140,15 +151,18 @@ swagger_template = {
           },
           "data": {
             "type": "string",
-            "format": "json"
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           },
           "scene_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Target scene"
           },
           "target_asset_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Use when instantiating an asset in an asset is required"
           }
         }
       },
@@ -164,22 +178,25 @@ swagger_template = {
         "type": "object",
         "properties": {
           "shotgun_id": {
-            "type": "string",
-            "format": "UUID"
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
           },
           "object_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Unique ID of the commented model instance"
           },
           "object_type": {
-            "type": "string"
+            "type": "string",
+            "description": "Model type of the comment model instance"
           },
           "text": {
             "type": "string"
           },
           "data": {
             "type": "string",
-            "format": "json"
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           },
           "replies": {
             "type": "string",
@@ -195,15 +212,18 @@ swagger_template = {
           },
           "task_status_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Task status attached to comment"
           },
           "person_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "The person who publishes the comment"
           },
           "preview_file_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "ID of preview file used as thumbnail"
           }
         }
       },
@@ -211,37 +231,45 @@ swagger_template = {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of episode"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "Utility field for the pipeline to identify the episode"
           },
           "description": {
-            "type": "string"
+            "type": "string",
+            "description": "Episode brief"
           },
           "canceled": {
             "type": "boolean",
-            "default": "False"
+            "default": "False",
+            "description": "True if the episode has been delete one time, False otherwise"
           },
           "project_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Project ID"
           },
           "source_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "Field uset to set the episode_id"
           },
           "preview_file_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "ID of preview file used as thumbnail"
           },
           "data": {
             "type": "string",
-            "format": "json"
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           },
           "shotgun_id": {
-            "type": "string",
-            "format": "UUID"
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
           }
         }
       },
@@ -249,15 +277,23 @@ swagger_template = {
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of event"
           },
           "user_id": {
             "type": "string",
-            "format": "UUID"
+            "format": "UUID",
+            "description": "The user who made the action that emitted the event"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
           },
           "data": {
             "type": "string",
-            "format": "json"
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           }
         }
       },
@@ -275,47 +311,184 @@ swagger_template = {
       "Metadata": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "ID of project for which metadata are added"
+          },
+          "entity_type": {
+            "type": "string",
+            "description": "Asset or Shot"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Field name for GUI"
+          },
+          "field_name": {
+            "type": "string",
+            "description": "Technical field name"
+          },
+          "choices": {
+            "type": "string",
+            "format": "json",
+            "description": "Array of string that represents the available values for this metadate (this metatada is considered as a free field if this array is empty)"
+          },
+          "for_client": {
+            "type": "boolean"
           }
         }
       },
       "Notifications": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "read": {
+            "type": "boolean",
+            "description": "True if user read it, False otherwise"
           },
-          "name": {
-            "type": "string"
+          "change": {
+            "type": "boolean",
+            "description": "True if there is status change related to this status, False otherwise"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "The user to who the notification is aimed at"
+          },
+          "author_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Author of the event to notify"
+          },
+          "comment_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Comment related to the notification, if there is any"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task related to the notification, if there is any"
+          },
+          "reply_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Reply related to notification"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of notification"
           }
         }
       },
       "Output files": {
         "type": "object",
         "properties": {
-          "id": {
+          "shotgun_id": {
             "type": "integer",
-            "format": "int64"
+            "description": "Used for synchronization with a Shotgun instance"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of output file"
+          },
+          "extension": {
+            "type": "string",
+            "description": "Extension of output file"
+          },
+          "description": {
+            "type": "string",
+            "description": "Output file brief"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment on output file"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Revision number of output file"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of output file"
+          },
+          "checksum": {
+            "type": "string",
+            "description": "Checksum of output file"
+          },
+          "source": {
+            "type": "string",
+            "description": "Created by a script, a webgui or a desktop gui"
+          },
+          "path": {
+            "type": "string",
+            "description": "File path on the production hard drive"
+          },
+          "representation": {
+            "type": "string",
+            "description": "Precise what kind of output it is (abc, jpgs, pngs, etc.)"
+          },
+          "nb_elements": {
+            "type": "integer",
+            "default": "1",
+            "description": "For image sequence"
+          },
+          "canceled": {
+            "type": "boolean",
+          },
+          "file_status_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "File status ID"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Asset or Shot concerned by the output file"
+          },
+          "asset_instance_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Asset instance ID"
+          },
+          "output_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Type of output (geometry, cache, etc.)"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type related to this output file (modeling, animation, etc.)"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Author of the file"
+          },
+          "source_file_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Working file that led to create this output file"
+          },
+          "temporal_entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Shot, scene or sequence needed for output files related to an asset instance"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           }
         }
       },
       "Output types": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
+            "type": "string"
+          },
+          "short_name": {
             "type": "string"
           }
         }
@@ -330,29 +503,32 @@ swagger_template = {
             "type": "string"
           },
           "email": {
-            "type": "string"
+            "type": "string",
+            "description": "Serve as login"
           },
           "phone": {
             "type": "string"
           },
           "active": {
             "type": "boolean",
-            "default": "true"
+            "description": "True if the person is still in the studio, False otherwise"
           },
           "last_presence": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "Last time the person worked for the studio"
           },
           "password": {
             "type": "string",
             "format": "byte"
           },
           "desktop_login": {
-            "type": "string"
+            "type": "string",
+            "description": "Login used on desktop"
           },
           "shotgun_id": {
-            "type": "string",
-            "format": "UUID"
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
           },
           "timezone": {
             "type": "string"
@@ -362,7 +538,8 @@ swagger_template = {
           },
           "data": {
             "type": "string",
-            "format": "json"
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           },
           "role": {
             "type": "string",
@@ -370,31 +547,183 @@ swagger_template = {
           },
           "has_avatar": {
             "type": "boolean",
-            "default": "False"
+            "default": "False",
+            "description": "True if user has an avatar, Flase otherwise"
+          },
+          "notifications_enabled": {
+            "type": "boolean",
+          },
+          "notifications_slack_enabled": {
+            "type": "boolean",
+          },
+          "notifications_slack_userid": {
+            "type": "string",
+          },
+          "notifications_mattermost_enabled": {
+            "type": "boolean",
+          },
+          "notifications_mattermost_userid": {
+            "type": "string",
+          },
+          "notifications_discord_enabled": {
+            "type": "boolean",
+          },
+          "notifications_discord_userid": {
+            "type": "string",
           }
         }
       },
       "Playlists": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of playlist"
+          },
+          "shots": {
+            "type": "string",
+            "format": "json",
+            "description": "JSON field describing shot and preview listed in"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
+          },
+          "episode_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Episode ID"
+          },
+          "for_client": {
+            "type": "boolean",
+            "default": "False"
+          },
+          "for_entity": {
+            "type": "string",
+            "default": "shot"
+          },
+          "is_for_all": {
+            "type": "boolean",
+            "default": "False"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
           }
         }
       },
       "Preview files": {
         "type": "object",
         "properties": {
-          "id": {
+          "shotgun_id": {
             "type": "integer",
-            "format": "int64"
+            "description": "Used for synchronization with a Shotgun instance"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of preview file"
+          },
+          "original_name": {
+            "type": "string",
+            "description": "Original name of preview file"
+          },
+          "revision": {
+            "type": "integer",
+            "default": "1",
+            "description": "Revision number of preview file"
+          },
+          "position": {
+            "type": "integer",
+            "default": "1",
+            "description": "Position of preview file"
+          },
+          "extension": {
+            "type": "string",
+            "description": "Extension of preview file"
+          },
+          "description": {
+            "type": "string",
+            "description": "Preview file brief"
+          },
+          "path": {
+            "type": "string",
+            "description": "File path on the production hard drive"
+          },
+          "source": {
+            "type": "string",
+            "description": "Created by a script, a webgui or a desktop gui"
+          },
+          "file_size": {
+            "type": "integer",
+            "default": "0",
+            "description": "Size of output file"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment on output file"
+          },
+          "checksum": {
+            "type": "string",
+            "description": "Checksum of output file"
+          },
+          "representation": {
+            "type": "string",
+            "description": "Precise what kind of output it is (abc, jpgs, pngs, etc.)"
+          },
+          "nb_elements": {
+            "type": "integer",
+            "default": "1",
+            "description": "For image sequence"
+          },
+          "canceled": {
+            "type": "boolean",
+          },
+          "file_status_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "File status ID"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Asset or Shot concerned by the output file"
+          },
+          "asset_instance_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Asset instance ID"
+          },
+          "output_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Type of output (geometry, cache, etc.)"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type related to this output file (modeling, animation, etc.)"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Author of the file"
+          },
+          "source_file_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Working file that led to create this output file"
+          },
+          "temporal_entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Shot, scene or sequence needed for output files related to an asset instance"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
           }
         }
       },
