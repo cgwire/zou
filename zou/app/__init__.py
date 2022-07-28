@@ -75,446 +75,462 @@ swagger_template = {
     { "name": "Tasks" },
     { "name": "User" }
   ],
-	"definitions": {
-		"Assets": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64",
-					"exemple": "jdsfkjshfkjd"
-				},
-				"petId": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"quantity": {
-					"type": "integer",
-					"format": "int32"
-				},
-				"shipDate": {
-					"type": "string",
-					"format": "date-time"
-				},
-				"status": {
-					"type": "string",
-					"description": "Order Status",
-					"enum": [
-						"placed",
-						"approved",
-						"delivered"
-					]
-				},
-				"complete": {
-					"type": "boolean",
-					"default": False
-				}
-			},
-			"xml": {
-				"name": "Order"
-			}
-		},
-		"Asset instances": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Asset types": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Comments": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Episodes": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Events": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "File status": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Metadata": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Notifications": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Output files": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Output types": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Persons": {
-			"type": "object",
-			"properties": {
-				"first_name": {
-					"type": "string",
-				},
-				"last_name": {
-					"type": "string"
-				},
-				"email": {
-					"type": "string"
-				},
-				"phone": {
-					"type": "string"
-				},
-				"active": {
-					"type": "boolean",
-					"default": "true"
-				},
-				"last_presence": {
-					"type": "string",
-					"format": "date"
-				},
-				"password": {
-					"type": "string",
-					"format": "byte"
-				},
-				"desktop_login": {
-					"type": "string"
-				},
-				"shotgun_id": {
-					"type": "UUID"
-				},
-				"timezone": {
-					"type": "string"
-				},
-				"locale": {
-					"type": "string"
-				},
-				"data": {
-					"type": "json"
-				},
-				"active": {
-					"type": "boolean"
-				},
-				"role": {
-					"type": "string",
-					"default": "user"
-				},
-				"has_avatar": {
-					"type": "boolean",
-					"default": "False"
-				}
-			}
-		},
-        "Playlists": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Preview files": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Projects": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Search filters": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Sequences": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Shots": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Software": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Subscriptions to notifications": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Tasks": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Task status": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Task types": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Time spents": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		},
-        "Working files": {
-			"type": "object",
-			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
-				},
-				"name": {
-					"type": "string"
-				}
-			},
-			"xml": {
-				"name": "Category"
-			}
-		}
-	}
+    "definitions": {
+      "Assets": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "canceled": {
+            "type": "boolean",
+            "default": "False"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "entity_type_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "preview_file_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "data": {
+            "type": "string",
+            "format": "json"
+          },
+          "shotgun_id": {
+            "type": "string",
+            "format": "UUID"
+          }
+        }
+      },
+      "Asset instances": {
+        "type": "object",
+        "properties": {
+          "asset_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "name": {
+            "type": "string"
+          },
+          "number": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean",
+            "default": "True"
+          },
+          "data": {
+            "type": "string",
+            "format": "json"
+          },
+          "scene_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "target_asset_id": {
+            "type": "string",
+            "format": "UUID"
+          }
+        }
+      },
+      "Asset types": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Comments": {
+        "type": "object",
+        "properties": {
+          "shotgun_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "object_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "object_type": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "json"
+          },
+          "replies": {
+            "type": "string",
+            "format": "json",
+            "default": "[]"
+          },
+          "checklist": {
+            "type": "string",
+            "format": "json"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "task_status_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "preview_file_id": {
+            "type": "string",
+            "format": "UUID"
+          }
+        }
+      },
+      "Episodes": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "canceled": {
+            "type": "boolean",
+            "default": "False"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "preview_file_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "data": {
+            "type": "string",
+            "format": "json"
+          },
+          "shotgun_id": {
+            "type": "string",
+            "format": "UUID"
+          }
+        }
+      },
+      "Events": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "data": {
+            "type": "string",
+            "format": "json"
+          }
+        }
+      },
+      "File status": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          }
+        }
+      },
+      "Metadata": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Notifications": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Output files": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Output types": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Persons": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean",
+            "default": "true"
+          },
+          "last_presence": {
+            "type": "string",
+            "format": "date"
+          },
+          "password": {
+            "type": "string",
+            "format": "byte"
+          },
+          "desktop_login": {
+            "type": "string"
+          },
+          "shotgun_id": {
+            "type": "string",
+            "format": "UUID"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "locale": {
+            "type": "string"
+          },
+          "data": {
+            "type": "string",
+            "format": "json"
+          },
+          "role": {
+            "type": "string",
+            "default": "user"
+          },
+          "has_avatar": {
+            "type": "boolean",
+            "default": "False"
+          }
+        }
+      },
+      "Playlists": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Preview files": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Projects": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Search filters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Sequences": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Shots": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Software": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Subscriptions to notifications": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Tasks": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Task status": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Task types": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Time spents": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "Working files": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      }
+    }
 }
 
 
