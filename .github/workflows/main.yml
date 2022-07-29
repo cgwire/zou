@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Update Zou on staging server
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v0.1.4
       with:
        host: ${{ secrets.HOST }}
        username: ${{ secrets.USERNAME }}
@@ -20,8 +20,7 @@ jobs:
        script_stop: true
        script: |
          cd /opt/zou
-         . zouenv/bin/activate
          source /etc/zou/zou.env
-         pip install --upgrade git+https://github.com/cgwire/zou.git
-         zou upgrade_db
-         sudo service zou restart
+         sudo /opt/zou/zouenv/bin/pip install --upgrade git+https://github.com/cgwire/zou.git
+         sudo -E -u zou /opt/zou/zouenv/bin/zou upgrade-db
+         sudo systemctl restart zou zou-events zou-jobs
