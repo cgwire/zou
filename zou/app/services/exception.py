@@ -183,3 +183,7 @@ class EditNotFoundException(NotFound):
 
 class StatusAutomationNotFoundException(NotFound):
     pass
+
+
+class WrongTaskTypeForEntityException(Exception):
+    pass

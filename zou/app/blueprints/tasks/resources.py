@@ -702,22 +702,21 @@ class ClearAssignationResource(Resource):
                 description: All assignations removed
         """
         (task_ids, person_id) = self.get_arguments()
-        current_user = persons_service.get_current_user()
 
-        for task_id in task_ids:
-            task = tasks_service.get_task(task_id, relations=True)
-            if not (
-                current_user["id"] in task["assignees"]
-                and current_user["id"] == task["assigner_id"]
-            ):
-                user_service.check_manager_project_access(task["project_id"])
-
+        tasks = []
         for task_id in task_ids:
             try:
+                user_service.check_task_departement_access_for_unassign(
+                    task_id, person_id
+                )
                 tasks_service.clear_assignation(task_id, person_id=person_id)
+                tasks.append(task_id)
+            except permissions.PermissionDenied:
+                pass
             except TaskNotFoundException:
                 pass
-        return task_ids
+
+        return tasks
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
@@ -776,9 +775,8 @@ class TasksAssignResource(Resource):
             try:
                 user_service.check_task_departement_access(task_id, person_id)
                 task = self.assign_task(task_id, person_id, current_user["id"])
-                author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(
-                    task_id, person_id, author["id"]
+                    task_id, person_id, current_user["id"]
                 )
                 tasks.append(task)
             except TaskNotFoundException:
@@ -847,7 +845,7 @@ class TaskAssignResource(Resource):
 
         try:
             task = tasks_service.get_task(task_id)
-            user_service.check_manager_project_access(task["project_id"])
+            user_service.check_task_departement_access(task_id, person_id)
 
             self.assign_task(task_id, person_id)
             notifications_service.create_assignation_notification(
