@@ -30,7 +30,7 @@ class NewPersonResource(Resource):
     @jwt_required
     def post(self):
         """
-        Create a new user in the database. 
+        Create a new user in the database.
         ---
         tags:
         - Persons
@@ -49,7 +49,7 @@ class NewPersonResource(Resource):
                     email:
                         type: string
                     first_name:
-                        type: string  
+                        type: string
                     last_name:
                         type: string
                     phone:

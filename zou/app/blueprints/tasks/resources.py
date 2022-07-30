@@ -393,11 +393,11 @@ class PersonDoneTasksResource(Resource):
     @jwt_required
     def get(self, person_id):
         """
-        Return task assigned to given user of which status has is_done flag sets to true.      
+        Return task assigned to given user of which status has is_done flag sets to true.
         ---
         tags:
         - Tasks
-        description: It return only tasks related to open projects. 
+        description: It return only tasks related to open projects.
         parameters:
           - in: path
             name: person_id
@@ -576,7 +576,7 @@ class ToReviewResource(Resource):
     @jwt_required
     def put(self, task_id):
         """
-        Change a task status to "to review".  
+        Change a task status to "to review".
         ---
         tags:
         - Tasks
@@ -598,7 +598,7 @@ class ToReviewResource(Resource):
                         type: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     comment:
-                        type: string  
+                        type: string
                     name:
                         type: string
                     revision:
@@ -695,29 +695,28 @@ class ClearAssignationResource(Resource):
                         type: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     person_id:
-                        type: UUID  
+                        type: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assignations removed
         """
         (task_ids, person_id) = self.get_arguments()
-        current_user = persons_service.get_current_user()
 
-        for task_id in task_ids:
-            task = tasks_service.get_task(task_id, relations=True)
-            if not (
-                current_user["id"] in task["assignees"]
-                and current_user["id"] == task["assigner_id"]
-            ):
-                user_service.check_manager_project_access(task["project_id"])
-
+        tasks = []
         for task_id in task_ids:
             try:
+                user_service.check_task_departement_access_for_unassign(
+                    task_id, person_id
+                )
                 tasks_service.clear_assignation(task_id, person_id=person_id)
+                tasks.append(task_id)
+            except permissions.PermissionDenied:
+                pass
             except TaskNotFoundException:
                 pass
-        return task_ids
+
+        return tasks
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
@@ -776,9 +775,8 @@ class TasksAssignResource(Resource):
             try:
                 user_service.check_task_departement_access(task_id, person_id)
                 task = self.assign_task(task_id, person_id, current_user["id"])
-                author = persons_service.get_current_user()
                 notifications_service.create_assignation_notification(
-                    task_id, person_id, author["id"]
+                    task_id, person_id, current_user["id"]
                 )
                 tasks.append(task)
             except TaskNotFoundException:
@@ -847,7 +845,7 @@ class TaskAssignResource(Resource):
 
         try:
             task = tasks_service.get_task(task_id)
-            user_service.check_manager_project_access(task["project_id"])
+            user_service.check_task_departement_access(task_id, person_id)
 
             self.assign_task(task_id, person_id)
             notifications_service.create_assignation_notification(

@@ -214,8 +214,8 @@ class LoginResource(Resource):
         """
         Log in user by creating and registering auth tokens.
         ---
-        description: Login is based on email and password. 
-                     If no user match given email and a destkop ID, it looks in matching the desktop ID with the one stored in database. 
+        description: Login is based on email and password.
+                     If no user match given email and a destkop ID, it looks in matching the desktop ID with the one stored in database.
                      It is useful for clients that run on desktop tools and that don't know user email.
         tags:
             - Authentification
@@ -356,7 +356,6 @@ class LoginResource(Resource):
 
 
 class RefreshTokenResource(Resource):
-
     @jwt_refresh_token_required
     def get(self):
         """
@@ -383,6 +382,7 @@ class RegistrationResource(Resource):
     """
     Allow a user to register himself to the service.
     """
+
     def post(self):
         """
         Allow a user to register himself to the service.
@@ -412,7 +412,7 @@ class RegistrationResource(Resource):
                         type: string
                     last_name:
                         type: string
-                    
+
         responses:
           201:
             description: Registration successful
@@ -492,7 +492,7 @@ class ChangePasswordResource(Resource):
         """
         Allow the user to change his password.
         ---
-        description: Prior to modifying the password, it requires to give the current password 
+        description: Prior to modifying the password, it requires to give the current password
                      (to make sure the user changing the password is not someone who stealed the session).
                      The new password requires a confirmation to ensure that the user didn't
                      make a mistake by typing his new password.
@@ -515,7 +515,7 @@ class ChangePasswordResource(Resource):
                         type: string
                     password_2:
                         type: string
-                    
+
         responses:
           200:
             description: Password changed
@@ -575,7 +575,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         Ressource to allow a user to change his password when he forgets it.
         ---
-        description: "It uses a classic scheme: a token is sent by email to the user. 
+        description: "It uses a classic scheme: a token is sent by email to the user.
                      Then he can change his password."
         tags:
             - Authentification
@@ -596,7 +596,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
                         type: string
                     password_2:
                         type: string
-                    
+
         responses:
           200:
             description: Password reset
@@ -637,7 +637,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         Ressource to allow a user to change his password when he forgets it.
         ---
-        description: "It uses a classic scheme: a token is sent by email to the user. 
+        description: "It uses a classic scheme: a token is sent by email to the user.
                      Then he can change his password."
         tags:
             - Authentification
@@ -652,7 +652,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 properties:
                     email:
                         type: string
-                    
+
         responses:
           200:
             description: Reset token sent

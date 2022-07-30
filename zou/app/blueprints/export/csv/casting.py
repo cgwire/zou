@@ -20,7 +20,11 @@ class CastingCsvExport(Resource, ArgsMixin):
 
         episode_id = self.get_episode_id()
 
-        results = self.build_results(project_id, episode_id=episode_id)
+        is_shot_casting = self.get_bool_parameter("is_shot_casting")
+
+        results = self.build_results(
+            project_id, episode_id=episode_id, is_shot_casting=is_shot_casting
+        )
         headers = self.build_headers(episode_id=episode_id)
 
         csv_content = [headers]
@@ -89,15 +93,18 @@ class CastingCsvExport(Resource, ArgsMixin):
             ]
         return row
 
-    def build_results(self, project_id, episode_id=None):
+    def build_results(
+        self, project_id, episode_id=None, is_shot_casting=False
+    ):
         results = []
         if episode_id == "main":
             results = self.build_main_pack_results(project_id)
         elif episode_id == "all":
             results = self.build_episodes_results(project_id)
-        else:
+        elif is_shot_casting:
             results = self.build_shot_results(project_id, episode_id)
-            results += self.build_asset_results(project_id, episode_id)
+        else:
+            results = self.build_asset_results(project_id, episode_id)
         return results
 
     def build_shot_results(self, project_id, episode_id=None):

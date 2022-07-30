@@ -114,8 +114,8 @@ class CommentTaskResource(Resource):
         ---
         tags:
         - Comments
-        description: It requires a text, a task_status and a person as arguments. 
-                     This way, comments keep history of status changes. 
+        description: It requires a text, a task_status and a person as arguments.
+                     This way, comments keep history of status changes.
                      When the comment is created, it updates the task status with given task status.
         parameters:
           - in: path
@@ -136,7 +136,7 @@ class CommentTaskResource(Resource):
                         type: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     comment:
-                        type: string  
+                        type: string
                     person_id:
                         type: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25
@@ -256,8 +256,8 @@ class CommentManyTasksResource(Resource):
         ---
         tags:
         - Comments
-        description: Each comment requires a text, a task id, a task_status and a person as arguments. 
-                     This way, comments keep history of status changes. 
+        description: Each comment requires a text, a task id, a task_status and a person as arguments.
+                     This way, comments keep history of status changes.
                      When the comment is created, it updates the task status with given task status.
         parameters:
           - in: path
@@ -271,16 +271,16 @@ class CommentManyTasksResource(Resource):
                 description: Given files added to the comment entry as attachments
         """
         comments = request.json
-        person_id = persons_service.get_current_user()["id"]
+        person = persons_service.get_current_user(relations=True)
         try:
             user_service.check_manager_project_access(project_id)
         except permissions.PermissionDenied:
-            comments = self.get_allowed_comments_only(comments, person_id)
+            comments = self.get_allowed_comments_only(comments, person)
         result = []
         for comment in comments:
             try:
                 comment = comments_service.create_comment(
-                    person_id,
+                    person["id"],
                     comment["object_id"],
                     comment["task_status_id"],
                     comment["comment"],
@@ -293,14 +293,23 @@ class CommentManyTasksResource(Resource):
                 pass
         return result, 201
 
-    def get_allowed_comments_only(self, comments, person_id):
+    def get_allowed_comments_only(self, comments, person):
         allowed_comments = []
         for comment in comments:
             try:
                 task = tasks_service.get_task_with_relations(
                     comment["object_id"],
                 )
-                if person_id in task["assignees"]:
+                if (
+                    person["role"] == "supervisor"
+                    and (
+                        len(person["departments"]) == 0
+                        or tasks_service.get_task_type(task["task_type_id"])[
+                            "department_id"
+                        ]
+                        in person["departments"]
+                    )
+                ) or person["id"] in task["assignees"]:
                     allowed_comments.append(comment)
             except permissions.PermissionDenied:
                 pass

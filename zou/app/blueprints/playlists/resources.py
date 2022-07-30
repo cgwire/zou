@@ -23,14 +23,14 @@ from zou.utils.movie import EncodingParameters
 
 class ProjectPlaylistsResource(Resource, ArgsMixin):
     """
-    Retrieve all playlists related to given project. 
+    Retrieve all playlists related to given project.
     Result is paginated and can be sorted.
     """
 
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve all playlists related to given project. 
+        Retrieve all playlists related to given project.
         ---
         tags:
         - Playlists
@@ -62,14 +62,14 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
 
 class EpisodePlaylistsResource(Resource, ArgsMixin):
     """
-    Retrieve all playlists related to given episode. 
+    Retrieve all playlists related to given episode.
     The full list is returned because the number of playlists in an episode is not that big.
     """
 
     @jwt_required
     def get(self, project_id, episode_id):
         """
-        Retrieve all playlists related to given episode. 
+        Retrieve all playlists related to given episode.
         ---
         tags:
         - Playlists
@@ -108,12 +108,13 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
 
 class ProjectPlaylistResource(Resource):
     """
-    Retrieve all playlists related to given project. 
+    Retrieve all playlists related to given project.
     """
+
     @jwt_required
     def get(self, project_id, playlist_id):
         """
-        Retrieve all playlists related to given project. 
+        Retrieve all playlists related to given project.
         ---
         tags:
         - Playlists
@@ -143,10 +144,11 @@ class ProjectPlaylistResource(Resource):
 
 class EntityPreviewsResource(Resource):
     """
-    Retrieve all previews related to a given entity. 
-    It sends them as a dict. 
+    Retrieve all previews related to a given entity.
+    It sends them as a dict.
     Keys are related task type ids and values are arrays of preview for this task type.
     """
+
     @jwt_required
     def get(self, entity_id):
         """
@@ -154,7 +156,7 @@ class EntityPreviewsResource(Resource):
         ---
         tags:
         - Playlists
-        description: It sends them as a dict. 
+        description: It sends them as a dict.
                      Keys are related task type ids and values are arrays of preview for this task type.
         parameters:
           - in: path
@@ -200,7 +202,7 @@ class PlaylistDownloadResource(Resource):
         responses:
             200:
                 description: Given playlist downloaded as mp4
-            400: 
+            400:
                 description: Build not finished
         """
         playlist = playlists_service.get_playlist(playlist_id)
@@ -371,12 +373,13 @@ class PlaylistZipDownloadResource(Resource):
 
 class BuildJobResource(Resource):
     """
-    Retrieve or remove a given build job related to a given playlist. 
+    Retrieve or remove a given build job related to a given playlist.
     """
+
     @jwt_required
     def get(self, playlist_id, build_job_id):
         """
-        Retrieve build job related to given playlist. 
+        Retrieve build job related to given playlist.
         ---
         tags:
         - Playlists
@@ -405,7 +408,7 @@ class BuildJobResource(Resource):
     @jwt_required
     def delete(self, playlist_id, build_job_id):
         """
-        Remove given build job related to given playlist. 
+        Remove given build job related to given playlist.
         ---
         tags:
         - Playlists
@@ -442,7 +445,7 @@ class ProjectBuildJobsResource(Resource):
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve all build jobs related to given project. 
+        Retrieve all build jobs related to given project.
         ---
         tags:
         - Playlists
@@ -472,7 +475,7 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve all playlists related to given project. 
+        Retrieve all playlists related to given project.
         ---
         tags:
         - Playlists
@@ -503,7 +506,7 @@ class TempPlaylistResource(Resource, ArgsMixin):
     @jwt_required
     def post(self, project_id):
         """
-        Retrieve all playlists related to given project. 
+        Retrieve all playlists related to given project.
         ---
         tags:
         - Playlists

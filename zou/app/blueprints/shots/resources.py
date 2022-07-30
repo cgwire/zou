@@ -439,7 +439,7 @@ class ShotPreviewsResource(Resource):
         ---
         tags:
         - Shots
-        description: It sends them as a dict. 
+        description: It sends them as a dict.
                      Keys are related task type ids and values are arrays of preview for this task type.
         parameters:
           - in: path
@@ -669,7 +669,7 @@ class ProjectShotsResource(Resource):
                     name:
                         type: string
                     description:
-                        type: string  
+                        type: string
                     data:
                         type: string
                     sequence_id:
@@ -1419,7 +1419,7 @@ class ShotVersionsResource(Resource):
     @jwt_required
     def get(self, shot_id):
         """
-        Retrieve data versions of given shot.        
+        Retrieve data versions of given shot.
         ---
         tags:
         - Shots

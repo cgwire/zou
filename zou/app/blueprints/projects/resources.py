@@ -52,7 +52,7 @@ class AllProjectsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Return all projects listed in database. 
+        Return all projects listed in database.
         ---
         tags:
           - Projects
@@ -242,7 +242,7 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve task types linked to the production        
+        Retrieve task types linked to the production
         ---
         tags:
           - Projects

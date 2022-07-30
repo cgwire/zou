@@ -608,35 +608,60 @@ def check_task_departement_access(task_id, person_id):
     user = persons_service.get_current_user(relations=True)
     task = tasks_service.get_task(task_id)
     task_type = tasks_service.get_task_type(task["task_type_id"])
-    is_allowed = (
-        permissions.has_admin_permissions()
-        or (
+    is_allowed = permissions.has_admin_permissions() or (
+        check_belong_to_project(task["project_id"])
+        and (
             permissions.has_manager_permissions()
-            and check_belong_to_project(task["project_id"])
-        )
-        or (
-            permissions.has_supervisor_permissions()
-            and check_belong_to_project(task["project_id"])
-            and (
-                user["departments"] == []
-                or (
-                    task_type["department_id"] in user["departments"]
-                    and len(
-                        set(
-                            persons_service.get_person(person_id)[
-                                "departments"
-                            ]
+            or (
+                permissions.has_supervisor_permissions()
+                and (
+                    user["departments"] == []
+                    or (
+                        task_type["department_id"] in user["departments"]
+                        and len(
+                            set(
+                                persons_service.get_person(person_id)[
+                                    "departments"
+                                ]
+                            )
+                            & set(user["departments"])
                         )
-                        & set(user["departments"])
+                        > 0
                     )
-                    > 0
                 )
             )
+            or (
+                task_type["department_id"] in user["departments"]
+                and person_id == user["id"]
+            )
         )
-        or (
-            check_belong_to_project(task["project_id"])
-            and task_type["department_id"] in user["departments"]
-            and person_id == user["id"]
+    )
+    if not is_allowed:
+        raise permissions.PermissionDenied
+    return is_allowed
+
+
+def check_task_departement_access_for_unassign(task_id, person_id=None):
+    """
+    Return true if current user is an admin or is a manager and is in team
+    or is a supervisor in the department of the task or is an artist assigning
+    himself in the department of the task.
+    """
+    user = persons_service.get_current_user(relations=True)
+    task = tasks_service.get_task(task_id)
+    task_type = tasks_service.get_task_type(task["task_type_id"])
+    is_allowed = permissions.has_admin_permissions() or (
+        check_belong_to_project(task["project_id"])
+        and (
+            permissions.has_manager_permissions()
+            or (
+                permissions.has_supervisor_permissions()
+                and (
+                    user["departments"] == []
+                    or task_type["department_id"] in user["departments"]
+                )
+            )
+            or (user["id"] in task["assignees"] and person_id == user["id"])
         )
     )
     if not is_allowed:
