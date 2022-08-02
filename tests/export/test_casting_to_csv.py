@@ -34,7 +34,7 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_shot("SH02").id
         self.generate_fixture_sequence("SEQ02")
         self.generate_fixture_shot("SH01").id
-        self.generate_fixture_episode("E02")
+        episode2_id = self.generate_fixture_episode("E02").id
         self.generate_fixture_sequence("SEQ01")
         self.generate_fixture_shot("SH01").id
         project_id = str(self.project.id)
@@ -43,8 +43,38 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         self.upload_csv(path, "casting")
 
         self.maxDiff = None
+
         path = "/export/csv/projects/%s/casting.csv" % project_id
         csv = self.get_raw(path)
+        self.assertTrue("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
+        self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
+        self.assertFalse("Episode;E01;Character;John;1;animate" in csv)
 
-        self.assertTrue("SEQ01;SH01;Character;John;1;animate" in csv)
-        self.assertTrue("Environment;Lake;Props;Boat;1;setdress" in csv)
+        path = (
+            "/export/csv/projects/%s/casting.csv?is_shot_casting=true"
+            % project_id
+        )
+        csv = self.get_raw(path)
+        self.assertTrue("E01;SEQ01;SH01;Character;John;1;animate" in csv)
+        self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
+        self.assertTrue("E02;SEQ01;SH01;Character;Victor;1;animate" in csv)
+        self.assertFalse("Episode;E01;Character;John;1;animate" in csv)
+
+        path = (
+            "/export/csv/projects/%s/casting.csv?is_shot_casting=true&episode_id=%s"
+            % (project_id, episode2_id)
+        )
+        csv = self.get_raw(path)
+        self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
+        self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
+        self.assertTrue("E02;SEQ01;SH01;Character;Victor;1;animate" in csv)
+        self.assertFalse("Episode;E01;Character;John;1;animate" in csv)
+
+        path = (
+            "/export/csv/projects/%s/casting.csv?episode_id=all" % project_id
+        )
+        csv = self.get_raw(path)
+        print(csv)
+        self.assertFalse("E01;SEQ01;SH01;Character;John;1;animate" in csv)
+        self.assertFalse("MP;Environment;Lake;Props;Boat;1;setdress" in csv)
+        self.assertTrue("Episode;E01;Character;John;1;animate" in csv)
