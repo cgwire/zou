@@ -34,7 +34,11 @@ swagger_template = {
   "swagger": "2.0",
   "info": {
     "title": "Kitsu API",
+<<<<<<< HEAD
     "description": f"## Welcome to Zou (Kitsu API) documentation \n```Version: {__version__}``` \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n## Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n## Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n",
+=======
+    "description": f"## Welcome to Zou (Kitsu API) documentation \n```Version: {__version__}``` \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n## Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n## Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n[OpenAPI definition](/openapi.json)",
+>>>>>>> 101c9fff (Modify description of openAPI definition)
     "contact": {
       "name": "CGWire",
       "email": "support@cg-wire.com",
@@ -54,7 +58,7 @@ swagger_template = {
     "https"
   ],
   "tags": [
-    { "name": "Authentification" },
+    { "name": "Authentication" },
     { "name": "Assets" },
     { "name": "Breakdown" },
     { "name": "Comments" },
@@ -77,7 +81,28 @@ swagger_template = {
     { "name": "User" }
   ],
     "definitions": {
-      "Assets": {
+      " Common fields for all model instances" : {
+        "type": "object",
+        "properties": {
+          " id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "A unique ID made of letters, hyphens and numbers",
+            "example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The creation date"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The update date"
+          }
+        }
+      },
+      "Asset": {
         "type": "object",
         "properties": {
           "name": {
@@ -128,7 +153,7 @@ swagger_template = {
           }
         }
       },
-      "Asset instances": {
+      "Asset instance": {
         "type": "object",
         "properties": {
           "asset_id": {
@@ -166,7 +191,7 @@ swagger_template = {
           }
         }
       },
-      "Asset types": {
+      "Asset type": {
         "type": "object",
         "properties": {
           "name": {
@@ -174,7 +199,54 @@ swagger_template = {
           }
         }
       },
-      "Comments": {
+      "Attachment file": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of attachment file"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of attachment file"
+          },
+          "extension": {
+            "type": "string",
+            "description": "Extension of attachment file"
+          },
+          "mimetype": {
+            "type": "string"
+          },
+          "comment_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Comment to which the file is attached"
+          }
+        }
+      },
+      "Build job": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Status of build job (running, failed, succeeded)"
+          },
+          "job_type": {
+            "type": "string",
+            "description": "Type of build job (archive, movie)"
+          },
+          "ended_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "playlist_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Playlist ID"
+          }
+        }
+      },
+      "Comment": {
         "type": "object",
         "properties": {
           "shotgun_id": {
@@ -227,7 +299,86 @@ swagger_template = {
           }
         }
       },
-      "Episodes": {
+      "Custom action": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of custom action"
+          },
+          "url": {
+            "type": "string"
+          },
+          "entity_type": {
+            "type": "string",
+            "default": "all"
+          },
+          "is_ajax": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the custom action is ajax, False otherwise"
+          },
+        }
+      },
+      "Data import error": {
+        "type": "object",
+        "properties": {
+          "event_data": {
+            "type": "string",
+            "format": "json",
+            "description": "JSON field to add event data"
+          },
+          "source": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["csv", "shotgun"]
+            }
+          }
+        }
+      },
+      "Day off": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "The person who will take the day off"
+          }
+        }
+      },
+      "Department": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of department"
+          },
+          "color": {
+            "type": "string",
+            "description": "Color of department"
+          }
+        }
+      },
+      "Desktop login log": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Person ID"
+          }
+        }
+      },
+      "Episode": {
         "type": "object",
         "properties": {
           "name": {
@@ -273,7 +424,7 @@ swagger_template = {
           }
         }
       },
-      "Events": {
+      "Event": {
         "type": "object",
         "properties": {
           "name": {
@@ -308,6 +459,24 @@ swagger_template = {
           }
         }
       },
+      "Login log": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "web, script"
+          },
+          "ip_address": {
+            "type": "string",
+            "description": "IP address of device used to login"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Person ID"
+          }
+        }
+      },
       "Metadata": {
         "type": "object",
         "properties": {
@@ -338,7 +507,60 @@ swagger_template = {
           }
         }
       },
-      "Notifications": {
+      "Milestone": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "string",
+            "format": "date",
+            "description": "Milestone date of production schedule"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of milestone"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
+          }
+        }
+      },
+      "News": {
+        "type": "object",
+        "properties": {
+          "change": {
+            "type": "boolean",
+            "default": "False"
+          },
+          "author_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Person who wrote the comment"
+          },
+          "comment_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Posted comment ID"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task ID"
+          },
+          "preview_file_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Preview file ID"
+          }
+        }
+      },
+      "Notification": {
         "type": "object",
         "properties": {
           "read": {
@@ -380,7 +602,47 @@ swagger_template = {
           }
         }
       },
-      "Output files": {
+      "Organisation": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of organisaition"
+          },
+          "hours_by_day": {
+            "type": "integer"
+          },
+          "has_avatar": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the organisation has an avatar, Flase otherwise"
+          },
+          "use_original_file_name": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the organisation uses original file names, Flase otherwise"
+          },
+          "timesheets_locked": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the organisation's timesheets are locked, False otherwise"
+          },
+          "hd_by_default": {
+            "type": "boolean",
+            "default": "False"
+          },
+          "chat_token_slack": {
+            "type": "string"
+          },
+          "chat_webhook_mattermost": {
+            "type": "string"
+          },
+          "chat_token_discord": {
+            "type": "string"
+          }
+        }
+      },
+      "Output file": {
         "type": "object",
         "properties": {
           "shotgun_id": {
@@ -482,7 +744,7 @@ swagger_template = {
           }
         }
       },
-      "Output types": {
+      "Output type": {
         "type": "object",
         "properties": {
           "name": {
@@ -493,7 +755,7 @@ swagger_template = {
           }
         }
       },
-      "Persons": {
+      "Person": {
         "type": "object",
         "properties": {
           "first_name": {
@@ -573,7 +835,7 @@ swagger_template = {
           }
         }
       },
-      "Playlists": {
+      "Playlist": {
         "type": "object",
         "properties": {
           "name": {
@@ -614,7 +876,7 @@ swagger_template = {
           }
         }
       },
-      "Preview files": {
+      "Preview file": {
         "type": "object",
         "properties": {
           "shotgun_id": {
@@ -727,135 +989,624 @@ swagger_template = {
           }
         }
       },
-      "Projects": {
+      "Project": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
+            "type": "string",
+            "description": "Name of project"
+          },
+          "code": {
+            "type": "string",
+            "description": "Utility field for the pipeline to identify the project"
+          },
+          "description": {
+            "type": "string",
+            "description": "Project brief"
+          },
+          "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
+          },
+          "file_tree": {
+            "type": "string",
+            "format": "json",
+            "description": "Templates to use to build file paths"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
+          },
+          "project_status_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project status ID"
+          },
+          "has_avatar": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the project has an avatar, False otherwise"
+          },
+          "fps": {
+            "type": "string",
+            "description": "Frames per second"
+          },
+          "ratio": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "production_type": {
+            "type": "string",
+            "description": "short, featurefilm or tvshow",
+            "default": "short"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "man_days": {
+            "type": "integer",
+            "description": "Estimated number of working days required to finish project"
+          },
+          "nb_episodes": {
+            "type": "integer",
+            "default": "0"
+          },
+          "episode_span": {
+            "type": "integer",
+            "default": "0"
+          },
+          "max_retakes": {
+            "type": "integer",
+            "default": "0"
+          },
+          "is_clients_isolated": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the clients are isolated from the project, False otherwise"
+          }
+        }
+      },
+      "Project status": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "color": {
             "type": "string"
           }
         }
       },
-      "Search filters": {
+      "Schedule item": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "start_date": {
+            "type": "string",
+            "format": "date"
           },
-          "name": {
-            "type": "string"
+          "end_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "man_days": {
+            "type": "string",
+            "format": "date"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
+          },
+          "object_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Object ID"
           }
         }
       },
-      "Sequences": {
+      "Search filter": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "list_type": {
+            "type": "string",
+            "description": "Type of list"
           },
-          "seq": {
+          "entity_type": {
+            "type": "string",
+            "description": "Type of entity"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of search filter"
+          },
+          "search_query": {
             "type": "string"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Person ID"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
           }
         }
       },
-      "Shots": {
+      "Sequence": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of sequence"
+          },
+          "code": {
+            "type": "string",
+            "description": "Utility field for the pipeline to identify the sequence"
+          },
+          "description": {
+            "type": "string",
+            "description": "Sequence brief"
+          },
+          "canceled": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the sequence has been delete one time, False otherwise"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
+          },
+          "parent_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Episode ID"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Field uset to set the episode_id"
+          },
+          "preview_file_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "ID of preview file used as thumbnail"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
+          },
+          "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
+          }
+        }
+      },
+      "Shot": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of shot"
+          },
+          "code": {
+            "type": "string",
+            "description": "Utility field for the pipeline to identify the shot"
+          },
+          "description": {
+            "type": "string",
+            "description": "Shot brief"
+          },
+          "canceled": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the shot has been delete one time, False otherwise"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
+          },
+          "parent_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Episode ID"
+          },
+          "entity_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Shot type ID"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Field uset to set the episode_id"
+          },
+          "preview_file_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "ID of preview file used as thumbnail"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
+          },
+          "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
           }
         }
       },
       "Software": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of software"
+          },
+          "short_name": {
+            "type": "string",
+            "description": "Short name of software"
+          },
+          "file_extension": {
+            "type": "string",
+            "description": "Main extension used for this software's files"
+          },
+          "secondary_extensions": {
+            "type": "string",
+            "format": "json",
+            "description": "Other extensions used for this software's files"
           }
         }
       },
-      "Subscriptions to notifications": {
+      "Status automation": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "entity_type": {
+            "type": "string",
+            "default": "asset"
           },
-          "name": {
-            "type": "string"
+          "in_task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
+          },
+          "in_task_status_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task status ID"
+          },
+          "out_field_type": {
+            "type": "string",
+            "description": "Field type (status, ready_for)"
+          },
+          "out_task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
+          },
+          "out_task_status_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task status ID"
           }
         }
       },
-      "Tasks": {
+      "Subscription to notifications": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Person ID"
           },
+          "task_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task ID"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Entity ID"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
+          }
+        }
+      },
+      "Task": {
+        "type": "object",
+        "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of task"
+          },
+          "description": {
+            "type": "string",
+            "description": "Task brief"
+          },
+          "priority": {
+            "type": "integer",
+            "default": "0",
+            "description": "Priority of task"
+          },
+          "duration": {
+            "type": "integer",
+            "default": "0",
+            "description": "Duration of task"
+          },
+          "estimation": {
+            "type": "integer",
+            "default": "0",
+            "description": "Estimation of duration of task"
+          },
+          "completion_rate": {
+            "type": "integer",
+            "default": "0",
+            "description": "Completion rate of task"
+          },
+          "retake_count": {
+            "type": "integer",
+            "default": "0",
+            "description": "Retake count of task"
+          },
+          "sort_order": {
+            "type": "integer",
+            "default": "0",
+            "description": "Sort order of task"
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "real_start_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_comment_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nb_assets_ready": {
+            "type": "integer",
+            "default": "0",
+            "description": "Number of assets ready"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
+          },
+          "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
+          },
+          "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID"
+          },
+          "task_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task type ID"
+          },
+          "task_status_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task status ID"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Entity ID"
+          },
+          "assigner_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Person ID"
           }
         }
       },
       "Task status": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
+            "type": "string",
+            "description": "Name of task status"
+          },
+          "short_name": {
+            "type": "string",
+            "description": "Short name of task status"
+          },
+          "color": {
             "type": "string"
+          },
+          "is_done": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the task is done, False otherwise"
+          },
+          "is_artist_allowed": {
+            "type": "boolean",
+            "default": "True",
+            "description": "True if the artist is allowed, False otherwise"
+          },
+          "is_client_allowed": {
+            "type": "boolean",
+            "default": "True",
+            "description": "True if the client is allowed, False otherwise"
+          },
+          "is_retake": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the task was retaken, False otherwise"
+          },
+          "is_feedback_request": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if feedback was requested, False otherwise"
+          },
+          "is_default": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the task is default, False otherwise"
+          },
+          "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
           }
         }
       },
-      "Task types": {
+      "Task type": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of task type"
+          },
+          "short_name": {
+            "type": "string",
+            "description": "Short name of task type"
+          },
+          "color": {
+            "type": "string",
+            "default": "#FFFFFF"
+          },
+          "priority": {
+            "type": "integer",
+            "default": "1",
+            "description": "Priority of task type"
+          },
+          "for_entity": {
+            "type": "string",
+            "default": "Asset"
+          },
+          "allow_timelog": {
+            "type": "boolean",
+            "default": "True",
+            "description": "True if timelog is allowed, False otherwise"
+          },
+          "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance"
+          },
+          "department_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Department ID"
           }
         }
       },
-      "Time spents": {
+      "Time spent": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
+          "duration": {
+            "type": "integer"
           },
-          "name": {
-            "type": "string"
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Related task ID"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "The person who performed the working time"
           }
         }
       },
-      "Working files": {
+      "Working file": {
         "type": "object",
         "properties": {
-          "id": {
+          "shotgun_id": {
             "type": "integer",
-            "format": "int64"
+            "description": "Used for synchronization with a Shotgun instance"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Name of working file"
+          },
+          "description": {
+            "type": "string",
+            "description": "working file brief"
+          },
+          "comment": {
+            "type": "string",
+            "description": "Comment on working file"
+          },
+          "revision": {
+            "type": "integer",
+            "description": "Revision number of working file"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of working file"
+          },
+          "checksum": {
+            "type": "string",
+            "description": "Checksum of working file"
+          },
+          "path": {
+            "type": "string",
+            "description": "File path on the production hard drive"
+          },
+          "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata"
+          },
+          "task_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Task for which the working file is made"
+          },
+          "entity_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Entity for which the working is made"
+          },
+          "person_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Author of the file"
+          },
+          "software_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Software used to build this working file"
           }
         }
       }
@@ -866,7 +1617,8 @@ swagger_config = {
     "headers": [
       ('Access-Control-Allow-Origin', '*'),
       ('Access-Control-Allow-Methods', "GET, POST, PUT, DELETE, OPTIONS"),
-      ('Access-Control-Allow-Credentials', "true")
+      ('Access-Control-Allow-Credentials', "true"),
+      ('Access-Control-Allow-Headers', "Authorization, Origin, X-Requested-With, Content-Type, Accept")
     ],
     "specs": [
         {
