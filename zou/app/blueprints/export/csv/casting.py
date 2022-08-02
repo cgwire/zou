@@ -22,14 +22,16 @@ class CastingCsvExport(Resource, ArgsMixin):
 
         is_shot_casting = self.get_bool_parameter("is_shot_casting")
 
+        is_tv_show = projects_service.is_tv_show(project)
+
         results = self.build_results(
-            project_id, episode_id=episode_id, is_shot_casting=is_shot_casting
+            project_id, is_tv_show=is_tv_show, episode_id=episode_id, is_shot_casting=is_shot_casting
         )
-        headers = self.build_headers(episode_id=episode_id)
+        headers = self.build_headers(is_tv_show=is_tv_show, episode_id=episode_id)
 
         csv_content = [headers]
         for result in results:
-            csv_content.append(self.build_row(result, episode_id=episode_id))
+            csv_content.append(self.build_row(result, is_tv_show=is_tv_show, episode_id=episode_id))
 
         file_name = "%s casting" % project["name"]
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
@@ -38,7 +40,7 @@ class CastingCsvExport(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
 
-    def build_headers(self, episode_id=None):
+    def build_headers(self, is_tv_show=False, episode_id=None):
         headers = [
             "Parent",
             "Name",
@@ -47,13 +49,13 @@ class CastingCsvExport(Resource, ArgsMixin):
             "Occurences",
             "Label",
         ]
-        if episode_id not in ["all", None]:
+        if is_tv_show and episode_id not in ["all"]:
             return ["Episode"] + headers
         else:
             return headers
 
-    def build_row(self, result, episode_id=None):
-        if episode_id not in ["all", None]:
+    def build_row(self, result, is_tv_show=False, episode_id=None):
+        if is_tv_show and episode_id not in ["all"]:
             (
                 episode_name,
                 target_parent_name,
@@ -94,7 +96,7 @@ class CastingCsvExport(Resource, ArgsMixin):
         return row
 
     def build_results(
-        self, project_id, episode_id=None, is_shot_casting=False
+        self, project_id, is_tv_show=False, episode_id=None, is_shot_casting=False
     ):
         results = []
         if episode_id == "main":
@@ -102,12 +104,12 @@ class CastingCsvExport(Resource, ArgsMixin):
         elif episode_id == "all":
             results = self.build_episodes_results(project_id)
         elif is_shot_casting:
-            results = self.build_shot_results(project_id, episode_id)
+            results = self.build_shot_results(project_id, is_tv_show, episode_id)
         else:
-            results = self.build_asset_results(project_id, episode_id)
+            results = self.build_asset_results(project_id, is_tv_show, episode_id)
         return results
 
-    def build_shot_results(self, project_id, episode_id=None):
+    def build_shot_results(self, project_id, is_tv_show=False, episode_id=None):
         results = []
         Shot = aliased(Entity, name="shot")
         Asset = aliased(Entity, name="asset")
@@ -122,9 +124,10 @@ class CastingCsvExport(Resource, ArgsMixin):
             .join(AssetType, Asset.entity_type_id == AssetType.id)
             .filter(Shot.project_id == project_id)
         )
-        if episode_id is not None:
+        if is_tv_show:
             query = query.join(Episode, Sequence.parent_id == Episode.id)
-            query = query.filter(Episode.id == episode_id)
+            if episode_id is not None:
+                query = query.filter(Episode.id == episode_id)
             query = query.add_columns(
                 Episode.name,
                 Sequence.name,
@@ -192,7 +195,7 @@ class CastingCsvExport(Resource, ArgsMixin):
 
         return results
 
-    def build_asset_results(self, project_id, episode_id=None):
+    def build_asset_results(self, project_id, is_tv_show=False, episode_id=None):
         results = []
         ParentAsset = aliased(Entity, name="parent_asset")
         ParentAssetType = aliased(EntityType, name="parent_asset_type")
@@ -214,9 +217,10 @@ class CastingCsvExport(Resource, ArgsMixin):
             .filter(ParentAsset.project_id == project_id)
             .filter(ParentAssetType.id != shot_type["id"])
         )
-        if episode_id is not None:
+        if is_tv_show:
             query = query.join(Episode, ParentAsset.source_id == Episode.id)
-            query = query.filter(Episode.id == episode_id)
+            if episode_id is not None:
+                query = query.filter(Episode.id == episode_id)
             query = query.add_columns(
                 Episode.name,
                 ParentAssetType.name,
@@ -273,7 +277,7 @@ class CastingCsvExport(Resource, ArgsMixin):
                 results.append(
                     (
                         parent_asset_type_name,
-                        "Shot",
+                        "",
                         parent_name,
                         asset_type_name,
                         asset_name,
