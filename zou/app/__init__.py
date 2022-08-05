@@ -1,5 +1,4 @@
 import os
-import string
 import flask_fs
 import traceback
 
@@ -25,6 +24,7 @@ from .services.exception import (
 from .utils import fs, logs
 
 from zou.app.utils import cache
+from zou import __version__
 
 
 app = Flask(__name__)
@@ -36,20 +36,18 @@ swagger_template = {
     "title": "Zou",
     "description": "# Welcome to the Zou (Kitsu API) documentation \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n# Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n# Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n",
     "contact": {
-      "responsibleOrganization": "CGWire",
-      "responsibleDeveloper": "CGWire",
       "email": "support@cg-wire.com",
       "url": "https://www.cg-wire.com",
     },
     "termsOfService": "https://www.cg-wire.com/terms.html",
-    "version": "0.0.1",
+    "version": __version__,
     "license": {
         "name": "AGPL 3.0",
         "url": "https://www.gnu.org/licenses/agpl-3.0.en.html"
     },
   },
-  "host": "localhost:8080",  # overrides localhost:5000
-  "basePath": "/api",  # base bash for blueprint registration
+  "host": "localhost:8080",
+  "basePath": "/api",
   "schemes": [
     "http",
     "https"
@@ -84,7 +82,8 @@ swagger_template = {
 			"properties": {
 				"id": {
 					"type": "integer",
-					"format": "int64"
+					"format": "int64",
+					"exemple": "jdsfkjshfkjd"
 				},
 				"petId": {
 					"type": "integer",
@@ -269,16 +268,56 @@ swagger_template = {
         "Persons": {
 			"type": "object",
 			"properties": {
-				"id": {
-					"type": "integer",
-					"format": "int64"
+				"first_name": {
+					"type": "string",
 				},
-				"name": {
+				"last_name": {
 					"type": "string"
+				},
+				"email": {
+					"type": "string"
+				},
+				"phone": {
+					"type": "string"
+				},
+				"active": {
+					"type": "boolean",
+					"default": "true"
+				},
+				"last_presence": {
+					"type": "string",
+					"format": "date"
+				},
+				"password": {
+					"type": "string",
+					"format": "byte"
+				},
+				"desktop_login": {
+					"type": "string"
+				},
+				"shotgun_id": {
+					"type": "UUID"
+				},
+				"timezone": {
+					"type": "string"
+				},
+				"locale": {
+					"type": "string"
+				},
+				"data": {
+					"type": "json"
+				},
+				"active": {
+					"type": "boolean"
+				},
+				"role": {
+					"type": "string",
+					"default": "user"
+				},
+				"has_avatar": {
+					"type": "boolean",
+					"default": "False"
 				}
-			},
-			"xml": {
-				"name": "Category"
 			}
 		},
         "Playlists": {
