@@ -26,21 +26,23 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Estimations imported
             400:
                 description: Format error
         """
-        super(TaskTypeEstimationsCsvImportResource, self).post(project_id, *kwargs)
-        
+        super(TaskTypeEstimationsCsvImportResource, self).post(
+            project_id, *kwargs
+        )
+
     def prepare_import(self, project_id, task_type_id, episode_id=None):
         self.organisation = Organisation.query.first()
         self.assets_map = {}
@@ -132,24 +134,27 @@ class TaskTypeEstimationsEpisodeCsvImportResource(
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25                 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: episode_id
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25  
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Estimations imported
             400:
                 description: Format error
         """
-        super(TaskTypeEstimationsEpisodeCsvImportResource, self).post(project_id, *kwargs)
+        super(TaskTypeEstimationsEpisodeCsvImportResource, self).post(
+            project_id, *kwargs
+        )
+
     pass

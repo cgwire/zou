@@ -657,7 +657,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
                     email:
                         type: string
                         format: email
-                    
+
         responses:
           200:
             description: Reset token sent

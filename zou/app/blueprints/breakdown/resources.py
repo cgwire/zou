@@ -35,10 +35,10 @@ class CastingResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25     
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Casting of given entity   
+                description: Casting of given entity
         """
         user_service.check_project_access(project_id)
         return breakdown_service.get_casting(entity_id)
@@ -62,7 +62,7 @@ class CastingResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25     
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Modification of assets linked to an entity
@@ -115,7 +115,7 @@ class SequenceCastingResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25     
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Casting of shots from given sequence
@@ -145,7 +145,7 @@ class AssetTypeCastingResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25     
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Casting of assets from given asset type

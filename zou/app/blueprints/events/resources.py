@@ -35,7 +35,7 @@ class EventsResource(Resource, ArgsMixin):
                         default: False
                     page_size:
                         type: integer
-                        default: 100 
+                        default: 100
                         example: 100
                     project_id:
                         type: string

@@ -82,7 +82,7 @@ class EditsResource(Resource):
             required: False
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All edit entries
@@ -111,7 +111,7 @@ class AllEditsResource(Resource):
             required: False
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All edit entries
@@ -238,7 +238,7 @@ class EditPreviewsResource(Resource):
     @jwt_required
     def get(self, edit_id):
         """
-        Retrieve all previews related to a given edit. 
+        Retrieve all previews related to a given edit.
         ---
         tags:
           - Edits
@@ -338,7 +338,7 @@ class ProjectEditsResource(Resource):
                     name:
                         type: string
                     description:
-                        type: string  
+                        type: string
                     data:
                         type: array
                         items:

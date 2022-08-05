@@ -159,7 +159,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
     @jwt_required
     def post(self, instance_id):
         """
-        Main resource to add a preview. 
+        Main resource to add a preview.
         ---
         tags:
           - Previews
@@ -170,7 +170,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Preview added
@@ -378,7 +378,7 @@ class PreviewFileMovieResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Movie preview downloaded
@@ -420,7 +420,7 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Lowdef movie preview downloaded
@@ -462,7 +462,7 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Movie preview downloaded
@@ -520,7 +520,7 @@ class PreviewFileResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: extension
             required: True
@@ -577,7 +577,7 @@ class PreviewFileDownloadResource(PreviewFileResource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Generic file preview downloaded as attachment
@@ -651,7 +651,7 @@ class BasePreviewPictureResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Thumbnail downloaded
@@ -745,7 +745,7 @@ class BaseCreatePictureResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Thumbnail created
@@ -803,7 +803,7 @@ class BasePictureResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Thumbnail downloaded
@@ -931,13 +931,13 @@ class LegacySetMainPreviewResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: preview_file_id
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Main preview set
@@ -959,7 +959,7 @@ class SetMainPreviewResource(Resource):
     @jwt_required
     def put(self, preview_file_id):
         """
-        Set given preview as main preview of the related entity. 
+        Set given preview as main preview of the related entity.
         ---
         tags:
           - Previews
@@ -970,7 +970,7 @@ class SetMainPreviewResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given preview set as main preview
@@ -1006,7 +1006,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Orders of previews changed for a single revision
@@ -1044,7 +1044,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
                     * `annotations` to give all the annotations that need to be added.
 
                     * `updates` that list annotations that needs to be modified.
-                    
+
                     * `deletions` to list the IDs of annotations that needs to be removed.
         parameters:
           - in: path
@@ -1052,7 +1052,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25   
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Orders of previews changed for a single revision

@@ -300,7 +300,7 @@ class ProjectAssetTypeAssetsResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25        
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assets for given project and entity type
@@ -334,7 +334,7 @@ class AssetAssetsResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assets for a given asset
@@ -359,7 +359,7 @@ class AssetTasksResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given shot
@@ -383,7 +383,7 @@ class AssetTaskTypesResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given asset
@@ -482,7 +482,7 @@ class AssetCastingResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Casting of given asset
@@ -505,7 +505,7 @@ class AssetCastingResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Modification of assets linked to given asset
@@ -530,7 +530,7 @@ class AssetCastInResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Casting of given asset
@@ -555,7 +555,7 @@ class AssetShotAssetInstancesResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shot asset instances linked to asset
@@ -579,7 +579,7 @@ class AssetSceneAssetInstancesResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All scene asset instances linked to asset
@@ -603,7 +603,7 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All asset instances instantiated inside given asset
@@ -625,7 +625,7 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Asset instance created inside given asset

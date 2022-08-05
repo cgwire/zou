@@ -33,7 +33,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25      
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Shots imported
@@ -41,7 +41,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 description: Format error
         """
         super(ShotsCsvImportResource, self).post(project_id, *kwargs)
-        
+
     def prepare_import(self, project_id):
         self.episodes = {}
         self.sequences = {}

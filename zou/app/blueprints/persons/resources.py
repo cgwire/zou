@@ -639,7 +639,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
             name: day
             required: True
             type: integer
-            x-example: 12 
+            x-example: 12
             minimum: 1
             maximum: 31
         responses:

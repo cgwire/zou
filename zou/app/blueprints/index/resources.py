@@ -81,7 +81,6 @@ class BaseStatusResource(Resource):
 
 
 class StatusResource(BaseStatusResource):
-    
     def get(self):
         """
         Retrieve API name, version and status.
@@ -235,7 +234,7 @@ class StatsResource(Resource):
         responses:
             403:
                 description: Permission denied
-            200: 
+            200:
                 description: Main stats
         """
         if not permissions.has_admin_permissions():

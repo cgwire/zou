@@ -140,7 +140,7 @@ class ProjectSingleNewsResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25     
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Single given news related to given project

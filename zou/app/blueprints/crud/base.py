@@ -197,15 +197,15 @@ class BaseModelsResource(Resource):
                         items:
                             type: string
                     total:
-                        type: integer  
+                        type: integer
                     nb_pages:
                         type: integer
                     limit:
-                        type: integer  
+                        type: integer
                     offset:
                         type: integer
                     page:
-                        type: integer         
+                        type: integer
         responses:
             200:
                 description: Model created
@@ -303,13 +303,13 @@ class BaseModelResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25      
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Model as a JSON object
             400:
                 description: Statement error
-            404: 
+            404:
                 description: Value error
         """
         try:
@@ -353,7 +353,7 @@ class BaseModelResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Model
             schema:
@@ -364,15 +364,15 @@ class BaseModelResource(Resource):
                         items:
                             type: string
                     total:
-                        type: integer  
+                        type: integer
                     nb_pages:
                         type: integer
                     limit:
-                        type: integer  
+                        type: integer
                     offset:
                         type: integer
                     page:
-                        type: integer    
+                        type: integer
         responses:
             200:
                 description: Model updated
@@ -426,13 +426,13 @@ class BaseModelResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25       
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Model deleted
             400:
                 description: Statement or integrity error
-            404: 
+            404:
                 description: Instance non-existant
         """
         instance = self.get_model_or_404(instance_id)
