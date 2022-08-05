@@ -9643,7 +9643,14 @@
 	border: 2px solid #d8dde7;
 	margin: 20px 0;
 	padding: 10px;
-	width: 100%
+	width: 100%;
+}
+
+.swagger-ui section.filter input {
+	border: 2px solid #d8dde7;
+	margin: 20px 0;
+	padding: 5px 20px;
+	width: 250px;
 }
 
 .swagger-ui .download-url-wrapper .failed,
@@ -10335,6 +10342,29 @@
 	min-width: 100px;
 	padding: 8px 10px
 }
+
+
+.swagger-ui section.filter input[type=text] {
+	cursor: text;
+    color: #4e6e8e;
+    display: inline-block;
+    border: 1px solid #cfd4db;
+    border-radius: 2rem;
+    font-size: .9rem;
+    line-height: 2rem;
+    padding: 0 1rem 0 1rem;
+    outline: none;
+    background-size: 1rem;
+	background: #fff;
+	margin: 5px 0;
+	min-width: 100px;
+	width: 250px;
+}
+
+.swagger-ui section.filter input[type=text]:focus {
+	border-color: #00b242;
+}
+
 
 .swagger-ui input[type=email].invalid,
 .swagger-ui input[type=file].invalid,
