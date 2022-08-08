@@ -3,17 +3,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>Swagger UI</title>
+    <title>Kitsu API</title>
     <link rel="stylesheet" type="text/css" href="./swagger-ui.css" />
-    <link rel="stylesheet" type="text/css" href="index.css" />
-    <link rel="icon" type="image/png" href="./favicon-32x32.png" sizes="32x32" />
-    <link rel="icon" type="image/png" href="./favicon-16x16.png" sizes="16x16" />
+    <link rel="stylesheet" type="text/css" href="./index.css" />
+    <link rel="icon" type="image/png" href="./kitsu-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="./kitsu-16x16.png" sizes="16x16" />
   </head>
 
   <body>
     <div id="swagger-ui"></div>
+    <button onclick="topFunction()" id="myBtn" title="Go to top">Top</button>
+    <button onclick="bottomFunction()" id="bottompage">Bottom</button>
+    <script>
+      var mybutton = document.getElementById("myBtn");
+      window.onscroll = function() {scrollFunction()};
+      
+      function scrollFunction() {
+        if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+          mybutton.style.display = "block";
+        } else {
+          mybutton.style.display = "none";
+        }
+      }
+      
+      function topFunction() {
+        window.scrollTo({top: 0, behavior: 'smooth'});
+      }
+
+      function bottomFunction() {
+        window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+      };
+    </script>
     <script src="./swagger-ui-bundle.js" charset="UTF-8"> </script>
     <script src="./swagger-ui-standalone-preset.js" charset="UTF-8"> </script>
     <script src="./swagger-initializer.js" charset="UTF-8"> </script>
+    <div id="cgwire-logo">
+      <a class="logo" href="https://cg-wire.com" target="_blank">
+        <img src="data:image/png;base64,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#logo-cgwire" alt="CG&nbsp;Wire Logo">
+        <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="10" height="10" class="icon outbound">
+          <path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path>
+          <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon>
+        </svg>
+      </a>
+    </div>
   </body>
 </html>
