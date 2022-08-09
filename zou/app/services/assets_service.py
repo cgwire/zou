@@ -546,12 +546,14 @@ def is_asset(entity):
     sequence_type = shots_service.get_sequence_type()
     scene_type = shots_service.get_scene_type()
     episode_type = shots_service.get_episode_type()
+    edit_type = edits_service.get_edit_type()
 
     return str(entity.entity_type_id) not in [
         shot_type["id"],
         scene_type["id"],
         sequence_type["id"],
         episode_type["id"],
+        edit_type["id"],
     ]
 
 
@@ -564,12 +566,14 @@ def is_asset_dict(entity):
     sequence_type = shots_service.get_sequence_type()
     scene_type = shots_service.get_scene_type()
     episode_type = shots_service.get_episode_type()
+    edit_type = edits_service.get_edit_type()
 
     return entity["entity_type_id"] not in [
         shot_type["id"],
         scene_type["id"],
         sequence_type["id"],
         episode_type["id"],
+        edit_type["id"],
     ]
 
 
