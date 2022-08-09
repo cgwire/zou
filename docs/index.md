@@ -1,40 +1,39 @@
-[![Zou Logo](zou.png)](https://github.com/cgwire/zou)
+[![Kitsu Logo](kitsu.png)](https://github.com/cgwire/zou)
 
-# Welcome to the Zou (Kitsu API) documentation
+# Welcome to the Kitsu API (Zou) documentation
 
-Zou is an API that allows to store and manage the data of your CG production.
+The Kitsu API allows to store and manage the data of your animation/VFX production.
 Through it you can link all the tools of your pipeline and make sure they are
 all synchronized. 
 
 To integrate it in your tools you can rely on the dedicated Python
 client named [Gazu](https://gazu.cg-wire.com). 
 
-The source is available on [Github](https://github.com/cgwire/cgwire-api).
-
 # Who is it for?
 
-The audience for Zou is made of Technical Directors, ITs and
-Software Engineers from CG studios. With Zou they can enhance the
-tools they provide to all departments.
+The Kitsu API is made for Technical Directors, ITs and
+Software Engineers from animation and VFX studios. With this API they can enhance
+the tools they provide to the studio departments.
 
-On top of it, you can deploy Kitsu, the production tracker developed by CGWire.
+On top of the API, you can deploy the Kitsu frontend, which bring you the full
+bundle of the collaboration platform developed by CGWire.
 
 # Features 
 
-Zou can:
+The Kitsu API can:
 
 * Store production data: projects, shots, assets, tasks, files
   metadata and validations.
+* Store preview files of any kind.
+* Publish an event stream of changes.
 * Provide folder and file paths for any task.
-* Data import from Shotgun or CSV files.
 * Export main data to CSV files.
-* Provide helpers to manage task workflow (start, publish, retake).
-* Provide an event system to plug external modules on it.
+
 
 # Quickstart (Docker Image)
 
-To try Zou and Kitsu on your local machine you can use Docker to run a local
-instance of the CGWire suite. For that, install docker and run this command:
+To try Kitsu on your local machine you can use Docker to run a local
+instance via this command:
 
 *Warning: This image is not aimed at production usage.*
 
@@ -43,7 +42,7 @@ instance of the CGWire suite. For that, install docker and run this command:
 docker run -d -p 80:80 --name cgwire cgwire/cgwire
 ```
 
-Then you can access to Zou, the Kitsu API, through `http://localhost/api` and
+Then you can access to the Kitsu API, through `http://localhost/api` and
 enjoy the Kitsu web UI at `http://localhost`.
 
 The credentials are:
@@ -60,7 +59,7 @@ The installation requires:
 
 * An up and running Postgres instance (version >= 9.2)
 * An up and running Redis server instance (version >= 2.0)
-* Python (version >= 3.5)
+* Python (version >= 3.6)
 * A Nginx instance
 * Uwsgi
 
@@ -500,13 +499,8 @@ twine upload dist/<package>.whl
 
 # About authors
 
-Zou is written by CG Wire, a company based in France. We help small to
-midsize CG studios to manage their production and build pipeline efficiently.
-
-We apply software craftmanship principles as much as possible. We love
-coding and consider that strong quality and good developer experience matter a lot.
-Our extensive experience allows studios to get better at doing software and focus
-more on the artistic work.
+Kitsu is written by CGWire, a company based in France. We help animation and
+VFX studios to collaborate better through efficient tooling.
 
 Visit [cg-wire.com](https://cg-wire.com) for more information.
 
