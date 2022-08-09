@@ -158,6 +158,23 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self, instance_id):
+        """
+        Main resource to add a preview.
+        ---
+        tags:
+          - Previews
+        description: "It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file."
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Preview added
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -349,6 +366,27 @@ class PreviewFileMovieResource(Resource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Download a movie preview.
+        ---
+        tags:
+          - Previews
+        description: "It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file."
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Movie preview downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: File not found
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -371,6 +409,26 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Download a lowdef movie preview.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Lowdef movie preview downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: File not found
+        """
         if not self.is_allowed(instance_id):
             abort(403)
 
@@ -393,6 +451,26 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Download a movie preview.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Movie preview downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: File not found
+        """
         if not self.is_allowed(instance_id):
             abort(403)
 
@@ -431,6 +509,31 @@ class PreviewFileResource(Resource):
 
     @jwt_required
     def get(self, instance_id, extension):
+        """
+        Download a generic file preview.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: extension
+            required: True
+            type: string
+            x-example: png, pdf, jpg, jpeg, ...
+        responses:
+            200:
+                description: Generic file preview downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: Non-movie file not found
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -463,6 +566,26 @@ class PreviewFileDownloadResource(PreviewFileResource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Download a generic file preview as attachment.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Generic file preview downloaded as attachment
+            403:
+                description: Instance not allowed
+            404:
+                description: Standard file not found
+        """
         if not self.is_allowed(instance_id):
             abort(403)
 
@@ -517,6 +640,26 @@ class BasePreviewPictureResource(Resource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Download a thumbnail.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Thumbnail downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: Picture file not found
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -591,6 +734,24 @@ class BaseCreatePictureResource(Resource):
 
     @jwt_required
     def post(self, instance_id):
+        """
+        Create a thumbnail.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Thumbnail created
+            404:
+                description: Instance already exists
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -631,6 +792,26 @@ class BasePictureResource(Resource):
 
     @jwt_required
     def get(self, instance_id):
+        """
+        Download a thumbnail.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Thumbnail downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: Thumbnail file not found
+        """
         if not self.is_exist(instance_id):
             abort(404)
 
@@ -739,6 +920,28 @@ class ProjectThumbnailResource(BasePictureResource):
 class LegacySetMainPreviewResource(Resource):
     @jwt_required
     def put(self, entity_id, preview_file_id):
+        """
+        Set main preview to given file.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: entity_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: preview_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Main preview set
+        """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -755,6 +958,23 @@ class SetMainPreviewResource(Resource):
 
     @jwt_required
     def put(self, preview_file_id):
+        """
+        Set given preview as main preview of the related entity.
+        ---
+        tags:
+          - Previews
+        description: This preview will be used to illustrate the entity.
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given preview set as main preview
+        """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -774,6 +994,23 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
 
     @jwt_required
     def put(self, preview_file_id):
+        """
+        Allow to change orders of previews for a single revision.
+        ---
+        tags:
+          - Previews
+        description: This preview will be used to illustrate the entity.
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Orders of previews changed for a single revision
+        """
         parser = reqparse.RequestParser()
         parser.add_argument("position", default=0, type=int)
         args = parser.parse_args()
@@ -797,6 +1034,29 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
 
     @jwt_required
     def put(self, preview_file_id):
+        """
+        Allow to modify the annotations stored at the preview level.
+        ---
+        tags:
+          - Previews
+        description: |
+                    Modifications are applied via three fields:
+                    * `annotations` to give all the annotations that need to be added.
+
+                    * `updates` that list annotations that needs to be modified.
+
+                    * `deletions` to list the IDs of annotations that needs to be removed.
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Orders of previews changed for a single revision
+        """
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -841,5 +1101,14 @@ class RunningPreviewFiles(Resource, ArgsMixin):
 
     @jwt_required
     def get(self):
+        """
+        Retrieve all preview files from open productions with states equals to processing or broken.
+        ---
+        tags:
+          - Previews
+        responses:
+            200:
+                description: All preview files from open productions with states equals to processing or broken
+        """
         permissions.check_admin_permissions()
         return preview_files_service.get_running_preview_files()

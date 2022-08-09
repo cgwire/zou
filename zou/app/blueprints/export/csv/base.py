@@ -19,6 +19,15 @@ class BaseCsvExport(Resource):
 
     @jwt_required
     def get(self):
+        """
+        Export as csv.
+        ---
+        tags:
+            - Export
+        responses:
+            200:
+                description: Exported as csv
+        """
         self.prepare_import()
         try:
             self.check_permissions()

@@ -17,6 +17,15 @@ from flask_jwt_extended import jwt_required
 
 class IndexResource(Resource):
     def get(self):
+        """
+        Get API name and version.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: API name and version
+        """
         return {"api": app.config["APP_NAME"], "version": __version__}
 
 
@@ -73,6 +82,15 @@ class BaseStatusResource(Resource):
 
 class StatusResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve API name, version and status.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: API name, version and status
+        """
         (
             api_name,
             version,
@@ -94,6 +112,15 @@ class StatusResource(BaseStatusResource):
 
 class StatusResourcesResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve date and CPU, memory and jobs stats.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: Date and CPU, memory and jobs stats
+        """
         loadavg = list(psutil.getloadavg())
 
         cpu_stats = {
@@ -132,6 +159,15 @@ class StatusResourcesResource(BaseStatusResource):
 
 class TxtStatusResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve API name, version and status as txt.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: API name, version and status as txt
+        """
         (
             api_name,
             version,
@@ -160,6 +196,15 @@ job-queue-up: %s
 
 class InfluxStatusResource(BaseStatusResource):
     def get(self):
+        """
+        Retrieve status of database and time.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: Status of database, key value, event stream, job queue and time
+        """
         (
             api_name,
             version,
@@ -181,6 +226,17 @@ class InfluxStatusResource(BaseStatusResource):
 class StatsResource(Resource):
     @jwt_required
     def get(self):
+        """
+        Retrieve main stats.
+        ---
+        tags:
+          - Index
+        responses:
+            403:
+                description: Permission denied
+            200:
+                description: Main stats
+        """
         if not permissions.has_admin_permissions():
             abort(403)
         return stats_service.get_main_stats()
@@ -188,4 +244,13 @@ class StatsResource(Resource):
 
 class ConfigResource(Resource):
     def get(self):
+        """
+        Get crisp token.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: Crisp token
+        """
         return {"crisp_token": app.config["CRISP_TOKEN"]}

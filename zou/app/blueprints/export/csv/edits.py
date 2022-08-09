@@ -14,6 +14,22 @@ from zou.app.utils import csv_utils
 class EditsCsvExport(Resource):
     @jwt_required
     def get(self, project_id):
+        """
+        Export edits linked to a given project as csv.
+        ---
+        tags:
+          - Export
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Edits exported as csv
+        """
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()
 

@@ -122,9 +122,9 @@ class DesktopLoginsResource(Resource):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Desktop login logs
@@ -152,9 +152,9 @@ class DesktopLoginsResource(Resource):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Date
             schema:
@@ -163,7 +163,8 @@ class DesktopLoginsResource(Resource):
                 - date
                 properties:
                     date:
-                        type: timestamp
+                        type: string
+                        format: date
                         example: 2022-07-12
         responses:
             201:
@@ -206,9 +207,9 @@ class PresenceLogsResource(Resource):
           - in: path
             name: month_date
             required: True
-            schema:
-                type: timestamp
-                example: 2022-07
+            type: string
+            format: date
+            x-example: 2022-07
         responses:
             200:
                 description: CSV file containing the presence logs based on a daily basis
@@ -237,15 +238,15 @@ class TimeSpentsResource(Resource):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
             required: True
-            schema:
-                type: timestamp
-                example: 2022-07-12
+            type: string
+            format: date
+            x-example: 2022-07-12
         responses:
             200:
                 description: Time spents for given person and date
@@ -280,15 +281,15 @@ class DayOffResource(Resource):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
             required: True
-            schema:
-                type: timestamp
-                example: 2022-07-12
+            type: string
+            format: date
+            x-example: 2022-07-12
         responses:
             200:
                 description: Day off object for given person and date
@@ -323,15 +324,14 @@ class PersonYearTimeSpentsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
         responses:
             200:
                 description: Aggregated time spents for given person and year
@@ -364,21 +364,21 @@ class PersonMonthTimeSpentsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
         responses:
             200:
                 description: Aggregated time spents for given person and month
@@ -411,21 +411,21 @@ class PersonWeekTimeSpentsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: week
             required: True
-            schema:
-                type: integer
-                example: 35 (from 01 to 52)
+            type: integer
+            x-example: 35
+            minimum: 1
+            maximum: 52
         responses:
             200:
                 description: Aggregated time spents for given person and week
@@ -458,27 +458,28 @@ class PersonDayTimeSpentsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
           - in: path
             name: day
             required: True
-            schema:
-                type: integer
-                example: 12 (from 01 to 31)
+            type: integer
+            x-example: 12
+            minimum: 1
+            maximum: 31
         responses:
             200:
                 description: Aggregated time spents for given person and day
@@ -511,21 +512,21 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
         responses:
             200:
                 description: Ended shots used for quota calculation of this month
@@ -565,21 +566,21 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: week
             required: True
-            schema:
-                type: integer
-                example: 35 (from 01 to 52)
+            type: integer
+            x-example: 35
+            minimum: 1
+            maximum: 52
         responses:
             200:
                 description: Ended shots used for quota calculation of this week
@@ -619,27 +620,28 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
           - in: path
             name: day
             required: True
-            schema:
-                type: integer
-                example: 12 (from 01 to 31)
+            type: integer
+            x-example: 12
+            minimum: 1
+            maximum: 31
         responses:
             200:
                 description: Ended shots used for quota calculation of this day
@@ -681,15 +683,15 @@ class TimeSpentMonthResource(Resource, ArgsMixin):
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
         responses:
             200:
                 description: Table giving time spent by user and by day for given year and month
@@ -744,9 +746,8 @@ class TimeSpentMonthsResource(Resource, ArgsMixin):
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
         responses:
             200:
                 description: Table giving time spent by user and by month for given year
@@ -776,9 +777,8 @@ class TimeSpentWeekResource(Resource, ArgsMixin):
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
         responses:
             200:
                 description: Table giving time spent by user and by week for given year
@@ -808,9 +808,9 @@ class InvitePersonResource(Resource):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Email sent
@@ -836,15 +836,15 @@ class DayOffForMonthResource(Resource, ArgsMixin):
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
         responses:
             200:
                 description: All day off recorded for given month
@@ -874,21 +874,21 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: week
             required: True
-            schema:
-                type: integer
-                example: 35 (from 01 to 52)
+            type: integer
+            x-example: 35
+            minimum: 1
+            maximum: 52
         responses:
             200:
                 description: All day off recorded for given week and person
@@ -917,21 +917,21 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
           - in: path
             name: month
             required: True
-            schema:
-                type: integer
-                example: 07 (from 01 to 12)
+            type: integer
+            x-example: 07
+            minimum: 1
+            maximum: 12
         responses:
             200:
                 description: All day off recorded for given month and person
@@ -960,15 +960,14 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
-            schema:
-                type: integer
-                example: 2022
+            type: integer
+            x-example: 2022
         responses:
             200:
                 description: All day off recorded for given year and person
@@ -997,9 +996,9 @@ class AddToDepartmentResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: User added to given department
@@ -1036,15 +1035,15 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
           - in: path
             name: person_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: department_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: User removed from given department

@@ -20,6 +20,19 @@ class EditResource(Resource, ArgsMixin):
     def get(self, edit_id):
         """
         Retrieve given edit.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: edit_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given edit
         """
         edit = edits_service.get_full_edit(edit_id)
         if edit is None:
@@ -33,6 +46,19 @@ class EditResource(Resource, ArgsMixin):
     def delete(self, edit_id):
         """
         Delete given edit.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: edit_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Given edit deleted
         """
         force = self.get_force()
         edit = edits_service.get_edit(edit_id)
@@ -45,7 +71,21 @@ class EditsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all edit entries. Filters can be specified in the query string.
+        Retrieve all edit entries.
+        ---
+        tags:
+          - Edits
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All edit entries
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -60,7 +100,21 @@ class AllEditsResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all edit entries. Filters can be specified in the query string.
+        Retrieve all edit entries.
+        ---
+        tags:
+          - Edits
+        description: Filters can be specified in the query string.
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All edit entries
         """
         criterions = query.get_query_criterions_from_request(request)
         if permissions.has_vendor_permissions():
@@ -76,6 +130,19 @@ class EditTaskTypesResource(Resource):
     def get(self, edit_id):
         """
         Retrieve all task types related to a given edit.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: edit_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All task types related to given edit
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
@@ -88,6 +155,19 @@ class EditTasksResource(Resource, ArgsMixin):
     def get(self, edit_id):
         """
         Retrieve all tasks related to a given edit.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: edit_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given edit
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
@@ -101,6 +181,19 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
     def get(self, episode_id):
         """
         Retrieve all tasks related to a given episode.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All tasks related to given episode
         """
         episode = edits_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -118,6 +211,19 @@ class EpisodeEditsResource(Resource, ArgsMixin):
     def get(self, episode_id):
         """
         Retrieve all edits related to a given episode.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: episode_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All efits related to given episode
         """
         episode = edits_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -132,9 +238,21 @@ class EditPreviewsResource(Resource):
     @jwt_required
     def get(self, edit_id):
         """
-        Retrieve all previews related to a given edit. It sends them
-        as a dict. Keys are related task type ids and values are arrays
-        of preview for this task type.
+        Retrieve all previews related to a given edit.
+        ---
+        tags:
+          - Edits
+        description: It sends them as a dict. Keys are related task type ids and values are arrays of preview for this task type.
+        parameters:
+          - in: path
+            name: edit_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All previews related to given edit
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
@@ -147,6 +265,19 @@ class EditsAndTasksResource(Resource):
     def get(self):
         """
         Retrieve all edits, adds project name and all related tasks.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: query
+            name: project_id
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All edits and all related tasks.
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -162,6 +293,19 @@ class ProjectEditsResource(Resource):
     def get(self, project_id):
         """
         Retrieve all edits related to a given project.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All edits related to given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -172,7 +316,40 @@ class ProjectEditsResource(Resource):
     @jwt_required
     def post(self, project_id):
         """
-        Create a edit for given project.
+        Create an edit for given project.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Edit
+            description: Name and description of edit, data and ID of episode.
+            schema:
+                type: object
+                required:
+                - name
+                properties:
+                    name:
+                        type: string
+                    description:
+                        type: string
+                    data:
+                        type: array
+                        items:
+                            type: string
+                    episode_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Edit created for given project
         """
         (name, description, data, parent_id) = self.get_arguments()
         projects_service.get_project(project_id)
@@ -211,6 +388,22 @@ class EditVersionsResource(Resource):
 
     @jwt_required
     def get(self, edit_id):
+        """
+        Retrieve data versions of given edit.
+        ---
+        tags:
+          - Edits
+        parameters:
+          - in: path
+            name: edit_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Data versions of given edit
+        """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
         user_service.check_entity_access(edit["id"])

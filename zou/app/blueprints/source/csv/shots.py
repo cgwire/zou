@@ -21,6 +21,27 @@ from zou.app.utils import events
 
 
 class ShotsCsvImportResource(BaseCsvProjectImportResource):
+    def post(self, project_id, *kwargs):
+        """
+        Import project shots.
+        ---
+        tags:
+          - Source
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Shots imported
+            400:
+                description: Format error
+        """
+        super(ShotsCsvImportResource, self).post(project_id, *kwargs)
+
     def prepare_import(self, project_id):
         self.episodes = {}
         self.sequences = {}

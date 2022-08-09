@@ -141,7 +141,7 @@ class AuthenticatedResource(Resource):
         ---
         description:  It can be used by third party tools, especially browser frontend, to know if current user is still logged in.
         tags:
-            - Authentification
+            - Authentication
         responses:
           200:
             description: User authenticated
@@ -176,7 +176,7 @@ class LogoutResource(Resource):
         ---
         description: Once logged out, current user cannot access the API anymore.
         tags:
-            - Authentification
+            - Authentication
         responses:
           200:
             description: Logout successful
@@ -218,7 +218,7 @@ class LoginResource(Resource):
                      If no user match given email and a destkop ID, it looks in matching the desktop ID with the one stored in database.
                      It is useful for clients that run on desktop tools and that don't know user email.
         tags:
-            - Authentification
+            - Authentication
         parameters:
           - in: body
             name: Credentials
@@ -231,6 +231,7 @@ class LoginResource(Resource):
                 properties:
                     email:
                         type: string
+                        format: email
                     password:
                         type: string
         responses:
@@ -363,7 +364,7 @@ class RefreshTokenResource(Resource):
         ---
         description: This route allows to make their lifetime long before they get outdated.
         tags:
-            - Authentification
+            - Authentication
         responses:
           200:
             description: Access Token
@@ -388,7 +389,7 @@ class RegistrationResource(Resource):
         Allow a user to register himself to the service.
         ---
         tags:
-            - Authentification
+            - Authentication
         parameters:
           - in: body
             name: Credentials
@@ -404,6 +405,7 @@ class RegistrationResource(Resource):
                 properties:
                     email:
                         type: string
+                        format: email
                     password:
                         type: string
                     password_2:
@@ -497,7 +499,7 @@ class ChangePasswordResource(Resource):
                      The new password requires a confirmation to ensure that the user didn't
                      make a mistake by typing his new password.
         tags:
-            - Authentification
+            - Authentication
         parameters:
           - in: body
             name: Credentials
@@ -578,7 +580,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         description: "It uses a classic scheme: a token is sent by email to the user.
                      Then he can change his password."
         tags:
-            - Authentification
+            - Authentication
         parameters:
           - in: body
             name: Credentials
@@ -591,7 +593,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 - password_2
                 properties:
                     token:
-                        type: UUID
+                        type: string
+                        format: UUID
+                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
                     password:
                         type: string
                     password_2:
@@ -640,7 +644,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         description: "It uses a classic scheme: a token is sent by email to the user.
                      Then he can change his password."
         tags:
-            - Authentification
+            - Authentication
         parameters:
           - in: body
             name: Email
@@ -652,6 +656,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 properties:
                     email:
                         type: string
+                        format: email
 
         responses:
           200:

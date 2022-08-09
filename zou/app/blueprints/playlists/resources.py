@@ -39,9 +39,9 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All playlists related to given project
@@ -78,15 +78,15 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: episode_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All playlists related to given episode
@@ -122,15 +122,15 @@ class ProjectPlaylistResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: playlist_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All playlists related to given project
@@ -162,9 +162,9 @@ class EntityPreviewsResource(Resource):
           - in: path
             name: entity_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description:  All previews related to given entity
@@ -190,15 +190,15 @@ class PlaylistDownloadResource(Resource):
           - in: path
             name: playlist_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given playlist downloaded as mp4
@@ -266,9 +266,9 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
           - in: path
             name: playlist_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given playlist built as mp4 movie
@@ -331,9 +331,9 @@ class PlaylistZipDownloadResource(Resource):
           - in: path
             name: playlist_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given playlist downloaded as zip
@@ -387,15 +387,15 @@ class BuildJobResource(Resource):
           - in: path
             name: playlist_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Build job related to given playlist
@@ -416,15 +416,15 @@ class BuildJobResource(Resource):
           - in: path
             name: playlist_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given build job removed
@@ -454,9 +454,9 @@ class ProjectBuildJobsResource(Resource):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All build jobs related to given project
@@ -484,9 +484,9 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All playlists related to given project
@@ -515,9 +515,9 @@ class TempPlaylistResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: True
-            schema:
-                type: UUID
-                example: a24a6ea4-ce75-4665-a070-57453082c25
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All playlists related to given project

@@ -9,6 +9,56 @@ from zou.app.services.exception import NewsNotFoundException
 class ProjectNewsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self, project_id):
+        """
+        Retrieve all news related to a given project
+        ---
+        tags:
+          - News
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Filter News
+            schema:
+                type: object
+                properties:
+                    only_preview:
+                        type: boolean
+                        default: False
+                    task_type_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    task_status_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    person_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                    page:
+                        type: integer
+                        example: 1
+                    page_size:
+                        type: integer
+                        example: 50
+                    after:
+                        type: string
+                        format: date
+                        example: 2022-07-12
+                    before:
+                        type: string
+                        format: date
+                        example: 2022-07-12
+        responses:
+            200:
+                description: All news related to given project
+        """
         (
             only_preview,
             task_type_id,
@@ -73,6 +123,28 @@ class ProjectNewsResource(Resource, ArgsMixin):
 class ProjectSingleNewsResource(Resource):
     @jwt_required
     def get(self, project_id, news_id):
+        """
+        Retrieve a single given news related to a given project
+        ---
+        tags:
+          - News
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: news_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Single given news related to given project
+        """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()

@@ -25,6 +25,15 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
 
     @jwt_required
     def post(self):
+        """
+        Import Kistu resource.
+        ---
+        tags:
+          - Source
+        responses:
+            200:
+                description: Resource imported
+        """
         kitsu_entries = request.json
         if type(kitsu_entries) != list:
             raise WrongParameterException("A list of entities is expected.")

@@ -77,7 +77,7 @@ routes = [
     ("/actions/user/tasks/<task_id>/subscribe", TaskSubscribeResource),
     ("/actions/user/tasks/<task_id>/unsubscribe", TaskUnsubscribeResource),
     (
-        "/data/user/entities/<entity_id>/task-types/<task_type_id>/subscribed",
+        "/data/user/entities/<sequence_id>/task-types/<task_type_id>/subscribed",
         HasSequenceSubscribedResource,
     ),
     (

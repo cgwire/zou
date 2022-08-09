@@ -11,6 +11,40 @@ from zou.app.services.exception import WrongParameterException
 class EventsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
+        """
+        Retrieve last events.
+        ---
+        tags:
+          - Events
+        parameters:
+          - in: body
+            name: Events
+            schema:
+                type: object
+                properties:
+                    after:
+                        type: string
+                        format: date
+                        example: 2022-07-12
+                    before:
+                        type: string
+                        format: date
+                        example: 2022-07-12
+                    only_files:
+                        type: boolean
+                        default: False
+                    page_size:
+                        type: integer
+                        default: 100
+                        example: 100
+                    project_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All login logs
+        """
         args = self.get_args(
             [
                 ("after", None, False),
@@ -43,6 +77,28 @@ class EventsResource(Resource, ArgsMixin):
 class LoginLogsResource(Resource, ArgsMixin):
     @jwt_required
     def get(self):
+        """
+        Retrieve all login logs.
+        ---
+        tags:
+          - Events
+        parameters:
+          - in: body
+            name: Event
+            schema:
+                type: object
+                properties:
+                    before:
+                        type: string
+                        format: date-time
+                        example: 2022-07-12T00:00:00
+                    page_size:
+                        type: integer
+                        example: 100
+        responses:
+            200:
+                description: All login logs
+        """
         args = self.get_args(
             [("before", None, None), ("page_size", 100, False)]
         )

@@ -37,6 +37,17 @@ class BaseCsvImportResource(Resource):
 
     @jwt_required
     def post(self):
+        """
+        Import persons as csv.
+        ---
+        tags:
+          - Source
+        responses:
+            201:
+                description: Persons imported
+            400:
+                description: Format error
+        """
         uploaded_file = request.files["file"]
         file_name = "%s.csv" % uuid.uuid4()
 
