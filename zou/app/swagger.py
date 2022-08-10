@@ -21,7 +21,7 @@ swagger_template = {
     "swagger": "2.0",
     "info": {
         "title": "Kitsu API",
-        "description": f"## Welcome to Zou (Kitsu API) documentation \n```Version: {__version__}``` \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n## Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n## Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n[OpenAPI definition](/openapi.json)",
+        "description": f"## Welcome to Kitsu API specification. \n```Version: {__version__}``` \n\n The Kitsu API allows to store and manage the data of your animation/VFX production. Through it you can link all the tools of your pipeline and make sure they are all synchronized. \n\n [Read the install documentation](https://zou.cg-wire.com) \n\n[OpenAPI definition](/openapi.json)",
         "contact": {
             "name": "CGWire",
             "email": "support@cg-wire.com",
