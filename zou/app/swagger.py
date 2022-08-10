@@ -37,6 +37,15 @@ swagger_template = {
     "host": "localhost:8080",
     "basePath": "/api",
     "schemes": ["http", "https"],
+    "securityDefinitions": {
+        "JWT Authorization": {
+            "name": "Authorization",
+            "in": "header",
+            "type": "apiKey",
+            "description": "Format in header: **Authorization: Bearer {token}**. \n\n Value example: Bearer xxxxx.yyyyy.zzzzz",
+        }
+    },
+    "security": [ { "JWT Authorization": [] } ],
     "tags": [
         {"name": "Authentication"},
         {"name": "Assets"},
