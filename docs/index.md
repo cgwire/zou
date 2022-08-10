@@ -29,7 +29,7 @@ The Kitsu API can:
 * Provide folder and file paths for any task.
 * Export main data to CSV files.
 
-For more details you can check [the full specification](https://kitsu-api.cg-wire.com)
+For more details you can check [the full specification](https://kitsu-api.cg-wire.com).
 
 # Quickstart (Docker Image)
 
@@ -57,7 +57,7 @@ The credentials are:
 
 The installation requires:
 
-* Ubuntu (vension >= 20.06)
+* Ubuntu (vension >= 20.04)
 * Python (version >= 3.6)
 * An up and running Postgres instance (version >= 9.2)
 * An up and running Redis server instance (version >= 2.0)
