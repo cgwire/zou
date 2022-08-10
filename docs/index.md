@@ -29,6 +29,7 @@ The Kitsu API can:
 * Provide folder and file paths for any task.
 * Export main data to CSV files.
 
+For more details you can check [the full specification](https://kitsu-api.cg-wire.com)
 
 # Quickstart (Docker Image)
 
@@ -36,7 +37,6 @@ To try Kitsu on your local machine you can use Docker to run a local
 instance via this command:
 
 *Warning: This image is not aimed at production usage.*
-
 
 ```
 docker run -d -p 80:80 --name cgwire cgwire/cgwire
@@ -57,11 +57,11 @@ The credentials are:
 
 The installation requires:
 
+* Ubuntu (vension >= 20.06)
+* Python (version >= 3.6)
 * An up and running Postgres instance (version >= 9.2)
 * An up and running Redis server instance (version >= 2.0)
-* Python (version >= 3.6)
 * A Nginx instance
-* Uwsgi
 
 ## Setup
 
@@ -80,14 +80,6 @@ sudo apt-get install ffmpeg
 ```
 
 *NB: We recommend to install postgres in a separate machine.*
-
-If you run the installation under Ubuntu 16.04:
-
-```
-sudo add-apt-repository ppa:jonathonf/ffmpeg-4
-sudo apt-get update
-sudo apt-get apt install ffmpeg
-```
 
 
 ### Get sources
@@ -112,14 +104,21 @@ sudo /opt/zou/zouenv/bin/pip3 install zou
 sudo chown -R zou:www-data .
 ```
 
-Then create a folder to store the previews:
+Create a folder to store the previews:
 
 ```
 sudo mkdir /opt/zou/previews
 sudo chown -R zou:www-data /opt/zou
 ```
 
-Then create a folder to store the temp files:
+Create a folder to store the full text search indexes:
+
+```
+sudo mkdir /opt/zou/indexes
+sudo chown -R zou:www-data /opt/zou/indexes
+```
+
+Create a folder to store the temp files:
 
 ```
 sudo mkdir /opt/zou/tmp
