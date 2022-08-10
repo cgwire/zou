@@ -1,15 +1,15 @@
-.. figure:: https://zou.cg-wire.com/zou.png
-   :alt: Zou Logo
+.. figure:: https://zou.cg-wire.com/kitsu.png
+   :alt: Kitsu Logo
 
-Zou is the memory of your animation production
+Zou, the Kitsu API is the memory of your animation production
 ----------------------------------------------
 
-Zou is an API that stores and manages data related to animation productions. It allows you to centralize 
-and access to all your data. Your tools connect to it and query the data from your production. Your 
-Artists manage their files and their tasks more efficiently. It helps them to spend more time on the 
-artistic side. 
+The Kitsu API allows to store and manage the data of your animation/VFX
+production. Through it you can link all the tools of your pipeline and make
+sure they are all synchronized. 
 
-A dedicated Python client, `Gazu <https://gazu.cg-wire.com>`_, allows users to integrate Zou into the tools. 
+A dedicated Python client, `Gazu <https://gazu.cg-wire.com>`_, allows users to
+integrate Zou into the tools. 
 
 |Build badge| |Downloads badge|
 
@@ -22,18 +22,19 @@ Zou can:
    and validations.
 -  Track the progress of your artists
 -  Store preview files and version them
--  Provide folder and file paths for any task.
--  Import and Export data to CSV files.
--  Provide helpers to manage workflow tasks (start, publish, retake).
--  Listen to events to plug external modules on it.
+-  Provide folder and file paths for any task
+-  Import and Export data to CSV files
+-  Publish an event stream of changes
 
 Installation and documentation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Installation of Zou requires the setup of third-party tools such as a database instance, so it is recommended
-to the follow the documentation:
+Installation of Zou requires the setup of third-party tools such as a database
+instance, so it is recommended to the follow the documentation:
 
 `https://zou.cg-wire.com/ <https://zou.cg-wire.com>`__
+
+Specification: `https://kitsu-api.cg-wire.com/ <https://kitsu-api.cg-wire.com>`__
 
 Contributing
 ------------
@@ -44,7 +45,8 @@ contract <https://rfc.zeromq.org/spec:42/C4>`__ is respected.
 Zou is based on Python and the `Flask <http://flask.pocoo.org/>`__
 framework.
 
-You can use the pre-commit hook for Black (a python code formatter) before commiting :
+You can use the pre-commit hook for Black (a python code formatter) before
+commiting:
 
 .. code:: bash
 
@@ -58,23 +60,28 @@ Instructions for setting up a development environment are available in
 Contributors
 ------------
 
-* @aboellinger
+* @aboellinger (Xilam/Spa)
 * @BigRoy (Colorbleed)
+* @EvanBldy (CGWire) - *maintainer*
+* @ex5 (Blender Studio)
 * @flablog (Les Fées Spéciales)
 * @frankrousseau (CGWire) - *maintainer*
+* @kaamaurice (Tchak)
 * @g-Lul (TNZPV)
+* @pilou (Freelancer)
+* @LedruRollin (Cube-Xilam)
+* @mathbou (Zag)
+* @manuelrais (TNZPV)
+* @NehmatH (CGWire)
 * @pcharmoille (Unit Image)
+* @Tilix4 (Normaal)
 
 About authors
 ~~~~~~~~~~~~~
 
-Zou is written by CGWire, a company based in France. We help teams of animation
-studios to collaborate better. We provide tools to more than 50 studios spread
-all around the world.
-
-On the technical side, we apply software craftmanship principles as much as
-possible. We love coding and consider that strong quality and good developer
-experience matter a lot.
+Kitsu is written by CGWire, a company based in France. We help animation and
+VFX studios to collaborate better through efficient tooling. We already work
+with more than 70 studios around the world.
 
 Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
 
