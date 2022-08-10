@@ -14,7 +14,7 @@ from zou.app.utils import date_helpers
 
 
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
-    def post(self, project_id, *kwargs):
+    def post(self, project_id, **kwargs):
         """
         Import the estimations of task-types for given project.
         ---
@@ -40,7 +40,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 description: Format error
         """
         super(TaskTypeEstimationsCsvImportResource, self).post(
-            project_id, *kwargs
+            project_id, **kwargs
         )
 
     def prepare_import(self, project_id, task_type_id, episode_id=None):
@@ -122,7 +122,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 class TaskTypeEstimationsEpisodeCsvImportResource(
     TaskTypeEstimationsCsvImportResource
 ):
-    def post(self, project_id, *kwargs):
+    def post(self, project_id, **kwargs):
         """
         Import the estimations of task-types for given episode of given project.
         ---
@@ -154,7 +154,7 @@ class TaskTypeEstimationsEpisodeCsvImportResource(
                 description: Format error
         """
         super(TaskTypeEstimationsEpisodeCsvImportResource, self).post(
-            project_id, *kwargs
+            project_id, **kwargs
         )
 
     pass

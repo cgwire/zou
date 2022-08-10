@@ -14,7 +14,7 @@ from zou.app.utils import events, cache
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
-    def post(self, project_id, *kwargs):
+    def post(self, project_id, **kwargs):
         """
         Import project assets.
         ---
@@ -33,7 +33,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: Format error
         """
-        super(AssetsCsvImportResource, self).post(project_id, *kwargs)
+        super().post(project_id, **kwargs)
 
     def prepare_import(self, project_id):
         self.episodes = {}

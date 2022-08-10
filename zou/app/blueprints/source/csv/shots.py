@@ -21,7 +21,7 @@ from zou.app.utils import events
 
 
 class ShotsCsvImportResource(BaseCsvProjectImportResource):
-    def post(self, project_id, *kwargs):
+    def post(self, project_id, **kwargs):
         """
         Import project shots.
         ---
@@ -40,8 +40,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: Format error
         """
-        super(ShotsCsvImportResource, self).post(project_id, *kwargs)
-
+        super().post(project_id, **kwargs)
+        
     def prepare_import(self, project_id):
         self.episodes = {}
         self.sequences = {}
