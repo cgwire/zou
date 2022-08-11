@@ -95,5 +95,5 @@ Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
    :target: https://cgwire.com
 .. |Downloads badge| image:: https://static.pepy.tech/personalized-badge/zou?period=total&units=international_system&left_color=grey&right_color=orange&left_text=Downloads
    :target: https://pepy.tech/project/zou
-.. |Discord badge| image:: https://dcbadge.vercel.app/api/server/VbCxtKN
+.. |Discord badge| image:: https://badgen.net/badge/icon/discord?icon=discord&label
    :target: https://discord.com/invite/VbCxtKN
