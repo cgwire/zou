@@ -8,6 +8,25 @@ from sqlalchemy.exc import IntegrityError
 
 
 class PersonsCsvImportResource(BaseCsvImportResource):
+    def post(self, **kwargs):
+        """
+        Import persons via a .csv file.
+        ---
+        tags:
+            - Source
+        parameters:
+        - in: formData
+            name: file
+            type: file
+            required: true
+        responses:
+            201:
+                description: The lists of imported persons.
+            400:
+                description: The .csv file is not properly formatted.
+        """
+        return super().post(**kwargs)
+
     def check_permissions(self):
         return permissions.check_admin_permissions()
 

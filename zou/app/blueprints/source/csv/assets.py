@@ -16,7 +16,7 @@ from zou.app.utils import events, cache
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
     def post(self, project_id, **kwargs):
         """
-        Import project assets.
+        Import project assets via a .csv file.
         ---
         tags:
           - Source
@@ -27,13 +27,17 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        - in: formData
+            name: file
+            type: file
+            required: true
         responses:
             201:
-                description: Assets imported
+                description: The lists of imported assets.
             400:
-                description: Format error
+                description: The .csv file is not properly formatted.
         """
-        super().post(project_id, **kwargs)
+        return super().post(project_id, **kwargs)
 
     def prepare_import(self, project_id):
         self.episodes = {}
