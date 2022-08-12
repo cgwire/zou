@@ -16,23 +16,26 @@ swagger_config = {
     "specs_route": "/apidocs/",
 }
 
+curl = 'curl -X POST <server_address>/api/auth/login -d \"email=<youremail>&password=<yourpassword>{\"login\": true", "access_token\": \"eyJ0e...\", ...}'
 
 swagger_template = {
     "swagger": "2.0",
     "info": {
         "title": "Kitsu API",
-        "description": f"## Welcome to Kitsu API specification. \n```Version: {__version__}``` \n\n The Kitsu API allows to store and manage the data of your animation/VFX production. Through it you can link all the tools of your pipeline and make sure they are all synchronized. \n\n [Read the install documentation](https://zou.cg-wire.com) \n\n[OpenAPI definition](/openapi.json)",
+        "description": f"## Welcome to Kitsu API specification \n```Version: {__version__}``` \n\n The Kitsu API allows to store and manage the data of your animation/VFX production. Through it you can link all the tools of your pipeline and make sure they are all synchronized. \n\n## Authentication\n\n<div class=\"auth\"><p>Before you can use any of the endpoints outline below, you will have to get a JWT to authorize your requests.\n\nYou can get a authorization token using a (form-encoded) POST request to ```/auth/login```. With curl this would look something like ```curl -X POST <server_address>/auth/login -d \"email=<youremail>&password=<yourpassword>```.\n\nThe response is a JSON object, specifically you'll need to provide the ```access_token``` for your future requests.\n\nHere is a complete authentication process as an example (again using curl):\n\n```\n$ {curl}\n\n$ jwt=eyJ0e...  # Store the access token for easier use\n\n$ curl -H \"Authorization: Bearer $jwt\" <server_address>/api/data/projects\n[{{...}},\n {{...}}]\n ``` \n\n [OpenAPI definition](/openapi.json)\n",
         "contact": {
             "name": "CGWire",
-            "email": "support@cg-wire.com",
             "url": "https://www.cg-wire.com",
         },
-        "termsOfService": "https://www.cg-wire.com/terms.html",
         "version": __version__,
         "license": {
             "name": "AGPL 3.0",
             "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
         },
+    },
+    "externalDocs": {
+        "description": "Read the installation documentation",
+        "url": "https://zou.cg-wire.com"
     },
     "host": "localhost:8080",
     "basePath": "/api",
@@ -57,6 +60,7 @@ swagger_template = {
         {"name": "Events"},
         {"name": "Export"},
         {"name": "Files"},
+        {"name": "Import"},
         {"name": "Index"},
         {"name": "News"},
         {"name": "Persons"},
@@ -65,7 +69,6 @@ swagger_template = {
         {"name": "Projects"},
         {"name": "Search"},
         {"name": "Shots"},
-        {"name": "Source"},
         {"name": "Tasks"},
         {"name": "User"},
     ],
@@ -139,7 +142,7 @@ swagger_template = {
                 },
             },
         },
-        "Asset instance": {
+        "AssetInstance": {
             "type": "object",
             "properties": {
                 "asset_id": {
@@ -168,11 +171,11 @@ swagger_template = {
                 },
             },
         },
-        "Asset type": {
+        "AssetType": {
             "type": "object",
             "properties": {"name": {"type": "string"}},
         },
-        "Attachment file": {
+        "AttachmentFile": {
             "type": "object",
             "properties": {
                 "name": {
@@ -195,7 +198,7 @@ swagger_template = {
                 },
             },
         },
-        "Build job": {
+        "BuildJob": {
             "type": "object",
             "properties": {
                 "status": {
@@ -260,7 +263,7 @@ swagger_template = {
                 },
             },
         },
-        "Custom action": {
+        "CustomAction": {
             "type": "object",
             "properties": {
                 "name": {
@@ -276,7 +279,7 @@ swagger_template = {
                 },
             },
         },
-        "Data import error": {
+        "DataImportError": {
             "type": "object",
             "properties": {
                 "event_data": {
@@ -290,7 +293,7 @@ swagger_template = {
                 },
             },
         },
-        "Day off": {
+        "DayOff": {
             "type": "object",
             "properties": {
                 "date": {"type": "string", "format": "date"},
@@ -314,7 +317,7 @@ swagger_template = {
                 },
             },
         },
-        "Desktop login log": {
+        "DesktopLoginLog": {
             "type": "object",
             "properties": {
                 "date": {"type": "string", "format": "date"},
@@ -389,14 +392,14 @@ swagger_template = {
                 },
             },
         },
-        "File status": {
+        "FileStatus": {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
                 "color": {"type": "string"},
             },
         },
-        "Login log": {
+        "LoginLog": {
             "type": "object",
             "properties": {
                 "origin": {"type": "string", "description": "web, script"},
@@ -557,7 +560,7 @@ swagger_template = {
                 "chat_token_discord": {"type": "string"},
             },
         },
-        "Output file": {
+        "OutputFile": {
             "type": "object",
             "properties": {
                 "shotgun_id": {
@@ -659,7 +662,7 @@ swagger_template = {
                 },
             },
         },
-        "Output type": {
+        "OutputType": {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
@@ -756,7 +759,7 @@ swagger_template = {
                 },
             },
         },
-        "Preview file": {
+        "PreviewFile": {
             "type": "object",
             "properties": {
                 "shotgun_id": {
@@ -929,14 +932,14 @@ swagger_template = {
                 },
             },
         },
-        "Project status": {
+        "ProjectStatus": {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
                 "color": {"type": "string"},
             },
         },
-        "Schedule item": {
+        "ScheduleItem": {
             "type": "object",
             "properties": {
                 "start_date": {"type": "string", "format": "date"},
@@ -959,7 +962,7 @@ swagger_template = {
                 },
             },
         },
-        "Search filter": {
+        "SearchFilter": {
             "type": "object",
             "properties": {
                 "list_type": {"type": "string", "description": "Type of list"},
@@ -1101,7 +1104,7 @@ swagger_template = {
                 },
             },
         },
-        "Status automation": {
+        "StatusAutomation": {
             "type": "object",
             "properties": {
                 "entity_type": {"type": "string", "default": "asset"},
@@ -1131,7 +1134,7 @@ swagger_template = {
                 },
             },
         },
-        "Subscription to notifications": {
+        "SubscriptionToNotifications": {
             "type": "object",
             "properties": {
                 "person_id": {
@@ -1237,7 +1240,7 @@ swagger_template = {
                 },
             },
         },
-        "Task status": {
+        "TaskStatus": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1285,7 +1288,7 @@ swagger_template = {
                 },
             },
         },
-        "Task type": {
+        "TaskType": {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "Name of task type"},
@@ -1316,7 +1319,7 @@ swagger_template = {
                 },
             },
         },
-        "Time spent": {
+        "TimeSpent": {
             "type": "object",
             "properties": {
                 "duration": {"type": "integer"},
@@ -1333,7 +1336,7 @@ swagger_template = {
                 },
             },
         },
-        "Working file": {
+        "WorkingFile": {
             "type": "object",
             "properties": {
                 "shotgun_id": {
