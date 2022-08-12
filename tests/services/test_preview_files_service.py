@@ -5,6 +5,7 @@ from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
     get_preview_file_dimensions,
+    get_preview_file_fps,
 )
 
 
@@ -238,3 +239,11 @@ class PlaylistTestCase(ApiDBTestCase):
         entity["data"] = {"resolution": "800x600"}
         dimensions = get_preview_file_dimensions(project, entity)
         self.assertEqual(dimensions, (800, 600))
+
+    def test_get_preview_file_fps(self):
+        fps = get_preview_file_fps({"fps": "24.00"})
+        self.assertEqual(fps, "24.00")
+        fps = get_preview_file_fps({})
+        self.assertEqual(fps, "25.00")
+        fps = get_preview_file_fps({"fps": None})
+        self.assertEqual(fps, "25.00")
