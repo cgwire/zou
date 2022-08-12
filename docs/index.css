@@ -121,3 +121,7 @@ h2 {
 .swagger-ui .info .description .markdown ul li {
     padding-bottom: 1em !important;
 }
+
+.swagger-ui .markdown div code {
+    color: #8a53d1 !important;
+}
