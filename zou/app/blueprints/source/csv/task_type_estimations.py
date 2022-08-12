@@ -19,7 +19,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         Import the estimations of task-types for given project.
         ---
         tags:
-          - Source
+          - Import
         parameters:
           - in: path
             name: project_id
@@ -127,7 +127,7 @@ class TaskTypeEstimationsEpisodeCsvImportResource(
         Import the estimations of task-types for given episode of given project.
         ---
         tags:
-          - Source
+          - Import
         parameters:
           - in: path
             name: project_id

@@ -41,7 +41,7 @@ class BaseCsvImportResource(Resource):
         Import persons as csv.
         ---
         tags:
-          - Source
+          - Import
         responses:
             201:
                 description: Persons imported

@@ -31,7 +31,7 @@ class BaseImportShotgunResource(Resource):
         Import shotgun resource.
         ---
         tags:
-          - Source
+          - Import
         responses:
             200:
                 description: Resource imported
@@ -161,7 +161,7 @@ class ImportRemoveShotgunBaseResource(Resource):
         Import remove instance.
         ---
         tags:
-          - Source
+          - Import
         responses:
             200:
                 description: Instance removed

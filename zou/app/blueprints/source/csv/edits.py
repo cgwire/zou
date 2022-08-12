@@ -26,7 +26,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         Import project edits.
         ---
         tags:
-          - Source
+          - Import
         parameters:
           - in: path
             name: project_id
@@ -40,7 +40,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: Format error
         """
-        super().post(project_id, **kwargs)
+        return super().post(project_id, **kwargs)
 
     def prepare_import(self, project_id):
         self.episodes = {}

@@ -26,7 +26,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         Import project shots via a .csv file.
         ---
         tags:
-          - Source
+          - Import
         parameters:
           - in: path
             name: project_id

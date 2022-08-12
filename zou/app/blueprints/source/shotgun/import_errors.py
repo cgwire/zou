@@ -17,7 +17,7 @@ class ShotgunImportErrorsResource(Resource):
         Import shotgun error resource.
         ---
         tags:
-          - Source
+          - Import
         responses:
             200:
                 description: Resource imported
@@ -32,7 +32,7 @@ class ShotgunImportErrorsResource(Resource):
         Serialize shotgun error resource.
         ---
         tags:
-          - Source
+          - Import
         responses:
             200:
                 description: Resource serialized
@@ -52,7 +52,7 @@ class ShotgunImportErrorResource(Resource):
         Delete error.
         ---
         tags:
-          - Source
+          - Import
         parameters:
           - in: path
             name: error_id
