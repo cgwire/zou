@@ -5,6 +5,7 @@ from .resources import (
     AssetTasksResource,
     AssetTaskTypesResource,
     AssetTypeAssetsResource,
+    ClearAvatarResource,
     ContextResource,
     DayOffResource,
     OpenProjectsResource,
@@ -76,6 +77,7 @@ routes = [
     ("/data/user/tasks/<task_id>/subscribed", HasTaskSubscribedResource),
     ("/actions/user/tasks/<task_id>/subscribe", TaskSubscribeResource),
     ("/actions/user/tasks/<task_id>/unsubscribe", TaskUnsubscribeResource),
+    ("/actions/user/clear-avatar", ClearAvatarResource),
     (
         "/data/user/entities/<sequence_id>/task-types/<task_type_id>/subscribed",
         HasSequenceSubscribedResource,

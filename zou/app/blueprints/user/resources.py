@@ -1061,20 +1061,37 @@ class DayOffResource(Resource):
 
 
 class ContextResource(Resource):
-    """
-    Return context required to properly run a full app connected to
-    the API (like the Kitsu web client).
-    """
 
     @jwt_required
     def get(self):
         """
-        Return context required to properly run a full app connected to the API (like the Kitsu web client).
+        Return context required to properly run a full app connected to the API
+        (like the Kitsu web client).
         ---
         tags:
-        - User
+          - User
         responses:
             200:
-                description: Context to properly run a full app connected to the API
+                description: Context to properly run a full app connected to
+                the API
         """
         return user_service.get_context()
+
+
+class ClearAvatarResource(Resource):
+
+    @jwt_required
+    def delete(self):
+        """
+        Set `has_avatar` flag to False for current user and remove its avatar
+        file.
+        ---
+        tags:
+          - User
+        responses:
+            204:
+                description:
+        """
+        user = persons_service.get_current_user()
+        persons_service.clear_avatar(user["id"])
+        return "", 204
