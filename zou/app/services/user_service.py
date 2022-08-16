@@ -844,7 +844,14 @@ def get_unread_notifications_count(notification_id=None):
     ).count()
 
 
-def get_last_notifications(notification_id=None, after=None, before=None):
+def get_last_notifications(
+    notification_id=None,
+    after=None,
+    before=None,
+    task_type_id=None,
+    task_status_id=None,
+    notification_type=None
+):
     """
     Return last 100 user notifications.
     """
@@ -880,6 +887,15 @@ def get_last_notifications(notification_id=None, after=None, before=None):
 
     if before is not None:
         query = query.filter(Notification.created_at < before)
+
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+
+    if task_status_id is not None:
+        query = query.filter(Task.task_status_id == task_status_id)
+
+    if notification_type is not None:
+        query = query.filter(Notification.type == notification_type)
 
     notifications = query.limit(100).all()
 
