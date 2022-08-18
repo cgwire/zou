@@ -77,8 +77,8 @@ def get_preview_file_fps(project):
     Return fps set at project level or default fps if the dimensions are not
     set.
     """
-    fps = "24.00"
-    if project["fps"] is not None:
+    fps = "25.00"
+    if project.get("fps", None) is not None:
         fps = "%.2f" % float(project["fps"].replace(",", "."))
     return fps
 

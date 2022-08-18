@@ -103,7 +103,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
         project = projects_service.get_project_raw(project_id)
         persons = []
         for person in project.team:
-            if permissions.has_manager_permissions:
+            if permissions.has_manager_permissions():
                 persons.append(person.serialize_safe())
             else:
                 persons.append(person.present_minimal())

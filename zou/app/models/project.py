@@ -1,10 +1,21 @@
-from sqlalchemy_utils import UUIDType
+from sqlalchemy_utils import UUIDType, ChoiceType
 from sqlalchemy.dialects.postgresql import JSONB
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
+PROJECT_STYLES = [
+    ("2d", "2D Animation"),
+    ("3d", "3D Animation"),
+    ("2d3d", "2D/3D Animation"),
+    ("vfx", "VFX"),
+    ("stop-motion", "Stop Motion"),
+    ("motion-design", "Motion Design"),
+    ("archviz", "Archviz"),
+    ("commercial", "Commercial"),
+    ("catalog", "Catalog"),
+]
 
 class ProjectPersonLink(db.Model):
     __tablename__ = "project_person_link"
@@ -86,6 +97,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     ratio = db.Column(db.String(10))
     resolution = db.Column(db.String(12))
     production_type = db.Column(db.String(20), default="short")
+    production_style = db.Column(ChoiceType(PROJECT_STYLES))
     start_date = db.Column(db.Date())
     end_date = db.Column(db.Date())
     man_days = db.Column(db.Integer)

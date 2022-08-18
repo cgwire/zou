@@ -1,5 +1,4 @@
 import os
-import io
 import flask_fs as fs
 
 from flask_fs.backends.local import LocalBackend
@@ -12,6 +11,11 @@ from zou.app import app
 def read(self, filename):
     with self.open(filename, "rb") as f:
         return f.read()
+
+
+def local_delete(self, filename):
+    dest = self.path(filename)
+    os.remove(dest)
 
 
 def path(self, filename):
@@ -107,6 +111,7 @@ def read_swift(self, filename):
 
 LocalBackend.read = read
 LocalBackend.path = path
+LocalBackend.delete = local_delete
 SwiftBackend.__init__ = init_swift
 SwiftBackend.read = read_swift
 S3Backend.__init__ = init_s3
@@ -176,7 +181,7 @@ def exists_picture(prefix, id):
 
 def remove_picture(prefix, id):
     key = make_key(prefix, id)
-    pictures.delete(key)
+    return pictures.delete(key)
 
 
 def get_local_picture_path(prefix, id):
@@ -211,7 +216,7 @@ def exists_movie(prefix, id):
 
 def remove_movie(prefix, id):
     key = make_key(prefix, id)
-    movies.delete(key)
+    return movies.delete(key)
 
 
 def get_local_movie_path(prefix, id):
@@ -246,7 +251,7 @@ def exists_file(prefix, id):
 
 def remove_file(prefix, id):
     key = make_key(prefix, id)
-    files.delete(key)
+    return files.delete(key)
 
 
 def get_local_file_path(prefix, id):

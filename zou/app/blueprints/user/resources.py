@@ -659,51 +659,67 @@ class DesktopLoginLogsResource(Resource):
 
 
 class NotificationsResource(Resource, ArgsMixin):
-    """
-    Return last 100 user notifications.
-    """
 
     @jwt_required
     def get(self):
         """
-        Return last 100 user notifications.
+        Return last 100 user notifications filtered by given parameters.
         ---
         tags:
         - User
         parameters:
-          - in: body
-            name: Date
-            schema:
-                type: object
-                properties:
-                    after:
-                        type: string
-                        format: date
-                        example: 2022-07-12
-                    before:
-                        type: string
-                        format: date
-                        example: 2022-07-12
+          - in: query
+            name: after
+            type: string
+            format: date
+            x-example: 2022-07-12
+          - in: query
+            name: before
+            type: string
+            format: date
+            x-example: 2022-08-12
+          - in: query
+            name: task_type_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_status_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: type
+            type: string
+            format: UUID
+            x-example: mention, comment, assignation or reply
         responses:
-            201:
-                description: Last 100 user notifications
+            200:
+                description: 100 last user notifications
         """
-        (after, before) = self.get_arguments()
+        (
+            after,
+            before,
+            task_type_id,
+            task_status_id,
+            notification_type
+        ) = self.get_arguments()
         notifications = user_service.get_last_notifications(
-            after=after, before=before
+            before=before,
+            task_type_id=task_type_id,
+            task_status_id=task_status_id,
+            notification_type=notification_type
         )
         user_service.mark_notifications_as_read()
         return notifications
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("after", default=None)
-        parser.add_argument("before", default=None)
-        args = parser.parse_args()
-
         return (
-            args["after"],
-            args["before"],
+            self.get_text_parameter("after"),
+            self.get_text_parameter("before"),
+            self.get_text_parameter("task_type_id"),
+            self.get_text_parameter("task_status_id"),
+            self.get_text_parameter("type"),
         )
 
 
@@ -727,6 +743,7 @@ class NotificationResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+
         responses:
             200:
                 description: Notification matching given ID
@@ -1044,20 +1061,37 @@ class DayOffResource(Resource):
 
 
 class ContextResource(Resource):
-    """
-    Return context required to properly run a full app connected to
-    the API (like the Kitsu web client).
-    """
 
     @jwt_required
     def get(self):
         """
-        Return context required to properly run a full app connected to the API (like the Kitsu web client).
+        Return context required to properly run a full app connected to the API
+        (like the Kitsu web client).
         ---
         tags:
-        - User
+          - User
         responses:
             200:
-                description: Context to properly run a full app connected to the API
+                description: Context to properly run a full app connected to
+                the API
         """
         return user_service.get_context()
+
+
+class ClearAvatarResource(Resource):
+
+    @jwt_required
+    def delete(self):
+        """
+        Set `has_avatar` flag to False for current user and remove its avatar
+        file.
+        ---
+        tags:
+          - User
+        responses:
+            204:
+                description:
+        """
+        user = persons_service.get_current_user()
+        persons_service.clear_avatar(user["id"])
+        return "", 204
