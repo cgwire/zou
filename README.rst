@@ -2,7 +2,7 @@
    :alt: Kitsu Logo
 
 Zou, the Kitsu API is the memory of your animation production
-----------------------------------------------
+-------------------------------------------------------------
 
 The Kitsu API allows to store and manage the data of your animation/VFX
 production. Through it you can link all the tools of your pipeline and make
