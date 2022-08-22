@@ -45,7 +45,7 @@ swagger_template = {
             "description": "Format in header: **Authorization: Bearer {token}**. \n\n Value example: Bearer xxxxx.yyyyy.zzzzz",
         }
     },
-    "security": [ { "JWT Authorization": [] } ],
+    "security": [{"JWT Authorization": []}],
     "tags": [
         {"name": "Authentication"},
         {"name": "Assets"},
