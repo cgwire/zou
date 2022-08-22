@@ -659,7 +659,6 @@ class DesktopLoginLogsResource(Resource):
 
 
 class NotificationsResource(Resource, ArgsMixin):
-
     @jwt_required
     def get(self):
         """
@@ -702,13 +701,13 @@ class NotificationsResource(Resource, ArgsMixin):
             before,
             task_type_id,
             task_status_id,
-            notification_type
+            notification_type,
         ) = self.get_arguments()
         notifications = user_service.get_last_notifications(
             before=before,
             task_type_id=task_type_id,
             task_status_id=task_status_id,
-            notification_type=notification_type
+            notification_type=notification_type,
         )
         user_service.mark_notifications_as_read()
         return notifications
@@ -1061,7 +1060,6 @@ class DayOffResource(Resource):
 
 
 class ContextResource(Resource):
-
     @jwt_required
     def get(self):
         """
@@ -1079,7 +1077,6 @@ class ContextResource(Resource):
 
 
 class ClearAvatarResource(Resource):
-
     @jwt_required
     def delete(self):
         """

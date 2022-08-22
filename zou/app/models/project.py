@@ -17,6 +17,7 @@ PROJECT_STYLES = [
     ("catalog", "Catalog"),
 ]
 
+
 class ProjectPersonLink(db.Model):
     __tablename__ = "project_person_link"
     project_id = db.Column(

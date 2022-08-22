@@ -850,7 +850,7 @@ def get_last_notifications(
     before=None,
     task_type_id=None,
     task_status_id=None,
-    notification_type=None
+    notification_type=None,
 ):
     """
     Return last 100 user notifications.
