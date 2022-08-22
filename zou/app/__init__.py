@@ -20,6 +20,7 @@ from .services.exception import (
     PersonNotFoundException,
     WrongIdFormatException,
     WrongParameterException,
+    WrongTaskTypeForEntityException,
 )
 from .utils import fs, logs
 
@@ -90,6 +91,11 @@ def wrong_token_signature(error):
 
 @app.errorhandler(ModelWithRelationsDeletionException)
 def try_delete_model_with_relations(error):
+    return jsonify(error=True, message=str(error)), 400
+
+
+@app.errorhandler(WrongTaskTypeForEntityException)
+def wrong_task_type_for_entity(error):
     return jsonify(error=True, message=str(error)), 400
 
 

@@ -54,14 +54,18 @@ class TasksResource(BaseModelsResource):
             entity = entities_service.get_entity(data["entity_id"])
             if task_type["for_entity"] == "Asset":
                 if not assets_service.is_asset_dict(entity):
-                    raise WrongTaskTypeForEntityException
+                    raise WrongTaskTypeForEntityException(
+                        "Task type of the task does not match entity type."
+                    )
             elif (
                 entities_service.get_temporal_entity_type_by_name(
                     task_type["for_entity"]
                 )["id"]
                 != entity["entity_type_id"]
             ):
-                raise WrongTaskTypeForEntityException
+                raise WrongTaskTypeForEntityException(
+                    "Task type of the task does not match entity type."
+                )
 
             if is_assignees:
                 assignees = data["assignees"]
