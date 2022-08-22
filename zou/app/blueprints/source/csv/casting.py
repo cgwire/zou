@@ -19,6 +19,8 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
         ---
         tags:
           - Import
+        consumes:
+          - multipart/form-data
         parameters:
           - in: path
             name: project_id

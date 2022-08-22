@@ -17,30 +17,30 @@ class EventsResource(Resource, ArgsMixin):
         tags:
           - Events
         parameters:
-          - in: body
-            name: Events
-            schema:
-                type: object
-                properties:
-                    after:
-                        type: string
-                        format: date
-                        example: 2022-07-12
-                    before:
-                        type: string
-                        format: date
-                        example: 2022-07-12
-                    only_files:
-                        type: boolean
-                        default: False
-                    page_size:
-                        type: integer
-                        default: 100
-                        example: 100
-                    project_id:
-                        type: string
-                        format: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: after
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: query
+            name: before
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: query
+            name: only_files
+            type: boolean
+            default: False
+          - in: query
+            name: page_size
+            type: integer
+            default: 100
+            x-example: 100
+          - in: query
+            name: project_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All login logs
@@ -83,18 +83,15 @@ class LoginLogsResource(Resource, ArgsMixin):
         tags:
           - Events
         parameters:
-          - in: body
-            name: Event
-            schema:
-                type: object
-                properties:
-                    before:
-                        type: string
-                        format: date-time
-                        example: 2022-07-12T00:00:00
-                    page_size:
-                        type: integer
-                        example: 100
+          - in: query
+            name: before
+            type: string
+            format: date
+            x-example: "2022-07-12T00:00:00"
+          - in: query
+            name: page_size
+            type: integer
+            x-example: 100
         responses:
             200:
                 description: All login logs

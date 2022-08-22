@@ -541,8 +541,7 @@ class SceneAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all scenes, adds project name and asset type name and all
-        related tasks.
+        Retrieve all scenes, adds project name and asset type name and all related tasks.
         ---
         tags:
         - Shots
@@ -567,8 +566,7 @@ class SequenceAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all sequences, adds project name and asset type name and all
-        related tasks.
+        Retrieve all sequences, adds project name and asset type name and all related tasks.
         ---
         tags:
         - Shots
@@ -593,8 +591,7 @@ class EpisodeAndTasksResource(Resource):
     @jwt_required
     def get(self):
         """
-        Retrieve all episodes, adds project name and asset type name and all
-        related tasks.
+        Retrieve all episodes, adds project name and asset type name and all related tasks.
         ---
         tags:
         - Shots
@@ -654,30 +651,23 @@ class ProjectShotsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Shot
-            description: ID of sequence and name, description, data, number of frames and ID of asset
-            schema:
-                type: object
-                required:
-                - name
-                - description
-                - data
-                - sequence_id
-                - nb_frames
-                properties:
-                    name:
-                        type: string
-                    description:
-                        type: string
-                    data:
-                        type: string
-                    sequence_id:
-                        type: string
-                        format: UUID
-                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
-                    nb_frames:
-                        type: integer
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of shot
+          - in: formData
+            name: description
+            type: string
+            x-example: Description of shot
+          - in: formData
+            name: sequence_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: nb_frames
+            type: integer       
         responses:
             201:
                 description: Shot created for given project
@@ -758,21 +748,16 @@ class ProjectSequencesResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Sequence
-            description: Name and ID of episode
-            schema:
-                type: object
-                required:
-                - name
-                - episode_id
-                properties:
-                    name:
-                        type: string
-                    episode_id:
-                        type: string
-                        format: UUID
-                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of sequence
+          - in: formData
+            name: episode_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Sequence created for given project
@@ -830,16 +815,11 @@ class ProjectEpisodesResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Episode
-            description: Name of episode
-            schema:
-                type: object
-                required:
-                - name
-                properties:
-                    name:
-                        type: string
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of episode
         responses:
             201:
                 description: Episode created for given project
@@ -1186,7 +1166,7 @@ class ProjectScenesResource(Resource):
     @jwt_required
     def get(self, project_id):
         """
-        Retrieve all shots related to a given project.
+        Retrieve all scenes related to a given project.
         ---
         tags:
         - Shots
@@ -1199,7 +1179,7 @@ class ProjectScenesResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: All shots related to given project
+                description: All scenes related to given project
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -1208,7 +1188,7 @@ class ProjectScenesResource(Resource):
     @jwt_required
     def post(self, project_id):
         """
-        Create a shot for given project.
+        Create a scene for given project.
         ---
         tags:
         - Shots
@@ -1219,24 +1199,20 @@ class ProjectScenesResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Shot
-            description: Name of shot and ID of sequence
-            schema:
-                type: object
-                required:
-                - name
-                - sequence_id
-                properties:
-                    name:
-                        type: string
-                    sequence_id:
-                        type: string
-                        format: UUID
-                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of scene
+          - in: formData
+            name: sequence_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25                 
         responses:
             201:
-                description: Shot created for given project
+                description: Scene created for given project
         """
         (sequence_id, name) = self.get_arguments()
         projects_service.get_project(project_id)
@@ -1362,18 +1338,11 @@ class SceneShotsResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Shot
-            description: ID of shot
-            schema:
-                type: object
-                required:
-                - shot_id
-                properties:
-                    shot_id:
-                        type: string
-                        format: UUID
-                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: shot_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given scene marked as source of given shot

@@ -42,6 +42,13 @@ class BaseCsvImportResource(Resource):
         ---
         tags:
           - Import
+        consumes:
+          - multipart/form-data
+        properties:
+          - in: formData
+            name: file
+            type: file
+            required: true
         responses:
             201:
                 description: Persons imported

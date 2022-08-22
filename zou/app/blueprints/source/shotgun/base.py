@@ -32,6 +32,17 @@ class BaseImportShotgunResource(Resource):
         ---
         tags:
           - Import
+        parameters:
+          - in: body
+            name: sg_entries
+            required: True
+            schema:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        id:
+                            type: string
         responses:
             200:
                 description: Resource imported
@@ -163,7 +174,7 @@ class ImportRemoveShotgunBaseResource(Resource):
         tags:
           - Import
         responses:
-            200:
+            204:
                 description: Instance removed
         """
         sg_model = request.json

@@ -164,6 +164,10 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         tags:
           - Previews
         description: "It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file."
+        consumes:
+          - multipart/form-data
+          - image/png
+          - application/pdf
         parameters:
           - in: path
             name: instance_id
@@ -171,6 +175,10 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            required: True
+            type: file
         responses:
             200:
                 description: Preview added
@@ -739,6 +747,10 @@ class BaseCreatePictureResource(Resource):
         ---
         tags:
           - Previews
+        consumes:
+          - multipart/form-data
+          - image/png
+          - application/pdf
         parameters:
           - in: path
             name: instance_id
@@ -746,6 +758,10 @@ class BaseCreatePictureResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            required: True
+            type: file
         responses:
             200:
                 description: Thumbnail created

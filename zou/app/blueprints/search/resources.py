@@ -15,14 +15,14 @@ class SearchResource(Resource, ArgsMixin):
         tags:
         - Search
         parameters:
-          - in: query
+          - in: formData
             name: query
             required: True
             type: string
-            x-example: name of asset
+            x-example: Name of asset or person
         responses:
             200:
-                description: Resource
+                description: List of assets and persons that contain the query (3 results max)
         """
         args = self.get_args([("query", "", True)])
         query = args.get("query")

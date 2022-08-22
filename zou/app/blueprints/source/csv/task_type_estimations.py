@@ -20,7 +20,13 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         ---
         tags:
           - Import
+        consumes:
+          - multipart/form-data
         parameters:
+          - in: formData
+            name: file
+            type: file
+            required: true
           - in: path
             name: project_id
             required: True
@@ -128,7 +134,13 @@ class TaskTypeEstimationsEpisodeCsvImportResource(
         ---
         tags:
           - Import
+        consumes:
+          - multipart/form-data
         parameters:
+          - in: formData
+            name: file
+            type: file
+            required: true
           - in: path
             name: project_id
             required: True

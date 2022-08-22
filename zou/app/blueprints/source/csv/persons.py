@@ -14,6 +14,8 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         ---
         tags:
             - Import
+        consumes:
+          - multipart/form-data
         parameters:
           - in: formData
             name: file

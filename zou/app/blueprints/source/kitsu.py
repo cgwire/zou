@@ -30,6 +30,17 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         ---
         tags:
           - Import
+        parameters:
+          - in: body
+            name: entries
+            required: True
+            schema:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        id:
+                            type: string
         responses:
             200:
                 description: Resource imported
