@@ -30,9 +30,10 @@ jobs:
     - name: Update openapi.json
       run: |
         cd docs
-        curl --output openapi.json https://nehmath.github.io/zou-nehmat/openapi.json
+        curl --output openapi.json https://kitsu-staging.cg-wire.com/api/openapi.json
         git config --global user.email "no-reply@cg-wire.com"
         git config --global user.name "CGWire bot"
+        git add openapi.json || false
         git commit -m "Update openapi.json" || true
     - name: Push changes
       uses: ad-m/github-push-action@master
