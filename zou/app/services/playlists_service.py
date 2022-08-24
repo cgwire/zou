@@ -486,11 +486,10 @@ def build_playlist_zip_file(playlist):
     return zip_file_path
 
 
-def build_playlist_movie_file(playlist, shots, params, full, remote):
+def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     """
     Build a movie for all files for a given playlist into the temporary folder.
     """
-    job = start_build_job(playlist)
     success = False
     try:
         previews = playlist_previews(shots, only_movies=True)
@@ -531,6 +530,10 @@ def build_playlist_movie_file(playlist, shots, params, full, remote):
                 except Exception as exc:
                     current_app.logger.error(exc)
                     success = False
+
+    except Exception as exc:
+        current_app.logger.error(exc)
+        success = False
 
     # exception will be logged by rq
     finally:
@@ -642,7 +645,7 @@ def end_build_job(playlist, job, success):
         return {}
 
 
-def build_playlist_job(playlist, shots, params, email, full, remote):
+def build_playlist_job(playlist, job, shots, params, email, full, remote):
     """
     Build playlist file (concatenate all movie previews). This function is
     aimed at being runned as a job in a job queue.
@@ -650,7 +653,9 @@ def build_playlist_job(playlist, shots, params, email, full, remote):
     from zou.app import app, mail
 
     with app.app_context():
-        job = build_playlist_movie_file(playlist, shots, params, full, remote)
+        build_playlist_movie_file(
+            playlist, job, shots, params, full, remote
+        )
 
         # Just in case, since rq jobs which encounter an error raise an
         # exception in order to be flagged as failed.
