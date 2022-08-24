@@ -289,6 +289,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             for x in playlist["shots"]
         ]
 
+        job = playlists_service.start_build_job(playlist)
         if config.ENABLE_JOB_QUEUE:
             remote = config.ENABLE_JOB_QUEUE_REMOTE
             # remote worker can not access files local to the web app
@@ -299,6 +300,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                 playlists_service.build_playlist_job,
                 args=(
                     playlist,
+                    job,
                     shots,
                     params,
                     current_user["email"],
@@ -310,7 +312,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             return {"job": "running"}
         else:
             job = playlists_service.build_playlist_movie_file(
-                playlist, shots, params, full, remote=False
+                playlist, job, shots, params, full, remote=False
             )
             return {"job": job["status"]}
 
