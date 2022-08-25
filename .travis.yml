@@ -14,7 +14,7 @@ addons:
       - ffmpeg
 install:
   - "pip install -U pip"
-  - "pip install -U "setuptools<=65.1.1""
+  - "pip install -U 'setuptools<=65.1.1'"
   - "pip install -r requirements.txt"
 before_script:
   - psql -c 'create database zoudb;' -U postgres
