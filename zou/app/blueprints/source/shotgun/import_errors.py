@@ -17,7 +17,7 @@ class ShotgunImportErrorsResource(Resource):
         Import shotgun error resource.
         ---
         tags:
-          - Source
+          - Import
         responses:
             200:
                 description: Resource imported
@@ -32,7 +32,7 @@ class ShotgunImportErrorsResource(Resource):
         Serialize shotgun error resource.
         ---
         tags:
-          - Source
+          - Import
         responses:
             200:
                 description: Resource serialized
@@ -52,7 +52,7 @@ class ShotgunImportErrorResource(Resource):
         Delete error.
         ---
         tags:
-          - Source
+          - Import
         parameters:
           - in: path
             name: error_id
@@ -61,7 +61,7 @@ class ShotgunImportErrorResource(Resource):
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
+            204:
                 description: Error deleted
             404:
                 description: Error non-existant or Statement error

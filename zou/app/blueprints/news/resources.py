@@ -21,40 +21,43 @@ class ProjectNewsResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Filter News
-            schema:
-                type: object
-                properties:
-                    only_preview:
-                        type: boolean
-                        default: False
-                    task_type_id:
-                        type: string
-                        format: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_status_id:
-                        type: string
-                        format: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    person_id:
-                        type: string
-                        format: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    page:
-                        type: integer
-                        example: 1
-                    page_size:
-                        type: integer
-                        example: 50
-                    after:
-                        type: string
-                        format: date
-                        example: 2022-07-12
-                    before:
-                        type: string
-                        format: date
-                        example: 2022-07-12
+          - in: query
+            name: before
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: query
+            name: after
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: query
+            name: page
+            type: integer
+            x-example: 1
+          - in: query
+            name: page_size
+            type: integer
+            x-example: 50
+          - in: query
+            name: person_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_status_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: only_preview
+            type: boolean
+            default: False
         responses:
             200:
                 description: All news related to given project

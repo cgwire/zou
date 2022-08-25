@@ -105,6 +105,11 @@ class WorkingFileFileResource(Resource):
         ---
         tags:
           - Files
+        produces:
+          - image/png
+          - image/jpg
+          - image/gif
+          - multipart/form-data
         parameters:
           - in: path
             name: working_file_id
@@ -115,6 +120,8 @@ class WorkingFileFileResource(Resource):
         responses:
             200:
               description: Working file downloaded
+              schema:
+                type: file
         """
         self.check_access(working_file_id)
         return send_storage_file(working_file_id)
@@ -133,6 +140,10 @@ class WorkingFileFileResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            type: file
+            required: True
         responses:
             201:
               description: Working file stored
@@ -591,6 +602,11 @@ class NewWorkingFileResource(Resource):
                      It is the file the CG artist is working on.
                      It is versioned, tied to a task and a software and requires a comment each time it is created.
                      A path is generated for each file created. The path format is defined in the file tree template file.
+        produces:
+          - image/png
+          - image/jpg
+          - image/gif
+          - multipart/form-data
         parameters:
           - in: path
             name: task_id
@@ -631,6 +647,8 @@ class NewWorkingFileResource(Resource):
         responses:
             201:
                 description: New working file created
+                schema:
+                    type: file
             400:
                 description: Given working file already exists
         """
@@ -830,6 +848,11 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                      An output type is required for better categorization (textures, caches, ...).
                      A task type can be set too to give the department related to the output file.
                      Revision is automatically set.
+        produces:
+          - image/png
+          - image/jpg
+          - image/gif
+          - multipart/form-data
         parameters:
           - in: path
             name: entity_id
@@ -888,6 +911,8 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
         responses:
             200:
                 description: New output file created
+                schema:
+                    type: file
             400:
                 description: Given output file already exists
                              Given person not found
@@ -1044,6 +1069,11 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                      It keeps track of the working file at the origin of the output file.
                      An output type is required for better categorization (textures, caches, ...).
                      A task type can be set too to give the department related to the output file.
+        produces:
+          - image/png
+          - image/jpg
+          - image/gif
+          - multipart/form-data
         parameters:
           - in: path
             name: asset_instance_id
@@ -1112,6 +1142,8 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
         responses:
             200:
                 description: New output file created
+                schema:
+                    type: file
             400:
                 description: Given output file already exists
                              Given person not found

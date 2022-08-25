@@ -26,10 +26,21 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
     @jwt_required
     def post(self):
         """
-        Import Kistu resource.
+        Import Kitsu resource.
         ---
         tags:
-          - Source
+          - Import
+        parameters:
+          - in: body
+            name: entries
+            required: True
+            schema:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        id:
+                            type: string
         responses:
             200:
                 description: Resource imported

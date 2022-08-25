@@ -186,6 +186,8 @@ class PlaylistDownloadResource(Resource):
         ---
         tags:
         - Playlists
+        produces:
+          - multipart/form-data
         parameters:
           - in: path
             name: playlist_id
@@ -262,6 +264,8 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
         ---
         tags:
         - Playlists
+        produces:
+          - multipart/form-data
         parameters:
           - in: path
             name: playlist_id
@@ -329,6 +333,8 @@ class PlaylistZipDownloadResource(Resource):
         ---
         tags:
         - Playlists
+        produces:
+          - multipart/form-data
         parameters:
           - in: path
             name: playlist_id
@@ -339,6 +345,8 @@ class PlaylistZipDownloadResource(Resource):
         responses:
             200:
                 description: Given playlist downloaded as zip
+                schema:
+                    type: file
         """
         playlist = playlists_service.get_playlist(playlist_id)
         project = projects_service.get_project(playlist["project_id"])

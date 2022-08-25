@@ -55,6 +55,10 @@ class AddPreviewResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            type: file
+            required: True
         responses:
             201:
                 description: Preview added to given task
@@ -103,6 +107,10 @@ class AddExtraPreviewResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            type: file
+            required: True
         responses:
             201:
                 description: Preview added to given comment
@@ -967,7 +975,7 @@ class SetTimeSpentResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
           - in: path
             name: person_id
             required: True
@@ -1037,7 +1045,7 @@ class AddTimeSpentResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
           - in: path
             name: person_id
             required: True
@@ -1105,7 +1113,7 @@ class GetTimeSpentResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
         responses:
             200:
                 description: Time spent on given task by given person

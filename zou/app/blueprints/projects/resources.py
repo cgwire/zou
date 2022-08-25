@@ -188,6 +188,12 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: asset_type_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Asset type added to production
@@ -280,6 +286,17 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: task_type_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: priority
+            required: False
+            type: string
+            default: "None"
         responses:
             201:
               description: Asset type added to production
@@ -368,6 +385,12 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: task_status_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
               description: Task type added to production
@@ -451,6 +474,12 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: status_automation_id
+            required: True
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
@@ -644,6 +673,26 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            required: True
+            type: string
+            required: False
+          - in: formData
+            name: for_client
+            required: True
+            type: boolean
+            default: False
+            required: False
+          - in: formData
+            name: choices
+            required: True
+            type: array
+            required: False 
+          - in: formData
+            name: departments
+            type: array
+            required: False
         responses:
             200:
               description: Metadata descriptor updated

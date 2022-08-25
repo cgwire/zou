@@ -19,7 +19,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         Import project assets via a .csv file.
         ---
         tags:
-          - Source
+          - Import
+        consumes:
+          - multipart/form-data
         parameters:
           - in: path
             name: project_id
@@ -27,7 +29,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-        - in: formData
+          - in: formData
             name: file
             type: file
             required: true

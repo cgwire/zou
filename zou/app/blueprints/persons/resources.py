@@ -37,30 +37,30 @@ class NewPersonResource(Resource):
         description: Set "default" as password.
                      User role can be set but only admins can create admin users.
         parameters:
-          - in: body
-            name: User
-            description: Email, first and last name, phone, role, desktop login and department of user
-            schema:
-                type: object
-                required:
-                - email
-                - first_name
-                properties:
-                    email:
-                        type: string
-                    first_name:
-                        type: string
-                    last_name:
-                        type: string
-                    phone:
-                        type: integer
-                        example: 06 12 34 56 78
-                    role:
-                        type: string
-                    desktop_login:
-                        type: string
-                    departments:
-                        type: string
+          - in: formData
+            name: email
+            required: True
+            type: string
+            format: email
+            x-example: admin@example.com
+          - in: formData
+            name: phone
+            required: False
+            type: integer
+            x-example: 06 12 34 56 78
+          - in: formData
+            name: role
+            required: False
+            type: string
+            x-example: user
+          - in: formData
+            name: first_name
+            required: True
+            type: string
+          - in: formData
+            name: last_name
+            required: False
+            type: string
         responses:
             201:
                 description: User created
@@ -155,17 +155,12 @@ class DesktopLoginsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Date
-            schema:
-                type: object
-                required:
-                - date
-                properties:
-                    date:
-                        type: string
-                        format: date
-                        example: 2022-07-12
+          - in: formDara
+            name: date
+            required: True
+            type: string
+            format: date
+            x-example: "2022-07-12"
         responses:
             201:
                 description: Desktop login logs created
@@ -209,7 +204,7 @@ class PresenceLogsResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07
+            x-example: "2022-07"
         responses:
             200:
                 description: CSV file containing the presence logs based on a daily basis
@@ -246,7 +241,7 @@ class TimeSpentsResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
         responses:
             200:
                 description: Time spents for given person and date
@@ -289,7 +284,7 @@ class DayOffResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
         responses:
             200:
                 description: Day off object for given person and date
@@ -331,7 +326,7 @@ class PersonYearTimeSpentsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
         responses:
             200:
                 description: Aggregated time spents for given person and year
@@ -371,7 +366,7 @@ class PersonMonthTimeSpentsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -418,7 +413,7 @@ class PersonWeekTimeSpentsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: week
             required: True
@@ -465,7 +460,7 @@ class PersonDayTimeSpentsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -519,7 +514,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -573,7 +568,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: week
             required: True
@@ -627,7 +622,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -684,7 +679,7 @@ class TimeSpentMonthResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -747,7 +742,7 @@ class TimeSpentMonthsResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
         responses:
             200:
                 description: Table giving time spent by user and by month for given year
@@ -778,7 +773,7 @@ class TimeSpentWeekResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
         responses:
             200:
                 description: Table giving time spent by user and by week for given year
@@ -837,7 +832,7 @@ class DayOffForMonthResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -881,7 +876,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: week
             required: True
@@ -924,7 +919,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
           - in: path
             name: month
             required: True
@@ -967,7 +962,7 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: 2022
+            x-example: "2022"
         responses:
             200:
                 description: All day off recorded for given year and person

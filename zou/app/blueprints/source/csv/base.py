@@ -41,7 +41,14 @@ class BaseCsvImportResource(Resource):
         Import persons as csv.
         ---
         tags:
-          - Source
+          - Import
+        consumes:
+          - multipart/form-data
+        properties:
+          - in: formData
+            name: file
+            type: file
+            required: true
         responses:
             201:
                 description: Persons imported

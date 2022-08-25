@@ -18,7 +18,9 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
         Import project casting links via a .csv file.
         ---
         tags:
-          - Source
+          - Import
+        consumes:
+          - multipart/form-data
         parameters:
           - in: path
             name: project_id

@@ -220,20 +220,18 @@ class LoginResource(Resource):
         tags:
             - Authentication
         parameters:
-          - in: body
-            name: Credentials
-            description: The email and password of the user
-            schema:
-                type: object
-                required:
-                - email
-                - password
-                properties:
-                    email:
-                        type: string
-                        format: email
-                    password:
-                        type: string
+          - in: formData
+            name: email
+            required: True
+            type: string
+            format: email
+            x-example: admin@example.com
+          - in: formData
+            name: password
+            required: True
+            type: string
+            format: password
+            x-example: mysecretpassword
         responses:
           200:
             description: Login successful
@@ -391,30 +389,30 @@ class RegistrationResource(Resource):
         tags:
             - Authentication
         parameters:
-          - in: body
-            name: Credentials
-            description: The email, password, confirmation password, first name and last name of the user
-            schema:
-                type: object
-                required:
-                - email
-                - password
-                - password_2
-                - first_name
-                - last_name
-                properties:
-                    email:
-                        type: string
-                        format: email
-                    password:
-                        type: string
-                    password_2:
-                        type: string
-                    first_name:
-                        type: string
-                    last_name:
-                        type: string
-
+          - in: formData
+            name: email
+            required: True
+            type: string
+            format: email
+            x-example: admin@example.com
+          - in: formData
+            name: password
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: password_2
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: first_name
+            required: True
+            type: string
+          - in: formData
+            name: last_name
+            required: True
+            type: string
         responses:
           201:
             description: Registration successful
@@ -501,23 +499,21 @@ class ChangePasswordResource(Resource):
         tags:
             - Authentication
         parameters:
-          - in: body
-            name: Credentials
-            description: The old password, new password and confirmation password of the user
-            schema:
-                type: object
-                required:
-                - old_password
-                - password
-                - password_2
-                properties:
-                    old_password:
-                        type: string
-                    password:
-                        type: string
-                    password_2:
-                        type: string
-
+          - in: formData
+            name: old_password
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: password
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: password_2
+            required: True
+            type: string
+            format: password
         responses:
           200:
             description: Password changed
@@ -582,25 +578,21 @@ class ResetPasswordResource(Resource, ArgsMixin):
         tags:
             - Authentication
         parameters:
-          - in: body
-            name: Credentials
-            description: The token, new password and confirmation password of the user
-            schema:
-                type: object
-                required:
-                - token
-                - password
-                - password_2
-                properties:
-                    token:
-                        type: string
-                        format: UUID
-                        x-example: a24a6ea4-ce75-4665-a070-57453082c25
-                    password:
-                        type: string
-                    password_2:
-                        type: string
-
+          - in: formData
+            name: token
+            required: True
+            type: string
+            format: JWT token
+          - in: formData
+            name: password
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: password_2
+            required: True
+            type: string
+            format: password
         responses:
           200:
             description: Password reset
@@ -646,18 +638,12 @@ class ResetPasswordResource(Resource, ArgsMixin):
         tags:
             - Authentication
         parameters:
-          - in: body
-            name: Email
-            description: The email of the user
-            schema:
-                type: object
-                required:
-                - email
-                properties:
-                    email:
-                        type: string
-                        format: email
-
+          - in: formData
+            name: email
+            required: True
+            type: string
+            format: email
+            x-example: admin@example.com
         responses:
           200:
             description: Reset token sent

@@ -497,28 +497,29 @@ class FiltersResource(Resource, ArgsMixin):
         tags:
         - User
         parameters:
-          - in: body
-            name: Filter
-            description: Name, query, list type, project id and entity type
-            schema:
-                type: object
-                required:
-                    - name
-                    - query
-                    - list_type
-                properties:
-                    name:
-                        type: string
-                    query:
-                        type: string
-                    list_type:
-                        type: string
-                    project_id:
-                        type: string
-                        format: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    entity_type:
-                        type: string
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of filter
+          - in: formData
+            name: query
+            required: True
+            type: string
+          - in: formData
+            name: list_type
+            required: True
+            type: string
+          - in: formData
+            name: entity_type
+            required: False
+            type: string
+          - in: formData
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Filter for current user and only for open projects created
@@ -632,15 +633,11 @@ class DesktopLoginLogsResource(Resource):
         - User
         description: Desktop login logs can only be created by current user.
         parameters:
-          - in: body
-            name: Date
-            schema:
-                type: object
-                properties:
-                    date:
-                        type: string
-                        format: date
-                        example: 2022-07-12
+          - in: formData
+            name: date
+            type: string
+            format: date
+            x-example: "2022-07-12"
         responses:
             201:
                 description: Desktop login logs created
@@ -665,33 +662,18 @@ class NotificationsResource(Resource, ArgsMixin):
         Return last 100 user notifications filtered by given parameters.
         ---
         tags:
-        - User
+          - User
         parameters:
-          - in: query
+          - in: formData
             name: after
             type: string
             format: date
-            x-example: 2022-07-12
-          - in: query
+            x-example: "2022-07-12"
+          - in: formData
             name: before
             type: string
             format: date
-            x-example: 2022-08-12
-          - in: query
-            name: task_type_id
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: task_status_id
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: type
-            type: string
-            format: UUID
-            x-example: mention, comment, assignation or reply
+            x-example: "2022-07-12"
         responses:
             200:
                 description: 100 last user notifications
@@ -1011,7 +993,7 @@ class TaskTimeSpentResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
         responses:
             200:
                 description:  Time spents for current user and given date
@@ -1045,7 +1027,7 @@ class DayOffResource(Resource):
             required: True
             type: string
             format: date
-            x-example: 2022-07-12
+            x-example: "2022-07-12"
         responses:
             200:
                 description:  Day off object for current user and given date
@@ -1070,8 +1052,7 @@ class ContextResource(Resource):
           - User
         responses:
             200:
-                description: Context to properly run a full app connected to
-                the API
+                description: Context to properly run a full app connected to the API
         """
         return user_service.get_context()
 
@@ -1087,7 +1068,7 @@ class ClearAvatarResource(Resource):
           - User
         responses:
             204:
-                description:
+                description: Avatar file deleted
         """
         user = persons_service.get_current_user()
         persons_service.clear_avatar(user["id"])

@@ -83,6 +83,16 @@ class EditsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: name
+            required: False
+            type: string
+            x-example: Name of edit
+          - in: query
+            name: force
+            required: False
+            type: boolean
+            default: False
         responses:
             200:
                 description: All edit entries
@@ -112,6 +122,16 @@ class AllEditsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: name
+            required: False
+            type: string
+            x-example: Name of edit
+          - in: query
+            name: force
+            required: False
+            type: boolean
+            default: False
         responses:
             200:
                 description: All edit entries
@@ -275,6 +295,16 @@ class EditsAndTasksResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: name
+            required: False
+            type: string
+            x-example: Name of edit
+          - in: query
+            name: force
+            required: False
+            type: boolean
+            default: False
         responses:
             200:
                 description: All edits and all related tasks.
@@ -327,26 +357,20 @@ class ProjectEditsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Edit
-            description: Name and description of edit, data and ID of episode.
-            schema:
-                type: object
-                required:
-                - name
-                properties:
-                    name:
-                        type: string
-                    description:
-                        type: string
-                    data:
-                        type: array
-                        items:
-                            type: string
-                    episode_id:
-                        type: string
-                        format: UUID
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of edit
+          - in: formData
+            name: description
+            type: string
+            x-example: Description of edit
+          - in: formData
+            name: episode_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Edit created for given project

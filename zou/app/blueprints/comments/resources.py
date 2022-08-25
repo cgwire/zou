@@ -23,6 +23,11 @@ class DownloadAttachmentResource(Resource):
         ---
         tags:
         - Comments
+        produces:
+          - multipart/form-data
+          - image/png
+          - image/gif
+          - image/jpeg
         parameters:
           - in: path
             name: attachment_file_id
@@ -38,6 +43,8 @@ class DownloadAttachmentResource(Resource):
         responses:
             200:
                 description: Attachment file downloaded
+                schema:
+                    type: file
             404:
                 description: Download failed
         """
@@ -144,11 +151,12 @@ class CommentTaskResource(Resource):
                     created_at:
                         type: string
                         format: date-time
-                        example: 2022-07-12T13:00:00
+                        example: "2022-07-12T13:00:00"
                     checklist:
-                        type: array
-                        items:
-                            type: string
+                        type: object
+                        properties:
+                            item 1:
+                                type: string
         responses:
             201:
                 description: New comment created
@@ -221,6 +229,11 @@ class AddAttachmentToCommentResource(Resource):
         ---
         tags:
         - Comments
+        consumes:
+          - image/png
+          - image/gif
+          - image/jpeg
+          - multipart/form-data
         parameters:
           - in: path
             name: task_id
@@ -234,6 +247,10 @@ class AddAttachmentToCommentResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: files
+            type: file
+            required: True
         responses:
             201:
                 description: Given files added to the comment entry as attachments
@@ -270,6 +287,37 @@ class CommentManyTasksResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Comment
+            description: person ID, name, comment, revision and change status of task
+            schema:
+                type: object
+                required:
+                    - task_status_id
+                properties:
+                    task_status_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
+                    comment:
+                        type: string
+                    person_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
+                    object_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
+                    created_at:
+                        type: string
+                        format: date-time
+                        example: "2022-07-12T13:00:00"
+                    checklist:
+                        type: object
+                        properties:
+                            item 1:
+                                type: string
         responses:
             201:
                 description: Given files added to the comment entry as attachments
@@ -348,6 +396,10 @@ class ReplyCommentResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: text
+            type: string
+            x-example: comment
         responses:
             200:
                 description: Reply to given comment

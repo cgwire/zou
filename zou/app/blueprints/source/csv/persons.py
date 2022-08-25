@@ -13,9 +13,11 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         Import persons via a .csv file.
         ---
         tags:
-            - Source
+            - Import
+        consumes:
+          - multipart/form-data
         parameters:
-        - in: formData
+          - in: formData
             name: file
             type: file
             required: true
