@@ -1,6 +1,6 @@
 language: python
 dist: bionic
-sudo: required
+os: linux
 python:
   - "3.6"
   - "3.8"
@@ -13,7 +13,8 @@ addons:
     packages:
       - ffmpeg
 install:
-  - "pip install -U setuptools"
+  - "pip install -U pip"
+  - "pip install setuptools==65.1.1"
   - "pip install -r requirements.txt"
 before_script:
   - psql -c 'create database zoudb;' -U postgres
