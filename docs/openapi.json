@@ -73,7 +73,7 @@
       }, 
       "type": "object"
     }, 
-    "Asset instance": {
+    "AssetInstance": {
       "properties": {
         "active": {
           "default": "True", 
@@ -111,7 +111,7 @@
       }, 
       "type": "object"
     }, 
-    "Asset type": {
+    "AssetType": {
       "properties": {
         "name": {
           "type": "string"
@@ -119,7 +119,7 @@
       }, 
       "type": "object"
     }, 
-    "Attachment file": {
+    "AttachmentFile": {
       "properties": {
         "comment_id": {
           "description": "Comment to which the file is attached", 
@@ -144,7 +144,7 @@
       }, 
       "type": "object"
     }, 
-    "Build job": {
+    "BuildJob": {
       "properties": {
         "ended_at": {
           "format": "date-time", 
@@ -219,7 +219,7 @@
       }, 
       "type": "object"
     }, 
-    "Custom action": {
+    "CustomAction": {
       "properties": {
         "entity_type": {
           "default": "all", 
@@ -240,7 +240,7 @@
       }, 
       "type": "object"
     }, 
-    "Data import error": {
+    "DataImportError": {
       "properties": {
         "event_data": {
           "description": "JSON field to add event data", 
@@ -260,7 +260,7 @@
       }, 
       "type": "object"
     }, 
-    "Day off": {
+    "DayOff": {
       "properties": {
         "date": {
           "format": "date", 
@@ -287,7 +287,7 @@
       }, 
       "type": "object"
     }, 
-    "Desktop login log": {
+    "DesktopLoginLog": {
       "properties": {
         "date": {
           "format": "date", 
@@ -371,7 +371,7 @@
       }, 
       "type": "object"
     }, 
-    "File status": {
+    "FileStatus": {
       "properties": {
         "color": {
           "type": "string"
@@ -382,7 +382,7 @@
       }, 
       "type": "object"
     }, 
-    "Login log": {
+    "LoginLog": {
       "properties": {
         "ip_address": {
           "description": "IP address of device used to login", 
@@ -565,7 +565,7 @@
       }, 
       "type": "object"
     }, 
-    "Output file": {
+    "OutputFile": {
       "properties": {
         "asset_instance_id": {
           "description": "Asset instance ID", 
@@ -667,7 +667,7 @@
       }, 
       "type": "object"
     }, 
-    "Output type": {
+    "OutputType": {
       "properties": {
         "name": {
           "type": "string"
@@ -799,7 +799,7 @@
       }, 
       "type": "object"
     }, 
-    "Preview file": {
+    "PreviewFile": {
       "properties": {
         "asset_instance_id": {
           "description": "Asset instance ID", 
@@ -997,7 +997,7 @@
       }, 
       "type": "object"
     }, 
-    "Project status": {
+    "ProjectStatus": {
       "properties": {
         "color": {
           "type": "string"
@@ -1008,7 +1008,7 @@
       }, 
       "type": "object"
     }, 
-    "Schedule item": {
+    "ScheduleItem": {
       "properties": {
         "end_date": {
           "format": "date", 
@@ -1040,7 +1040,7 @@
       }, 
       "type": "object"
     }, 
-    "Search filter": {
+    "SearchFilter": {
       "properties": {
         "entity_type": {
           "description": "Type of entity", 
@@ -1199,7 +1199,7 @@
       }, 
       "type": "object"
     }, 
-    "Status automation": {
+    "StatusAutomation": {
       "properties": {
         "entity_type": {
           "default": "asset", 
@@ -1232,7 +1232,7 @@
       }, 
       "type": "object"
     }, 
-    "Subscription to notifications": {
+    "SubscriptionToNotifications": {
       "properties": {
         "entity_id": {
           "description": "Entity ID", 
@@ -1359,7 +1359,7 @@
       }, 
       "type": "object"
     }, 
-    "Task status": {
+    "TaskStatus": {
       "properties": {
         "color": {
           "type": "string"
@@ -1409,7 +1409,7 @@
       }, 
       "type": "object"
     }, 
-    "Task type": {
+    "TaskType": {
       "properties": {
         "allow_timelog": {
           "default": "True", 
@@ -1449,7 +1449,7 @@
       }, 
       "type": "object"
     }, 
-    "Time spent": {
+    "TimeSpent": {
       "properties": {
         "date": {
           "format": "date", 
@@ -1471,7 +1471,7 @@
       }, 
       "type": "object"
     }, 
-    "Working file": {
+    "WorkingFile": {
       "properties": {
         "checksum": {
           "description": "Checksum of working file", 
@@ -1534,21 +1534,23 @@
       "type": "object"
     }
   }, 
+  "externalDocs": {
+    "description": "Read the installation documentation", 
+    "url": "https://zou.cg-wire.com"
+  }, 
   "host": "localhost:8080", 
   "info": {
     "contact": {
-      "email": "support@cg-wire.com", 
       "name": "CGWire", 
       "url": "https://www.cg-wire.com"
     }, 
-    "description": "## Welcome to Zou (Kitsu API) documentation \n```Version: 0.14.22``` \n\nZou is an API that allows to store and manage the data of your CG production. Through it you can link all the tools of your pipeline and make sure they are all synchronized.\n\n To integrate it in your tools you can rely on the dedicated Python client named [Gazu](https://gazu.cg-wire.com/).\n\nThe source is available on [Github](https://github.com/cgwire/zou).\n\n## Who is it for?\n\nThe audience for Zou is made of Technical Directors, ITs and Software Engineers from CG studios. With Zou they can enhance the tools they provide to all departments.\n\nOn top of it, you can deploy Kitsu, the production tracker developed by CGWire.\n\n## Features\n\nZou can:\n\n* Store production data: projects, shots, assets, tasks, files metadata and validations.\n* Provide folder and file paths for any task.\n* Data import from Shotgun or CSV files.\n* Export main data to CSV files.\n* Provide helpers to manage task workflow (start, publish, retake).\n* Provide an event system to plug external modules on it.\n\n[OpenAPI definition](/openapi.json)", 
+    "description": "## Welcome to Kitsu API specification \n```Version: 0.15.1``` \n\n The Kitsu API allows to store and manage the data of your animation/VFX production. Through it you can link all the tools of your pipeline and make sure they are all synchronized. \n\n## Authentication\n\n<div class=\"auth\"><p>Before you can use any of the endpoints outline below, you will have to get a JWT to authorize your requests.\n\nYou can get a authorization token using a (form-encoded) POST request to ```/auth/login```. With curl this would look something like ```curl -X POST <server_address>/auth/login -d \"email=<youremail>&password=<yourpassword>```.\n\nThe response is a JSON object, specifically you'll need to provide the ```access_token``` for your future requests.\n\nHere is a complete authentication process as an example (again using curl):\n\n```\n$ curl -X POST <server_address>/api/auth/login -d \"email=<youremail>&password=<yourpassword>{\"login\": true\", \"access_token\": \"eyJ0e...\", ...}\n\n$ jwt=eyJ0e...  # Store the access token for easier use\n\n$ curl -H \"Authorization: Bearer $jwt\" <server_address>/api/data/projects\n[{...},\n {...}]\n ``` \n\n [OpenAPI definition](/openapi.json)\n", 
     "license": {
       "name": "AGPL 3.0", 
       "url": "https://www.gnu.org/licenses/agpl-3.0.en.html"
     }, 
-    "termsOfService": "https://www.cg-wire.com/terms.html", 
     "title": "Kitsu API", 
-    "version": "0.14.22"
+    "version": "0.15.1"
   }, 
   "paths": {
     "/": {
@@ -1988,6 +1990,50 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "description": "person ID, name, comment, revision and change status of task", 
+            "in": "body", 
+            "name": "Comment", 
+            "schema": {
+              "properties": {
+                "checklist": {
+                  "properties": {
+                    "item 1": {
+                      "type": "string"
+                    }
+                  }, 
+                  "type": "object"
+                }, 
+                "comment": {
+                  "type": "string"
+                }, 
+                "created_at": {
+                  "example": "2022-07-12T13:00:00", 
+                  "format": "date-time", 
+                  "type": "string"
+                }, 
+                "object_id": {
+                  "example": "a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25", 
+                  "format": "UUID", 
+                  "type": "string"
+                }, 
+                "person_id": {
+                  "example": "a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25", 
+                  "format": "UUID", 
+                  "type": "string"
+                }, 
+                "task_status_id": {
+                  "example": "a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25", 
+                  "format": "UUID", 
+                  "type": "string"
+                }
+              }, 
+              "required": [
+                "task_status_id"
+              ], 
+              "type": "object"
+            }
           }
         ], 
         "responses": {
@@ -2102,16 +2148,18 @@
             "schema": {
               "properties": {
                 "checklist": {
-                  "items": {
-                    "type": "string"
+                  "properties": {
+                    "item 1": {
+                      "type": "string"
+                    }
                   }, 
-                  "type": "array"
+                  "type": "object"
                 }, 
                 "comment": {
                   "type": "string"
                 }, 
                 "created_at": {
-                  "example": "Tue, 12 Jul 2022 13:00:00 GMT", 
+                  "example": "2022-07-12T13:00:00", 
                   "format": "date-time", 
                   "type": "string"
                 }, 
@@ -2146,6 +2194,12 @@
     }, 
     "/actions/tasks/{task_id}/comments/{comment_id}/add-attachment": {
       "post": {
+        "consumes": [
+          "image/png", 
+          "image/gif", 
+          "image/jpeg", 
+          "multipart/form-data"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -2162,6 +2216,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "files", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -2194,6 +2254,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -2270,6 +2336,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -2300,7 +2372,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -2334,7 +2406,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }, 
           {
             "format": "UUID", 
@@ -2388,7 +2460,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }, 
           {
             "format": "UUID", 
@@ -2476,6 +2548,20 @@
         "summary": "Change a task status to \"to review\".", 
         "tags": [
           "Tasks"
+        ]
+      }
+    }, 
+    "/actions/user/clear-avatar": {
+      "delete": {
+        "description": "file.<br/>", 
+        "responses": {
+          "204": {
+            "description": "Avatar file deleted"
+          }
+        }, 
+        "summary": "Set `has_avatar` flag to False for current user and remove its avatar", 
+        "tags": [
+          "User"
         ]
       }
     }, 
@@ -2673,28 +2759,25 @@
         "description": "Prior to modifying the password, it requires to give the current password (to make sure the user changing the password is not someone who stealed the session). The new password requires a confirmation to ensure that the user didn't make a mistake by typing his new password.", 
         "parameters": [
           {
-            "description": "The old password, new password and confirmation password of the user", 
-            "in": "body", 
-            "name": "Credentials", 
-            "schema": {
-              "properties": {
-                "old_password": {
-                  "type": "string"
-                }, 
-                "password": {
-                  "type": "string"
-                }, 
-                "password_2": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "old_password", 
-                "password", 
-                "password_2"
-              ], 
-              "type": "object"
-            }
+            "format": "password", 
+            "in": "formData", 
+            "name": "old_password", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password_2", 
+            "required": true, 
+            "type": "string"
           }
         ], 
         "responses": {
@@ -2716,25 +2799,20 @@
         "description": "Login is based on email and password. If no user match given email and a destkop ID, it looks in matching the desktop ID with the one stored in database. It is useful for clients that run on desktop tools and that don't know user email.", 
         "parameters": [
           {
-            "description": "The email and password of the user", 
-            "in": "body", 
-            "name": "Credentials", 
-            "schema": {
-              "properties": {
-                "email": {
-                  "format": "email", 
-                  "type": "string"
-                }, 
-                "password": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "email", 
-                "password"
-              ], 
-              "type": "object"
-            }
+            "format": "email", 
+            "in": "formData", 
+            "name": "email", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "admin@example.com"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "mysecretpassword"
           }
         ], 
         "responses": {
@@ -2789,37 +2867,38 @@
       "post": {
         "parameters": [
           {
-            "description": "The email, password, confirmation password, first name and last name of the user", 
-            "in": "body", 
-            "name": "Credentials", 
-            "schema": {
-              "properties": {
-                "email": {
-                  "format": "email", 
-                  "type": "string"
-                }, 
-                "first_name": {
-                  "type": "string"
-                }, 
-                "last_name": {
-                  "type": "string"
-                }, 
-                "password": {
-                  "type": "string"
-                }, 
-                "password_2": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "email", 
-                "password", 
-                "password_2", 
-                "first_name", 
-                "last_name"
-              ], 
-              "type": "object"
-            }
+            "format": "email", 
+            "in": "formData", 
+            "name": "email", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "admin@example.com"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password_2", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "in": "formData", 
+            "name": "first_name", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "in": "formData", 
+            "name": "last_name", 
+            "required": true, 
+            "type": "string"
           }
         ], 
         "responses": {
@@ -2841,21 +2920,12 @@
         "description": "It uses a classic scheme: a token is sent by email to the user. Then he can change his password.", 
         "parameters": [
           {
-            "description": "The email of the user", 
-            "in": "body", 
-            "name": "Email", 
-            "schema": {
-              "properties": {
-                "email": {
-                  "format": "email", 
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "email"
-              ], 
-              "type": "object"
-            }
+            "format": "email", 
+            "in": "formData", 
+            "name": "email", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "admin@example.com"
           }
         ], 
         "responses": {
@@ -2875,30 +2945,25 @@
         "description": "It uses a classic scheme: a token is sent by email to the user. Then he can change his password.", 
         "parameters": [
           {
-            "description": "The token, new password and confirmation password of the user", 
-            "in": "body", 
-            "name": "Credentials", 
-            "schema": {
-              "properties": {
-                "password": {
-                  "type": "string"
-                }, 
-                "password_2": {
-                  "type": "string"
-                }, 
-                "token": {
-                  "format": "UUID", 
-                  "type": "string", 
-                  "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
-                }
-              }, 
-              "required": [
-                "token", 
-                "password", 
-                "password_2"
-              ], 
-              "type": "object"
-            }
+            "format": "JWT token", 
+            "in": "formData", 
+            "name": "token", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "format": "password", 
+            "in": "formData", 
+            "name": "password_2", 
+            "required": true, 
+            "type": "string"
           }
         ], 
         "responses": {
@@ -3198,9 +3263,18 @@
             }
           }
         ], 
+        "produces": [
+          "image/png", 
+          "image/jpg", 
+          "image/gif", 
+          "multipart/form-data"
+        ], 
         "responses": {
           "200": {
-            "description": "New output file created"
+            "description": "New output file created", 
+            "schema": {
+              "type": "file"
+            }
           }, 
           "400": {
             "description": "Given output file already exists Given person not found Given output type not found"
@@ -3909,9 +3983,18 @@
             "x-example": "filename"
           }
         ], 
+        "produces": [
+          "multipart/form-data", 
+          "image/png", 
+          "image/gif", 
+          "image/jpeg"
+        ], 
         "responses": {
           "200": {
-            "description": "Attachment file downloaded"
+            "description": "Attachment file downloaded", 
+            "schema": {
+              "type": "file"
+            }
           }, 
           "404": {
             "description": "Download failed"
@@ -4703,6 +4786,20 @@
             "required": false, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "query", 
+            "name": "name", 
+            "required": false, 
+            "type": "string", 
+            "x-example": "Name of edit"
+          }, 
+          {
+            "default": false, 
+            "in": "query", 
+            "name": "force", 
+            "required": false, 
+            "type": "boolean"
           }
         ], 
         "responses": {
@@ -4727,6 +4824,20 @@
             "required": false, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "query", 
+            "name": "name", 
+            "required": false, 
+            "type": "string", 
+            "x-example": "Name of edit"
+          }, 
+          {
+            "default": false, 
+            "in": "query", 
+            "name": "force", 
+            "required": false, 
+            "type": "boolean"
           }
         ], 
         "responses": {
@@ -4750,6 +4861,20 @@
             "required": false, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "query", 
+            "name": "name", 
+            "required": false, 
+            "type": "string", 
+            "x-example": "Name of edit"
+          }, 
+          {
+            "default": false, 
+            "in": "query", 
+            "name": "force", 
+            "required": false, 
+            "type": "boolean"
           }
         ], 
         "responses": {
@@ -5187,9 +5312,18 @@
             }
           }
         ], 
+        "produces": [
+          "image/png", 
+          "image/jpg", 
+          "image/gif", 
+          "multipart/form-data"
+        ], 
         "responses": {
           "200": {
-            "description": "New output file created"
+            "description": "New output file created", 
+            "schema": {
+              "type": "file"
+            }
           }, 
           "400": {
             "description": "Given output file already exists Given person not found Given output type not found"
@@ -5844,7 +5978,6 @@
     }, 
     "/data/episodes/with-tasks": {
       "get": {
-        "description": "related tasks.<br/>", 
         "parameters": [
           {
             "format": "UUID", 
@@ -5860,7 +5993,7 @@
             "description": "All episodes"
           }
         }, 
-        "summary": "Retrieve all episodes, adds project name and asset type name and all", 
+        "summary": "Retrieve all episodes, adds project name and asset type name and all related tasks.", 
         "tags": [
           "Shots"
         ]
@@ -6174,37 +6307,38 @@
       "get": {
         "parameters": [
           {
-            "in": "body", 
-            "name": "Events", 
-            "schema": {
-              "properties": {
-                "after": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }, 
-                "before": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }, 
-                "only_files": {
-                  "default": false, 
-                  "type": "boolean"
-                }, 
-                "page_size": {
-                  "default": 100, 
-                  "example": 100, 
-                  "type": "integer"
-                }, 
-                "project_id": {
-                  "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
-                  "format": "UUID", 
-                  "type": "string"
-                }
-              }, 
-              "type": "object"
-            }
+            "format": "date", 
+            "in": "query", 
+            "name": "after", 
+            "type": "string", 
+            "x-example": "2022-07-12"
+          }, 
+          {
+            "format": "date", 
+            "in": "query", 
+            "name": "before", 
+            "type": "string", 
+            "x-example": "2022-07-12"
+          }, 
+          {
+            "default": false, 
+            "in": "query", 
+            "name": "only_files", 
+            "type": "boolean"
+          }, 
+          {
+            "default": 100, 
+            "in": "query", 
+            "name": "page_size", 
+            "type": "integer", 
+            "x-example": 100
+          }, 
+          {
+            "format": "UUID", 
+            "in": "query", 
+            "name": "project_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
@@ -6222,22 +6356,17 @@
       "get": {
         "parameters": [
           {
-            "in": "body", 
-            "name": "Event", 
-            "schema": {
-              "properties": {
-                "before": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date-time", 
-                  "type": "string"
-                }, 
-                "page_size": {
-                  "example": 100, 
-                  "type": "integer"
-                }
-              }, 
-              "type": "object"
-            }
+            "format": "date", 
+            "in": "query", 
+            "name": "before", 
+            "type": "string", 
+            "x-example": "2022-07-12T00:00:00"
+          }, 
+          {
+            "in": "query", 
+            "name": "page_size", 
+            "type": "integer", 
+            "x-example": 100
           }
         ], 
         "responses": {
@@ -7884,7 +8013,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -7912,40 +8041,38 @@
         "description": "Set \"default\" as password. User role can be set but only admins can create admin users.", 
         "parameters": [
           {
-            "description": "Email, first and last name, phone, role, desktop login and department of user", 
-            "in": "body", 
-            "name": "User", 
-            "schema": {
-              "properties": {
-                "departments": {
-                  "type": "string"
-                }, 
-                "desktop_login": {
-                  "type": "string"
-                }, 
-                "email": {
-                  "type": "string"
-                }, 
-                "first_name": {
-                  "type": "string"
-                }, 
-                "last_name": {
-                  "type": "string"
-                }, 
-                "phone": {
-                  "example": "06 12 34 56 78", 
-                  "type": "integer"
-                }, 
-                "role": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "email", 
-                "first_name"
-              ], 
-              "type": "object"
-            }
+            "format": "email", 
+            "in": "formData", 
+            "name": "email", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "admin@example.com"
+          }, 
+          {
+            "in": "formData", 
+            "name": "phone", 
+            "required": false, 
+            "type": "integer", 
+            "x-example": "06 12 34 56 78"
+          }, 
+          {
+            "in": "formData", 
+            "name": "role", 
+            "required": false, 
+            "type": "string", 
+            "x-example": "user"
+          }, 
+          {
+            "in": "formData", 
+            "name": "first_name", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "in": "formData", 
+            "name": "last_name", 
+            "required": false, 
+            "type": "string"
           }
         ], 
         "responses": {
@@ -7990,7 +8117,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8021,7 +8148,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }
         ], 
         "responses": {
@@ -8043,7 +8170,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }
         ], 
         "responses": {
@@ -8170,7 +8297,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8209,7 +8336,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8248,7 +8375,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }
         ], 
         "responses": {
@@ -8279,7 +8406,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -8331,21 +8458,12 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "in": "body", 
-            "name": "Date", 
-            "schema": {
-              "properties": {
-                "date": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "date"
-              ], 
-              "type": "object"
-            }
+            "format": "date", 
+            "in": "formDara", 
+            "name": "date", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -8399,7 +8517,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8450,7 +8568,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8492,7 +8610,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8588,7 +8706,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8639,7 +8757,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8681,7 +8799,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }, 
           {
             "in": "path", 
@@ -8723,7 +8841,7 @@
             "name": "year", 
             "required": true, 
             "type": "integer", 
-            "x-example": 2022
+            "x-example": "2022"
           }
         ], 
         "responses": {
@@ -8757,7 +8875,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -9001,6 +9119,9 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
+        "produces": [
+          "multipart/form-data"
+        ], 
         "responses": {
           "200": {
             "description": "Given playlist built as mp4 movie"
@@ -9024,9 +9145,15 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
+        "produces": [
+          "multipart/form-data"
+        ], 
         "responses": {
           "200": {
-            "description": "Given playlist downloaded as zip"
+            "description": "Given playlist downloaded as zip", 
+            "schema": {
+              "type": "file"
+            }
           }
         }, 
         "summary": "Download given playlist as zip.", 
@@ -9114,6 +9241,9 @@
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
+        ], 
+        "produces": [
+          "multipart/form-data"
         ], 
         "responses": {
           "200": {
@@ -9964,34 +10094,24 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "description": "Name and description of edit, data and ID of episode.", 
-            "in": "body", 
-            "name": "Edit", 
-            "schema": {
-              "properties": {
-                "data": {
-                  "items": {
-                    "type": "string"
-                  }, 
-                  "type": "array"
-                }, 
-                "description": {
-                  "type": "string"
-                }, 
-                "episode_id": {
-                  "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
-                  "format": "UUID", 
-                  "type": "string"
-                }, 
-                "name": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "name"
-              ], 
-              "type": "object"
-            }
+            "in": "formData", 
+            "name": "name", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "Name of edit"
+          }, 
+          {
+            "in": "formData", 
+            "name": "description", 
+            "type": "string", 
+            "x-example": "Description of edit"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "episode_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
@@ -10154,20 +10274,11 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "description": "Name of episode", 
-            "in": "body", 
-            "name": "Episode", 
-            "schema": {
-              "properties": {
-                "name": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "name"
-              ], 
-              "type": "object"
-            }
+            "in": "formData", 
+            "name": "name", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "Name of episode"
           }
         ], 
         "responses": {
@@ -10407,6 +10518,31 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "name", 
+            "required": false, 
+            "type": "string"
+          }, 
+          {
+            "default": false, 
+            "in": "formData", 
+            "name": "for_client", 
+            "required": false, 
+            "type": "boolean"
+          }, 
+          {
+            "in": "formData", 
+            "name": "choices", 
+            "required": false, 
+            "type": "array"
+          }, 
+          {
+            "in": "formData", 
+            "name": "departments", 
+            "required": false, 
+            "type": "array"
           }
         ], 
         "responses": {
@@ -10455,50 +10591,57 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "in": "body", 
-            "name": "Filter News", 
-            "schema": {
-              "properties": {
-                "after": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }, 
-                "before": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }, 
-                "only_preview": {
-                  "default": false, 
-                  "type": "boolean"
-                }, 
-                "page": {
-                  "example": 1, 
-                  "type": "integer"
-                }, 
-                "page_size": {
-                  "example": 50, 
-                  "type": "integer"
-                }, 
-                "person_id": {
-                  "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
-                  "format": "UUID", 
-                  "type": "string"
-                }, 
-                "task_status_id": {
-                  "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
-                  "format": "UUID", 
-                  "type": "string"
-                }, 
-                "task_type_id": {
-                  "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
-                  "format": "UUID", 
-                  "type": "string"
-                }
-              }, 
-              "type": "object"
-            }
+            "format": "date", 
+            "in": "query", 
+            "name": "before", 
+            "type": "string", 
+            "x-example": "2022-07-12"
+          }, 
+          {
+            "format": "date", 
+            "in": "query", 
+            "name": "after", 
+            "type": "string", 
+            "x-example": "2022-07-12"
+          }, 
+          {
+            "in": "query", 
+            "name": "page", 
+            "type": "integer", 
+            "x-example": 1
+          }, 
+          {
+            "in": "query", 
+            "name": "page_size", 
+            "type": "integer", 
+            "x-example": 50
+          }, 
+          {
+            "format": "UUID", 
+            "in": "query", 
+            "name": "person_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "query", 
+            "name": "task_type_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "query", 
+            "name": "task_status_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "default": false, 
+            "in": "query", 
+            "name": "only_preview", 
+            "type": "boolean"
           }
         ], 
         "responses": {
@@ -10738,10 +10881,10 @@
         ], 
         "responses": {
           "200": {
-            "description": "All shots related to given project"
+            "description": "All scenes related to given project"
           }
         }, 
-        "summary": "Retrieve all shots related to a given project.", 
+        "summary": "Retrieve all scenes related to a given project.", 
         "tags": [
           "Shots"
         ]
@@ -10757,34 +10900,27 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "description": "Name of shot and ID of sequence", 
-            "in": "body", 
-            "name": "Shot", 
-            "schema": {
-              "properties": {
-                "name": {
-                  "type": "string"
-                }, 
-                "sequence_id": {
-                  "format": "UUID", 
-                  "type": "string", 
-                  "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
-                }
-              }, 
-              "required": [
-                "name", 
-                "sequence_id"
-              ], 
-              "type": "object"
-            }
+            "in": "formData", 
+            "name": "name", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "Name of scene"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "sequence_id", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
           "201": {
-            "description": "Shot created for given project"
+            "description": "Scene created for given project"
           }
         }, 
-        "summary": "Create a shot for given project.", 
+        "summary": "Create a scene for given project.", 
         "tags": [
           "Shots"
         ]
@@ -10962,26 +11098,18 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "description": "Name and ID of episode", 
-            "in": "body", 
-            "name": "Sequence", 
-            "schema": {
-              "properties": {
-                "episode_id": {
-                  "format": "UUID", 
-                  "type": "string", 
-                  "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
-                }, 
-                "name": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "name", 
-                "episode_id"
-              ], 
-              "type": "object"
-            }
+            "in": "formData", 
+            "name": "name", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "Name of sequence"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "episode_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
@@ -11033,6 +11161,14 @@
             "format": "UUID", 
             "in": "path", 
             "name": "project_id", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "asset_type_id", 
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
@@ -11111,6 +11247,14 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "status_automation_id", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
@@ -11186,6 +11330,14 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "task_status_id", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
@@ -11240,6 +11392,21 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "task_type_id", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "default": "None", 
+            "in": "formData", 
+            "name": "priority", 
+            "required": false, 
+            "type": "string"
           }
         ], 
         "responses": {
@@ -11317,38 +11484,29 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "description": "ID of sequence and name, description, data, number of frames and ID of asset", 
-            "in": "body", 
-            "name": "Shot", 
-            "schema": {
-              "properties": {
-                "data": {
-                  "type": "string"
-                }, 
-                "description": {
-                  "type": "string"
-                }, 
-                "name": {
-                  "type": "string"
-                }, 
-                "nb_frames": {
-                  "type": "integer"
-                }, 
-                "sequence_id": {
-                  "format": "UUID", 
-                  "type": "string", 
-                  "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
-                }
-              }, 
-              "required": [
-                "name", 
-                "description", 
-                "data", 
-                "sequence_id", 
-                "nb_frames"
-              ], 
-              "type": "object"
-            }
+            "in": "formData", 
+            "name": "name", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "Name of shot"
+          }, 
+          {
+            "in": "formData", 
+            "name": "description", 
+            "type": "string", 
+            "x-example": "Description of shot"
+          }, 
+          {
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "sequence_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "nb_frames", 
+            "type": "integer"
           }
         ], 
         "responses": {
@@ -11557,7 +11715,6 @@
     }, 
     "/data/scenes/with-tasks": {
       "get": {
-        "description": "related tasks.<br/>", 
         "parameters": [
           {
             "format": "UUID", 
@@ -11573,7 +11730,7 @@
             "description": "All scenes"
           }
         }, 
-        "summary": "Retrieve all scenes, adds project name and asset type name and all", 
+        "summary": "Retrieve all scenes, adds project name and asset type name and all related tasks.", 
         "tags": [
           "Shots"
         ]
@@ -11723,22 +11880,11 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }, 
           {
-            "description": "ID of shot", 
-            "in": "body", 
-            "name": "Shot", 
-            "schema": {
-              "properties": {
-                "shot_id": {
-                  "format": "UUID", 
-                  "type": "string", 
-                  "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
-                }
-              }, 
-              "required": [
-                "shot_id"
-              ], 
-              "type": "object"
-            }
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "shot_id", 
+            "type": "string", 
+            "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
         "responses": {
@@ -12011,16 +12157,16 @@
       "post": {
         "parameters": [
           {
-            "in": "query", 
+            "in": "formData", 
             "name": "query", 
             "required": true, 
             "type": "string", 
-            "x-example": "name of asset"
+            "x-example": "Name of asset or person"
           }
         ], 
         "responses": {
           "200": {
-            "description": "Resource"
+            "description": "List of assets and persons that contain the query (3 results max)"
           }
         }, 
         "summary": "Search for resource", 
@@ -12233,7 +12379,6 @@
     }, 
     "/data/sequences/with-tasks": {
       "get": {
-        "description": "related tasks.<br/>", 
         "parameters": [
           {
             "format": "UUID", 
@@ -12249,7 +12394,7 @@
             "description": "All sequences"
           }
         }, 
-        "summary": "Retrieve all sequences, adds project name and asset type name and all", 
+        "summary": "Retrieve all sequences, adds project name and asset type name and all related tasks.", 
         "tags": [
           "Shots"
         ]
@@ -13908,6 +14053,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "text", 
+            "type": "string", 
+            "x-example": "comment"
           }
         ], 
         "responses": {
@@ -14169,9 +14320,18 @@
             }
           }
         ], 
+        "produces": [
+          "image/png", 
+          "image/jpg", 
+          "image/gif", 
+          "multipart/form-data"
+        ], 
         "responses": {
           "201": {
-            "description": "New working file created"
+            "description": "New working file created", 
+            "schema": {
+              "type": "file"
+            }
           }, 
           "400": {
             "description": "Given working file already exists"
@@ -14409,12 +14569,13 @@
     }, 
     "/data/user/context": {
       "get": {
+        "description": "(like the Kitsu web client).<br/>", 
         "responses": {
           "200": {
             "description": "Context to properly run a full app connected to the API"
           }
         }, 
-        "summary": "Return context required to properly run a full app connected to the API (like the Kitsu web client).", 
+        "summary": "Return context required to properly run a full app connected to the API", 
         "tags": [
           "User"
         ]
@@ -14429,7 +14590,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -14462,18 +14623,11 @@
         "description": "Desktop login logs can only be created by current user.", 
         "parameters": [
           {
-            "in": "body", 
-            "name": "Date", 
-            "schema": {
-              "properties": {
-                "date": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }
-              }, 
-              "type": "object"
-            }
+            "format": "date", 
+            "in": "formData", 
+            "name": "date", 
+            "type": "string", 
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -14547,36 +14701,37 @@
       "post": {
         "parameters": [
           {
-            "description": "Name, query, list type, project id and entity type", 
-            "in": "body", 
-            "name": "Filter", 
-            "schema": {
-              "properties": {
-                "entity_type": {
-                  "type": "string"
-                }, 
-                "list_type": {
-                  "type": "string"
-                }, 
-                "name": {
-                  "type": "string"
-                }, 
-                "project_id": {
-                  "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
-                  "format": "UUID", 
-                  "type": "string"
-                }, 
-                "query": {
-                  "type": "string"
-                }
-              }, 
-              "required": [
-                "name", 
-                "query", 
-                "list_type"
-              ], 
-              "type": "object"
-            }
+            "in": "formData", 
+            "name": "name", 
+            "required": true, 
+            "type": "string", 
+            "x-example": "Name of filter"
+          }, 
+          {
+            "in": "formData", 
+            "name": "query", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "in": "formData", 
+            "name": "list_type", 
+            "required": true, 
+            "type": "string"
+          }, 
+          {
+            "in": "formData", 
+            "name": "entity_type", 
+            "required": false, 
+            "type": "string"
+          }, 
+          {
+            "example": "a24a6ea4-ce75-4665-a070-57453082c25", 
+            "format": "UUID", 
+            "in": "formData", 
+            "name": "project_id", 
+            "required": true, 
+            "type": "string"
           }
         ], 
         "responses": {
@@ -14638,31 +14793,26 @@
       "get": {
         "parameters": [
           {
-            "in": "body", 
-            "name": "Date", 
-            "schema": {
-              "properties": {
-                "after": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }, 
-                "before": {
-                  "example": "Tue, 12 Jul 2022 00:00:00 GMT", 
-                  "format": "date", 
-                  "type": "string"
-                }
-              }, 
-              "type": "object"
-            }
+            "format": "date", 
+            "in": "formData", 
+            "name": "after", 
+            "type": "string", 
+            "x-example": "2022-07-12"
+          }, 
+          {
+            "format": "date", 
+            "in": "formData", 
+            "name": "before", 
+            "type": "string", 
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
-          "201": {
-            "description": "Last 100 user notifications"
+          "200": {
+            "description": "100 last user notifications"
           }
         }, 
-        "summary": "Return last 100 user notifications.", 
+        "summary": "Return last 100 user notifications filtered by given parameters.", 
         "tags": [
           "User"
         ]
@@ -15072,7 +15222,7 @@
             "name": "date", 
             "required": true, 
             "type": "string", 
-            "x-example": "Tue, 12 Jul 2022 00:00:00 GMT"
+            "x-example": "2022-07-12"
           }
         ], 
         "responses": {
@@ -15279,9 +15429,18 @@
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
           }
         ], 
+        "produces": [
+          "image/png", 
+          "image/jpg", 
+          "image/gif", 
+          "multipart/form-data"
+        ], 
         "responses": {
           "200": {
-            "description": "Working file downloaded"
+            "description": "Working file downloaded", 
+            "schema": {
+              "type": "file"
+            }
           }
         }, 
         "summary": "Download a working file.", 
@@ -15298,6 +15457,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -15493,22 +15658,36 @@
     }, 
     "/import/csv/persons": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
+        "parameters": [
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
+          }
+        ], 
         "responses": {
           "201": {
-            "description": "Persons imported"
+            "description": "The lists of imported persons."
           }, 
           "400": {
-            "description": "Format error"
+            "description": "The .csv file is not properly formatted."
           }
         }, 
-        "summary": "Import persons as csv.", 
+        "summary": "Import persons via a .csv file.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/csv/projects/{project_id}/assets": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -15517,24 +15696,33 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
           "201": {
-            "description": "Assets imported"
+            "description": "The lists of imported assets."
           }, 
           "400": {
-            "description": "Format error"
+            "description": "The .csv file is not properly formatted."
           }
         }, 
-        "summary": "Import project assets.", 
+        "summary": "Import project assets via a .csv file.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/csv/projects/{project_id}/casting": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -15543,25 +15731,40 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
           "201": {
-            "description": "Castings imported"
+            "description": "The lists of imported casting links."
           }, 
           "400": {
-            "description": "Format error"
+            "description": "The .csv file is not properly formatted."
           }
         }, 
-        "summary": "Import project castings.", 
+        "summary": "Import project casting links via a .csv file.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/csv/projects/{project_id}/edits": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
         "parameters": [
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
+          }, 
           {
             "format": "UUID", 
             "in": "path", 
@@ -15581,13 +15784,22 @@
         }, 
         "summary": "Import project edits.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/csv/projects/{project_id}/episodes/{episode_id}/task-types/{task_type_id}/estimations": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
         "parameters": [
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
+          }, 
           {
             "format": "UUID", 
             "in": "path", 
@@ -15623,12 +15835,15 @@
         }, 
         "summary": "Import the estimations of task-types for given episode of given project.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/csv/projects/{project_id}/shots": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -15637,25 +15852,40 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
           "201": {
-            "description": "Shots imported"
+            "description": "The lists of imported assets."
           }, 
           "400": {
-            "description": "Format error"
+            "description": "The .csv file is not properly formatted."
           }
         }, 
-        "summary": "Import project shots.", 
+        "summary": "Import project shots via a .csv file.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/csv/projects/{project_id}/task-types/{task_type_id}/estimations": {
       "post": {
+        "consumes": [
+          "multipart/form-data"
+        ], 
         "parameters": [
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
+          }, 
           {
             "format": "UUID", 
             "in": "path", 
@@ -15683,77 +15913,185 @@
         }, 
         "summary": "Import the estimations of task-types for given project.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/kitsu/comments": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
           }
         }, 
-        "summary": "Import Kistu resource.", 
+        "summary": "Import Kitsu resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/kitsu/entities": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
           }
         }, 
-        "summary": "Import Kistu resource.", 
+        "summary": "Import Kitsu resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/kitsu/entity-links": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
           }
         }, 
-        "summary": "Import Kistu resource.", 
+        "summary": "Import Kitsu resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/kitsu/projects": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
           }
         }, 
-        "summary": "Import Kistu resource.", 
+        "summary": "Import Kitsu resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/kitsu/tasks": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
           }
         }, 
-        "summary": "Import Kistu resource.", 
+        "summary": "Import Kitsu resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/assets": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -15761,12 +16099,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/episodes": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -15774,7 +16130,7 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
@@ -15787,7 +16143,7 @@
         }, 
         "summary": "Import shotgun error resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }, 
       "post": {
@@ -15798,7 +16154,7 @@
         }, 
         "summary": "Serialize shotgun error resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
@@ -15815,7 +16171,7 @@
           }
         ], 
         "responses": {
-          "200": {
+          "204": {
             "description": "Error deleted"
           }, 
           "404": {
@@ -15824,12 +16180,30 @@
         }, 
         "summary": "Delete error.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/notes": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -15837,12 +16211,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/persons": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -15850,12 +16242,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/projectconnections": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -15863,12 +16273,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/projects": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -15876,181 +16304,199 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/asset": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/episode": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/note": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/person": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/project": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/projectconnection": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/scene": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/sequence": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/shot": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/status": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/step": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/task": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/remove/version": {
       "post": {
         "responses": {
-          "200": {
+          "204": {
             "description": "Instance removed"
           }
         }, 
         "summary": "Import remove instance.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/scenes": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16058,12 +16504,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/sequences": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16071,12 +16535,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/shots": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16084,12 +16566,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/status": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16097,12 +16597,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/steps": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16110,12 +16628,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/tasks": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16123,12 +16659,30 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
     "/import/shotgun/versions": {
       "post": {
+        "parameters": [
+          {
+            "in": "body", 
+            "name": "sg_entries", 
+            "required": true, 
+            "schema": {
+              "items": {
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  }
+                }, 
+                "type": "object"
+              }, 
+              "type": "array"
+            }
+          }
+        ], 
         "responses": {
           "200": {
             "description": "Resource imported"
@@ -16136,7 +16690,7 @@
         }, 
         "summary": "Import shotgun resource.", 
         "tags": [
-          "Source"
+          "Import"
         ]
       }
     }, 
@@ -16324,6 +16878,11 @@
     }, 
     "/pictures/preview-files/{instance_id}": {
       "post": {
+        "consumes": [
+          "multipart/form-data", 
+          "image/png", 
+          "application/pdf"
+        ], 
         "description": "It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file.", 
         "parameters": [
           {
@@ -16333,6 +16892,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -16406,6 +16971,11 @@
     }, 
     "/pictures/thumbnails/organisations/{instance_id}": {
       "post": {
+        "consumes": [
+          "multipart/form-data", 
+          "image/png", 
+          "application/pdf"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -16414,6 +16984,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -16461,6 +17037,11 @@
     }, 
     "/pictures/thumbnails/persons/{instance_id}": {
       "post": {
+        "consumes": [
+          "multipart/form-data", 
+          "image/png", 
+          "application/pdf"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -16469,6 +17050,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -16545,6 +17132,11 @@
     }, 
     "/pictures/thumbnails/projects/{instance_id}": {
       "post": {
+        "consumes": [
+          "multipart/form-data", 
+          "image/png", 
+          "application/pdf"
+        ], 
         "parameters": [
           {
             "format": "UUID", 
@@ -16553,6 +17145,12 @@
             "required": true, 
             "type": "string", 
             "x-example": "a24a6ea4-ce75-4665-a070-57453082c25"
+          }, 
+          {
+            "in": "formData", 
+            "name": "file", 
+            "required": true, 
+            "type": "file"
           }
         ], 
         "responses": {
@@ -16671,6 +17269,19 @@
     "http", 
     "https"
   ], 
+  "security": [
+    {
+      "JWT Authorization": []
+    }
+  ], 
+  "securityDefinitions": {
+    "JWT Authorization": {
+      "description": "Format in header: **Authorization: Bearer {token}**. \n\n Value example: Bearer xxxxx.yyyyy.zzzzz", 
+      "in": "header", 
+      "name": "Authorization", 
+      "type": "apiKey"
+    }
+  }, 
   "swagger": "2.0", 
   "tags": [
     {
@@ -16704,6 +17315,9 @@
       "name": "Files"
     }, 
     {
+      "name": "Import"
+    }, 
+    {
       "name": "Index"
     }, 
     {
@@ -16726,9 +17340,6 @@
     }, 
     {
       "name": "Shots"
-    }, 
-    {
-      "name": "Source"
     }, 
     {
       "name": "Tasks"

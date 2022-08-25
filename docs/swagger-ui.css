@@ -11394,10 +11394,11 @@
 .swagger-ui .markdown pre,
 .swagger-ui .renderedMarkdown p,
 .swagger-ui .renderedMarkdown pre {
-  margin-top: 1em;
-  margin-bottom: 0.3em;
+  	margin-top: 1em;
+  	margin-bottom: 0.3em;
 	word-break: break-all;
-	word-break: break-word
+	word-break: break-word;
+	line-height: 25px;
 }
 
 .swagger-ui .markdown pre,
@@ -11417,7 +11418,7 @@
 	font-family: monospace;
 	font-size: 14px;
 	font-weight: 600;
-	padding: 5px 7px
+	padding: 4px 7px
 }
 
 .swagger-ui .markdown pre>code,

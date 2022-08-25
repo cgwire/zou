@@ -75,8 +75,12 @@ body {
     display: none !important;
 }
 
-.swagger-ui .info .description .markdown code {
+.swagger-ui .markdown code {
     color: #00b242 !important;
+}
+
+.swagger-ui .auth-wrapper .markdown p {
+    padding-top: 5px;
 }
 
 .swagger-ui .topbar-wrapper form {
@@ -116,4 +120,8 @@ h2 {
 
 .swagger-ui .info .description .markdown ul li {
     padding-bottom: 1em !important;
+}
+
+.swagger-ui .markdown div code {
+    color: #8a53d1 !important;
 }
