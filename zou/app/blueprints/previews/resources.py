@@ -39,6 +39,7 @@ ALLOWED_MOVIE_EXTENSION = [
     ".m4v",
     ".mkv",
     ".mov",
+    ".webm",
     ".wmv",
 ]
 ALLOWED_FILE_EXTENSION = [
