@@ -667,7 +667,7 @@ class ProjectShotsResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: nb_frames
-            type: integer       
+            type: integer
         responses:
             201:
                 description: Shot created for given project
@@ -1209,7 +1209,7 @@ class ProjectScenesResource(Resource):
             required: True
             type: string
             format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25                 
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Scene created for given project

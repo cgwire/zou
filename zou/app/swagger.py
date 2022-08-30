@@ -16,13 +16,13 @@ swagger_config = {
     "specs_route": "/apidocs/",
 }
 
-curl = 'curl -X POST <server_address>/api/auth/login -d \"email=<youremail>&password=<yourpassword>{\"login\": true", "access_token\": \"eyJ0e...\", ...}'
+curl = 'curl -X POST <server_address>/api/auth/login -d "email=<youremail>&password=<yourpassword>{"login": true", "access_token": "eyJ0e...", ...}'
 
 swagger_template = {
     "swagger": "2.0",
     "info": {
         "title": "Kitsu API",
-        "description": f"## Welcome to Kitsu API specification \n```Version: {__version__}``` \n\n The Kitsu API allows to store and manage the data of your animation/VFX production. Through it you can link all the tools of your pipeline and make sure they are all synchronized. \n\n## Authentication\n\n<div class=\"auth\"><p>Before you can use any of the endpoints outline below, you will have to get a JWT to authorize your requests.\n\nYou can get a authorization token using a (form-encoded) POST request to ```/auth/login```. With curl this would look something like ```curl -X POST <server_address>/auth/login -d \"email=<youremail>&password=<yourpassword>```.\n\nThe response is a JSON object, specifically you'll need to provide the ```access_token``` for your future requests.\n\nHere is a complete authentication process as an example (again using curl):\n\n```\n$ {curl}\n\n$ jwt=eyJ0e...  # Store the access token for easier use\n\n$ curl -H \"Authorization: Bearer $jwt\" <server_address>/api/data/projects\n[{{...}},\n {{...}}]\n ``` \n\n [OpenAPI definition](/openapi.json)\n",
+        "description": f'## Welcome to Kitsu API specification \n```Version: {__version__}``` \n\n The Kitsu API allows to store and manage the data of your animation/VFX production. Through it you can link all the tools of your pipeline and make sure they are all synchronized. \n\n## Authentication\n\n<div class="auth"><p>Before you can use any of the endpoints outline below, you will have to get a JWT to authorize your requests.\n\nYou can get a authorization token using a (form-encoded) POST request to ```/auth/login```. With curl this would look something like ```curl -X POST <server_address>/auth/login -d "email=<youremail>&password=<yourpassword>```.\n\nThe response is a JSON object, specifically you\'ll need to provide the ```access_token``` for your future requests.\n\nHere is a complete authentication process as an example (again using curl):\n\n```\n$ {curl}\n\n$ jwt=eyJ0e...  # Store the access token for easier use\n\n$ curl -H "Authorization: Bearer $jwt" <server_address>/api/data/projects\n[{{...}},\n {{...}}]\n ``` \n\n [OpenAPI definition](/openapi.json)\n',
         "contact": {
             "name": "CGWire",
             "url": "https://www.cg-wire.com",
@@ -35,7 +35,7 @@ swagger_template = {
     },
     "externalDocs": {
         "description": "Read the installation documentation",
-        "url": "https://zou.cg-wire.com"
+        "url": "https://zou.cg-wire.com",
     },
     "host": "localhost:8080",
     "basePath": "/api",

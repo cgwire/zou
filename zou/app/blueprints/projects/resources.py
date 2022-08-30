@@ -688,7 +688,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             name: choices
             required: True
             type: array
-            required: False 
+            required: False
           - in: formData
             name: departments
             type: array
