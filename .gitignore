@@ -94,6 +94,7 @@ Vagrantfile
 
 /previews/
 /thumbnails/
+/indexes/
 release.sh
 
 tmp
