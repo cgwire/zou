@@ -3,16 +3,26 @@ from pathlib import Path
 from zou.app.utils import indexing
 
 from zou.app import app
-from zou.app.index_schema import asset_schema, person_schema
+from zou.app.index_schema import asset_schema, person_schema, init_indexes
 
 from zou.app.services import assets_service, persons_service, projects_service
+
+from whoosh.index import EmptyIndexError
 
 
 def get_index(index_name):
     """
     Retrieve whoosh index from disk. It is required to perform any operations.
     """
-    return indexing.get_index(Path(app.config["INDEXES_FOLDER"]) / index_name)
+    try:
+        return indexing.get_index(
+            Path(app.config["INDEXES_FOLDER"]) / index_name
+        )
+    except EmptyIndexError:
+        init_indexes(app.config["INDEXES_FOLDER"])
+        return indexing.get_index(
+            Path(app.config["INDEXES_FOLDER"]) / index_name
+        )
 
 
 def get_asset_index():
@@ -38,7 +48,11 @@ def reset_entry_index(index_name, schema, get_entries, index_entry):
     schema, func to get entries to index, func to index a given entry.
     """
     index_path = Path(app.config["INDEXES_FOLDER"]) / index_name
-    index = indexing.create_index(index_path, schema)
+    try:
+        index = indexing.create_index(index_path, schema)
+    except FileNotFoundError:
+        init_indexes(app.config["INDEXES_FOLDER"])
+        index = indexing.create_index(index_path, schema)
     entries = get_entries()
     for entry in entries:
         index_entry(entry, index=index)

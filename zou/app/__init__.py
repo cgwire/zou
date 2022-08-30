@@ -14,7 +14,6 @@ from jwt import ExpiredSignatureError
 
 from . import config, swagger
 from .stores import auth_tokens_store
-from .index_schema import init_indexes
 from .services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
@@ -40,8 +39,6 @@ if not app.config["PREVIEW_FOLDER"]:
 
 if not app.config["INDEXES_FOLDER"]:
     app.config["INDEXES_FOLDER"] = os.path.join(app.instance_path, "indexes")
-
-init_indexes(app.config["INDEXES_FOLDER"])
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features

@@ -20,6 +20,7 @@ from zou.app.services import (
     sync_service,
     tasks_service,
 )
+from zou.app.index_schema import init_indexes
 
 from zou.app.services.exception import PersonNotFoundException
 
@@ -464,7 +465,15 @@ def remove_old_data(days_old=90):
 
 
 def reset_search_index():
+    print("Resetting search index.")
     index_service.reset_index()
+    print("Search index resetted.")
+
+
+def init_search_index(indexes_folder):
+    print("Initialising search index.")
+    init_indexes(indexes_folder)
+    print("Search index initialised.")
 
 
 def search_asset(query):

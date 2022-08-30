@@ -382,9 +382,19 @@ def remove_old_data(days):
 @cli.command()
 def reset_search_index():
     """
-    Reset asset search index.
+    Reset search index.
     """
     commands.reset_search_index()
+
+
+@cli.command()
+def init_search_index():
+    """
+    Init search index.
+    """
+    from zou.app import app
+
+    commands.init_search_index(app.config["INDEXES_FOLDER"])
 
 
 @cli.command()
