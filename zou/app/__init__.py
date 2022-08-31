@@ -34,12 +34,6 @@ if not app.config["FILE_TREE_FOLDER"]:
     # Default file_trees are included in Python package: use root_path
     app.config["FILE_TREE_FOLDER"] = os.path.join(app.root_path, "file_trees")
 
-if not app.config["PREVIEW_FOLDER"]:
-    app.config["PREVIEW_FOLDER"] = os.path.join(app.instance_path, "previews")
-
-if not app.config["INDEXES_FOLDER"]:
-    app.config["INDEXES_FOLDER"] = os.path.join(app.instance_path, "indexes")
-
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
 

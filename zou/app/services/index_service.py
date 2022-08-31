@@ -19,7 +19,7 @@ def get_index(index_name):
             Path(app.config["INDEXES_FOLDER"]) / index_name
         )
     except EmptyIndexError:
-        init_indexes(app.config["INDEXES_FOLDER"])
+        init_indexes()
         return indexing.get_index(
             Path(app.config["INDEXES_FOLDER"]) / index_name
         )
@@ -51,7 +51,7 @@ def reset_entry_index(index_name, schema, get_entries, index_entry):
     try:
         index = indexing.create_index(index_path, schema)
     except FileNotFoundError:
-        init_indexes(app.config["INDEXES_FOLDER"])
+        init_indexes()
         index = indexing.create_index(index_path, schema)
     entries = get_entries()
     for entry in entries:

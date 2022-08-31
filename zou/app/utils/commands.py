@@ -24,6 +24,8 @@ from zou.app.index_schema import init_indexes
 
 from zou.app.services.exception import PersonNotFoundException
 
+from zou.app import app
+
 
 def clean_auth_tokens():
     """
@@ -160,20 +162,18 @@ def sync_with_ldap_server():
     """
     Connect to a LDAP server, then creates all related accounts.
     """
-    LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
-    LDAP_PORT = os.getenv("LDAP_PORT", "389")
+    LDAP_HOST = app.config["LDAP_HOST"]
+    LDAP_PORT = app.config["LDAP_PORT"]
     LDAP_PASSWORD = os.getenv("LDAP_PASSWORD", "password")
-    LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "cn=Users,dc=studio,dc=local")
-    LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "")
+    LDAP_BASE_DN = app.config["LDAP_BASE_DN"]
+    LDAP_DOMAIN = app.config["LDAP_DOMAIN"]
     LDAP_USER = os.getenv("LDAP_USER", "")
-    LDAP_GROUP = os.getenv("LDAP_GROUP", "")
-    LDAP_SSL = os.getenv("LDAP_SSL", "False").lower() == "true"
+    LDAP_GROUP = app.config["LDAP_GROUP"]
+    LDAP_SSL = app.config["LDAP_SSL"]
     EMAIL_DOMAIN = os.getenv("EMAIL_DOMAIN", "studio.local")
     LDAP_EXCLUDED_ACCOUNTS = os.getenv("LDAP_EXCLUDED_ACCOUNTS", "")
-    LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
-    LDAP_IS_AD_SIMPLE = (
-        os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
-    )
+    LDAP_IS_AD = app.config["LDAP_IS_AD"]
+    LDAP_IS_AD_SIMPLE = app.config["LDAP_IS_AD_SIMPLE"]
 
     def clean_value(value):
         cleaned_value = str(value)
@@ -433,13 +433,12 @@ def download_file_from_storage():
 
 
 def dump_database():
-    DB_HOST = os.getenv("DB_HOST", "localhost")
-    DB_PORT = os.getenv("DB_PORT", "5432")
-    DB_USERNAME = os.getenv("DB_USERNAME", "postgres")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "mysecretpassword")
-    DB_DATABASE = os.getenv("DB_DATABASE", "zoudb")
     filename = backup_service.generate_db_backup(
-        DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE
+        app.config["DATABASE"]["host"],
+        app.config["DATABASE"]["port"],
+        app.config["DATABASE"]["username"],
+        app.config["DATABASE"]["password"],
+        app.config["DATABASE"]["database"],
     )
     backup_service.store_db_backup(filename)
 
@@ -470,9 +469,9 @@ def reset_search_index():
     print("Search index resetted.")
 
 
-def init_search_index(indexes_folder):
+def init_search_index():
     print("Initialising search index.")
-    init_indexes(indexes_folder)
+    init_indexes()
     print("Search index initialised.")
 
 

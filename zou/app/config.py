@@ -1,5 +1,6 @@
 import os
 import datetime
+import tempfile
 
 from zou.app.utils import dbhelpers
 
@@ -50,11 +51,12 @@ SQLALCHEMY_ENGINE_OPTIONS = {
 NB_RECORDS_PER_PAGE = 100
 
 PREVIEW_FOLDER = os.getenv(
-    "PREVIEW_FOLDER", os.getenv("THUMBNAIL_FOLDER", "previews")
+    "PREVIEW_FOLDER",
+    os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
-TMP_DIR = os.getenv("TMP_DIR", os.path.join(os.sep, "tmp", "zou"))
+TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
 INDEXES_FOLDER = os.getenv(
-    "INDEXES_FOLDER", os.getenv("INDEXES_FOLDER", "indexes")
+    "INDEXES_FOLDER", os.path.join(os.getcwd(), "indexes")
 )
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
