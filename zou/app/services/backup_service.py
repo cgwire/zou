@@ -14,8 +14,9 @@ from zou.app.utils import date_helpers
 
 from flask_fs.backends.local import LocalBackend
 
+from zou.app import app
 
-preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
+preview_folder = app.config["PREVIEW_FOLDER"]
 local_picture = LocalBackend(
     "local", {"root": os.path.join(preview_folder, "pictures")}
 )
@@ -77,7 +78,6 @@ def upload_entity_thumbnail(entity):
     """
     Upload thumbnail file for given entity to object storage.
     """
-    preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
     local = LocalBackend(
         "local", {"root": os.path.join(preview_folder, "pictures")}
     )
@@ -94,7 +94,6 @@ def upload_preview(preview_file):
     """
     print("upload preview %s (%s)" % (preview_file.id, preview_file.extension))
 
-    preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
     local_picture = LocalBackend(
         "local", {"root": os.path.join(preview_folder, "pictures")}
     )

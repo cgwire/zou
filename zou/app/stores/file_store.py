@@ -109,12 +109,21 @@ def read_swift(self, filename):
     return data
 
 
+def read_s3(self, filename):
+    """
+    Monkey patch to download filtes with chunks instead of getting it fully.
+    """
+    obj = self.bucket.Object(filename).get()
+    return obj["Body"].iter_chunks(1024 * 1024)
+
+
 LocalBackend.read = read
 LocalBackend.path = path
 LocalBackend.delete = local_delete
 SwiftBackend.__init__ = init_swift
 SwiftBackend.read = read_swift
 S3Backend.__init__ = init_s3
+S3Backend.read = read_s3
 
 
 def make_key(prefix, id):

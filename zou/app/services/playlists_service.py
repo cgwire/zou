@@ -653,9 +653,7 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     from zou.app import app, mail
 
     with app.app_context():
-        build_playlist_movie_file(
-            playlist, job, shots, params, full, remote
-        )
+        build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
         # Just in case, since rq jobs which encounter an error raise an
         # exception in order to be flagged as failed.

@@ -37,6 +37,7 @@ from zou.app.services import deletion_service, tasks_service
 from zou.app.stores import file_store
 from flask_fs.backends.local import LocalBackend
 from zou.app.utils import events
+from zou.app import app
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -46,7 +47,7 @@ console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
 
 
-preview_folder = os.getenv("PREVIEW_FOLDER", "/opt/zou/previews")
+preview_folder = app.config["PREVIEW_FOLDER"]
 local_picture = LocalBackend(
     "local", {"root": os.path.join(preview_folder, "pictures")}
 )

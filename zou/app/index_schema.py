@@ -1,6 +1,7 @@
 import os
 
 from zou.app.utils import fs, indexing
+from zou.app import app
 
 asset_schema = indexing.get_schema(
     {
@@ -16,13 +17,14 @@ person_schema = indexing.get_schema(
 )
 
 
-def init_indexes(index_folder):
-    index_path = os.path.join(index_folder, "assets")
+def init_indexes():
+    indexes_folder = app.config["INDEXES_FOLDER"]
+    asset_index_path = os.path.join(indexes_folder, "assets")
     asset_index = None
-    if not os.path.exists(index_path):
-        fs.mkdir_p(index_path)
-        asset_index = indexing.create_index(index_path, asset_schema)
-    person_index_path = os.path.join(index_folder, "persons")
+    if not os.path.exists(asset_index_path):
+        fs.mkdir_p(asset_index_path)
+        asset_index = indexing.create_index(asset_index_path, asset_schema)
+    person_index_path = os.path.join(indexes_folder, "persons")
     person_index = None
     if not os.path.exists(person_index_path):
         fs.mkdir_p(person_index_path)

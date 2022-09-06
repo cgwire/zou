@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
 from zou.app.services import persons_service
+from zou.app import app
 
 
 @click.group()
@@ -20,8 +21,6 @@ def init_db():
     "Creates datababase table (database must be created through PG client)."
 
     print("Creating database and tables...")
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -37,9 +36,6 @@ def migrate_db(message):
     Generate migration files to describe a new revision of the database schema
     (for development only).
     """
-
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -54,9 +50,6 @@ def downgrade_db(revision):
     Downgrade db to previous revision of the database schema
     (for development only). For revision you can use an hash or a relative migration identifier.
     """
-
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -67,8 +60,6 @@ def downgrade_db(revision):
 @cli.command()
 def clear_db():
     "Drop all tables from database"
-
-    from zou.app import app
 
     with app.app_context():
         import zou
@@ -84,9 +75,6 @@ def clear_db():
 @cli.command()
 def reset_db():
     "Drop all tables then recreates them."
-
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -104,9 +92,6 @@ def reset_db():
 @cli.command()
 def upgrade_db():
     "Upgrade database schema."
-
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -118,9 +103,6 @@ def upgrade_db():
 @click.option("--revision", default=None)
 def stamp_db(revision):
     "Set the database schema revision to current one."
-
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -134,9 +116,6 @@ def stamp_db(revision):
 @cli.command()
 def reset_migrations():
     "Set the database schema revision to first one."
-
-    from zou.app import app
-
     with app.app_context():
         import zou
 
@@ -150,7 +129,6 @@ def reset_migrations():
 def create_admin(email, password):
     "Create an admin user to allow usage of the API when database is empty."
     "Set password is 'default'."
-
     try:
         # Allow "admin@example.com" to be invalid.
         if email != "admin@example.com":
@@ -198,9 +176,6 @@ def init_data():
 @click.argument("email")
 def set_default_password(email):
     "Set the password of given user as default"
-    from zou.app.services import persons_service
-    from zou.app.utils import auth
-
     password = auth.encrypt_password("default")
     persons_service.update_password(email, password)
 
@@ -382,9 +357,17 @@ def remove_old_data(days):
 @cli.command()
 def reset_search_index():
     """
-    Reset asset search index.
+    Reset search index.
     """
     commands.reset_search_index()
+
+
+@cli.command()
+def init_search_index():
+    """
+    Init search index.
+    """
+    commands.init_search_index()
 
 
 @cli.command()
