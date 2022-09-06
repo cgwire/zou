@@ -22,33 +22,14 @@ Here is a complete authentication process as an example (again using `curl`):
     [{...},
      {...}]
 
-## Available data
-
-Data you can store and retrieve are from the following type :
-
-* persons
-* projects
-* project\_status
-* tasks 
-* task\_status
-* task\_types
-* departments
-* time\ spents
-* episodes
-* sequences
-* shots
-* assets
-* asset\_types
-* file\_status
-* working\_files
-* output\_files
-* preview\_files
-* output\_types
-* softwares
-
-
 ## HTTP routes
 
 The full specification of the API is available at the OpenAPI format here:
 
 [https://kitsu-api.cg-wire.com](https://kitsu-api.cg-wire.com)
+
+
+## Available data
+
+Data you can store and retrieve are listed in the specification:
+[Models specification](https://kitsu-api.cg-wire.com#model- Common fields for all model instances)
