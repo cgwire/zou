@@ -10,6 +10,7 @@ class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     """
 
     name = db.Column(db.String(40), nullable=False)
+    archived = db.Column(db.Boolean(), default=False)
     short_name = db.Column(
         db.String(10), unique=True, nullable=False, index=True
     )

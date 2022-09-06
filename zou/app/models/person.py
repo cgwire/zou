@@ -32,6 +32,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     phone = db.Column(db.String(30))
 
     active = db.Column(db.Boolean(), default=True)
+    archived = db.Column(db.Boolean(), default=False)
     last_presence = db.Column(db.Date())
 
     password = db.Column(db.LargeBinary(60))
