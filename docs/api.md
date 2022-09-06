@@ -32,4 +32,4 @@ The full specification of the API is available at the OpenAPI format here:
 ## Available data
 
 Data you can store and retrieve are listed in the specification:
-[Models specification](https://kitsu-api.cg-wire.com#model- Common fields for all model instances)
+[Models specification](https://kitsu-api.cg-wire.com/#model- Common fields for all model instances)
