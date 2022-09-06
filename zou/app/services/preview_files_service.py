@@ -108,8 +108,12 @@ def update_preview_file(preview_file_id, data, silent=False):
         preview_file = files_service.get_preview_file_raw(preview_file_id)
     except:
         # Dirty hack because sometimes the preview file retrieval crashes.
-        time.sleep(1)
-        preview_file = files_service.get_preview_file_raw(preview_file_id)
+        try:
+            time.sleep(1)
+            preview_file = files_service.get_preview_file_raw(preview_file_id)
+        except:
+            time.sleep(5)
+            preview_file = files_service.get_preview_file_raw(preview_file_id)
 
     preview_file.update(data)
     files_service.clear_preview_file_cache(preview_file_id)
