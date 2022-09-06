@@ -63,6 +63,6 @@ class CustomActionTestCase(ApiDBTestCase):
         custom_actions = self.get("data/custom-actions")
         self.assertEqual(len(custom_actions), 2)
 
-        self.delete_404("data/custom_actions/%s" % fields.gen_uuid())
+        self.delete_404("data/custom-actions/%s" % fields.gen_uuid())
         custom_actions = self.get("data/custom-actions")
         self.assertEqual(len(custom_actions), 2)

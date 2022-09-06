@@ -182,7 +182,7 @@ class ApiTestCase(unittest.TestCase):
         """
         Make sure that given path returns a 404 error for DELETE requests.
         """
-        response = self.app.get(path, headers=self.base_headers)
+        response = self.app.delete(path, headers=self.base_headers)
         self.assertEqual(response.status_code, 404)
 
     def upload_file(self, path, file_path, code=201, extra_fields={}):

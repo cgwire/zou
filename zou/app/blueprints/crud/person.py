@@ -28,16 +28,17 @@ class PersonsResource(BaseModelsResource):
         if permissions.has_manager_permissions():
             if request.args.get("with_pass_hash") == "true":
                 return [
-                    person.serialize(relations=True) for person in query.all()
+                    person.serialize(relations=relations)
+                    for person in query.all()
                 ]
             else:
                 return [
-                    person.serialize_safe(relations=True)
+                    person.serialize_safe(relations=relations)
                     for person in query.all()
                 ]
         else:
             return [
-                person.present_minimal(relations=True)
+                person.present_minimal(relations=relations)
                 for person in query.all()
             ]
 

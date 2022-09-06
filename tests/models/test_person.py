@@ -5,6 +5,8 @@ from zou.app.models.person import Person
 
 from zou.app.utils import fields
 
+from operator import itemgetter
+
 
 class PersonTestCase(ApiDBTestCase):
     def setUp(self):
@@ -44,7 +46,6 @@ class PersonTestCase(ApiDBTestCase):
     def test_get_person(self):
         person = self.get_first("data/persons")
         person_again = self.get("data/persons/%s" % person["id"])
-        del person["departments"]
         self.assertEqual(person, person_again)
         self.get_404("data/persons/%s" % fields.gen_uuid())
 
@@ -157,7 +158,7 @@ class PersonTestCase(ApiDBTestCase):
     def test_delete_person(self):
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 4)
-
+        persons = sorted(persons, key=itemgetter("email"))
         person = persons[1]
         self.delete("data/persons/%s" % person["id"])
         persons = self.get("data/persons")
