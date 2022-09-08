@@ -16,6 +16,7 @@ class TaskType(db.Model, BaseMixin, SerializerMixin):
     priority = db.Column(db.Integer, default=1)
     for_entity = db.Column(db.String(30), default="Asset")
     allow_timelog = db.Column(db.Boolean, default=True)
+    archived = db.Column(db.Boolean(), default=False)
     shotgun_id = db.Column(db.Integer, index=True)
 
     department_id = db.Column(

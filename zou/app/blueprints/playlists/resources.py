@@ -313,12 +313,12 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                 ),
                 job_timeout=int(config.JOB_QUEUE_TIMEOUT),
             )
-            return {"job": "running"}
+            return job
         else:
             job = playlists_service.build_playlist_movie_file(
                 playlist, job, shots, params, full, remote=False
             )
-            return {"job": job["status"]}
+            return job
 
 
 class PlaylistZipDownloadResource(Resource):
