@@ -2,6 +2,7 @@ import datetime
 from sqlalchemy.exc import IntegrityError
 
 
+from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.entity import Entity, EntityLink, EntityVersion
@@ -27,6 +28,7 @@ from zou.app.utils import events, fields
 from zou.app.stores import file_store
 
 from zou.app.services.exception import (
+    AttachmentFileNotFoundException,
     CommentNotFoundException,
     ModelWithRelationsDeletionException,
 )
@@ -55,10 +57,14 @@ def remove_comment(comment_id):
             remove_preview_file(preview_file)
 
         previews = [preview for preview in comment.previews]
+        attachments = [attachment for attachment in comment.attachment_files]
         comment.delete()
 
         for preview in previews:
             remove_preview_file(preview)
+
+        for attachment in attachments:
+            remove_attachment_file(attachment)
 
         if task is not None:
             events.emit(
@@ -165,6 +171,28 @@ def remove_preview_file(preview_file):
     preview_file.save()
     preview_file.delete()
     return preview_file.serialize()
+
+
+def remove_attachment_file_by_id(attachment_file_id):
+    """
+    Remove all files related to given attachment file, then remove the
+    attachment file entry from the database.
+    """
+    attachment_file = AttachmentFile.get(attachment_file_id)
+    if attachment_file is None:
+        raise AttachmentFileNotFoundException
+    return remove_attachment_file(attachment_file)
+
+
+def remove_attachment_file(attachment_file):
+    """
+    Remove all files related to given attachment file, then remove the
+    attachment file entry from the database.
+    """
+    file_store.remove_file("attachments", str(attachment_file.id))
+    attachment_dict = attachment_file.serialize()
+    attachment_file.delete()
+    return attachment_dict
 
 
 def clear_picture_files(preview_file_id):
@@ -297,6 +325,7 @@ def remove_person(person_id, force=True):
             comment.save()
         ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
+        Notification.delete_all_by(author_id=person_id)
         SearchFilter.delete_all_by(person_id=person_id)
         DesktopLoginLog.delete_all_by(person_id=person_id)
         LoginLog.delete_all_by(person_id=person_id)
