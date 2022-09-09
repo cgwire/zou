@@ -5,6 +5,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 from .resources import (
     AckCommentResource,
     AddAttachmentToCommentResource,
+    AttachmentResource,
     CommentTaskResource,
     CommentManyTasksResource,
     DownloadAttachmentResource,
@@ -20,6 +21,10 @@ routes = [
     (
         "/data/tasks/<task_id>/comments/<comment_id>/reply",
         ReplyCommentResource,
+    ),
+    (
+        "/data/tasks/<task_id>/comments/<comment_id>/attachments/<attachment_id>",
+        AttachmentResource,
     ),
     (
         "/data/tasks/<task_id>/comments/<comment_id>/reply/<reply_id>",

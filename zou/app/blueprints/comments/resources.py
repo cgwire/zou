@@ -9,6 +9,7 @@ from zou.app.utils import permissions
 
 from zou.app.services import (
     comments_service,
+    deletion_service,
     persons_service,
     tasks_service,
     user_service,
@@ -16,6 +17,7 @@ from zou.app.services import (
 
 
 class DownloadAttachmentResource(Resource):
+
     @jwt_required
     def get(self, attachment_file_id, file_name):
         """
@@ -217,10 +219,48 @@ class CommentTaskResource(Resource):
         )
 
 
+class AttachmentResource(Resource):
+
+    @jwt_required
+    def delete(self, task_id, comment_id, attachment_id):
+        """
+        Delete attachment linked to a comment matching given ID.
+        ---
+        tags:
+        - Comments
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: attachment_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Empty response
+        """
+        user = persons_service.get_current_user()
+        comment = tasks_service.get_comment(comment_id)
+        if comment["person_id"] != user["id"]:
+            permissions.check_admin_permissions()
+
+        deletion_service.remove_attachment_file_by_id(attachment_id)
+        return "", 204
+
+
 class AddAttachmentToCommentResource(Resource):
-    """
-    Add given files to the comment entry as attachments.
-    """
 
     @jwt_required
     def post(self, task_id, comment_id):
@@ -255,9 +295,12 @@ class AddAttachmentToCommentResource(Resource):
             201:
                 description: Given files added to the comment entry as attachments
         """
-        files = request.files
-        permissions.check_admin_permissions()
+        user = persons_service.get_current_user()
         comment = tasks_service.get_comment(comment_id)
+        if comment["person_id"] != user["id"]:
+            permissions.check_admin_permissions()
+
+        files = request.files
         comment = comments_service.add_attachments_to_comment(comment, files)
         return comment["attachment_files"], 201
 
