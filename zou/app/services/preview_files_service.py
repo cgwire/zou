@@ -114,14 +114,17 @@ def update_preview_file(preview_file_id, data, silent=False):
         except:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
+    return update_preview_file(preview_file, data, silent=silent)
 
+
+def update_preview_file_raw(preview_file, data, silent=False):
     preview_file.update(data)
-    files_service.clear_preview_file_cache(preview_file_id)
+    files_service.clear_preview_file_cache(str(preview_file.id))
     if not silent:
         task = Task.get(preview_file.task_id)
         events.emit(
             "preview-file:update",
-            {"preview_file_id": preview_file_id},
+            {"preview_file_id": str(preview_file.id)},
             project_id=str(task.project_id),
         )
     return preview_file.serialize()
@@ -151,6 +154,7 @@ def prepare_and_store_movie(
     from zou.app import app as current_app
 
     with current_app.app_context():
+        preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
         normalized_movie_low_path = None
         try:
             project = get_project_from_preview_file(preview_file_id)
@@ -254,8 +258,8 @@ def prepare_and_store_movie(
             if normalized_movie_low_path:
                 os.remove(normalized_movie_low_path)
 
-        preview_file = update_preview_file(
-            preview_file_id, {"status": "ready", "file_size": file_size}
+        preview_file = update_preview_file_raw(
+            preview_file_raw, {"status": "ready", "file_size": file_size}
         )
         return preview_file
 
