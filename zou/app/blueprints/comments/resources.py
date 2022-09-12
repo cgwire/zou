@@ -249,7 +249,7 @@ class AttachmentResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Empty response
+                description: Empty response
         """
         user = persons_service.get_current_user()
         comment = tasks_service.get_comment(comment_id)
@@ -504,9 +504,6 @@ class DeleteReplyCommentResource(Resource):
 
 
 class ProjectAttachmentFiles(Resource):
-    """
-    Return all attachment files related to given project.
-    """
 
     @jwt_required
     def get(self, project_id):
