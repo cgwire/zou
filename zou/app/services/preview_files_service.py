@@ -114,7 +114,7 @@ def update_preview_file(preview_file_id, data, silent=False):
         except:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-    return update_preview_file(preview_file, data, silent=silent)
+    return update_preview_file_raw(preview_file, data, silent=silent)
 
 
 def update_preview_file_raw(preview_file, data, silent=False):
