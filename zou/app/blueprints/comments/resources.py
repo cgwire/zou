@@ -17,7 +17,6 @@ from zou.app.services import (
 
 
 class DownloadAttachmentResource(Resource):
-
     @jwt_required
     def get(self, attachment_file_id, file_name):
         """
@@ -220,7 +219,6 @@ class CommentTaskResource(Resource):
 
 
 class AttachmentResource(Resource):
-
     @jwt_required
     def delete(self, task_id, comment_id, attachment_id):
         """
@@ -261,7 +259,6 @@ class AttachmentResource(Resource):
 
 
 class AddAttachmentToCommentResource(Resource):
-
     @jwt_required
     def post(self, task_id, comment_id):
         """
@@ -504,7 +501,6 @@ class DeleteReplyCommentResource(Resource):
 
 
 class ProjectAttachmentFiles(Resource):
-
     @jwt_required
     def get(self, project_id):
         """
