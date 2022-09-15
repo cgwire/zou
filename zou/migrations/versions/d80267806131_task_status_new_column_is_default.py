@@ -8,13 +8,36 @@ Create Date: 2022-05-03 14:43:47.946725
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import orm
-from zou.app.models.task_status import TaskStatus
+from sqlalchemy.ext.declarative import declarative_base
+from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.
 revision = "d80267806131"
 down_revision = "b8c0a0f9d054"
 branch_labels = None
 depends_on = None
+
+
+class TaskStatus(declarative_base(), BaseMixin):
+    """
+    Describe the state of a task. A status marked as reviewable expects a
+    preview file linked to relate comment.
+    """
+
+    __tablename__ = "task_status"
+    name = sa.Column(sa.String(40), nullable=False)
+    short_name = sa.Column(
+        sa.String(10), unique=True, nullable=False, index=True
+    )
+    color = sa.Column(sa.String(7), nullable=False)
+
+    is_done = sa.Column(sa.Boolean(), default=False, index=True)
+    is_artist_allowed = sa.Column(sa.Boolean(), default=True)
+    is_client_allowed = sa.Column(sa.Boolean(), default=True)
+    is_retake = sa.Column(sa.Boolean(), default=False)
+    is_feedback_request = sa.Column(sa.Boolean(), default=False, index=True)
+    is_default = sa.Column(sa.Boolean(), default=False, index=True)
+    shotgun_id = sa.Column(sa.Integer)
 
 
 def upgrade():
