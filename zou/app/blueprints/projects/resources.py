@@ -33,14 +33,10 @@ class OpenProjectsResource(Resource):
               description: All running projects
         """
         name = request.args.get("name", None)
-        try:
-            permissions.check_admin_permissions()
-            for_client = permissions.has_client_permissions()
-            return projects_service.open_projects(
-                name=name, for_client=for_client
-            )
-        except permissions.PermissionDenied:
-            return user_service.get_open_projects(name=name)
+        if permissions.has_admin_permissions():
+            return projects_service.open_projects(name)
+        else:
+            return user_service.get_open_projects(name)
 
 
 class AllProjectsResource(Resource):

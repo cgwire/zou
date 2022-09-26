@@ -139,6 +139,9 @@ class AssetsAndTasksResource(Resource):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
+            criterions[
+                "vendor_departments"
+            ] = persons_service.get_current_user(relations=True)["departments"]
         return assets_service.get_assets_and_tasks(criterions, page)
 
 
