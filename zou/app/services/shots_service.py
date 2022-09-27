@@ -256,10 +256,12 @@ def get_shots_and_tasks(criterions={}):
     query_result = query.all()
 
     if "vendor_departments" in criterions:
-        not_allowed_descriptors_field_names = entities_service.get_not_allowed_descriptors_fields_for_entity_type_and_departments(
-            "Shot",
-            criterions["vendor_departments"],
-            set(shot[0].project_id for shot in query_result),
+        not_allowed_descriptors_field_names = (
+            entities_service.get_not_allowed_descriptors_fields_for_vendor(
+                "Shot",
+                criterions["vendor_departments"],
+                set(shot[0].project_id for shot in query_result),
+            )
         )
 
     for (
@@ -290,8 +292,11 @@ def get_shots_and_tasks(criterions={}):
         if shot_id not in shot_map:
             data = fields.serialize_value(shot.data or {})
             if "vendor_departments" in criterions:
-                data = entities_service.remove_not_allowed_descriptors_fields_from_metadata(
-                    not_allowed_descriptors_field_names[shot.project_id], data
+                data = (
+                    entities_service.remove_not_allowed_fields_from_metadata(
+                        not_allowed_descriptors_field_names[shot.project_id],
+                        data,
+                    )
                 )
 
             shot_map[shot_id] = fields.serialize_dict(

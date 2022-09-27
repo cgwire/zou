@@ -262,10 +262,12 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
     query_result = tasks_query.all()
 
     if "vendor_departments" in criterions:
-        not_allowed_descriptors_field_names = entities_service.get_not_allowed_descriptors_fields_for_entity_type_and_departments(
-            "Asset",
-            criterions["vendor_departments"],
-            set(asset[0].project_id for asset in query_result),
+        not_allowed_descriptors_field_names = (
+            entities_service.get_not_allowed_descriptors_fields_for_vendor(
+                "Asset",
+                criterions["vendor_departments"],
+                set(asset[0].project_id for asset in query_result),
+            )
         )
 
     for (
@@ -296,8 +298,11 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         if asset_id not in asset_map:
             data = fields.serialize_value(asset.data or {})
             if "vendor_departments" in criterions:
-                data = entities_service.remove_not_allowed_descriptors_fields_from_metadata(
-                    not_allowed_descriptors_field_names[asset.project_id], data
+                data = (
+                    entities_service.remove_not_allowed_fields_from_metadata(
+                        not_allowed_descriptors_field_names[asset.project_id],
+                        data,
+                    )
                 )
 
             asset_map[asset_id] = {

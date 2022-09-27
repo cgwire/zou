@@ -121,10 +121,12 @@ def get_edits_and_tasks(criterions={}):
     query_result = query.all()
 
     if "vendor_departments" in criterions:
-        not_allowed_descriptors_field_names = entities_service.get_not_allowed_descriptors_fields_for_entity_type_and_departments(
-            "Edit",
-            criterions["vendor_departments"],
-            set(edit[0].project_id for edit in query_result),
+        not_allowed_descriptors_field_names = (
+            entities_service.get_not_allowed_descriptors_fields_for_vendor(
+                "Edit",
+                criterions["vendor_departments"],
+                set(edit[0].project_id for edit in query_result),
+            )
         )
 
     for (
@@ -153,8 +155,11 @@ def get_edits_and_tasks(criterions={}):
         if edit_id not in edit_map:
             data = fields.serialize_value(edit.data or {})
             if "vendor_departments" in criterions:
-                data = entities_service.remove_not_allowed_descriptors_fields_from_metadata(
-                    not_allowed_descriptors_field_names[edit.project_id], data
+                data = (
+                    entities_service.remove_not_allowed_fields_from_metadata(
+                        not_allowed_descriptors_field_names[edit.project_id],
+                        data,
+                    )
                 )
 
             edit_map[edit_id] = fields.serialize_dict(

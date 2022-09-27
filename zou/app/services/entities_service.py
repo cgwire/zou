@@ -243,7 +243,7 @@ def remove_entity_link(link_id):
         raise EntityLinkNotFoundException
 
 
-def get_not_allowed_descriptors_fields_for_entity_type_and_departments(
+def get_not_allowed_descriptors_fields_for_vendor(
     entity_type="Asset", departments=[], projects_ids=[]
 ):
     not_allowed_descriptors_field_names = {}
@@ -262,7 +262,7 @@ def get_not_allowed_descriptors_fields_for_entity_type_and_departments(
     return not_allowed_descriptors_field_names
 
 
-def remove_not_allowed_descriptors_fields_from_metadata(
+def remove_not_allowed_fields_from_metadata(
     not_allowed_descriptors_field_names=[], data={}
 ):
     return {
