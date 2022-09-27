@@ -312,6 +312,7 @@ def sync_with_ldap_server():
                             "last_name": last_name,
                             "active": active,
                             "is_generated_from_ldap": True,
+                            "desktop_login": desktop_login,
                         },
                     )
                     print("User %s updated." % desktop_login)
