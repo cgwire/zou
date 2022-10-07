@@ -42,6 +42,26 @@ class PermissionTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         self.get("data/projects/open")
 
+    def test_cg_artist_can_read_project_task_types(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_type()
+        task_type_id = self.task_type_concept.id
+        projects_service.add_task_type_setting(self.project_id, task_type_id, 1)
+        self.log_in_cg_artist()
+        user_id = str(self.user_cg_artist["id"])
+        projects_service.add_team_member(self.project_id, user_id)
+        result = self.get("data/projects/%s/task-types" % self.project_id, 200)
+
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]['id'], str(task_type_id))
+
+    def test_cg_artist_can_read_project_task_statuses(self):
+        self.log_in_cg_artist()
+        user_id = str(self.user_cg_artist["id"])
+        projects_service.add_team_member(self.project_id, user_id)
+        self.get("data/projects/%s/settings/task-status" % self.project_id, 200)
+
     def test_manager_cannot_create_person(self):
         self.log_in_manager()
         data = {
