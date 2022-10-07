@@ -93,3 +93,33 @@ set in your systemd configuration alongside the others.
 
 If the problem persists, you can dig into 
 [pgpool](https://pgpool.net/mediawiki/index.php/Main_Page) software.
+
+
+## Playlist build failing
+
+### Unmatching resolutions
+
+If your previews have different resolutions, the build will fail. Make sure
+your playlists have movies with the same size.
+
+The build doesn't include pictures, only movies are included.
+
+### Disk space
+
+Check logs and look for: `OSError: [Errno 28] No space left on device`
+
+Make sure it's coherent with what your system tells:
+
+```
+df -h
+du -sh /opt/zou/previews/movies
+du -sh /opt/zou/previews/files
+du -sh /opt/zou/previews/pictures
+```
+
+The error is explicit: your drive is full. You have three options there:
+
+* Add more space
+* Delete unused files
+* Delete data into Kitsu old projects, old shots or old preview revisions (or
+  both).
