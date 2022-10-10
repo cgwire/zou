@@ -57,7 +57,7 @@ The credentials are:
 
 The installation requires:
 
-* Ubuntu (vension >= 20.04)
+* Ubuntu (version >= 20.04)
 * Python (version >= 3.6)
 * An up and running Postgres instance (version >= 9.2)
 * An up and running Redis server instance (version >= 2.0)
