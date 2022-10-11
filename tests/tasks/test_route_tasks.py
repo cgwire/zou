@@ -524,3 +524,15 @@ class TaskRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(ProjectTaskTypeLink.query.count(), 1)
         self.assertEqual(ProjectTaskTypeLink.query.first().priority, 3)
+
+    def test_update_entity_main_preview_from_task(self):
+        task = self.generate_fixture_task().serialize()
+        preview_file = self.generate_fixture_preview_file().serialize()
+        self.put(
+            "/actions/tasks/%s/set-main-preview" % preview_file["task_id"],
+            {}
+        )
+        entity = self.get(
+            "/data/entities/%s" % task["entity_id"]
+        )
+        self.assertEqual(entity["preview_file_id"], preview_file["id"])

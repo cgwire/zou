@@ -497,3 +497,18 @@ def get_preview_files_for_entity(entity_id):
         )
     )
     return [preview_file.present() for preview_file in query.all()]
+
+
+def get_last_preview_file_for_task(task_id):
+    """
+    Get last preview published for given task.
+    """
+    preview = (
+        PreviewFile.query
+        .filter(PreviewFile.task_id == task_id)
+        .order_by(
+            PreviewFile.revision.desc(),
+            PreviewFile.created_at,
+        ).first()
+    )
+    return preview.serialize()
