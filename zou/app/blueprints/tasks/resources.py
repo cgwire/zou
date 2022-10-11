@@ -19,6 +19,7 @@ from zou.app.services import (
     file_tree_service,
     notifications_service,
     persons_service,
+    preview_files_service,
     projects_service,
     shots_service,
     tasks_service,
@@ -1355,3 +1356,39 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
         projects_service.get_project(project_id)
         page = self.get_page()
         return files_service.get_preview_files_for_project(project_id, page)
+
+
+class SetTaskMainPreviewResource(Resource):
+
+    @jwt_required
+    def put(self, task_id):
+        """
+        Set last preview from given task as main preview of the related entity.
+        This preview will be used as thumbnail to illustrate the entity.
+        ---
+        tags:
+          - Task
+        description: This preview will be used to illustrate the entity.
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given preview set as main preview
+        """
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        preview_file = \
+            preview_files_service.get_last_preview_file_for_task(task_id)
+        entity = entities_service.update_entity_preview(
+            task["entity_id"], preview_file["id"]
+        )
+        assets_service.clear_asset_cache(entity["id"])
+        shots_service.clear_shot_cache(entity["id"])
+        edits_service.clear_edit_cache(entity["id"])
+        return entity

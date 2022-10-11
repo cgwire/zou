@@ -82,7 +82,8 @@ def register_event_handlers(app):
     except ImportError:
         # Event handlers folder is not properly configured.
         # Handlers are optional, that's why this error is ignored.
-        app.logger.info("No event handlers folder is configured.")
+        # app.logger.info("No event handlers folder is configured.")
+        pass
     return app
 
 

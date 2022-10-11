@@ -247,3 +247,22 @@ class PlaylistTestCase(ApiDBTestCase):
         self.assertEqual(fps, "25.00")
         fps = get_preview_file_fps({"fps": None})
         self.assertEqual(fps, "25.00")
+
+    def test_get_last_preview_file_for_task(self):
+        preview_file = self.generate_fixture_preview_file()
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            self.task_id
+        )
+        self.assertEquals(preview_file["revision"], 1)
+
+        preview_file = self.generate_fixture_preview_file(revision=2)
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            self.task_id
+        )
+        self.assertEquals(preview_file["revision"], 2)
+
+        preview_file = self.generate_fixture_preview_file(revision=3)
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            self.task_id
+        )
+        self.assertEquals(preview_file["revision"], 3)
