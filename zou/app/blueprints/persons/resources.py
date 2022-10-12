@@ -146,8 +146,7 @@ class DesktopLoginsResource(Resource):
         ---
         tags:
         - Persons
-        description: Set "default" as password.
-                     User role can be set but only admins can create admin users.
+        description: Add a new log entry for desktop logins.
         parameters:
           - in: path
             name: person_id
@@ -155,7 +154,7 @@ class DesktopLoginsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formDara
+          - in: formData
             name: date
             required: True
             type: string
@@ -163,7 +162,7 @@ class DesktopLoginsResource(Resource):
             x-example: "2022-07-12"
         responses:
             201:
-                description: Desktop login logs created
+                description: Desktop login log entry created.
         """
         arguments = self.get_arguments()
 
