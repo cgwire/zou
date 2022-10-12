@@ -187,3 +187,7 @@ class StatusAutomationNotFoundException(NotFound):
 
 class WrongTaskTypeForEntityException(Exception):
     pass
+
+
+class IsUserLimitReachedException(Exception):
+    pass

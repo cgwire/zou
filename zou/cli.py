@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
 from zou.app.services import persons_service
-from zou.app import app
+from zou.app.services.exception import IsUserLimitReachedException
+from zou.app import app, config
 
 
 @click.group()
@@ -185,7 +186,13 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    commands.sync_with_ldap_server()
+    try:
+        if persons_service.is_user_limit_reached():
+            raise IsUserLimitReachedException
+        commands.sync_with_ldap_server()
+    except IsUserLimitReachedException:
+        print("User limit reached (limit %i)." % config.USER_LIMIT)
+        sys.exit(1)
 
 
 @cli.command()
