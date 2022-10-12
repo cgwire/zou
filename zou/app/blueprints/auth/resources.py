@@ -10,13 +10,12 @@ from flask_principal import (
     identity_changed,
     identity_loaded,
 )
-from flask_mail import Message
 
 from sqlalchemy.exc import OperationalError, TimeoutError
 
-from zou.app import app, mail
+from zou.app import app
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import auth
+from zou.app.utils import auth, emails
 from zou.app.services import persons_service, auth_service, events_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
@@ -248,6 +247,7 @@ class LoginResource(Resource):
 
             if auth_service.is_default_password(app, password):
                 token = uuid.uuid4()
+                auth_tokens_store.clear_all_reset_tokens_for_email(email)
                 auth_tokens_store.add("reset-%s" % token, email, ttl=3600 * 2)
                 current_app.logger.info("User must change his password.")
                 return (
@@ -660,33 +660,29 @@ class ResetPasswordResource(Resource, ArgsMixin):
             )
 
         token = uuid.uuid4()
+        auth_tokens_store.clear_all_reset_tokens_for_email(args["email"])
         auth_tokens_store.add("reset-%s" % token, args["email"], ttl=3600 * 2)
-
-        message_text = """Hello %s,
-
-You have requested for a password reset. You can connect here to change your
-password:
-%s://%s/reset-change-password/%s
-
-Regards,
-
-CGWire Team
-""" % (
-            user["first_name"],
-            current_app.config["DOMAIN_PROTOCOL"],
-            current_app.config["DOMAIN_NAME"],
+        reset_url = "%s://%s/reset-change-password/%s" % (
+            current_app.config.DOMAIN_PROTOCOL,
+            current_app.config.DOMAIN_NAME,
             token,
         )
+        organisation = persons_service.get_organisation()
+        html = f"""<p>Hello {user["first_name"]},</p>
 
-        if current_app.config["MAIL_DEBUG"]:
-            print(message_text)
-        else:
-            message = Message(
-                body=message_text,
-                subject="CGWire password recovery",
-                recipients=[args["email"]],
-            )
-            mail.send(message)
+<p>
+You have requested for a password reset. You can connect here to change your
+password: <a href={reset_url}>{reset_url}</a>
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+        subject = "%s Kitsu password recovery" % (organisation["name"])
+        emails.send_email(subject, html, args["email"])
         return {"success": "Reset token sent"}
 
     def get_arguments(self):

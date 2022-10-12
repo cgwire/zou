@@ -130,6 +130,8 @@ USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
 
+MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
+
 # Deprecated
 TO_REVIEW_TASK_STATUS = "To review"
 DEFAULT_FILE_STATUS = "To review"

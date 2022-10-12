@@ -3,7 +3,6 @@ from flask_restful import current_app
 from zou.app import db
 from zou.app.models.department import Department
 from zou.app.models.person import Person, department_link as DepartmentLink
-from zou.app.utils import auth
 from zou.app.blueprints.source.shotgun.exception import (
     ShotgunEntryImportFailed,
 )
@@ -11,7 +10,7 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-from zou.app.services import tasks_service
+from zou.app.services import tasks_service, persons_service
 
 
 class ImportShotgunPersonsResource(BaseImportShotgunResource):
@@ -58,14 +57,9 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                 person = Person.get_by(email=data["email"])
 
             if person is None:
-                data["password"] = auth.encrypt_password("default")
-                person = Person(**data)
-                person.save()
+                data["password"] = None
+                person = persons_service.create_person(**data, serialize=False)
                 current_app.logger.info("Person created: %s" % person)
-            else:
-                if person.password is None or len(person.password) == 0:
-                    data["password"] = auth.encrypt_password("default")
-
             # create or update a department/person link if needed
             if imported_department:
                 department_person_link = (

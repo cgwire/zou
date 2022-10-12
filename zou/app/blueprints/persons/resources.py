@@ -13,7 +13,7 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.utils import auth, permissions, csv_utils
+from zou.app.utils import permissions, csv_utils, auth
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
@@ -23,8 +23,7 @@ from zou.app.services.exception import (
 
 class NewPersonResource(Resource):
     """
-    Create a new user in the database. Set "default" as password.
-    User role can be set but only admins can create admin users.
+    Create a new user in the database.
     """
 
     @jwt_required
@@ -34,7 +33,7 @@ class NewPersonResource(Resource):
         ---
         tags:
         - Persons
-        description: Set "default" as password.
+        description: Set null if not provided password.
                      User role can be set but only admins can create admin users.
         parameters:
           - in: formData
@@ -75,16 +74,9 @@ class NewPersonResource(Resource):
                 "limit": config.USER_LIMIT,
             }, 400
         else:
-            person = persons_service.create_person(
-                data["email"],
-                auth.encrypt_password("default"),
-                data["first_name"],
-                data["last_name"],
-                data["phone"],
-                role=data["role"],
-                desktop_login=data["desktop_login"],
-                departments=data["departments"],
-            )
+            if data["password"] is not None:
+                data["password"] = auth.encrypt_password(data["password"])
+            person = persons_service.create_person(**data)
         return person, 201
 
     def get_arguments(self):
@@ -100,6 +92,7 @@ class NewPersonResource(Resource):
         parser.add_argument("role", default="user")
         parser.add_argument("desktop_login", default="")
         parser.add_argument("departments", default=None, action="append")
+        parser.add_argument("password", default=None)
         args = parser.parse_args()
         return args
 

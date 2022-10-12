@@ -1,5 +1,6 @@
 import slugify
 import datetime
+import uuid
 
 from calendar import monthrange
 from dateutil import relativedelta
@@ -17,7 +18,7 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app import config
 from zou.app.utils import fields, events, cache, emails
 from zou.app.services import index_service
-from zou.app.stores import file_store
+from zou.app.stores import file_store, auth_tokens_store
 
 from zou.app.services.exception import (
     DepartmentNotFoundException,
@@ -176,6 +177,7 @@ def create_person(
     role="user",
     desktop_login="",
     departments=[],
+    serialize=True,
 ):
     """
     Create a new person entry in the database. No operation are performed on
@@ -208,7 +210,7 @@ def create_person(
     index_service.index_person(person)
     events.emit("person:new", {"person_id": person.id})
     clear_person_cache()
-    return person.serialize(relations=True)
+    return person.serialize(relations=True) if serialize else person
 
 
 def update_password(email, password):
@@ -334,66 +336,40 @@ def invite_person(person_id):
     Send an invitation email to given person (a mail telling him/her how to
     connect on Kitsu).
     """
-    organisation = get_organisation()
     person = get_person_raw(person_id)
+    organisation = get_organisation()
+    token = uuid.uuid4()
+    auth_tokens_store.clear_all_reset_tokens_for_email(person.email)
+    auth_tokens_store.add("reset-%s" % token, person.email, ttl=3600 * 24 * 2)
     subject = (
         "You are invited by %s to join their Kitsu production tracker"
         % (organisation["name"])
     )
-    body = """Hello %s,
-
-Your are invited by %s to collaborate on their Kitsu production tracker.
-You can connect here to start using it:
-
-%s://%s
-
-Your login is: %s
-Your password is: default
-
-You will be invited to modify your password on first connection.
-
-Thank you and see you soon on Kitsu,
-
-%s Team
-""" % (
-        person.first_name,
-        organisation["name"],
+    reset_url = "%s://%s/reset-change-password/%s" % (
         config.DOMAIN_PROTOCOL,
         config.DOMAIN_NAME,
-        person.email,
-        organisation["name"],
+        token,
     )
-    html = """<p>Hello %s,</p>
+
+    html = f"""<p>Hello {person.first_name},</p>
 <p>
-Your are invited by %s to collaborate on their Kitsu production tracker.
-You can connect here to start using it:
+You are invited by {organisation["name"]} to collaborate on their Kitsu production tracker.
 </p>
 <p>
-%s://%s
+Your login is: <strong>{person.email}</strong>
 </p>
 <p>
-Your login is: <strong>%s</strong>
-Your password is: <em>default</em>
-</p>
-<p>
-You will be invited to modify your password on first connection.
+You are invited to set your password at this URL : <a href={reset_url}>{reset_url}</a>
 </p>
 <p>
 Thank you and see you soon on Kitsu,
 </p>
 <p>
-%s Team
+{organisation["name"]} Team
 </p>
-""" % (
-        person.first_name,
-        organisation["name"],
-        config.DOMAIN_PROTOCOL,
-        config.DOMAIN_NAME,
-        person.email,
-        organisation["name"],
-    )
+"""
 
-    emails.send_email(subject, body, person.email, html=html)
+    emails.send_email(subject, html, person.email)
 
 
 def get_organisation():

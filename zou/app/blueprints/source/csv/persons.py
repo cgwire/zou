@@ -1,10 +1,8 @@
 from zou.app.blueprints.source.csv.base import BaseCsvImportResource
 
 from zou.app.models.person import Person
-from zou.app.services import index_service
-from zou.app.utils import auth, permissions
-
-from sqlalchemy.exc import IntegrityError
+from zou.app.services import index_service, persons_service
+from zou.app.utils import permissions
 
 
 class PersonsCsvImportResource(BaseCsvImportResource):
@@ -59,8 +57,8 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         person = Person.get_by(email=email)
         if person is None:
             data["email"] = email
-            data["password"] = auth.encrypt_password("default")
-            person = Person.create(**data)
+            data["password"] = None
+            person = persons_service.create_person(**data, serialize=False)
         elif self.is_update:
             person.update(data)
         index_service.index_person(person)
