@@ -7,6 +7,7 @@ from zou.app.utils import dbhelpers
 PROPAGATE_EXCEPTIONS = True
 RESTFUL_JSON = {"ensure_ascii": False}
 DEBUG = os.getenv("DEBUG", 0)
+DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 
 APP_NAME = "Zou"
 APP_SYSTEM_ERROR_SUBJECT_LINE = "%s system error" % APP_NAME
