@@ -27,6 +27,9 @@ def _get_empty_room(current_frame=0):
         "current_preview_file_id": None,
         "current_frame": current_frame,
         "is_repeating": None,
+        "is_laser_mode": None,
+        "handle_in": None,
+        "handle_out": None,
         "speed": None,
         "comparing": {
             "enable": False,
@@ -56,7 +59,10 @@ def _leave_room(room_id, user_id):
 def _update_room_playing_status(data, room):
     room["is_playing"] = data.get("is_playing", False)
     room["is_repeating"] = data.get("is_repeating", False)
+    room["is_laser_mode"] = data.get("is_laser_mode", False)
     room["current_entity_index"] = data["current_entity_index"]
+    room["handle_in"] = data.get("handle_in", None)
+    room["handle_out"] = data.get("handle_out", None)
     if "current_preview_file_id" in data:
         room["current_preview_file_id"] = data["current_preview_file_id"]
     if "current_frame" in data:
