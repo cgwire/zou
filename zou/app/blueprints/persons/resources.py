@@ -33,7 +33,7 @@ class NewPersonResource(Resource):
         ---
         tags:
         - Persons
-        description: Set null if not provided password.
+        description: Set password to None if not provided.
                      User role can be set but only admins can create admin users.
         parameters:
           - in: formData
