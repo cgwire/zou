@@ -24,7 +24,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.utils import movie
-from zou.app.utils import fields, events, remote_job
+from zou.app.utils import fields, events, remote_job, emails
 from zou.app.utils import query as query_utils
 
 from zou.app.services import (
@@ -37,6 +37,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     names_service,
+    persons_service,
 )
 
 from zou.app.services.exception import (
@@ -650,29 +651,33 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     Build playlist file (concatenate all movie previews). This function is
     aimed at being runned as a job in a job queue.
     """
-    from zou.app import app, mail
+    build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
-    with app.app_context():
-        build_playlist_movie_file(playlist, job, shots, params, full, remote)
+    # Just in case, since rq jobs which encounter an error raise an
+    # exception in order to be flagged as failed.
+    if job["status"] == "succeeded":
+        person = persons_service.get_person_by_email_raw(email)
+        organisation = persons_service.get_organisation()
+        playlist_url = "%s://%s/api/data/playlists/%s/jobs/%s/build/mp4" % (
+            config.DOMAIN_PROTOCOL,
+            config.DOMAIN_NAME,
+            playlist["id"],
+            job["id"],
+        )
+        html = f"""<p>Hello {person.first_name},</p>
+<p>Your playlist {playlist["name"]} is available at:
+<a href={playlist_url}>{playlist_url}</a>
+</p>
+<p>
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
 
-        # Just in case, since rq jobs which encounter an error raise an
-        # exception in order to be flagged as failed.
-        if job["status"] == "succeeded":
-            message_text = """
-Your playlist %s is available at:
-https://%s/api/data/playlists/%s/jobs/%s/build/mp4
-""" % (
-                playlist["name"],
-                config.DOMAIN_NAME,
-                playlist["id"],
-                job["id"],
-            )
-            message = Message(
-                body=message_text,
-                subject="CGWire playlist download",
-                recipients=[email],
-            )
-            mail.send(message)
+        subject = "%s Kitsu playlist download" % (organisation["name"])
+        emails.send_email(subject, html, email)
 
 
 def get_playlist_file_name(playlist):
