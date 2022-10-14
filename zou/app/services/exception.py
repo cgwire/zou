@@ -149,6 +149,10 @@ class WrongPasswordException(Exception):
     pass
 
 
+class UserCantConnectDueToNoFallback(Exception):
+    pass
+
+
 class UnactiveUserException(Exception):
     pass
 

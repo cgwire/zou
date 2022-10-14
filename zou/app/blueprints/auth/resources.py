@@ -26,6 +26,7 @@ from zou.app.services.exception import (
     WrongPasswordException,
     WrongUserException,
     UnactiveUserException,
+    UserCantConnectDueToNoFallback,
 )
 
 
@@ -243,8 +244,6 @@ class LoginResource(Resource):
         (email, password) = self.get_arguments()
         try:
             user = auth_service.check_auth(app, email, password)
-            if "password" in user:
-                del user["password"]
 
             if auth_service.is_default_password(app, password):
                 token = uuid.uuid4()
@@ -297,18 +296,20 @@ class LoginResource(Resource):
                 }
 
             return response
-        except PersonNotFoundException:
-            current_app.logger.info("User is not registered.")
-            return {"login": False}, 400
         except WrongUserException:
-            current_app.logger.info("User is not registered.")
+            current_app.logger.info("User %s is not registered." % email)
             return {"login": False}, 400
         except WrongPasswordException:
-            current_app.logger.info("User gave a wrong password.")
+            current_app.logger.info("User %s gave a wrong password." % email)
             return {"login": False}, 400
         except NoAuthStrategyConfigured:
             current_app.logger.info(
                 "Authentication strategy is not properly configured."
+            )
+            return {"login": False}, 400
+        except UserCantConnectDueToNoFallback:
+            current_app.logger.info(
+                "User %s can't login due to no fallback from LDAP." % email
             )
             return {"login": False}, 400
         except TimeoutError:

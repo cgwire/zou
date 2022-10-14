@@ -14,6 +14,7 @@ from zou.app.services.exception import (
     WrongUserException,
     NoAuthStrategyConfigured,
     UnactiveUserException,
+    UserCantConnectDueToNoFallback,
 )
 from zou.app.stores import auth_tokens_store
 
@@ -27,41 +28,40 @@ def check_auth(app, email, password):
     App is needed as parameter to give access to configuration while avoiding
     cyclic imports.
     """
-    strategy = app.config["AUTH_STRATEGY"]
-    if strategy == "auth_local_classic":
-        user = local_auth_strategy(email, password, app)
-    elif strategy == "auth_local_no_password":
-        user = no_password_auth_strategy(email)
-    elif strategy == "auth_remote_ldap":
-        user = ldap_auth_strategy(email, password, app)
-    else:
-        raise NoAuthStrategyConfigured
-
-    if user is None:
-        app.logger.error("No user found for: %s" % email)
-        raise WrongUserException(email)
-
-    if not user.get("active", False):
-        raise UnactiveUserException(user["email"])
-
-    return user
-
-
-def check_credentials(email, password, app=None):
-    """
-    Check if given password and email match an user in database.
-    Password hash comparison is based on BCrypt.
-    """
     try:
         person = persons_service.get_person_by_email(email, unsafe=True)
     except PersonNotFoundException:
         try:
             person = persons_service.get_person_by_desktop_login(email)
         except PersonNotFoundException:
-            if app is not None:
-                app.logger.error("Person not found: %s" % (email))
-            raise WrongPasswordException()
+            raise WrongUserException(email)
 
+    if not person.get("active", False):
+        raise UnactiveUserException(person["email"])
+
+    strategy = app.config["AUTH_STRATEGY"]
+    if strategy == "auth_local_classic":
+        user = local_auth_strategy(person, password, app)
+    elif strategy == "auth_local_no_password":
+        user = person
+    elif strategy == "auth_remote_ldap":
+        user = ldap_auth_strategy(person, password, app)
+    else:
+        raise NoAuthStrategyConfigured()
+
+    if "password" in user:
+        del user["password"]
+
+    return user
+
+
+def local_auth_strategy(person, password, app=None):
+    """
+    Local strategy just checks that person and passwords are correct the
+    traditional way (email is in database and related password hash corresponds
+    to given password).
+    Password hash comparison is based on BCrypt.
+    """
     try:
         password_hash = person["password"] or ""
         if password_hash and bcrypt.check_password_hash(
@@ -69,52 +69,19 @@ def check_credentials(email, password, app=None):
         ):
             return person
         else:
-            if app is not None:
-                app.logger.error(
-                    "Wrong password for person: %s" % person["full_name"]
-                )
             raise WrongPasswordException()
     except ValueError:
-        if app is not None:
-            app.logger.error("Wrong password for: %s" % person["full_name"])
         raise WrongPasswordException()
 
 
-def no_password_auth_strategy(email):
-    """
-    If no password auth strategy is configured, it just checks that given email
-    matches an user in the database.
-    """
-    try:
-        person = persons_service.get_person_by_email(email)
-    except PersonNotFoundException:
-        try:
-            person = persons_service.get_person_by_desktop_login(email)
-        except PersonNotFoundException:
-            return None
-    return person
-
-
-def local_auth_strategy(email, password, app=None):
-    """
-    Local strategy just checks that email and passwords are correct the
-    traditional way (email is in database and related password hash corresponds
-    to given password).
-    """
-    return check_credentials(email, password, app)
-
-
-def ldap_auth_strategy(email, password, app):
+def ldap_auth_strategy(person, password, app):
     """
     Connect to an active directory server to know if given user can be
     authenticated.
+    When person is not from ldap, it can try to connect with default auth
+    strategy.
+    (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
     """
-    person = None
-    try:
-        person = persons_service.get_person_by_email(email)
-    except PersonNotFoundException:
-        person = persons_service.get_person_by_desktop_login(email)
-
     if person["is_generated_from_ldap"]:
         try:
             SSL = app.config["LDAP_SSL"]
@@ -158,22 +125,18 @@ def ldap_auth_strategy(email, password, app):
                 "Cannot connect to LDAP/Active directory server %s "
                 % (ldap_server)
             )
+            raise LDAPSocketOpenError()
+
         except LDAPInvalidCredentialsResult:
-            app.logger.error("LDAP cannot authenticate user: %s" % email)
-    else:
-        return ldap_auth_strategy_fallback(email, password, app, person)
+            app.logger.error(
+                "LDAP cannot authenticate user: %s" % person["email"]
+            )
+            raise WrongPasswordException()
 
-
-def ldap_auth_strategy_fallback(email, password, app, person):
-    """
-    When ldap auth fails, admin users can try to connect with default
-    auth strategy.
-    (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
-    """
-    if app.config["LDAP_FALLBACK"]:
-        return local_auth_strategy(email, password, app)
+    elif app.config["LDAP_FALLBACK"]:
+        return local_auth_strategy(person, password, app)
     else:
-        raise WrongPasswordException
+        raise UserCantConnectDueToNoFallback()
 
 
 def register_tokens(app, access_token, refresh_token=None):
