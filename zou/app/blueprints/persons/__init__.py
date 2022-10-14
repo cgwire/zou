@@ -25,6 +25,7 @@ from .resources import (
     PersonYearTimeSpentsResource,
     AddToDepartmentResource,
     RemoveFromDepartmentResource,
+    ChangePasswordForPersonResource,
 )
 
 routes = [
@@ -86,6 +87,10 @@ routes = [
     (
         "/actions/persons/<person_id>/departments/<department_id>",
         RemoveFromDepartmentResource,
+    ),
+    (
+        "/actions/persons/<person_id>/change-password",
+        ChangePasswordForPersonResource,
     ),
 ]
 

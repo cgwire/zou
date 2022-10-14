@@ -18,6 +18,7 @@ from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
+    UnactiveUserException,
 )
 
 
@@ -1044,3 +1045,85 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
             )
         persons_service.remove_from_department(department_id, person_id)
         return "", 204
+
+
+class ChangePasswordForPersonResource(Resource, ArgsMixin):
+    """
+    Allow admin to change password for given user.
+    """
+
+    @jwt_required
+    def post(self, person_id):
+        """
+        Allow admin to change password for given user.
+        ---
+        description: Prior to modifying the password, it requires to be admin.
+                     An admin can't change other admins password.
+                     The new password requires a confirmation to ensure that the admin didn't
+                     make a mistake by typing the new password.
+        tags:
+            - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: password
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: password_2
+            required: True
+            type: string
+            format: password
+        responses:
+          200:
+            description: Password changed
+          400:
+            description: Invalid password or inactive user
+        """
+        (password, password_2) = self.get_arguments()
+
+        try:
+            permissions.check_admin_permissions()
+            person = persons_service.get_person(person_id)
+            if (
+                persons_service.is_admin(person)
+                and person["id"] != persons_service.get_current_user()["id"]
+            ):
+                raise permissions.PermissionDenied
+            auth.validate_password(password, password_2)
+            password = auth.encrypt_password(password)
+            persons_service.update_password(person["email"], password)
+            return {"success": True}
+
+        except auth.PasswordsNoMatchException:
+            return (
+                {
+                    "error": True,
+                    "message": "Confirmation password doesn't match.",
+                },
+                400,
+            )
+        except auth.PasswordTooShortException:
+            return {"error": True, "message": "Password is too short."}, 400
+        except UnactiveUserException:
+            return {"error": True, "message": "User is unactive."}, 400
+
+    def get_arguments(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument(
+            "password", required=True, help="New password is missing."
+        )
+        parser.add_argument(
+            "password_2",
+            required=True,
+            help="New password confirmation is missing.",
+        )
+        args = parser.parse_args()
+
+        return (args["password"], args["password_2"])
