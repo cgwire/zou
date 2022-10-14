@@ -4,6 +4,8 @@ from flask import abort
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
+from babel.dates import format_datetime
+
 from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -13,7 +15,7 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.utils import permissions, csv_utils, auth
+from zou.app.utils import permissions, csv_utils, auth, emails
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
@@ -1099,6 +1101,26 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
+            organisation = persons_service.get_organisation()
+            time_string = format_datetime(
+                datetime.datetime.utcnow(),
+                tzinfo=person["timezone"],
+                locale=person["locale"],
+            )
+            html = f"""<p>Hello {person["first_name"]},</p>
+
+<p>
+Your password has been changed at this date : {time_string}.
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+            subject = "%s Kitsu password changed" % (organisation["name"])
+            emails.send_email(subject, html, person["email"])
             return {"success": True}
 
         except auth.PasswordsNoMatchException:

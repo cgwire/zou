@@ -1,4 +1,5 @@
 import uuid
+import datetime
 
 from flask import request, jsonify, abort
 from flask_restful import Resource, reqparse, current_app
@@ -12,6 +13,7 @@ from flask_principal import (
 )
 
 from sqlalchemy.exc import OperationalError, TimeoutError
+from babel.dates import format_datetime
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
@@ -519,10 +521,31 @@ class ChangePasswordResource(Resource):
         (old_password, password, password_2) = self.get_arguments()
 
         try:
-            auth_service.check_auth(app, get_jwt_identity(), old_password)
+            user = persons_service.get_current_user()
+            auth_service.check_auth(app, user["email"], old_password)
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
-            persons_service.update_password(get_jwt_identity(), password)
+            persons_service.update_password(user["email"], password)
+            organisation = persons_service.get_organisation()
+            time_string = format_datetime(
+                datetime.datetime.utcnow(),
+                tzinfo=user["timezone"],
+                locale=user["locale"],
+            )
+            html = f"""<p>Hello {user["first_name"]},</p>
+
+<p>
+You have successfully changed your password at this date : {time_string}.
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+            subject = "%s Kitsu password changed" % (organisation["name"])
+            emails.send_email(subject, html, user["email"])
             return {"success": True}
 
         except auth.PasswordsNoMatchException:
