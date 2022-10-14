@@ -13,7 +13,7 @@ from flask_principal import (
 
 from sqlalchemy.exc import OperationalError, TimeoutError
 
-from zou.app import app
+from zou.app import app, config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import auth, emails
 from zou.app.services import persons_service, auth_service, events_service
@@ -663,8 +663,8 @@ class ResetPasswordResource(Resource, ArgsMixin):
         auth_tokens_store.clear_all_reset_tokens_for_email(args["email"])
         auth_tokens_store.add("reset-%s" % token, args["email"], ttl=3600 * 2)
         reset_url = "%s://%s/reset-change-password/%s" % (
-            current_app.config.DOMAIN_PROTOCOL,
-            current_app.config.DOMAIN_NAME,
+            config.DOMAIN_PROTOCOL,
+            config.DOMAIN_NAME,
             token,
         )
         organisation = persons_service.get_organisation()
