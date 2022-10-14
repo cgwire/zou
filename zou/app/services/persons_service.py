@@ -177,6 +177,7 @@ def create_person(
     role="user",
     desktop_login="",
     departments=[],
+    is_generated_from_ldap=False,
     serialize=True,
 ):
     """
@@ -206,6 +207,7 @@ def create_person(
         role=role,
         desktop_login=desktop_login,
         departments=departments_objects,
+        is_generated_from_ldap=is_generated_from_ldap,
     )
     index_service.index_person(person)
     events.emit("person:new", {"person_id": person.id})

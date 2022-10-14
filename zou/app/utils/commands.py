@@ -293,6 +293,7 @@ def sync_with_ldap_server():
                         first_name,
                         last_name,
                         desktop_login=desktop_login,
+                        is_generated_from_ldap=True,
                     )
                     print("User %s created." % desktop_login)
                 except:
@@ -310,6 +311,7 @@ def sync_with_ldap_server():
                             "first_name": first_name,
                             "last_name": last_name,
                             "active": active,
+                            "is_generated_from_ldap": True,
                         },
                     )
                     print("User %s updated." % desktop_login)

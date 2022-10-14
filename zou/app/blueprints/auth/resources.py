@@ -156,7 +156,6 @@ class AuthenticatedResource(Resource):
                 "authenticated": True,
                 "user": person,
                 "organisation": organisation,
-                "ldap": app.config["AUTH_STRATEGY"] == "auth_remote_ldap",
             }
         except PersonNotFoundException:
             abort(401)
@@ -277,8 +276,6 @@ class LoginResource(Resource):
                     {
                         "user": user,
                         "organisation": organisation,
-                        "ldap": app.config["AUTH_STRATEGY"]
-                        == "auth_remote_ldap",
                         "login": True,
                     }
                 )
@@ -293,7 +290,6 @@ class LoginResource(Resource):
                 response = {
                     "login": True,
                     "user": user,
-                    "ldap": app.config["AUTH_STRATEGY"] == "auth_remote_ldap",
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                 }

@@ -59,6 +59,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         "Department", secondary=department_link, lazy="joined"
     )
 
+    is_generated_from_ldap = db.Column(db.Boolean(), default=False)
+
     def __repr__(self):
         if sys.version_info[0] < 3:
             return "<Person %s>" % self.full_name().encode("utf-8")

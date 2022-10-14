@@ -64,8 +64,9 @@ def check_credentials(email, password, app=None):
 
     try:
         password_hash = person["password"] or ""
-
-        if bcrypt.check_password_hash(password_hash, password):
+        if password_hash and bcrypt.check_password_hash(
+            password_hash, password
+        ):
             return person
         else:
             if app is not None:
@@ -114,52 +115,52 @@ def ldap_auth_strategy(email, password, app):
     except PersonNotFoundException:
         person = persons_service.get_person_by_desktop_login(email)
 
-    try:
-        SSL = app.config["LDAP_SSL"]
-        if app.config["LDAP_IS_AD_SIMPLE"]:
-            user = "CN=%s,%s" % (
-                person["full_name"],
-                app.config["LDAP_BASE_DN"],
-            )
-            SSL = True
-            authentication = SIMPLE
-        elif app.config["LDAP_IS_AD"]:
-            user = "%s\%s" % (
-                app.config["LDAP_DOMAIN"],
-                person["desktop_login"],
-            )
-            authentication = NTLM
-        else:
-            user = "uid=%s,%s" % (
-                person["desktop_login"],
-                app.config["LDAP_BASE_DN"],
-            )
-            authentication = SIMPLE
+    if person["is_generated_from_ldap"]:
+        try:
+            SSL = app.config["LDAP_SSL"]
+            if app.config["LDAP_IS_AD_SIMPLE"]:
+                user = "CN=%s,%s" % (
+                    person["full_name"],
+                    app.config["LDAP_BASE_DN"],
+                )
+                SSL = True
+                authentication = SIMPLE
+            elif app.config["LDAP_IS_AD"]:
+                user = "%s\%s" % (
+                    app.config["LDAP_DOMAIN"],
+                    person["desktop_login"],
+                )
+                authentication = NTLM
+            else:
+                user = "uid=%s,%s" % (
+                    person["desktop_login"],
+                    app.config["LDAP_BASE_DN"],
+                )
+                authentication = SIMPLE
 
-        ldap_server = "%s:%s" % (
-            app.config["LDAP_HOST"],
-            app.config["LDAP_PORT"],
-        )
-        server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
-        conn = Connection(
-            server,
-            user=user,
-            password=password,
-            authentication=authentication,
-            raise_exceptions=True,
-        )
-        conn.bind()
-        return person
+            ldap_server = "%s:%s" % (
+                app.config["LDAP_HOST"],
+                app.config["LDAP_PORT"],
+            )
+            server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
+            conn = Connection(
+                server,
+                user=user,
+                password=password,
+                authentication=authentication,
+                raise_exceptions=True,
+            )
+            conn.bind()
+            return person
 
-    except LDAPSocketOpenError:
-        app.logger.error(
-            "Cannot connect to LDAP/Active directory server %s "
-            % (ldap_server)
-        )
-        return ldap_auth_strategy_fallback(email, password, app, person)
-
-    except LDAPInvalidCredentialsResult:
-        app.logger.error("LDAP cannot authenticate user: %s" % email)
+        except LDAPSocketOpenError:
+            app.logger.error(
+                "Cannot connect to LDAP/Active directory server %s "
+                % (ldap_server)
+            )
+        except LDAPInvalidCredentialsResult:
+            app.logger.error("LDAP cannot authenticate user: %s" % email)
+    else:
         return ldap_auth_strategy_fallback(email, password, app, person)
 
 
@@ -169,8 +170,7 @@ def ldap_auth_strategy_fallback(email, password, app, person):
     auth strategy.
     (only if fallback is activated (via LDAP_FALLBACK flag) in configuration)
     """
-    if app.config["LDAP_FALLBACK"] and persons_service.is_admin(person):
-        person = persons_service.get_person_by_email(email)
+    if app.config["LDAP_FALLBACK"]:
         return local_auth_strategy(email, password, app)
     else:
         raise WrongPasswordException
