@@ -27,6 +27,7 @@ from zou.app.services.exception import (
     WrongUserException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
+    TooMuchLoginFailedAttemps,
 )
 
 
@@ -298,20 +299,20 @@ class LoginResource(Resource):
             return response
         except WrongUserException:
             current_app.logger.info("User %s is not registered." % email)
-            return {"login": False}, 400
+            return {"login": False}, 401
         except WrongPasswordException:
             current_app.logger.info("User %s gave a wrong password." % email)
-            return {"login": False}, 400
+            return {"login": False}, 401
         except NoAuthStrategyConfigured:
             current_app.logger.info(
                 "Authentication strategy is not properly configured."
             )
-            return {"login": False}, 400
+            return {"login": False}, 409
         except UserCantConnectDueToNoFallback:
             current_app.logger.info(
                 "User %s can't login due to no fallback from LDAP." % email
             )
-            return {"login": False}, 400
+            return {"login": False}, 401
         except TimeoutError:
             current_app.logger.info("Timeout occurs while logging in.")
             return {"login": False}, 400
@@ -322,7 +323,16 @@ class LoginResource(Resource):
                     "login": False,
                     "message": "User is inactive, he cannot log in.",
                 },
-                400,
+                401,
+            )
+        except TooMuchLoginFailedAttemps:
+            return (
+                {
+                    "error": True,
+                    "login": False,
+                    "too_many_failed_login_attemps": True,
+                },
+                401,
             )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)

@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import flask_bcrypt as bcrypt
 
 from flask_jwt_extended import get_jti
@@ -15,8 +16,10 @@ from zou.app.services.exception import (
     NoAuthStrategyConfigured,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
+    TooMuchLoginFailedAttemps,
 )
 from zou.app.stores import auth_tokens_store
+from zou.app.utils import date_helpers
 
 
 def check_auth(app, email, password):
@@ -39,15 +42,36 @@ def check_auth(app, email, password):
     if not person.get("active", False):
         raise UnactiveUserException(person["email"])
 
+    login_failed_attemps = person["login_failed_attemps"]
+    if login_failed_attemps is None:
+        login_failed_attemps = 0
+    if (
+        login_failed_attemps >= 5
+        and date_helpers.get_datetime_from_string(person["last_login_failed"])
+        + timedelta(minutes=1)
+        > datetime.now()
+    ):
+        raise TooMuchLoginFailedAttemps()
+
     strategy = app.config["AUTH_STRATEGY"]
-    if strategy == "auth_local_classic":
-        user = local_auth_strategy(person, password, app)
-    elif strategy == "auth_local_no_password":
-        user = person
-    elif strategy == "auth_remote_ldap":
-        user = ldap_auth_strategy(person, password, app)
-    else:
-        raise NoAuthStrategyConfigured()
+    try:
+        if strategy == "auth_local_classic":
+            user = local_auth_strategy(person, password, app)
+        elif strategy == "auth_local_no_password":
+            user = person
+        elif strategy == "auth_remote_ldap":
+            user = ldap_auth_strategy(person, password, app)
+        else:
+            raise NoAuthStrategyConfigured()
+    except WrongPasswordException:
+        data = {
+            "login_failed_attemps": login_failed_attemps + 1,
+            "last_login_failed": datetime.now(),
+        }
+        persons_service.update_person(person["id"], data)
+        raise WrongPasswordException()
+
+    persons_service.update_person(person["id"], {"login_failed_attemps": 0})
 
     if "password" in user:
         del user["password"]
