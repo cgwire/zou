@@ -65,7 +65,7 @@ class AuthTestCase(ApiDBTestCase):
     def test_unactive_login(self):
         self.person.update({"active": False})
         self.person.save()
-        tokens = self.post("auth/login", self.credentials, 400)
+        tokens = self.post("auth/login", self.credentials, 401)
         self.assertIsNotAuthenticated(tokens, 422)
         self.logout(tokens)
 
@@ -87,7 +87,7 @@ class AuthTestCase(ApiDBTestCase):
             "email": self.person_dict["email"],
             "password": "wrongpassword",
         }
-        result = self.post("auth/login", credentials, 400)
+        result = self.post("auth/login", credentials, 401)
         self.assertFalse(result["login"])
         self.assertIsNotAuthenticated(result, 422)
 
@@ -100,8 +100,8 @@ class AuthTestCase(ApiDBTestCase):
     def test_register(self):
         subscription_data = {
             "email": "alice@doe.com",
-            "password": "123456",
-            "password_2": "123456",
+            "password": "12345678",
+            "password_2": "12345678",
             "first_name": "Alice",
             "last_name": "Doe",
         }
@@ -118,8 +118,8 @@ class AuthTestCase(ApiDBTestCase):
     def test_register_bad_email(self):
         credentials = {
             "email": "alicedoecom",
-            "password": "123456",
-            "password_2": "123456",
+            "password": "12345678",
+            "password_2": "12345678",
             "first_name": "Alice",
             "last_name": "Doe",
         }
@@ -128,8 +128,8 @@ class AuthTestCase(ApiDBTestCase):
     def test_register_different_password(self):
         credentials = {
             "email": "alice@doe.com",
-            "password": "123456",
-            "password_2": "123457",
+            "password": "12345678",
+            "password_2": "12345687",
             "first_name": "Alice",
             "last_name": "Doe",
         }
@@ -148,25 +148,25 @@ class AuthTestCase(ApiDBTestCase):
     def test_change_password(self):
         user_data = {
             "email": "alice@doe.com",
-            "password": "123456",
-            "password_2": "123456",
+            "password": "12345678",
+            "password_2": "12345678",
             "first_name": "Alice",
             "last_name": "Doe",
         }
         credentials = {
             "email": "alice@doe.com",
-            "password": "123456",
+            "password": "12345678",
         }
         self.post("auth/register", user_data, 201)
         tokens = self.post("auth/login", credentials, 200)
         self.assertIsAuthenticated(tokens)
 
         new_password = {
-            "old_password": "123456",
-            "password": "654321",
-            "password_2": "654321",
+            "old_password": "12345678",
+            "password": "87654321",
+            "password_2": "87654321",
         }
-        credentials = {"email": "alice@doe.com", "password": "654321"}
+        credentials = {"email": "alice@doe.com", "password": "87654321"}
 
         headers = self.get_auth_headers(tokens)
         response = self.app.post(
@@ -239,7 +239,7 @@ class AuthTestCase(ApiDBTestCase):
 
     def test_unactive(self):
         self.person.update({"active": False})
-        self.post("auth/login", self.credentials, 400)
+        self.post("auth/login", self.credentials, 401)
 
         self.person.update({"active": True})
         self.person.save()

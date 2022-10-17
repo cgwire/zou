@@ -10,7 +10,7 @@ from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
 )
-from zou.app.services import tasks_service, persons_service
+from zou.app.services import tasks_service
 
 
 class ImportShotgunPersonsResource(BaseImportShotgunResource):
@@ -58,7 +58,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
 
             if person is None:
                 data["password"] = None
-                person = persons_service.create_person(**data, serialize=False)
+                person = Person.create(**data)
                 current_app.logger.info("Person created: %s" % person)
             # create or update a department/person link if needed
             if imported_department:

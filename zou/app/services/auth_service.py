@@ -64,14 +64,12 @@ def check_auth(app, email, password):
         else:
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
-        data = {
-            "login_failed_attemps": login_failed_attemps + 1,
-            "last_login_failed": datetime.now(),
-        }
-        persons_service.update_person(person["id"], data)
+        persons_service.update_login_failed_attemps_person(
+            person["id"], login_failed_attemps + 1, datetime.now()
+        )
         raise WrongPasswordException()
 
-    persons_service.update_person(person["id"], {"login_failed_attemps": 0})
+    persons_service.update_login_failed_attemps_person(person["id"], 0)
 
     if "password" in user:
         del user["password"]

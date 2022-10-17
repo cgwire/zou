@@ -4,6 +4,8 @@ from tests.base import ApiDBTestCase
 
 from zou.app.utils import auth
 
+from zou.app import app
+
 from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -65,44 +67,30 @@ class AuthTestCase(ApiDBTestCase):
         )
         self.assertTrue(auth.validate_password("mypassword", "mypassword"))
 
-    def test_check_credentials(self):
-        self.person.update({"password": auth.encrypt_password("mypassword")})
-        self.assertRaises(
-            WrongPasswordException,
-            auth_service.check_credentials,
-            "john.doe@gmail.com",
-            "mypassword2",
-        )
-        self.assertRaises(
-            WrongPasswordException,
-            auth_service.check_credentials,
-            "john.doe@yahoo.com",
-            "mypassword2",
-        )
-        self.assertTrue(
-            auth_service.check_credentials("john.doe@gmail.com", "mypassword")
-        )
-
     def test_no_password_auth_strategy(self):
-        person = auth_service.no_password_auth_strategy("john.doe@gmail.com")
+        app.config["AUTH_STRATEGY"] = "auth_local_no_password"
+        person = auth_service.check_auth(app, "john.doe@gmail.com", "")
         self.assertEqual(person["first_name"], "John")
 
     def test_local_auth_strategy(self):
+        app.config["AUTH_STRATEGY"] = "auth_local_classic"
         self.person.update({"password": auth.encrypt_password("mypassword")})
         self.assertRaises(
             WrongPasswordException,
-            auth_service.local_auth_strategy,
+            auth_service.check_auth,
+            app,
             "john.doe@gmail.com",
             "mypassword2",
         )
         self.assertRaises(
-            WrongPasswordException,
-            auth_service.local_auth_strategy,
+            WrongUserException,
+            auth_service.check_auth,
+            app,
             "john.doe@yahoo.com",
             "mypassword2",
         )
-        person = auth_service.local_auth_strategy(
-            "john.doe@gmail.com", "mypassword"
+        person = auth_service.check_auth(
+            app, "john.doe@gmail.com", "mypassword"
         )
         self.assertEqual(person["first_name"], "John")
 

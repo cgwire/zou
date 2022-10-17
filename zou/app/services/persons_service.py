@@ -440,3 +440,15 @@ def clear_avatar(person_id):
     except:
         pass
     return person.serialize()
+
+
+def update_login_failed_attemps_person(
+    person_id, login_failed_attemps, last_login_failed=None
+):
+    person = Person.get(person_id)
+    data = {"login_failed_attemps": login_failed_attemps}
+    if last_login_failed is not None:
+        data["last_login_failed"] = last_login_failed
+    person.update(data)
+    clear_person_cache()
+    return person.serialize()

@@ -58,7 +58,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         if person is None:
             data["email"] = email
             data["password"] = None
-            person = persons_service.create_person(**data, serialize=False)
+            person = Person.create(**data)
         elif self.is_update:
             person.update(data)
         index_service.index_person(person)
