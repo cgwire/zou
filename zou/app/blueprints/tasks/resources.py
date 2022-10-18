@@ -1092,13 +1092,13 @@ class AddTimeSpentResource(Resource):
 
 class GetTimeSpentResource(Resource):
     """
-    Get time spent on a given task by a given person.
+    Get time spent on a given task and date.
     """
 
     @jwt_required
     def get(self, task_id, date):
         """
-        Get time spent on a given task by a given person.
+        Get time spent on a given task and date.
         ---
         tags:
         - Tasks
@@ -1117,7 +1117,7 @@ class GetTimeSpentResource(Resource):
             x-example: "2022-07-12"
         responses:
             200:
-                description: Time spent on given task by given person
+                description: Time spent on given task and date
             404:
                 description: Wrong date format
         """
@@ -1125,7 +1125,7 @@ class GetTimeSpentResource(Resource):
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
             user_service.check_entity_access(task["entity_id"])
-            return tasks_service.get_time_spents(task_id)
+            return tasks_service.get_time_spents(task_id, date)
         except WrongDateFormatException:
             abort(404)
 
@@ -1359,7 +1359,6 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
 
 
 class SetTaskMainPreviewResource(Resource):
-
     @jwt_required
     def put(self, task_id):
         """
@@ -1383,8 +1382,9 @@ class SetTaskMainPreviewResource(Resource):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
-        preview_file = \
-            preview_files_service.get_last_preview_file_for_task(task_id)
+        preview_file = preview_files_service.get_last_preview_file_for_task(
+            task_id
+        )
         entity = entities_service.update_entity_preview(
             task["entity_id"], preview_file["id"]
         )

@@ -465,13 +465,13 @@ def get_next_position(task_id, revision):
     return len(preview_files) + 1
 
 
-def get_time_spents(task_id):
+def get_time_spents(task_id, date):
     """
     Return time spents for given task.
     """
     result = collections.defaultdict(list)
     result["total"] = 0
-    time_spents = TimeSpent.query.filter_by(task_id=task_id).all()
+    time_spents = TimeSpent.query.filter_by(task_id=task_id, date=date).all()
     for time_spent in time_spents:
         result[str(time_spent.person_id)].append(time_spent.serialize())
         result["total"] += time_spent.duration
