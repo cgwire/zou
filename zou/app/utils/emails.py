@@ -1,3 +1,4 @@
+import traceback
 from io import StringIO
 from html.parser import HTMLParser
 from flask_mail import Message
@@ -15,15 +16,19 @@ def send_email(subject, html, recipient_email, body=None):
         print(body)
     elif app.config["MAIL_ENABLED"]:
         with app.app_context():
-            mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
-            message = Message(
-                sender="Kitsu Bot <%s>" % mail_default_sender,
-                body=body,
-                html=html,
-                subject=subject,
-                recipients=[recipient_email],
-            )
-            mail.send(message)
+            try:
+                mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
+                message = Message(
+                    sender="Kitsu Bot <%s>" % mail_default_sender,
+                    body=body,
+                    html=html,
+                    subject=subject,
+                    recipients=[recipient_email],
+                )
+                mail.send(message)
+            except Exception:
+                app.logger.info("Exception when sending a mail notification:")
+                app.logger.info(traceback.format_exc())
 
 
 class HTMLStripper(HTMLParser):
