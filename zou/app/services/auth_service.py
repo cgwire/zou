@@ -31,16 +31,18 @@ def check_auth(app, email, password):
     App is needed as parameter to give access to configuration while avoiding
     cyclic imports.
     """
+    if not email:
+        raise WrongUserException()
     try:
         person = persons_service.get_person_by_email(email, unsafe=True)
     except PersonNotFoundException:
         try:
             person = persons_service.get_person_by_desktop_login(email)
         except PersonNotFoundException:
-            raise WrongUserException(email)
+            raise WrongUserException()
 
     if not person.get("active", False):
-        raise UnactiveUserException(person["email"])
+        raise UnactiveUserException()
 
     login_failed_attemps = person["login_failed_attemps"]
     if login_failed_attemps is None:
