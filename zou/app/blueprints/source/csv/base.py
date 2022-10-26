@@ -67,39 +67,37 @@ class BaseCsvImportResource(Resource):
             return result, 201
         except ImportRowException as e:
             current_app.logger.error("Import failed: %s" % e)
+            return self.format_row_error(e), 400
+        except csv.Error as e:
+            current_app.logger.error("Import failed: %s" % e)
             return self.format_error(e), 400
 
-    def format_error(self, exception):
+    def format_row_error(self, exception):
         return {
             "error": True,
             "message": exception.message,
             "line_number": exception.line_number,
         }
 
+    def format_error(self, exception):
+        return {"error": True, "message": str(exception)}
+
     def run_import(self, file_path):
         result = []
         self.check_permissions()
         self.prepare_import()
-        delimiter = self.get_delimiter(file_path)
         with open(file_path) as csvfile:
-            reader = csv.DictReader(csvfile, delimiter=delimiter)
+            reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
             for row in reader:
                 row = self.import_row(row)
                 result.append(row)
         return result
 
-    def get_delimiter(self, file_path):
-        delimiter = ","
-        with open(file_path) as csvfile:
-            try:
-                content = csvfile.read()
-                sniffer = csv.Sniffer()
-                dialect = sniffer.sniff(content)
-                delimiter = dialect.delimiter
-            except:
-                pass
-
-        return delimiter
+    def get_dialect(self, csvfile):
+        sniffer = csv.Sniffer()
+        dialect = sniffer.sniff(csvfile.read())
+        csvfile.seek(0)
+        return dialect
 
     def prepare_import(self):
         pass
@@ -136,15 +134,18 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
             result = self.run_import(project_id, file_path, **kwargs)
             return result, 201
         except ImportRowException as e:
+            current_app.logger.error("Import failed: %s" % e)
+            return self.format_row_error(e), 400
+        except csv.Error as e:
+            current_app.logger.error("Import failed: %s" % e)
             return self.format_error(e), 400
 
     def run_import(self, project_id, file_path, **kwargs):
         result = []
         self.check_project_permissions(project_id)
         self.prepare_import(project_id, **kwargs)
-        delimiter = self.get_delimiter(file_path)
         with open(file_path) as csvfile:
-            reader = csv.DictReader(csvfile, delimiter=delimiter)
+            reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
             line_number = 1
             for row in reader:
                 try:
