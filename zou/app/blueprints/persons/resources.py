@@ -1,6 +1,6 @@
 import datetime
 
-from flask import abort
+from flask import abort, request
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
@@ -1107,10 +1107,13 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
                 tzinfo=person["timezone"],
                 locale=person["locale"],
             )
+            person_IP = request.headers.get("X-Forwarded-For", None)
             html = f"""<p>Hello {person["first_name"]},</p>
 
 <p>
 Your password has been changed at this date : {time_string}.
+
+The IP of the person who changed your password is : {person_IP}.
 </p>
 
 Thank you and see you soon on Kitsu,

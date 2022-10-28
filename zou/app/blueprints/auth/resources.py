@@ -543,10 +543,13 @@ class ChangePasswordResource(Resource):
                 tzinfo=user["timezone"],
                 locale=user["locale"],
             )
+            person_IP = request.headers.get("X-Forwarded-For", None)
             html = f"""<p>Hello {user["first_name"]},</p>
 
 <p>
 You have successfully changed your password at this date : {time_string}.
+
+Your IP when you have changed your password is : {person_IP}.
 </p>
 
 Thank you and see you soon on Kitsu,
