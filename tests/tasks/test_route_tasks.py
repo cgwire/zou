@@ -529,10 +529,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task = self.generate_fixture_task().serialize()
         preview_file = self.generate_fixture_preview_file().serialize()
         self.put(
-            "/actions/tasks/%s/set-main-preview" % preview_file["task_id"],
-            {}
+            "/actions/tasks/%s/set-main-preview" % preview_file["task_id"], {}
         )
-        entity = self.get(
-            "/data/entities/%s" % task["entity_id"]
-        )
+        entity = self.get("/data/entities/%s" % task["entity_id"])
         self.assertEqual(entity["preview_file_id"], preview_file["id"])

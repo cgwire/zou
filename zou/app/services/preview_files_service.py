@@ -504,11 +504,11 @@ def get_last_preview_file_for_task(task_id):
     Get last preview published for given task.
     """
     preview = (
-        PreviewFile.query
-        .filter(PreviewFile.task_id == task_id)
+        PreviewFile.query.filter(PreviewFile.task_id == task_id)
         .order_by(
             PreviewFile.revision.desc(),
             PreviewFile.created_at,
-        ).first()
+        )
+        .first()
     )
     return preview.serialize()
