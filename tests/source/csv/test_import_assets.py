@@ -136,9 +136,9 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         if type(result) != str:
             result = result.decode("utf-8")
         error = json.loads(result)
-        self.assertEqual(error["line_number"], 2)
+        self.assertEqual(error["message"], "Could not determine delimiter")
         entities = Entity.query.all()
-        self.assertEqual(len(entities), 1)
+        self.assertEqual(len(entities), 0)
 
     def test_import_assets_missing_header(self):
         # With missing columns on a given line. It should not work.

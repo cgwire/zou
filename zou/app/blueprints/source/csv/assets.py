@@ -189,7 +189,12 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             "source_id": episode_id,
         }
 
-        entity = Entity.get_by(**asset_values)
+        entity = Entity.get_by(
+            **{
+                "name": asset_values["name"],
+                "project_id": asset_values["project_id"],
+            }
+        )
 
         asset_new_values = {}
 
