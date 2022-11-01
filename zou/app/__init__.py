@@ -11,6 +11,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
 from jwt import ExpiredSignatureError
+from babel.core import UnknownLocaleError
 
 from . import config, swagger
 from .stores import auth_tokens_store
@@ -87,6 +88,11 @@ def try_delete_model_with_relations(error):
 
 @app.errorhandler(WrongTaskTypeForEntityException)
 def wrong_task_type_for_entity(error):
+    return jsonify(error=True, message=str(error)), 400
+
+
+@app.errorhandler(UnknownLocaleError)
+def wrong_locale_label(error):
     return jsonify(error=True, message=str(error)), 400
 
 
