@@ -396,7 +396,7 @@ def remove_episode(episode_id, force=False):
     """
     Remove an episode and all related sequences and shots.
     """
-    from zou.app.services import shots_service, assets_service
+    from zou.app.services import shots_service, assets_service, tasks_service
 
     episode = shots_service.get_episode_raw(episode_id)
     if force:
@@ -404,6 +404,10 @@ def remove_episode(episode_id, force=False):
             shots_service.remove_sequence(sequence.id, force=True)
         for asset in Entity.get_all_by(source_id=episode_id):
             assets_service.remove_asset(asset.id, force=True)
+        tasks = Task.query.filter_by(entity_id=episode_id).all()
+        for task in tasks:
+            remove_task(task.id, force=True)
+            tasks_service.clear_task_cache(str(task.id))
         Playlist.delete_all_by(episode_id=episode_id)
         ScheduleItem.delete_all_by(object_id=episode_id)
     try:

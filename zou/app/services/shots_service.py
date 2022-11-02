@@ -617,7 +617,7 @@ def is_episode(entity):
     return str(entity["entity_type_id"]) == episode_type["id"]
 
 
-def get_or_create_episode(project_id, name):
+def get_or_create_episode(project_id, name, description=""):
     """
     Retrieve episode matching given project and name or create it.
     """
@@ -627,7 +627,10 @@ def get_or_create_episode(project_id, name):
     )
     if episode is None:
         episode = Entity(
-            entity_type_id=episode_type["id"], project_id=project_id, name=name
+            entity_type_id=episode_type["id"],
+            project_id=project_id,
+            name=name,
+            description=description
         )
         episode.save()
     return episode.serialize()
@@ -874,7 +877,7 @@ def remove_sequence(sequence_id, force=False):
     return sequence.serialize(obj_type="Sequence")
 
 
-def create_episode(project_id, name):
+def create_episode(project_id, name, description="", data={}):
     """
     Create episode for given project.
     """
@@ -884,7 +887,11 @@ def create_episode(project_id, name):
     )
     if episode is None:
         episode = Entity.create(
-            entity_type_id=episode_type["id"], project_id=project_id, name=name
+            entity_type_id=episode_type["id"],
+            project_id=project_id,
+            name=name,
+            description=description,
+            data=data
         )
     events.emit(
         "episode:new", {"episode_id": episode.id}, project_id=project_id

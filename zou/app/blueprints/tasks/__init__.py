@@ -26,6 +26,7 @@ from .resources import (
     CreateShotTasksResource,
     CreateAssetTasksResource,
     CreateEditTasksResource,
+    CreateEntityTasksResource,
     GetTimeSpentResource,
     SetTimeSpentResource,
     AddTimeSpentResource,
@@ -100,6 +101,10 @@ routes = [
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/edits/create-tasks",
         CreateEditTasksResource,
+    ),
+    (
+        "/actions/projects/<project_id>/task-types/<task_type_id>/create-tasks/<entity_type>/",
+        CreateEntityTasksResource,
     ),
     (
         "/actions/tasks/<task_id>/set-main-preview",

@@ -819,21 +819,30 @@ class ProjectEpisodesResource(Resource):
             name: name
             required: True
             type: string
-            x-example: Name of episode
+            x-example: Name of the episode
+          - in: formData
+            name: description
+            required: True
+            type: string
+            x-example: Description of the episode
         responses:
             201:
                 description: Episode created for given project
         """
-        name = self.get_arguments()
+        name, description, data = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
-        return shots_service.create_episode(project_id, name), 201
+        return shots_service.create_episode(
+            project_id, name, description, data
+        ), 201
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
         parser.add_argument("name", required=True)
+        parser.add_argument("description", required=True)
+        parser.add_argument("data", type=dict, default={})
         args = parser.parse_args()
-        return args["name"]
+        return args["name"], args["description"], args["data"]
 
 
 class ProjectEpisodeStatsResource(Resource):

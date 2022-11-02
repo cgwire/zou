@@ -54,6 +54,18 @@ def get_entity_type_by_name(name):
     return entity_type.serialize()
 
 
+@cache.memoize_function(240)
+def get_entity_type_by_name_or_not_found(name):
+    """
+    Return entity type maching *name*. If it doesn't exist, it creates it.
+    """
+    entity_type = EntityType.get_by(name=name)
+    if entity_type is None:
+        raise EntityTypeNotFoundException
+    return entity_type.serialize()
+
+
+
 def get_entity_raw(entity_id):
     """
     Return an entity type matching given id, as an active record. Raises an
@@ -108,7 +120,11 @@ def update_entity_preview(entity_id, preview_file_id):
 
 
 def get_entities_for_project(
-    project_id, entity_type_id, obj_type="Entity", only_assigned=False
+    project_id,
+    entity_type_id,
+    obj_type="Entity",
+    episode_id=None,
+    only_assigned=False,
 ):
     """
     Retrieve all entities related to given project of which entity is entity
@@ -121,6 +137,10 @@ def get_entities_for_project(
         .filter(Entity.project_id == project_id)
         .order_by(Entity.name)
     )
+
+    if episode_id is not None:
+        query = query.filter(Entity.parent_id == episode_id)
+
     if only_assigned:
         query = query.outerjoin(Task).filter(
             user_service.build_assignee_filter()

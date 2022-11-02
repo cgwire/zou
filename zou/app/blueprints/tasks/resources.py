@@ -480,6 +480,64 @@ class CreateShotTasksResource(Resource):
         return tasks, 201
 
 
+class CreateEntityTasksResource(Resource):
+
+    @jwt_required
+    def post(self, project_id, entity_type, task_type_id):
+        """
+        Create a new task with given task type for each entity of given
+        entity type.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: List of created tasks.
+        """
+        user_service.check_manager_project_access(project_id)
+        task_type = tasks_service.get_task_type(task_type_id)
+        entity_type_dict = \
+            entities_service.get_entity_type_by_name_or_not_found(
+                entity_type.capitalize()
+            )
+
+        entity_ids = request.json
+        entities = []
+        if type(entity_ids) == list and len(entity_ids) > 0:
+            for entity_id in entity_ids:
+                entity = entities_service.get_entity(entity_id)
+                if entity["project_id"] == entity_id:
+                    entities.append(entity)
+        else:
+            criterions = query.get_query_criterions_from_request(request)
+            episode_id = criterions.get("episode_id", None)
+            entities = entities_service.get_entities_for_project(
+                project_id, entity_type_dict["id"], episode_id=episode_id
+            )
+
+        tasks = tasks_service.create_tasks(task_type, entities)
+        return tasks, 201
+
+
 class CreateAssetTasksResource(Resource):
     """
     Create a new task for given asset and task type.
