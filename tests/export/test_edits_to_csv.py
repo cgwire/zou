@@ -8,8 +8,8 @@ class EditCsvExportTestCase(BaseEditTestCase):
         csv_edits = self.get_raw(
             "/export/csv/projects/%s/edits.csv" % self.project.id
         )
-        expected_result = """Project;Episode;Name;Description;Time Spent;Edit\r
-Cosmos Landromat;E01;Edit;Description of the Edit;0.21;opn\r\n"""
+        expected_result = """Project;Episode;Name;Description;Time Spent;Contractor;Edit\r
+Cosmos Landromat;E01;Edit;Description of the Edit;0.21;;opn\r\n"""
         self.assertEqual(csv_edits, expected_result)
 
     def test_export_with_metadata(self):
@@ -30,6 +30,6 @@ Cosmos Landromat;E01;Edit;Description of the Edit;0.21;opn\r\n"""
         csv_edits = self.get_raw(
             "/export/csv/projects/%s/edits.csv" % self.project.id
         )
-        expected_result = """Project;Episode;Name;Description;Time Spent;Start frame;Edit\r
-Cosmos Landromat;E01;Edit;Description of the Edit;0.21;100;opn\r\n"""
+        expected_result = """Project;Episode;Name;Description;Time Spent;Contractor;Start frame;Edit\r
+Cosmos Landromat;E01;Edit;Description of the Edit;0.21;;100;opn\r\n"""
         self.assertEqual(csv_edits, expected_result)
