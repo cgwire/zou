@@ -315,6 +315,10 @@ class EditsAndTasksResource(Resource):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
+            criterions["vendor_departments"] = [
+                str(department.id)
+                for department in persons_service.get_current_user_raw().departments
+            ]
         return edits_service.get_edits_and_tasks(criterions)
 
 

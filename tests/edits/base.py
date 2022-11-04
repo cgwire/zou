@@ -27,6 +27,7 @@ class BaseEditTestCase(ApiDBTestCase):
         self.generate_fixture_assigner()
         self.generate_fixture_task_status()
         self.generate_fixture_department()
+        self.department_id = self.department.id
         self.generate_fixture_task_type()
         self.task_type_edit_dict = self.task_type_edit.serialize()
 
@@ -41,6 +42,9 @@ class BaseEditTestCase(ApiDBTestCase):
             entity_id=self.edit_id,
             task_type_id=self.task_type_edit.id,
         )
+
+        self.generate_fixture_metadata_descriptor(entity_type="Edit")
+        self.meta_descriptor_id = self.meta_descriptor.id
 
         self.maxDiff = None
 

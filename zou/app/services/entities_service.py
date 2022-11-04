@@ -1,4 +1,4 @@
-from zou.app.services import base_service
+from zou.app.services import base_service, projects_service
 from zou.app.utils import cache, events, fields
 
 from zou.app.models.entity import Entity, EntityLink
@@ -63,7 +63,6 @@ def get_entity_type_by_name_or_not_found(name):
     if entity_type is None:
         raise EntityTypeNotFoundException
     return entity_type.serialize()
-
 
 
 def get_entity_raw(entity_id):
@@ -241,3 +240,30 @@ def remove_entity_link(link_id):
         return link.serialize()
     except:
         raise EntityLinkNotFoundException
+
+
+def get_not_allowed_descriptors_fields_for_vendor(
+    entity_type="Asset", departments=[], projects_ids=[]
+):
+    not_allowed_descriptors_field_names = {}
+    for project_id in projects_ids:
+        not_allowed_descriptors_field_names[project_id] = [
+            descriptor["field_name"]
+            for descriptor in projects_service.get_metadata_descriptors(
+                project_id
+            )
+            if descriptor["entity_type"] == entity_type
+            and descriptor["departments"] != []
+            and len(set(departments) & set(descriptor["departments"])) == 0
+        ]
+    return not_allowed_descriptors_field_names
+
+
+def remove_not_allowed_fields_from_metadata(
+    not_allowed_descriptors_field_names=[], data={}
+):
+    return {
+        key: data[key]
+        for key in data.keys()
+        if key not in not_allowed_descriptors_field_names
+    }

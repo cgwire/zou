@@ -26,6 +26,7 @@ from zou.app.utils import fields, events, cache
 
 from sqlalchemy.exc import StatementError
 from sqlalchemy.orm.exc import ObjectDeletedError
+from sqlalchemy import or_
 
 
 def clear_project_cache(project_id):
@@ -36,7 +37,7 @@ def clear_project_cache(project_id):
 
 
 @cache.memoize_function(120)
-def open_projects(name=None, for_client=False):
+def open_projects(name=None):
     """
     Return all open projects. Allow to filter projects by name.
     """
@@ -50,10 +51,12 @@ def open_projects(name=None, for_client=False):
     if name is not None:
         query = query.filter(Project.name == name)
 
-    return get_projects_with_extra_data(query, for_client)
+    return get_projects_with_extra_data(query)
 
 
-def get_projects_with_extra_data(query, for_client=False):
+def get_projects_with_extra_data(
+    query, for_client=False, vendor_departments=None
+):
     """
     Helpers function to attach:
     * First episode name to current project when it's a TV Show.
@@ -65,6 +68,15 @@ def get_projects_with_extra_data(query, for_client=False):
         if for_client:
             descriptors = MetadataDescriptor.get_all_by(
                 project_id=project.id, for_client=True
+            )
+        elif vendor_departments is not None:
+            descriptors = MetadataDescriptor.query.filter(
+                or_(
+                    MetadataDescriptor.departments == None,
+                    MetadataDescriptor.departments.any(
+                        Department.id.in_(vendor_departments)
+                    ),
+                )
             )
         else:
             descriptors = MetadataDescriptor.get_all_by(project_id=project.id)

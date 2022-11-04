@@ -1,5 +1,10 @@
 from .base import BaseEditTestCase
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import (
+    projects_service,
+    tasks_service,
+    edits_service,
+    persons_service,
+)
 
 
 class EditTasksTestCase(BaseEditTestCase):
@@ -36,6 +41,25 @@ class EditTasksTestCase(BaseEditTestCase):
         self.assertEqual(len(edits), 1)
         self.assertEqual(len(edits[0]["tasks"]), 1)
         self.assertTrue(str(person_id) in edits[0]["tasks"][0]["assignees"])
+
+        edits_service.update_edit(
+            self.edit_id, {"data": {"contractor": "test"}}
+        )
+        edits = self.get("data/edits/with-tasks?project_id=%s" % project_id)
+        self.assertEqual(edits[0]["data"]["contractor"], "test")
+
+        projects_service.update_metadata_descriptor(
+            self.meta_descriptor_id, {"departments": [self.department_id]}
+        )
+        persons_service.add_to_department(str(self.department_id), person_id)
+        edits = self.get("data/edits/with-tasks?project_id=%s" % project_id)
+        self.assertEqual(edits[0]["data"]["contractor"], "test")
+
+        persons_service.remove_from_department(
+            str(self.department_id), person_id
+        )
+        edits = self.get("data/edits/with-tasks?project_id=%s" % project_id)
+        self.assertTrue("contractor" not in edits[0]["data"])
 
     def test_get_task_types_for_edit(self):
         task_types = self.get("data/edits/%s/task-types" % self.edit_id)

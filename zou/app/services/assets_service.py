@@ -21,6 +21,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     user_service,
+    entities_service,
 )
 
 from zou.app.services.exception import (
@@ -258,6 +259,17 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
                 str(link.entity_in_id)
             )
 
+    query_result = tasks_query.all()
+
+    if "vendor_departments" in criterions:
+        not_allowed_descriptors_field_names = (
+            entities_service.get_not_allowed_descriptors_fields_for_vendor(
+                "Asset",
+                criterions["vendor_departments"],
+                set(asset[0].project_id for asset in query_result),
+            )
+        )
+
     for (
         asset,
         entity_type_name,
@@ -274,7 +286,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         task_due_date,
         task_last_comment_date,
         person_id,
-    ) in tasks_query.all():
+    ) in query_result:
 
         if asset.source_id is None:
             source_id = ""
@@ -284,6 +296,15 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         asset_id = str(asset.id)
 
         if asset_id not in asset_map:
+            data = fields.serialize_value(asset.data or {})
+            if "vendor_departments" in criterions:
+                data = (
+                    entities_service.remove_not_allowed_fields_from_metadata(
+                        not_allowed_descriptors_field_names[asset.project_id],
+                        data,
+                    )
+                )
+
             asset_map[asset_id] = {
                 "id": asset_id,
                 "name": asset.name,
@@ -296,7 +317,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
                 "episode_id": source_id,
                 "casting_episode_ids": cast_in_episode_ids.get(asset_id, []),
                 "is_casting_standby": asset.is_casting_standby,
-                "data": fields.serialize_value(asset.data),
+                "data": data,
                 "tasks": [],
             }
 

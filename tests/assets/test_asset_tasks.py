@@ -1,6 +1,11 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import projects_service, tasks_service
+from zou.app.services import (
+    projects_service,
+    tasks_service,
+    assets_service,
+    persons_service,
+)
 
 
 class AssetTasksTestCase(ApiDBTestCase):
@@ -19,8 +24,11 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.generate_fixture_task_type()
         self.generate_fixture_shot_task()
         self.generate_fixture_task()
+        self.generate_fixture_metadata_descriptor()
         self.person_id = str(self.person.id)
         self.asset_id = self.asset.id
+        self.meta_descriptor_id = self.meta_descriptor.id
+        self.department_id = self.department.id
         self.task_type_dict = self.task_type.serialize()
 
     def test_get_tasks_for_asset(self):
@@ -56,6 +64,25 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         self.assertEqual(len(assets[0]["tasks"]), 1)
         self.assertTrue(str(person_id) in assets[0]["tasks"][0]["assignees"])
+
+        assets_service.update_asset(
+            self.asset_id, {"data": {"contractor": "test"}}
+        )
+        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        self.assertEqual(assets[0]["data"]["contractor"], "test")
+
+        projects_service.update_metadata_descriptor(
+            self.meta_descriptor_id, {"departments": [self.department_id]}
+        )
+        persons_service.add_to_department(str(self.department_id), person_id)
+        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        self.assertEqual(assets[0]["data"]["contractor"], "test")
+
+        persons_service.remove_from_department(
+            str(self.department_id), person_id
+        )
+        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        self.assertTrue("contractor" not in assets[0]["data"])
 
     def test_get_task_types_for_asset(self):
         task_types = self.get("data/assets/%s/task-types" % self.asset_id)

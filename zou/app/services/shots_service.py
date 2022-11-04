@@ -253,6 +253,17 @@ def get_shots_and_tasks(criterions={}):
         query = query.filter(user_service.build_assignee_filter())
         del criterions["assigned_to"]
 
+    query_result = query.all()
+
+    if "vendor_departments" in criterions:
+        not_allowed_descriptors_field_names = (
+            entities_service.get_not_allowed_descriptors_fields_for_vendor(
+                "Shot",
+                criterions["vendor_departments"],
+                set(shot[0].project_id for shot in query_result),
+            )
+        )
+
     for (
         shot,
         episode_name,
@@ -275,17 +286,23 @@ def get_shots_and_tasks(criterions={}):
         person_id,
         project_id,
         project_name,
-    ) in query.all():
+    ) in query_result:
         shot_id = str(shot.id)
 
-        shot.data = shot.data or {}
-
         if shot_id not in shot_map:
+            data = fields.serialize_value(shot.data or {})
+            if "vendor_departments" in criterions:
+                data = (
+                    entities_service.remove_not_allowed_fields_from_metadata(
+                        not_allowed_descriptors_field_names[shot.project_id],
+                        data,
+                    )
+                )
 
             shot_map[shot_id] = fields.serialize_dict(
                 {
                     "canceled": shot.canceled,
-                    "data": shot.data,
+                    "data": data,
                     "description": shot.description,
                     "entity_type_id": shot.entity_type_id,
                     "episode_id": episode_id,
