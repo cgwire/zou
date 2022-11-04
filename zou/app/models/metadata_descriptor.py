@@ -43,6 +43,12 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
         db.UniqueConstraint(
             "project_id", "entity_type", "name", name="metadata_descriptor_uc"
         ),
+        db.UniqueConstraint(
+            "project_id",
+            "entity_type",
+            "field_name",
+            name="metadata_descriptor_uc2",
+        ),
     )
 
     def __repr__(self):
