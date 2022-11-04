@@ -534,9 +534,10 @@ class ShotsAndTasksResource(Resource):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
-            criterions[
-                "vendor_departments"
-            ] = persons_service.get_current_user(relations=True)["departments"]
+            criterions["vendor_departments"] = [
+                str(department.id)
+                for department in persons_service.get_current_user_raw().departments
+            ]
         return shots_service.get_shots_and_tasks(criterions)
 
 

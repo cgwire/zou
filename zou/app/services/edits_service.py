@@ -165,7 +165,7 @@ def get_edits_and_tasks(criterions={}):
             edit_map[edit_id] = fields.serialize_dict(
                 {
                     "canceled": edit.canceled,
-                    "data": edit.data,
+                    "data": data,
                     "description": edit.description,
                     "entity_type_id": edit.entity_type_id,
                     "episode_id": episode_id,

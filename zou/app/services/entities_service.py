@@ -65,7 +65,6 @@ def get_entity_type_by_name_or_not_found(name):
     return entity_type.serialize()
 
 
-
 def get_entity_raw(entity_id):
     """
     Return an entity type matching given id, as an active record. Raises an
@@ -254,10 +253,8 @@ def get_not_allowed_descriptors_fields_for_vendor(
                 project_id
             )
             if descriptor["entity_type"] == entity_type
-            and not (
-                descriptor["departments"] == []
-                or len(set(departments) & set(descriptor["departments"])) > 0
-            )
+            and descriptor["departments"] != []
+            and len(set(departments) & set(descriptor["departments"])) == 0
         ]
     return not_allowed_descriptors_field_names
 
