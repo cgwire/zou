@@ -1,7 +1,7 @@
 import datetime
 
 from flask import abort, request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse, current_app
 from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime
@@ -1093,14 +1093,19 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         try:
             permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
+            current_user = persons_service.get_current_user()
             if (
                 persons_service.is_admin(person)
-                and person["id"] != persons_service.get_current_user()["id"]
+                and person["id"] != current_user["id"]
             ):
                 raise permissions.PermissionDenied
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
+            current_app.logger.info(
+                "User %s has changed the password of %s"
+                % (current_user["email"], person["email"])
+            )
             organisation = persons_service.get_organisation()
             time_string = format_datetime(
                 datetime.datetime.utcnow(),

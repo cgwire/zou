@@ -537,6 +537,9 @@ class ChangePasswordResource(Resource):
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(user["email"], password)
+            current_app.logger.info(
+                "User %s has changed his password" % user["email"]
+            )
             organisation = persons_service.get_organisation()
             time_string = format_datetime(
                 datetime.datetime.utcnow(),
@@ -641,6 +644,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 auth.validate_password(args["password"], args["password2"])
                 password = auth.encrypt_password(args["password"])
                 persons_service.update_password(email, password)
+                current_app.logger.info(
+                    "User %s has reset his password" % email
+                )
                 auth_tokens_store.delete("reset-%s" % args["token"])
                 return {"success": True}
             else:
