@@ -8,7 +8,6 @@ Create Date: 2022-06-10 13:34:48.830690
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import orm
-from zou.app.models.task_type import TaskType
 from sqlalchemy_utils import UUIDType
 from sqlalchemy.ext.declarative import declarative_base
 from zou.migrations.utils.base import BaseMixin

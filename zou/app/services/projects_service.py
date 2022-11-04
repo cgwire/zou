@@ -463,7 +463,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
 
     if "name" in changes and len(changes["name"]) > 0:
-        changes["field_name"] = slugify.slugify(changes["name"])
+        changes["field_name"] = slugify.slugify(changes["name"], separator="_")
         if descriptor.field_name != changes["field_name"]:
             query = Entity.query.filter(
                 Entity.project_id == descriptor.project_id
