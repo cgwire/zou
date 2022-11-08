@@ -225,8 +225,9 @@ class AuthTestCase(ApiDBTestCase):
 
         token = "token-test"
         new_password = "newpassword"
-        auth_tokens_store.add("reset-%s" % token, email)
+        auth_tokens_store.add("reset-token-%s" % email, token)
         data = {
+            "email": email,
             "token": token,
             "password": new_password,
             "password2": new_password,
@@ -266,6 +267,7 @@ class AuthTestCase(ApiDBTestCase):
         response = self.post("auth/login", self.credentials, 400)
         self.assertTrue(response["default_password"])
         data = {
+            "email": self.person.email,
             "token": response["token"],
             "password": "complex22pass",
             "password2": "complex22pass",
