@@ -1,7 +1,7 @@
 """add is_generated_from_ldap column to person
 
 Revision ID: 82ee682204ab
-Revises: 8588f254d6b8
+Revises: 29df910f04a4
 Create Date: 2022-10-14 13:09:59.006291
 
 """
@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 # revision identifiers, used by Alembic.
 revision = "82ee682204ab"
-down_revision = "8588f254d6b8"
+down_revision = "29df910f04a4"
 branch_labels = None
 depends_on = None
 
