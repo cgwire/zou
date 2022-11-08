@@ -1,6 +1,7 @@
 import slugify
 import datetime
 import uuid
+import urllib.parse
 
 from calendar import monthrange
 from dateutil import relativedelta
@@ -338,27 +339,30 @@ def invite_person(person_id):
     Send an invitation email to given person (a mail telling him/her how to
     connect on Kitsu).
     """
-    person = get_person_raw(person_id)
+    person = get_person(person_id)
     organisation = get_organisation()
-    token = uuid.uuid4()
-    auth_tokens_store.clear_all_reset_tokens_for_email(person.email)
-    auth_tokens_store.add("reset-%s" % token, person.email, ttl=3600 * 24 * 2)
+    token = str(uuid.uuid4())
+    auth_tokens_store.add(
+        "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 2
+    )
     subject = (
         "You are invited by %s to join their Kitsu production tracker"
         % (organisation["name"])
     )
-    reset_url = "%s://%s/reset-change-password/%s" % (
+    params = {"email": person["email"], "token": token}
+    query = urllib.parse.urlencode(params)
+    reset_url = "%s://%s/reset-change-password?%s" % (
         config.DOMAIN_PROTOCOL,
         config.DOMAIN_NAME,
-        token,
+        query,
     )
 
-    html = f"""<p>Hello {person.first_name},</p>
+    html = f"""<p>Hello {person["first_name"]},</p>
 <p>
 You are invited by {organisation["name"]} to collaborate on their Kitsu production tracker.
 </p>
 <p>
-Your login is: <strong>{person.email}</strong>
+Your login is: <strong>{person["email"]}</strong>
 </p>
 <p>
 You are invited to set your password at this URL : <a href={reset_url}>{reset_url}</a>
@@ -371,7 +375,7 @@ Thank you and see you soon on Kitsu,
 </p>
 """
 
-    emails.send_email(subject, html, person.email)
+    emails.send_email(subject, html, person["email"])
 
 
 def get_organisation():

@@ -72,16 +72,3 @@ def is_revoked(decrypted_token):
     jti = decrypted_token["jti"]
     is_revoked = get(jti)
     return (is_revoked is None) or (is_revoked == "true")
-
-
-def clear_all_reset_tokens_for_email(email):
-    """
-    Clear all reset tokens for specific email
-    """
-    for key in keys():
-        if (
-            isinstance(key, str)
-            and key.startswith("reset-")
-            and get(key) == email
-        ):
-            delete(key)

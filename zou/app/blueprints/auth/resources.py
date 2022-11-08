@@ -1,5 +1,6 @@
 import uuid
 import datetime
+import urllib.parse
 
 from flask import request, jsonify, abort
 from flask_restful import Resource, reqparse, current_app
@@ -247,15 +248,18 @@ class LoginResource(Resource):
             user = auth_service.check_auth(app, email, password)
 
             if auth_service.is_default_password(app, password):
-                token = uuid.uuid4()
-                auth_tokens_store.clear_all_reset_tokens_for_email(email)
-                auth_tokens_store.add("reset-%s" % token, email, ttl=3600 * 2)
-                current_app.logger.info("User must change his password.")
+                token = str(uuid.uuid4())
+                auth_tokens_store.add(
+                    "reset-token-%s" % email, token, ttl=3600 * 2
+                )
+                current_app.logger.info(
+                    "User %s must change his password." % email
+                )
                 return (
                     {
                         "login": False,
                         "default_password": True,
-                        "token": str(token),
+                        "token": token,
                     },
                     400,
                 )
@@ -615,6 +619,12 @@ class ResetPasswordResource(Resource, ArgsMixin):
             - Authentication
         parameters:
           - in: formData
+            name: email
+            required: True
+            type: string
+            format: email
+            x-example: admin@example.com
+          - in: formData
             name: token
             required: True
             type: string
@@ -625,7 +635,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
             type: string
             format: password
           - in: formData
-            name: password_2
+            name: password2
             required: True
             type: string
             format: password
@@ -639,15 +649,17 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         args = self.get_put_arguments()
         try:
-            email = auth_tokens_store.get("reset-%s" % args["token"])
-            if email:
+            token_from_store = auth_tokens_store.get(
+                "reset-token-%s" % args["email"]
+            )
+            auth_tokens_store.delete("reset-token-%s" % args["email"])
+            if token_from_store == args["token"]:
                 auth.validate_password(args["password"], args["password2"])
                 password = auth.encrypt_password(args["password"])
-                persons_service.update_password(email, password)
+                persons_service.update_password(args["email"], password)
                 current_app.logger.info(
-                    "User %s has reset his password" % email
+                    "User %s has reset his password" % args["email"]
                 )
-                auth_tokens_store.delete("reset-%s" % args["token"])
                 return {"success": True}
             else:
                 return (
@@ -698,13 +710,16 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 400,
             )
 
-        token = uuid.uuid4()
-        auth_tokens_store.clear_all_reset_tokens_for_email(args["email"])
-        auth_tokens_store.add("reset-%s" % token, args["email"], ttl=3600 * 2)
-        reset_url = "%s://%s/reset-change-password/%s" % (
+        token = str(uuid.uuid4())
+        auth_tokens_store.add(
+            "reset-token-%s" % args["email"], token, ttl=3600 * 2
+        )
+        params = {"email": args["email"], "token": token}
+        query = urllib.parse.urlencode(params)
+        reset_url = "%s://%s/reset-change-password?%s" % (
             config.DOMAIN_PROTOCOL,
             config.DOMAIN_NAME,
-            token,
+            query,
         )
         organisation = persons_service.get_organisation()
         html = f"""<p>Hello {user["first_name"]},</p>
@@ -730,6 +745,7 @@ Thank you and see you soon on Kitsu,
     def get_put_arguments(self):
         return self.get_args(
             [
+                ("email", "", True),
                 ("token", "", True),
                 ("password", "", True),
                 ("password2", "", True),
