@@ -307,9 +307,9 @@ def get_shots_and_tasks(criterions={}):
                     "entity_type_id": shot.entity_type_id,
                     "episode_id": episode_id,
                     "episode_name": episode_name or "",
-                    "fps": shot.data.get("fps", None),
-                    "frame_in": shot.data.get("frame_in", None),
-                    "frame_out": shot.data.get("frame_out", None),
+                    "fps": data.get("fps", None),
+                    "frame_in": data.get("frame_in", None),
+                    "frame_out": data.get("frame_out", None),
                     "id": shot.id,
                     "name": shot.name,
                     "nb_frames": shot.nb_frames,
@@ -647,7 +647,7 @@ def get_or_create_episode(project_id, name, description=""):
             entity_type_id=episode_type["id"],
             project_id=project_id,
             name=name,
-            description=description
+            description=description,
         )
         episode.save()
     return episode.serialize()
@@ -908,7 +908,7 @@ def create_episode(project_id, name, description="", data={}):
             project_id=project_id,
             name=name,
             description=description,
-            data=data
+            data=data,
         )
     events.emit(
         "episode:new", {"episode_id": episode.id}, project_id=project_id
