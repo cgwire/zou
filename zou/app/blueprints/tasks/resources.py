@@ -525,7 +525,7 @@ class CreateEntityTasksResource(Resource):
         if type(entity_ids) == list and len(entity_ids) > 0:
             for entity_id in entity_ids:
                 entity = entities_service.get_entity(entity_id)
-                if entity["project_id"] == entity_id:
+                if entity["project_id"] == project_id:
                     entities.append(entity)
         else:
             criterions = query.get_query_criterions_from_request(request)
