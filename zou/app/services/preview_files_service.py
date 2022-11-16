@@ -246,7 +246,7 @@ def prepare_and_store_movie(
         # Build thumbnails
         size = movie.get_movie_size(normalized_movie_path)
         original_picture_path = movie.generate_thumbnail(normalized_movie_path)
-        thumbnail_utils.resize(original_picture_path, size)
+        thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)
         current_app.logger.info("thumbnail created %s" % original_picture_path)

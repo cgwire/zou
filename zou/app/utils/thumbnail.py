@@ -72,6 +72,27 @@ def make_im_bigger_if_needed(im, size):
     return im
 
 
+def fit_to_target_size(im, size):
+    """
+    Make sure that the image is contained in the size given in parameter
+    (shorten width and/or height proporitionnally to expected ratio).
+    """
+    im_width, im_height = im.size
+    width, height = size
+    w = width
+    h = height
+    original_ratio = float(im_width) / float(im_height)
+    target_ratio = float(width) / float(height)
+    if target_ratio != original_ratio:
+        w = height * original_ratio
+        if w > width:
+            w = width
+            h = int(math.ceil(float(width) / original_ratio))
+
+        im = im.resize((w, h), Image.ANTIALIAS)
+    return im
+
+
 def turn_into_thumbnail(file_path, size=None):
     """
     Turn given picture into a smaller version.
@@ -86,15 +107,13 @@ def turn_into_thumbnail(file_path, size=None):
         size = im.size
 
     im = make_im_bigger_if_needed(im, size)
+    im = fit_to_target_size(im, size)
+    print(size, im.size, "turn_into_thumbnail 2")
 
     im.thumbnail(size, Image.LANCZOS)
     if im.mode == "CMYK":
         im = im.convert("RGB")
-    final = Image.new("RGB", size, (0, 0, 0))
-    final.paste(
-        im, (int((size[0] - im.size[0]) / 2), int((size[1] - im.size[1]) / 2))
-    )
-    final.save(file_path, "PNG")
+    im.save(file_path, "PNG")
     return file_path
 
 
