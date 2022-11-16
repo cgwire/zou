@@ -30,6 +30,8 @@ def get_full_entity_name(entity_id):
                 sequence["name"],
                 entity["name"],
             )
+    elif shots_service.is_episode(entity):
+        name = entity["name"]
     else:
         asset_type = entities_service.get_entity_type(entity["entity_type_id"])
         episode_id = entity["source_id"]
