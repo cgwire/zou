@@ -108,7 +108,6 @@ def turn_into_thumbnail(file_path, size=None):
 
     im = make_im_bigger_if_needed(im, size)
     im = fit_to_target_size(im, size)
-    print(size, im.size, "turn_into_thumbnail 2")
 
     im.thumbnail(size, Image.LANCZOS)
     if im.mode == "CMYK":
