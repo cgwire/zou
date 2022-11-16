@@ -65,7 +65,6 @@ def get_entity_type_by_name_or_not_found(name):
     return entity_type.serialize()
 
 
-
 def get_entity_raw(entity_id):
     """
     Return an entity type matching given id, as an active record. Raises an
@@ -175,6 +174,14 @@ def get_entities_and_tasks(criterions={}):
             Task.task_type_id,
             Task.task_status_id,
             Task.priority,
+            Task.estimation,
+            Task.duration,
+            Task.retake_count,
+            Task.real_start_date,
+            Task.end_date,
+            Task.start_date,
+            Task.due_date,
+            Task.last_comment_date,
             assignees_table.columns.person,
         )
     )
@@ -193,6 +200,14 @@ def get_entities_and_tasks(criterions={}):
         task_type_id,
         task_status_id,
         task_priority,
+        task_estimation,
+        task_duration,
+        task_retake_count,
+        task_real_start_date,
+        task_end_date,
+        task_start_date,
+        task_due_date,
+        task_last_comment_date,
         person_id,
     ) in query.all():
         entity_id = str(entity.id)
@@ -216,14 +231,22 @@ def get_entities_and_tasks(criterions={}):
         if task_id is not None:
 
             if task_id not in task_map:
-                task_dict = {
+                task_dict = fields.serialize_dict({
                     "id": str(task_id),
                     "entity_id": entity_id,
                     "task_status_id": str(task_status_id),
                     "task_type_id": str(task_type_id),
                     "priority": task_priority or 0,
+                    "estimation": task_estimation,
+                    "duration": task_duration,
+                    "retake_count": task_retake_count,
+                    "real_start_date": task_real_start_date,
+                    "end_date": task_end_date,
+                    "start_date": task_start_date,
+                    "due_date": task_due_date,
+                    "last_comment_date": task_last_comment_date,
                     "assignees": [],
-                }
+                })
                 task_map[task_id] = task_dict
                 entity_dict = entity_map[entity_id]
                 entity_dict["tasks"].append(task_dict)
