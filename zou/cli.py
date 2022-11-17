@@ -185,7 +185,7 @@ def change_password(email, password):
         persons_service.update_password(email, password)
         print("Password changed for %s" % email)
     except auth.PasswordTooShortException:
-        print("Password is too short.")
+        print("The password is too short.")
         sys.exit(1)
 
 

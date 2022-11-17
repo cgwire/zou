@@ -100,6 +100,8 @@ def upgrade():
         if person.password == b"default":
             person.password = None
             person.is_generated_from_ldap = True
+        else:
+            person.is_generated_from_ldap = False
     session.commit()
     # ### end Alembic commands ###
 

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 import flask_bcrypt as bcrypt
+import random
+import string
 
 from flask_jwt_extended import get_jti
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
@@ -60,7 +62,7 @@ def check_auth(app, email, password):
         if strategy == "auth_local_classic":
             user = local_auth_strategy(person, password, app)
         elif strategy == "auth_local_no_password":
-            user = person
+            user = no_password_auth_strategy(person, password, app)
         elif strategy == "auth_remote_ldap":
             user = ldap_auth_strategy(person, password, app)
         else:
@@ -77,6 +79,13 @@ def check_auth(app, email, password):
         del user["password"]
 
     return user
+
+
+def no_password_auth_strategy(person, password, app):
+    """
+    No password auth strategy
+    """
+    return person
 
 
 def local_auth_strategy(person, password, app=None):
@@ -191,4 +200,11 @@ def is_default_password(app, password):
     return (
         password == "default"
         and app.config["AUTH_STRATEGY"] != "auth_local_no_password"
+    )
+
+
+def generate_reset_token():
+    return "".join(
+        random.SystemRandom().choice(string.ascii_uppercase + string.digits)
+        for _ in range(64)
     )

@@ -79,7 +79,16 @@ class NewPersonResource(Resource):
         else:
             if data["password"] is not None:
                 data["password"] = auth.encrypt_password(data["password"])
-            person = persons_service.create_person(**data)
+            person = persons_service.create_person(
+                data["email"],
+                data["password"],
+                data["first_name"],
+                data["last_name"],
+                data["phone"],
+                role=data["role"],
+                desktop_login=data["desktop_login"],
+                departments=data["departments"],
+            )
         return person, 201
 
     def get_arguments(self):
@@ -1102,7 +1111,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
-            current_app.logger.info(
+            current_app.logger.warn(
                 "User %s has changed the password of %s"
                 % (current_user["email"], person["email"])
             )

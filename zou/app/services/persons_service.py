@@ -1,6 +1,5 @@
 import slugify
 import datetime
-import uuid
 import urllib.parse
 
 from calendar import monthrange
@@ -18,7 +17,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config
 from zou.app.utils import fields, events, cache, emails
-from zou.app.services import index_service
+from zou.app.services import index_service, auth_service
 from zou.app.stores import file_store, auth_tokens_store
 
 from zou.app.services.exception import (
@@ -341,7 +340,7 @@ def invite_person(person_id):
     """
     person = get_person(person_id)
     organisation = get_organisation()
-    token = str(uuid.uuid4())
+    token = auth_service.generate_reset_token()
     auth_tokens_store.add(
         "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 2
     )

@@ -1,4 +1,3 @@
-import uuid
 import datetime
 import urllib.parse
 
@@ -248,7 +247,7 @@ class LoginResource(Resource):
             user = auth_service.check_auth(app, email, password)
 
             if auth_service.is_default_password(app, password):
-                token = str(uuid.uuid4())
+                token = auth_service.generate_reset_token()
                 auth_tokens_store.add(
                     "reset-token-%s" % email, token, ttl=3600 * 2
                 )
@@ -710,7 +709,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 400,
             )
 
-        token = str(uuid.uuid4())
+        token = auth_service.generate_reset_token()
         auth_tokens_store.add(
             "reset-token-%s" % args["email"], token, ttl=3600 * 2
         )
