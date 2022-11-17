@@ -11,6 +11,7 @@ from ldap3.core.exceptions import (
 )
 
 from zou.app.services import persons_service
+from zou.app.models.person import Person
 from zou.app.services.exception import (
     PersonNotFoundException,
     WrongPasswordException,
@@ -46,16 +47,7 @@ def check_auth(app, email, password):
     if not person.get("active", False):
         raise UnactiveUserException()
 
-    login_failed_attemps = person["login_failed_attemps"]
-    if login_failed_attemps is None:
-        login_failed_attemps = 0
-    if (
-        login_failed_attemps >= 5
-        and date_helpers.get_datetime_from_string(person["last_login_failed"])
-        + timedelta(minutes=1)
-        > datetime.now()
-    ):
-        raise TooMuchLoginFailedAttemps()
+    login_failed_attemps = check_login_failed_attemps(person)
 
     strategy = app.config["AUTH_STRATEGY"]
     try:
@@ -68,12 +60,13 @@ def check_auth(app, email, password):
         else:
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
-        persons_service.update_login_failed_attemps_person(
+        update_login_failed_attemps(
             person["id"], login_failed_attemps + 1, datetime.now()
         )
         raise WrongPasswordException()
 
-    persons_service.update_login_failed_attemps_person(person["id"], 0)
+    if login_failed_attemps > 0:
+        update_login_failed_attemps(person["id"], 0)
 
     if "password" in user:
         del user["password"]
@@ -208,3 +201,29 @@ def generate_reset_token():
         random.SystemRandom().choice(string.ascii_uppercase + string.digits)
         for _ in range(64)
     )
+
+
+def check_login_failed_attemps(person):
+    login_failed_attemps = person["login_failed_attemps"]
+    if login_failed_attemps is None:
+        login_failed_attemps = 0
+    if (
+        login_failed_attemps >= 5
+        and date_helpers.get_datetime_from_string(person["last_login_failed"])
+        + timedelta(minutes=1)
+        > datetime.now()
+    ):
+        raise TooMuchLoginFailedAttemps()
+    return login_failed_attemps
+
+
+def update_login_failed_attemps(
+    person_id, login_failed_attemps, last_login_failed=None
+):
+    person = Person.get(person_id)
+    person.login_failed_attemps = login_failed_attemps
+    if last_login_failed is not None:
+        person.last_login_failed = last_login_failed
+    person.commit()
+    persons_service.clear_person_cache()
+    return person.serialize()
