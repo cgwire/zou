@@ -39,6 +39,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     desktop_login = db.Column(db.String(80))
     login_failed_attemps = db.Column(db.Integer, default=0)
     last_login_failed = db.Column(db.DateTime())
+    totp_enabled = db.Column(db.Boolean(), default=False)
+    otp_secret = db.Column(db.String(32), default=None)
+    otp_recovery_codes = db.Column(db.ARRAY(db.LargeBinary(60)))
 
     shotgun_id = db.Column(db.Integer, unique=True)
     timezone = db.Column(
@@ -82,6 +85,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         data = SerializerMixin.serialize(self, "Person", relations=relations)
         data["full_name"] = self.full_name()
         del data["password"]
+        del data["otp_secret"]
+        del data["otp_recovery_codes"]
         return data
 
     def present_minimal(self, relations=False):

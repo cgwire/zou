@@ -149,6 +149,22 @@ class WrongPasswordException(Exception):
     pass
 
 
+class MissingOTPException(Exception):
+    pass
+
+
+class WrongOTPException(Exception):
+    pass
+
+
+class TOTPAlreadyEnabledException(Exception):
+    pass
+
+
+class TOTPNotEnabledException(Exception):
+    pass
+
+
 class TooMuchLoginFailedAttemps(Exception):
     pass
 
