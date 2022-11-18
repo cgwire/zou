@@ -90,7 +90,6 @@ def fit_to_target_size(im, size):
         if w > width:
             w = width
             h = int(math.ceil(float(width) / original_ratio))
-
         im = im.resize((w, h), Image.ANTIALIAS)
     return im
 
@@ -113,8 +112,12 @@ def turn_into_thumbnail(file_path, size=None):
 
     im.thumbnail(size, Image.LANCZOS)
     if im.mode == "CMYK":
-        im = im.convert("RGB")
-    im.save(file_path, "PNG")
+        im = im.convert("RGBA")
+    final = Image.new("RGBA", size, (0, 0, 0, 0))
+    final.paste(
+        im, (int((size[0] - im.size[0]) / 2), int((size[1] - im.size[1]) / 2))
+    )
+    final.save(file_path, "PNG")
     return file_path
 
 
