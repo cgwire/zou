@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
 from zou.app.services import persons_service
-from zou.app import app
+from zou.app.services.exception import IsUserLimitReachedException
+from zou.app import app, config
 
 
 @click.group()
@@ -125,11 +126,13 @@ def reset_migrations():
 
 @cli.command()
 @click.argument("email")
-@click.option("--password", default="default")
+@click.option("--password", required=True, default=None)
 def create_admin(email, password):
-    "Create an admin user to allow usage of the API when database is empty."
-    "Set password is 'default'."
+    """
+    Create an admin user to allow usage of the API when database is empty.
+    """
     try:
+        auth.validate_password(password)
         # Allow "admin@example.com" to be invalid.
         if email != "admin@example.com":
             auth.validate_email(email)
@@ -143,9 +146,6 @@ def create_admin(email, password):
         print("User already exists for this email.")
         sys.exit(1)
 
-    except auth.PasswordsNoMatchException:
-        print("Passwords don't match.")
-        sys.exit(1)
     except auth.PasswordTooShortException:
         print("Password is too short.")
         sys.exit(1)
@@ -174,10 +174,19 @@ def init_data():
 
 @cli.command()
 @click.argument("email")
-def set_default_password(email):
-    "Set the password of given user as default"
-    password = auth.encrypt_password("default")
-    persons_service.update_password(email, password)
+@click.option("--password", required=True, default=None)
+def change_password(email, password):
+    """
+    Change the password of given user.
+    """
+    try:
+        auth.validate_password(password)
+        password = auth.encrypt_password(password)
+        persons_service.update_password(email, password)
+        print("Password changed for %s" % email)
+    except auth.PasswordTooShortException:
+        print("The password is too short.")
+        sys.exit(1)
 
 
 @cli.command()
@@ -185,7 +194,13 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    commands.sync_with_ldap_server()
+    try:
+        if persons_service.is_user_limit_reached():
+            raise IsUserLimitReachedException
+        commands.sync_with_ldap_server()
+    except IsUserLimitReachedException:
+        print("User limit reached (limit %i)." % config.USER_LIMIT)
+        sys.exit(1)
 
 
 @cli.command()

@@ -149,6 +149,14 @@ class WrongPasswordException(Exception):
     pass
 
 
+class TooMuchLoginFailedAttemps(Exception):
+    pass
+
+
+class UserCantConnectDueToNoFallback(Exception):
+    pass
+
+
 class UnactiveUserException(Exception):
     pass
 
@@ -186,4 +194,8 @@ class StatusAutomationNotFoundException(NotFound):
 
 
 class WrongTaskTypeForEntityException(Exception):
+    pass
+
+
+class IsUserLimitReachedException(Exception):
     pass

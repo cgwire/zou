@@ -1,4 +1,5 @@
-import uuid
+import datetime
+import urllib.parse
 
 from flask import request, jsonify, abort
 from flask_restful import Resource, reqparse, current_app
@@ -10,13 +11,13 @@ from flask_principal import (
     identity_changed,
     identity_loaded,
 )
-from flask_mail import Message
 
 from sqlalchemy.exc import OperationalError, TimeoutError
+from babel.dates import format_datetime
 
-from zou.app import app, mail
+from zou.app import app, config
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import auth
+from zou.app.utils import auth, emails
 from zou.app.services import persons_service, auth_service, events_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
@@ -25,6 +26,8 @@ from zou.app.services.exception import (
     WrongPasswordException,
     WrongUserException,
     UnactiveUserException,
+    UserCantConnectDueToNoFallback,
+    TooMuchLoginFailedAttemps,
 )
 
 
@@ -157,7 +160,6 @@ class AuthenticatedResource(Resource):
                 "authenticated": True,
                 "user": person,
                 "organisation": organisation,
-                "ldap": app.config["AUTH_STRATEGY"] == "auth_remote_ldap",
             }
         except PersonNotFoundException:
             abort(401)
@@ -243,18 +245,20 @@ class LoginResource(Resource):
         (email, password) = self.get_arguments()
         try:
             user = auth_service.check_auth(app, email, password)
-            if "password" in user:
-                del user["password"]
 
             if auth_service.is_default_password(app, password):
-                token = uuid.uuid4()
-                auth_tokens_store.add("reset-%s" % token, email, ttl=3600 * 2)
-                current_app.logger.info("User must change his password.")
+                token = auth_service.generate_reset_token()
+                auth_tokens_store.add(
+                    "reset-token-%s" % email, token, ttl=3600 * 2
+                )
+                current_app.logger.info(
+                    "User %s must change his password." % email
+                )
                 return (
                     {
                         "login": False,
                         "default_password": True,
-                        "token": str(token),
+                        "token": token,
                     },
                     400,
                 )
@@ -277,8 +281,6 @@ class LoginResource(Resource):
                     {
                         "user": user,
                         "organisation": organisation,
-                        "ldap": app.config["AUTH_STRATEGY"]
-                        == "auth_remote_ldap",
                         "login": True,
                     }
                 )
@@ -293,26 +295,27 @@ class LoginResource(Resource):
                 response = {
                     "login": True,
                     "user": user,
-                    "ldap": app.config["AUTH_STRATEGY"] == "auth_remote_ldap",
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                 }
 
             return response
-        except PersonNotFoundException:
-            current_app.logger.info("User is not registered.")
-            return {"login": False}, 400
         except WrongUserException:
-            current_app.logger.info("User is not registered.")
-            return {"login": False}, 400
+            current_app.logger.info("User %s is not registered." % email)
+            return {"login": False}, 401
         except WrongPasswordException:
-            current_app.logger.info("User gave a wrong password.")
-            return {"login": False}, 400
+            current_app.logger.info("User %s gave a wrong password." % email)
+            return {"login": False}, 401
         except NoAuthStrategyConfigured:
             current_app.logger.info(
                 "Authentication strategy is not properly configured."
             )
-            return {"login": False}, 400
+            return {"login": False}, 409
+        except UserCantConnectDueToNoFallback:
+            current_app.logger.info(
+                "User %s can't login due to no fallback from LDAP." % email
+            )
+            return {"login": False}, 401
         except TimeoutError:
             current_app.logger.info("Timeout occurs while logging in.")
             return {"login": False}, 400
@@ -323,7 +326,16 @@ class LoginResource(Resource):
                     "login": False,
                     "message": "User is inactive, he cannot log in.",
                 },
-                400,
+                401,
+            )
+        except TooMuchLoginFailedAttemps:
+            return (
+                {
+                    "error": True,
+                    "login": False,
+                    "too_many_failed_login_attemps": True,
+                },
+                401,
             )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)
@@ -523,10 +535,37 @@ class ChangePasswordResource(Resource):
         (old_password, password, password_2) = self.get_arguments()
 
         try:
-            auth_service.check_auth(app, get_jwt_identity(), old_password)
+            user = persons_service.get_current_user()
+            auth_service.check_auth(app, user["email"], old_password)
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
-            persons_service.update_password(get_jwt_identity(), password)
+            persons_service.update_password(user["email"], password)
+            current_app.logger.info(
+                "User %s has changed his password" % user["email"]
+            )
+            organisation = persons_service.get_organisation()
+            time_string = format_datetime(
+                datetime.datetime.utcnow(),
+                tzinfo=user["timezone"],
+                locale=user["locale"],
+            )
+            person_IP = request.headers.get("X-Forwarded-For", None)
+            html = f"""<p>Hello {user["first_name"]},</p>
+
+<p>
+You have successfully changed your password at this date : {time_string}.
+
+Your IP when you have changed your password is : {person_IP}.
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+            subject = "%s Kitsu password changed" % (organisation["name"])
+            emails.send_email(subject, html, user["email"])
             return {"success": True}
 
         except auth.PasswordsNoMatchException:
@@ -579,6 +618,12 @@ class ResetPasswordResource(Resource, ArgsMixin):
             - Authentication
         parameters:
           - in: formData
+            name: email
+            required: True
+            type: string
+            format: email
+            x-example: admin@example.com
+          - in: formData
             name: token
             required: True
             type: string
@@ -589,7 +634,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
             type: string
             format: password
           - in: formData
-            name: password_2
+            name: password2
             required: True
             type: string
             format: password
@@ -603,12 +648,17 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         args = self.get_put_arguments()
         try:
-            email = auth_tokens_store.get("reset-%s" % args["token"])
-            if email:
+            token_from_store = auth_tokens_store.get(
+                "reset-token-%s" % args["email"]
+            )
+            auth_tokens_store.delete("reset-token-%s" % args["email"])
+            if token_from_store == args["token"]:
                 auth.validate_password(args["password"], args["password2"])
                 password = auth.encrypt_password(args["password"])
-                persons_service.update_password(email, password)
-                auth_tokens_store.delete("reset-%s" % args["token"])
+                persons_service.update_password(args["email"], password)
+                current_app.logger.info(
+                    "User %s has reset his password" % args["email"]
+                )
                 return {"success": True}
             else:
                 return (
@@ -659,34 +709,33 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 400,
             )
 
-        token = uuid.uuid4()
-        auth_tokens_store.add("reset-%s" % token, args["email"], ttl=3600 * 2)
-
-        message_text = """Hello %s,
-
-You have requested for a password reset. You can connect here to change your
-password:
-%s://%s/reset-change-password/%s
-
-Regards,
-
-CGWire Team
-""" % (
-            user["first_name"],
-            current_app.config["DOMAIN_PROTOCOL"],
-            current_app.config["DOMAIN_NAME"],
-            token,
+        token = auth_service.generate_reset_token()
+        auth_tokens_store.add(
+            "reset-token-%s" % args["email"], token, ttl=3600 * 2
         )
+        params = {"email": args["email"], "token": token}
+        query = urllib.parse.urlencode(params)
+        reset_url = "%s://%s/reset-change-password?%s" % (
+            config.DOMAIN_PROTOCOL,
+            config.DOMAIN_NAME,
+            query,
+        )
+        organisation = persons_service.get_organisation()
+        html = f"""<p>Hello {user["first_name"]},</p>
 
-        if current_app.config["MAIL_DEBUG"]:
-            print(message_text)
-        else:
-            message = Message(
-                body=message_text,
-                subject="CGWire password recovery",
-                recipients=[args["email"]],
-            )
-            mail.send(message)
+<p>
+You have requested for a password reset. You can connect here to change your
+password: <a href={reset_url}>{reset_url}</a>
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+        subject = "%s Kitsu password recovery" % (organisation["name"])
+        emails.send_email(subject, html, args["email"])
         return {"success": "Reset token sent"}
 
     def get_arguments(self):
@@ -695,6 +744,7 @@ CGWire Team
     def get_put_arguments(self):
         return self.get_args(
             [
+                ("email", "", True),
                 ("token", "", True),
                 ("password", "", True),
                 ("password2", "", True),

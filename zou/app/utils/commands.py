@@ -22,7 +22,10 @@ from zou.app.services import (
 )
 from zou.app.index_schema import init_indexes
 
-from zou.app.services.exception import PersonNotFoundException
+from zou.app.services.exception import (
+    PersonNotFoundException,
+    IsUserLimitReachedException,
+)
 
 from zou.app import app
 
@@ -256,6 +259,8 @@ def sync_with_ldap_server():
 
     def update_person_list_with_ldap_users(users):
         for user in users:
+            if persons_service.is_user_limit_reached():
+                raise IsUserLimitReachedException
             first_name = user["first_name"]
             last_name = user["last_name"]
             desktop_login = user["desktop_login"]
@@ -288,6 +293,7 @@ def sync_with_ldap_server():
                         first_name,
                         last_name,
                         desktop_login=desktop_login,
+                        is_generated_from_ldap=True,
                     )
                     print("User %s created." % desktop_login)
                 except:
@@ -305,6 +311,8 @@ def sync_with_ldap_server():
                             "first_name": first_name,
                             "last_name": last_name,
                             "active": active,
+                            "is_generated_from_ldap": True,
+                            "desktop_login": desktop_login,
                         },
                     )
                     print("User %s updated." % desktop_login)

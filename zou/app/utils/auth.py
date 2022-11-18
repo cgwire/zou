@@ -1,6 +1,8 @@
 import flask_bcrypt as bcrypt
 import email_validator
 
+from zou.app import config
+
 
 class PasswordTooShortException(BaseException):
     pass
@@ -28,9 +30,9 @@ def validate_email(email):
         raise EmailNotValidException(str(e))
 
 
-def validate_password(password, password_2):
-    if len(password) < 6:
+def validate_password(password, password_2=None):
+    if len(password) < config.MIN_PASSWORD_LENGTH:
         raise PasswordTooShortException()
-    if password != password_2:
+    if password_2 is not None and password != password_2:
         raise PasswordsNoMatchException()
     return True

@@ -1,8 +1,10 @@
 import datetime
 
-from flask import abort
-from flask_restful import Resource, reqparse
+from flask import abort, request
+from flask_restful import Resource, reqparse, current_app
 from flask_jwt_extended import jwt_required
+
+from babel.dates import format_datetime
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
@@ -13,18 +15,18 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.utils import auth, permissions, csv_utils
+from zou.app.utils import permissions, csv_utils, auth, emails
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
     WrongParameterException,
+    UnactiveUserException,
 )
 
 
 class NewPersonResource(Resource):
     """
-    Create a new user in the database. Set "default" as password.
-    User role can be set but only admins can create admin users.
+    Create a new user in the database.
     """
 
     @jwt_required
@@ -34,7 +36,7 @@ class NewPersonResource(Resource):
         ---
         tags:
         - Persons
-        description: Set "default" as password.
+        description: Set password to None if not provided.
                      User role can be set but only admins can create admin users.
         parameters:
           - in: formData
@@ -75,9 +77,11 @@ class NewPersonResource(Resource):
                 "limit": config.USER_LIMIT,
             }, 400
         else:
+            if data["password"] is not None:
+                data["password"] = auth.encrypt_password(data["password"])
             person = persons_service.create_person(
                 data["email"],
-                auth.encrypt_password("default"),
+                data["password"],
                 data["first_name"],
                 data["last_name"],
                 data["phone"],
@@ -100,6 +104,7 @@ class NewPersonResource(Resource):
         parser.add_argument("role", default="user")
         parser.add_argument("desktop_login", default="")
         parser.add_argument("departments", default=None, action="append")
+        parser.add_argument("password", default=None)
         args = parser.parse_args()
         return args
 
@@ -146,8 +151,7 @@ class DesktopLoginsResource(Resource):
         ---
         tags:
         - Persons
-        description: Set "default" as password.
-                     User role can be set but only admins can create admin users.
+        description: Add a new log entry for desktop logins.
         parameters:
           - in: path
             name: person_id
@@ -155,7 +159,7 @@ class DesktopLoginsResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formDara
+          - in: formData
             name: date
             required: True
             type: string
@@ -163,7 +167,7 @@ class DesktopLoginsResource(Resource):
             x-example: "2022-07-12"
         responses:
             201:
-                description: Desktop login logs created
+                description: Desktop login log entry created.
         """
         arguments = self.get_arguments()
 
@@ -1052,3 +1056,113 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
             )
         persons_service.remove_from_department(department_id, person_id)
         return "", 204
+
+
+class ChangePasswordForPersonResource(Resource, ArgsMixin):
+    """
+    Allow admin to change password for given user.
+    """
+
+    @jwt_required
+    def post(self, person_id):
+        """
+        Allow admin to change password for given user.
+        ---
+        description: Prior to modifying the password, it requires to be admin.
+                     An admin can't change other admins password.
+                     The new password requires a confirmation to ensure that the admin didn't
+                     make a mistake by typing the new password.
+        tags:
+            - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: password
+            required: True
+            type: string
+            format: password
+          - in: formData
+            name: password_2
+            required: True
+            type: string
+            format: password
+        responses:
+          200:
+            description: Password changed
+          400:
+            description: Invalid password or inactive user
+        """
+        (password, password_2) = self.get_arguments()
+
+        try:
+            permissions.check_admin_permissions()
+            person = persons_service.get_person(person_id)
+            current_user = persons_service.get_current_user()
+            if (
+                persons_service.is_admin(person)
+                and person["id"] != current_user["id"]
+            ):
+                raise permissions.PermissionDenied
+            auth.validate_password(password, password_2)
+            password = auth.encrypt_password(password)
+            persons_service.update_password(person["email"], password)
+            current_app.logger.warn(
+                "User %s has changed the password of %s"
+                % (current_user["email"], person["email"])
+            )
+            organisation = persons_service.get_organisation()
+            time_string = format_datetime(
+                datetime.datetime.utcnow(),
+                tzinfo=person["timezone"],
+                locale=person["locale"],
+            )
+            person_IP = request.headers.get("X-Forwarded-For", None)
+            html = f"""<p>Hello {person["first_name"]},</p>
+
+<p>
+Your password has been changed at this date : {time_string}.
+
+The IP of the person who changed your password is : {person_IP}.
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+            subject = "%s Kitsu password changed" % (organisation["name"])
+            emails.send_email(subject, html, person["email"])
+            return {"success": True}
+
+        except auth.PasswordsNoMatchException:
+            return (
+                {
+                    "error": True,
+                    "message": "Confirmation password doesn't match.",
+                },
+                400,
+            )
+        except auth.PasswordTooShortException:
+            return {"error": True, "message": "Password is too short."}, 400
+        except UnactiveUserException:
+            return {"error": True, "message": "User is unactive."}, 400
+
+    def get_arguments(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument(
+            "password", required=True, help="New password is missing."
+        )
+        parser.add_argument(
+            "password_2",
+            required=True,
+            help="New password confirmation is missing.",
+        )
+        args = parser.parse_args()
+
+        return (args["password"], args["password_2"])

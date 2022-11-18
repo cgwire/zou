@@ -37,6 +37,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     password = db.Column(db.LargeBinary(60))
     desktop_login = db.Column(db.String(80))
+    login_failed_attemps = db.Column(db.Integer, default=0)
+    last_login_failed = db.Column(db.DateTime())
+
     shotgun_id = db.Column(db.Integer, unique=True)
     timezone = db.Column(
         TimezoneType(backend="pytz"),
@@ -58,6 +61,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     departments = db.relationship(
         "Department", secondary=department_link, lazy="joined"
     )
+
+    is_generated_from_ldap = db.Column(db.Boolean(), default=False)
 
     def __repr__(self):
         if sys.version_info[0] < 3:

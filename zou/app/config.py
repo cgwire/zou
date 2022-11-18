@@ -7,6 +7,7 @@ from zou.app.utils import dbhelpers
 PROPAGATE_EXCEPTIONS = True
 RESTFUL_JSON = {"ensure_ascii": False}
 DEBUG = os.getenv("DEBUG", 0)
+DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 
 APP_NAME = "Zou"
 APP_SYSTEM_ERROR_SUBJECT_LINE = "%s system error" % APP_NAME
@@ -65,6 +66,7 @@ EVENT_HANDLERS_FOLDER = os.getenv(
     "EVENT_HANDLERS_FOLDER", os.path.join(os.getcwd(), "event_handlers")
 )
 
+MAIL_ENABLED = os.getenv("MAIL_ENABLED", "True").lower() == "true"
 MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
 MAIL_PORT = os.getenv("MAIL_PORT", 25)
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
@@ -73,8 +75,6 @@ MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0) != 0
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "False").lower() == "true"
 MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
 MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "no-reply@cg-wire.com")
-if os.getenv("MAIL_SUPPRESS_SEND") is not None:
-    MAIL_SUPPRESS_SEND = os.getenv("MAIL_SUPPRESS_SEND")
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
 
@@ -128,6 +128,8 @@ CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
+
+MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
 
 # Deprecated
 TO_REVIEW_TASK_STATUS = "To review"
