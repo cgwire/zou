@@ -1199,13 +1199,11 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             )
             person_IP = request.headers.get("X-Forwarded-For", None)
             html = f"""<p>Hello {person["first_name"]},</p>
-
 <p>
-Your password has been changed at this date : {time_string}.
-
-The IP of the person who changed your password is : {person_IP}.
+Your password was changed at this date: {time_string}.
+The IP of the user who changed your password is: {person_IP}.
+If you are not person woh changed the password, please contact our support team.
 </p>
-
 Thank you and see you soon on Kitsu,
 </p>
 <p>
