@@ -5,6 +5,8 @@ import math
 from zou.app.utils import fs
 
 from PIL import Image
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 Image.MAX_IMAGE_PIXELS = 20000 * 20000
 RECTANGLE_SIZE = 150, 100
