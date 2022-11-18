@@ -252,14 +252,29 @@ class TimeSpentsResource(Resource):
             404:
                 description: Wrong date format
         """
-        current_user = persons_service.get_current_user()
-        if current_user["id"] != person_id:
-            try:
-                permissions.check_at_least_supervisor_permissions()
-            except permissions.PermissionDenied:
-                return []
+        department_ids = None
+        project_ids = None
+        if persons_service.get_current_user()["id"] != person_id:
+            if (
+                permissions.has_manager_permissions()
+                or permissions.has_supervisor_permissions()
+            ):
+                project_ids = [
+                    project["id"] for project in user_service.get_projects()
+                ]
+                if permissions.has_supervisor_permissions():
+                    department_ids = persons_service.get_current_user(True)[
+                        "departments"
+                    ]
+            elif not permissions.has_admin_permissions():
+                raise permissions.PermissionDenied
         try:
-            return time_spents_service.get_time_spents(person_id, date)
+            return time_spents_service.get_time_spents(
+                person_id,
+                date,
+                project_ids=project_ids,
+                department_ids=department_ids,
+            )
         except WrongDateFormatException:
             abort(404)
 
@@ -307,7 +322,40 @@ class DayOffResource(Resource):
             abort(404)
 
 
-class PersonYearTimeSpentsResource(Resource, ArgsMixin):
+class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
+    """
+    Parent class for all person durations time spents resource.
+    """
+
+    def get_project_department_arguments(self, person_id):
+        project_id = self.get_project_id()
+        department_ids = None
+        if persons_service.get_current_user()["id"] != person_id:
+            if (
+                permissions.has_manager_permissions()
+                or permissions.has_supervisor_permissions()
+            ):
+                project_ids = [
+                    project["id"] for project in user_service.get_projects()
+                ]
+                if project_id is None:
+                    project_id = project_ids
+                elif project_id not in project_ids:
+                    raise permissions.PermissionDenied
+                if permissions.has_supervisor_permissions():
+                    department_ids = persons_service.get_current_user(True)[
+                        "departments"
+                    ]
+            elif not permissions.has_admin_permissions():
+                raise permissions.PermissionDenied
+
+        return {
+            "project_id": project_id,
+            "department_ids": department_ids,
+        }
+
+
+class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
     """
     Get aggregated time spents for given person and year.
     """
@@ -337,17 +385,17 @@ class PersonYearTimeSpentsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
-        project_id = self.get_project_id()
-        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_year_time_spents(
-                person_id, year, project_id=project_id
+                person_id,
+                year,
+                **self.get_project_department_arguments(person_id)
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonMonthTimeSpentsResource(Resource, ArgsMixin):
+class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
     """
     Get aggregated time spents for given person and month.
     """
@@ -384,17 +432,18 @@ class PersonMonthTimeSpentsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
-        project_id = self.get_project_id()
-        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_month_time_spents(
-                person_id, year, month, project_id=project_id
+                person_id,
+                year,
+                month,
+                **self.get_project_department_arguments(person_id)
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonWeekTimeSpentsResource(Resource, ArgsMixin):
+class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
     """
     Get aggregated time spents for given person and week.
     """
@@ -431,17 +480,18 @@ class PersonWeekTimeSpentsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
-        project_id = self.get_project_id()
-        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_week_time_spents(
-                person_id, year, week, project_id=project_id
+                person_id,
+                year,
+                week,
+                **self.get_project_department_arguments(person_id)
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonDayTimeSpentsResource(Resource, ArgsMixin):
+class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
     """
     Get aggregated time spents for given person and day.
     """
@@ -485,11 +535,13 @@ class PersonDayTimeSpentsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
-        project_id = self.get_project_id()
-        user_service.check_person_access(person_id)
         try:
             return time_spents_service.get_day_time_spents(
-                person_id, year, month, day, project_id=project_id
+                person_id,
+                year,
+                month,
+                day,
+                **self.get_project_department_arguments(person_id)
             )
         except WrongDateFormatException:
             abort(404)
@@ -665,7 +717,41 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
             abort(404)
 
 
-class TimeSpentMonthResource(Resource, ArgsMixin):
+class TimeSpentDurationResource(Resource, ArgsMixin):
+    """
+    Parent class for all durations time spents resource.
+    """
+
+    def get_person_project_department_arguments(self):
+        project_id = self.get_project_id()
+        person_id = None
+        department_ids = None
+        if (
+            permissions.has_manager_permissions()
+            or permissions.has_supervisor_permissions()
+        ):
+            project_ids = [
+                project["id"] for project in user_service.get_projects()
+            ]
+            if project_id is None:
+                project_id = project_ids
+            elif project_id not in project_ids:
+                raise permissions.PermissionDenied
+            if permissions.has_supervisor_permissions():
+                department_ids = persons_service.get_current_user(True)[
+                    "departments"
+                ]
+        elif not permissions.has_admin_permissions():
+            person_id = persons_service.get_current_user()["id"]
+
+        return {
+            "person_id": person_id,
+            "project_id": project_id,
+            "department_ids": department_ids,
+        }
+
+
+class TimeSpentMonthResource(TimeSpentDurationResource):
     """
     Return a table giving time spent by user and by day for given year and
     month.
@@ -695,16 +781,13 @@ class TimeSpentMonthResource(Resource, ArgsMixin):
             200:
                 description: Table giving time spent by user and by day for given year and month
         """
-        project_id = self.get_project_id()
-        person_id = None
-        if not permissions.has_admin_permissions():
-            person_id = persons_service.get_current_user()["id"]
+
         return time_spents_service.get_day_table(
-            year, month, person_id=person_id, project_id=project_id
+            year, month, **self.get_person_project_department_arguments()
         )
 
 
-class TimeSpentYearsResource(Resource, ArgsMixin):
+class TimeSpentYearsResource(TimeSpentDurationResource):
     """
     Return a table giving time spent by user and by month for given year.
     """
@@ -720,16 +803,12 @@ class TimeSpentYearsResource(Resource, ArgsMixin):
             200:
                 description: Table giving time spent by user and by month for given year
         """
-        project_id = self.get_project_id()
-        person_id = None
-        if not permissions.has_admin_permissions():
-            person_id = persons_service.get_current_user()["id"]
         return time_spents_service.get_year_table(
-            person_id=person_id, project_id=project_id
+            **self.get_person_project_department_arguments()
         )
 
 
-class TimeSpentMonthsResource(Resource, ArgsMixin):
+class TimeSpentMonthsResource(TimeSpentDurationResource):
     """
     Return a table giving time spent by user and by month for given year.
     """
@@ -751,16 +830,12 @@ class TimeSpentMonthsResource(Resource, ArgsMixin):
             200:
                 description: Table giving time spent by user and by month for given year
         """
-        project_id = self.get_project_id()
-        person_id = None
-        if not permissions.has_admin_permissions():
-            person_id = persons_service.get_current_user()["id"]
         return time_spents_service.get_month_table(
-            year, person_id=person_id, project_id=project_id
+            year, **self.get_person_project_department_arguments()
         )
 
 
-class TimeSpentWeekResource(Resource, ArgsMixin):
+class TimeSpentWeekResource(TimeSpentDurationResource):
     """
     Return a table giving time spent by user and by week for given year.
     """
@@ -782,12 +857,8 @@ class TimeSpentWeekResource(Resource, ArgsMixin):
             200:
                 description: Table giving time spent by user and by week for given year
         """
-        project_id = self.get_project_id()
-        person_id = None
-        if not permissions.has_admin_permissions():
-            person_id = persons_service.get_current_user()["id"]
         return time_spents_service.get_week_table(
-            year, person_id=person_id, project_id=project_id
+            year, **self.get_person_project_department_arguments()
         )
 
 
