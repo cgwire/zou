@@ -250,20 +250,22 @@ class TimeSpentsResource(Resource):
         """
         department_ids = None
         project_ids = None
-        if persons_service.get_current_user()["id"] != person_id:
-            if (
-                permissions.has_manager_permissions()
-                or permissions.has_supervisor_permissions()
-            ):
-                project_ids = [
-                    project["id"] for project in user_service.get_projects()
-                ]
-                if permissions.has_supervisor_permissions():
-                    department_ids = persons_service.get_current_user(True)[
-                        "departments"
+        if not permissions.has_admin_permissions():
+            if persons_service.get_current_user()["id"] != person_id:
+                if (
+                    permissions.has_manager_permissions()
+                    or permissions.has_supervisor_permissions()
+                ):
+                    project_ids = [
+                        project["id"]
+                        for project in user_service.get_projects()
                     ]
-            elif not permissions.has_admin_permissions():
-                raise permissions.PermissionDenied
+                    if permissions.has_supervisor_permissions():
+                        department_ids = persons_service.get_current_user(
+                            True
+                        )["departments"]
+                else:
+                    raise permissions.PermissionDenied
         try:
             return time_spents_service.get_time_spents(
                 person_id,
@@ -326,24 +328,26 @@ class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
     def get_project_department_arguments(self, person_id):
         project_id = self.get_project_id()
         department_ids = None
-        if persons_service.get_current_user()["id"] != person_id:
-            if (
-                permissions.has_manager_permissions()
-                or permissions.has_supervisor_permissions()
-            ):
-                project_ids = [
-                    project["id"] for project in user_service.get_projects()
-                ]
-                if project_id is None:
-                    project_id = project_ids
-                elif project_id not in project_ids:
-                    raise permissions.PermissionDenied
-                if permissions.has_supervisor_permissions():
-                    department_ids = persons_service.get_current_user(True)[
-                        "departments"
+        if not permissions.has_admin_permissions():
+            if persons_service.get_current_user()["id"] != person_id:
+                if (
+                    permissions.has_manager_permissions()
+                    or permissions.has_supervisor_permissions()
+                ):
+                    project_ids = [
+                        project["id"]
+                        for project in user_service.get_projects()
                     ]
-            elif not permissions.has_admin_permissions():
-                raise permissions.PermissionDenied
+                    if project_id is None:
+                        project_id = project_ids
+                    elif project_id not in project_ids:
+                        raise permissions.PermissionDenied
+                    if permissions.has_supervisor_permissions():
+                        department_ids = persons_service.get_current_user(
+                            True
+                        )["departments"]
+                else:
+                    raise permissions.PermissionDenied
 
         return {
             "project_id": project_id,
@@ -722,23 +726,24 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
         project_id = self.get_project_id()
         person_id = None
         department_ids = None
-        if (
-            permissions.has_manager_permissions()
-            or permissions.has_supervisor_permissions()
-        ):
-            project_ids = [
-                project["id"] for project in user_service.get_projects()
-            ]
-            if project_id is None:
-                project_id = project_ids
-            elif project_id not in project_ids:
-                raise permissions.PermissionDenied
-            if permissions.has_supervisor_permissions():
-                department_ids = persons_service.get_current_user(True)[
-                    "departments"
+        if not permissions.has_admin_permissions():
+            if (
+                permissions.has_manager_permissions()
+                or permissions.has_supervisor_permissions()
+            ):
+                project_ids = [
+                    project["id"] for project in user_service.get_projects()
                 ]
-        elif not permissions.has_admin_permissions():
-            person_id = persons_service.get_current_user()["id"]
+                if project_id is None:
+                    project_id = project_ids
+                elif project_id not in project_ids:
+                    raise permissions.PermissionDenied
+                if permissions.has_supervisor_permissions():
+                    department_ids = persons_service.get_current_user(True)[
+                        "departments"
+                    ]
+            else:
+                person_id = persons_service.get_current_user()["id"]
 
         return {
             "person_id": person_id,
