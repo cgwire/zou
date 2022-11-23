@@ -6,6 +6,7 @@ from zou.app.utils import fs
 
 from PIL import Image
 from PIL import ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 Image.MAX_IMAGE_PIXELS = 20000 * 20000
@@ -86,7 +87,7 @@ def fit_to_target_size(im, size):
     original_ratio = float(im_width) / float(im_height)
     target_ratio = float(width) / float(height)
     if target_ratio != original_ratio:
-        w = height * original_ratio
+        w = math.ceil(height * original_ratio)
         if w > width:
             w = width
             h = int(math.ceil(float(width) / original_ratio))
