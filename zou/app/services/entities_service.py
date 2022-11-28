@@ -231,22 +231,24 @@ def get_entities_and_tasks(criterions={}):
         if task_id is not None:
 
             if task_id not in task_map:
-                task_dict = fields.serialize_dict({
-                    "id": str(task_id),
-                    "entity_id": entity_id,
-                    "task_status_id": str(task_status_id),
-                    "task_type_id": str(task_type_id),
-                    "priority": task_priority or 0,
-                    "estimation": task_estimation,
-                    "duration": task_duration,
-                    "retake_count": task_retake_count,
-                    "real_start_date": task_real_start_date,
-                    "end_date": task_end_date,
-                    "start_date": task_start_date,
-                    "due_date": task_due_date,
-                    "last_comment_date": task_last_comment_date,
-                    "assignees": [],
-                })
+                task_dict = fields.serialize_dict(
+                    {
+                        "id": str(task_id),
+                        "entity_id": entity_id,
+                        "task_status_id": str(task_status_id),
+                        "task_type_id": str(task_type_id),
+                        "priority": task_priority or 0,
+                        "estimation": task_estimation,
+                        "duration": task_duration,
+                        "retake_count": task_retake_count,
+                        "real_start_date": task_real_start_date,
+                        "end_date": task_end_date,
+                        "start_date": task_start_date,
+                        "due_date": task_due_date,
+                        "last_comment_date": task_last_comment_date,
+                        "assignees": [],
+                    }
+                )
                 task_map[task_id] = task_dict
                 entity_dict = entity_map[entity_id]
                 entity_dict["tasks"].append(task_dict)
