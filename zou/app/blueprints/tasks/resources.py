@@ -481,7 +481,6 @@ class CreateShotTasksResource(Resource):
 
 
 class CreateEntityTasksResource(Resource):
-
     @jwt_required
     def post(self, project_id, entity_type, task_type_id):
         """
@@ -515,10 +514,11 @@ class CreateEntityTasksResource(Resource):
         """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
-        entity_type_dict = \
+        entity_type_dict = (
             entities_service.get_entity_type_by_name_or_not_found(
                 entity_type.capitalize()
             )
+        )
 
         entity_ids = request.json
         entities = []
@@ -1149,6 +1149,37 @@ class AddTimeSpentResource(Resource):
 
 
 class GetTimeSpentResource(Resource):
+    """
+    Get time spent on a given task.
+    """
+
+    @jwt_required
+    def get(self, task_id):
+        """
+        Get time spent on a given task.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Time spent on given task
+            404:
+                description: Wrong date format
+        """
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return tasks_service.get_time_spents(task_id)
+
+
+class GetTimeSpentDateResource(Resource):
     """
     Get time spent on a given task and date.
     """

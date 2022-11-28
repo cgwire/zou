@@ -27,6 +27,7 @@ from .resources import (
     CreateAssetTasksResource,
     CreateEditTasksResource,
     CreateEntityTasksResource,
+    GetTimeSpentDateResource,
     GetTimeSpentResource,
     SetTimeSpentResource,
     AddTimeSpentResource,
@@ -71,7 +72,8 @@ routes = [
     ("/actions/tasks/<task_id>/assign", TaskAssignResource),
     ("/actions/tasks/clear-assignation", ClearAssignationResource),
     ("/actions/persons/<person_id>/assign", TasksAssignResource),
-    ("/actions/tasks/<task_id>/time-spents/<date>", GetTimeSpentResource),
+    ("/actions/tasks/<task_id>/time-spents/<date>", GetTimeSpentDateResource),
+    ("/actions/tasks/<task_id>/time-spents", GetTimeSpentResource),
     (
         "/actions/tasks/<task_id>/time-spents/<date>/persons/<person_id>",
         SetTimeSpentResource,
