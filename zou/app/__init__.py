@@ -53,6 +53,7 @@ swagger = Swagger(
 
 
 if config.SENTRY_DEBUG_URL:
+
     @app.route(config.SENTRY_DEBUG_URL)
     def trigger_error():
         division_by_zero = 1 / 0
