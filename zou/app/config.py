@@ -123,6 +123,10 @@ LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
 LOGS_PORT = os.getenv("LOGS_PORT", 2202)
 LOGS_TOKEN = os.getenv("LOGS_TOKEN")
 
+SENTRY_DSN = os.getenv("SENTRY_DSN", False)
+SENTRY_SR = float(os.getenv("SENTRY_SR", 1.0))
+SENTRY_DEBUG_URL = os.getenv("SENTRY_DEBUG_URL", False)
+
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
