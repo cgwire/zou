@@ -20,6 +20,8 @@ from zou.app.services import (
     sync_service,
     tasks_service,
 )
+from zou.app.models.person import Person
+from sqlalchemy.sql.expression import not_
 from zou.app.index_schema import init_indexes
 
 from zou.app.services.exception import (
@@ -184,47 +186,39 @@ def sync_with_ldap_server():
             cleaned_value = ""
         return cleaned_value
 
-    def search_ad_users(conn, excluded_accounts):
-        attributes = [
-            "givenName",
-            "sn",
-            "sAMAccountName",
-            "mail",
-            "thumbnailPhoto",
-            "userAccountControl",
-        ]
-        query = "(objectCategory=person)"
-        if len(LDAP_GROUP) > 0:
+    def search_ldap_users(conn, excluded_accounts):
+        is_ad = LDAP_IS_AD or LDAP_IS_AD_SIMPLE
+        attributes = ["givenName", "sn", "mail", "cn"]
+        if is_ad:
+            attributes += [
+                "sAMAccountName",
+                "thumbnailPhoto",
+                "userAccountControl",
+            ]
+        else:
+            attributes += ["uid", "jpegPhoto"]
+        query = "(objectClass=person)"
+        if len(LDAP_GROUP) > 0 and is_ad:
             query = "(&(objectClass=person)(memberOf=%s))" % LDAP_GROUP
         conn.search(LDAP_BASE_DN, query, attributes=attributes)
         return [
             {
-                "first_name": clean_value(entry.givenName),
+                "first_name": clean_value(entry.givenName or entry.cn),
                 "last_name": clean_value(entry.sn),
                 "email": clean_value(entry.mail),
-                "desktop_login": clean_value(entry.sAMAccountName),
-                "thumbnail": entry.thumbnailPhoto.raw_values,
-                "active": bool(entry.userAccountControl.value & 2) is False,
+                "desktop_login": clean_value(
+                    entry.sAMAccountName if is_ad else entry.uid
+                ),
+                "thumbnail": (
+                    entry.thumbnailPhoto if is_ad else entry.jpegPhoto
+                ).raw_values,
+                "active": (bool(entry.userAccountControl.value & 2) is False)
+                if is_ad
+                else True,
             }
             for entry in conn.entries
-            if clean_value(entry.sAMAccountName) not in excluded_accounts
-        ]
-
-    def search_ldap_users(conn, excluded_accounts):
-        attributes = ["givenName", "sn", "mail", "cn", "uid", "jpegPhoto"]
-        conn.search(
-            LDAP_BASE_DN, "(objectclass=person)", attributes=attributes
-        )
-        return [
-            {
-                "first_name": clean_value(entry.givenName),
-                "last_name": clean_value(entry.sn),
-                "email": clean_value(entry.mail),
-                "desktop_login": clean_value(entry.uid),
-                "thumbnail": entry.jpegPhoto.raw_values,
-            }
-            for entry in conn.entries
-            if clean_value(entry.uid) not in excluded_accounts
+            if clean_value(entry.sAMAccountName if is_ad else entry.uid)
+            not in excluded_accounts
         ]
 
     def get_ldap_users():
@@ -234,7 +228,6 @@ def sync_with_ldap_server():
         if LDAP_IS_AD_SIMPLE:
             user = LDAP_USER
             authentication = SIMPLE
-            SSL = True
         elif LDAP_IS_AD:
             user = "%s\%s" % (LDAP_DOMAIN, LDAP_USER)
             authentication = NTLM
@@ -252,12 +245,10 @@ def sync_with_ldap_server():
             auto_bind=True,
         )
 
-        if LDAP_IS_AD:
-            return search_ad_users(conn, excluded_accounts)
-        else:
-            return search_ldap_users(conn, excluded_accounts)
+        return search_ldap_users(conn, excluded_accounts)
 
     def update_person_list_with_ldap_users(users):
+        persons_updated = []
         for user in users:
             if persons_service.is_user_limit_reached():
                 raise IsUserLimitReachedException
@@ -296,6 +287,7 @@ def sync_with_ldap_server():
                         is_generated_from_ldap=True,
                     )
                     print("User %s created." % desktop_login)
+                    persons_updated.append(person["id"])
                 except:
                     print(
                         "User %s creation failed (email duplicated?)."
@@ -304,7 +296,7 @@ def sync_with_ldap_server():
 
             elif person is not None:
                 try:
-                    persons_service.update_person(
+                    person = persons_service.update_person(
                         person["id"],
                         {
                             "email": email,
@@ -316,6 +308,7 @@ def sync_with_ldap_server():
                         },
                     )
                     print("User %s updated." % desktop_login)
+                    persons_updated.append(person["id"])
                 except:
                     print(
                         "User %s update failed (email duplicated?)."
@@ -324,6 +317,16 @@ def sync_with_ldap_server():
 
             if person is not None and len(thumbnail) > 0:
                 save_thumbnail(person, thumbnail)
+
+        for person in (
+            Person.query.filter_by(is_generated_from_ldap=True, active=True)
+            .filter(not_(Person.id.in_(persons_updated)))
+            .all()
+        ):
+            persons_service.update_person(person.id, {"active": False})
+            print(
+                "User %s disabled (not found in LDAP)." % person.desktop_login
+            )
 
     def save_thumbnail(person, thumbnail):
         from zou.app import app

@@ -393,7 +393,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
             return time_spents_service.get_year_time_spents(
                 person_id,
                 year,
-                **self.get_project_department_arguments(person_id)
+                **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
             abort(404)
@@ -441,7 +441,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
                 person_id,
                 year,
                 month,
-                **self.get_project_department_arguments(person_id)
+                **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
             abort(404)
@@ -489,7 +489,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
                 person_id,
                 year,
                 week,
-                **self.get_project_department_arguments(person_id)
+                **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
             abort(404)
@@ -545,7 +545,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
                 year,
                 month,
                 day,
-                **self.get_project_department_arguments(person_id)
+                **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
             abort(404)

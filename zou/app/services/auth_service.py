@@ -116,7 +116,6 @@ def ldap_auth_strategy(person, password, app):
                     person["full_name"],
                     app.config["LDAP_BASE_DN"],
                 )
-                SSL = True
                 authentication = SIMPLE
             elif app.config["LDAP_IS_AD"]:
                 user = "%s\%s" % (

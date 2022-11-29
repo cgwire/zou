@@ -3,10 +3,11 @@ import datetime
 import tempfile
 
 from zou.app.utils import dbhelpers
+from zou.app.utils.string import strtobool
 
 PROPAGATE_EXCEPTIONS = True
 RESTFUL_JSON = {"ensure_ascii": False}
-DEBUG = os.getenv("DEBUG", 0)
+DEBUG = strtobool(os.getenv("DEBUG", False))
 DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 
 APP_NAME = "Zou"
@@ -66,14 +67,14 @@ EVENT_HANDLERS_FOLDER = os.getenv(
     "EVENT_HANDLERS_FOLDER", os.path.join(os.getcwd(), "event_handlers")
 )
 
-MAIL_ENABLED = os.getenv("MAIL_ENABLED", "True").lower() == "true"
+MAIL_ENABLED = strtobool(os.getenv("MAIL_ENABLED", True))
 MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
 MAIL_PORT = os.getenv("MAIL_PORT", 25)
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0) != 0
-MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "False").lower() == "true"
-MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
+MAIL_DEBUG = strtobool(os.getenv("MAIL_DEBUG", False))
+MAIL_USE_TLS = strtobool(os.getenv("MAIL_USE_TLS", False))
+MAIL_USE_SSL = strtobool(os.getenv("MAIL_USE_SSL", False))
 MAIL_DEFAULT_SENDER = os.getenv(
     "MAIL_DEFAULT_SENDER", "no-reply@your-studio.com"
 )
@@ -97,9 +98,9 @@ FS_S3_ENDPOINT = os.getenv("FS_S3_ENDPOINT")
 FS_S3_ACCESS_KEY = os.getenv("FS_S3_ACCESS_KEY")
 FS_S3_SECRET_KEY = os.getenv("FS_S3_SECRET_KEY")
 
-ENABLE_JOB_QUEUE = os.getenv("ENABLE_JOB_QUEUE", "False").lower() == "true"
-ENABLE_JOB_QUEUE_REMOTE = (
-    os.getenv("ENABLE_JOB_QUEUE_REMOTE", "False").lower() == "true"
+ENABLE_JOB_QUEUE = strtobool(os.getenv("ENABLE_JOB_QUEUE", False))
+ENABLE_JOB_QUEUE_REMOTE = strtobool(
+    os.getenv("ENABLE_JOB_QUEUE_REMOTE", False)
 )
 JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
     "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist"
@@ -114,10 +115,10 @@ LDAP_PORT = os.getenv("LDAP_PORT", "389")
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "cn=Users,dc=zou,dc=local")
 LDAP_GROUP = os.getenv("LDAP_GROUP", "")
 LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "zou.local")
-LDAP_FALLBACK = os.getenv("LDAP_FALLBACK", "False").lower() == "true"
-LDAP_IS_AD = os.getenv("LDAP_IS_AD", "False").lower() == "true"
-LDAP_IS_AD_SIMPLE = os.getenv("LDAP_IS_AD_SIMPLE", "False").lower() == "true"
-LDAP_SSL = os.getenv("LDAP_SSL", "False").lower() == "true"
+LDAP_FALLBACK = strtobool(os.getenv("LDAP_FALLBACK", False))
+LDAP_IS_AD = strtobool(os.getenv("LDAP_IS_AD", False))
+LDAP_IS_AD_SIMPLE = strtobool(os.getenv("LDAP_IS_AD_SIMPLE", False))
+LDAP_SSL = strtobool(os.getenv("LDAP_SSL", False))
 
 
 LOGS_MODE = os.getenv("LOGS_MODE", "default")
