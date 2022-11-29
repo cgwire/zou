@@ -8,6 +8,7 @@ from flask_jwt_extended import (
 from flask_socketio import SocketIO, disconnect, join_room, emit
 from zou.app import config
 from zou.app.stores import auth_tokens_store
+from zou.sentry import init_sentry
 
 from gevent import monkey
 
@@ -206,6 +207,7 @@ def create_app():
     socketio = SocketIO(
         logger=True, cors_allowed_origins=[], cors_credentials=False
     )
+    init_sentry()
     app = Flask(__name__)
     app.config.from_object(config)
     set_info_routes(socketio, app)

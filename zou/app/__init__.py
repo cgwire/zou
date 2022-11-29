@@ -25,7 +25,9 @@ from .services.exception import (
 from .utils import fs, logs
 
 from zou.app.utils import cache
+from zou.sentry import init_sentry
 
+init_sentry()
 app = Flask(__name__)
 app.config.from_object(config)
 
@@ -48,6 +50,13 @@ mail.init_app(app)  # To send emails
 swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
+
+
+if config.SENTRY_DEBUG_URL:
+
+    @app.route(config.SENTRY_DEBUG_URL)
+    def trigger_error():
+        division_by_zero = 1 / 0
 
 
 @app.teardown_appcontext

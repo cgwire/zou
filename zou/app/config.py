@@ -74,7 +74,9 @@ MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
 MAIL_DEBUG = os.getenv("MAIL_DEBUG", 0) != 0
 MAIL_USE_TLS = os.getenv("MAIL_USE_TLS", "False").lower() == "true"
 MAIL_USE_SSL = os.getenv("MAIL_USE_SSL", "False").lower() == "true"
-MAIL_DEFAULT_SENDER = os.getenv("MAIL_DEFAULT_SENDER", "no-reply@your-studio.com")
+MAIL_DEFAULT_SENDER = os.getenv(
+    "MAIL_DEFAULT_SENDER", "no-reply@your-studio.com"
+)
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
 
@@ -122,6 +124,10 @@ LOGS_MODE = os.getenv("LOGS_MODE", "default")
 LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
 LOGS_PORT = os.getenv("LOGS_PORT", 2202)
 LOGS_TOKEN = os.getenv("LOGS_TOKEN")
+
+SENTRY_DSN = os.getenv("SENTRY_DSN", False)
+SENTRY_SR = float(os.getenv("SENTRY_SR", 1.0))
+SENTRY_DEBUG_URL = os.getenv("SENTRY_DEBUG_URL", False)
 
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 
