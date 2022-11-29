@@ -8,7 +8,7 @@ from flask_jwt_extended import (
 from flask_socketio import SocketIO, disconnect, join_room, emit
 from zou.app import config
 from zou.app.stores import auth_tokens_store
-from zou.sentry import init_sentry
+from zou.app.utils.sentry import init_sentry
 
 from gevent import monkey
 

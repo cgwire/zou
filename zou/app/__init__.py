@@ -25,7 +25,7 @@ from .services.exception import (
 from .utils import fs, logs
 
 from zou.app.utils import cache
-from zou.sentry import init_sentry
+from zou.app.utils.sentry import init_sentry
 
 init_sentry()
 app = Flask(__name__)
