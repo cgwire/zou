@@ -7,6 +7,8 @@ from dateutil import relativedelta
 
 from sqlalchemy.exc import StatementError
 
+from babel.dates import format_datetime
+
 from flask_jwt_extended import get_jwt_identity
 
 from zou.app.models.department import Department
@@ -152,12 +154,14 @@ def get_person_by_desktop_login(desktop_login):
     return person.serialize()
 
 
-def get_current_user(relations=False):
+def get_current_user(unsafe=False, relations=False):
     """
     Return person from its auth token (the one that does the request) as a
     dictionary.
     """
-    return get_person_by_email(get_jwt_identity(), relations=relations)
+    return get_person_by_email(
+        get_jwt_identity(), unsafe=unsafe, relations=relations
+    )
 
 
 def get_current_user_raw():
@@ -356,6 +360,12 @@ def invite_person(person_id):
         query,
     )
 
+    time_string = format_datetime(
+        datetime.datetime.utcnow(),
+        tzinfo=person["timezone"],
+        locale=person["locale"],
+    )
+
     html = f"""<p>Hello {person["first_name"]},</p>
 <p>
 You are invited by {organisation["name"]} to collaborate on their Kitsu production tracker.
@@ -364,7 +374,11 @@ You are invited by {organisation["name"]} to collaborate on their Kitsu producti
 Your login is: <strong>{person["email"]}</strong>
 </p>
 <p>
-You are invited to set your password at this URL : <a href={reset_url}>{reset_url}</a>
+You are invited to set your password by following this link: <a href={reset_url}>{reset_url}</a>
+</p>
+<p>
+This link will expire after 2 days. After, you have to request to reset your password.
+The invitation was sent at this date: {time_string}.
 </p>
 <p>
 Thank you and see you soon on Kitsu,

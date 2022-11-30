@@ -743,9 +743,9 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
                 elif project_id not in project_ids:
                     raise permissions.PermissionDenied
                 if permissions.has_supervisor_permissions():
-                    department_ids = persons_service.get_current_user(True)[
-                        "departments"
-                    ]
+                    department_ids = persons_service.get_current_user(
+                        relations=True
+                    )["departments"]
             else:
                 person_id = persons_service.get_current_user()["id"]
 
@@ -1202,7 +1202,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
 <p>
 Your password was changed at this date: {time_string}.
 The IP of the user who changed your password is: {person_IP}.
-If you are not person woh changed the password, please contact our support team.
+If you don't know the person who changed the password, please contact our support team.
 </p>
 Thank you and see you soon on Kitsu,
 </p>

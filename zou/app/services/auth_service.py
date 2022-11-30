@@ -4,6 +4,9 @@ import string
 from datetime import datetime, timedelta
 import flask_bcrypt as bcrypt
 
+from flask import request
+from babel.dates import format_datetime
+
 from flask_jwt_extended import get_jti
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from ldap3.core.exceptions import (
@@ -25,15 +28,25 @@ from zou.app.services.exception import (
     WrongOTPException,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
+    EmailOTPAlreadyEnabledException,
+    EmailOTPNotEnabledException,
 )
 from zou.app.stores import auth_tokens_store
-from zou.app.utils import date_helpers
+from zou.app.utils import date_helpers, emails
 from zou.app.models.person import Person
 
 from sqlalchemy.orm.attributes import flag_modified
 
 
-def check_auth(app, email, password, otp, no_otp=False):
+def check_auth(
+    app,
+    email,
+    password,
+    totp=None,
+    email_otp=None,
+    recovery_code=None,
+    no_otp=False,
+):
     """
     Depending on configured strategy, it checks if given email and password
     mach an active user in the database. It raises exceptions adapted to
@@ -73,24 +86,14 @@ def check_auth(app, email, password, otp, no_otp=False):
         )
         raise WrongPasswordException()
 
-    if not no_otp:
-        otp_verifications = []
-        if person["totp_enabled"]:
-            otp_verifications.append(check_totp)
-        if otp_verifications:
-            otp_verifications.append(check_recovery_code)
-            if not otp:
-                raise MissingOTPException()
-            otp_verified = False
-            for otp_verification in otp_verifications:
-                if otp_verification(person, otp):
-                    otp_verified = True
-                    break
-            if not otp_verified:
-                update_login_failed_attemps(
-                    person["id"], login_failed_attemps + 1, datetime.now()
-                )
-                raise WrongOTPException()
+    if not no_otp and person_two_factor_authentication_enabled(person):
+        if not check_two_factor_authentication(
+            person, totp, email_otp, recovery_code
+        ):
+            update_login_failed_attemps(
+                person["id"], login_failed_attemps + 1, datetime.now()
+            )
+            raise WrongOTPException()
 
     if login_failed_attemps > 0:
         update_login_failed_attemps(person["id"], 0)
@@ -98,8 +101,11 @@ def check_auth(app, email, password, otp, no_otp=False):
     if "password" in person:
         del person["password"]
 
-    if "otp_secret" in person:
-        del person["otp_secret"]
+    if "totp_secret" in person:
+        del person["totp_secret"]
+
+    if "email_otp_secret" in person:
+        del person["email_otp_secret"]
 
     if "otp_recovery_codes" in person:
         del person["otp_recovery_codes"]
@@ -229,6 +235,42 @@ def update_login_failed_attemps(
     return person.serialize()
 
 
+def check_two_factor_authentication(
+    person, totp=None, email_otp=None, recovery_code=None
+):
+    """
+    Check multifactor authentication for a person.
+    """
+    if person["totp_enabled"] and totp is not None:
+        return check_totp(person, totp)
+    elif person["email_otp_enabled"] and email_otp is not None:
+        return check_email_otp(person, email_otp)
+    elif recovery_code is not None:
+        return check_recovery_code(person, recovery_code)
+    else:
+        raise MissingOTPException(
+            person["preferred_two_factor_authentication"],
+            get_two_factor_authentication_enabled(person),
+        )
+
+
+def person_two_factor_authentication_enabled(person):
+    return person["totp_enabled"] or person["email_otp_enabled"]
+
+
+def person_two_factor_authentication_enabled_raw(person):
+    return person.totp_enabled or person.email_otp_enabled
+
+
+def get_two_factor_authentication_enabled(person):
+    two_factor_authentication_enabled = ["recovery_code"]
+    if person["totp_enabled"]:
+        two_factor_authentication_enabled.append("totp")
+    if person["email_otp_enabled"]:
+        two_factor_authentication_enabled.append("email_otp")
+    return two_factor_authentication_enabled
+
+
 def remove_otp_revovery_code(person_id, recovery_hash):
     """
     Remove an otp recovery code for a person_id.
@@ -245,15 +287,27 @@ def check_totp(person, totp):
     """
     Check TOTP for a person.
     """
-    return pyotp.TOTP(person["otp_secret"]).verify(totp)
+    return pyotp.TOTP(person["totp_secret"]).verify(totp)
+
+
+def check_email_otp(person, email_otp):
+    """
+    Check email OTP for a person.
+    """
+    count = auth_tokens_store.get("email-otp-count-%s" % person["email"])
+    if count is not None:
+        if pyotp.HOTP(person["email_otp_secret"]).verify(
+            email_otp, int(count)
+        ):
+            auth_tokens_store.delete("email-otp-count-%s" % person["email"])
+            return True
+    return False
 
 
 def check_recovery_code(person, recovery_code):
     """
     Check recovery code for a person.
     """
-    if not person["otp_recovery_codes"]:
-        return False
     for recovery_hash in person["otp_recovery_codes"]:
         if bcrypt.check_password_hash(recovery_hash, recovery_code):
             remove_otp_revovery_code(person["id"], recovery_hash)
@@ -269,8 +323,8 @@ def pre_enable_totp(person_id):
     if person.totp_enabled:
         raise TOTPAlreadyEnabledException()
     else:
-        person.otp_secret = pyotp.random_base32()
-        totp = pyotp.TOTP(person.otp_secret)
+        person.totp_secret = pyotp.random_base32()
+        totp = pyotp.TOTP(person.totp_secret)
         organisation = persons_service.get_organisation()
         totp_provisionning_uri = totp.provisioning_uri(
             name=person.email, issuer_name="Kitsu %s" % organisation["name"]
@@ -278,7 +332,7 @@ def pre_enable_totp(person_id):
         person.totp_enabled = False
         person.commit()
         persons_service.clear_person_cache()
-        return totp_provisionning_uri, person.otp_secret
+        return totp_provisionning_uri, person.totp_secret
 
 
 def enable_totp(person_id, totp):
@@ -288,23 +342,14 @@ def enable_totp(person_id, totp):
     person = Person.get(person_id)
     if person.totp_enabled:
         raise TOTPAlreadyEnabledException()
-    elif pyotp.TOTP(person.otp_secret).verify(totp):
+    elif check_totp(person.serialize(), totp):
         person.totp_enabled = True
         otp_recovery_codes = None
         if not person.otp_recovery_codes:
-            otp_recovery_codes = [
-                "".join(
-                    random.SystemRandom().choice(
-                        string.ascii_uppercase + string.digits
-                    )
-                    for _ in range(10)
-                )
-                for _ in range(16)
-            ]
-            person.otp_recovery_codes = [
-                bcrypt.generate_password_hash(recovery_code)
-                for recovery_code in otp_recovery_codes
-            ]
+            otp_recovery_codes = generate_recovery_codes()
+            person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
+        if not person.preferred_two_factor_authentication:
+            person.preferred_two_factor_authentication = "totp"
         person.commit()
         persons_service.clear_person_cache()
         return otp_recovery_codes
@@ -312,22 +357,132 @@ def enable_totp(person_id, totp):
         raise WrongOTPException
 
 
-def disable_totp(person_id, totp):
+def disable_totp(person_id):
     """
     Disable TOTP for a person.
     """
     person = Person.get(person_id)
     if not person.totp_enabled:
         raise TOTPNotEnabledException()
-    elif pyotp.TOTP(person.otp_secret).verify(totp):
-        person.otp_secret = None
+    person.totp_enabled = False
+    person.totp_secret = None
+    if not person_two_factor_authentication_enabled_raw(person):
         person.otp_recovery_codes = None
-        person.totp_enabled = False
+        person.preferred_two_factor_authentication = None
+    elif person.preferred_two_factor_authentication == "totp":
+        person.preferred_two_factor_authentication = "email_otp"
+    person.commit()
+    persons_service.clear_person_cache()
+    return True
+
+
+def pre_enable_email_otp(person_id):
+    """
+    Pre-enable mail OTP for a person.
+    """
+    person = Person.get(person_id)
+    if person.email_otp_enabled:
+        raise EmailOTPAlreadyEnabledException()
+    else:
+        person.email_otp_secret = pyotp.random_base32()
+        person.email_otp_enabled = False
         person.commit()
+        send_email_otp(person.serialize())
         persons_service.clear_person_cache()
         return True
+
+
+def enable_email_otp(person_id, email_otp):
+    """
+    Enable mail OTP for a person
+    """
+    person = Person.get(person_id)
+    if person.email_otp_enabled:
+        raise EmailOTPAlreadyEnabledException()
+    elif check_email_otp(person.serialize(), email_otp):
+        person.email_otp_enabled = True
+        otp_recovery_codes = None
+        if not person.otp_recovery_codes:
+            otp_recovery_codes = generate_recovery_codes()
+            person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
+        if not person.preferred_two_factor_authentication:
+            person.preferred_two_factor_authentication = "email_otp"
+        person.commit()
+        persons_service.clear_person_cache()
+        return otp_recovery_codes
     else:
         raise WrongOTPException
+
+
+def disable_email_otp(person_id):
+    """
+    Disable email OTP for a person.
+    """
+    person = Person.get(person_id)
+    if not person.email_otp_enabled:
+        raise EmailOTPNotEnabledException()
+    person.email_otp_enabled = False
+    person.email_otp_secret = None
+    if not person_two_factor_authentication_enabled_raw(person):
+        person.otp_recovery_codes = None
+        person.preferred_two_factor_authentication = None
+    elif person.preferred_two_factor_authentication == "email_otp":
+        person.person.preferred_two_factor_authentication = "totp"
+    person.commit()
+    persons_service.clear_person_cache()
+    return True
+
+
+def send_email_otp(person):
+    """
+    Send an email with OTP and store the OTP for checking after.
+    """
+    count = random.randint(0, 999999999999)
+    otp = pyotp.HOTP(person["email_otp_secret"]).at(count)
+    auth_tokens_store.add(
+        "email-otp-count-%s" % person["email"], count, ttl=60 * 5
+    )
+    organisation = persons_service.get_organisation()
+    time_string = format_datetime(
+        datetime.utcnow(),
+        tzinfo=person["timezone"],
+        locale=person["locale"],
+    )
+    person_IP = request.headers.get("X-Forwarded-For", None)
+    html = f"""<p>Hello {person["first_name"]},</p>
+
+<p>
+Your verification code is : <strong>{otp}</strong>
+</p>
+
+<p>
+This one time password will expire after 5 minutes. After, you will have to request a new one.
+This email was sent at this date : {time_string}.
+The IP of the person who requested this is: {person_IP}.
+</p>
+
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+    subject = f"{organisation['name']} Kitsu verification code : {otp}"
+    emails.send_email(subject, html, person["email"])
+    return True
+
+
+def generate_new_recovery_codes(person_id):
+    """
+    Generate new recovery codes for a person.
+    """
+    person = Person.get(person_id)
+    otp_recovery_codes = generate_recovery_codes()
+    person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
+    flag_modified(person, "otp_recovery_codes")
+    person.commit()
+    persons_service.clear_person_cache()
+    return otp_recovery_codes
 
 
 def register_tokens(app, access_token, refresh_token=None):
@@ -355,6 +510,9 @@ def revoke_tokens(app, jti):
 
 
 def is_default_password(app, password):
+    """
+    Check if password is default.
+    """
     return (
         password == "default"
         and app.config["AUTH_STRATEGY"] != "auth_local_no_password"
@@ -362,13 +520,44 @@ def is_default_password(app, password):
 
 
 def generate_reset_token():
+    """
+    Generate and return a reset token.
+    """
     return "".join(
         random.SystemRandom().choice(string.ascii_uppercase + string.digits)
         for _ in range(64)
     )
 
 
+def generate_recovery_codes():
+    """
+    Generate and return recovery codes.
+    """
+    return [
+        "".join(
+            random.SystemRandom().choice(
+                string.ascii_uppercase + string.digits
+            )
+            for _ in range(10)
+        )
+        for _ in range(16)
+    ]
+
+
+def hash_recovery_codes(recovery_codes):
+    """
+    Hash recovery codes given as argument and return them.
+    """
+    return [
+        bcrypt.generate_password_hash(recovery_code)
+        for recovery_code in recovery_codes
+    ]
+
+
 def check_login_failed_attemps(person):
+    """
+    Check login failed attemps for a person.
+    """
     login_failed_attemps = person["login_failed_attemps"]
     if login_failed_attemps is None:
         login_failed_attemps = 0
