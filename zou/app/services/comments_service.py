@@ -58,6 +58,7 @@ def get_attachment_file_path(attachment_file):
         "attachments",
         attachment_file["id"],
         attachment_file["extension"],
+        file_size=attachment_file["size"],
     )
 
 

@@ -30,6 +30,7 @@ from zou.app.utils import (
     permissions,
     thumbnail as thumbnail_utils,
 )
+from zou.app.services.exception import PreviewFileNotFoundException
 
 
 ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".jpe"]
@@ -127,8 +128,16 @@ def send_storage_file(
     Send file from storage. If it's not a local storage, cache the file in
     a temporary folder before sending it. It accepts conditional headers.
     """
+    file_size = None
+    try:
+        if prefix in ["movies", "pictures", "previews", "originals"]:
+            preview_file = files_service.get_preview_file(preview_file_id)
+            preview_file["file_size"]
+    except PreviewFileNotFoundException:
+        pass
     file_path = fs.get_file_path_and_file(
-        config, get_local_path, open_file, prefix, preview_file_id, extension
+        config, get_local_path, open_file, prefix, preview_file_id, extension,
+        file_size=file_size
     )
 
     attachment_filename = ""
@@ -203,8 +212,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 {
                     "extension": "png",
                     "original_name": original_file_name,
-                    "status": "ready",
-                },
+                    "status": "ready"
+                }
             )
             self.emit_app_preview_event(instance_id)
             return preview_file, 201
@@ -222,7 +231,10 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 abort(400, "Normalization failed.")
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
-                {"extension": "mp4", "original_name": original_file_name},
+                {
+                    "extension": "mp4",
+                    "original_name": original_file_name
+                },
             )
             self.emit_app_preview_event(instance_id)
             return preview_file, 201
@@ -744,7 +756,7 @@ class BaseCreatePictureResource(Resource):
     @jwt_required
     def post(self, instance_id):
         """
-        Create a thumbnail.
+        Create a thumbnail for given object instance.
         ---
         tags:
           - Previews
@@ -767,7 +779,7 @@ class BaseCreatePictureResource(Resource):
             200:
                 description: Thumbnail created
             404:
-                description: Instance already exists
+                description: Cannot found related object.
         """
         if not self.is_exist(instance_id):
             abort(404)
@@ -791,7 +803,6 @@ class BaseCreatePictureResource(Resource):
             self.data_type, instance_id
         )
         self.emit_event(instance_id)
-
         return {"thumbnail_path": thumbnail_url_path}, 201
 
 
@@ -810,7 +821,7 @@ class BasePictureResource(Resource):
     @jwt_required
     def get(self, instance_id):
         """
-        Download a thumbnail.
+        Download the thumbnail linked to given object instance.
         ---
         tags:
           - Previews
@@ -825,9 +836,9 @@ class BasePictureResource(Resource):
             200:
                 description: Thumbnail downloaded
             403:
-                description: Instance not allowed
+                description: Access not allowed
             404:
-                description: Thumbnail file not found
+                description: Object instance not found
         """
         if not self.is_exist(instance_id):
             abort(404)
