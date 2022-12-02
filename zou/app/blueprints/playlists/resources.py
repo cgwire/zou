@@ -176,13 +176,13 @@ class EntityPreviewsResource(Resource):
 
 class PlaylistDownloadResource(Resource):
     """
-    Download given playlist as mp4 after given build job is finished.
+    Download given playlist as a .mp4 after given build job is finished.
     """
 
     @jwt_required
     def get(self, playlist_id, build_job_id):
         """
-        Download given playlist as mp4 after given build job is finished.
+        Download given playlist build as .mp4.
         ---
         tags:
         - Playlists
@@ -203,9 +203,9 @@ class PlaylistDownloadResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Given playlist downloaded as mp4
+                description: Given playlist build downloaded as .mp4
             400:
-                description: Build not finished
+                description: Build not finished, need to retry later
         """
         playlist = playlists_service.get_playlist(playlist_id)
         project = projects_service.get_project(playlist["project_id"])
