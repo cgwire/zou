@@ -7,7 +7,7 @@ from zou.app.utils.string import strtobool
 
 PROPAGATE_EXCEPTIONS = True
 RESTFUL_JSON = {"ensure_ascii": False}
-DEBUG = strtobool(os.getenv("DEBUG", False))
+DEBUG = strtobool(os.getenv("DEBUG", "false"))
 DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 
 APP_NAME = "Zou"
@@ -67,14 +67,14 @@ EVENT_HANDLERS_FOLDER = os.getenv(
     "EVENT_HANDLERS_FOLDER", os.path.join(os.getcwd(), "event_handlers")
 )
 
-MAIL_ENABLED = strtobool(os.getenv("MAIL_ENABLED", True))
+MAIL_ENABLED = strtobool(os.getenv("MAIL_ENABLED", "true"))
 MAIL_SERVER = os.getenv("MAIL_SERVER", "localhost")
 MAIL_PORT = os.getenv("MAIL_PORT", 25)
 MAIL_USERNAME = os.getenv("MAIL_USERNAME", "")
 MAIL_PASSWORD = os.getenv("MAIL_PASSWORD", "")
-MAIL_DEBUG = strtobool(os.getenv("MAIL_DEBUG", False))
-MAIL_USE_TLS = strtobool(os.getenv("MAIL_USE_TLS", False))
-MAIL_USE_SSL = strtobool(os.getenv("MAIL_USE_SSL", False))
+MAIL_DEBUG = strtobool(os.getenv("MAIL_DEBUG", "false"))
+MAIL_USE_TLS = strtobool(os.getenv("MAIL_USE_TLS", "false"))
+MAIL_USE_SSL = strtobool(os.getenv("MAIL_USE_SSL", "false"))
 MAIL_DEFAULT_SENDER = os.getenv(
     "MAIL_DEFAULT_SENDER", "no-reply@your-studio.com"
 )
@@ -98,9 +98,9 @@ FS_S3_ENDPOINT = os.getenv("FS_S3_ENDPOINT")
 FS_S3_ACCESS_KEY = os.getenv("FS_S3_ACCESS_KEY")
 FS_S3_SECRET_KEY = os.getenv("FS_S3_SECRET_KEY")
 
-ENABLE_JOB_QUEUE = strtobool(os.getenv("ENABLE_JOB_QUEUE", False))
+ENABLE_JOB_QUEUE = strtobool(os.getenv("ENABLE_JOB_QUEUE", "false"))
 ENABLE_JOB_QUEUE_REMOTE = strtobool(
-    os.getenv("ENABLE_JOB_QUEUE_REMOTE", False)
+    os.getenv("ENABLE_JOB_QUEUE_REMOTE", "false")
 )
 JOB_QUEUE_NOMAD_PLAYLIST_JOB = os.getenv(
     "JOB_QUEUE_NOMAD_PLAYLIST_JOB", "zou-playlist"
@@ -115,10 +115,10 @@ LDAP_PORT = os.getenv("LDAP_PORT", "389")
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "cn=Users,dc=zou,dc=local")
 LDAP_GROUP = os.getenv("LDAP_GROUP", "")
 LDAP_DOMAIN = os.getenv("LDAP_DOMAIN", "zou.local")
-LDAP_FALLBACK = strtobool(os.getenv("LDAP_FALLBACK", False))
-LDAP_IS_AD = strtobool(os.getenv("LDAP_IS_AD", False))
-LDAP_IS_AD_SIMPLE = strtobool(os.getenv("LDAP_IS_AD_SIMPLE", False))
-LDAP_SSL = strtobool(os.getenv("LDAP_SSL", False))
+LDAP_FALLBACK = strtobool(os.getenv("LDAP_FALLBACK", "false"))
+LDAP_IS_AD = strtobool(os.getenv("LDAP_IS_AD", "false"))
+LDAP_IS_AD_SIMPLE = strtobool(os.getenv("LDAP_IS_AD_SIMPLE", "false"))
+LDAP_SSL = strtobool(os.getenv("LDAP_SSL", "false"))
 
 
 LOGS_MODE = os.getenv("LOGS_MODE", "default")
