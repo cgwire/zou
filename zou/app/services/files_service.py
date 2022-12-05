@@ -663,7 +663,7 @@ def get_last_output_files_for_instance(
         query = query.filter(OutputFile.name == name)
     if representation:
         query = query.filter(OutputFile.representation == representation)
-    if representation:
+    if file_status_id:
         query = query.filter(OutputFile.file_status_id == file_status_id)
 
     output_files = query.all()
