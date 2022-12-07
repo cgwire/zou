@@ -76,11 +76,13 @@ def is_unvalid_file(file_path, file_size=None):
     """
     Check if file is absent, is empty or does match given size.
     """
-    if file_size is None:
-        return not os.path.exists(file_path) or get_file_size(file_path) == 0
+    if not os.path.exists(file_path):
+        return True
+    elif file_size is None:
+        return get_file_size(file_path) == 0
     else:
         current_size = get_file_size(file_path)
-        return not os.path.exists(file_path) or current_size != file_size
+        return current_size != file_size
 
 
 def save_file(tmp_folder, instance_id, file_to_save):
