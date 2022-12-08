@@ -302,10 +302,10 @@ class LoginResource(Resource):
             return response
         except WrongUserException:
             current_app.logger.info("User %s is not registered." % email)
-            return {"login": False}, 401
+            return {"login": False}, 400
         except WrongPasswordException:
             current_app.logger.info("User %s gave a wrong password." % email)
-            return {"login": False}, 401
+            return {"login": False}, 400
         except NoAuthStrategyConfigured:
             current_app.logger.info(
                 "Authentication strategy is not properly configured."
@@ -315,7 +315,7 @@ class LoginResource(Resource):
             current_app.logger.info(
                 "User %s can't login due to no fallback from LDAP." % email
             )
-            return {"login": False}, 401
+            return {"login": False}, 400
         except TimeoutError:
             current_app.logger.info("Timeout occurs while logging in.")
             return {"login": False}, 400
@@ -326,7 +326,7 @@ class LoginResource(Resource):
                     "login": False,
                     "message": "User is inactive, he cannot log in.",
                 },
-                401,
+                400,
             )
         except TooMuchLoginFailedAttemps:
             return (
@@ -335,7 +335,7 @@ class LoginResource(Resource):
                     "login": False,
                     "too_many_failed_login_attemps": True,
                 },
-                401,
+                400,
             )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)
