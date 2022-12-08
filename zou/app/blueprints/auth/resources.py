@@ -368,7 +368,7 @@ class LoginResource(Resource):
                     "preferred_two_factor_authentication": e.preferred_two_factor_authentication,
                     "two_factor_authentication_enabled": e.two_factor_authentication_enabled,
                 },
-                401,
+                400,
             )
         except WrongOTPException:
             return (
@@ -377,7 +377,7 @@ class LoginResource(Resource):
                     "login": False,
                     "wrong_OTP": True,
                 },
-                401,
+                400,
             )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)
