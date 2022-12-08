@@ -15,6 +15,7 @@ PROJECT_STYLES = [
     ("archviz", "Archviz"),
     ("commercial", "Commercial"),
     ("catalog", "Catalog"),
+    ("immersive", "Immersive Experience")
 ]
 
 
