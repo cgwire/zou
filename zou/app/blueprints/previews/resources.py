@@ -136,8 +136,13 @@ def send_storage_file(
     except PreviewFileNotFoundException:
         pass
     file_path = fs.get_file_path_and_file(
-        config, get_local_path, open_file, prefix, preview_file_id, extension,
-        file_size=file_size
+        config,
+        get_local_path,
+        open_file,
+        prefix,
+        preview_file_id,
+        extension,
+        file_size=file_size,
     )
 
     attachment_filename = ""
@@ -212,8 +217,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 {
                     "extension": "png",
                     "original_name": original_file_name,
-                    "status": "ready"
-                }
+                    "status": "ready",
+                },
             )
             self.emit_app_preview_event(instance_id)
             return preview_file, 201
@@ -231,10 +236,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 abort(400, "Normalization failed.")
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
-                {
-                    "extension": "mp4",
-                    "original_name": original_file_name
-                },
+                {"extension": "mp4", "original_name": original_file_name},
             )
             self.emit_app_preview_event(instance_id)
             return preview_file, 201

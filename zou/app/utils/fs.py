@@ -40,7 +40,7 @@ def get_file_path_and_file(
     prefix,
     instance_id,
     extension,
-    file_size=None
+    file_size=None,
 ):
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
@@ -56,7 +56,7 @@ def get_file_path_and_file(
                 except RuntimeError:
                     pass
 
-        if is_unvalid_file(file_path, file_size): # download failed
+        if is_unvalid_file(file_path, file_size):  # download failed
             time.sleep(3)
             with open(file_path, "wb") as tmp_file:
                 try:
@@ -65,7 +65,7 @@ def get_file_path_and_file(
                 except RuntimeError:
                     pass
 
-            if is_unvalid_file(file_path, file_size): # download failed again
+            if is_unvalid_file(file_path, file_size):  # download failed again
                 rm_file(file_path)
                 raise DownloadFromStorageFailedException
 

@@ -1,6 +1,7 @@
 import os
 from zou.app.utils.string import strtobool
 
+
 def envtobool(key, default=False):
     """
     Convert an environment variable to a boolean value.
@@ -9,4 +10,6 @@ def envtobool(key, default=False):
     try:
         return strtobool(os.getenv(key, default))
     except ValueError:
-        raise ValueError(f"Environment variable {key} cannot be converted to a boolean value.")
+        raise ValueError(
+            f"Environment variable {key} cannot be converted to a boolean value."
+        )
