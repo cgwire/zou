@@ -175,6 +175,10 @@ class TOTPNotEnabledException(Exception):
     pass
 
 
+class TwoFactorAuthenticationNotEnabledException(Exception):
+    pass
+
+
 class EmailOTPAlreadyEnabledException(Exception):
     pass
 

@@ -30,6 +30,7 @@ from zou.app.services.exception import (
     TOTPNotEnabledException,
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
+    TwoFactorAuthenticationNotEnabledException,
 )
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import date_helpers, emails
@@ -469,6 +470,21 @@ Thank you and see you soon on Kitsu,
 """
     subject = f"{organisation['name']} Kitsu verification code : {otp}"
     emails.send_email(subject, html, person["email"])
+    return True
+
+
+def disable_two_factor_authentication_for_person(person_id):
+    person = Person.get(person_id)
+    if not person_two_factor_authentication_enabled_raw(person):
+        raise TwoFactorAuthenticationNotEnabledException
+    person.email_otp_enabled = False
+    person.email_otp_secret = None
+    person.totp_enabled = False
+    person.totp_secret = None
+    person.otp_recovery_codes = None
+    person.preferred_two_factor_authentication = None
+    person.commit()
+    persons_service.clear_person_cache()
     return True
 
 

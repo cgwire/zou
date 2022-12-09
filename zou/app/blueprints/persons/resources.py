@@ -21,6 +21,10 @@ from zou.app.services.exception import (
     WrongDateFormatException,
     WrongParameterException,
     UnactiveUserException,
+    TwoFactorAuthenticationNotEnabledException,
+)
+from zou.app.services.auth_service import (
+    disable_two_factor_authentication_for_person,
 )
 
 
@@ -1240,3 +1244,80 @@ Thank you and see you soon on Kitsu,
         args = parser.parse_args()
 
         return (args["password"], args["password_2"])
+
+
+class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
+    """
+    Allow admin to disable two factor authentication for given user.
+    """
+
+    @jwt_required
+    def delete(self, person_id):
+        """
+        Allow admin to disable two factor authentication for given user.
+        ---
+        description: Prior to disable two factor authentication, it requires to
+                     be admin.
+                     An admin can't disable two factor authentication for other
+                     admins.
+        tags:
+            - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: Two factor authentication disabled
+          400:
+            description: Inactive user
+        """
+        try:
+            permissions.check_admin_permissions()
+            person = persons_service.get_person(person_id)
+            current_user = persons_service.get_current_user()
+            if (
+                persons_service.is_admin(person)
+                and person["id"] != current_user["id"]
+            ):
+                raise permissions.PermissionDenied
+            disable_two_factor_authentication_for_person(person["id"])
+            current_app.logger.warn(
+                "User %s has disabled the two factor authentication of %s"
+                % (current_user["email"], person["email"])
+            )
+            organisation = persons_service.get_organisation()
+            time_string = format_datetime(
+                datetime.datetime.utcnow(),
+                tzinfo=person["timezone"],
+                locale=person["locale"],
+            )
+            person_IP = request.headers.get("X-Forwarded-For", None)
+            html = f"""<p>Hello {person["first_name"]},</p>
+<p>
+Your two factor authentication was disabled at this date: {time_string}.
+The IP of the user who disabled your two factor authentication is: {person_IP}.
+If you don't know the person who disabled the two factor authentication, please contact our support team.
+</p>
+Thank you and see you soon on Kitsu,
+</p>
+<p>
+{organisation["name"]} Team
+</p>
+"""
+            subject = "%s Kitsu two factor authentication disabled" % (
+                organisation["name"]
+            )
+            emails.send_email(subject, html, person["email"])
+            return {"success": True}
+
+        except UnactiveUserException:
+            return {"error": True, "message": "User is unactive."}, 400
+        except TwoFactorAuthenticationNotEnabledException:
+            return {
+                "error": True,
+                "message": "Two factor authentication not enabled for this user.",
+            }, 400

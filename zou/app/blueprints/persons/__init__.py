@@ -26,6 +26,7 @@ from .resources import (
     AddToDepartmentResource,
     RemoveFromDepartmentResource,
     ChangePasswordForPersonResource,
+    DisableTwoFactorAuthenticationPersonResource,
 )
 
 routes = [
@@ -91,6 +92,10 @@ routes = [
     (
         "/actions/persons/<person_id>/change-password",
         ChangePasswordForPersonResource,
+    ),
+    (
+        "/actions/persons/<person_id>/disable-two-factor-authentication",
+        DisableTwoFactorAuthenticationPersonResource,
     ),
 ]
 
