@@ -127,10 +127,10 @@ def get_department(department_id):
     try:
         department = Department.get(department_id)
     except StatementError:
-        raise DepartmentNotFoundException()
+        raise DepartmentNotFoundException
 
     if department is None:
-        raise DepartmentNotFoundException()
+        raise DepartmentNotFoundException
 
     return department.serialize()
 
@@ -158,10 +158,10 @@ def get_task_type_raw(task_type_id):
     try:
         task_type = TaskType.get(task_type_id)
     except StatementError:
-        raise TaskTypeNotFoundException()
+        raise TaskTypeNotFoundException
 
     if task_type is None:
-        raise TaskTypeNotFoundException()
+        raise TaskTypeNotFoundException
 
     return task_type
 
@@ -181,10 +181,10 @@ def get_task_raw(task_id):
     try:
         task = Task.get(task_id)
     except StatementError:
-        raise TaskNotFoundException()
+        raise TaskNotFoundException
 
     if task is None:
-        raise TaskNotFoundException()
+        raise TaskNotFoundException
 
     return task
 
@@ -667,10 +667,10 @@ def get_comment_raw(comment_id):
     try:
         comment = Comment.get(comment_id)
     except StatementError:
-        raise CommentNotFoundException()
+        raise CommentNotFoundException
 
     if comment is None:
-        raise CommentNotFoundException()
+        raise CommentNotFoundException
     return comment
 
 
