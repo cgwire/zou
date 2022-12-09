@@ -159,6 +159,7 @@ def init_data():
         "Retake", "retake", "#ff3860", is_retake=True
     )
     tasks_service.get_or_create_status("Done", "done", "#22d160", is_done=True)
+    tasks_service.get_or_create_status("Ready To Start", "ready", "#fbc02d")
 
     print("Task status initialized.")
 
