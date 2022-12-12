@@ -95,7 +95,65 @@ class EpisodesCastingResource(Resource):
         return breakdown_service.get_production_episodes_casting(project_id)
 
 
+class EpisodeSequenceAllCastingResource(Resource):
+
+    @jwt_required
+    def get(self, project_id, episode_id):
+        """
+        Resource to retrieve the casting of shots from given episode.
+        ---
+        tags:
+          - Breakdown
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: episode_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Casting for all shots from given episode.
+        """
+        user_service.check_project_access(project_id)
+        return breakdown_service.get_all_sequences_casting(
+            project_id, episode_id=episode_id
+        )
+
+
+class SequenceAllCastingResource(Resource):
+
+    @jwt_required
+    def get(self, project_id):
+        """
+        Resource to retrieve the casting of shots from all sequences of given
+        project.
+        ---
+        tags:
+          - Breakdown
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Casting for all shots from given project.
+        """
+        user_service.check_project_access(project_id)
+        return breakdown_service.get_all_sequences_casting(project_id)
+
+
 class SequenceCastingResource(Resource):
+
     @jwt_required
     def get(self, project_id, sequence_id):
         """

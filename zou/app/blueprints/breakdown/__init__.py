@@ -12,6 +12,8 @@ from .resources import (
     CastingResource,
     AssetTypeCastingResource,
     SequenceCastingResource,
+    EpisodeSequenceAllCastingResource,
+    SequenceAllCastingResource
 )
 
 
@@ -31,6 +33,14 @@ routes = [
     (
         "/data/projects/<project_id>/sequences/<sequence_id>/casting",
         SequenceCastingResource,
+    ),
+    (
+        "/data/projects/<project_id>/episodes/<episode_id>/sequences/all/casting",
+        EpisodeSequenceAllCastingResource,
+    ),
+    (
+        "/data/projects/<project_id>/sequences/all/casting",
+        SequenceAllCastingResource,
     ),
     ("/data/projects/<project_id>/entity-links", ProjectEntityLinksResource),
     (
