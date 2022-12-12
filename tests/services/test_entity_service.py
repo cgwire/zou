@@ -83,3 +83,9 @@ class EntityServiceTestCase(ApiDBTestCase):
             )
 
         self.asset.preview_file_id = None
+
+    def test_get_entities_and_tasks(self):
+        self.generate_fixture_sequence_task()
+        sequences = entities_service.get_entities_and_tasks()
+        self.assertEquals(len(sequences), 3)
+        self.assertEquals(len(sequences[0]["tasks"]), 1)

@@ -194,6 +194,9 @@ def get_entities_and_tasks(criterions={}):
     if "project_id" in criterions:
         query = query.filter(Entity.project_id == criterions["project_id"])
 
+    if "episode_id" in criterions:
+        query = query.filter(Entity.parent_id == criterions["episode_id"])
+
     for (
         entity,
         task_id,
