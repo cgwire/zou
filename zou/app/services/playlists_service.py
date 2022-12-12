@@ -533,7 +533,9 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                     success = False
 
     except Exception as exc:
-        current_app.logger.error(exc)
+        from zou.app import app
+        with app.app_context():
+            current_app.logger.error(exc)
         success = False
 
     # exception will be logged by rq
