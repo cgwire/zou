@@ -140,7 +140,8 @@ class AuthenticatedResource(Resource):
     @jwt_required
     def get(self):
         """
-        Returns information if the user is authenticated else it returns a 401 response.
+        Returns information if the user is authenticated else it returns a 401
+        response.
         ---
         description:  It can be used by third party tools, especially browser frontend, to know if current user is still logged in.
         tags:

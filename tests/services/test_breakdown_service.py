@@ -101,7 +101,6 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         new_casting = [
             {"asset_id": self.asset_props_id, "nb_occurences": 3},
             {"asset_id": self.asset_character_id, "nb_occurences": 1},
-        self.assertTrue(self.shot_id in casting)
         ]
         breakdown_service.update_casting(self.asset.id, new_casting)
         self.generate_fixture_asset("Park", "", self.asset_type_environment_id)
