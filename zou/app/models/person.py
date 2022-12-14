@@ -1,6 +1,12 @@
 import sys
 
-from sqlalchemy_utils import UUIDType, EmailType, LocaleType, TimezoneType
+from sqlalchemy_utils import (
+    UUIDType,
+    EmailType,
+    LocaleType,
+    TimezoneType,
+    ChoiceType,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 
 from pytz import timezone as pytz_timezone
@@ -19,6 +25,11 @@ department_link = db.Table(
         "department_id", UUIDType(binary=False), db.ForeignKey("department.id")
     ),
 )
+
+TWO_FACTOR_AUTHENTICATION_TYPES = [
+    ("totp", "TOTP"),
+    ("email_otp", "Email OTP"),
+]
 
 
 class Person(db.Model, BaseMixin, SerializerMixin):
@@ -44,7 +55,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     email_otp_enabled = db.Column(db.Boolean(), default=False)
     email_otp_secret = db.Column(db.String(32), default=None)
     preferred_two_factor_authentication = db.Column(
-        db.String(30), default=None
+        ChoiceType(TWO_FACTOR_AUTHENTICATION_TYPES)
     )
     otp_recovery_codes = db.Column(db.ARRAY(db.LargeBinary(60)))
 
