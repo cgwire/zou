@@ -21,20 +21,20 @@ from zou.app.utils import auth, emails
 from zou.app.services import persons_service, auth_service, events_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
-    NoAuthStrategyConfigured,
-    PersonNotFoundException,
-    WrongPasswordException,
-    WrongUserException,
-    UnactiveUserException,
-    UserCantConnectDueToNoFallback,
-    TooMuchLoginFailedAttemps,
-    MissingOTPException,
-    WrongOTPException,
-    TOTPAlreadyEnabledException,
-    TOTPNotEnabledException,
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
+    MissingOTPException,
+    NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
+    PersonNotFoundException,
+    TooMuchLoginFailedAttemps,
+    TOTPAlreadyEnabledException,
+    TOTPNotEnabledException,
+    UnactiveUserException,
+    UserCantConnectDueToNoFallback,
+    WrongOTPException,
+    WrongPasswordException,
+    WrongUserException,
 )
 
 

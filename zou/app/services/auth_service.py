@@ -18,20 +18,20 @@ from ldap3.core.exceptions import (
 from zou.app.services import persons_service
 from zou.app.models.person import Person
 from zou.app.services.exception import (
-    PersonNotFoundException,
-    WrongPasswordException,
-    WrongUserException,
-    NoAuthStrategyConfigured,
-    UnactiveUserException,
-    UserCantConnectDueToNoFallback,
-    TooMuchLoginFailedAttemps,
-    MissingOTPException,
-    WrongOTPException,
-    TOTPAlreadyEnabledException,
-    TOTPNotEnabledException,
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
+    MissingOTPException,
+    NoAuthStrategyConfigured,
+    PersonNotFoundException,
+    TooMuchLoginFailedAttemps,
+    TOTPAlreadyEnabledException,
+    TOTPNotEnabledException,
     TwoFactorAuthenticationNotEnabledException,
+    UnactiveUserException,
+    UserCantConnectDueToNoFallback,
+    WrongOTPException,
+    WrongPasswordException,
+    WrongUserException,
 )
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import date_helpers, emails
