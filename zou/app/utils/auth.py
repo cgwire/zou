@@ -1,4 +1,4 @@
-import flask_bcrypt as bcrypt
+import flask_bcrypt
 import email_validator
 
 from zou.app import config
@@ -20,7 +20,7 @@ def encrypt_password(password):
     """
     Encrypt given string password using bcrypt algorithm.
     """
-    return bcrypt.generate_password_hash(password)
+    return flask_bcrypt.generate_password_hash(password)
 
 
 def validate_email(email):

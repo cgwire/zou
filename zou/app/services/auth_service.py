@@ -1,8 +1,9 @@
 import pyotp
 import random
 import string
+import flask_bcrypt
 from datetime import datetime, timedelta
-import flask_bcrypt as bcrypt
+
 
 from flask import request
 from babel.dates import format_datetime
@@ -130,7 +131,7 @@ def local_auth_strategy(person, password, app=None):
     """
     try:
         password_hash = person["password"] or ""
-        if password_hash and bcrypt.check_password_hash(
+        if password_hash and flask_bcrypt.check_password_hash(
             password_hash, password
         ):
             return person
@@ -310,7 +311,7 @@ def check_recovery_code(person, recovery_code):
     Check recovery code for a person.
     """
     for recovery_hash in person["otp_recovery_codes"]:
-        if bcrypt.check_password_hash(recovery_hash, recovery_code):
+        if flask_bcrypt.check_password_hash(recovery_hash, recovery_code):
             remove_otp_revovery_code(person["id"], recovery_hash)
             return True
     return False
@@ -565,7 +566,7 @@ def hash_recovery_codes(recovery_codes):
     Hash recovery codes given as argument and return them.
     """
     return [
-        bcrypt.generate_password_hash(recovery_code)
+        flask_bcrypt.generate_password_hash(recovery_code)
         for recovery_code in recovery_codes
     ]
 
