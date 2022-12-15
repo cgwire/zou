@@ -21,13 +21,20 @@ from zou.app.utils import auth, emails
 from zou.app.services import persons_service, auth_service, events_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
+    EmailOTPAlreadyEnabledException,
+    EmailOTPNotEnabledException,
+    MissingOTPException,
     NoAuthStrategyConfigured,
+    NoTwoFactorAuthenticationEnabled,
     PersonNotFoundException,
-    WrongPasswordException,
-    WrongUserException,
+    TooMuchLoginFailedAttemps,
+    TOTPAlreadyEnabledException,
+    TOTPNotEnabledException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
-    TooMuchLoginFailedAttemps,
+    WrongOTPException,
+    WrongPasswordException,
+    WrongUserException,
 )
 
 
@@ -235,6 +242,12 @@ class LoginResource(Resource):
             type: string
             format: password
             x-example: mysecretpassword
+          - in: formData
+            name: otp
+            required: False
+            type: string
+            format: password
+            x-example: 123456
         responses:
           200:
             description: Login successful
@@ -243,9 +256,17 @@ class LoginResource(Resource):
           500:
             description: Database not reachable
         """
-        (email, password) = self.get_arguments()
+        (
+            email,
+            password,
+            totp,
+            email_otp,
+            recovery_code,
+        ) = self.get_arguments()
         try:
-            user = auth_service.check_auth(app, email, password)
+            user = auth_service.check_auth(
+                app, email, password, totp, email_otp, recovery_code
+            )
 
             if auth_service.is_default_password(app, password):
                 token = auth_service.generate_reset_token()
@@ -338,6 +359,26 @@ class LoginResource(Resource):
                 },
                 400,
             )
+        except MissingOTPException as e:
+            return (
+                {
+                    "error": True,
+                    "login": False,
+                    "missing_OTP": True,
+                    "preferred_two_factor_authentication": e.preferred_two_factor_authentication,
+                    "two_factor_authentication_enabled": e.two_factor_authentication_enabled,
+                },
+                400,
+            )
+        except WrongOTPException:
+            return (
+                {
+                    "error": True,
+                    "login": False,
+                    "wrong_OTP": True,
+                },
+                400,
+            )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)
             return (
@@ -362,9 +403,18 @@ class LoginResource(Resource):
             "email", required=True, help="User email is missing."
         )
         parser.add_argument("password", default="default")
+        parser.add_argument("totp", default=None)
+        parser.add_argument("email_otp", default=None)
+        parser.add_argument("recovery_code", default=None)
         args = parser.parse_args()
 
-        return (args["email"], args["password"])
+        return (
+            args["email"],
+            args["password"],
+            args["totp"],
+            args["email_otp"],
+            args["recovery_code"],
+        )
 
 
 class RefreshTokenResource(Resource):
@@ -537,7 +587,9 @@ class ChangePasswordResource(Resource):
 
         try:
             user = persons_service.get_current_user()
-            auth_service.check_auth(app, user["email"], old_password)
+            auth_service.check_auth(
+                app, user["email"], old_password, no_otp=True
+            )
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(user["email"], password)
@@ -721,12 +773,24 @@ class ResetPasswordResource(Resource, ArgsMixin):
             config.DOMAIN_NAME,
             query,
         )
+        time_string = format_datetime(
+            datetime.datetime.utcnow(),
+            tzinfo=user["timezone"],
+            locale=user["locale"],
+        )
+        person_IP = request.headers.get("X-Forwarded-For", None)
         organisation = persons_service.get_organisation()
         html = f"""<p>Hello {user["first_name"]},</p>
 
 <p>
-You have requested for a password reset. You can connect here to change your
+You have requested for a password reset. You can follow this link to change your
 password: <a href={reset_url}>{reset_url}</a>
+</p>
+
+<p>
+This link will expire after 2 days. After, you have to do a new request to reset your password.
+This email was sent at this date: {time_string}.
+The IP of the person who requested this is: {person_IP}.
 </p>
 
 Thank you and see you soon on Kitsu,
@@ -751,3 +815,353 @@ Thank you and see you soon on Kitsu,
                 ("password2", "", True),
             ]
         )
+
+
+class TOTPResource(Resource, ArgsMixin):
+    """
+    Ressource to allow a user to enable/disable TOTP.
+    """
+
+    @jwt_required
+    def put(self):
+        """
+        Ressource to allow a user to pre-enable TOTP.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: TOTP enabled
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        try:
+            totp_provisionning_uri, totp_secret = auth_service.pre_enable_totp(
+                persons_service.get_current_user()["id"]
+            )
+            return {
+                "totp_provisionning_uri": totp_provisionning_uri,
+                "otp_secret": totp_secret,
+            }
+        except TOTPAlreadyEnabledException:
+            return (
+                {"error": True, "message": "TOTP already enabled."},
+                400,
+            )
+
+    @jwt_required
+    def post(self):
+        """
+        Ressource to allow a user to enable TOTP.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: TOTP enabled
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        args = self.get_args([("totp", "", True)])
+        try:
+            otp_recovery_codes = auth_service.enable_totp(
+                persons_service.get_current_user()["id"], args["totp"]
+            )
+            return {"otp_recovery_codes": otp_recovery_codes}
+        except TOTPAlreadyEnabledException:
+            return (
+                {"error": True, "message": "TOTP already enabled."},
+                400,
+            )
+        except WrongOTPException:
+            return (
+                {
+                    "error": True,
+                    "message": "TOTP verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
+            )
+
+    @jwt_required
+    def delete(self):
+        """
+        Ressource to allow a user to disable TOTP.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: TOTP disabled
+          400:
+            description: TOTP not enabled
+        """
+        args = self.get_args(
+            [
+                ("totp", None, False),
+                ("email_otp", None, False),
+                ("recovery_code", None, False),
+            ]
+        )
+        try:
+            person = persons_service.get_current_user(unsafe=True)
+            if not auth_service.person_two_factor_authentication_enabled(
+                person
+            ):
+                raise TOTPNotEnabledException
+            if not auth_service.check_two_factor_authentication(
+                person, args["totp"], args["email_otp"], args["recovery_code"]
+            ):
+                raise WrongOTPException
+            auth_service.disable_totp(person["id"])
+            return {"success": True}, 200
+        except TOTPNotEnabledException:
+            return (
+                {"error": True, "message": "TOTP not enabled."},
+                400,
+            )
+        except (WrongOTPException, MissingOTPException):
+            return (
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
+            )
+
+
+class EmailOTPResource(Resource, ArgsMixin):
+    """
+    Ressource to allow a user to enable/disable OTP by email or to send an OTP
+    by email.
+    """
+
+    def get(self):
+        """
+        Ressource to send an OTP by email to user.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: OTP by email enabled
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        args = self.get_args(
+            [
+                ("email", None, False),
+            ]
+        )
+        try:
+            try:
+                person = persons_service.get_person_by_email(
+                    args["email"], unsafe=True
+                )
+            except PersonNotFoundException:
+                try:
+                    person = persons_service.get_person_by_desktop_login(
+                        args["email"]
+                    )
+                except PersonNotFoundException:
+                    raise WrongUserException()
+            if not auth_service.person_two_factor_authentication_enabled(
+                person
+            ):
+                raise EmailOTPNotEnabledException
+            auth_service.send_email_otp(person)
+            return {"success": True}, 200
+        except EmailOTPNotEnabledException:
+            return (
+                {"error": True, "message": "OTP by email not enabled."},
+                400,
+            )
+        except WrongUserException:
+            return (
+                {"error": True, "message": "User not found."},
+                404,
+            )
+
+    @jwt_required
+    def put(self):
+        """
+        Ressource to allow a user to pre-enable OTP by email.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: OTP by email enabled
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        try:
+            auth_service.pre_enable_email_otp(
+                persons_service.get_current_user()["id"]
+            )
+            return {"success": True}, 200
+        except EmailOTPAlreadyEnabledException:
+            return (
+                {"error": True, "message": "OTP by email already enabled."},
+                400,
+            )
+
+    @jwt_required
+    def post(self):
+        """
+        Ressource to allow a user to enable OTP by email.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: OTP by email enabled
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        args = self.get_args([("email_otp", "", True)])
+        try:
+            otp_recovery_codes = auth_service.enable_email_otp(
+                persons_service.get_current_user()["id"], args["email_otp"]
+            )
+            return {"otp_recovery_codes": otp_recovery_codes}
+        except EmailOTPAlreadyEnabledException:
+            return (
+                {"error": True, "message": "OTP by email already enabled."},
+                400,
+            )
+        except WrongOTPException:
+            return (
+                {
+                    "error": True,
+                    "message": "OTP by email verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
+            )
+
+    @jwt_required
+    def delete(self):
+        """
+        Ressource to allow a user to disable OTP by email.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: OTP by email disabled
+          400:
+            description: OTP by email not enabled
+        """
+        args = self.get_args(
+            [
+                ("totp", None, False),
+                ("email_otp", None, False),
+                ("recovery_code", None, False),
+            ]
+        )
+        try:
+            person = persons_service.get_current_user(unsafe=True)
+            if not auth_service.person_two_factor_authentication_enabled(
+                person
+            ):
+                raise EmailOTPNotEnabledException
+            if not auth_service.check_two_factor_authentication(
+                person, args["totp"], args["email_otp"], args["recovery_code"]
+            ):
+                raise WrongOTPException
+            auth_service.disable_email_otp(person["id"])
+            return {"success": True}, 200
+        except EmailOTPNotEnabledException:
+            return (
+                {"error": True, "message": "OTP by email not enabled."},
+                400,
+            )
+        except (WrongOTPException, MissingOTPException):
+            return (
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
+            )
+
+
+class RecoveryCodesResource(Resource, ArgsMixin):
+    """
+    Ressource to allow a user to generate new recovery codes.
+    """
+
+    @jwt_required
+    def put(self):
+        """
+        Ressource to allow a user to generate new recovery codes.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: new recovery codes.
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        args = self.get_args(
+            [
+                ("totp", None, False),
+                ("email_otp", None, False),
+                ("recovery_code", None, False),
+            ]
+        )
+        try:
+            person = persons_service.get_current_user(unsafe=True)
+            if not auth_service.person_two_factor_authentication_enabled(
+                person
+            ):
+                raise NoTwoFactorAuthenticationEnabled
+            if not auth_service.check_two_factor_authentication(
+                person, args["totp"], args["email_otp"], args["recovery_code"]
+            ):
+                raise WrongOTPException
+            otp_recovery_codes = auth_service.generate_new_recovery_codes(
+                person["id"]
+            )
+            return {"otp_recovery_codes": otp_recovery_codes}
+        except WrongOTPException:
+            return (
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
+            )
+        except NoTwoFactorAuthenticationEnabled:
+            return (
+                {
+                    "error": True,
+                    "message": "No two factor authentication enabled.",
+                },
+                400,
+            )

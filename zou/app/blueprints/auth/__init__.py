@@ -9,6 +9,9 @@ from .resources import (
     RegistrationResource,
     RefreshTokenResource,
     ResetPasswordResource,
+    TOTPResource,
+    EmailOTPResource,
+    RecoveryCodesResource,
 )
 
 routes = [
@@ -19,6 +22,9 @@ routes = [
     ("/auth/change-password", ChangePasswordResource),
     ("/auth/reset-password", ResetPasswordResource),
     ("/auth/refresh-token", RefreshTokenResource),
+    ("/auth/totp", TOTPResource),
+    ("/auth/email-otp", EmailOTPResource),
+    ("/auth/recovery-codes", RecoveryCodesResource),
 ]
 
 blueprint = Blueprint("auth", "auth")

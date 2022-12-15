@@ -285,7 +285,7 @@ def get_open_projects(name=None):
     if permissions.has_client_permissions():
         for_client = True
     elif permissions.has_vendor_permissions():
-        vendor_departments = persons_service.get_current_user(True)[
+        vendor_departments = persons_service.get_current_user(relations=True)[
             "departments"
         ]
 

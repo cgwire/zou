@@ -149,6 +149,48 @@ class WrongPasswordException(Exception):
     pass
 
 
+class MissingOTPException(Exception):
+    def __init__(
+        self,
+        preferred_two_factor_authentication,
+        two_factor_authentication_enabled,
+    ):
+        self.preferred_two_factor_authentication = (
+            preferred_two_factor_authentication
+        )
+        self.two_factor_authentication_enabled = (
+            two_factor_authentication_enabled
+        )
+
+
+class WrongOTPException(Exception):
+    pass
+
+
+class TOTPAlreadyEnabledException(Exception):
+    pass
+
+
+class TOTPNotEnabledException(Exception):
+    pass
+
+
+class TwoFactorAuthenticationNotEnabledException(Exception):
+    pass
+
+
+class EmailOTPAlreadyEnabledException(Exception):
+    pass
+
+
+class EmailOTPNotEnabledException(Exception):
+    pass
+
+
+class NoTwoFactorAuthenticationEnabled(Exception):
+    pass
+
+
 class TooMuchLoginFailedAttemps(Exception):
     pass
 
