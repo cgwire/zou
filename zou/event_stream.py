@@ -1,6 +1,6 @@
 from flask import Flask, jsonify
 from flask_jwt_extended import (
-    get_jwt_identity,
+    get_jwt,
     jwt_required,
     verify_jwt_in_request,
     JWTManager,
@@ -115,7 +115,7 @@ def set_application_routes(socketio, app):
             verify_jwt_in_request()
         except Exception:
             pass
-        user_id = get_jwt_identity()
+        user_id = get_jwt()["user_id"]
         # needed to be able to clear empty rooms
         tmp_rooms_data = dict(rooms_data)
         for room_id in tmp_rooms_data:
@@ -158,7 +158,7 @@ def set_playlist_room_routes(socketio, app):
         When a person joins the review room, we notify all its members that a
         new person is added to the room.
         """
-        user_id = get_jwt_identity()
+        user_id = get_jwt()["user_id"]
         room, room_id = _get_room_from_data(data)
         if len(room["people"]) == 0:
             _update_room_playing_status(data, room)
@@ -169,7 +169,7 @@ def set_playlist_room_routes(socketio, app):
     @socketio.on("preview-room:leave", namespace="/events")
     @jwt_required
     def on_leave(data):
-        user_id = get_jwt_identity()
+        user_id = get_jwt()["user_id"]
         room_id = data["playlist_id"]
         _leave_room(room_id, user_id)
 
@@ -220,7 +220,7 @@ def create_app():
 def set_auth(app):
     jwt = JWTManager(app)  # JWT auth tokens
 
-    @jwt.token_in_blacklist_loader
+    @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(decrypted_token):
         return auth_tokens_store.is_revoked(decrypted_token)
 
