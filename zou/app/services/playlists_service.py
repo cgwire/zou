@@ -529,13 +529,15 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                     )
                     success = True
                 except Exception as exc:
-                    current_app.logger.error(exc)
-                    success = False
+                    from zou.app import app
+                    with app.app_context():
+                        app.logger.error(exc)
+                        success = False
 
     except Exception as exc:
         from zou.app import app
         with app.app_context():
-            current_app.logger.error(exc)
+            app.logger.error(exc)
         success = False
 
     # exception will be logged by rq
@@ -560,13 +562,17 @@ def _run_concatenation(
             file_store.add_movie("playlists", job["id"], movie_file_path)
             success = True
         if result.get("message"):
-            current_app.logger.error(result["message"])
+            from zou.app import app
+            with app.app_context():
+                app.logger.error(result["message"])
     except Exception:
-        current_app.logger.error(
-            "Unable to build playlist %r using %s",
-            (playlist["id"], mode.__qualname__),
-            exc_info=1,
-        )
+        from zou.app import app
+        with app.app_context():
+            app.logger.error(
+                "Unable to build playlist %r using %s",
+                (playlist["id"], mode.__qualname__),
+                exc_info=1,
+            )
     return success
 
 
