@@ -766,18 +766,31 @@ class ProjectSequencesResource(Resource):
             201:
                 description: Sequence created for given project
         """
-        (episode_id, name) = self.get_arguments()
+        (episode_id, name, description, data) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
-        sequence = shots_service.create_sequence(project_id, episode_id, name)
+        sequence = shots_service.create_sequence(
+            project_id,
+            episode_id,
+            name,
+            description=description,
+            data=data,
+        )
         return sequence, 201
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
         parser.add_argument("name", required=True)
         parser.add_argument("episode_id", default=None)
+        parser.add_argument("description", default="")
+        parser.add_argument("data", type=dict, default={})
         args = parser.parse_args()
-        return (args["episode_id"], args["name"])
+        return (
+            args["episode_id"],
+            args["name"],
+            args["description"],
+            args["data"],
+        )
 
 
 class ProjectEpisodesResource(Resource):

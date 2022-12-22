@@ -800,6 +800,7 @@ def get_person_tasks(person_id, projects, is_done=None):
             Entity.source_id,
             EntityType.name,
             Entity.canceled,
+            Entity.parent_id,
             Sequence.name,
             Episode.id,
             Episode.name,
@@ -832,6 +833,7 @@ def get_person_tasks(person_id, projects, is_done=None):
         entity_source_id,
         entity_type_name,
         entity_canceled,
+        entity_parent_id,
         sequence_name,
         episode_id,
         episode_name,
@@ -852,6 +854,11 @@ def get_person_tasks(person_id, projects, is_done=None):
             episode_id = entity_source_id
 
         task_dict = get_task_with_relations(str(task.id))
+        if entity_type_name == "Sequence" and entity_parent_id is not None:
+            episode_id = entity_parent_id
+            episode = shots_service.get_episode(episode_id)
+            episode_name = episode["name"]
+
         task_dict.update(
             {
                 "project_name": project_name,
@@ -1381,7 +1388,7 @@ def get_full_task(task_id):
         pass
 
     if entity["parent_id"] is not None:
-        if entity_type["name"] == "Edit":
+        if entity_type["name"] not in ["Asset", "Shot"]:
             episode_id = entity["parent_id"]
         else:
             sequence = shots_service.get_sequence(entity["parent_id"])
