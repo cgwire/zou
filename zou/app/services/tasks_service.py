@@ -490,7 +490,7 @@ def get_comments(task_id, is_client=False, is_manager=False):
     if len(comments) > 0:
         ack_map = _build_ack_map_for_comments(comment_ids)
         mention_map = _build_mention_map_for_comments(comment_ids)
-        preview_map = _build_preview_map_for_comments(comment_ids)
+        preview_map = _build_preview_map_for_comments(comment_ids, is_client)
         attachment_file_map = _build_attachment_map_for_comments(comment_ids)
         for comment in comments:
             comment["acknowledgements"] = ack_map.get(comment["id"], [])
@@ -513,12 +513,12 @@ def get_comments(task_id, is_client=False, is_manager=False):
             is_allowed = (is_clients_isolated and is_author) or (
                 not is_clients_isolated and is_author_client
             )
-            if len(comment["previews"]) > 0:
+            if len(comment["previews"]) > 0 and not is_author_client:
                 comment["text"] = ""
                 comment["attachment_files"] = []
                 comment["checklist"] = []
                 tmp_comments.append(comment)
-            if is_allowed:
+            elif is_allowed:
                 tmp_comments.append(comment)
         comments = tmp_comments
     return comments
@@ -605,7 +605,7 @@ def _build_mention_map_for_comments(comment_ids):
     return mention_map
 
 
-def _build_preview_map_for_comments(comment_ids):
+def _build_preview_map_for_comments(comment_ids, is_client=False):
     preview_map = {}
     query = (
         PreviewFile.query.join(preview_link_table)
@@ -623,19 +623,20 @@ def _build_preview_map_for_comments(comment_ids):
         if preview.validation_status is not None:
             validation_status = preview.validation_status.code
 
-        preview_map[comment_id].append(
-            {
-                "id": str(preview.id),
-                "task_id": str(preview.task_id),
-                "revision": preview.revision,
-                "extension": preview.extension,
-                "status": status,
-                "validation_status": validation_status,
-                "original_name": preview.original_name,
-                "position": preview.position,
-                "annotations": preview.annotations,
-            }
-        )
+        if validation_status != "rejected" or not is_client:
+            preview_map[comment_id].append(
+                {
+                    "id": str(preview.id),
+                    "task_id": str(preview.task_id),
+                    "revision": preview.revision,
+                    "extension": preview.extension,
+                    "status": status,
+                    "validation_status": validation_status,
+                    "original_name": preview.original_name,
+                    "position": preview.position,
+                    "annotations": preview.annotations,
+                }
+            )
     return preview_map
 
 
@@ -800,6 +801,7 @@ def get_person_tasks(person_id, projects, is_done=None):
             Entity.source_id,
             EntityType.name,
             Entity.canceled,
+            Entity.parent_id,
             Sequence.name,
             Episode.id,
             Episode.name,
@@ -832,6 +834,7 @@ def get_person_tasks(person_id, projects, is_done=None):
         entity_source_id,
         entity_type_name,
         entity_canceled,
+        entity_parent_id,
         sequence_name,
         episode_id,
         episode_name,
@@ -852,6 +855,11 @@ def get_person_tasks(person_id, projects, is_done=None):
             episode_id = entity_source_id
 
         task_dict = get_task_with_relations(str(task.id))
+        if entity_type_name == "Sequence" and entity_parent_id is not None:
+            episode_id = entity_parent_id
+            episode = shots_service.get_episode(episode_id)
+            episode_name = episode["name"]
+
         task_dict.update(
             {
                 "project_name": project_name,
@@ -1381,7 +1389,7 @@ def get_full_task(task_id):
         pass
 
     if entity["parent_id"] is not None:
-        if entity_type["name"] == "Edit":
+        if entity_type["name"] not in ["Asset", "Shot"]:
             episode_id = entity["parent_id"]
         else:
             sequence = shots_service.get_sequence(entity["parent_id"])

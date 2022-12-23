@@ -668,7 +668,13 @@ def get_or_create_first_episode(project_id):
         return get_or_create_episode(project_id, "E01")
 
 
-def get_or_create_sequence(project_id, episode_id, name):
+def get_or_create_sequence(
+    project_id,
+    episode_id,
+    name,
+    description="",
+    data={}
+):
     """
     Retrieve sequence matching given project, episode and name or create it.
     """
@@ -680,13 +686,14 @@ def get_or_create_sequence(project_id, episode_id, name):
         name=name,
     )
     if sequence is None:
-        sequence = Entity(
+        sequence = Entity.create(
             entity_type_id=sequence_type["id"],
             parent_id=episode_id,
             project_id=project_id,
             name=name,
+            description=description,
+            data=data,
         )
-        sequence.save()
     return sequence.serialize()
 
 
@@ -875,10 +882,18 @@ def remove_sequence(sequence_id, force=False):
     """
     sequence = get_sequence_raw(sequence_id)
     if force:
+        from zou.app.services import tasks_service
+
         for shot in Entity.get_all_by(parent_id=sequence_id):
             remove_shot(shot.id, force=True)
         Subscription.delete_all_by(entity_id=sequence_id)
         ScheduleItem.delete_all_by(object_id=sequence_id)
+
+        tasks = Task.query.filter_by(entity_id=sequence_id).all()
+        for task in tasks:
+            deletion_service.remove_task(task.id, force=True)
+            tasks_service.clear_task_cache(str(task.id))
+        Subscription.delete_all_by(entity_id=sequence_id)
     try:
         sequence.delete()
         events.emit(
@@ -916,7 +931,13 @@ def create_episode(project_id, name, description="", data={}):
     return episode.serialize(obj_type="Episode")
 
 
-def create_sequence(project_id, episode_id, name):
+def create_sequence(
+    project_id,
+    episode_id,
+    name,
+    description="",
+    data={}
+):
     """
     Create sequence for given project and episode.
     """
@@ -937,6 +958,8 @@ def create_sequence(project_id, episode_id, name):
             project_id=project_id,
             parent_id=episode_id,
             name=name,
+            description=description,
+            data=data,
         )
     events.emit(
         "sequence:new", {"sequence_id": sequence.id}, project_id=project_id

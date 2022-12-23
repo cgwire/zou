@@ -163,6 +163,9 @@ def get_entities_and_tasks(criterions={}):
     """
     Get all entities for given criterions with related tasks for each entity.
     """
+    if "episode_id" in criterions and criterions["episode_id"] == "all":
+        return []
+
     entity_map = {}
     task_map = {}
 
@@ -221,6 +224,7 @@ def get_entities_and_tasks(criterions={}):
             entity_map[entity_id] = {
                 "id": str(entity.id),
                 "name": entity.name,
+                "episode_id": str(entity.parent_id),
                 "description": entity.description,
                 "frame_in": entity.data.get("frame_in", None),
                 "frame_out": entity.data.get("frame_out", None),

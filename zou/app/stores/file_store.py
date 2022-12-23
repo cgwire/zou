@@ -7,6 +7,10 @@ from flask_fs.backends.s3 import S3Backend
 
 from zou.app import app
 
+default_root = ""
+with app.app_context():
+    default_root = app.config.get("PREVIEW_FOLDER")
+
 
 def read(self, filename):
     with self.open(filename, "rb") as f:
@@ -117,6 +121,7 @@ def read_s3(self, filename):
     return obj["Body"].iter_chunks(1024 * 1024)
 
 
+LocalBackend.default_root = default_root
 LocalBackend.read = read
 LocalBackend.path = path
 LocalBackend.delete = local_delete
