@@ -271,7 +271,7 @@ class TimeSpentsResource(Resource):
                     if permissions.has_supervisor_permissions():
                         department_ids = persons_service.get_current_user(
                             True
-                        )["departments"]
+                        ).get("departments", [])
                 else:
                     raise permissions.PermissionDenied
         try:

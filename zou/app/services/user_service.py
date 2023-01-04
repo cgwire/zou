@@ -670,7 +670,10 @@ def check_task_departement_access_for_unassign(task_id, person_id=None):
                     or task_type["department_id"] in user["departments"]
                 )
             )
-            or (user["id"] in task["assignees"] and person_id == user["id"])
+            or (
+                user["id"] in task.get("assignees", [])
+                and person_id == user["id"]
+            )
         )
     )
     if not is_allowed:
