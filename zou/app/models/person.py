@@ -29,6 +29,7 @@ department_link = db.Table(
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
     ("email_otp", "Email OTP"),
+    ("fido", "FIDO"),
 ]
 
 
@@ -54,10 +55,12 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     totp_secret = db.Column(db.String(32), default=None)
     email_otp_enabled = db.Column(db.Boolean(), default=False)
     email_otp_secret = db.Column(db.String(32), default=None)
+    fido_enabled = db.Column(db.Boolean(), default=False)
+    fido_credentials = db.Column(db.ARRAY(JSONB))
+    otp_recovery_codes = db.Column(db.ARRAY(db.LargeBinary(60)))
     preferred_two_factor_authentication = db.Column(
         ChoiceType(TWO_FACTOR_AUTHENTICATION_TYPES)
     )
-    otp_recovery_codes = db.Column(db.ARRAY(db.LargeBinary(60)))
 
     shotgun_id = db.Column(db.Integer, unique=True)
     timezone = db.Column(
@@ -92,18 +95,30 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     def full_name(self):
         return "%s %s" % (self.first_name, self.last_name)
 
+    def fido_devices(self):
+        if self.fido_credentials is None:
+            return []
+        else:
+            return [
+                credential["device_name"]
+                for credential in self.fido_credentials
+            ]
+
     def serialize(self, obj_type="Person", relations=False):
         data = SerializerMixin.serialize(self, "Person", relations=relations)
         data["full_name"] = self.full_name()
+        data["fido_devices"] = self.fido_devices()
         return data
 
     def serialize_safe(self, relations=False):
         data = SerializerMixin.serialize(self, "Person", relations=relations)
         data["full_name"] = self.full_name()
+        data["fido_devices"] = self.fido_devices()
         del data["password"]
         del data["totp_secret"]
         del data["email_otp_secret"]
         del data["otp_recovery_codes"]
+        del data["fido_credentials"]
         return data
 
     def present_minimal(self, relations=False):

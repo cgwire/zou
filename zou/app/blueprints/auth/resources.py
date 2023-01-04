@@ -23,6 +23,9 @@ from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
+    FIDONoPreregistrationException,
+    FIDONotEnabledException,
+    FIDOServerException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
@@ -261,11 +264,18 @@ class LoginResource(Resource):
             password,
             totp,
             email_otp,
+            fido_authentication_response,
             recovery_code,
         ) = self.get_arguments()
         try:
             user = auth_service.check_auth(
-                app, email, password, totp, email_otp, recovery_code
+                app,
+                email,
+                password,
+                totp,
+                email_otp,
+                fido_authentication_response,
+                recovery_code,
             )
 
             if auth_service.is_default_password(app, password):
@@ -405,6 +415,9 @@ class LoginResource(Resource):
         parser.add_argument("password", default="default")
         parser.add_argument("totp", default=None)
         parser.add_argument("email_otp", default=None)
+        parser.add_argument(
+            "fido_authentication_response", default=None, type=dict
+        )
         parser.add_argument("recovery_code", default=None)
         args = parser.parse_args()
 
@@ -413,6 +426,7 @@ class LoginResource(Resource):
             args["password"],
             args["totp"],
             args["email_otp"],
+            args["fido_authentication_response"],
             args["recovery_code"],
         )
 
@@ -656,14 +670,14 @@ Thank you and see you soon on Kitsu,
 
 class ResetPasswordResource(Resource, ArgsMixin):
     """
-    Ressource to allow a user to change his password when he forgets it.
+    Resource to allow a user to change his password when he forgets it.
     It uses a classic scheme: a token is sent by email to the user. Then
     he can change his password.
     """
 
     def put(self):
         """
-        Ressource to allow a user to change his password when he forgets it.
+        Resource to allow a user to change his password when he forgets it.
         ---
         description: "It uses a classic scheme: a token is sent by email to the user.
                      Then he can change his password."
@@ -734,7 +748,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
 
     def post(self):
         """
-        Ressource to allow a user to change his password when he forgets it.
+        Resource to allow a user to change his password when he forgets it.
         ---
         description: "It uses a classic scheme: a token is sent by email to the user.
                      Then he can change his password."
@@ -819,13 +833,13 @@ Thank you and see you soon on Kitsu,
 
 class TOTPResource(Resource, ArgsMixin):
     """
-    Ressource to allow a user to enable/disable TOTP.
+    Resource to allow a user to enable/disable TOTP.
     """
 
     @jwt_required
     def put(self):
         """
-        Ressource to allow a user to pre-enable TOTP.
+        Resource to allow a user to pre-enable TOTP.
         ---
         description: ""
         tags:
@@ -855,7 +869,7 @@ class TOTPResource(Resource, ArgsMixin):
     @jwt_required
     def post(self):
         """
-        Ressource to allow a user to enable TOTP.
+        Resource to allow a user to enable TOTP.
         ---
         description: ""
         tags:
@@ -892,7 +906,7 @@ class TOTPResource(Resource, ArgsMixin):
     @jwt_required
     def delete(self):
         """
-        Ressource to allow a user to disable TOTP.
+        Resource to allow a user to disable TOTP.
         ---
         description: ""
         tags:
@@ -907,6 +921,7 @@ class TOTPResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
+                ("fido_authentication_response", {}, False, None, dict),
                 ("recovery_code", None, False),
             ]
         )
@@ -917,11 +932,15 @@ class TOTPResource(Resource, ArgsMixin):
             ):
                 raise TOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
-                person, args["totp"], args["email_otp"], args["recovery_code"]
+                person,
+                args["totp"],
+                args["email_otp"],
+                args["fido_authentication_response"],
+                args["recovery_code"],
             ):
                 raise WrongOTPException
             auth_service.disable_totp(person["id"])
-            return {"success": True}, 200
+            return {"success": True}
         except TOTPNotEnabledException:
             return (
                 {"error": True, "message": "TOTP not enabled."},
@@ -940,20 +959,20 @@ class TOTPResource(Resource, ArgsMixin):
 
 class EmailOTPResource(Resource, ArgsMixin):
     """
-    Ressource to allow a user to enable/disable OTP by email or to send an OTP
+    Resource to allow a user to enable/disable OTP by email or to send an OTP
     by email.
     """
 
     def get(self):
         """
-        Ressource to send an OTP by email to user.
+        Resource to send an OTP by email to user.
         ---
         description: ""
         tags:
             - Authentication
         responses:
           200:
-            description: OTP by email enabled
+            description: OTP by email sent
           400:
             description: Invalid password
                          Wrong or expired token
@@ -961,7 +980,7 @@ class EmailOTPResource(Resource, ArgsMixin):
         """
         args = self.get_args(
             [
-                ("email", None, False),
+                ("email", None, True),
             ]
         )
         try:
@@ -976,12 +995,10 @@ class EmailOTPResource(Resource, ArgsMixin):
                     )
                 except PersonNotFoundException:
                     raise WrongUserException()
-            if not auth_service.person_two_factor_authentication_enabled(
-                person
-            ):
+            if not person["email_otp_enabled"]:
                 raise EmailOTPNotEnabledException
             auth_service.send_email_otp(person)
-            return {"success": True}, 200
+            return {"success": True}
         except EmailOTPNotEnabledException:
             return (
                 {"error": True, "message": "OTP by email not enabled."},
@@ -996,7 +1013,7 @@ class EmailOTPResource(Resource, ArgsMixin):
     @jwt_required
     def put(self):
         """
-        Ressource to allow a user to pre-enable OTP by email.
+        Resource to allow a user to pre-enable OTP by email.
         ---
         description: ""
         tags:
@@ -1013,7 +1030,7 @@ class EmailOTPResource(Resource, ArgsMixin):
             auth_service.pre_enable_email_otp(
                 persons_service.get_current_user()["id"]
             )
-            return {"success": True}, 200
+            return {"success": True}
         except EmailOTPAlreadyEnabledException:
             return (
                 {"error": True, "message": "OTP by email already enabled."},
@@ -1023,7 +1040,7 @@ class EmailOTPResource(Resource, ArgsMixin):
     @jwt_required
     def post(self):
         """
-        Ressource to allow a user to enable OTP by email.
+        Resource to allow a user to enable OTP by email.
         ---
         description: ""
         tags:
@@ -1060,21 +1077,25 @@ class EmailOTPResource(Resource, ArgsMixin):
     @jwt_required
     def delete(self):
         """
-        Ressource to allow a user to disable OTP by email.
+        Resource to allow a user to disable OTP by email.
         ---
         description: ""
         tags:
             - Authentication
         responses:
           200:
-            description: OTP by email disabled
+            description: OTP by email disabled.
           400:
-            description: OTP by email not enabled
+            description: Invalid password.
+                         Wrong or expired token.
+                         Inactive user.
+                         Wrong 2FA.
         """
         args = self.get_args(
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
+                ("fido_authentication_response", {}, False, None, dict),
                 ("recovery_code", None, False),
             ]
         )
@@ -1085,11 +1106,15 @@ class EmailOTPResource(Resource, ArgsMixin):
             ):
                 raise EmailOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
-                person, args["totp"], args["email_otp"], args["recovery_code"]
+                person,
+                args["totp"],
+                args["email_otp"],
+                args["fido_authentication_response"],
+                args["recovery_code"],
             ):
                 raise WrongOTPException
             auth_service.disable_email_otp(person["id"])
-            return {"success": True}, 200
+            return {"success": True}
         except EmailOTPNotEnabledException:
             return (
                 {"error": True, "message": "OTP by email not enabled."},
@@ -1106,15 +1131,186 @@ class EmailOTPResource(Resource, ArgsMixin):
             )
 
 
+class FIDOResource(Resource, ArgsMixin):
+    """
+    Resource to allow a user to register/unregister FIDO device or to get a
+    challenge for a FIDO device.
+    """
+
+    def get(self):
+        """
+        Resource to get a challenge for a FIDO device.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: Challenge for FIDO device.
+          400:
+            description: Wrong parameter.
+        """
+        args = self.get_args(
+            [
+                ("email", None, True),
+            ]
+        )
+        try:
+            try:
+                person = persons_service.get_person_by_email(
+                    args["email"], unsafe=True
+                )
+            except PersonNotFoundException:
+                try:
+                    person = persons_service.get_person_by_desktop_login(
+                        args["email"]
+                    )
+                except PersonNotFoundException:
+                    raise WrongUserException()
+            if not person["fido_enabled"]:
+                raise FIDONotEnabledException
+            return auth_service.get_challenge_fido(person["id"])
+        except FIDONotEnabledException:
+            return (
+                {"error": True, "message": "FIDO not enabled."},
+                400,
+            )
+        except WrongUserException:
+            return (
+                {"error": True, "message": "User not found."},
+                404,
+            )
+
+    @jwt_required
+    def put(self):
+        """
+        Resource to allow a user to pre-register a FIDO device.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: FIDO device pre-registered.
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        return auth_service.pre_register_fido(
+            persons_service.get_current_user()["id"]
+        )
+
+    @jwt_required
+    def post(self):
+        """
+        Resource to allow a user to register a FIDO device.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: FIDO device registered.
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+        """
+        try:
+            args = self.get_args(
+                [
+                    ("registration_response", {}, True, None, dict),
+                    ("device_name", "", True),
+                ]
+            )
+            otp_recovery_codes = auth_service.register_fido(
+                persons_service.get_current_user()["id"],
+                args["registration_response"],
+                args["device_name"],
+            )
+            return {"otp_recovery_codes": otp_recovery_codes}
+        except FIDONoPreregistrationException:
+            return (
+                {"error": True, "message": "No preregistration before."},
+                400,
+            )
+        except FIDOServerException:
+            return (
+                {
+                    "error": True,
+                    "message": "FIDO server exception your registration response is probly wrong.",
+                },
+                400,
+            )
+
+    @jwt_required
+    def delete(self):
+        """
+        Resource to allow a user to unregister a FIDO device.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          200:
+            description: FIDO device unregistered.
+          400:
+            description: Invalid password
+                         Wrong or expired token
+                         Inactive user
+                         Wrong 2FA
+        """
+        args = self.get_args(
+            [
+                ("totp", None, False),
+                ("email_otp", None, False),
+                ("fido_authentication_response", {}, False, None, dict),
+                ("recovery_code", None, False),
+                ("device_name", None, True),
+            ]
+        )
+        try:
+            person = persons_service.get_current_user(unsafe=True)
+            if not auth_service.person_two_factor_authentication_enabled(
+                person
+            ):
+                raise FIDONotEnabledException
+            if not auth_service.check_two_factor_authentication(
+                person,
+                args["totp"],
+                args["email_otp"],
+                args["fido_authentication_response"],
+                args["recovery_code"],
+            ):
+                raise WrongOTPException
+            auth_service.unregister_fido(person["id"], args["device_name"])
+            return {"success": True}
+        except FIDONotEnabledException:
+            return (
+                {"error": True, "message": "FIDO not enabled."},
+                400,
+            )
+        except (WrongOTPException, MissingOTPException):
+            return (
+                {
+                    "error": True,
+                    "message": "OTP verification failed.",
+                    "wrong_OTP": True,
+                },
+                400,
+            )
+
+
 class RecoveryCodesResource(Resource, ArgsMixin):
     """
-    Ressource to allow a user to generate new recovery codes.
+    Resource to allow a user to generate new recovery codes.
     """
 
     @jwt_required
     def put(self):
         """
-        Ressource to allow a user to generate new recovery codes.
+        Resource to allow a user to generate new recovery codes.
         ---
         description: ""
         tags:
@@ -1131,6 +1327,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
+                ("fido_authentication_response", {}, False, None, dict),
                 ("recovery_code", None, False),
             ]
         )
@@ -1141,7 +1338,11 @@ class RecoveryCodesResource(Resource, ArgsMixin):
             ):
                 raise NoTwoFactorAuthenticationEnabled
             if not auth_service.check_two_factor_authentication(
-                person, args["totp"], args["email_otp"], args["recovery_code"]
+                person,
+                args["totp"],
+                args["email_otp"],
+                args["fido_authentication_response"],
+                args["recovery_code"],
             ):
                 raise WrongOTPException
             otp_recovery_codes = auth_service.generate_new_recovery_codes(
