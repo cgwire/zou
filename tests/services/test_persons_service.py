@@ -67,17 +67,6 @@ class PersonServiceTestCase(ApiDBTestCase):
             self.person_desktop_login,
         )
 
-    def test_get_person_by_username(self):
-        person = persons_service.get_person_by_email_username(
-            "john.doe@gmail.com"
-        )
-        self.assertEqual(person["first_name"], "John")
-        self.assertRaises(
-            PersonNotFoundException,
-            persons_service.get_person_by_email_username,
-            "ema.doe@yahoo.com",
-        )
-
     def test_create_person(self):
         person = persons_service.create_person(
             "john.doe2@gmail.com",

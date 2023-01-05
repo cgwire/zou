@@ -31,8 +31,8 @@ from zou.app.services.exception import (
 def clear_person_cache():
     cache.cache.delete_memoized(get_person)
     cache.cache.delete_memoized(get_person_by_email)
-    cache.cache.delete_memoized(get_person_by_email_username)
     cache.cache.delete_memoized(get_person_by_desktop_login)
+    cache.cache.delete_memoized(get_person_by_email_dekstop_login)
     cache.cache.delete_memoized(get_active_persons)
     cache.cache.delete_memoized(get_persons)
 
@@ -98,23 +98,6 @@ def get_person(person_id):
     return person.serialize_safe(relations=True)
 
 
-@cache.memoize_function(120)
-def get_person_by_email_username(email):
-    """
-    Return person that matches given email as a dictionary.
-    """
-    username = email.split("@")[0]
-
-    for person in get_persons():
-        first_name = slugify.slugify(person["first_name"])
-        last_name = slugify.slugify(person["last_name"])
-        person_username = "%s.%s" % (first_name, last_name)
-        if person_username == username:
-            return person
-
-    raise PersonNotFoundException
-
-
 def get_person_by_email_raw(email):
     """
     Return person that matches given email as an active record.
@@ -152,6 +135,17 @@ def get_person_by_desktop_login(desktop_login):
     if person is None:
         raise PersonNotFoundException()
     return person.serialize()
+
+
+@cache.memoize_function(120)
+def get_person_by_email_dekstop_login(email_or_desktop_login):
+    """
+    Return person that matches given email or desktop login as a dictionary.
+    """
+    try:
+        return get_person_by_email(email_or_desktop_login, unsafe=True)
+    except PersonNotFoundException:
+        return get_person_by_desktop_login(email_or_desktop_login)
 
 
 def get_current_user(unsafe=False, relations=False):

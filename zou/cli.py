@@ -7,10 +7,11 @@ import click
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
-from zou.app.services import persons_service
+from zou.app.services import persons_service, auth_service
 from zou.app.services.exception import (
     IsUserLimitReachedException,
     PersonNotFoundException,
+    TwoFactorAuthenticationNotEnabledException,
 )
 from zou.app import app, config
 
@@ -173,6 +174,30 @@ def clear_all_auth_tokens():
 def init_data():
     "Generates minimal data set required to run Kitsu."
     commands.init_data()
+
+
+@cli.command()
+@click.argument("email_or_desktop_login")
+def disable_two_factor_authentication(email_or_desktop_login):
+    """
+    Disable two factor authentication for given user.
+    """
+    try:
+        person_id = persons_service.get_person_by_email_dekstop_login(
+            email_or_desktop_login
+        )
+        auth_service.disable_two_factor_authentication_for_person(person_id)
+        print(
+            f"Two factor authentication disabled for {email_or_desktop_login}."
+        )
+    except PersonNotFoundException:
+        print(f"Email ({email_or_desktop_login}) not listed in database.")
+        sys.exit(1)
+    except TwoFactorAuthenticationNotEnabledException:
+        print(
+            f"Two factor authentication can't be disabled for {email_or_desktop_login} because it's not activated."
+        )
+        sys.exit(1)
 
 
 @cli.command()

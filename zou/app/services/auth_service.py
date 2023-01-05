@@ -83,12 +83,9 @@ def check_auth(
     if not email:
         raise WrongUserException()
     try:
-        person = persons_service.get_person_by_email(email, unsafe=True)
+        person = persons_service.get_person_by_email_dekstop_login(email)
     except PersonNotFoundException:
-        try:
-            person = persons_service.get_person_by_desktop_login(email)
-        except PersonNotFoundException:
-            raise WrongUserException()
+        raise WrongUserException()
 
     if not person.get("active", False):
         raise UnactiveUserException()

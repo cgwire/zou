@@ -985,16 +985,11 @@ class EmailOTPResource(Resource, ArgsMixin):
         )
         try:
             try:
-                person = persons_service.get_person_by_email(
-                    args["email"], unsafe=True
+                person = persons_service.get_person_by_email_dekstop_login(
+                    args["email"]
                 )
             except PersonNotFoundException:
-                try:
-                    person = persons_service.get_person_by_desktop_login(
-                        args["email"]
-                    )
-                except PersonNotFoundException:
-                    raise WrongUserException()
+                raise WrongUserException()
             if not person["email_otp_enabled"]:
                 raise EmailOTPNotEnabledException
             auth_service.send_email_otp(person)
@@ -1157,16 +1152,11 @@ class FIDOResource(Resource, ArgsMixin):
         )
         try:
             try:
-                person = persons_service.get_person_by_email(
-                    args["email"], unsafe=True
+                person = persons_service.get_person_by_email_dekstop_login(
+                    args["email"]
                 )
             except PersonNotFoundException:
-                try:
-                    person = persons_service.get_person_by_desktop_login(
-                        args["email"]
-                    )
-                except PersonNotFoundException:
-                    raise WrongUserException()
+                raise WrongUserException()
             if not person["fido_enabled"]:
                 raise FIDONotEnabledException
             return auth_service.get_challenge_fido(person["id"])
