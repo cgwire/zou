@@ -374,7 +374,7 @@ You are invited by {organisation["name"]} to collaborate on their Kitsu producti
 Your login is: <strong>{person["email"]}</strong>
 </p>
 <p>
-You are invited to set your password by following this link: <a href={reset_url}>{reset_url}</a>
+You are invited to set your password by following this link: <a href="{reset_url}">{reset_url}</a>
 </p>
 <p>
 This link will expire after 2 days. After, you have to request to reset your password.

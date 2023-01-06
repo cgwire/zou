@@ -13,7 +13,7 @@ from .resources import (
     AssetTypeCastingResource,
     SequenceCastingResource,
     EpisodeSequenceAllCastingResource,
-    SequenceAllCastingResource
+    SequenceAllCastingResource,
 )
 
 
