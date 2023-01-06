@@ -8,7 +8,10 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
 from zou.app.services import persons_service
-from zou.app.services.exception import IsUserLimitReachedException
+from zou.app.services.exception import (
+    IsUserLimitReachedException,
+    PersonNotFoundException,
+)
 from zou.app import app, config
 
 
@@ -186,6 +189,29 @@ def change_password(email, password):
         print("Password changed for %s" % email)
     except auth.PasswordTooShortException:
         print("The password is too short.")
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument("email")
+@click.option("--unactive", is_flag=True, default=False)
+def set_person_as_active(email, unactive):
+    """
+    Set a person as active.
+    """
+    try:
+        if persons_service.is_user_limit_reached():
+            raise IsUserLimitReachedException
+        person = persons_service.get_person_by_email_raw(email)
+        person.update({"active": not unactive})
+        print(
+            f'Person {email} is set as an {"active" if not unactive else "unactive"} user.'
+        )
+    except IsUserLimitReachedException:
+        print(f"User limit reached (limit {config.USER_LIMIT}).")
+        sys.exit(1)
+    except PersonNotFoundException:
+        print(f"Email ({email}) not listed in database.")
         sys.exit(1)
 
 
