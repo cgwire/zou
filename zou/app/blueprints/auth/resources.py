@@ -784,7 +784,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
 
 <p>
 You have requested for a password reset. You can follow this link to change your
-password: <a href={reset_url}>{reset_url}</a>
+password: <a href="{reset_url}">{reset_url}</a>
 </p>
 
 <p>

@@ -530,12 +530,14 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
                     success = True
                 except Exception as exc:
                     from zou.app import app
+
                     with app.app_context():
                         app.logger.error(exc)
                         success = False
 
     except Exception as exc:
         from zou.app import app
+
         with app.app_context():
             app.logger.error(exc)
         success = False
@@ -563,10 +565,12 @@ def _run_concatenation(
             success = True
         if result.get("message"):
             from zou.app import app
+
             with app.app_context():
                 app.logger.error(result["message"])
     except Exception:
         from zou.app import app
+
         with app.app_context():
             app.logger.error(
                 "Unable to build playlist %r using %s",
@@ -674,7 +678,7 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
         )
         html = f"""<p>Hello {person.first_name},</p>
 <p>Your playlist {playlist["name"]} is available at:
-<a href={playlist_url}>{playlist_url}</a>
+<a href="{playlist_url}">{playlist_url}</a>
 </p>
 <p>
 Thank you and see you soon on Kitsu,
