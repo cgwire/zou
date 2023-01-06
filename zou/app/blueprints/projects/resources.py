@@ -594,7 +594,11 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
         args["for_client"] = args["for_client"] == "True"
 
         if args["entity_type"] not in [
-            "Asset", "Shot", "Edit", "Episode", "Sequence"
+            "Asset",
+            "Shot",
+            "Edit",
+            "Episode",
+            "Sequence",
         ]:
             raise WrongParameterException(
                 "Wrong entity type. Please select Asset, Shot, Sequence, Episode or Edit."

@@ -122,8 +122,7 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
     links = (
-        EntityLink.query
-        .join(Shot, EntityLink.entity_in_id == Shot.id)
+        EntityLink.query.join(Shot, EntityLink.entity_in_id == Shot.id)
         .join(Sequence, Shot.parent_id == Sequence.id)
         .join(Entity, EntityLink.entity_out_id == Entity.id)
         .join(EntityType, Entity.entity_type_id == EntityType.id)
@@ -137,24 +136,18 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
     )
 
     if sequence_id is not None:
-        links = (
-            links
-            .filter(Shot.parent_id == sequence_id)
-            .order_by(Shot.name, EntityType.name, Entity.name)
+        links = links.filter(Shot.parent_id == sequence_id).order_by(
+            Shot.name, EntityType.name, Entity.name
         )
 
     if project_id is not None:
-        links = (
-            links
-            .filter(Shot.project_id == project_id)
-            .order_by(Sequence.name, Shot.name, EntityType.name, Entity.name)
+        links = links.filter(Shot.project_id == project_id).order_by(
+            Sequence.name, Shot.name, EntityType.name, Entity.name
         )
 
     if episode_id is not None:
-        links = (
-            links
-            .filter(Sequence.parent_id == episode_id)
-            .order_by(Sequence.name, Shot.name, EntityType.name, Entity.name)
+        links = links.filter(Sequence.parent_id == episode_id).order_by(
+            Sequence.name, Shot.name, EntityType.name, Entity.name
         )
 
     for (
@@ -162,7 +155,7 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
         entity_name,
         entity_type_name,
         entity_preview_file_id,
-        sequence_name
+        sequence_name,
     ) in links:
         shot_id = str(link.entity_in_id)
         if shot_id not in castings:
@@ -191,11 +184,8 @@ def get_all_sequences_casting(project_id, episode_id=None):
     and values are casting for given shot.
     """
     return get_sequence_casting(
-        None,
-        project_id=project_id,
-        episode_id=episode_id
+        None, project_id=project_id, episode_id=episode_id
     )
-
 
 
 def get_asset_type_casting(project_id, asset_type_id):
@@ -207,8 +197,7 @@ def get_asset_type_casting(project_id, asset_type_id):
     castings = {}
     Asset = aliased(Entity, name="asset")
     links = (
-        EntityLink.query
-        .join(Asset, EntityLink.entity_in_id == Asset.id)
+        EntityLink.query.join(Asset, EntityLink.entity_in_id == Asset.id)
         .join(Entity, EntityLink.entity_out_id == Entity.id)
         .join(EntityType, Entity.entity_type_id == EntityType.id)
         .filter(Asset.project_id == project_id)
@@ -222,17 +211,19 @@ def get_asset_type_casting(project_id, asset_type_id):
         asset_id = str(link.entity_in_id)
         if asset_id not in castings:
             castings[asset_id] = []
-        castings[asset_id].append({
-            "asset_id": fields.serialize_value(link.entity_out_id),
-            "name": entity_name,
-            "asset_name": entity_name,
-            "asset_type_name": entity_type_name,
-            "preview_file_id": fields.serialize_value(
-                entity_preview_file_id
-            ),
-            "nb_occurences": link.nb_occurences,
-            "label": link.label,
-        })
+        castings[asset_id].append(
+            {
+                "asset_id": fields.serialize_value(link.entity_out_id),
+                "name": entity_name,
+                "asset_name": entity_name,
+                "asset_type_name": entity_type_name,
+                "preview_file_id": fields.serialize_value(
+                    entity_preview_file_id
+                ),
+                "nb_occurences": link.nb_occurences,
+                "label": link.label,
+            }
+        )
     return castings
 
 

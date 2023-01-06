@@ -669,11 +669,7 @@ def get_or_create_first_episode(project_id):
 
 
 def get_or_create_sequence(
-    project_id,
-    episode_id,
-    name,
-    description="",
-    data={}
+    project_id, episode_id, name, description="", data={}
 ):
     """
     Retrieve sequence matching given project, episode and name or create it.
@@ -931,13 +927,7 @@ def create_episode(project_id, name, description="", data={}):
     return episode.serialize(obj_type="Episode")
 
 
-def create_sequence(
-    project_id,
-    episode_id,
-    name,
-    description="",
-    data={}
-):
+def create_sequence(project_id, episode_id, name, description="", data={}):
     """
     Create sequence for given project and episode.
     """

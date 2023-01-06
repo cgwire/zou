@@ -96,7 +96,6 @@ class EpisodesCastingResource(Resource):
 
 
 class EpisodeSequenceAllCastingResource(Resource):
-
     @jwt_required
     def get(self, project_id, episode_id):
         """
@@ -128,7 +127,6 @@ class EpisodeSequenceAllCastingResource(Resource):
 
 
 class SequenceAllCastingResource(Resource):
-
     @jwt_required
     def get(self, project_id):
         """
@@ -153,7 +151,6 @@ class SequenceAllCastingResource(Resource):
 
 
 class SequenceCastingResource(Resource):
-
     @jwt_required
     def get(self, project_id, sequence_id):
         """
