@@ -1,4 +1,4 @@
-# Backup
+# Backup
 
 It's a good practice to backup your database and your preview files. Here is a
 quick guide to backup all the required files. You will find information too
