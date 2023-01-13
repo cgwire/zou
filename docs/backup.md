@@ -25,7 +25,7 @@ To restore the database to a new Postgres instance run
 ```bash
 gunzip 2021-03-21-zou-db-backup.sql.gz
 createdb -h localhost -p 5432 -U postgres targetdb
-pg_restore -h yourphost -p 5432 -U postgres -d targetdb 2021-03-21-zou-db-backup.sql
+psql -h yourphost -p 5432 -U postgres -1 -f targetdb 2021-03-21-zou-db-backup.sql
 ```
 
 
