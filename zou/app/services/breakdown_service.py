@@ -119,6 +119,9 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
     are casting for given shot.
     """
     castings = {}
+    if episode_id == "main":
+        return {}
+
     Shot = aliased(Entity, name="shot")
     Sequence = aliased(Entity, name="sequence")
     links = (
