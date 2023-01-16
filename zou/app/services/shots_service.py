@@ -246,7 +246,7 @@ def get_shots_and_tasks(criterions={}):
     if "project_id" in criterions:
         query = query.filter(Entity.project_id == criterions["project_id"])
 
-    if "episode_id" in criterions:
+    if "episode_id" in criterions and criterions["episode_id"] != "all":
         query = query.filter(Sequence.parent_id == criterions["episode_id"])
 
     if "assigned_to" in criterions:
