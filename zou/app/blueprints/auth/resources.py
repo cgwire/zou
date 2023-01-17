@@ -631,7 +631,7 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-            subject = "%s Kitsu password changed" % (organisation["name"])
+            subject = f"{organisation['name']} - Kitsu: password changed"
             emails.send_email(subject, html, user["email"])
             return {"success": True}
 
@@ -813,7 +813,7 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-        subject = "%s Kitsu password recovery" % (organisation["name"])
+        subject = f"{organisation['name']} - Kitsu: password recovery"
         emails.send_email(subject, html, args["email"])
         return {"success": "Reset token sent"}
 

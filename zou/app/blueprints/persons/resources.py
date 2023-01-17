@@ -1214,7 +1214,7 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-            subject = "%s Kitsu password changed" % (organisation["name"])
+            subject = f"{organisation['name']} - Kitsu: password changed"
             emails.send_email(subject, html, person["email"])
             return {"success": True}
 
@@ -1308,9 +1308,7 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-            subject = "%s Kitsu two factor authentication disabled" % (
-                organisation["name"]
-            )
+            subject = f"{organisation['name']} - Kitsu: two factor authentication disabled"
             emails.send_email(subject, html, person["email"])
             return {"success": True}
 

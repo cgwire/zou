@@ -688,7 +688,7 @@ Thank you and see you soon on Kitsu,
 </p>
 """
 
-        subject = "%s Kitsu playlist download" % (organisation["name"])
+        subject = f"{organisation['name']} - Kitsu: playlist download"
         emails.send_email(subject, html, email)
 
 

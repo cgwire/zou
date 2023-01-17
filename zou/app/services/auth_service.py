@@ -537,7 +537,9 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-    subject = f"{organisation['name']} Kitsu verification code : {otp}"
+    subject = (
+        f"{organisation['name']} - Kitsu : your verification code is {otp}"
+    )
     emails.send_email(subject, html, person["email"])
     return True
 
