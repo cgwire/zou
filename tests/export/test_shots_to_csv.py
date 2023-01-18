@@ -23,8 +23,8 @@ class ShotCsvExportTestCase(ApiDBTestCase):
         csv_shots = self.get_raw(
             "/export/csv/projects/%s/shots.csv" % self.project.id
         )
-        expected_result = """Project;Episode;Sequence;Name;Description;Time Spent;Nb Frames;Frame In;Frame Out;FPS;Animation\r
-Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;opn\r\n"""
+        expected_result = """Project;Episode;Sequence;Name;Description;Time Spent;Frames;Frame In;Frame Out;FPS;Animation;Assignations\r
+Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;opn;John Doe\r\n"""
         self.assertEqual(csv_shots, expected_result)
 
     def test_export_with_metadata(self):
@@ -42,6 +42,6 @@ Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;opn\r\n"""
         csv_shots = self.get_raw(
             "/export/csv/projects/%s/shots.csv" % self.project.id
         )
-        expected_result = """Project;Episode;Sequence;Name;Description;Time Spent;Nb Frames;Frame In;Frame Out;FPS;Contractor;Animation\r
-Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;Contractor 1;opn\r\n"""
+        expected_result = """Project;Episode;Sequence;Name;Description;Time Spent;Frames;Frame In;Frame Out;FPS;Contractor;Animation;Assignations\r
+Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;Contractor 1;opn;John Doe\r\n"""
         self.assertEqual(csv_shots, expected_result)
