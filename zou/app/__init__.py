@@ -120,11 +120,11 @@ if not config.DEBUG:
 def configure_auth():
     from zou.app.services import persons_service
 
-    @jwt.token_in_blacklist_loader
+    @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(decrypted_token):
         return auth_tokens_store.is_revoked(decrypted_token)
 
-    @jwt.user_loader_callback_loader
+    @jwt.user_lookup_loader
     def add_permissions(callback):
         try:
             user = persons_service.get_current_user()

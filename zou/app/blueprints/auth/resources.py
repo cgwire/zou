@@ -47,7 +47,7 @@ from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
     get_jwt_identity,
-    get_raw_jwt,
+    get_jwt,
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
@@ -76,7 +76,7 @@ def is_from_browser(user_agent):
 
 def logout():
     try:
-        current_token = get_raw_jwt()
+        current_token = get_jwt()
         jti = current_token["jti"]
         auth_service.revoke_tokens(app, jti)
     except Exception:
@@ -295,8 +295,14 @@ class LoginResource(Resource):
                     400,
                 )
 
-            access_token = create_access_token(identity=user["email"])
-            refresh_token = create_refresh_token(identity=user["email"])
+            access_token = create_access_token(
+                identity=user["email"],
+                additional_claims={"user_id": user["id"]}
+            )
+            refresh_token = create_refresh_token(
+                identity=user["email"],
+                additional_claims={"user_id": user["id"]}
+            )
             auth_service.register_tokens(app, access_token, refresh_token)
             identity_changed.send(
                 current_app._get_current_object(),
