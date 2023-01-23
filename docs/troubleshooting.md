@@ -137,7 +137,7 @@ one option is to apply all updates one after the other.
 
 The following script can assist by making updating to a specific version and
 then incrementing to the next quite easy.  Add your database password and
-edit for any other path differences is run as <script name> <zou version>
+edit for any other path differences. Run as <script name> <zou version>
 eg; ./zou_to_version.sh 0.14.12
 
 ```
