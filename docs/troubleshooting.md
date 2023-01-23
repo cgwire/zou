@@ -123,3 +123,30 @@ The error is explicit: your drive is full. You have three options there:
 * Delete unused files
 * Delete data into Kitsu old projects, old shots or old preview revisions (or
   both).
+
+### Unable to successfully upgrade from a much earlier version
+
+If your current working version of Zou is much earlier than the latest 
+version, upgrading directly to the latest may cause problems with the database.
+This is because occasionally important changes are made to the database during
+the upgrade process.
+
+The solution is to upgrade in smaller steps, making sure you don't miss any 
+critical versions.  Since it can be hard to know which version is critical,
+one option is to apply all updates one after the other.
+
+The following script can assist by making updating to a specific version and
+then incrementing to the next quite easy.  Add your database password and
+edit for any other path differences is run as <script name> <zou version>
+eg; ./zou_to_version.sh 0.14.12
+
+```
+cd /opt/zou
+. zouenv/bin/activate
+zouenv/bin/pip3 install 'zou=='$1 #this is the version number variable
+DB_PASSWORD=<db password here> zou upgrade-db
+deactivate
+chown -R zou:www-data .
+service zou restart
+service zou-events restart
+```
