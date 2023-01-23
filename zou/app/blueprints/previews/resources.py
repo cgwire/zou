@@ -132,7 +132,8 @@ def send_storage_file(
     try:
         if prefix in ["movies", "original"]:
             preview_file = files_service.get_preview_file(preview_file_id)
-            file_size = preview_file["file_size"]
+            if "file_size" in preview_file and preview_file["file_size"] > 0:
+                file_size = preview_file["file_size"]
     except PreviewFileNotFoundException:
         pass
     file_path = fs.get_file_path_and_file(
