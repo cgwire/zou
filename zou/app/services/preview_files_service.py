@@ -338,6 +338,7 @@ def update_preview_file_annotations(
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
     previous_annotations = preview_file.annotations or []
+    annotations = _clean_annotations(previous_annotations)
     annotations = _apply_annotation_additions(previous_annotations, additions)
     annotations = _apply_annotation_updates(annotations, updates)
     annotations = _apply_annotation_deletions(annotations, deletions)
@@ -357,6 +358,17 @@ def update_preview_file_annotations(
     return preview_file
 
 
+def _clean_annotations(annotations):
+    for annotation in annotations:
+        objects = annotation.get("drawing", {}).get("objects", [])
+        for current_object in objects:
+            if "id" not in current_object or \
+                len(current_object["id"]) == 0 or \
+                current_object["id"] is None:
+                current_object["id"] = str(fields.gen_uuid())
+    return annotations
+
+
 def _apply_annotation_additions(previous_annotations, new_annotations):
     annotations = list(previous_annotations)
     annotation_map = _get_annotation_time_map(annotations)
@@ -366,7 +378,9 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
         if previous_annotation is None:
             new_objects = new_annotation.get("drawing", {}).get("objects", [])
             for new_object in new_objects:
-                if "id" not in new_object or len(new_object["id"]) == 0:
+                if "id" not in new_object or \
+                    len(new_object["id"]) == 0 or \
+                    new_object["id"] is None:
                     new_object["id"] = str(fields.gen_uuid())
             annotations.append(new_annotation)
         else:
@@ -374,6 +388,9 @@ def _apply_annotation_additions(previous_annotations, new_annotations):
                 "objects", []
             )
             new_objects = new_annotation.get("drawing", {}).get("objects", [])
+            for new_object in new_objects:
+                if "id" not in new_object or len(new_object["id"]) == 0:
+                    new_object["id"] = str(fields.gen_uuid())
             previous_annotation["drawing"]["objects"] = _get_new_annotations(
                 previous_objects, new_objects
             )
@@ -407,19 +424,22 @@ def _apply_annotation_updates(annotations, updates):
 
             previous_objects = annotation.get("drawing", {}).get("objects", [])
             for previous_object in previous_objects:
-                previous_object_map[previous_object["id"]] = previous_object
+                if "id" in previous_object:
+                    previous_object_map[previous_object["id"]] = previous_object
 
             updated_objects = update.get("drawing", {}).get("objects", [])
             for updated_object in updated_objects:
-                update_map[updated_object["id"]] = update
+                if "id" in updated_object:
+                    update_map[updated_object["id"]] = update
 
             result = [
                 previous_object
                 for previous_object in previous_objects
-                if previous_object["id"] not in update_map
+                if previous_object.get("id", None) not in update_map
             ]
             for updated_object in updated_objects:
-                if updated_object["id"] in previous_object_map:
+                if "id" in updated_object and \
+                    updated_object["id"] in previous_object_map:
                     result.append(updated_object)
             annotation["drawing"]["objects"] = result
     return annotations
