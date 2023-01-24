@@ -43,7 +43,6 @@ from zou.app.services.exception import (
 
 from flask_jwt_extended import (
     jwt_required,
-    jwt_refresh_token_required,
     create_access_token,
     create_refresh_token,
     get_jwt_identity,
@@ -297,11 +296,11 @@ class LoginResource(Resource):
 
             access_token = create_access_token(
                 identity=user["email"],
-                additional_claims={"user_id": user["id"]}
+                additional_claims={"user_id": user["id"]},
             )
             refresh_token = create_refresh_token(
                 identity=user["email"],
-                additional_claims={"user_id": user["id"]}
+                additional_claims={"user_id": user["id"]},
             )
             auth_service.register_tokens(app, access_token, refresh_token)
             identity_changed.send(
@@ -438,7 +437,7 @@ class LoginResource(Resource):
 
 
 class RefreshTokenResource(Resource):
-    @jwt_refresh_token_required
+    @jwt_required(refresh=True)
     def get(self):
         """
         Tokens are considered as outdated every two weeks.
@@ -808,7 +807,7 @@ password: <a href="{reset_url}">{reset_url}</a>
 </p>
 
 <p>
-This link will expire after 2 days. After, you have to do a new request to reset your password.
+This link will expire after 2 hours. After, you have to do a new request to reset your password.
 This email was sent at this date: {time_string}.
 The IP of the person who requested this is: {person_IP}.
 </p>
