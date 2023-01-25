@@ -198,7 +198,7 @@ def sync_with_ldap_server():
             ]
         else:
             attributes += ["uid", "jpegPhoto"]
-        query = "(objectClass=person)"
+        query = "(&(objectClass=person)(!(objectClass=computer)))"
         if len(LDAP_GROUP) > 0 and is_ad:
             query = "(&(objectClass=person)(memberOf=%s))" % LDAP_GROUP
         conn.search(LDAP_BASE_DN, query, attributes=attributes)
