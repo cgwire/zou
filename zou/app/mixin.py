@@ -17,7 +17,7 @@ class ArgsMixin(object):
             data_type = str
 
             if len(descriptor) == 5:
-                (name, default, required, action, type) = descriptor
+                (name, default, required, action, data_type) = descriptor
             elif len(descriptor) == 4:
                 (name, default, required, action) = descriptor
             else:

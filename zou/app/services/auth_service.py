@@ -2,10 +2,10 @@ import pyotp
 import random
 import string
 import flask_bcrypt
+import fido2.features
 from datetime import datetime, timedelta
 
-
-from flask import request
+from flask import request, session
 from babel.dates import format_datetime
 
 from flask_jwt_extended import get_jti
@@ -20,6 +20,8 @@ from zou.app.models.person import Person
 from zou.app.services.exception import (
     EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
+    FIDONoPreregistrationException,
+    FIDOServerException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     PersonNotFoundException,
@@ -36,8 +38,28 @@ from zou.app.services.exception import (
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import date_helpers, emails
 from zou.app.models.person import Person
+from zou.app import config
 
+from fido2.webauthn import (
+    PublicKeyCredentialRpEntity,
+    PublicKeyCredentialUserEntity,
+)
+from fido2.server import Fido2Server
 from sqlalchemy.orm.attributes import flag_modified
+from urllib.parse import urlparse
+from fido2.utils import bytes2int, int2bytes
+from fido2.webauthn import AttestedCredentialData
+
+fido2.features.webauthn_json_mapping.enabled = True
+
+fido_server = Fido2Server(
+    PublicKeyCredentialRpEntity(
+        name="Kitsu", id=urlparse(f"https://{config.DOMAIN_NAME}").hostname
+    ),
+    verify_origin=lambda a: True
+    if config.DOMAIN_NAME == "localhost:8080"
+    else None,
+)
 
 
 def check_auth(
@@ -46,6 +68,7 @@ def check_auth(
     password,
     totp=None,
     email_otp=None,
+    fido_authentication_response=None,
     recovery_code=None,
     no_otp=False,
 ):
@@ -60,12 +83,9 @@ def check_auth(
     if not email:
         raise WrongUserException()
     try:
-        person = persons_service.get_person_by_email(email, unsafe=True)
+        person = persons_service.get_person_by_email_dekstop_login(email)
     except PersonNotFoundException:
-        try:
-            person = persons_service.get_person_by_desktop_login(email)
-        except PersonNotFoundException:
-            raise WrongUserException()
+        raise WrongUserException()
 
     if not person.get("active", False):
         raise UnactiveUserException()
@@ -90,7 +110,11 @@ def check_auth(
 
     if not no_otp and person_two_factor_authentication_enabled(person):
         if not check_two_factor_authentication(
-            person, totp, email_otp, recovery_code
+            person,
+            totp,
+            email_otp,
+            fido_authentication_response,
+            recovery_code,
         ):
             update_login_failed_attemps(
                 person["id"], login_failed_attemps + 1, datetime.now()
@@ -111,6 +135,9 @@ def check_auth(
 
     if "otp_recovery_codes" in person:
         del person["otp_recovery_codes"]
+
+    if "fido_credentials" in person:
+        del person["fido_credentials"]
 
     return person
 
@@ -238,7 +265,11 @@ def update_login_failed_attemps(
 
 
 def check_two_factor_authentication(
-    person, totp=None, email_otp=None, recovery_code=None
+    person,
+    totp=None,
+    email_otp=None,
+    fido_authentication_response=None,
+    recovery_code=None,
 ):
     """
     Check multifactor authentication for a person.
@@ -247,6 +278,8 @@ def check_two_factor_authentication(
         return check_totp(person, totp)
     elif person["email_otp_enabled"] and email_otp is not None:
         return check_email_otp(person, email_otp)
+    elif person["fido_enabled"] and fido_authentication_response is not None:
+        return check_fido(person, fido_authentication_response)
     elif recovery_code is not None:
         return check_recovery_code(person, recovery_code)
     else:
@@ -257,11 +290,17 @@ def check_two_factor_authentication(
 
 
 def person_two_factor_authentication_enabled(person):
-    return person["totp_enabled"] or person["email_otp_enabled"]
+    return (
+        person["totp_enabled"]
+        or person["email_otp_enabled"]
+        or person["fido_enabled"]
+    )
 
 
 def person_two_factor_authentication_enabled_raw(person):
-    return person.totp_enabled or person.email_otp_enabled
+    return (
+        person.totp_enabled or person.email_otp_enabled or person.fido_enabled
+    )
 
 
 def get_two_factor_authentication_enabled(person):
@@ -270,6 +309,8 @@ def get_two_factor_authentication_enabled(person):
         two_factor_authentication_enabled.append("totp")
     if person["email_otp_enabled"]:
         two_factor_authentication_enabled.append("email_otp")
+    if person["fido_enabled"]:
+        two_factor_authentication_enabled.append("fido")
     return two_factor_authentication_enabled
 
 
@@ -317,6 +358,27 @@ def check_recovery_code(person, recovery_code):
     return False
 
 
+def check_fido(person, authentication_response):
+    """
+    Check fido for a person.
+    """
+    try:
+        state = session.pop("fido-state-%s" % person["id"])
+    except KeyError:
+        return False
+    try:
+        fido_server.authenticate_complete(
+            state,
+            get_fido_attested_credential_data_from_person(
+                person["fido_credentials"],
+            ),
+            authentication_response,
+        )
+    except:
+        return False
+    return True
+
+
 def pre_enable_totp(person_id):
     """
     Pre-enable TOTP for a person.
@@ -339,7 +401,7 @@ def pre_enable_totp(person_id):
 
 def enable_totp(person_id, totp):
     """
-    Enable TOTP for a person
+    Enable TOTP for a person.
     """
     person = Person.get(person_id)
     if person.totp_enabled:
@@ -372,7 +434,10 @@ def disable_totp(person_id):
         person.otp_recovery_codes = None
         person.preferred_two_factor_authentication = None
     elif person.preferred_two_factor_authentication == "totp":
-        person.preferred_two_factor_authentication = "email_otp"
+        if person.fido_enabled:
+            person.preferred_two_factor_authentication = "fido"
+        elif person.email_otp_enabled:
+            person.preferred_two_factor_authentication = "email_otp"
     person.commit()
     persons_service.clear_person_cache()
     return True
@@ -396,7 +461,7 @@ def pre_enable_email_otp(person_id):
 
 def enable_email_otp(person_id, email_otp):
     """
-    Enable mail OTP for a person
+    Enable mail OTP for a person.
     """
     person = Person.get(person_id)
     if person.email_otp_enabled:
@@ -429,7 +494,10 @@ def disable_email_otp(person_id):
         person.otp_recovery_codes = None
         person.preferred_two_factor_authentication = None
     elif person.preferred_two_factor_authentication == "email_otp":
-        person.person.preferred_two_factor_authentication = "totp"
+        if person.fido_enabled:
+            person.preferred_two_factor_authentication = "fido"
+        elif person.totp_enabled:
+            person.preferred_two_factor_authentication = "totp"
     person.commit()
     persons_service.clear_person_cache()
     return True
@@ -474,14 +542,141 @@ Thank you and see you soon on Kitsu,
     return True
 
 
+def get_fido_attested_credential_data_from_person(
+    fido_person_credentials=None,
+):
+    credentials = []
+    if isinstance(fido_person_credentials, list):
+        for credential in fido_person_credentials:
+            credentials.append(
+                AttestedCredentialData.create(
+                    int2bytes(credential["aaguid"], 16),
+                    int2bytes(credential["credential_id"]),
+                    dict(
+                        {
+                            1: credential["public_key"]["1"],
+                            3: credential["public_key"]["3"],
+                            -1: credential["public_key"]["-1"],
+                            -2: int2bytes(credential["public_key"]["-2"]),
+                            -3: int2bytes(credential["public_key"]["-3"]),
+                        }
+                    ),
+                )
+            )
+    return credentials
+
+
+def pre_register_fido(person_id):
+    """
+    Pre-register FIDO device for a person.
+    """
+    person = Person.get(person_id)
+    options, state = fido_server.register_begin(
+        PublicKeyCredentialUserEntity(
+            id=str(person.id).encode(),
+            name=person.email,
+            display_name=person.full_name(),
+        ),
+        credentials=get_fido_attested_credential_data_from_person(
+            person.fido_credentials
+        ),
+        user_verification="preferred",
+        authenticator_attachment="cross-platform",
+    )
+    session["fido-state-%s" % person.id] = state
+    return dict(options.public_key)
+
+
+def register_fido(person_id, registration_response, device_name):
+    """
+    Register FIDO device for a person.
+    """
+    person = Person.get(person_id)
+    try:
+        state = session.pop("fido-state-%s" % person.id)
+    except KeyError:
+        raise FIDONoPreregistrationException()
+    try:
+        auth_data = fido_server.register_complete(state, registration_response)
+    except:
+        raise FIDOServerException()
+    credential_data = {
+        "device_name": device_name,
+        "aaguid": bytes2int(auth_data.credential_data.aaguid),
+        "credential_id": bytes2int(auth_data.credential_data.credential_id),
+        "public_key": dict(
+            {
+                **auth_data.credential_data.public_key,
+                -2: bytes2int(auth_data.credential_data.public_key.get(-2)),
+                -3: bytes2int(auth_data.credential_data.public_key.get(-3)),
+            }
+        ),
+    }
+    if person.fido_credentials is None:
+        person.fido_credentials = []
+    person.fido_credentials.append(credential_data)
+    flag_modified(person, "fido_credentials")
+    person.fido_enabled = True
+    otp_recovery_codes = None
+    if not person.otp_recovery_codes:
+        otp_recovery_codes = generate_recovery_codes()
+        person.otp_recovery_codes = hash_recovery_codes(otp_recovery_codes)
+    if not person.preferred_two_factor_authentication:
+        person.preferred_two_factor_authentication = "fido"
+    person.commit()
+    persons_service.clear_person_cache()
+    return otp_recovery_codes
+
+
+def unregister_fido(person_id, device_name):
+    """
+    Unregister FIDO device for a person.
+    """
+    person = Person.get(person_id)
+    for i in range(len(person.fido_credentials)):
+        if person.fido_credentials[i]["device_name"] == device_name:
+            del person.fido_credentials[i]
+            break
+    flag_modified(person, "fido_credentials")
+    if len(person.fido_credentials) == 0:
+        person.fido_enabled = False
+    if not person_two_factor_authentication_enabled_raw(person):
+        person.otp_recovery_codes = None
+        person.preferred_two_factor_authentication = None
+    elif person.preferred_two_factor_authentication == "fido":
+        if person.totp_enabled:
+            person.preferred_two_factor_authentication = "totp"
+        elif person.email_otp_enabled:
+            person.preferred_two_factor_authentication = "email_otp"
+    person.commit()
+    persons_service.clear_person_cache()
+    return True
+
+
+def get_challenge_fido(person_id):
+    """
+    Get new FIDO challenge for a person.
+    """
+    person = Person.get(person_id)
+    options, state = fido_server.authenticate_begin(
+        credentials=get_fido_attested_credential_data_from_person(
+            person.fido_credentials
+        ),
+    )
+    session["fido-state-%s" % person.id] = state
+    return dict(options.public_key)
+
+
 def disable_two_factor_authentication_for_person(person_id):
     person = Person.get(person_id)
     if not person_two_factor_authentication_enabled_raw(person):
-        raise TwoFactorAuthenticationNotEnabledException
+        raise TwoFactorAuthenticationNotEnabledException()
     person.email_otp_enabled = False
     person.email_otp_secret = None
     person.totp_enabled = False
     person.totp_secret = None
+    person.fido_enabled = False
+    person.fido_credentials = None
     person.otp_recovery_codes = None
     person.preferred_two_factor_authentication = None
     person.commit()

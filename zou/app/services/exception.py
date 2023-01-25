@@ -179,6 +179,18 @@ class TwoFactorAuthenticationNotEnabledException(Exception):
     pass
 
 
+class FIDONoPreregistrationException(Exception):
+    pass
+
+
+class FIDOServerException(Exception):
+    pass
+
+
+class FIDONotEnabledException(Exception):
+    pass
+
+
 class EmailOTPAlreadyEnabledException(Exception):
     pass
 
