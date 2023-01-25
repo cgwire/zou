@@ -1,5 +1,5 @@
 language: python
-dist: bionic
+dist: jammy
 os: linux
 python:
   - "3.8"
