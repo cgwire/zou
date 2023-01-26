@@ -596,10 +596,7 @@ def register_fido(person_id, registration_response, device_name):
         state = session.pop("fido-state-%s" % person.id)
     except KeyError:
         raise FIDONoPreregistrationException()
-    try:
-        auth_data = fido_server.register_complete(state, registration_response)
-    except:
-        raise FIDOServerException()
+    auth_data = fido_server.register_complete(state, registration_response)
     credential_data = {
         "device_name": device_name,
         "aaguid": bytes2int(auth_data.credential_data.aaguid),
