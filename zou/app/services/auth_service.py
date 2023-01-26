@@ -56,7 +56,9 @@ fido_server = Fido2Server(
     PublicKeyCredentialRpEntity(
         name="Kitsu", id=urlparse(f"https://{config.DOMAIN_NAME}").hostname
     ),
-    verify_origin=lambda a: True,
+    verify_origin=None
+    if config.DOMAIN_NAME != "localhost:8080"
+    else lambda a: True,
 )
 
 
