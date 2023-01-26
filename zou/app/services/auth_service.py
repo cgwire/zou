@@ -56,9 +56,7 @@ fido_server = Fido2Server(
     PublicKeyCredentialRpEntity(
         name="Kitsu", id=urlparse(f"https://{config.DOMAIN_NAME}").hostname
     ),
-    verify_origin=lambda a: True
-    if config.DOMAIN_NAME == "localhost:8080"
-    else None,
+    verify_origin=lambda a: True,
 )
 
 
@@ -596,7 +594,10 @@ def register_fido(person_id, registration_response, device_name):
         state = session.pop("fido-state-%s" % person.id)
     except KeyError:
         raise FIDONoPreregistrationException()
-    auth_data = fido_server.register_complete(state, registration_response)
+    try:
+        auth_data = fido_server.register_complete(state, registration_response)
+    except:
+        raise FIDOServerException()
     credential_data = {
         "device_name": device_name,
         "aaguid": bytes2int(auth_data.credential_data.aaguid),
