@@ -166,6 +166,14 @@ def get_current_user_raw():
     return get_person_by_email_raw(get_jwt_identity())
 
 
+def get_persons_map():
+    """
+    Return a dict of which keys are person_id and values are person.
+    """
+    persons = Person.query.all()
+    return {str(person.id): person.serialize_safe() for person in persons}
+
+
 def create_person(
     email,
     password,
