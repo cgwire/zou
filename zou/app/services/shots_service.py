@@ -215,7 +215,7 @@ def get_shots_and_tasks(criterions={}):
     Episode = aliased(Entity, name="episode")
 
     query = (
-        Entity.query.join(Project)
+        Entity.query.join(Project, Project.id == Entity.project_id)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .outerjoin(Episode, Episode.id == Sequence.parent_id)
         .outerjoin(Task, Task.entity_id == Entity.id)
