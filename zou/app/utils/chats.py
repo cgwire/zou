@@ -1,4 +1,4 @@
-from slackclient import SlackClient
+from slack import WebClient as SlackClient
 from matterhook import Webhook
 from discord import (
     Client as DiscordClient,
