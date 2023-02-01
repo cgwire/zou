@@ -2,24 +2,12 @@ import os
 import flask_fs as fs
 
 from flask_fs.backends.local import LocalBackend
-from flask_fs.backends.swift import SwiftBackend
-from flask_fs.backends.s3 import S3Backend
 
 from zou.app import app
 
 default_root = ""
 with app.app_context():
     default_root = app.config.get("PREVIEW_FOLDER")
-
-
-def read(self, filename):
-    with self.open(filename, "rb") as f:
-        return f.read()
-
-
-def local_delete(self, filename):
-    dest = self.path(filename)
-    os.remove(dest)
 
 
 def path(self, filename):
@@ -34,101 +22,13 @@ def path(self, filename):
     return path
 
 
-def init_swift(self, name, config):
-    """
-    Hack needed because Flask FS backend supports only swift 1.0 authentication.
-    """
-    import swiftclient
-
-    super(SwiftBackend, self).__init__(name, config)
-    version = "3"
-    if "2.0" in config.authurl:
-        version = "2.0"
-    self.conn = swiftclient.Connection(
-        user=config.user,
-        key=config.key,
-        authurl=config.authurl,
-        auth_version=version,
-        os_options={
-            "tenant_name": config.tenant_name,
-            "region_name": config.region_name,
-        },
-    )
-    self.conn.put_container(self.name)
-
-
-def init_s3(self, name, config):
-    import boto3
-    import botocore.exceptions
-
-    super(S3Backend, self).__init__(name, config)
-    self.session = boto3.session.Session()
-    self.s3config = boto3.session.Config(signature_version="s3v4")
-
-    self.s3 = self.session.resource(
-        "s3",
-        config=self.s3config,
-        endpoint_url=config.endpoint,
-        region_name=config.region,
-        aws_access_key_id=config.access_key,
-        aws_secret_access_key=config.secret_key,
-    )
-    self.bucket = self.s3.Bucket(name)
-
-    bucket_exists = True
-
-    try:
-        self.s3.meta.client.head_bucket(Bucket=name)
-    except botocore.exceptions.ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        if error_code == "404":
-            bucket_exists = False
-
-    if not bucket_exists:
-        try:
-            if config.region == "us-east-1":
-                self.bucket.create()
-            else:
-                self.bucket.create(
-                    CreateBucketConfiguration={
-                        "LocationConstraint": config.region
-                    }
-                )
-        except self.s3.meta.client.exceptions.BucketAlreadyOwnedByYou:
-            pass
-
-
 def clear_bucket(bucket):
     for filename in bucket.list_files():
-        os.remove(os.path.join(bucket.root, filename))
-
-
-def read_swift(self, filename):
-    """
-    Monkey patch to download files with chunks instead of getting it fully.
-    """
-    _, data = self.conn.get_object(
-        self.name, filename, resp_chunk_size=1024 * 1024
-    )
-    return data
-
-
-def read_s3(self, filename):
-    """
-    Monkey patch to download filtes with chunks instead of getting it fully.
-    """
-    obj = self.bucket.Object(filename).get()
-    return obj["Body"].iter_chunks(1024 * 1024)
+        bucket.delete(filename)
 
 
 LocalBackend.default_root = default_root
-LocalBackend.read = read
 LocalBackend.path = path
-LocalBackend.delete = local_delete
-SwiftBackend.__init__ = init_swift
-SwiftBackend.read = read_swift
-S3Backend.__init__ = init_s3
-S3Backend.read = read_s3
 
 
 def make_key(prefix, id):
@@ -136,7 +36,7 @@ def make_key(prefix, id):
 
 
 def make_read_generator(bucket, key):
-    read_stream = bucket.read(key)
+    read_stream = bucket.read_chunks(key)
 
     def read_generator(read_stream):
         for chunk in read_stream:
