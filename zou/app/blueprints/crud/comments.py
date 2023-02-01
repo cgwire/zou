@@ -31,7 +31,7 @@ class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Retrieve a model corresponding at given ID and return it as a JSON
@@ -128,7 +128,7 @@ class CommentResource(BaseModelResource):
             )
         return comment
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         """
         Delete a comment corresponding at given ID.

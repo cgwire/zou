@@ -7,7 +7,7 @@ from zou.app.services import index_service, projects_service, user_service
 
 
 class SearchResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Search for resource

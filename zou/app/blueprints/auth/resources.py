@@ -55,21 +55,13 @@ from flask_jwt_extended import (
 
 def is_from_browser(user_agent):
     return user_agent.browser in [
-        "camino",
-        "chrome",
-        "firefox",
-        "galeon",
-        "kmeleon",
-        "konqueror",
-        "links",
-        "lynx",
-        "msie",
-        "msn",
-        "netscape",
-        "opera",
-        "safari",
-        "seamonkey",
-        "webkit",
+        "Brave",
+        "Chrome",
+        "Edge",
+        "Firefox",
+        "Opera",
+        "Safari",
+        "Vivaldi",
     ]
 
 
@@ -146,7 +138,7 @@ class AuthenticatedResource(Resource):
     if current user is still logged in.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Returns information if the user is authenticated else it returns a 401
@@ -181,7 +173,7 @@ class LogoutResource(Resource):
     cannot access to API anymore.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Log user out by revoking his auth tokens.
@@ -569,7 +561,7 @@ class ChangePasswordResource(Resource):
     make mistake by typing his new password.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Allow the user to change his password.
@@ -841,7 +833,7 @@ class TOTPResource(Resource, ArgsMixin):
     Resource to allow a user to enable/disable TOTP.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to pre-enable TOTP.
@@ -871,7 +863,7 @@ class TOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Resource to allow a user to enable TOTP.
@@ -908,7 +900,7 @@ class TOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def delete(self):
         """
         Resource to allow a user to disable TOTP.
@@ -1010,7 +1002,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 404,
             )
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to pre-enable OTP by email.
@@ -1037,7 +1029,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Resource to allow a user to enable OTP by email.
@@ -1074,7 +1066,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def delete(self):
         """
         Resource to allow a user to disable OTP by email.
@@ -1176,7 +1168,7 @@ class FIDOResource(Resource, ArgsMixin):
                 404,
             )
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to pre-register a FIDO device.
@@ -1196,7 +1188,7 @@ class FIDOResource(Resource, ArgsMixin):
             persons_service.get_current_user()["id"]
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Resource to allow a user to register a FIDO device.
@@ -1239,7 +1231,7 @@ class FIDOResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def delete(self):
         """
         Resource to allow a user to unregister a FIDO device.
@@ -1302,7 +1294,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
     Resource to allow a user to generate new recovery codes.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to generate new recovery codes.

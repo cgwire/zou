@@ -114,7 +114,7 @@ class TaskResource(BaseModelResource):
             ]
         return data
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         """
         Delete a model corresponding at given ID and return it as a JSON

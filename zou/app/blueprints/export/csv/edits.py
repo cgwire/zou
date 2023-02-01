@@ -13,7 +13,7 @@ from zou.app.utils import csv_utils
 
 
 class EditsCsvExport(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Export edits linked to a given project as csv.

@@ -16,7 +16,7 @@ from zou.app.utils import permissions, query
 
 
 class EditResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, edit_id):
         """
         Retrieve given edit.
@@ -42,7 +42,7 @@ class EditResource(Resource, ArgsMixin):
         user_service.check_entity_access(edit["id"])
         return edit
 
-    @jwt_required
+    @jwt_required()
     def delete(self, edit_id):
         """
         Delete given edit.
@@ -68,7 +68,7 @@ class EditResource(Resource, ArgsMixin):
 
 
 class EditsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all edit entries.
@@ -107,7 +107,7 @@ class EditsResource(Resource):
 
 
 class AllEditsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all edit entries.
@@ -146,7 +146,7 @@ class AllEditsResource(Resource):
 
 
 class EditTaskTypesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, edit_id):
         """
         Retrieve all task types related to a given edit.
@@ -171,7 +171,7 @@ class EditTaskTypesResource(Resource):
 
 
 class EditTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, edit_id):
         """
         Retrieve all tasks related to a given edit.
@@ -197,7 +197,7 @@ class EditTasksResource(Resource, ArgsMixin):
 
 
 class EpisodeEditTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all tasks related to a given episode.
@@ -227,7 +227,7 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
 
 
 class EpisodeEditsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all edits related to a given episode.
@@ -255,7 +255,7 @@ class EpisodeEditsResource(Resource, ArgsMixin):
 
 
 class EditPreviewsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, edit_id):
         """
         Retrieve all previews related to a given edit.
@@ -281,7 +281,7 @@ class EditPreviewsResource(Resource):
 
 
 class EditsAndTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all edits, adds project name and all related tasks.
@@ -323,7 +323,7 @@ class EditsAndTasksResource(Resource):
 
 
 class ProjectEditsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all edits related to a given project.
@@ -347,7 +347,7 @@ class ProjectEditsResource(Resource):
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create an edit for given project.
@@ -414,7 +414,7 @@ class EditVersionsResource(Resource):
     Retrieve data versions of given edit.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, edit_id):
         """
         Retrieve data versions of given edit.

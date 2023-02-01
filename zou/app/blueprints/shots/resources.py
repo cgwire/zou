@@ -21,7 +21,7 @@ from zou.app.utils import fields, query, permissions
 
 
 class ShotResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve given shot.
@@ -47,7 +47,7 @@ class ShotResource(Resource, ArgsMixin):
         user_service.check_entity_access(shot["id"])
         return shot
 
-    @jwt_required
+    @jwt_required()
     def delete(self, shot_id):
         """
         Delete given shot.
@@ -73,7 +73,7 @@ class ShotResource(Resource, ArgsMixin):
 
 
 class SceneResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, scene_id):
         """
         Retrieve given scene.
@@ -96,7 +96,7 @@ class SceneResource(Resource):
         user_service.check_entity_access(scene["id"])
         return scene
 
-    @jwt_required
+    @jwt_required()
     def delete(self, scene_id):
         """
         Delete given scene.
@@ -121,7 +121,7 @@ class SceneResource(Resource):
 
 
 class ShotsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all shot entries.
@@ -167,7 +167,7 @@ class ShotsResource(Resource):
 
 
 class AllShotsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all shot entries.
@@ -213,7 +213,7 @@ class AllShotsResource(Resource):
 
 
 class ScenesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all scene entries.
@@ -238,7 +238,7 @@ class ScenesResource(Resource):
 
 
 class ShotAssetsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve all assets for a given shot.
@@ -263,7 +263,7 @@ class ShotAssetsResource(Resource):
 
 
 class ShotTaskTypesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve all task types related to a given shot.
@@ -288,7 +288,7 @@ class ShotTaskTypesResource(Resource):
 
 
 class ShotTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve all tasks related to a given shot.
@@ -314,7 +314,7 @@ class ShotTasksResource(Resource, ArgsMixin):
 
 
 class SequenceShotTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, sequence_id):
         """
         Retrieve all tasks related to a given sequence.
@@ -344,7 +344,7 @@ class SequenceShotTasksResource(Resource, ArgsMixin):
 
 
 class EpisodeShotTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all shots tasks related to a given episode.
@@ -374,7 +374,7 @@ class EpisodeShotTasksResource(Resource, ArgsMixin):
 
 
 class EpisodeAssetTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all assets tasks related to a given episode.
@@ -404,7 +404,7 @@ class EpisodeAssetTasksResource(Resource, ArgsMixin):
 
 
 class EpisodeShotsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all shots related to a given episode.
@@ -432,7 +432,7 @@ class EpisodeShotsResource(Resource, ArgsMixin):
 
 
 class ShotPreviewsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve all previews related to a given shot.
@@ -459,7 +459,7 @@ class ShotPreviewsResource(Resource):
 
 
 class SequenceTasksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, sequence_id):
         """
         Retrieve all tasks related to a given shot.
@@ -486,7 +486,7 @@ class SequenceTasksResource(Resource, ArgsMixin):
 
 
 class SequenceTaskTypesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, sequence_id):
         """
         Retrieve all task types related to a given shot.
@@ -510,7 +510,7 @@ class SequenceTaskTypesResource(Resource):
 
 
 class ShotsAndTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all shots, adds project name and asset type name and all related tasks.
@@ -542,7 +542,7 @@ class ShotsAndTasksResource(Resource):
 
 
 class SceneAndTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all scenes, adds project name and asset type name and all related tasks.
@@ -567,7 +567,7 @@ class SceneAndTasksResource(Resource):
 
 
 class SequenceAndTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all sequences, adds project name and asset type name and all related tasks.
@@ -592,7 +592,7 @@ class SequenceAndTasksResource(Resource):
 
 
 class EpisodeAndTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all episodes, adds project name and asset type name and all related tasks.
@@ -617,7 +617,7 @@ class EpisodeAndTasksResource(Resource):
 
 
 class ProjectShotsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all shots related to a given project.
@@ -641,7 +641,7 @@ class ProjectShotsResource(Resource):
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create a shot for given project.
@@ -714,7 +714,7 @@ class ProjectShotsResource(Resource):
 
 
 class ProjectSequencesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all sequences related to a given project.
@@ -738,7 +738,7 @@ class ProjectSequencesResource(Resource):
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create a sequence for given project.
@@ -794,7 +794,7 @@ class ProjectSequencesResource(Resource):
 
 
 class ProjectEpisodesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all episodes related to a given project.
@@ -818,7 +818,7 @@ class ProjectEpisodesResource(Resource):
             project_id, only_assigned=permissions.has_vendor_permissions()
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create an episode for given project.
@@ -867,7 +867,7 @@ class ProjectEpisodesResource(Resource):
 
 
 class ProjectEpisodeStatsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve number of tasks by status, task_types and episodes for given project.
@@ -893,7 +893,7 @@ class ProjectEpisodeStatsResource(Resource):
 
 
 class ProjectEpisodeRetakeStatsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve number of tasks by status, task_types and episodes for given project.
@@ -919,7 +919,7 @@ class ProjectEpisodeRetakeStatsResource(Resource):
 
 
 class EpisodeResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve given episode.
@@ -941,7 +941,7 @@ class EpisodeResource(Resource, ArgsMixin):
         user_service.check_project_access(episode["project_id"])
         return episode
 
-    @jwt_required
+    @jwt_required()
     def delete(self, episode_id):
         """
         Delete given episode.
@@ -967,7 +967,7 @@ class EpisodeResource(Resource, ArgsMixin):
 
 
 class EpisodesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all episode entries.
@@ -992,7 +992,7 @@ class EpisodesResource(Resource):
 
 
 class EpisodeSequencesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all sequence entries for a given episode.
@@ -1032,7 +1032,7 @@ class EpisodeSequencesResource(Resource):
 
 
 class EpisodeTaskTypesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all task types related to a given episode.
@@ -1056,7 +1056,7 @@ class EpisodeTaskTypesResource(Resource):
 
 
 class EpisodeTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, episode_id):
         """
         Retrieve all tasks related to a given episode.
@@ -1080,7 +1080,7 @@ class EpisodeTasksResource(Resource):
 
 
 class SequenceResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, sequence_id):
         """
         Retrieve given sequence.
@@ -1102,7 +1102,7 @@ class SequenceResource(Resource, ArgsMixin):
         user_service.check_project_access(sequence["project_id"])
         return sequence
 
-    @jwt_required
+    @jwt_required()
     def delete(self, sequence_id):
         """
         Delete given sequence.
@@ -1128,7 +1128,7 @@ class SequenceResource(Resource, ArgsMixin):
 
 
 class SequencesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all sequence entries.
@@ -1158,7 +1158,7 @@ class SequencesResource(Resource):
 
 
 class SequenceShotsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, sequence_id):
         """
         Retrieve all shot entries for a given sequence.
@@ -1195,7 +1195,7 @@ class SequenceShotsResource(Resource):
 
 
 class ProjectScenesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all scenes related to a given project.
@@ -1217,7 +1217,7 @@ class ProjectScenesResource(Resource):
         user_service.check_project_access(project_id)
         return shots_service.get_scenes_for_project(project_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create a scene for given project.
@@ -1261,7 +1261,7 @@ class ProjectScenesResource(Resource):
 
 
 class SequenceScenesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, sequence_id):
         """
         Retrieve all scenes related to a given sequence.
@@ -1285,7 +1285,7 @@ class SequenceScenesResource(Resource):
 
 
 class SceneTaskTypesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, scene_id):
         """
         Retrieve all task types related to a given scene.
@@ -1310,7 +1310,7 @@ class SceneTaskTypesResource(Resource):
 
 
 class SceneTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, scene_id):
         """
         Retrieve all tasks related to a given scene.
@@ -1334,7 +1334,7 @@ class SceneTasksResource(Resource):
 
 
 class SceneShotsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, scene_id):
         """
         Retrieve all shots that come from given scene.
@@ -1356,7 +1356,7 @@ class SceneShotsResource(Resource, ArgsMixin):
         user_service.check_entity_access(scene["id"])
         return scenes_service.get_shots_by_scene(scene_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, scene_id):
         """
         Mark given scene as source of given shot.
@@ -1387,7 +1387,7 @@ class SceneShotsResource(Resource, ArgsMixin):
 
 
 class RemoveShotFromSceneResource(Resource):
-    @jwt_required
+    @jwt_required()
     def delete(self, scene_id, shot_id):
         """
         Delete given shot from given scene.
@@ -1423,7 +1423,7 @@ class ShotVersionsResource(Resource):
     Retrieve data versions of given shot.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve data versions of given shot.
@@ -1452,7 +1452,7 @@ class ProjectQuotasResource(Resource, ArgsMixin):
     Retrieve quotas statistics for shots
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, task_type_id):
         """
         Retrieve quotas statistics for shots.

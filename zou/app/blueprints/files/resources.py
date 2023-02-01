@@ -98,7 +98,7 @@ class WorkingFileFileResource(Resource):
         uploaded_file.save(file_path)
         return file_path
 
-    @jwt_required
+    @jwt_required()
     def get(self, working_file_id):
         """
         Download a working file.
@@ -126,7 +126,7 @@ class WorkingFileFileResource(Resource):
         self.check_access(working_file_id)
         return send_storage_file(working_file_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, working_file_id):
         """
         Store a working file.
@@ -164,7 +164,7 @@ class WorkingFilePathResource(Resource):
     computed automatically as next revision if not given.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id):
         """
         Generate a working file path from file tree template.
@@ -284,7 +284,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
     not given.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, entity_id):
         """
         Generate an output file path from file tree template
@@ -403,7 +403,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
     Revision can be computed automatically as next revision in case no revision is given in parameter.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Generate an output file path from file tree template
@@ -524,7 +524,7 @@ class LastWorkingFilesResource(Resource):
     Return last working files revision for each file name for given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return last working files revision for each file name for given task.
@@ -556,7 +556,7 @@ class TaskWorkingFilesResource(Resource):
     Return all working file revisions for a given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return last working files revision for each file name for given task.
@@ -591,7 +591,7 @@ class NewWorkingFileResource(Resource):
     A path is generated for each file created. The path format is defined in the file tree template file.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id):
         """
         Create new working file.
@@ -737,7 +737,7 @@ class ModifiedFileResource(Resource):
     Update working file modification date with current date.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, working_file_id):
         """
         Update working file modification date with current date.
@@ -770,7 +770,7 @@ class CommentWorkingFileResource(Resource):
     Update comment on given working file.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, working_file_id):
         """
         Update comment on given working file.
@@ -834,7 +834,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
     Revision is automatically set.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, entity_id):
         """
         Create new output file linked to a given entity.
@@ -1056,7 +1056,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
     output file.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Create new output file linked to assets through an instance of this asset for a given shot.
@@ -1290,7 +1290,7 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
     Get next revision for given entity, output type, task type and name.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, entity_id):
         """
         Get next revision for given entity, output type, task type and name.
@@ -1355,7 +1355,7 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
     Get next revision for given asset instance, output type, task type and name.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Get next revision for given asset instance, output type, task type and name.
@@ -1434,7 +1434,7 @@ class LastEntityOutputFilesResource(Resource):
     and file name.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Get last revisions of output files for given entity grouped by output type and file name.
@@ -1471,7 +1471,7 @@ class LastInstanceOutputFilesResource(Resource):
     and file name.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
         """
         Get last revisions of output files for given instance grouped by output type and file name.
@@ -1515,7 +1515,7 @@ class EntityOutputTypesResource(Resource):
     Return all types of output generated for given entity.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Return all types of output generated for given entity.
@@ -1543,7 +1543,7 @@ class InstanceOutputTypesResource(Resource):
     Return all types of output generated for given instance.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
         """
         Return all types of output generated for given instance.
@@ -1580,7 +1580,7 @@ class EntityOutputTypeOutputFilesResource(Resource):
     Get all output files for given entity and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id, output_type_id):
         """
         Get all output files for given entity and given output type.
@@ -1623,7 +1623,7 @@ class InstanceOutputTypeOutputFilesResource(Resource):
     Get all output files for given asset instance and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
         """
         Get all output files for given asset instance and given output type.
@@ -1675,7 +1675,7 @@ class EntityOutputFilesResource(Resource):
     Get all output files for given asset instance and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Get all output files for given asset instance and given output type.
@@ -1717,7 +1717,7 @@ class InstanceOutputFilesResource(Resource):
     Get all output files for given asset instance and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id):
         """
         Get all output files for given asset instance and given output type.
@@ -1763,7 +1763,7 @@ class FileResource(Resource):
     output file.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, file_id):
         """
         Get information about a file that could be a working file as much as an output file.
@@ -1801,7 +1801,7 @@ class SetTreeResource(Resource):
     to give a name to "select" the template to link with the project.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Define a template file to use for given project.
@@ -1862,7 +1862,7 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
     Get all working files for a given entity and possibly a task and a name.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Get all working files for a given entity and possibly a task and a name.
@@ -1898,7 +1898,7 @@ class GuessFromPathResource(Resource):
     and data ids corresponding to template tokens.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         data = self.get_arguments()
 

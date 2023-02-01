@@ -26,9 +26,11 @@ from .utils import fs, logs
 
 from zou.app.utils import cache
 from zou.app.utils.sentry import init_sentry
+from zou.app.utils.user_agent import ParsedUserAgent
 
 init_sentry()
 app = Flask(__name__)
+app.request_class.user_agent_class = ParsedUserAgent
 app.config.from_object(config)
 
 logs.configure_logs(app)
@@ -121,13 +123,13 @@ def configure_auth():
     from zou.app.services import persons_service
 
     @jwt.token_in_blocklist_loader
-    def check_if_token_is_revoked(decrypted_token):
-        return auth_tokens_store.is_revoked(decrypted_token)
+    def check_if_token_is_revoked(_, payload):
+        return auth_tokens_store.is_revoked(payload)
 
     @jwt.user_lookup_loader
-    def add_permissions(callback):
+    def add_permissions(_, payload):
         try:
-            user = persons_service.get_current_user()
+            user = persons_service.get_person(payload["user_id"])
             if user is not None:
                 identity_changed.send(
                     current_app._get_current_object(),

@@ -175,7 +175,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
     a rectangle thumbnail and a midsize file.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, instance_id):
         """
         Main resource to add a preview.
@@ -391,7 +391,7 @@ class PreviewFileMovieResource(Resource):
         except permissions.PermissionDenied:
             return False
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Download a movie preview.
@@ -434,7 +434,7 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
     Allow to download a lowdef movie preview.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Download a lowdef movie preview.
@@ -476,7 +476,7 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
     Allow to download a movie preview.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Download a movie preview.
@@ -534,7 +534,7 @@ class PreviewFileResource(Resource):
             except permissions.PermissionDenied:
                 return False
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id, extension):
         """
         Download a generic file preview.
@@ -591,7 +591,7 @@ class PreviewFileDownloadResource(PreviewFileResource):
     def __init__(self):
         PreviewFileResource.__init__(self)
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Download a generic file preview as attachment.
@@ -665,7 +665,7 @@ class BasePreviewPictureResource(Resource):
             except permissions.PermissionDenied:
                 return False
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Download a thumbnail.
@@ -759,7 +759,7 @@ class BaseCreatePictureResource(Resource):
             {"%s_id" % model_name: instance_id},
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self, instance_id):
         """
         Create a thumbnail for given object instance.
@@ -824,7 +824,7 @@ class BasePictureResource(Resource):
     def is_allowed(self, instance_id):
         return True
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Download the thumbnail linked to given object instance.
@@ -952,7 +952,7 @@ class ProjectThumbnailResource(BasePictureResource):
 
 
 class LegacySetMainPreviewResource(Resource):
-    @jwt_required
+    @jwt_required()
     def put(self, entity_id, preview_file_id):
         """
         Set main preview to given file.
@@ -990,7 +990,7 @@ class SetMainPreviewResource(Resource):
     be used to illustrate the entity.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, preview_file_id):
         """
         Set given preview as main preview of the related entity.
@@ -1026,7 +1026,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
     Allow to change orders of previews for a single revision.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, preview_file_id):
         """
         Allow to change orders of previews for a single revision.
@@ -1066,7 +1066,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
     * `deletions` to list the IDs of annotations that needs to be removed.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, preview_file_id):
         """
         Allow to modify the annotations stored at the preview level.
@@ -1133,7 +1133,7 @@ class RunningPreviewFiles(Resource, ArgsMixin):
     to processing or broken
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all preview files from open productions with states equals to processing or broken.

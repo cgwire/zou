@@ -25,7 +25,7 @@ class BaseImportShotgunResource(Resource):
     def __init__(self):
         Resource.__init__(self)
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Import shotgun resource.
@@ -166,7 +166,7 @@ class ImportRemoveShotgunBaseResource(Resource):
         self.delete_func = delete_func
         self.entity_type_id = entity_type_id
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Import remove instance.

@@ -13,7 +13,7 @@ from zou.app.mixin import ArgsMixin
 
 
 class CastingCsvExport(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Export casting linked to a given project as csv.

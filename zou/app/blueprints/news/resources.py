@@ -77,7 +77,7 @@ class NewsMixin():
 
 
 class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all news related to a given project
@@ -140,7 +140,7 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
 
 
 class NewsResource(Resource, NewsMixin, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all news related to a given project
@@ -208,7 +208,7 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
 
 
 class ProjectSingleNewsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, news_id):
         """
         Retrieve a single given news related to a given project

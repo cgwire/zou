@@ -17,7 +17,7 @@ from zou.app.services import (
 
 
 class DownloadAttachmentResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, attachment_file_id, file_name):
         """
         Download attachment file.
@@ -75,7 +75,7 @@ class AckCommentResource(Resource):
     acknowledgement.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Acknowledge given comment.
@@ -114,7 +114,7 @@ class CommentTaskResource(Resource):
     given task status.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id):
         """
         Create a new comment for given task.
@@ -219,7 +219,7 @@ class CommentTaskResource(Resource):
 
 
 class AttachmentResource(Resource):
-    @jwt_required
+    @jwt_required()
     def delete(self, task_id, comment_id, attachment_id):
         """
         Delete attachment linked to a comment matching given ID.
@@ -259,7 +259,7 @@ class AttachmentResource(Resource):
 
 
 class AddAttachmentToCommentResource(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Add given files to the comment entry as attachments.
@@ -310,7 +310,7 @@ class CommentManyTasksResource(Resource):
     given task status.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create several comments at once.
@@ -415,7 +415,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
     Reply to given comment. Add comment to its replies list.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Reply to given comment.
@@ -460,7 +460,7 @@ class DeleteReplyCommentResource(Resource):
     Delete given comment reply.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, task_id, comment_id, reply_id):
         """
         Delete given comment reply.
@@ -501,7 +501,7 @@ class DeleteReplyCommentResource(Resource):
 
 
 class ProjectAttachmentFiles(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Return all attachment files related to given project.
@@ -530,7 +530,7 @@ class TaskAttachmentFiles(Resource):
     Return all attachment files related to given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return all attachment files related to given task.

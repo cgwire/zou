@@ -14,7 +14,7 @@ from zou.app.utils import csv_utils, query
 
 
 class AssetsCsvExport(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Export assets linked to a given project as csv.

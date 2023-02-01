@@ -16,7 +16,7 @@ from zou.app.utils import permissions
 
 
 class CastingResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, entity_id):
         """
         Resource to retrieve the casting of a given entity.
@@ -43,7 +43,7 @@ class CastingResource(Resource):
         user_service.check_project_access(project_id)
         return breakdown_service.get_casting(entity_id)
 
-    @jwt_required
+    @jwt_required()
     def put(self, project_id, entity_id):
         """
         Resource to allow the modification of assets linked to an entity.
@@ -73,7 +73,7 @@ class CastingResource(Resource):
 
 
 class EpisodesCastingResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Resource to retrieve the casting of episodes.
@@ -96,7 +96,7 @@ class EpisodesCastingResource(Resource):
 
 
 class EpisodeSequenceAllCastingResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, episode_id):
         """
         Resource to retrieve the casting of shots from given episode.
@@ -127,7 +127,7 @@ class EpisodeSequenceAllCastingResource(Resource):
 
 
 class SequenceAllCastingResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Resource to retrieve the casting of shots from all sequences of given
@@ -151,7 +151,7 @@ class SequenceAllCastingResource(Resource):
 
 
 class SequenceCastingResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, sequence_id):
         """
         Resource to retrieve the casting of shots from given sequence.
@@ -181,7 +181,7 @@ class SequenceCastingResource(Resource):
 
 
 class AssetTypeCastingResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, asset_type_id):
         """
         Resource to retrieve the casting of assets from given asset type.
@@ -213,7 +213,7 @@ class AssetTypeCastingResource(Resource):
 
 
 class ShotAssetInstancesResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, shot_id):
         """
         Retrieve all asset instances linked to shot.
@@ -235,7 +235,7 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
         user_service.check_project_access(shot["project_id"])
         return breakdown_service.get_asset_instances_for_shot(shot_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, shot_id):
         """
         Add an asset instance to given shot.
@@ -263,7 +263,7 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
 
 
 class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def delete(self, shot_id, asset_instance_id):
         """
         Remove an asset instance from given shot.
@@ -296,7 +296,7 @@ class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
 
 
 class SceneAssetInstancesResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, scene_id):
         """
         Retrieve all asset instances linked to scene.
@@ -318,7 +318,7 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
         user_service.check_project_access(scene["project_id"])
         return breakdown_service.get_asset_instances_for_scene(scene_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, scene_id):
         """
         Create an asset instance on given scene.
@@ -348,7 +348,7 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
 
 
 class SceneCameraInstancesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, scene_id):
         """
         Retrieve all camera instances linked to scene.
@@ -372,7 +372,7 @@ class SceneCameraInstancesResource(Resource):
 
 
 class ProjectEntityLinksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all entity links related to given project.
@@ -397,7 +397,7 @@ class ProjectEntityLinksResource(Resource):
 
 
 class ProjectEntityLinkResource(Resource):
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, entity_link_id):
         """
         Delete given entity link.

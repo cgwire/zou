@@ -11,7 +11,7 @@ class ShotgunImportErrorsResource(Resource):
     def __init__(self):
         Resource.__init__(self)
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Import shotgun error resource.
@@ -26,7 +26,7 @@ class ShotgunImportErrorsResource(Resource):
         import_errors = DataImportError.query.filter_by(**criterions).all()
         return DataImportError.serialize_list(import_errors)
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Serialize shotgun error resource.
@@ -46,7 +46,7 @@ class ShotgunImportErrorResource(Resource):
     def __init__(self):
         Resource.__init__(self)
 
-    @jwt_required
+    @jwt_required()
     def delete(self, error_id):
         """
         Delete error.

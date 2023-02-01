@@ -35,7 +35,7 @@ class BaseCsvImportResource(Resource):
     def __init__(self):
         Resource.__init__(self)
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Import persons as csv.
@@ -124,7 +124,7 @@ class BaseCsvImportResource(Resource):
 
 
 class BaseCsvProjectImportResource(BaseCsvImportResource):
-    @jwt_required
+    @jwt_required()
     def post(self, project_id, **kwargs):
         uploaded_file = request.files["file"]
         file_name = "%s.csv" % uuid.uuid4()

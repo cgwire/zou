@@ -128,7 +128,7 @@ class BaseModelsResource(Resource, ArgsMixin):
     def post_creation(self, instance):
         return instance.serialize()
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all entries for given model.
@@ -180,7 +180,7 @@ class BaseModelsResource(Resource, ArgsMixin):
         except permissions.PermissionDenied:
             abort(403)
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Create a model with data given in the request body.
@@ -292,7 +292,7 @@ class BaseModelResource(Resource):
     def clean_get_result(self, data):
         return data
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Retrieve a model corresponding at given ID and return it as a JSON object.
@@ -341,7 +341,7 @@ class BaseModelResource(Resource):
     def pre_delete(self, instance_dict):
         return instance_dict
 
-    @jwt_required
+    @jwt_required()
     def put(self, instance_id):
         """
         Update a model with data given in the request body.
@@ -415,7 +415,7 @@ class BaseModelResource(Resource):
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         """
         Delete a model corresponding at given ID and return it as a JSON object.

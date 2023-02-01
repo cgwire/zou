@@ -136,7 +136,7 @@ class ProjectResource(BaseModelResource):
         projects_service.clear_project_cache(project_dict["id"])
         return project_dict
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         parser = reqparse.RequestParser()
         parser.add_argument("force", default=False, type=bool)
@@ -161,7 +161,7 @@ class ProjectResource(BaseModelResource):
 
 
 class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def post(self):
         data = self.get_args(
             [

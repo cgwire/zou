@@ -35,7 +35,7 @@ class AddPreviewResource(Resource):
     equal to last revision + 1.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Add a preview to given task.
@@ -82,7 +82,7 @@ class AddExtraPreviewResource(Resource):
     Add a preview to given comment.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id, preview_file_id):
         """
         Add a preview to given comment.
@@ -129,7 +129,7 @@ class AddExtraPreviewResource(Resource):
         )
         return preview_file, 201
 
-    @jwt_required
+    @jwt_required()
     def delete(self, task_id, comment_id, preview_file_id):
         """
         Delete preview from given comment.
@@ -170,7 +170,7 @@ class TaskPreviewsResource(Resource):
     Return previews linked to given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return previews linked to given task.
@@ -199,7 +199,7 @@ class TaskCommentsResource(Resource):
     Return comments linked to given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return comments linked to given task.
@@ -233,7 +233,7 @@ class TaskCommentResource(Resource):
     Remove given comment and update linked task accordingly.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id, comment_id):
         """
         Get comment corresponding at given ID.
@@ -282,7 +282,7 @@ class TaskCommentResource(Resource):
             )
         return comment
 
-    @jwt_required
+    @jwt_required()
     def delete(self, task_id, comment_id):
         """
         Delete a comment corresponding at given ID.
@@ -326,7 +326,7 @@ class PersonTasksResource(Resource):
     to false.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id):
         """
         Return task assigned to given user of which status has is_done flag sets to false.
@@ -363,7 +363,7 @@ class PersonRelatedTasksResource(Resource):
     assigned to given person), returns all tasks for given task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, task_type_id):
         """
         For all entities assigned to given person (that have at least one task assigned to given person), returns all tasks for given task type.
@@ -399,7 +399,7 @@ class PersonDoneTasksResource(Resource):
     to true. It return only tasks related to open projects.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id):
         """
         Return task assigned to given user of which status has is_done flag sets to true.
@@ -436,7 +436,7 @@ class CreateShotTasksResource(Resource):
     Create a new task for given shot and task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id, task_type_id):
         """
         Create a new task for given shot and task type.
@@ -481,7 +481,7 @@ class CreateShotTasksResource(Resource):
 
 
 class CreateEntityTasksResource(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self, project_id, entity_type, task_type_id):
         """
         Create a new task with given task type for each entity of given
@@ -543,7 +543,7 @@ class CreateAssetTasksResource(Resource):
     Create a new task for given asset and task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id, task_type_id):
         """
         Create a new task for given asset and task type.
@@ -591,7 +591,7 @@ class CreateEditTasksResource(Resource):
     Create a new task for given edit and task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id, task_type_id):
         """
         Create a new task for given edit and task type.
@@ -640,7 +640,7 @@ class ToReviewResource(Resource):
     and set path from the hard disk.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, task_id):
         """
         Change a task status to "to review".
@@ -743,7 +743,7 @@ class ClearAssignationResource(Resource):
     Remove all assignations set to given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Remove all assignations set to given task.
@@ -807,7 +807,7 @@ class TasksAssignResource(Resource):
     it ignores it.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, person_id):
         """
         Assign given task lists to given person.
@@ -881,7 +881,7 @@ class TaskAssignResource(Resource):
     Assign given task to given person.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, task_id):
         """
         Assign given task list to given person.
@@ -948,7 +948,7 @@ class TaskFullResource(Resource):
     details for task type, full details for task status, etc.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return a task with many information.
@@ -979,7 +979,7 @@ class TaskForEntityResource(Resource):
     scene.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id, task_type_id):
         """
         Return tasks related to given entity asset, episode, sequence, shot or scene.
@@ -1015,7 +1015,7 @@ class SetTimeSpentResource(Resource):
     Set time spent by a person on a task for a given day.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, date, person_id):
         """
         Set time spent by a person on a task for a given day.
@@ -1085,7 +1085,7 @@ class AddTimeSpentResource(Resource):
     Add given timeframe to time spent by a person on a task for a given day.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, date, person_id):
         """
         Add given timeframe to time spent by a person on a task for a given day.
@@ -1153,7 +1153,7 @@ class GetTimeSpentResource(Resource):
     Get time spent on a given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Get time spent on a given task.
@@ -1184,7 +1184,7 @@ class GetTimeSpentDateResource(Resource):
     Get time spent on a given task and date.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id, date):
         """
         Get time spent on a given task and date.
@@ -1225,7 +1225,7 @@ class DeleteAllTasksForTaskTypeResource(Resource):
     when tasks are created by mistake at the beginning of the project.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, task_type_id):
         """
         Delete all tasks for a given task type and project.
@@ -1266,7 +1266,7 @@ class DeleteTasksResource(Resource):
     delete tasks.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Delete tasks matching id list given in parameter.
@@ -1299,7 +1299,7 @@ class ProjectSubscriptionsResource(Resource):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     @permissions.require_admin
     def get(self, project_id):
         """
@@ -1329,7 +1329,7 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     @permissions.require_admin
     def get(self, project_id):
         """
@@ -1362,7 +1362,7 @@ class ProjectTasksResource(Resource, ArgsMixin):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     @permissions.require_admin
     def get(self, project_id):
         """
@@ -1393,7 +1393,7 @@ class ProjectCommentsResource(Resource, ArgsMixin):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     @permissions.require_admin
     def get(self, project_id):
         """
@@ -1423,7 +1423,7 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
     Preview files related to a given project.
     """
 
-    @jwt_required
+    @jwt_required()
     @permissions.require_admin
     def get(self, project_id):
         """
@@ -1448,7 +1448,7 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
 
 
 class SetTaskMainPreviewResource(Resource):
-    @jwt_required
+    @jwt_required()
     def put(self, task_id):
         """
         Set last preview from given task as main preview of the related entity.

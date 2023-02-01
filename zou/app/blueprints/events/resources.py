@@ -9,7 +9,7 @@ from zou.app.services.exception import WrongParameterException
 
 
 class EventsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve last events.
@@ -75,7 +75,7 @@ class EventsResource(Resource, ArgsMixin):
 
 
 class LoginLogsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all login logs.

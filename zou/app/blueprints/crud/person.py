@@ -77,7 +77,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         else:
             raise permissions.PermissionDenied
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Retrieves the given person.
@@ -144,7 +144,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data["departments"] = departments
         return data
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         """
         Delete a person corresponding at given ID and return it as a JSON
