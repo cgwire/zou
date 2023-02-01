@@ -310,11 +310,11 @@ def get_task_dicts_for_entity(entity_id, relations=False):
 def _get_entity_task_query():
     return (
         Task.query.order_by(Task.name)
-        .join(Project)
-        .join(TaskType)
-        .join(TaskStatus)
+        .join(Project, Task.project_id == Project.id)
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(TaskStatus, TaskStatus.id == Task.task_status_id)
         .join(Entity, Task.entity_id == Entity.id)
-        .join(EntityType)
+        .join(EntityType, Entity.entity_type_id == EntityType.id)
         .add_columns(Project.name)
         .add_columns(TaskType.name)
         .add_columns(TaskStatus.name)
