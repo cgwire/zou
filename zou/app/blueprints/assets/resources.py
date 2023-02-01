@@ -24,7 +24,7 @@ def check_criterion_access(criterions):
     return user_service.check_project_access(project_id)
 
 
-class AssetResource(Resource):
+class AssetResource(Resource, ArgsMixin):
     """
     Retrieve or delete given asset.
     """
@@ -70,10 +70,7 @@ class AssetResource(Resource):
           204:
             description: Given asset deleted
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("force", default=False, type=bool)
-        args = parser.parse_args()
-        force = args["force"]
+        force = self.get_force("force")
 
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_manager_project_access(asset["project_id"])
@@ -397,7 +394,7 @@ class AssetTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_asset(asset_id)
 
 
-class NewAssetResource(Resource):
+class NewAssetResource(Resource, ArgsMixin):
     """
     Create new asset resource.
     """
@@ -456,6 +453,7 @@ class NewAssetResource(Resource):
         return asset, 201
 
     def get_arguments(self):
+        self.get_args([])
         parser = reqparse.RequestParser()
         parser.add_argument(
             "name", help="The asset name is required.", required=True

@@ -1,5 +1,5 @@
 from flask_jwt_extended import jwt_required
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 
 
 from zou.app.mixin import ArgsMixin
@@ -78,7 +78,7 @@ class ProjectsResource(BaseModelsResource):
         return project_dict
 
 
-class ProjectResource(BaseModelResource):
+class ProjectResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Project)
         self.protected_fields.append("team")
@@ -138,9 +138,7 @@ class ProjectResource(BaseModelResource):
 
     @jwt_required()
     def delete(self, instance_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("force", default=False, type=bool)
-        args = parser.parse_args()
+        force = self.get_force()
 
         project = self.get_model_or_404(instance_id)
         project_dict = project.serialize()
@@ -151,7 +149,7 @@ class ProjectResource(BaseModelResource):
             }, 400
         else:
             self.check_delete_permissions(project_dict)
-            if args["force"] is True:
+            if force:
                 deletion_service.remove_project(instance_id)
             else:
                 project.delete()

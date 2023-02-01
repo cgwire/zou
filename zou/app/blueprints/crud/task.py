@@ -1,9 +1,8 @@
 from flask import request, current_app
-from flask_restful import reqparse
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError
-
+from zou.app.mixin import ArgsMixin
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -88,7 +87,7 @@ class TasksResource(BaseModelsResource):
             return {"message": "Task already exists."}, 400
 
 
-class TaskResource(BaseModelResource):
+class TaskResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Task)
 
@@ -120,16 +119,14 @@ class TaskResource(BaseModelResource):
         Delete a model corresponding at given ID and return it as a JSON
         object.
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("force", default=False, type=bool)
-        args = parser.parse_args()
+        force = self.get_force()
 
         instance = self.get_model_or_404(instance_id)
 
         try:
             instance_dict = instance.serialize()
             self.check_delete_permissions(instance_dict)
-            deletion_service.remove_task(instance_id, force=args["force"])
+            deletion_service.remove_task(instance_id, force=force)
             tasks_service.clear_task_cache(instance_id)
             self.post_delete(instance_dict)
 
