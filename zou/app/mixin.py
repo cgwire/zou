@@ -7,7 +7,7 @@ from zou.app.services.exception import WrongParameterException
 
 class ArgsMixin(object):
     """
-    Helpers to retrieve parameters from GET or POST queries.
+    Helpers to retrieve parameters from GET or POST queries.
     """
 
     def get_args(self, descriptors):
@@ -29,6 +29,7 @@ class ArgsMixin(object):
                 default=default,
                 action=action,
                 type=data_type,
+                location="args",
             )
 
         return parser.parse_args()
