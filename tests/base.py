@@ -60,6 +60,7 @@ class ApiTestCase(unittest.TestCase):
         self.app = app.test_client()
         self.base_headers = {}
         self.post_headers = {"Content-type": "application/json"}
+        app.app_context().push()
         from zou.app.utils import cache
 
         cache.clear()
