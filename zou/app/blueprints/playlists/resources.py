@@ -236,7 +236,7 @@ class PlaylistDownloadResource(Resource):
                 context_name += "_%s" % slugify.slugify(
                     episode_name, separator="_"
                 )
-            attachment_filename = "%s_%s_%s.mp4" % (
+            download_name = "%s_%s_%s.mp4" % (
                 slugify.slugify(build_job["created_at"], separator="").replace(
                     "t", "_"
                 ),
@@ -248,7 +248,7 @@ class PlaylistDownloadResource(Resource):
                 conditional=True,
                 mimetype="video/mp4",
                 as_attachment=True,
-                attachment_filename=attachment_filename,
+                download_name=download_name,
             )
 
 
@@ -367,7 +367,7 @@ class PlaylistZipDownloadResource(Resource):
             context_name += "_%s" % slugify.slugify(
                 episode_name, separator="_"
             )
-        attachment_filename = "%s_%s.zip" % (
+        download_name = "%s_%s.zip" % (
             context_name,
             slugify.slugify(playlist["name"], separator="_"),
         )
@@ -377,7 +377,7 @@ class PlaylistZipDownloadResource(Resource):
             conditional=True,
             mimetype="application/zip",
             as_attachment=True,
-            attachment_filename=attachment_filename,
+            download_name=download_name,
         )
 
 

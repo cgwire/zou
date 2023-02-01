@@ -149,11 +149,9 @@ def send_storage_file(
         file_size=file_size,
     )
 
-    attachment_filename = ""
+    download_name = ""
     if as_attachment:
-        attachment_filename = names_service.get_preview_file_name(
-            preview_file_id
-        )
+        download_name = names_service.get_preview_file_name(preview_file_id)
 
     try:
         return flask_send_file(
@@ -161,7 +159,7 @@ def send_storage_file(
             conditional=True,
             mimetype=mimetype,
             as_attachment=as_attachment,
-            attachment_filename=attachment_filename,
+            download_name=download_name,
         )
     except IOError as e:
         current_app.logger.error(e)

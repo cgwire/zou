@@ -47,9 +47,9 @@ def send_storage_file(working_file_id, as_attachment=False):
         config, get_local_path, open_file, prefix, working_file_id, extension
     )
 
-    attachment_filename = ""
+    download_name = ""
     if as_attachment:
-        attachment_filename = working_file_id
+        download_name = working_file_id
 
     try:
         return flask_send_file(
@@ -57,7 +57,7 @@ def send_storage_file(working_file_id, as_attachment=False):
             conditional=True,
             mimetype=mimetype,
             as_attachment=as_attachment,
-            attachment_filename=attachment_filename,
+            download_name=download_name,
         )
     except IOError as e:
         current_app.logger.error(e)
