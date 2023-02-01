@@ -1880,15 +1880,22 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
             200:
                 description:  All working files for given entity and possibly a task and a name
         """
-        task_id = request.args.get("task_id", None)
-        name = request.args.get("name", None)
-        relations = self.get_bool_parameter("relations")
+        args = self.get_args(
+            [
+                ["task_id"],
+                ["name"],
+            ]
+        )
+        relations = self.get_relations()
 
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
         return files_service.get_working_files_for_entity(
-            entity_id, task_id=task_id, name=name, relations=relations
+            entity_id,
+            task_id=args["task_id"],
+            name=args["name"],
+            relations=relations,
         )
 
 

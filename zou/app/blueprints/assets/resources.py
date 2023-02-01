@@ -110,7 +110,7 @@ class AllAssetsAliasResource(AllAssetsResource):
     pass
 
 
-class AssetsAndTasksResource(Resource):
+class AssetsAndTasksResource(Resource, ArgsMixin):
     """
     Retrieve all entities that are not shot or sequence.
     """
@@ -130,7 +130,7 @@ class AssetsAndTasksResource(Resource):
             description: All assets with tasks
         """
         criterions = query.get_query_criterions_from_request(request)
-        page = query.get_page_from_request(request)
+        page = self.get_page()
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[

@@ -15,13 +15,19 @@ class ArgsMixin(object):
         for descriptor in descriptors:
             action = None
             data_type = str
+            required = False
+            default = None
 
             if len(descriptor) == 5:
                 (name, default, required, action, data_type) = descriptor
             elif len(descriptor) == 4:
                 (name, default, required, action) = descriptor
-            else:
+            elif len(descriptor) == 3:
                 (name, default, required) = descriptor
+            elif len(descriptor) == 2:
+                (name, default) = descriptor
+            else:
+                (name) = descriptor
 
             parser.add_argument(
                 name,
