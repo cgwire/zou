@@ -18,7 +18,7 @@ from zou.app.services.exception import (
 from zou.app.models.department import Department
 
 
-class PersonsResource(BaseModelsResource):
+class PersonsResource(BaseModelsResource, ArgsMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
 
@@ -27,7 +27,7 @@ class PersonsResource(BaseModelsResource):
             query = self.model.query
 
         if permissions.has_manager_permissions():
-            if request.args.get("with_pass_hash") == "true":
+            if self.get_bool_parameter("with_pass_hash"):
                 return [
                     person.serialize(relations=relations)
                     for person in query.all()

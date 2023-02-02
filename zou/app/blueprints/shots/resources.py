@@ -616,7 +616,7 @@ class EpisodeAndTasksResource(Resource):
         return entities_service.get_entities_and_tasks(criterions)
 
 
-class ProjectShotsResource(Resource):
+class ProjectShotsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -697,13 +697,16 @@ class ProjectShotsResource(Resource):
         return shot, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", required=True)
-        parser.add_argument("sequence_id", default=None)
-        parser.add_argument("data", type=dict)
-        parser.add_argument("nb_frames", default=None, type=int)
-        parser.add_argument("description", default=None)
-        args = parser.parse_args()
+        args = self.get_args(
+            [
+                {"name": "name", "required": True},
+                "sequence_id",
+                {"name": "data", "type": dict},
+                {"name": "nb_frames", "type": int},
+                "description",
+            ]
+        )
+
         return (
             args["sequence_id"],
             args["name"],
@@ -713,7 +716,7 @@ class ProjectShotsResource(Resource):
         )
 
 
-class ProjectSequencesResource(Resource):
+class ProjectSequencesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -779,12 +782,15 @@ class ProjectSequencesResource(Resource):
         return sequence, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", required=True)
-        parser.add_argument("episode_id", default=None)
-        parser.add_argument("description", default="")
-        parser.add_argument("data", type=dict, default={})
-        args = parser.parse_args()
+        args = self.get_args(
+            [
+                {"name": "name", "required": True},
+                "episode_id",
+                {"name": "description", "default": ""},
+                {"name": "data", "type": dict, "default": {}},
+            ]
+        )
+
         return (
             args["episode_id"],
             args["name"],
@@ -793,7 +799,7 @@ class ProjectSequencesResource(Resource):
         )
 
 
-class ProjectEpisodesResource(Resource):
+class ProjectEpisodesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -857,12 +863,15 @@ class ProjectEpisodesResource(Resource):
         )
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", required=True)
-        parser.add_argument("description", default="")
-        parser.add_argument("status", default="running")
-        parser.add_argument("data", type=dict, default={})
-        args = parser.parse_args()
+        args = self.get_args(
+            [
+                {"name": "name", "required": True},
+                {"name": "status", "default": "running"},
+                {"name": "description", "default": ""},
+                {"name": "data", "type": dict, "default": {}},
+            ]
+        )
+
         return args["name"], args["status"], args["description"], args["data"]
 
 
@@ -1194,7 +1203,7 @@ class SequenceShotsResource(Resource):
         return shots_service.get_shots(criterions)
 
 
-class ProjectScenesResource(Resource):
+class ProjectScenesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -1253,10 +1262,10 @@ class ProjectScenesResource(Resource):
         return scene, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", required=True)
-        parser.add_argument("sequence_id", default=None)
-        args = parser.parse_args()
+        args = self.get_args(
+            [{"name": "name", "required": True}, "sequence_id"]
+        )
+
         return (args["sequence_id"], args["name"])
 
 
@@ -1380,6 +1389,7 @@ class SceneShotsResource(Resource, ArgsMixin):
                 description: Given scene marked as source of given shot
         """
         args = self.get_args([("shot_id", None, True)])
+
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
         shot = shots_service.get_shot(args["shot_id"])

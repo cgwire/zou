@@ -254,6 +254,7 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
                 description: Asset instance added to given shot
         """
         args = self.get_args([("asset_instance_id", None, True)])
+
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
         shot = breakdown_service.add_asset_instance_to_shot(
@@ -339,6 +340,7 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
         args = self.get_args(
             [("asset_id", None, True), ("description", None, False)]
         )
+
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_scene(

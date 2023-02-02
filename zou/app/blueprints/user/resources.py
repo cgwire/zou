@@ -192,7 +192,7 @@ class AssetTypeAssetsResource(Resource):
         )
 
 
-class OpenProjectsResource(Resource):
+class OpenProjectsResource(Resource, ArgsMixin):
     """
     Return open projects for which the user has at least one task assigned.
     """
@@ -208,7 +208,7 @@ class OpenProjectsResource(Resource):
             200:
                 description: Open projects for which the user has at least one task assigned
         """
-        name = request.args.get("name", None)
+        name = self.get_text_parameter("name")
         return user_service.get_open_projects(name=name)
 
 
@@ -629,7 +629,7 @@ class FilterResource(Resource, ArgsMixin):
         return "", 204
 
 
-class DesktopLoginLogsResource(Resource):
+class DesktopLoginLogsResource(Resource, ArgsMixin):
     """
     Allow to create and retrieve desktop login logs. Desktop login logs can only
     be created by current user.
@@ -667,17 +667,12 @@ class DesktopLoginLogsResource(Resource):
             201:
                 description: Desktop login logs created
         """
-        arguments = self.get_arguments()
+        arguments = self.get_args(["date", datetime.datetime.now()])
         current_user = persons_service.get_current_user()
         desktop_login_log = persons_service.create_desktop_login_logs(
             current_user["id"], arguments["date"]
         )
         return desktop_login_log, 201
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("date", default=datetime.datetime.now())
-        return parser.parse_args()
 
 
 class NotificationsResource(Resource, ArgsMixin):

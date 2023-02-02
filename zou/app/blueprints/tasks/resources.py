@@ -634,7 +634,7 @@ class CreateEditTasksResource(Resource):
         return tasks, 201
 
 
-class ToReviewResource(Resource):
+class ToReviewResource(Resource, ArgsMixin):
     """
     Change a task status to "to review". It creates a new preview file entry
     and set path from the hard disk.
@@ -721,13 +721,15 @@ class ToReviewResource(Resource):
         return {"folder_path": folder_path, "file_name": file_name}
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("person_id", default=None)
-        parser.add_argument("comment", default="")
-        parser.add_argument("name", default="main")
-        parser.add_argument("revision", default=1, type=int)
-        parser.add_argument("change_status", default=True, type=bool)
-        args = parser.parse_args()
+        self.get_args(
+            [
+                "person_id",
+                ("comment", ""),
+                ("name", "main"),
+                {"name": "revision", "default": 1, "type": int},
+                {"name": "change_status", "default": True, "type": bool},
+            ]
+        )
 
         return (
             args["person_id"],
@@ -738,7 +740,7 @@ class ToReviewResource(Resource):
         )
 
 
-class ClearAssignationResource(Resource):
+class ClearAssignationResource(Resource, ArgsMixin):
     """
     Remove all assignations set to given task.
     """
@@ -789,15 +791,18 @@ class ClearAssignationResource(Resource):
         return tasks
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "task_ids",
-            help="Tasks list required.",
-            required=True,
-            action="append",
+        args = self.get_args(
+            [
+                {
+                    "name": "task_ids",
+                    "help": "Tasks list required.",
+                    "required": True,
+                    "action": "append",
+                },
+                "person_id",
+            ]
         )
-        parser.add_argument("person_id", default=None)
-        args = parser.parse_args()
+
         return args["task_ids"], args["person_id"]
 
 
@@ -838,11 +843,20 @@ class TasksAssignResource(Resource):
             200:
                 description: Given tasks lists assigned to given person
         """
-        (task_ids) = self.get_arguments()
+        args = self.get_args(
+            [
+                {
+                    "name": "task_ids",
+                    "help": "Tasks list required.",
+                    "required": True,
+                    "action": "append",
+                },
+            ]
+        )
 
         tasks = []
         current_user = persons_service.get_current_user()
-        for task_id in task_ids:
+        for task_id in args["task_ids"]:
             try:
                 user_service.check_task_departement_access(task_id, person_id)
                 task = self.assign_task(task_id, person_id, current_user["id"])
@@ -860,17 +874,6 @@ class TasksAssignResource(Resource):
             projects_service.add_team_member(tasks[0]["project_id"], person_id)
 
         return tasks
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "task_ids",
-            help="Tasks list required.",
-            required=True,
-            action="append",
-        )
-        args = parser.parse_args()
-        return args["task_ids"]
 
     def assign_task(self, task_id, person_id, assigner_id):
         return tasks_service.assign_task(task_id, person_id, assigner_id)
@@ -913,7 +916,16 @@ class TaskAssignResource(Resource):
             400:
                 description: Assignee non-existent in database
         """
-        (person_id) = self.get_arguments()
+        args = self.get_arguments(
+            [
+                {
+                    "name": "person_id",
+                    "help": "Assignee ID required.",
+                    "required": True,
+                },
+            ]
+        )
+        person_id = args["person_id"]
 
         try:
             task = tasks_service.get_task(task_id)
@@ -928,15 +940,6 @@ class TaskAssignResource(Resource):
             return {"error": "Assignee doesn't exist in database."}, 400
 
         return task
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "person_id", help="Assignee ID required.", required=True
-        )
-        args = parser.parse_args()
-
-        return args.get("person_id", "")
 
     def assign_task(self, task_id, person_id):
         return tasks_service.assign_task(task_id, person_id)
@@ -1010,7 +1013,7 @@ class TaskForEntityResource(Resource):
         )
 
 
-class SetTimeSpentResource(Resource):
+class SetTimeSpentResource(Resource, ArgsMixin):
     """
     Set time spent by a person on a task for a given day.
     """
@@ -1054,7 +1057,7 @@ class SetTimeSpentResource(Resource):
             404:
                 description: Wrong date format
         """
-        args = self.get_arguments()
+        args = self.get_args([("duration", 0, False, int)])
 
         try:
             task = tasks_service.get_task(task_id)
@@ -1073,14 +1076,8 @@ class SetTimeSpentResource(Resource):
         except WrongDateFormatException:
             abort(404)
 
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("duration", default=0, type=float)
-        args = parser.parse_args()
-        return args
 
-
-class AddTimeSpentResource(Resource):
+class AddTimeSpentResource(Resource, ArgsMixin):
     """
     Add given timeframe to time spent by a person on a task for a given day.
     """
@@ -1124,7 +1121,7 @@ class AddTimeSpentResource(Resource):
             404:
                 description: Wrong date format
         """
-        args = self.get_arguments()
+        args = self.get_args([("duration", 0, False, int)])
 
         try:
             task = tasks_service.get_task(task_id)
@@ -1140,12 +1137,6 @@ class AddTimeSpentResource(Resource):
             abort(404)
         except WrongDateFormatException:
             abort(404)
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("duration", default=0, type=float)
-        args = parser.parse_args()
-        return args
 
 
 class GetTimeSpentResource(Resource):

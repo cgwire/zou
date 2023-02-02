@@ -227,9 +227,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
 
         elif extension in ALLOWED_MOVIE_EXTENSION:
             try:
-                normalize = True
-                if "normalize" in request.args:
-                    normalize = self.get_bool_parameter("normalize")
+                normalize = self.get_bool_parameter("normalize", "true")
                 self.save_movie_preview(instance_id, uploaded_file, normalize)
             except Exception as e:
                 current_app.logger.error(e, exc_info=1)
@@ -1043,9 +1041,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
             200:
                 description: Orders of previews changed for a single revision
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("position", default=0, type=int)
-        args = parser.parse_args()
+        args = self.get_args([{"name": "position", "default": 0, "type": int}])
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_manager_project_access(task["project_id"])

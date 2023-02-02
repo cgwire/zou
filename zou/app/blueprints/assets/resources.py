@@ -453,15 +453,19 @@ class NewAssetResource(Resource, ArgsMixin):
         return asset, 201
 
     def get_arguments(self):
-        self.get_args([])
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name", help="The asset name is required.", required=True
+        args = self.get_args(
+            [
+                {
+                    "name": "name",
+                    "required": True,
+                    "help": "The asset name is required.",
+                },
+                "description",
+                ("data", {}, False, dict),
+                "episode_id",
+            ]
         )
-        parser.add_argument("description")
-        parser.add_argument("data", type=dict, default={})
-        parser.add_argument("episode_id", default=None)
-        args = parser.parse_args()
+
         return (
             args["name"],
             args.get("description", ""),
@@ -638,6 +642,7 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
                 ("description", None, False),
             ]
         )
+
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_asset(

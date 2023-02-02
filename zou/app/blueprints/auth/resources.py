@@ -205,7 +205,7 @@ class LogoutResource(Resource):
             return logout_data
 
 
-class LoginResource(Resource):
+class LoginResource(Resource, ArgsMixin):
     """
     Log in user by creating and registering auth tokens. Login is based
     on email and password. If no user match given email and a destkop ID,
@@ -405,18 +405,19 @@ class LoginResource(Resource):
             return {"error": True, "login": False, "message": message}, 500
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "email", required=True, help="User email is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "email",
+                    "required": True,
+                    "help": "User email is missing.",
+                },
+                ("password", "default"),
+                "totp",
+                "email_otp"("fido_authentication_response", None, False, dict),
+                "recovery_code",
+            ]
         )
-        parser.add_argument("password", default="default")
-        parser.add_argument("totp", default=None)
-        parser.add_argument("email_otp", default=None)
-        parser.add_argument(
-            "fido_authentication_response", default=None, type=dict
-        )
-        parser.add_argument("recovery_code", default=None)
-        args = parser.parse_args()
 
         return (
             args["email"],
@@ -451,7 +452,7 @@ class RefreshTokenResource(Resource):
             return {"access_token": access_token}
 
 
-class RegistrationResource(Resource):
+class RegistrationResource(Resource, ArgsMixin):
     """
     Allow a user to register himself to the service.
     """
@@ -523,25 +524,35 @@ class RegistrationResource(Resource):
             return {"error": True, "message": str(exception)}, 400
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "email", required=True, help="User email is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "email",
+                    "required": True,
+                    "help": "User email is missing.",
+                },
+                {
+                    "name": "first_name",
+                    "required": True,
+                    "help": "First name is missing.",
+                },
+                {
+                    "name": "last_name",
+                    "required": True,
+                    "help": "Last name is missing.",
+                },
+                {
+                    "name": "password",
+                    "required": True,
+                    "help": "Password is missing.",
+                },
+                {
+                    "name": "password_2",
+                    "required": True,
+                    "help": "Confirmation password is missing.",
+                },
+            ]
         )
-        parser.add_argument(
-            "first_name", required=True, help="First name is missing."
-        )
-        parser.add_argument(
-            "last_name", required=True, help="Last name is missing."
-        )
-        parser.add_argument(
-            "password", required=True, help="Password is missing."
-        )
-        parser.add_argument(
-            "password_2",
-            required=True,
-            help="Confirmation password is missing.",
-        )
-        args = parser.parse_args()
 
         return (
             args["email"],
@@ -552,7 +563,7 @@ class RegistrationResource(Resource):
         )
 
 
-class ChangePasswordResource(Resource):
+class ChangePasswordResource(Resource, ArgsMixin):
     """
     Allow the user to change his password. Prior to modify the password,
     it requires to give the current password (to make sure the user changing
@@ -648,19 +659,25 @@ Thank you and see you soon on Kitsu,
             return {"error": True, "message": "Old password is wrong."}, 400
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "old_password", required=True, help="Old password is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "old_password",
+                    "required": True,
+                    "help": "Old password is missing.",
+                },
+                {
+                    "name": "password",
+                    "required": True,
+                    "help": "New password is missing.",
+                },
+                {
+                    "name": "password_2",
+                    "required": True,
+                    "help": "New password confirmation is missing.",
+                },
+            ]
         )
-        parser.add_argument(
-            "password", required=True, help="New password is missing."
-        )
-        parser.add_argument(
-            "password_2",
-            required=True,
-            help="New password confirmation is missing.",
-        )
-        args = parser.parse_args()
 
         return (args["old_password"], args["password"], args["password_2"])
 
@@ -710,7 +727,15 @@ class ResetPasswordResource(Resource, ArgsMixin):
                          Wrong or expired token
                          Inactive user
         """
-        args = self.get_put_arguments()
+        args = self.get_args(
+            [
+                ("email", "", True),
+                ("token", "", True),
+                ("password", "", True),
+                ("password2", "", True),
+            ]
+        )
+
         try:
             token_from_store = auth_tokens_store.get(
                 "reset-token-%s" % args["email"]
@@ -764,7 +789,8 @@ class ResetPasswordResource(Resource, ArgsMixin):
           400:
             description: Email not listed in database
         """
-        args = self.get_arguments()
+        args = self.get_args([("email", "", True)])
+
         try:
             user = persons_service.get_person_by_email(args["email"])
         except PersonNotFoundException:
@@ -813,19 +839,6 @@ Thank you and see you soon on Kitsu,
         subject = f"{organisation['name']} - Kitsu: password recovery"
         emails.send_email(subject, html, args["email"])
         return {"success": "Reset token sent"}
-
-    def get_arguments(self):
-        return self.get_args([("email", "", True)])
-
-    def get_put_arguments(self):
-        return self.get_args(
-            [
-                ("email", "", True),
-                ("token", "", True),
-                ("password", "", True),
-                ("password2", "", True),
-            ]
-        )
 
 
 class TOTPResource(Resource, ArgsMixin):
@@ -880,6 +893,7 @@ class TOTPResource(Resource, ArgsMixin):
                          Inactive user
         """
         args = self.get_args([("totp", "", True)])
+
         try:
             otp_recovery_codes = auth_service.enable_totp(
                 persons_service.get_current_user()["id"], args["totp"]
@@ -918,10 +932,11 @@ class TOTPResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
@@ -980,6 +995,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 ("email", None, True),
             ]
         )
+
         try:
             try:
                 person = persons_service.get_person_by_email_dekstop_login(
@@ -1046,6 +1062,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                          Inactive user
         """
         args = self.get_args([("email_otp", "", True)])
+
         try:
             otp_recovery_codes = auth_service.enable_email_otp(
                 persons_service.get_current_user()["id"], args["email_otp"]
@@ -1087,10 +1104,11 @@ class EmailOTPResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
@@ -1147,6 +1165,7 @@ class FIDOResource(Resource, ArgsMixin):
                 ("email", None, True),
             ]
         )
+
         try:
             try:
                 person = persons_service.get_person_by_email_dekstop_login(
@@ -1207,10 +1226,11 @@ class FIDOResource(Resource, ArgsMixin):
         try:
             args = self.get_args(
                 [
-                    ("registration_response", {}, True, None, dict),
+                    ("registration_response", {}, True, dict),
                     ("device_name", "", True),
                 ]
             )
+
             otp_recovery_codes = auth_service.register_fido(
                 persons_service.get_current_user()["id"],
                 args["registration_response"],
@@ -1252,11 +1272,12 @@ class FIDOResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
                 ("device_name", None, True),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
@@ -1314,10 +1335,11 @@ class RecoveryCodesResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(

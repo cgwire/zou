@@ -17,17 +17,30 @@ class ArgsMixin(object):
             data_type = str
             required = False
             default = None
+            help = None
 
-            if len(descriptor) == 5:
-                (name, default, required, action, data_type) = descriptor
-            elif len(descriptor) == 4:
-                (name, default, required, action) = descriptor
-            elif len(descriptor) == 3:
-                (name, default, required) = descriptor
-            elif len(descriptor) == 2:
-                (name, default) = descriptor
-            else:
-                (name) = descriptor
+            if isinstance(descriptor, (list, tuple)):
+                if len(descriptor) == 5:
+                    (name, default, required, data_type, action) = descriptor
+                elif len(descriptor) == 4:
+                    (name, default, required, data_type) = descriptor
+                elif len(descriptor) == 3:
+                    (name, default, required) = descriptor
+                elif len(descriptor) == 2:
+                    (name, default) = descriptor
+                elif len(descriptor) == 1:
+                    (name) = descriptor
+                else:
+                    raise ValueError
+            elif isinstance(descriptor, str):
+                name = descriptor
+            elif isinstance(descriptor, dict):
+                name = descriptor.get("name")
+                required = descriptor.get("required", required)
+                default = descriptor.get("default", default)
+                action = descriptor.get("action", action)
+                data_type = descriptor.get("type", data_type)
+                help = descriptor.get("help", help)
 
             parser.add_argument(
                 name,
@@ -35,7 +48,7 @@ class ArgsMixin(object):
                 default=default,
                 action=action,
                 type=data_type,
-                location="args",
+                help=help,
             )
 
         return parser.parse_args()

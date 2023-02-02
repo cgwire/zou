@@ -449,6 +449,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
                 ("text", "", False),
             ]
         )
+
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])

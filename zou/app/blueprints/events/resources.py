@@ -54,6 +54,7 @@ class EventsResource(Resource, ArgsMixin):
                 ("project_id", None, False),
             ]
         )
+
         permissions.check_manager_permissions()
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
@@ -99,6 +100,7 @@ class LoginLogsResource(Resource, ArgsMixin):
         args = self.get_args(
             [("before", None, None), ("page_size", 100, False)]
         )
+
         permissions.check_manager_permissions()
         before = None
         if args["before"] is not None:

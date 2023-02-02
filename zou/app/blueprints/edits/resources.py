@@ -322,7 +322,7 @@ class EditsAndTasksResource(Resource):
         return edits_service.get_edits_and_tasks(criterions)
 
 
-class ProjectEditsResource(Resource):
+class ProjectEditsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -393,14 +393,19 @@ class ProjectEditsResource(Resource):
         return edit, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name", help="The edit name is required.", required=True
+        args = self.get_args(
+            [
+                {
+                    "name": "name",
+                    "help": "The edit name is required.",
+                    "required": True,
+                },
+                "description",
+                {"name": "data", "type": dict},
+                "episode_id",
+            ]
         )
-        parser.add_argument("description")
-        parser.add_argument("data", type=dict)
-        parser.add_argument("episode_id", default=None)
-        args = parser.parse_args()
+
         return (
             args["name"],
             args.get("description", ""),

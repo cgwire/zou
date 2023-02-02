@@ -8,6 +8,7 @@ from flask import request, current_app
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
+from zou.app.mixin import ArgsMixin
 from zou.app import app
 from zou.app.utils import permissions
 from zou.app.services import user_service, projects_service
@@ -31,7 +32,7 @@ class RowException(Exception):
         self.message = message
 
 
-class BaseCsvImportResource(Resource):
+class BaseCsvImportResource(Resource, ArgsMixin):
     def __init__(self):
         Resource.__init__(self)
 
@@ -60,7 +61,7 @@ class BaseCsvImportResource(Resource):
 
         file_path = os.path.join(app.config["TMP_DIR"], file_name)
         uploaded_file.save(file_path)
-        self.is_update = request.args.get("update", "false") == "true"
+        self.is_update = self.get_bool_parameter("update")
 
         try:
             result = self.run_import(file_path)
@@ -123,14 +124,14 @@ class BaseCsvImportResource(Resource):
             return cached_object.id
 
 
-class BaseCsvProjectImportResource(BaseCsvImportResource):
+class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
     @jwt_required()
     def post(self, project_id, **kwargs):
         uploaded_file = request.files["file"]
         file_name = "%s.csv" % uuid.uuid4()
         file_path = os.path.join(app.config["TMP_DIR"], file_name)
         uploaded_file.save(file_path)
-        self.is_update = request.args.get("update", "false") == "true"
+        self.is_update = self.get_bool_parameter("update")
 
         try:
             result = self.run_import(project_id, file_path, **kwargs)

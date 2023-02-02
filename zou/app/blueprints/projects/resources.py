@@ -14,7 +14,7 @@ from zou.app.utils import permissions
 from zou.app.services.exception import WrongParameterException
 
 
-class OpenProjectsResource(Resource):
+class OpenProjectsResource(Resource, ArgsMixin):
     """
     Return the list of projects currently running. Most of the time, past
     projects are not needed.
@@ -32,14 +32,14 @@ class OpenProjectsResource(Resource):
             200:
               description: All running projects
         """
-        name = request.args.get("name", None)
+        name = self.get_text_parameter("name")
         if permissions.has_admin_permissions():
             return projects_service.open_projects(name)
         else:
             return user_service.get_open_projects(name)
 
 
-class AllProjectsResource(Resource):
+class AllProjectsResource(Resource, ArgsMixin):
     """
     Return all projects listed in database. Ensure that user has at least
     the manager level before that.
@@ -57,7 +57,7 @@ class AllProjectsResource(Resource):
             200:
               description: All projects listed in database
         """
-        name = request.args.get("name", None)
+        name = self.get_text_parameter("name")
         try:
             permissions.check_admin_permissions()
 
@@ -124,6 +124,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
               description: Person added to production team
         """
         args = self.get_args([("person_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         return (
             projects_service.add_team_member(project_id, args["person_id"]),
@@ -195,6 +196,7 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
               description: Asset type added to production
         """
         args = self.get_args([("asset_type_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_asset_type_setting(
             project_id, args["asset_type_id"]
@@ -300,6 +302,7 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
         args = self.get_args(
             [("task_type_id", "", True), ("priority", None, False)]
         )
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
             project_id, args["task_type_id"], args["priority"]
@@ -392,6 +395,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
               description: Task type added to production
         """
         args = self.get_args([("task_status_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_status_setting(
             project_id, args["task_status_id"]
@@ -484,6 +488,7 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
               description: Status automation added to production
         """
         args = self.get_args([("status_automation_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_status_automation_setting(
             project_id, args["status_automation_id"]
@@ -582,8 +587,8 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 ("entity_type", "Asset", False),
                 ("name", "", True),
                 ("for_client", "False", False),
-                ("choices", [], False, "append"),
-                ("departments", [], False, "append"),
+                ("choices", [], False, list, "append"),
+                ("departments", [], False, list, "append"),
             ]
         )
 
@@ -703,8 +708,8 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             [
                 ("name", "", False),
                 ("for_client", "False", False),
-                ("choices", [], False, "append"),
-                ("departments", [], False, "append"),
+                ("choices", [], False, list, "append"),
+                ("departments", [], False, list, "append"),
             ]
         )
         user_service.check_all_departments_access(

@@ -28,7 +28,7 @@ from zou.app.services.auth_service import (
 )
 
 
-class NewPersonResource(Resource):
+class NewPersonResource(Resource, ArgsMixin):
     """
     Create a new user in the database.
     """
@@ -96,24 +96,31 @@ class NewPersonResource(Resource):
         return person, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "email", help="The email is required.", required=True
+        args = self.get_args(
+            [
+                {
+                    "name": "email",
+                    "help": "The email is required.",
+                    "required": True,
+                },
+                {
+                    "name": "first_name",
+                    "help": "The first name is required.",
+                    "required": True,
+                },
+                ("last_name", ""),
+                ("phone", ""),
+                ("role", "user"),
+                ("desktop_login", ""),
+                {"name": "departments", "action": "append"},
+                "password",
+            ]
         )
-        parser.add_argument(
-            "first_name", help="The first name is required.", required=True
-        )
-        parser.add_argument("last_name", default="")
-        parser.add_argument("phone", default="")
-        parser.add_argument("role", default="user")
-        parser.add_argument("desktop_login", default="")
-        parser.add_argument("departments", default=None, action="append")
-        parser.add_argument("password", default=None)
-        args = parser.parse_args()
+
         return args
 
 
-class DesktopLoginsResource(Resource):
+class DesktopLoginsResource(Resource, ArgsMixin):
     """
     Allow to create and retrieve desktop login logs. Desktop login logs can only
     be created by current user.
@@ -173,7 +180,7 @@ class DesktopLoginsResource(Resource):
             201:
                 description: Desktop login log entry created.
         """
-        arguments = self.get_arguments()
+        args = self.get_args([("date", datetime.datetime.now())])
 
         current_user = persons_service.get_current_user()
         if (
@@ -183,15 +190,10 @@ class DesktopLoginsResource(Resource):
             raise permissions.PermissionDenied
 
         desktop_login_log = persons_service.create_desktop_login_logs(
-            person_id, arguments["date"]
+            person_id, args["date"]
         )
 
         return desktop_login_log, 201
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("date", default=datetime.datetime.now())
-        return parser.parse_args()
 
 
 class PresenceLogsResource(Resource):
@@ -1139,12 +1141,14 @@ class AddToDepartmentResource(Resource, ArgsMixin):
             201:
                 description: User added to given department
         """
-        permissions.check_admin_permissions()
         args = self.get_args(
             [
                 ("department_id", None, True),
             ]
         )
+
+        permissions.check_admin_permissions()
+
         try:
             department = tasks_service.get_department(args["department_id"])
         except DepartmentNotFoundException:
@@ -1284,16 +1288,20 @@ Thank you and see you soon on Kitsu,
             return {"error": True, "message": "User is unactive."}, 400
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "password", required=True, help="New password is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "password",
+                    "required": True,
+                    "help": "New password is missing.",
+                },
+                {
+                    "name": "password_2",
+                    "required": True,
+                    "help": "New password confirmation is missing.",
+                },
+            ]
         )
-        parser.add_argument(
-            "password_2",
-            required=True,
-            help="New password confirmation is missing.",
-        )
-        args = parser.parse_args()
 
         return (args["password"], args["password_2"])
 
