@@ -27,7 +27,17 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-            "env": {"PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"},
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"},
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Test current File",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "cwd": "${fileDirname}",
+            "env": {"DB_DATABASE": "zoudbtest"},
             "justMyCode": false
         }
     ]
