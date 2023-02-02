@@ -2,7 +2,7 @@ import datetime
 import urllib.parse
 
 from flask import request, jsonify, abort
-from flask_restful import Resource, reqparse, current_app
+from flask_restful import Resource, current_app
 from flask_principal import (
     Identity,
     AnonymousIdentity,
@@ -414,7 +414,8 @@ class LoginResource(Resource, ArgsMixin):
                 },
                 ("password", "default"),
                 "totp",
-                "email_otp"("fido_authentication_response", None, False, dict),
+                "email_otp",
+                ("fido_authentication_response", None, False, dict),
                 "recovery_code",
             ]
         )

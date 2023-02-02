@@ -3,7 +3,7 @@ import os
 
 from flask import request, abort, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from zou.app import config

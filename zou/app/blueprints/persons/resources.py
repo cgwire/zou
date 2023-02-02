@@ -1,7 +1,7 @@
 import datetime
 
 from flask import abort, request
-from flask_restful import Resource, reqparse, current_app
+from flask_restful import Resource, current_app
 from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime

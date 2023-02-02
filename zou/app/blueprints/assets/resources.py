@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import permissions, query
@@ -70,7 +70,7 @@ class AssetResource(Resource, ArgsMixin):
           204:
             description: Given asset deleted
         """
-        force = self.get_force("force")
+        force = self.get_force()
 
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_manager_project_access(asset["project_id"])
