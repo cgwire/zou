@@ -1183,11 +1183,6 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
             current_user = persons_service.get_current_user()
-            if (
-                persons_service.is_admin(person)
-                and person["id"] != current_user["id"]
-            ):
-                raise permissions.PermissionDenied
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
@@ -1279,11 +1274,6 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
             permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
             current_user = persons_service.get_current_user()
-            if (
-                persons_service.is_admin(person)
-                and person["id"] != current_user["id"]
-            ):
-                raise permissions.PermissionDenied
             disable_two_factor_authentication_for_person(person["id"])
             current_app.logger.warn(
                 "User %s has disabled the two factor authentication of %s"
