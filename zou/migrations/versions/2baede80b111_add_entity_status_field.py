@@ -1,7 +1,7 @@
 """add entity status field
 
 Revision ID: 2baede80b111
-Revises: 42ec83db6a01
+Revises: 956659992419
 Create Date: 2023-01-24 19:09:55.648115
 
 """
@@ -14,7 +14,7 @@ from zou.app.models.entity import ENTITY_STATUSES
 # revision identifiers, used by Alembic.
 
 revision = '2baede80b111'
-down_revision = '42ec83db6a01'
+down_revision = '956659992419'
 branch_labels = None
 depends_on = None
 
