@@ -1,4 +1,8 @@
-from zou.app.services import base_service, projects_service
+from zou.app.services import (
+    base_service,
+    projects_service,
+    notifications_service
+)
 from zou.app.utils import cache, events, fields
 
 from zou.app.models.entity import Entity, EntityLink
@@ -6,6 +10,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import assignees_table
 from zou.app.models.task import Task
+from zou.app.models.subscription import Subscription
 
 from zou.app.services.exception import (
     PreviewFileNotFoundException,
@@ -168,6 +173,10 @@ def get_entities_and_tasks(criterions={}):
 
     entity_map = {}
     task_map = {}
+    subscription_map = notifications_service.get_subscriptions_for_user(
+        criterions.get("project_id", None),
+        criterions.get("entity_type_id", None)
+    )
 
     query = (
         Entity.query.outerjoin(Task, Task.entity_id == Entity.id)
@@ -238,21 +247,23 @@ def get_entities_and_tasks(criterions={}):
         if task_id is not None:
 
             if task_id not in task_map:
+                task_id = str(task_id)
                 task_dict = fields.serialize_dict(
                     {
-                        "id": str(task_id),
+                        "id": task_id,
+                        "estimation": task_estimation,
                         "entity_id": entity_id,
+                        "end_date": task_end_date,
+                        "due_date": task_due_date,
+                        "duration": task_duration,
+                        "is_subscribed": subscription_map.get(task_id, False),
+                        "last_comment_date": task_last_comment_date,
+                        "priority": task_priority or 0,
+                        "real_start_date": task_real_start_date,
+                        "retake_count": task_retake_count,
+                        "start_date": task_start_date,
                         "task_status_id": str(task_status_id),
                         "task_type_id": str(task_type_id),
-                        "priority": task_priority or 0,
-                        "estimation": task_estimation,
-                        "duration": task_duration,
-                        "retake_count": task_retake_count,
-                        "real_start_date": task_real_start_date,
-                        "end_date": task_end_date,
-                        "start_date": task_start_date,
-                        "due_date": task_due_date,
-                        "last_comment_date": task_last_comment_date,
                         "assignees": [],
                     }
                 )

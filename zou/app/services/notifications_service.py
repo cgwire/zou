@@ -8,9 +8,25 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import emails_service, tasks_service
+from zou.app.services import (
+    assets_service, emails_service, persons_service, tasks_service
+)
 from zou.app.services.exception import PersonNotFoundException
 from zou.app.utils import events, fields, query as query_utils
+
+from zou.app.utils import cache
+
+
+@cache.memoize_function(120)
+def is_person_subscribed(person_id, task_id):
+    """
+    Returns true if the user subscribed to given task notifications.
+    """
+    subscription = Subscription.get_by(
+        task_id=task_id,
+        person_id=person_id
+    )
+    return subscription is not None
 
 
 def create_notification(
@@ -279,6 +295,7 @@ def subscribe_to_task(person_id, task_id):
         subscription = Subscription.create(
             person_id=person_id, task_id=task_id
         )
+    cache.cache.delete_memoized(is_person_subscribed, person_id, task_id)
     return subscription.serialize()
 
 
@@ -289,6 +306,7 @@ def unsubscribe_from_task(person_id, task_id):
     subscription = get_task_subscription_raw(person_id, task_id)
     if subscription is not None:
         subscription.delete()
+        cache.cache.delete_memoized(is_person_subscribed, person_id, task_id)
         return subscription.serialize()
     else:
         return {}
@@ -406,3 +424,32 @@ def get_notifications_for_project(project_id, page=0):
         .order_by(Notification.updated_at.desc())
     )
     return query_utils.get_paginated_results(query, page)
+
+
+def get_subscriptions_for_user(project_id, entity_type_id):
+    subscription_map = {}
+    print(project_id, entity_type_id)
+    if project_id is not None:
+        user_id = persons_service.get_current_user()["id"]
+        if entity_type_id is not None:
+            subscriptions = (
+                Subscription.query
+                .join(Task)
+                .join(Entity, Task.entity_id == Entity.id)
+                .filter(Subscription.person_id == user_id)
+                .filter(Entity.entity_type_id == entity_type_id)
+                .filter(Task.project_id == project_id)
+            ).all()
+        else:
+            subscriptions = (
+                Subscription.query
+                .join(Task)
+                .join(Entity, Task.entity_id == Entity.id)
+                .filter(Subscription.person_id == user_id)
+                .filter(Task.project_id == project_id)
+                .filter(assets_service.build_asset_type_filter())
+            ).all()
+        print(len(subscription_map))
+        for subscription in subscriptions:
+            subscription_map[str(subscription.task_id)] = True
+    return subscription_map

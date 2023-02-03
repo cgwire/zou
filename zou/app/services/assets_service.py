@@ -18,6 +18,7 @@ from zou.app.services import (
     deletion_service,
     edits_service,
     index_service,
+    notifications_service,
     projects_service,
     shots_service,
     user_service,
@@ -182,8 +183,11 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
     """
     asset_map = {}
     task_map = {}
-
     Episode = aliased(Entity, name="episode")
+    subscription_map = notifications_service.get_subscriptions_for_user(
+        criterions.get("project_id", None),
+        None
+    )
 
     query = (
         Entity.query.filter(build_asset_type_filter())
@@ -287,6 +291,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         task_last_comment_date,
         person_id,
     ) in query_result:
+        task_id = str(task_id)
 
         if asset.source_id is None:
             source_id = ""
@@ -324,23 +329,24 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         if task_id is not None:
             if task_id not in task_map:
                 task_dict = {
-                    "id": str(task_id),
-                    "entity_id": asset_id,
-                    "task_status_id": str(task_status_id),
-                    "task_type_id": str(task_type_id),
-                    "priority": task_priority or 0,
-                    "estimation": task_estimation,
-                    "duration": task_duration,
-                    "retake_count": task_retake_count,
-                    "real_start_date": fields.serialize_value(
-                        task_real_start_date
-                    ),
-                    "end_date": fields.serialize_value(task_end_date),
-                    "start_date": fields.serialize_value(task_start_date),
+                    "id": task_id,
                     "due_date": fields.serialize_value(task_due_date),
+                    "duration": task_duration,
+                    "entity_id": asset_id,
+                    "estimation": task_estimation,
+                    "end_date": fields.serialize_value(task_end_date),
+                    "is_subscribed": subscription_map.get(task_id, False),
                     "last_comment_date": fields.serialize_value(
                         task_last_comment_date
                     ),
+                    "priority": task_priority or 0,
+                    "real_start_date": fields.serialize_value(
+                        task_real_start_date
+                    ),
+                    "retake_count": task_retake_count,
+                    "start_date": fields.serialize_value(task_start_date),
+                    "task_status_id": str(task_status_id),
+                    "task_type_id": str(task_type_id),
                     "assignees": [],
                 }
                 task_map[task_id] = task_dict
