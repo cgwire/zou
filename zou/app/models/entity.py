@@ -1,4 +1,4 @@
-from sqlalchemy_utils import UUIDType
+from sqlalchemy_utils import UUIDType, ChoiceType
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
@@ -6,6 +6,14 @@ from zou.app.models.base import BaseMixin
 from zou.app.utils import fields
 
 from sqlalchemy.dialects.postgresql import JSONB
+
+ENTITY_STATUSES = [
+    ("standby", "Stand By"),
+    ("running", "Running"),
+    ("complete", "Complete"),
+    ("canceled", "Canceled"),
+]
+
 
 
 class AssetInstanceLink(db.Model):
@@ -82,6 +90,8 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     nb_frames = db.Column(db.Integer)  # Specific to shots
     nb_entities_out = db.Column(db.Integer, default=0)
     is_casting_standby = db.Column(db.Boolean, default=False)
+
+    status = db.Column(ChoiceType(ENTITY_STATUSES), default="running")
 
     project_id = db.Column(
         UUIDType(binary=False),
