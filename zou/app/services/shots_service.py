@@ -25,6 +25,7 @@ from zou.app.services import (
     entities_service,
     persons_service,
     projects_service,
+    notifications_service,
     names_service,
     user_service,
 )
@@ -206,6 +207,10 @@ def get_shots_and_tasks(criterions={}):
     shot_type = get_shot_type()
     shot_map = {}
     task_map = {}
+    subscription_map = notifications_service.get_subscriptions_for_user(
+        criterions.get("project_id", None),
+        get_shot_type()["id"]
+    )
 
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
@@ -328,23 +333,25 @@ def get_shots_and_tasks(criterions={}):
             )
 
         if task_id is not None:
+            task_id = str(task_id)
             if task_id not in task_map:
                 task_dict = fields.serialize_dict(
                     {
                         "id": task_id,
-                        "entity_id": shot_id,
-                        "task_status_id": task_status_id,
-                        "task_type_id": task_type_id,
-                        "priority": task_priority or 0,
-                        "estimation": task_estimation,
                         "duration": task_duration,
-                        "retake_count": task_retake_count,
-                        "real_start_date": task_real_start_date,
-                        "end_date": task_end_date,
-                        "start_date": task_start_date,
                         "due_date": task_due_date,
+                        "end_date": task_end_date,
+                        "entity_id": shot_id,
+                        "estimation": task_estimation,
+                        "is_subscribed": subscription_map.get(task_id, False),
                         "last_comment_date": task_last_comment_date,
                         "nb_assets_ready": task_nb_assets_ready,
+                        "priority": task_priority or 0,
+                        "real_start_date": task_real_start_date,
+                        "retake_count": task_retake_count,
+                        "start_date": task_start_date,
+                        "task_status_id": task_status_id,
+                        "task_type_id": task_type_id,
                         "assignees": [],
                     }
                 )

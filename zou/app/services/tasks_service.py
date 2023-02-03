@@ -43,6 +43,7 @@ from zou.app.services import (
     assets_service,
     base_service,
     files_service,
+    notifications_service,
     persons_service,
     projects_service,
     shots_service,
@@ -1359,12 +1360,16 @@ def get_tasks_for_project(project_id, page=0):
 
 @cache.memoize_function(120)
 def get_full_task(task_id):
+    current_user = persons_service.get_current_user()
     task = get_task_with_relations(task_id)
     task_type = get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
     task_status = get_task_status(task["task_status_id"])
     entity = entities_service.get_entity(task["entity_id"])
     entity_type = entities_service.get_entity_type(entity["entity_type_id"])
+    is_subscribed = notifications_service.is_person_subscribed(
+        current_user["id"], task_id
+    )
     assignees = [
         persons_service.get_person(assignee_id)
         for assignee_id in task["assignees"]
@@ -1373,11 +1378,12 @@ def get_full_task(task_id):
     task.update(
         {
             "entity": entity,
-            "task_type": task_type,
-            "task_status": task_status,
-            "project": project,
             "entity_type": entity_type,
+            "is_subscribed": is_subscribed,
             "persons": assignees,
+            "project": project,
+            "task_status": task_status,
+            "task_type": task_type,
             "type": "Task",
         }
     )
