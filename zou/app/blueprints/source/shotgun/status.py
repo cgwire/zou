@@ -1,4 +1,4 @@
-from flask_restful import current_app
+from flask import current_app
 
 from zou.app.models.task_status import TaskStatus
 from zou.app.utils import colors

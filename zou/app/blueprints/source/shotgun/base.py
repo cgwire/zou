@@ -1,5 +1,5 @@
-from flask import request
-from flask_restful import Resource, current_app
+from flask import request, current_app
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import fields, permissions

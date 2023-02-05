@@ -2,8 +2,8 @@ import math
 import json
 import sqlalchemy.orm as orm
 
-from flask import request, abort
-from flask_restful import Resource, current_app
+from flask import request, abort, current_app
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError

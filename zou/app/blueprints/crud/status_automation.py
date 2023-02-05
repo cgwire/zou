@@ -1,5 +1,5 @@
+from flask import current_app
 from flask_jwt_extended import jwt_required
-from flask_restful import current_app
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from .base import BaseModelsResource, BaseModelResource

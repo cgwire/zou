@@ -1,8 +1,8 @@
 import datetime
 import urllib.parse
 
-from flask import request, jsonify, abort
-from flask_restful import Resource, current_app
+from flask import request, jsonify, abort, current_app
+from flask_restful import Resource
 from flask_principal import (
     Identity,
     AnonymousIdentity,

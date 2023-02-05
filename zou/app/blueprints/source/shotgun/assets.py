@@ -1,4 +1,4 @@
-from flask_restful import current_app
+from flask import current_app
 
 from sqlalchemy.exc import IntegrityError
 

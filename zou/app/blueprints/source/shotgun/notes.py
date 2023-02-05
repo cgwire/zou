@@ -1,6 +1,6 @@
 import datetime
 
-from flask_restful import current_app
+from flask import current_app
 
 from zou.app.models.task import Task
 from zou.app.models.comment import Comment

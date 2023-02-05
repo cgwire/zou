@@ -2,9 +2,8 @@ import os
 import flask_fs
 import traceback
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, current_app
 from flasgger import Swagger
-from flask_restful import current_app
 from flask_jwt_extended import JWTManager
 from flask_principal import Principal, identity_changed, Identity
 from flask_sqlalchemy import SQLAlchemy
