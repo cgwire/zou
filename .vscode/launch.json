@@ -36,7 +36,10 @@
             "type": "python",
             "request": "launch",
             "module": "pytest",
-            "cwd": "${fileDirname}",
+            "args": [
+                "${file}"
+            ],
+            "cwd": "${workspaceFolder}",
             "env": {"DB_DATABASE": "zoudbtest"},
             "justMyCode": false
         }
