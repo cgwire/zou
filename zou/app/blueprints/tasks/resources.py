@@ -721,7 +721,7 @@ class ToReviewResource(Resource, ArgsMixin):
         return {"folder_path": folder_path, "file_name": file_name}
 
     def get_arguments(self):
-        self.get_args(
+        args = self.get_args(
             [
                 "person_id",
                 ("comment", ""),
@@ -806,7 +806,7 @@ class ClearAssignationResource(Resource, ArgsMixin):
         return args["task_ids"], args["person_id"]
 
 
-class TasksAssignResource(Resource):
+class TasksAssignResource(Resource, ArgsMixin):
     """
     Assign given task lists to given person. If a given task ID is wrong,
     it ignores it.
@@ -879,7 +879,7 @@ class TasksAssignResource(Resource):
         return tasks_service.assign_task(task_id, person_id, assigner_id)
 
 
-class TaskAssignResource(Resource):
+class TaskAssignResource(Resource, ArgsMixin):
     """
     Assign given task to given person.
     """
@@ -916,7 +916,7 @@ class TaskAssignResource(Resource):
             400:
                 description: Assignee non-existent in database
         """
-        args = self.get_arguments(
+        args = self.get_args(
             [
                 {
                     "name": "person_id",

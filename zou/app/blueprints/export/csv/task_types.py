@@ -15,7 +15,7 @@ class TaskTypesCsvExport(BaseCsvExport):
 
     def build_query(self):
         query = TaskType.query.order_by(Department.name, TaskType.name)
-        query = query.join(Department)
+        query = query.join(Department, TaskType.department_id == Department.id)
         query = query.add_columns(Department.name)
         return query
 

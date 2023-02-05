@@ -784,7 +784,9 @@ def get_person_tasks(person_id, projects, is_done=None):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     query = (
-        Task.query.join(Project, TaskType, TaskStatus)
+        Task.query.join(Project, Task.project_id == Project.id)
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
         .join(Entity, Entity.id == Task.entity_id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .outerjoin(Sequence, Sequence.id == Entity.parent_id)

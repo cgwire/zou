@@ -123,7 +123,7 @@ def get_shots(criterions={}):
     query = Entity.query
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     query = (
-        query.join(Project)
+        query.join(Project, Project.id == Entity.project_id)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .add_columns(Project.name)
         .add_columns(Sequence.name)
@@ -164,7 +164,7 @@ def get_scenes(criterions={}):
     query = Entity.query
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     query = (
-        query.join(Project)
+        query.join(Project, Entity.project_id == Project.id)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .add_columns(Project.name)
         .add_columns(Sequence.name)

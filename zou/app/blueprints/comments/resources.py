@@ -191,20 +191,31 @@ class CommentTaskResource(Resource):
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
+        if request.is_json:
+            location = ["values", "json"]
+        else:
+            location = "values"
         parser.add_argument(
-            "task_status_id", required=True, help="Task Status ID is missing"
+            "task_status_id",
+            required=True,
+            help="Task Status ID is missing",
+            location=location,
         )
-        parser.add_argument("comment", default="")
-        parser.add_argument("person_id", default="")
-        parser.add_argument("created_at", default="")
-        if request.json is None:
-            parser.add_argument("checklist", default="[]")
+        parser.add_argument("comment", default="", location=location)
+        parser.add_argument("person_id", default="", location=location)
+        parser.add_argument("created_at", default="", location=location)
+        if request.is_json:
+            parser.add_argument("checklist", default="[]", location=location)
             args = parser.parse_args()
             checklist = args["checklist"]
             checklist = json.loads(checklist)
         else:
             parser.add_argument(
-                "checklist", type=dict, action="append", default=[]
+                "checklist",
+                type=dict,
+                action="append",
+                default=[],
+                location=location,
             )
             args = parser.parse_args()
             checklist = args["checklist"]

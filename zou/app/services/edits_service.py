@@ -82,7 +82,7 @@ def get_edits_and_tasks(criterions={}):
     )
 
     query = (
-        Entity.query.join(Project)
+        Entity.query.join(Project, Entity.project_id == Project.id)
         .outerjoin(Episode, Episode.id == Entity.parent_id)
         .outerjoin(Task, Task.entity_id == Entity.id)
         .outerjoin(assignees_table)

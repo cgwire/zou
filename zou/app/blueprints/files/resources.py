@@ -711,18 +711,20 @@ class NewWorkingFileResource(Resource, ArgsMixin):
         )
 
         args = self.get_args(
-            {
-                "name": "name",
-                "help": "The asset name is required.",
-                "required": True,
-            },
-            ("descrtipion", ""),
-            ("mode", "working"),
-            ("comment", ""),
-            ("person_id", person["id"]),
-            ("software_id", maxsoft["id"]),
-            {"name": "revision", "default": 0, "type": int},
-            ("sep", "/"),
+            [
+                {
+                    "name": "name",
+                    "help": "The asset name is required.",
+                    "required": True,
+                },
+                ("description", ""),
+                ("mode", "working"),
+                ("comment", ""),
+                ("person_id", person["id"]),
+                ("software_id", maxsoft["id"]),
+                {"name": "revision", "default": 0, "type": int},
+                ("sep", "/"),
+            ]
         )
 
         return (
@@ -1464,7 +1466,8 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
                 "representation",
                 "file_status_id",
                 "name"
-            ]
+            ],
+            location="values",
         )
 
         entity = entities_service.get_entity(entity_id)
@@ -1517,7 +1520,8 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
                 "representation",
                 "file_status_id",
                 "name"
-            ]
+            ],
+            location="values",
         )
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -1725,7 +1729,8 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
                 "representation",
                 "file_status_id",
                 "name",
-            ]
+            ],
+            location="values",
         )
 
         entity = entities_service.get_entity(entity_id)
@@ -1772,7 +1777,8 @@ class InstanceOutputFilesResource(Resource):
                 "representation",
                 "file_status_id",
                 "name",
-            ]
+            ],
+            location="values",
         )
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -1914,7 +1920,8 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
             [
                 "task_id",
                 "name",
-            ]
+            ],
+            location="values",
         )
 
         relations = self.get_relations()

@@ -443,8 +443,11 @@ class RefreshTokenResource(Resource):
           200:
             description: Access Token
         """
-        email = get_jwt_identity()
-        access_token = create_access_token(identity=email)
+        user = persons_service.get_current_user()
+        access_token = create_access_token(
+            identity=user["email"],
+            additional_claims={"user_id": user["id"]},
+        )
         auth_service.register_tokens(app, access_token)
         if is_from_browser(request.user_agent):
             response = jsonify({"refresh": True})
@@ -994,7 +997,8 @@ class EmailOTPResource(Resource, ArgsMixin):
         args = self.get_args(
             [
                 ("email", None, True),
-            ]
+            ],
+            location="values",
         )
 
         try:
@@ -1164,7 +1168,8 @@ class FIDOResource(Resource, ArgsMixin):
         args = self.get_args(
             [
                 ("email", None, True),
-            ]
+            ],
+            location="values",
         )
 
         try:

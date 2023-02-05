@@ -9,10 +9,9 @@ from zou.app.stores import file_store
 class FileStoreTestCase(unittest.TestCase):
     def setUp(self):
         super(FileStoreTestCase, self).setUp()
-        with app.app_context():
-            self.preview_path = app.config["PREVIEW_FOLDER"]
-            self.store = file_store
-            self.store.clear()
+        self.preview_path = app.config["PREVIEW_FOLDER"]
+        self.store = file_store
+        self.store.clear()
 
     def tearDown(self):
         self.store.clear()

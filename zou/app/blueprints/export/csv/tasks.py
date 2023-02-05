@@ -43,9 +43,9 @@ class TasksCsvExport(BaseCsvExport):
         open_status = projects_service.get_open_status()
 
         query = Task.query.order_by(Project.name, TaskType.name, Task.name)
-        query = query.join(Project)
-        query = query.join(TaskType)
-        query = query.join(TaskStatus)
+        query = query.join(Project, Task.project_id == Project.id)
+        query = query.join(TaskType, Task.task_type_id == TaskType.id)
+        query = query.join(TaskStatus, Task.task_status_id == TaskStatus.id)
         query = query.join(Entity, Task.entity_id == Entity.id)
         query = query.join(EntityType)
         query = (
