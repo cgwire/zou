@@ -1,23 +1,34 @@
 language: python
-dist: jammy
+dist: focal
 os: linux
 python:
   - "3.8"
   - "3.11"
-services:
-  - postgresql
 addons:
-  postgresql: "9.4"
+  postgresql: '12'
   apt:
     packages:
       - ffmpeg
+      - postgresql-12
+env:
+  global:
+  - PGPORT=5432
+  - PGUSER=postgres
+  - PGHOST=localhost
+  - SQLALCHEMY_WARN_20=1
+  - DEBUG=1
+  - MAIL_DEBUG=1
+  - FLASK_APP=zou.app
+  - PREVIEW_FOLDER=/home/travis/build/cgwire/zou/previews
+before_install:
+ - sudo sed -i -e '/local.*peer/s/postgres/all/' -e 's/peer\|md5/trust/g' /etc/postgresql/*/main/pg_hba.conf
+ - sudo service postgresql restart
+ - sleep 1
+ - pg_config --version
 install:
-  - "pip install -U pip"
-  - "pip install -U 'setuptools<=65.1.1'"
+  - "pip install -U pip setuptools"
   - "pip install -r requirements.txt"
 before_script:
   - psql -c 'create database zoudb;' -U postgres
   - mkdir /home/travis/build/cgwire/zou/previews
-env:
-  - DEBUG=1 MAIL_DEBUG=1 FLASK_APP=zou.app PREVIEW_FOLDER=/home/travis/build/cgwire/zou/previews
 script: py.test
