@@ -529,7 +529,8 @@ def _prepare_query(task_id, is_client, is_manager):
     query = (
         Comment.query.order_by(Comment.created_at.desc())
         .filter_by(object_id=task_id)
-        .join(Person, TaskStatus)
+        .join(Person, Comment.person_id == Person.id)
+        .join(TaskStatus, Comment.task_status_id == TaskStatus.id)
         .add_columns(
             TaskStatus.name,
             TaskStatus.short_name,

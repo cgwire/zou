@@ -7,7 +7,7 @@ from sqlalchemy.orm import close_all_sessions
 def get_db_uri():
     from zou.app.config import DATABASE
 
-    return URL(**DATABASE)
+    return URL.create(**DATABASE)
 
 
 def is_db_exists():
