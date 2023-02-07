@@ -154,7 +154,7 @@ def upgrade():
         sa.Column("phone", sa.String(length=30), nullable=True),
         sa.Column("active", sa.Boolean(), nullable=True),
         sa.Column("last_presence", sa.Date(), nullable=True),
-        sa.Column("password", sa.Binary(), nullable=True),
+        sa.Column("password", sa.LargeBinary(), nullable=True),
         sa.Column("desktop_login", sa.String(length=80), nullable=True),
         sa.Column("shotgun_id", sa.Integer(), nullable=True),
         sa.Column(
