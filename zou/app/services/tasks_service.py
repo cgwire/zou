@@ -69,7 +69,6 @@ def clear_department_cache(department_id):
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
     cache.cache.delete_memoized(get_task_with_relations, task_id)
-    cache.cache.delete_memoized(get_full_task, task_id)
 
 
 @cache.memoize_function(120)
@@ -1478,9 +1477,7 @@ def get_tasks_for_project(project_id, page=0):
     return query_utils.get_paginated_results(query, page, relations=True)
 
 
-@cache.memoize_function(120)
-def get_full_task(task_id):
-    current_user = persons_service.get_current_user()
+def get_full_task(task_id, user_id):
     task = get_task_with_relations(task_id)
     task_type = get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
@@ -1488,7 +1485,7 @@ def get_full_task(task_id):
     entity = entities_service.get_entity(task["entity_id"])
     entity_type = entities_service.get_entity_type(entity["entity_type_id"])
     is_subscribed = notifications_service.is_person_subscribed(
-        current_user["id"], task_id
+        user_id, task_id
     )
     assignees = [
         persons_service.get_person(assignee_id)

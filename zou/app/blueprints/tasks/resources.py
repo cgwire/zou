@@ -970,7 +970,9 @@ class TaskFullResource(Resource):
             200:
                 description: Task with many information
         """
-        task = tasks_service.get_full_task(task_id)
+        task = tasks_service.get_full_task(
+            task_id, persons_service.get_current_user()["id"]
+        )
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         return task

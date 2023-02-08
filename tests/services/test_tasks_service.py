@@ -468,7 +468,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(comment["mentions"][0], str(self.person.id))
 
     def test_get_full_task(self):
-        task = tasks_service.get_full_task(self.task.id)
+        task = tasks_service.get_full_task(self.task.id, self.person.id)
         self.assertEqual(task["project"]["name"], self.project.name)
         self.assertEqual(task["assigner"]["id"], str(self.assigner.id))
         self.assertEqual(task["persons"][0]["id"], str(self.person.id))
@@ -476,7 +476,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(task["task_type"]["id"], str(self.task_type.id))
         self.assertEqual(task["is_subscribed"], False)
 
-        task = tasks_service.get_full_task(self.shot_task.id)
+        task = tasks_service.get_full_task(self.shot_task.id, self.person.id)
         self.assertEqual(task["sequence"]["id"], str(self.sequence.id))
 
     def test_get_next_position(self):
