@@ -230,9 +230,13 @@ def get_entities_and_tasks(criterions={}):
         entity.data = entity.data or {}
 
         if entity_id not in entity_map:
+            status = "running"
+            if entity.status is not None:
+                status = str(entity.status.value)
             entity_map[entity_id] = {
                 "id": str(entity.id),
                 "name": entity.name,
+                "status": status,
                 "episode_id": str(entity.parent_id),
                 "description": entity.description,
                 "frame_in": entity.data.get("frame_in", None),
@@ -245,9 +249,8 @@ def get_entities_and_tasks(criterions={}):
             }
 
         if task_id is not None:
-
+            task_id = str(task_id)
             if task_id not in task_map:
-                task_id = str(task_id)
                 task_dict = fields.serialize_dict(
                     {
                         "id": task_id,
