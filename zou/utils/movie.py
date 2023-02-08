@@ -69,6 +69,9 @@ def generate_thumbnail(movie_path):
 
 
 def generate_tile(movie_path):
+    """
+    ffmpeg -i {movie_path} -vf 'scale=150:100,tile=8x8' -an -vsync 0 tile%03d.png
+    """
     pass
 
 
