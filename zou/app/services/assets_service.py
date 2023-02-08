@@ -291,7 +291,6 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         task_last_comment_date,
         person_id,
     ) in query_result:
-        task_id = str(task_id)
 
         if asset.source_id is None:
             source_id = ""
@@ -327,6 +326,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
             }
 
         if task_id is not None:
+            task_id = str(task_id)
             if task_id not in task_map:
                 task_dict = {
                     "id": task_id,
