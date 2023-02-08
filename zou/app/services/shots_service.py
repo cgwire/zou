@@ -140,7 +140,7 @@ def get_shots(criterions={}):
         raise WrongIdFormatException
 
     shots = []
-    for (shot_model, project_name, sequence_name) in data:
+    for shot_model, project_name, sequence_name in data:
         shot = shot_model.serialize(obj_type="Shot")
         shot["project_name"] = project_name
         shot["sequence_name"] = sequence_name
@@ -180,7 +180,7 @@ def get_scenes(criterions={}):
         raise WrongIdFormatException
 
     scenes = []
-    for (scene_model, project_name, sequence_name) in data:
+    for scene_model, project_name, sequence_name in data:
         scene = scene_model.serialize(obj_type="Scene")
         scene["project_name"] = project_name
         scene["sequence_name"] = sequence_name
@@ -1104,7 +1104,7 @@ def get_weighted_quotas(project_id, task_type_id, detail_level):
     )
     result = query.all()
 
-    for (task, nb_frames, date, duration, person_id) in result:
+    for task, nb_frames, date, duration, person_id in result:
         person_id = str(person_id)
         if task.duration > 0 and nb_frames is not None:
             nb_frames = round(nb_frames * (duration / task.duration))
@@ -1125,7 +1125,7 @@ def get_weighted_quotas(project_id, task_type_id, detail_level):
     )
     result = query.all()
 
-    for (task, nb_frames, person_id) in result:
+    for task, nb_frames, person_id in result:
         business_days = (
             date_helpers.get_business_days(task.real_start_date, task.end_date)
             + 1
@@ -1167,7 +1167,7 @@ def get_raw_quotas(project_id, task_type_id, detail_level):
     )
     result = query.all()
 
-    for (task, nb_frames, person_id) in result:
+    for task, nb_frames, person_id in result:
         date = task.end_date
         if nb_frames is None:
             nb_frames = 0
@@ -1359,7 +1359,7 @@ def get_weighted_quota_shots_between(
         .add_columns(Task.duration, TimeSpent.duration)
     )
     query_shots = query.all()
-    for (entity, task_duration, duration) in query_shots:
+    for entity, task_duration, duration in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
             full_name, _ = names_service.get_full_entity_name(shot["id"])
@@ -1389,7 +1389,7 @@ def get_weighted_quota_shots_between(
     )
     query_shots = query.all()
 
-    for (entity, task_start, task_end) in query_shots:
+    for entity, task_start, task_end in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
             business_days = (
