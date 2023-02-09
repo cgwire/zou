@@ -15,7 +15,6 @@ ENTITY_STATUSES = [
 ]
 
 
-
 class AssetInstanceLink(db.Model):
     __tablename__ = "asset_instance_link"
     entity_id = db.Column(

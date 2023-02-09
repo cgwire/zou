@@ -45,9 +45,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: Format error
         """
-        super(TaskTypeEstimationsCsvImportResource, self).post(
-            project_id, **kwargs
-        )
+        return super().post(project_id, **kwargs)
 
     def prepare_import(self, project_id, task_type_id, episode_id=None):
         self.organisation = Organisation.query.first()
@@ -103,17 +101,17 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
         new_data = {}
 
-        if row.get("Estimation") is not None:
+        if row.get("Estimation") not in [None, ""]:
             new_data["estimation"] = round(
                 float(row["Estimation"]) * self.organisation.hours_by_day * 60
             )
 
-        if row.get("Start date") is not None:
+        if row.get("Start date") not in [None, ""]:
             new_data["start_date"] = date_helpers.get_date_from_string(
                 row["Start date"]
             )
 
-        if row.get("Due date") is not None:
+        if row.get("Due date") not in [None, ""]:
             new_data["due_date"] = date_helpers.get_date_from_string(
                 row["Due date"]
             )
@@ -165,8 +163,4 @@ class TaskTypeEstimationsEpisodeCsvImportResource(
             400:
                 description: Format error
         """
-        super(TaskTypeEstimationsEpisodeCsvImportResource, self).post(
-            project_id, **kwargs
-        )
-
-    pass
+        return super().post(project_id, **kwargs)

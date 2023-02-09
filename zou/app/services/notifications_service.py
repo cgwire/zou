@@ -9,7 +9,10 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
 from zou.app.services import (
-    assets_service, emails_service, persons_service, tasks_service
+    assets_service,
+    emails_service,
+    persons_service,
+    tasks_service,
 )
 from zou.app.services.exception import PersonNotFoundException
 from zou.app.utils import events, fields, query as query_utils
@@ -22,10 +25,7 @@ def is_person_subscribed(person_id, task_id):
     """
     Returns true if the user subscribed to given task notifications.
     """
-    subscription = Subscription.get_by(
-        task_id=task_id,
-        person_id=person_id
-    )
+    subscription = Subscription.get_by(task_id=task_id, person_id=person_id)
     return subscription is not None
 
 
@@ -433,8 +433,7 @@ def get_subscriptions_for_user(project_id, entity_type_id):
         user_id = persons_service.get_current_user()["id"]
         if entity_type_id is not None:
             subscriptions = (
-                Subscription.query
-                .join(Task)
+                Subscription.query.join(Task)
                 .join(Entity, Task.entity_id == Entity.id)
                 .filter(Subscription.person_id == user_id)
                 .filter(Entity.entity_type_id == entity_type_id)
@@ -442,8 +441,7 @@ def get_subscriptions_for_user(project_id, entity_type_id):
             ).all()
         else:
             subscriptions = (
-                Subscription.query
-                .join(Task)
+                Subscription.query.join(Task)
                 .join(Entity, Task.entity_id == Entity.id)
                 .filter(Subscription.person_id == user_id)
                 .filter(Task.project_id == project_id)
