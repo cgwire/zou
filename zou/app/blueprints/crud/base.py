@@ -104,7 +104,7 @@ class BaseModelsResource(Resource):
         for id_filter in in_filter:
             query = query.filter(id_filter)
 
-        for (key, value) in many_join_filter:
+        for key, value in many_join_filter:
             query = query.filter(getattr(self.model, key).any(id=value))
 
         return query
