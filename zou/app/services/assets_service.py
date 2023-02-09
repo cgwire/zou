@@ -185,8 +185,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
     task_map = {}
     Episode = aliased(Entity, name="episode")
     subscription_map = notifications_service.get_subscriptions_for_user(
-        criterions.get("project_id", None),
-        None
+        criterions.get("project_id", None), None
     )
 
     query = (

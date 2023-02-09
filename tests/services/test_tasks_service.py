@@ -469,12 +469,15 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_get_full_task(self):
         from zou.app import app
+
         with app.app_context():
             task = tasks_service.get_full_task(self.task.id)
             self.assertEqual(task["project"]["name"], self.project.name)
             self.assertEqual(task["assigner"]["id"], str(self.assigner.id))
             self.assertEqual(task["persons"][0]["id"], str(self.person.id))
-            self.assertEqual(task["task_status"]["id"], str(self.task_status.id))
+            self.assertEqual(
+                task["task_status"]["id"], str(self.task_status.id)
+            )
             self.assertEqual(task["task_type"]["id"], str(self.task_type.id))
             self.assertEqual(task["is_subscribed"], False)
 

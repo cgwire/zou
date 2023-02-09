@@ -1,7 +1,7 @@
 from zou.app.services import (
     base_service,
     projects_service,
-    notifications_service
+    notifications_service,
 )
 from zou.app.utils import cache, events, fields
 
@@ -175,7 +175,7 @@ def get_entities_and_tasks(criterions={}):
     task_map = {}
     subscription_map = notifications_service.get_subscriptions_for_user(
         criterions.get("project_id", None),
-        criterions.get("entity_type_id", None)
+        criterions.get("entity_type_id", None),
     )
 
     query = (

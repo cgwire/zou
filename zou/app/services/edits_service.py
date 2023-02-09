@@ -78,8 +78,7 @@ def get_edits_and_tasks(criterions={}):
     task_map = {}
     Episode = aliased(Entity, name="episode")
     subscription_map = notifications_service.get_subscriptions_for_user(
-        criterions.get("project_id", None),
-        get_edit_type()["id"]
+        criterions.get("project_id", None), get_edit_type()["id"]
     )
 
     query = (

@@ -208,8 +208,7 @@ def get_shots_and_tasks(criterions={}):
     shot_map = {}
     task_map = {}
     subscription_map = notifications_service.get_subscriptions_for_user(
-        criterions.get("project_id", None),
-        get_shot_type()["id"]
+        criterions.get("project_id", None), get_shot_type()["id"]
     )
 
     Sequence = aliased(Entity, name="sequence")
