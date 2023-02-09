@@ -5,10 +5,6 @@ from flask_fs.backends.local import LocalBackend
 
 from zou.app import app
 
-default_root = ""
-with app.app_context():
-    default_root = app.config.get("PREVIEW_FOLDER")
-
 
 def path(self, filename):
     folder_one = filename.split("-")[0]
@@ -16,19 +12,21 @@ def path(self, filename):
     folder_two = file_name[:3]
     folder_three = file_name[3:6]
 
-    path = os.path.join(
+    return os.path.join(
         self.root, folder_one, folder_two, folder_three, file_name
     )
-    return path
+
+
+LocalBackend.path = path
 
 
 def clear_bucket(bucket):
     for filename in bucket.list_files():
-        bucket.delete(filename)
-
-
-LocalBackend.default_root = default_root
-LocalBackend.path = path
+        if isinstance(bucket.backend, LocalBackend):
+            folder_one, _, _, file_name = filename.split("/")
+            bucket.delete(f"{folder_one}-{file_name}")
+        else:
+            bucket.delete(filename)
 
 
 def make_key(prefix, id):
