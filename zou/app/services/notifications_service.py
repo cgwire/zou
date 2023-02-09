@@ -428,7 +428,6 @@ def get_notifications_for_project(project_id, page=0):
 
 def get_subscriptions_for_user(project_id, entity_type_id):
     subscription_map = {}
-    print(project_id, entity_type_id)
     if project_id is not None:
         user_id = persons_service.get_current_user()["id"]
         if entity_type_id is not None:
@@ -447,7 +446,6 @@ def get_subscriptions_for_user(project_id, entity_type_id):
                 .filter(Task.project_id == project_id)
                 .filter(assets_service.build_asset_type_filter())
             ).all()
-        print(len(subscription_map))
         for subscription in subscriptions:
             subscription_map[str(subscription.task_id)] = True
     return subscription_map
