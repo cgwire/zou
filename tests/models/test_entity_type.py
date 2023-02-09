@@ -45,7 +45,7 @@ class EntityTypeTestCase(ApiDBTestCase):
         data = {"name": "FX", "task_types": task_types}
         self.asset_type = self.post("data/entity-types", data)
         self.assertIsNotNone(self.asset_type["id"])
-        self.assertEquals(
+        self.assertEqual(
             set(self.asset_type["task_types"]),
             set(task_types),
         )
@@ -54,7 +54,7 @@ class EntityTypeTestCase(ApiDBTestCase):
         self.assertEqual(len(asset_types), 4)
 
         created_asset_type = EntityType.get(self.asset_type["id"])
-        self.assertEquals(
+        self.assertEqual(
             set(
                 str(task_type.id)
                 for task_type in created_asset_type.task_types
@@ -82,7 +82,7 @@ class EntityTypeTestCase(ApiDBTestCase):
         data = {"name": "FX", "task_types": task_types}
         self.put("data/entity-types/%s" % asset_type["id"], data)
         asset_type_again = self.get("data/entity-types/%s" % asset_type["id"])
-        self.assertEquals(
+        self.assertEqual(
             set(task_type for task_type in asset_type_again["task_types"]),
             set(task_types),
         )
