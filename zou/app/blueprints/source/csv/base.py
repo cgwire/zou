@@ -67,7 +67,7 @@ class BaseCsvImportResource(Resource):
             return result, 201
         except ImportRowException as e:
             current_app.logger.error(
-                "Import row %s failed: %s" % (e.message, e.line_number)
+                "Import row %s failed: %s" % (e.line_number, e.message)
             )
             return self.format_row_error(e), 400
         except csv.Error as e:
@@ -137,7 +137,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource):
             return result, 201
         except ImportRowException as e:
             current_app.logger.error(
-                "Import row %s failed: %s" % (e.message, e.line_number)
+                "Import row %s failed: %s" % (e.line_number, e.message)
             )
             return self.format_row_error(e), 400
         except csv.Error as e:

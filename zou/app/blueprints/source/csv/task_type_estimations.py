@@ -3,12 +3,9 @@ from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.models.task import Task
 from zou.app.models.organisation import Organisation
 
 from zou.app.services import assets_service, shots_service, tasks_service
-
-from sqlalchemy import and_
 
 from zou.app.utils import date_helpers
 
@@ -97,7 +94,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         elif self.shots_map.get(key):
             entity_id = self.shots_map[key]
         else:
-            raise RowException("Entity not found")
+            raise RowException(f"Entity {key} not found")
 
         new_data = {}
 
