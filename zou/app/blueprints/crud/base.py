@@ -8,6 +8,7 @@ from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
 
+from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions
 from zou.app.services.exception import (
     ArgumentsException,
@@ -15,7 +16,7 @@ from zou.app.services.exception import (
 )
 
 
-class BaseModelsResource(Resource):
+class BaseModelsResource(Resource, ArgsMixin):
     def __init__(self, model):
         Resource.__init__(self)
         self.model = model
@@ -155,7 +156,7 @@ class BaseModelsResource(Resource):
                 query = self.add_project_permission_filter(query)
                 page = int(options.get("page", "-1"))
                 limit = int(options.get("limit", 0))
-                relations = options.get("relations", "false").lower() == "true"
+                relations = self.get_bool_parameter("relations")
                 is_paginated = page > -1
 
                 if is_paginated:
