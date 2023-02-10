@@ -8,7 +8,7 @@ from zou.app.services import (
     projects_service,
     user_service,
     tasks_service,
-    persons_service
+    persons_service,
 )
 from zou.app.utils import csv_utils, query
 

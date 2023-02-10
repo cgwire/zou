@@ -7,6 +7,7 @@ from zou.app.services import (
     projects_service,
     user_service,
     tasks_service,
+    persons_service,
 )
 from zou.app.utils import csv_utils
 
@@ -32,6 +33,7 @@ class EditsCsvExport(Resource):
         """
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()
+        self.persons_map = persons_service.get_persons_map()
 
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])
@@ -56,12 +58,17 @@ class EditsCsvExport(Resource):
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
 
-    def build_headers(self, metadata_infos, validation_headers):
+    def build_headers(self, metadata_infos, validation_columns):
         headers = ["Project", "Episode", "Name", "Description", "Time Spent"]
 
-        metadata_headers = [name for (name, field_name) in metadata_infos]
+        metadata_headers = [name for (name, _) in metadata_infos]
 
-        return headers + metadata_headers + validation_headers
+        validation_assignations_columns = []
+        for validation_column in validation_columns:
+            validation_assignations_columns.append(validation_column)
+            validation_assignations_columns.append("Assignations")
+
+        return headers + metadata_headers + validation_assignations_columns
 
     def build_row(self, result, metadata_infos, validation_columns):
         row = [
@@ -76,14 +83,28 @@ class EditsCsvExport(Resource):
         for task in result["tasks"]:
             task_status = self.task_status_map[task["task_status_id"]]
             task_type = self.task_type_map[task["task_type_id"]]
-            task_map[task_type["name"]] = task_status["short_name"]
+            task_map[task_type["name"]] = {}
+            task_map[task_type["name"]]["short_name"] = task_status[
+                "short_name"
+            ]
+            task_map[task_type["name"]]["assignees"] = ",".join(
+                [
+                    self.persons_map[person_id]["full_name"]
+                    for person_id in task["assignees"]
+                ]
+            )
 
         for (_, field_name) in metadata_infos:
             result_metadata = result.get("data", {}) or {}
             row.append(result_metadata.get(field_name, ""))
 
         for column in validation_columns:
-            row.append(task_map.get(column, ""))
+            if column in task_map:
+                row.append(task_map[column]["short_name"])
+                row.append(task_map[column]["assignees"])
+            else:
+                row.append("")
+                row.append("")
 
         return row
 
