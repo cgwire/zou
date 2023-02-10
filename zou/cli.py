@@ -136,26 +136,27 @@ def create_admin(email, password):
     Create an admin user to allow usage of the API when database is empty.
     """
     try:
-        auth.validate_password(password)
-        # Allow "admin@example.com" to be invalid.
-        if email != "admin@example.com":
-            auth.validate_email(email)
-        password = auth.encrypt_password(password)
-        persons_service.create_person(
-            email, password, "Super", "Admin", role="admin"
-        )
-        print("Admin successfully created.")
-
-    except IntegrityError:
-        print("User already exists for this email.")
-        sys.exit(1)
-
-    except auth.PasswordTooShortException:
-        print("Password is too short.")
-        sys.exit(1)
-    except auth.EmailNotValidException:
-        print("Email is not valid.")
-        sys.exit(1)
+        person = persons_service.get_person_by_email(email)
+        if person["role"] != "admin":
+            persons_service.update_person(person["id"], {"role": "admin"})
+            print("Existing user's role has been upgraded to 'admin'.")
+    except PersonNotFoundException:
+        try:
+            auth.validate_password(password)
+            # Allow "admin@example.com" to be invalid.
+            if email != "admin@example.com":
+                auth.validate_email(email)
+            password = auth.encrypt_password(password)
+            persons_service.create_person(
+                email, password, "Super", "Admin", role="admin"
+            )
+            print("Admin successfully created.")
+        except auth.PasswordTooShortException:
+            print("Password is too short.")
+            sys.exit(1)
+        except auth.EmailNotValidException:
+            print("Email is not valid.")
+            sys.exit(1)
 
 
 @cli.command()
