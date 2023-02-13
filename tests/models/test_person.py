@@ -47,6 +47,10 @@ class PersonTestCase(ApiDBTestCase):
         person = self.get_first("data/persons")
         person_again = self.get("data/persons/%s" % person["id"])
         self.assertEqual(person, person_again)
+        person_with_relations = self.get(
+            "data/persons/%s?relations=true" % person["id"]
+        )
+        self.assertTrue("departments" in person_with_relations)
         self.get_404("data/persons/%s" % fields.gen_uuid())
 
     def test_create_person(self):

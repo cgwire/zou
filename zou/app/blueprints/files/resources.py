@@ -1857,7 +1857,7 @@ class SetTreeResource(Resource):
         return args.get("tree_name", "")
 
 
-class EntityWorkingFilesResource(Resource):
+class EntityWorkingFilesResource(Resource, ArgsMixin):
     """
     Get all working files for a given entity and possibly a task and a name.
     """
@@ -1882,7 +1882,7 @@ class EntityWorkingFilesResource(Resource):
         """
         task_id = request.args.get("task_id", None)
         name = request.args.get("name", None)
-        relations = request.args.get("relations", "false").lower() == "true"
+        relations = self.get_bool_parameter("relations")
 
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
