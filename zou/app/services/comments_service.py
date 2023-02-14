@@ -1,8 +1,12 @@
 import datetime
 import os
 import re
+import random
+import string
 
 from flask import current_app
+
+from sqlalchemy.exc import IntegrityError
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
@@ -283,8 +287,13 @@ def add_attachments_to_comment(comment, files):
     """
     comment["attachment_files"] = []
     for uploaded_file in files.values():
-        attachment_file = create_attachment(comment, uploaded_file)
-        comment["attachment_files"].append(attachment_file)
+        try:
+            attachment_file = create_attachment(comment, uploaded_file)
+            comment["attachment_files"].append(attachment_file)
+        except IntegrityError:
+            attachment_file = create_attachment(
+                comment, uploaded_file, randomize=True)
+            comment["attachment_files"].append(attachment_file)
     return comment
 
 
@@ -313,11 +322,16 @@ def reset_mentions(comment):
     return comment_dict
 
 
-def create_attachment(comment, uploaded_file):
+def create_attachment(comment, uploaded_file, randomize=False):
     tmp_folder = current_app.config["TMP_DIR"]
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
     extension = fs.get_file_extension(filename)
+    if randomize:
+        letters = string.ascii_lowercase
+        random_str = ''.join(random.choice(letters) for i in range(8))
+        filename = f"{filename[:len(filename) - len(extension) - 1]}"
+        filename += f"-{random_str}.{extension}"
 
     attachment_file = AttachmentFile.create(
         name=filename,
