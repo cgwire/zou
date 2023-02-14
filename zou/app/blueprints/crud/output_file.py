@@ -42,5 +42,5 @@ class OutputFileResource(BaseModelResource):
             return True
         else:
             return user_service.check_working_on_entity(
-                output_file["entity_id"]
+                output_file["temporal_entity_id"] or output_file["entity_id"]
             )
