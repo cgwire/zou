@@ -642,7 +642,7 @@ def is_episode(entity):
     return str(entity["entity_type_id"]) == episode_type["id"]
 
 
-def get_or_create_episode(project_id, status, name, description=""):
+def get_or_create_episode(project_id, name, status="running", description=""):
     """
     Retrieve episode matching given project and name or create it.
     """
@@ -916,7 +916,7 @@ def remove_sequence(sequence_id, force=False):
     return sequence.serialize(obj_type="Sequence")
 
 
-def create_episode(project_id, name, status, description="", data={}):
+def create_episode(project_id, name, status="running", description="", data={}):
     """
     Create episode for given project.
     """

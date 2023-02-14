@@ -155,7 +155,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 self.episodes[
                     episode_key
                 ] = shots_service.get_or_create_episode(
-                    project_id, episode_name
+                    project_id, episode_name, "running"
                 )
 
             sequence_key = "%s-%s-%s" % (
