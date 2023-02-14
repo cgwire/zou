@@ -901,6 +901,123 @@ def get_person_tasks(person_id, projects, is_done=None):
     return tasks
 
 
+def get_person_tasks_to_check(department_ids, project_ids):
+    """
+    Retrieve all tasks requiring a feedback for given departments and projects.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+    query = (
+        Task.query.join(Project, TaskType, TaskStatus)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(EntityType, EntityType.id == Entity.entity_type_id)
+        .outerjoin(Sequence, Sequence.id == Entity.parent_id)
+        .outerjoin(Episode, Episode.id == Sequence.parent_id)
+        .filter(Project.id.in_(project_ids))
+        .filter(TaskStatus.is_feedback_request)
+        .filter(TaskType.department_id.in_(department_ids))
+        .add_columns(
+            Project.name,
+            Project.has_avatar,
+            Entity.id,
+            Entity.name,
+            Entity.description,
+            Entity.data,
+            Entity.preview_file_id,
+            Entity.source_id,
+            EntityType.name,
+            Entity.canceled,
+            Entity.parent_id,
+            Sequence.name,
+            Episode.id,
+            Episode.name,
+            TaskType.name,
+            TaskType.for_entity,
+            TaskStatus.name,
+            TaskType.color,
+            TaskStatus.color,
+            TaskStatus.short_name,
+        )
+    )
+    tasks = []
+    for (
+        task,
+        project_name,
+        project_has_avatar,
+        entity_id,
+        entity_name,
+        entity_description,
+        entity_data,
+        entity_preview_file_id,
+        entity_source_id,
+        entity_type_name,
+        entity_canceled,
+        entity_parent_id,
+        sequence_name,
+        episode_id,
+        episode_name,
+        task_type_name,
+        task_type_for_entity,
+        task_status_name,
+        task_type_color,
+        task_status_color,
+        task_status_short_name,
+    ) in query.all():
+        if entity_preview_file_id is None:
+            entity_preview_file_id = ""
+
+        if entity_source_id is None:
+            entity_source_id = ""
+
+        if episode_id is None:
+            episode_id = entity_source_id
+
+        task_dict = get_task_with_relations(str(task.id))
+        if entity_type_name == "Sequence" and entity_parent_id is not None:
+            episode_id = entity_parent_id
+            episode = shots_service.get_episode(episode_id)
+            episode_name = episode["name"]
+
+        task_dict.update(
+            {
+                "project_name": project_name,
+                "project_id": str(task.project_id),
+                "project_has_avatar": project_has_avatar,
+                "entity_id": str(entity_id),
+                "entity_name": entity_name,
+                "entity_description": entity_description,
+                "entity_data": entity_data,
+                "entity_preview_file_id": str(entity_preview_file_id),
+                "entity_source_id": str(entity_source_id),
+                "entity_type_name": entity_type_name,
+                "entity_canceled": entity_canceled,
+                "sequence_name": sequence_name,
+                "episode_id": str(episode_id),
+                "episode_name": episode_name,
+                "task_estimation": task.estimation,
+                "task_duration": task.duration,
+                "task_start_date": fields.serialize_value(task.start_date),
+                "task_due_date": fields.serialize_value(task.due_date),
+                "task_type_name": task_type_name,
+                "task_type_for_entity": task_type_for_entity,
+                "task_status_name": task_status_name,
+                "task_type_color": task_type_color,
+                "task_status_color": task_status_color,
+                "task_status_short_name": task_status_short_name,
+            }
+        )
+        tasks.append(task_dict)
+
+    task_ids = [task["id"] for task in tasks]
+    task_comment_map = get_last_comment_map(task_ids)
+    for task in tasks:
+        if task["id"] in task_comment_map:
+            task["last_comment"] = task_comment_map[task["id"]]
+        else:
+            task["last_comment"] = {}
+    return tasks
+
+
 def get_last_comment_map(task_ids):
     task_comment_map = {}
     comments = (

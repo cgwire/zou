@@ -15,6 +15,8 @@ from zou.app.services import (
     user_service,
 )
 
+from zou.app.utils import permissions
+
 from zou.app.services.exception import WrongDateFormatException
 
 
@@ -447,6 +449,29 @@ class TodosResource(Resource):
                 description: Unfinished tasks currently assigned to current user
         """
         return user_service.get_todos()
+
+
+class ToChecksResource(Resource):
+
+    @jwt_required
+    def get(self):
+        """
+        Return tasks requiring feedback for current user departments.
+
+        If the user is not a supervisor, it returns an empty list.
+        ---
+        tags:
+        - User
+        responses:
+            200:
+                description: Tasks requiring feedback in current user departments.
+        """
+        if permissions.has_supervisor_permissions():
+            return user_service.get_tasks_to_check()
+        else:
+            return []
+
+
 
 
 class DoneResource(Resource):
