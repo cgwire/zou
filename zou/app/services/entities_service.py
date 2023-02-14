@@ -232,7 +232,7 @@ def get_entities_and_tasks(criterions={}):
         if entity_id not in entity_map:
             status = "running"
             if entity.status is not None:
-                status = str(entity.status.value)
+                status = str(entity.status.code)
             entity_map[entity_id] = {
                 "id": str(entity.id),
                 "name": entity.name,

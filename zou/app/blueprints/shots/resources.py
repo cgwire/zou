@@ -846,11 +846,13 @@ class ProjectEpisodesResource(Resource):
             201:
                 description: Episode created for given project
         """
-        name, description, data = self.get_arguments()
+        name, status, description, data = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
         return (
-            shots_service.create_episode(project_id, name, description, data),
+            shots_service.create_episode(
+                project_id, name, status, description, data
+            ),
             201,
         )
 
@@ -858,9 +860,10 @@ class ProjectEpisodesResource(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("name", required=True)
         parser.add_argument("description", default="")
+        parser.add_argument("status", default="running")
         parser.add_argument("data", type=dict, default={})
         args = parser.parse_args()
-        return args["name"], args["description"], args["data"]
+        return args["name"], args["status"], args["description"], args["data"]
 
 
 class ProjectEpisodeStatsResource(Resource):
