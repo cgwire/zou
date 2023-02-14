@@ -613,7 +613,7 @@ def _build_preview_map_for_comments(comment_ids, is_client=False):
         .filter(preview_link_table.c.comment.in_(comment_ids))
         .add_columns(preview_link_table.c.comment)
     )
-    for (preview, comment_id) in query.all():
+    for preview, comment_id in query.all():
         comment_id = str(comment_id)
         if comment_id not in preview_map:
             preview_map[comment_id] = []
