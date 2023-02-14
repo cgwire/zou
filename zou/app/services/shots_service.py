@@ -642,7 +642,7 @@ def is_episode(entity):
     return str(entity["entity_type_id"]) == episode_type["id"]
 
 
-def get_or_create_episode(project_id, name, description=""):
+def get_or_create_episode(project_id, status, name, description=""):
     """
     Retrieve episode matching given project and name or create it.
     """
@@ -650,11 +650,14 @@ def get_or_create_episode(project_id, name, description=""):
     episode = Entity.get_by(
         entity_type_id=episode_type["id"], project_id=project_id, name=name
     )
+    if status not in ["running", "complete", "standby", "canceled"]:
+        status = "running"
     if episode is None:
         episode = Entity(
             entity_type_id=episode_type["id"],
             project_id=project_id,
             name=name,
+            status=status,
             description=description,
         )
         episode.save()
@@ -673,7 +676,7 @@ def get_or_create_first_episode(project_id):
     if episode is not None:
         return episode.serialize()
     else:
-        return get_or_create_episode(project_id, "E01")
+        return get_or_create_episode(project_id, "running", "E01")
 
 
 def get_or_create_sequence(
@@ -913,7 +916,7 @@ def remove_sequence(sequence_id, force=False):
     return sequence.serialize(obj_type="Sequence")
 
 
-def create_episode(project_id, name, description="", data={}):
+def create_episode(project_id, name, status, description="", data={}):
     """
     Create episode for given project.
     """
@@ -921,11 +924,14 @@ def create_episode(project_id, name, description="", data={}):
     episode = Entity.get_by(
         entity_type_id=episode_type["id"], project_id=project_id, name=name
     )
+    if status not in ["running", "complete", "standby", "canceled"]:
+        status = "running"
     if episode is None:
         episode = Entity.create(
             entity_type_id=episode_type["id"],
             project_id=project_id,
             name=name,
+            status=status,
             description=description,
             data=data,
         )
