@@ -115,6 +115,18 @@ def get_done_tasks():
     return tasks_service.get_person_done_tasks(current_user["id"], projects)
 
 
+def get_tasks_to_check():
+    """
+    Get all tasks waiting for feedback in the user department.
+    """
+    current_user = persons_service.get_current_user(relations=True)
+    projects = related_projects()
+    project_ids = [project["id"] for project in projects]
+    return tasks_service.get_person_tasks_to_check(
+        current_user["departments"], project_ids
+    )
+
+
 def get_tasks_for_entity(entity_id):
     """
     Get all tasks assigned to current user and related to given entity.
