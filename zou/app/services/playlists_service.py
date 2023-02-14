@@ -796,7 +796,7 @@ def get_playlists_for_project(project_id, page=0):
     return query_utils.get_paginated_results(query, page, relations=True)
 
 
-def generate_temp_playlist(task_ids):
+def generate_temp_playlist(task_ids, sort=True):
     """
     Generate the data structure of a playlist for a given task list. It doesn't
     persist anything. The goal is to build a temporary playlist used to see
@@ -807,10 +807,19 @@ def generate_temp_playlist(task_ids):
         entity = generate_playlisted_entity_from_task(task_id)
         entities.append(entity)
     if len(entities) > 0:
-        if "sequence_name" in entities[0]:
-            return sorted(entities, key=itemgetter("sequence_name", "name"))
-        else:
-            return sorted(entities, key=itemgetter("asset_type_name", "name"))
+        if not sort:
+            return entities
+        try:
+            if "episode_name" in entities[0]:
+                return sorted(entities, key=itemgetter("episode_name", "name"))
+            elif "sequence_name" in entities[0]:
+                return sorted(entities, key=itemgetter("sequence_name", "name"))
+            elif "asset_type_name" in entities[0]:
+                return sorted(entities, key=itemgetter("asset_type_name", "name"))
+            else:
+                return entities
+        except:
+            return entities
     else:
         return []
 
@@ -824,6 +833,10 @@ def generate_playlisted_entity_from_task(task_id):
     entity = entities_service.get_entity(task["entity_id"])
     if shots_service.is_shot(entity):
         playlisted_entity = get_base_shot_for_playlist(entity, task_id)
+    elif shots_service.is_sequence(entity):
+        playlisted_entity = get_base_sequence_for_playlist(entity, task_id)
+    elif shots_service.is_episode(entity):
+        playlisted_entity = get_base_episode_for_playlist(entity, task_id)
     else:
         playlisted_entity = get_base_asset_for_playlist(entity, task_id)
 
@@ -841,6 +854,43 @@ def generate_playlisted_entity_from_task(task_id):
             }
         )
     playlisted_entity["preview_files"] = preview_files
+    return playlisted_entity
+
+
+def get_base_episode_for_playlist(entity, task_id):
+    episode = shots_service.get_episode(entity["id"])
+    playlisted_entity = {
+        "id": episode["id"],
+        "name": episode["name"],
+        "preview_file_task_id": task_id,
+        "sequence_id": "",
+        "sequence_name": "",
+        "parent_name": "",
+    }
+    return playlisted_entity
+
+
+def get_base_sequence_for_playlist(entity, task_id):
+    sequence = shots_service.get_sequence(entity["id"])
+    episode = shots_service.get_episode(sequence["parent_id"])
+    if episode:
+        playlisted_entity = {
+            "id": sequence["id"],
+            "name": sequence["name"],
+            "preview_file_task_id": task_id,
+            "episode_id": episode["id"],
+            "episode_name": episode["name"],
+            "parent_name": episode["name"],
+        }
+    else:
+        playlisted_entity = {
+            "id": sequence["id"],
+            "name": sequence["name"],
+            "preview_file_task_id": task_id,
+            "sequence_id": "",
+            "sequence_name": "",
+            "parent_name": "",
+        }
     return playlisted_entity
 
 
