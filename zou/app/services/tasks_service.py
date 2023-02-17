@@ -365,7 +365,8 @@ def get_task_types_for_sequence(sequence_id):
     """
     Sequence = aliased(Entity, name="sequence")
     task_types = (
-        TaskType.query.join(Task, Entity)
+        TaskType.query.join(Task)
+        .join(Entity)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .filter(Sequence.id == sequence_id)
         .group_by(TaskType.id)
@@ -390,7 +391,8 @@ def get_task_types_for_episode(episode_id):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     task_types = (
-        TaskType.query.join(Task, Entity)
+        TaskType.query.join(Task)
+        .join(Entity)
         .join(Sequence, Sequence.id == Entity.parent_id)
         .join(Episode, Episode.id == Sequence.parent_id)
         .filter(Episode.id == episode_id)
@@ -910,7 +912,9 @@ def get_person_tasks_to_check(department_ids, project_ids):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     query = (
-        Task.query.join(Project, TaskType, TaskStatus)
+        Task.query.join(Project)
+        .join(TaskType)
+        .join(TaskStatus)
         .join(Entity, Entity.id == Task.entity_id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .outerjoin(Sequence, Sequence.id == Entity.parent_id)

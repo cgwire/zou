@@ -160,7 +160,8 @@ def get_full_assets(criterions={}):
     query = (
         Entity.query.filter_by(**criterions)
         .filter(build_asset_type_filter())
-        .join(Project, EntityType)
+        .join(Project)
+        .join(EntityType)
         .add_columns(Project.name, EntityType.name)
         .order_by(Project.name, EntityType.name, Entity.name)
     )

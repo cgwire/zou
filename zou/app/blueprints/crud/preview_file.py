@@ -24,7 +24,8 @@ class PreviewFilesResource(BaseModelsResource):
             )
         elif not permissions.has_admin_permissions():
             query = (
-                query.join(Task, Project)
+                query.join(Task)
+                .join(Project)
                 .filter(user_service.build_related_projects_filter())
                 .filter(user_service.build_open_project_filter())
             )
