@@ -243,16 +243,16 @@ def sync_with_ldap_server():
 
     def get_ldap_users():
         excluded_accounts = LDAP_EXCLUDED_ACCOUNTS.split(",")
-        ldap_server = "%s:%s" % (LDAP_HOST, LDAP_PORT)
+        ldap_server = f"{LDAP_HOST}:{LDAP_PORT}"
         SSL = LDAP_SSL
         if LDAP_IS_AD_SIMPLE:
             user = LDAP_USER
             authentication = SIMPLE
         elif LDAP_IS_AD:
-            user = "%s\%s" % (LDAP_DOMAIN, LDAP_USER)
+            user = f"{LDAP_DOMAIN}\{LDAP_USER}"
             authentication = NTLM
         else:
-            user = "uid=%s,%s" % (LDAP_USER, LDAP_BASE_DN)
+            user = f"uid={LDAP_USER},{LDAP_BASE_DN}"
             authentication = SIMPLE
 
         server = Server(ldap_server, get_info=ALL, use_ssl=SSL)

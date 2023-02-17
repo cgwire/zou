@@ -180,27 +180,17 @@ def ldap_auth_strategy(person, password, app):
         try:
             SSL = app.config["LDAP_SSL"]
             if app.config["LDAP_IS_AD_SIMPLE"]:
-                user = "CN=%s,%s" % (
-                    person["full_name"],
-                    app.config["LDAP_BASE_DN"],
-                )
+                user = f"CN={person['full_name']},{app.config['LDAP_BASE_DN']}"
                 authentication = SIMPLE
             elif app.config["LDAP_IS_AD"]:
-                user = "%s\%s" % (
-                    app.config["LDAP_DOMAIN"],
-                    person["desktop_login"],
-                )
+                user = f"{app.config['LDAP_DOMAIN']}\{person['desktop_login']}"
                 authentication = NTLM
             else:
-                user = "uid=%s,%s" % (
-                    person["desktop_login"],
-                    app.config["LDAP_BASE_DN"],
-                )
+                user = f"uid={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
                 authentication = SIMPLE
 
-            ldap_server = "%s:%s" % (
-                app.config["LDAP_HOST"],
-                app.config["LDAP_PORT"],
+            ldap_server = (
+                f"{app.config['LDAP_HOST']}:{app.config['LDAP_PORT']}"
             )
             server = Server(ldap_server, get_info=ALL, use_ssl=SSL)
             conn = Connection(
