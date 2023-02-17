@@ -407,7 +407,10 @@ def get_task_types_for_entity(entity_id):
     Return all task types for which there is a task related to given entity.
     """
     task_types = (
-        TaskType.query.join(Task, Entity).filter(Entity.id == entity_id).all()
+        TaskType.query.join(Task)
+        .join(Entity)
+        .filter(Entity.id == entity_id)
+        .all()
     )
     return fields.serialize_models(task_types)
 
