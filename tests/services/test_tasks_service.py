@@ -500,7 +500,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         preview_files = PreviewFile.query.filter_by(
             task_id=self.task_id, revision=2
         ).order_by(PreviewFile.position)
-        for (i, preview_file) in enumerate(preview_files):
+        for i, preview_file in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[0].id), preview_file_id)
 
@@ -508,6 +508,6 @@ class TaskServiceTestCase(ApiDBTestCase):
         preview_files = PreviewFile.query.filter_by(
             task_id=self.task_id, revision=2
         ).order_by(PreviewFile.position)
-        for (i, preview_file) in enumerate(preview_files):
+        for i, preview_file in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[2].id), preview_file_id)

@@ -292,7 +292,8 @@ def add_attachments_to_comment(comment, files):
             comment["attachment_files"].append(attachment_file)
         except IntegrityError:
             attachment_file = create_attachment(
-                comment, uploaded_file, randomize=True)
+                comment, uploaded_file, randomize=True
+            )
             comment["attachment_files"].append(attachment_file)
     return comment
 
@@ -329,7 +330,7 @@ def create_attachment(comment, uploaded_file, randomize=False):
     extension = fs.get_file_extension(filename)
     if randomize:
         letters = string.ascii_lowercase
-        random_str = ''.join(random.choice(letters) for i in range(8))
+        random_str = "".join(random.choice(letters) for i in range(8))
         filename = f"{filename[:len(filename) - len(extension) - 1]}"
         filename += f"-{random_str}.{extension}"
 

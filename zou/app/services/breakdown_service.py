@@ -92,7 +92,7 @@ def get_production_episodes_casting(project_id):
         .order_by(EntityType.name, Entity.name)
     )
 
-    for (link, entity_name, entity_type_name, entity_preview_file_id) in links:
+    for link, entity_name, entity_type_name, entity_preview_file_id in links:
         episode_id = str(link.entity_in_id)
         if episode_id not in castings:
             castings[episode_id] = []
@@ -210,7 +210,7 @@ def get_asset_type_casting(project_id, asset_type_id):
         .order_by(EntityType.name, Entity.name)
     )
 
-    for (link, entity_name, entity_type_name, entity_preview_file_id) in links:
+    for link, entity_name, entity_type_name, entity_preview_file_id in links:
         asset_id = str(link.entity_in_id)
         if asset_id not in castings:
             castings[asset_id] = []
@@ -427,7 +427,7 @@ def get_cast_in(asset_id):
         .order_by(EntityType.name, Entity.name)
     )
 
-    for (link, entity_name, entity_type_name, entity_preview_file_id) in links:
+    for link, entity_name, entity_type_name, entity_preview_file_id in links:
         shot = {
             "asset_id": fields.serialize_value(link.entity_in_id),
             "asset_name": entity_name,

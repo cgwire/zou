@@ -284,7 +284,7 @@ def get_news_stats_for_project(
     if before is not None:
         query = query.filter(News.created_at < before)
     stats = {}
-    for (task_status_id, count) in query.all():
+    for task_status_id, count in query.all():
         if task_status_id is not None:
             stats[str(task_status_id)] = count
     return stats

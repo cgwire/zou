@@ -32,7 +32,6 @@ def save_file(tmp_folder, instance_id, file_to_save):
 
 
 def convert_jpg_to_png(file_source_path):
-
     """
     Convert .jpg file located at given path into a .png file with same name.
     """

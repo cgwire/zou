@@ -222,7 +222,7 @@ def set_preview_files_for_entities(playlist_dict):
     )
 
     is_pictures = False
-    for (preview_file, task_type_id, entity_id) in preview_files:
+    for preview_file, task_type_id, entity_id in preview_files:
         entity_id = str(entity_id)
         task_type_id = str(task_type_id)
         if entity_id not in previews:
@@ -812,9 +812,13 @@ def generate_temp_playlist(task_ids, sort=True):
             if "episode_name" in entities[0]:
                 return sorted(entities, key=itemgetter("episode_name", "name"))
             elif "sequence_name" in entities[0]:
-                return sorted(entities, key=itemgetter("sequence_name", "name"))
+                return sorted(
+                    entities, key=itemgetter("sequence_name", "name")
+                )
             elif "asset_type_name" in entities[0]:
-                return sorted(entities, key=itemgetter("asset_type_name", "name"))
+                return sorted(
+                    entities, key=itemgetter("asset_type_name", "name")
+                )
             else:
                 return entities
         except:

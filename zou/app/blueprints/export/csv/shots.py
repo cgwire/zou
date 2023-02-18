@@ -124,7 +124,7 @@ class ShotsCsvExport(Resource):
                 ]
             )
 
-        for (_, field_name) in metadata_infos:
+        for _, field_name in metadata_infos:
             row.append(result.get("data", {}).get(field_name, ""))
 
         for column in validation_columns:

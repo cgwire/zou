@@ -1465,7 +1465,7 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
                 "task_type_id",
                 "representation",
                 "file_status_id",
-                "name"
+                "name",
             ],
             location="values",
         )
@@ -1479,7 +1479,7 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
             task_type_id=args["task_type_id"],
             representation=args["representation"],
             file_status_id=args["file_status_id"],
-            name=args["name"]
+            name=args["name"],
         )
 
 
@@ -1519,7 +1519,7 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
                 "task_type_id",
                 "representation",
                 "file_status_id",
-                "name"
+                "name",
             ],
             location="values",
         )
@@ -1535,7 +1535,7 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
             task_type_id=args["task_type_id"],
             representation=args["representation"],
             file_status_id=args["file_status_id"],
-            name=args["name"]
+            name=args["name"],
         )
 
 

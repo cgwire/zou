@@ -916,7 +916,9 @@ def remove_sequence(sequence_id, force=False):
     return sequence.serialize(obj_type="Sequence")
 
 
-def create_episode(project_id, name, status="running", description="", data={}):
+def create_episode(
+    project_id, name, status="running", description="", data={}
+):
     """
     Create episode for given project.
     """

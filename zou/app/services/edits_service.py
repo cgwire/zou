@@ -61,7 +61,7 @@ def get_edits(criterions={}):
         raise WrongIdFormatException
 
     edits = []
-    for (edit_model, project_name) in data:
+    for edit_model, project_name in data:
         edit = edit_model.serialize(obj_type="Edit")
         edit["project_name"] = project_name
         edits.append(edit)

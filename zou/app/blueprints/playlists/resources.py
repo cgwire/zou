@@ -535,6 +535,6 @@ class TempPlaylistResource(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         task_ids = request.json.get("task_ids", [])
         sort = self.get_bool_parameter("sort")
-        return playlists_service.generate_temp_playlist(
-            task_ids, sort=sort
-        ) or []
+        return (
+            playlists_service.generate_temp_playlist(task_ids, sort=sort) or []
+        )

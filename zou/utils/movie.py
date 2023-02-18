@@ -287,7 +287,6 @@ def build_playlist_movie(
     in_files = []
     result = {"message": "", "success": False}
     if len(tmp_file_paths) > 0:
-
         # Get movie dimensions
         (first_movie_file_path, _) = tmp_file_paths[0]
         if width is None:

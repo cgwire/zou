@@ -787,7 +787,6 @@ def get_user_filters(current_user_id):
     )
 
     for search_filter in filters:
-
         if search_filter.list_type not in result:
             result[search_filter.list_type] = {}
         subresult = result[search_filter.list_type]

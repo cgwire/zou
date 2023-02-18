@@ -287,7 +287,7 @@ def save_variants(preview_file_id, original_picture_path):
         original_picture_path, preview_file_id
     )
     variants.append(("original", original_picture_path))
-    for (name, path) in variants:
+    for name, path in variants:
         file_store.add_picture(name, preview_file_id, path)
         os.remove(path)
 
@@ -310,7 +310,7 @@ def update_preview_file_position(preview_file_id, position):
     if position > 0 and position <= len(preview_files):
         tmp_list = [p for p in preview_files if str(p.id) != preview_file_id]
         tmp_list.insert(position - 1, preview_file)
-        for (i, preview) in enumerate(tmp_list):
+        for i, preview in enumerate(tmp_list):
             preview.update({"position": i + 1})
     return PreviewFile.serialize_list(preview_files)
 
@@ -501,7 +501,7 @@ def get_running_preview_files():
     )
 
     results = []
-    for (preview_file, project_id, task_type_id, entity_id) in entries:
+    for preview_file, project_id, task_type_id, entity_id in entries:
         result = preview_file.serialize()
         result["project_id"] = fields.serialize_value(project_id)
         result["task_type_id"] = fields.serialize_value(task_type_id)
