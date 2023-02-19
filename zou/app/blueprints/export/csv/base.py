@@ -1,13 +1,13 @@
 from flask import abort
 from flask_jwt_extended import jwt_required
 
-from flask_restful import Resource
+from flask.views import MethodView
 from zou.app.utils import csv_utils, permissions
 
 
-class BaseCsvExport(Resource):
+class BaseCsvExport(MethodView):
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.file_name = "export"
 
     def check_permissions(self):

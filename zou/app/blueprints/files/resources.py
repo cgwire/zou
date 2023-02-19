@@ -3,7 +3,7 @@ import os
 
 from flask import request, abort, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from zou.app import config
@@ -78,7 +78,7 @@ def send_storage_file(working_file_id, as_attachment=False):
         )
 
 
-class WorkingFileFileResource(Resource):
+class WorkingFileFileResource(MethodView):
     """
     Allow to download and store a working file.
     """
@@ -157,7 +157,7 @@ class WorkingFileFileResource(Resource):
         return working_file, 201
 
 
-class WorkingFilePathResource(Resource, ArgsMixin):
+class WorkingFilePathResource(MethodView, ArgsMixin):
     """
     Generate from file tree template a working file path based on several
     parameters: task, software, mode, revision and separator. Revision can be
@@ -278,7 +278,7 @@ class WorkingFilePathResource(Resource, ArgsMixin):
         )
 
 
-class EntityOutputFilePathResource(Resource, ArgsMixin):
+class EntityOutputFilePathResource(MethodView, ArgsMixin):
     """
     Generate from file tree template an output file path based on several
     parameters: entity, output type, task type, revision, mode, name
@@ -398,7 +398,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         )
 
 
-class InstanceOutputFilePathResource(Resource, ArgsMixin):
+class InstanceOutputFilePathResource(MethodView, ArgsMixin):
     """
     Generate from file tree template an output file path based on several
     parameters: asset instance, output type, task type, revision, mode, name and separator.
@@ -521,7 +521,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
         )
 
 
-class LastWorkingFilesResource(Resource):
+class LastWorkingFilesResource(MethodView):
     """
     Return last working files revision for each file name for given task.
     """
@@ -553,7 +553,7 @@ class LastWorkingFilesResource(Resource):
         return result
 
 
-class TaskWorkingFilesResource(Resource):
+class TaskWorkingFilesResource(MethodView):
     """
     Return all working file revisions for a given task.
     """
@@ -585,7 +585,7 @@ class TaskWorkingFilesResource(Resource):
         return result
 
 
-class NewWorkingFileResource(Resource, ArgsMixin):
+class NewWorkingFileResource(MethodView, ArgsMixin):
     """
     A working file is a file used to produce output files.
     It is the file the CG artist is working on.
@@ -739,7 +739,7 @@ class NewWorkingFileResource(Resource, ArgsMixin):
         )
 
 
-class ModifiedFileResource(Resource):
+class ModifiedFileResource(MethodView):
     """
     Update working file modification date with current date.
     """
@@ -772,7 +772,7 @@ class ModifiedFileResource(Resource):
         return working_file
 
 
-class CommentWorkingFileResource(Resource, ArgsMixin):
+class CommentWorkingFileResource(MethodView, ArgsMixin):
     """
     Update comment on given working file.
     """
@@ -828,7 +828,7 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
         return working_file
 
 
-class NewEntityOutputFileResource(Resource, ArgsMixin):
+class NewEntityOutputFileResource(MethodView, ArgsMixin):
     """
     Output files are linked to entities. Each time a CG artist is satisfied
     by what he did on a working file, he can create an output file that
@@ -1051,7 +1051,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
         return output_file
 
 
-class NewInstanceOutputFileResource(Resource, ArgsMixin):
+class NewInstanceOutputFileResource(MethodView, ArgsMixin):
     """
     Some output files are linked to assets through an instance of this asset
     for a give shot. Each time a CG artist is satisfied by what he did on a
@@ -1292,7 +1292,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
         return output_file
 
 
-class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
+class GetNextEntityOutputFileRevisionResource(MethodView, ArgsMixin):
     """
     Get next revision for given entity, output type, task type and name.
     """
@@ -1357,7 +1357,7 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
         )
 
 
-class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
+class GetNextInstanceOutputFileRevisionResource(MethodView, ArgsMixin):
     """
     Get next revision for given asset instance, output type, task type and name.
     """
@@ -1435,7 +1435,7 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
         )
 
 
-class LastEntityOutputFilesResource(Resource, ArgsMixin):
+class LastEntityOutputFilesResource(MethodView, ArgsMixin):
     """
     Last revisions of output files for given entity grouped by output type
     and file name.
@@ -1482,7 +1482,7 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class LastInstanceOutputFilesResource(Resource, ArgsMixin):
+class LastInstanceOutputFilesResource(MethodView, ArgsMixin):
     """
     Last revisions of output files for given instance grouped by output type
     and file name.
@@ -1537,7 +1537,7 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class EntityOutputTypesResource(Resource):
+class EntityOutputTypesResource(MethodView):
     """
     Return all types of output generated for given entity.
     """
@@ -1565,7 +1565,7 @@ class EntityOutputTypesResource(Resource):
         return files_service.get_output_types_for_entity(entity_id)
 
 
-class InstanceOutputTypesResource(Resource):
+class InstanceOutputTypesResource(MethodView):
     """
     Return all types of output generated for given instance.
     """
@@ -1602,7 +1602,7 @@ class InstanceOutputTypesResource(Resource):
         )
 
 
-class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
+class EntityOutputTypeOutputFilesResource(MethodView, ArgsMixin):
     """
     Get all output files for given entity and given output type.
     """
@@ -1645,7 +1645,7 @@ class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
         return output_files
 
 
-class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
+class InstanceOutputTypeOutputFilesResource(MethodView, ArgsMixin):
     """
     Get all output files for given asset instance and given output type.
     """
@@ -1697,7 +1697,7 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class EntityOutputFilesResource(Resource, ArgsMixin):
+class EntityOutputFilesResource(MethodView, ArgsMixin):
     """
     Get all output files for given asset instance and given output type.
     """
@@ -1743,7 +1743,7 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
         )
 
 
-class InstanceOutputFilesResource(Resource):
+class InstanceOutputFilesResource(MethodView):
     """
     Get all output files for given asset instance and given output type.
     """
@@ -1792,7 +1792,7 @@ class InstanceOutputFilesResource(Resource):
         )
 
 
-class FileResource(Resource):
+class FileResource(MethodView):
     """
     Get information about a file that could be a working file as much as an
     output file.
@@ -1829,7 +1829,7 @@ class FileResource(Resource):
         return file_dict
 
 
-class SetTreeResource(Resource, ArgsMixin):
+class SetTreeResource(MethodView, ArgsMixin):
     """
     Define a template file to use for given project. Template files are located
     on the server side. Each template has a name which means that you just have
@@ -1889,7 +1889,7 @@ class SetTreeResource(Resource, ArgsMixin):
         return project
 
 
-class EntityWorkingFilesResource(Resource, ArgsMixin):
+class EntityWorkingFilesResource(MethodView, ArgsMixin):
     """
     Get all working files for a given entity and possibly a task and a name.
     """
@@ -1932,7 +1932,7 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
         )
 
 
-class GuessFromPathResource(Resource, ArgsMixin):
+class GuessFromPathResource(MethodView, ArgsMixin):
     """
     Get list of possible project file tree templates matching a file path
     and data ids corresponding to template tokens.

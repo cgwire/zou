@@ -2,7 +2,7 @@ import datetime
 import urllib.parse
 
 from flask import request, jsonify, abort, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_principal import (
     Identity,
     AnonymousIdentity,
@@ -129,7 +129,7 @@ def on_identity_loaded(sender, identity):
             return wrong_auth_handler()
 
 
-class AuthenticatedResource(Resource):
+class AuthenticatedResource(MethodView):
     """
     Returns information if the user is authenticated else it returns a 401
     response.
@@ -166,7 +166,7 @@ class AuthenticatedResource(Resource):
             abort(401)
 
 
-class LogoutResource(Resource):
+class LogoutResource(MethodView):
     """
     Log user out by revoking his auth tokens. Once log out, current user
     cannot access to API anymore.
@@ -204,7 +204,7 @@ class LogoutResource(Resource):
             return logout_data
 
 
-class LoginResource(Resource, ArgsMixin):
+class LoginResource(MethodView, ArgsMixin):
     """
     Log in user by creating and registering auth tokens. Login is based
     on email and password. If no user match given email and a destkop ID,
@@ -429,7 +429,7 @@ class LoginResource(Resource, ArgsMixin):
         )
 
 
-class RefreshTokenResource(Resource):
+class RefreshTokenResource(MethodView):
     @jwt_required(refresh=True)
     def get(self):
         """
@@ -455,7 +455,7 @@ class RefreshTokenResource(Resource):
             return {"access_token": access_token}
 
 
-class RegistrationResource(Resource, ArgsMixin):
+class RegistrationResource(MethodView, ArgsMixin):
     """
     Allow a user to register himself to the service.
     """
@@ -566,7 +566,7 @@ class RegistrationResource(Resource, ArgsMixin):
         )
 
 
-class ChangePasswordResource(Resource, ArgsMixin):
+class ChangePasswordResource(MethodView, ArgsMixin):
     """
     Allow the user to change his password. Prior to modify the password,
     it requires to give the current password (to make sure the user changing
@@ -685,7 +685,7 @@ Thank you and see you soon on Kitsu,
         return (args["old_password"], args["password"], args["password_2"])
 
 
-class ResetPasswordResource(Resource, ArgsMixin):
+class ResetPasswordResource(MethodView, ArgsMixin):
     """
     Resource to allow a user to change his password when he forgets it.
     It uses a classic scheme: a token is sent by email to the user. Then
@@ -844,7 +844,7 @@ Thank you and see you soon on Kitsu,
         return {"success": "Reset token sent"}
 
 
-class TOTPResource(Resource, ArgsMixin):
+class TOTPResource(MethodView, ArgsMixin):
     """
     Resource to allow a user to enable/disable TOTP.
     """
@@ -972,7 +972,7 @@ class TOTPResource(Resource, ArgsMixin):
             )
 
 
-class EmailOTPResource(Resource, ArgsMixin):
+class EmailOTPResource(MethodView, ArgsMixin):
     """
     Resource to allow a user to enable/disable OTP by email or to send an OTP
     by email.
@@ -1145,7 +1145,7 @@ class EmailOTPResource(Resource, ArgsMixin):
             )
 
 
-class FIDOResource(Resource, ArgsMixin):
+class FIDOResource(MethodView, ArgsMixin):
     """
     Resource to allow a user to register/unregister FIDO device or to get a
     challenge for a FIDO device.
@@ -1315,7 +1315,7 @@ class FIDOResource(Resource, ArgsMixin):
             )
 
 
-class RecoveryCodesResource(Resource, ArgsMixin):
+class RecoveryCodesResource(MethodView, ArgsMixin):
     """
     Resource to allow a user to generate new recovery codes.
     """

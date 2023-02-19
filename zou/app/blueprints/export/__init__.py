@@ -2,8 +2,7 @@
 This module is named source instead of import because import is a Python
 keyword.
 """
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .csv.assets import AssetsCsvExport
 from .csv.casting import CastingCsvExport
@@ -29,5 +28,4 @@ routes = [
     ("/export/csv/task-types.csv", TaskTypesCsvExport),
 ]
 
-blueprint = Blueprint("export", "export")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("export", routes)

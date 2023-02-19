@@ -3,8 +3,6 @@ import sys
 
 from zou.app.utils import events, api as api_utils
 
-from flask import Blueprint
-
 from .blueprints.assets import blueprint as assets_blueprint
 from .blueprints.auth import blueprint as auth_blueprint
 from .blueprints.breakdown import blueprint as breakdown_blueprint
@@ -123,9 +121,8 @@ def load_plugin(app, plugin):
         if len(route_path) > 0 and route_path[0] == "/"
     ]
     plugin.routes = routes
-    plugin.blueprint = Blueprint(plugin.name, plugin.name)
-    plugin.api = api_utils.configure_api_from_blueprint(
-        plugin.blueprint, plugin.routes
+    plugin.blueprint = api_utils.create_blueprint_for_api(
+        plugin.name, plugin.routes
     )
     app.register_blueprint(plugin.blueprint)
     app.logger.info("Plugin %s loaded." % plugin.name)

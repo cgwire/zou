@@ -1,6 +1,5 @@
-from flask import abort, request
+from flask import abort, current_app
 from flask_jwt_extended import jwt_required
-from flask_restful import current_app
 from sqlalchemy.exc import StatementError
 
 from zou.app.models.person import Person

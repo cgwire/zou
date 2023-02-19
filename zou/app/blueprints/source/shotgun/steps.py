@@ -1,5 +1,5 @@
 from flask import current_app
-from flask_restful import Resource
+from flask.views import MethodView
 
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
@@ -14,7 +14,7 @@ from zou.app.blueprints.source.shotgun.base import (
 
 class ImportShotgunStepsResource(BaseImportShotgunResource):
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
 
     def extract_data(self, sg_step):
         color = self.extract_color(sg_step)

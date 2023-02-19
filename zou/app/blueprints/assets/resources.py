@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import permissions, query
@@ -24,7 +24,7 @@ def check_criterion_access(criterions):
     return user_service.check_project_access(project_id)
 
 
-class AssetResource(Resource, ArgsMixin):
+class AssetResource(MethodView, ArgsMixin):
     """
     Retrieve or delete given asset.
     """
@@ -79,7 +79,7 @@ class AssetResource(Resource, ArgsMixin):
         return "", 204
 
 
-class AllAssetsResource(Resource):
+class AllAssetsResource(MethodView):
     """
     Retrieve all entities that are not shot or sequence.
     Adds project name and asset type name.
@@ -110,7 +110,7 @@ class AllAssetsAliasResource(AllAssetsResource):
     pass
 
 
-class AssetsAndTasksResource(Resource, ArgsMixin):
+class AssetsAndTasksResource(MethodView, ArgsMixin):
     """
     Retrieve all entities that are not shot or sequence.
     """
@@ -143,7 +143,7 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
         return assets_service.get_assets_and_tasks(criterions, page)
 
 
-class AssetTypeResource(Resource):
+class AssetTypeResource(MethodView):
     """
     Retrieve given asset type.
     """
@@ -169,7 +169,7 @@ class AssetTypeResource(Resource):
         return assets_service.get_asset_type(asset_type_id)
 
 
-class AssetTypesResource(Resource):
+class AssetTypesResource(MethodView):
     """
     Retrieve all asset types (entity types that are not shot, sequence or episode).
     """
@@ -189,7 +189,7 @@ class AssetTypesResource(Resource):
         return assets_service.get_asset_types(criterions)
 
 
-class ProjectAssetTypesResource(Resource):
+class ProjectAssetTypesResource(MethodView):
     """
     Retrieve all asset types for given project.
     """
@@ -216,7 +216,7 @@ class ProjectAssetTypesResource(Resource):
         return assets_service.get_asset_types_for_project(project_id)
 
 
-class ShotAssetTypesResource(Resource):
+class ShotAssetTypesResource(MethodView):
     """
     Retrieve all asset shots for given shot.
     """
@@ -244,7 +244,7 @@ class ShotAssetTypesResource(Resource):
         return assets_service.get_asset_types_for_shot(shot_id)
 
 
-class ProjectAssetsResource(Resource):
+class ProjectAssetsResource(MethodView):
     """
     Retrieve all assets for given project.
     """
@@ -277,7 +277,7 @@ class ProjectAssetsResource(Resource):
         return assets_service.get_assets(criterions)
 
 
-class ProjectAssetTypeAssetsResource(Resource):
+class ProjectAssetTypeAssetsResource(MethodView):
     """
     Retrieve all assets for given project and entity type.
     """
@@ -317,7 +317,7 @@ class ProjectAssetTypeAssetsResource(Resource):
         return assets_service.get_assets(criterions)
 
 
-class AssetAssetsResource(Resource):
+class AssetAssetsResource(MethodView):
     """
     Retrieve all assets for a given asset.
     """
@@ -346,7 +346,7 @@ class AssetAssetsResource(Resource):
         return breakdown_service.get_entity_casting(asset_id)
 
 
-class AssetTasksResource(Resource):
+class AssetTasksResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -370,7 +370,7 @@ class AssetTasksResource(Resource):
         return tasks_service.get_tasks_for_asset(asset_id)
 
 
-class AssetTaskTypesResource(Resource):
+class AssetTaskTypesResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -394,7 +394,7 @@ class AssetTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_asset(asset_id)
 
 
-class NewAssetResource(Resource, ArgsMixin):
+class NewAssetResource(MethodView, ArgsMixin):
     """
     Create new asset resource.
     """
@@ -474,7 +474,7 @@ class NewAssetResource(Resource, ArgsMixin):
         )
 
 
-class AssetCastingResource(Resource):
+class AssetCastingResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -522,7 +522,7 @@ class AssetCastingResource(Resource):
         return breakdown_service.update_casting(asset_id, casting)
 
 
-class AssetCastInResource(Resource):
+class AssetCastInResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -547,7 +547,7 @@ class AssetCastInResource(Resource):
         return breakdown_service.get_cast_in(asset_id)
 
 
-class AssetShotAssetInstancesResource(Resource):
+class AssetShotAssetInstancesResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -571,7 +571,7 @@ class AssetShotAssetInstancesResource(Resource):
         return breakdown_service.get_shot_asset_instances_for_asset(asset_id)
 
 
-class AssetSceneAssetInstancesResource(Resource):
+class AssetSceneAssetInstancesResource(MethodView):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -595,7 +595,7 @@ class AssetSceneAssetInstancesResource(Resource):
         return breakdown_service.get_scene_asset_instances_for_asset(asset_id)
 
 
-class AssetAssetInstancesResource(Resource, ArgsMixin):
+class AssetAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, asset_id):
         """

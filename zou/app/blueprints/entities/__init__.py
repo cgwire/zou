@@ -1,5 +1,4 @@
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .resources import (
     EntityPreviewFilesResource,
@@ -14,5 +13,4 @@ routes = [
     ("/data/entities/<entity_id>/time-spents", EntityTimeSpentsResource),
 ]
 
-blueprint = Blueprint("entities", "entities")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("entities", routes)

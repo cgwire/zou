@@ -1,7 +1,7 @@
 import datetime
 
 from flask import abort
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -20,7 +20,7 @@ from zou.app.utils import permissions
 from zou.app.services.exception import WrongDateFormatException
 
 
-class AssetTasksResource(Resource):
+class AssetTasksResource(MethodView):
     """
     Return tasks related to given asset for current user.
     """
@@ -47,7 +47,7 @@ class AssetTasksResource(Resource):
         return user_service.get_tasks_for_entity(asset_id)
 
 
-class AssetTaskTypesResource(Resource):
+class AssetTaskTypesResource(MethodView):
     """
     Return task types related to given asset for current user.
     """
@@ -74,7 +74,7 @@ class AssetTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(asset_id)
 
 
-class ShotTaskTypesResource(Resource):
+class ShotTaskTypesResource(MethodView):
     """
     Return tasks related to given shot for current user.
     """
@@ -101,7 +101,7 @@ class ShotTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(shot_id)
 
 
-class SceneTaskTypesResource(Resource):
+class SceneTaskTypesResource(MethodView):
     """
     Return tasks related to given scene for current user.
     """
@@ -128,7 +128,7 @@ class SceneTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(scene_id)
 
 
-class SequenceTaskTypesResource(Resource):
+class SequenceTaskTypesResource(MethodView):
     """
     Return task types related to given sequence for current user.
     """
@@ -155,7 +155,7 @@ class SequenceTaskTypesResource(Resource):
         return user_service.get_task_types_for_entity(sequence_id)
 
 
-class AssetTypeAssetsResource(Resource):
+class AssetTypeAssetsResource(MethodView):
     """
     Return assets of which type is given asset type and are listed in given
     project if user has access to this project.
@@ -192,7 +192,7 @@ class AssetTypeAssetsResource(Resource):
         )
 
 
-class OpenProjectsResource(Resource, ArgsMixin):
+class OpenProjectsResource(MethodView, ArgsMixin):
     """
     Return open projects for which the user has at least one task assigned.
     """
@@ -212,7 +212,7 @@ class OpenProjectsResource(Resource, ArgsMixin):
         return user_service.get_open_projects(name=name)
 
 
-class ProjectSequencesResource(Resource):
+class ProjectSequencesResource(MethodView):
     """
     Return sequences related to given project if the current user has access to it.
     """
@@ -239,7 +239,7 @@ class ProjectSequencesResource(Resource):
         return user_service.get_sequences_for_project(project_id)
 
 
-class ProjectEpisodesResource(Resource):
+class ProjectEpisodesResource(MethodView):
     """
     Return episodes related to given project if the current user has access to
     it.
@@ -267,7 +267,7 @@ class ProjectEpisodesResource(Resource):
         return user_service.get_project_episodes(project_id)
 
 
-class ProjectAssetTypesResource(Resource):
+class ProjectAssetTypesResource(MethodView):
     """
     Return asset types related to given project if the current user has access to it.
     """
@@ -294,7 +294,7 @@ class ProjectAssetTypesResource(Resource):
         return user_service.get_asset_types_for_project(project_id)
 
 
-class SequenceShotsResource(Resource):
+class SequenceShotsResource(MethodView):
     """
     Return shots related to given sequence if the current user has access
     to it.
@@ -322,7 +322,7 @@ class SequenceShotsResource(Resource):
         return user_service.get_shots_for_sequence(sequence_id)
 
 
-class SequenceScenesResource(Resource):
+class SequenceScenesResource(MethodView):
     """
     Return scenes related to given sequence if the current user has access
     to it.
@@ -350,7 +350,7 @@ class SequenceScenesResource(Resource):
         return user_service.get_scenes_for_sequence(sequence_id)
 
 
-class ShotTasksResource(Resource):
+class ShotTasksResource(MethodView):
     """
     Return tasks related to given shot for current user.
     """
@@ -377,7 +377,7 @@ class ShotTasksResource(Resource):
         return user_service.get_tasks_for_entity(shot_id)
 
 
-class SceneTasksResource(Resource):
+class SceneTasksResource(MethodView):
     """
     Return tasks related to given scene for current user.
     """
@@ -404,7 +404,7 @@ class SceneTasksResource(Resource):
         return user_service.get_tasks_for_entity(scene_id)
 
 
-class SequenceTasksResource(Resource):
+class SequenceTasksResource(MethodView):
     """
     Return tasks related to given sequence for current user.
     """
@@ -431,7 +431,7 @@ class SequenceTasksResource(Resource):
         return user_service.get_tasks_for_entity(sequence_id)
 
 
-class TodosResource(Resource):
+class TodosResource(MethodView):
     """
     Return tasks currently assigned to current user and of which status
     has is_done attribute set to false.
@@ -451,7 +451,7 @@ class TodosResource(Resource):
         return user_service.get_todos()
 
 
-class ToChecksResource(Resource):
+class ToChecksResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -471,7 +471,7 @@ class ToChecksResource(Resource):
             return []
 
 
-class DoneResource(Resource):
+class DoneResource(MethodView):
     """
     Return tasks currently assigned to current user and of which status
     has is_done attribute set to true. It returns only tasks of open projects.
@@ -492,7 +492,7 @@ class DoneResource(Resource):
         return user_service.get_done_tasks()
 
 
-class FiltersResource(Resource, ArgsMixin):
+class FiltersResource(MethodView, ArgsMixin):
     """
     Allow to create and retrieve filters for current user and only for
     open projects.
@@ -571,7 +571,7 @@ class FiltersResource(Resource, ArgsMixin):
         )
 
 
-class FilterResource(Resource, ArgsMixin):
+class FilterResource(MethodView, ArgsMixin):
     """
     Allow to remove or update given filter if it's owned by current user.
     """
@@ -626,7 +626,7 @@ class FilterResource(Resource, ArgsMixin):
         return "", 204
 
 
-class DesktopLoginLogsResource(Resource, ArgsMixin):
+class DesktopLoginLogsResource(MethodView, ArgsMixin):
     """
     Allow to create and retrieve desktop login logs. Desktop login logs can only
     be created by current user.
@@ -672,7 +672,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
         return desktop_login_log, 201
 
 
-class NotificationsResource(Resource, ArgsMixin):
+class NotificationsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self):
         """
@@ -721,7 +721,7 @@ class NotificationsResource(Resource, ArgsMixin):
         )
 
 
-class NotificationResource(Resource):
+class NotificationResource(MethodView):
     """
     Return notification matching given id, only if it's a notification that
     belongs to current user.
@@ -749,7 +749,7 @@ class NotificationResource(Resource):
         return user_service.get_notification(notification_id)
 
 
-class HasTaskSubscribedResource(Resource):
+class HasTaskSubscribedResource(MethodView):
     """
     Return true if current user has subscribed to given task.
     """
@@ -775,7 +775,7 @@ class HasTaskSubscribedResource(Resource):
         return user_service.has_task_subscription(task_id)
 
 
-class TaskSubscribeResource(Resource):
+class TaskSubscribeResource(MethodView):
     """
     Create a subscription entry for given task and current user.
     When a user subscribes, he gets notified everytime a comment is posted on the task.
@@ -803,7 +803,7 @@ class TaskSubscribeResource(Resource):
         return user_service.subscribe_to_task(task_id), 201
 
 
-class TaskUnsubscribeResource(Resource):
+class TaskUnsubscribeResource(MethodView):
     """
     Remove the subscription entry matching given task and current user.
     The user will no longer receive notifications for this task.
@@ -832,7 +832,7 @@ class TaskUnsubscribeResource(Resource):
         return "", 204
 
 
-class HasSequenceSubscribedResource(Resource):
+class HasSequenceSubscribedResource(MethodView):
     """
     Return true if current user has subscribed to given sequence and task type.
     """
@@ -866,7 +866,7 @@ class HasSequenceSubscribedResource(Resource):
         )
 
 
-class SequenceSubscribeResource(Resource):
+class SequenceSubscribeResource(MethodView):
     """
     Create a subscription entry for given sequence, task type and current user.
     When a user subscribes, he gets notified every time a comment is posted on tasks related to the sequence.
@@ -903,7 +903,7 @@ class SequenceSubscribeResource(Resource):
         return subscription, 201
 
 
-class SequenceUnsubscribeResource(Resource):
+class SequenceUnsubscribeResource(MethodView):
     """
     Remove a subscription entry for given sequence, task type and current user.
     """
@@ -936,7 +936,7 @@ class SequenceUnsubscribeResource(Resource):
         return "", 204
 
 
-class SequenceSubscriptionsResource(Resource):
+class SequenceSubscriptionsResource(MethodView):
     """
     Return the list of sequence ids to which the current user has subscribed for given task type.
     """
@@ -970,7 +970,7 @@ class SequenceSubscriptionsResource(Resource):
         )
 
 
-class TimeSpentsResource(Resource):
+class TimeSpentsResource(MethodView):
     """
     Get all time spents for the current user.
     Optionnaly can accept date range parameters.
@@ -1004,7 +1004,7 @@ class TimeSpentsResource(Resource):
             )
 
 
-class DateTimeSpentsResource(Resource):
+class DateTimeSpentsResource(MethodView):
     """
     Get time spents on for current user and given date.
     """
@@ -1020,7 +1020,7 @@ class DateTimeSpentsResource(Resource):
             abort(404)
 
 
-class TaskTimeSpentResource(Resource):
+class TaskTimeSpentResource(MethodView):
     """
     Get time spents for current user and given date.
     """
@@ -1060,7 +1060,7 @@ class TaskTimeSpentResource(Resource):
             abort(404)
 
 
-class DayOffResource(Resource):
+class DayOffResource(MethodView):
     """
     Get day off object for current user and given date.
     """
@@ -1092,7 +1092,7 @@ class DayOffResource(Resource):
             abort(404)
 
 
-class ContextResource(Resource):
+class ContextResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -1108,7 +1108,7 @@ class ContextResource(Resource):
         return user_service.get_context()
 
 
-class ClearAvatarResource(Resource):
+class ClearAvatarResource(MethodView):
     @jwt_required()
     def delete(self):
         """

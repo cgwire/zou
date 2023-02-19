@@ -1,6 +1,4 @@
-from flask import Blueprint
-
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .asset_instance import AssetInstanceResource, AssetInstancesResource
 from .attachment_file import AttachmentFilesResource, AttachmentFileResource
@@ -117,5 +115,4 @@ routes = [
     ("/data/entity-links/<instance_id>", EntityLinkResource),
 ]
 
-blueprint = Blueprint("/data", "data")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("data", routes)

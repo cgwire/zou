@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 from sqlalchemy.orm import aliased
@@ -12,7 +12,7 @@ from zou.app.utils import csv_utils
 from zou.app.mixin import ArgsMixin
 
 
-class CastingCsvExport(Resource, ArgsMixin):
+class CastingCsvExport(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """

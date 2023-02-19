@@ -1,6 +1,4 @@
-from flask import Blueprint
-
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .resources import (
     BuildJobResource,
@@ -46,5 +44,4 @@ routes = [
     ("/data/projects/<project_id>/playlists/temp", TempPlaylistResource),
 ]
 
-blueprint = Blueprint("playlists", "playlists")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("playlists", routes)

@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
@@ -10,7 +10,7 @@ from zou.app.services import (
 )
 
 
-class EntityNewsResource(Resource):
+class EntityNewsResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """
@@ -34,7 +34,7 @@ class EntityNewsResource(Resource):
         return news_service.get_news_for_entity(entity_id)
 
 
-class EntityPreviewFilesResource(Resource):
+class EntityPreviewFilesResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """
@@ -58,7 +58,7 @@ class EntityPreviewFilesResource(Resource):
         return preview_files_service.get_preview_files_for_entity(entity_id)
 
 
-class EntityTimeSpentsResource(Resource):
+class EntityTimeSpentsResource(MethodView):
     @jwt_required()
     def get(self, entity_id):
         """

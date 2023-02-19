@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -8,7 +8,7 @@ from zou.app.services import events_service
 from zou.app.services.exception import WrongParameterException
 
 
-class EventsResource(Resource, ArgsMixin):
+class EventsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self):
         """
@@ -75,7 +75,7 @@ class EventsResource(Resource, ArgsMixin):
             )
 
 
-class LoginLogsResource(Resource, ArgsMixin):
+class LoginLogsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self):
         """

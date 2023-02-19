@@ -2,7 +2,7 @@ import os
 
 from flask import abort, request, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 
@@ -166,7 +166,7 @@ def send_storage_file(
         raise FileNotFound
 
 
-class CreatePreviewFilePictureResource(Resource, ArgsMixin):
+class CreatePreviewFilePictureResource(MethodView, ArgsMixin):
     """
     Main resource to add a preview. It stores the preview file and generates
     three picture files matching preview when it's possible: a square thumbnail,
@@ -366,13 +366,13 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         return files_service.get_preview_file(preview_file_id) is not None
 
 
-class PreviewFileMovieResource(Resource):
+class PreviewFileMovieResource(MethodView):
     """
     Allow to download a movie preview.
     """
 
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
 
     def is_exist(self, preview_file_id):
         return files_service.get_preview_file(preview_file_id) is not None
@@ -506,13 +506,13 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
             abort(404)
 
 
-class PreviewFileResource(Resource):
+class PreviewFileResource(MethodView):
     """
     Allow to download a generic file preview.
     """
 
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
 
     def is_exist(self, preview_file_id):
         return files_service.get_preview_file(preview_file_id) is not None
@@ -636,13 +636,13 @@ class PreviewFileDownloadResource(PreviewFileResource):
             abort(404)
 
 
-class BasePreviewPictureResource(Resource):
+class BasePreviewPictureResource(MethodView):
     """
     Base class to download a thumbnail.
     """
 
     def __init__(self, picture_type):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.picture_type = picture_type
 
     def is_exist(self, preview_file_id):
@@ -722,13 +722,13 @@ class PreviewFileOriginalResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "original")
 
 
-class BaseCreatePictureResource(Resource):
+class BaseCreatePictureResource(MethodView):
     """
     Base class to create a thumbnail.
     """
 
     def __init__(self, data_type, size=thumbnail_utils.RECTANGLE_SIZE):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.data_type = data_type
         self.size = size
 
@@ -808,13 +808,13 @@ class BaseCreatePictureResource(Resource):
         return {"thumbnail_path": thumbnail_url_path}, 201
 
 
-class BasePictureResource(Resource):
+class BasePictureResource(MethodView):
     """
     Base resource to download a thumbnail.
     """
 
     def __init__(self, subfolder):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.subfolder = subfolder
 
     def is_allowed(self, instance_id):
@@ -947,7 +947,7 @@ class ProjectThumbnailResource(BasePictureResource):
             return False
 
 
-class LegacySetMainPreviewResource(Resource):
+class LegacySetMainPreviewResource(MethodView):
     @jwt_required()
     def put(self, entity_id, preview_file_id):
         """
@@ -980,7 +980,7 @@ class LegacySetMainPreviewResource(Resource):
         )
 
 
-class SetMainPreviewResource(Resource):
+class SetMainPreviewResource(MethodView):
     """
     Set given preview as main preview of the related entity. This preview will
     be used to illustrate the entity.
@@ -1017,7 +1017,7 @@ class SetMainPreviewResource(Resource):
         return asset
 
 
-class UpdatePreviewPositionResource(Resource, ArgsMixin):
+class UpdatePreviewPositionResource(MethodView, ArgsMixin):
     """
     Allow to change orders of previews for a single revision.
     """
@@ -1051,7 +1051,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         )
 
 
-class UpdateAnnotationsResource(Resource, ArgsMixin):
+class UpdateAnnotationsResource(MethodView, ArgsMixin):
     """
     Allow to modify the annotations stored at the preview level.
     Modifications are applied via three fields:
@@ -1121,7 +1121,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         )
 
 
-class RunningPreviewFiles(Resource, ArgsMixin):
+class RunningPreviewFiles(MethodView, ArgsMixin):
     """
     Retrieve all preview files from open productions with states equals
     to processing or broken

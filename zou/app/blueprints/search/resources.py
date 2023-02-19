@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -6,7 +6,7 @@ from zou.app.utils import permissions
 from zou.app.services import index_service, projects_service, user_service
 
 
-class SearchResource(Resource, ArgsMixin):
+class SearchResource(MethodView, ArgsMixin):
     @jwt_required()
     def post(self):
         """

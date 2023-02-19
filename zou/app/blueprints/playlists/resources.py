@@ -1,7 +1,7 @@
 import slugify
 
 from flask import request, send_file as flask_send_file
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
@@ -21,7 +21,7 @@ from zou.app.utils import fs, permissions
 from zou.utils.movie import EncodingParameters
 
 
-class ProjectPlaylistsResource(Resource, ArgsMixin):
+class ProjectPlaylistsResource(MethodView, ArgsMixin):
     """
     Retrieve all playlists related to given project.
     Result is paginated and can be sorted.
@@ -60,7 +60,7 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
         )
 
 
-class EpisodePlaylistsResource(Resource, ArgsMixin):
+class EpisodePlaylistsResource(MethodView, ArgsMixin):
     """
     Retrieve all playlists related to given episode.
     The full list is returned because the number of playlists in an episode is not that big.
@@ -106,7 +106,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         )
 
 
-class ProjectPlaylistResource(Resource):
+class ProjectPlaylistResource(MethodView):
     """
     Retrieve all playlists related to given project.
     """
@@ -142,7 +142,7 @@ class ProjectPlaylistResource(Resource):
         )
 
 
-class EntityPreviewsResource(Resource):
+class EntityPreviewsResource(MethodView):
     """
     Retrieve all previews related to a given entity.
     It sends them as a dict.
@@ -174,7 +174,7 @@ class EntityPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(entity_id)
 
 
-class PlaylistDownloadResource(Resource):
+class PlaylistDownloadResource(MethodView):
     """
     Download given playlist as a .mp4 after given build job is finished.
     """
@@ -252,7 +252,7 @@ class PlaylistDownloadResource(Resource):
             )
 
 
-class BuildPlaylistMovieResource(Resource, ArgsMixin):
+class BuildPlaylistMovieResource(MethodView, ArgsMixin):
     """
     Build given playlist as mp4 movie.
     """
@@ -321,7 +321,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             return job
 
 
-class PlaylistZipDownloadResource(Resource):
+class PlaylistZipDownloadResource(MethodView):
     """
     Download given playlist as zip.
     """
@@ -381,7 +381,7 @@ class PlaylistZipDownloadResource(Resource):
         )
 
 
-class BuildJobResource(Resource):
+class BuildJobResource(MethodView):
     """
     Retrieve or remove a given build job related to a given playlist.
     """
@@ -446,7 +446,7 @@ class BuildJobResource(Resource):
         return "", 204
 
 
-class ProjectBuildJobsResource(Resource):
+class ProjectBuildJobsResource(MethodView):
     """
     Retrieve all build jobs related to given project.
     It's mainly used for synchronisation purpose.
@@ -476,7 +476,7 @@ class ProjectBuildJobsResource(Resource):
         return playlists_service.get_build_jobs_for_project(project_id)
 
 
-class ProjectAllPlaylistsResource(Resource, ArgsMixin):
+class ProjectAllPlaylistsResource(MethodView, ArgsMixin):
     """
     Retrieve all playlists related to given project.
     It's mainly used for synchronisation purpose.
@@ -507,7 +507,7 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
         return playlists_service.get_playlists_for_project(project_id, page)
 
 
-class TempPlaylistResource(Resource, ArgsMixin):
+class TempPlaylistResource(MethodView, ArgsMixin):
     """
     Retrieve all playlists related to given project.
     It's mainly used for synchronisation purpose.

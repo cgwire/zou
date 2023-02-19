@@ -1,5 +1,5 @@
 from flask import request, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import fields, permissions
@@ -21,9 +21,9 @@ from zou.app.services.exception import (
 from sqlalchemy.exc import IntegrityError, DataError
 
 
-class BaseImportShotgunResource(Resource):
+class BaseImportShotgunResource(MethodView):
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
 
     @jwt_required()
     def post(self):
@@ -159,9 +159,9 @@ class BaseImportShotgunResource(Resource):
         return name[:3] == "sg_"
 
 
-class ImportRemoveShotgunBaseResource(Resource):
+class ImportRemoveShotgunBaseResource(MethodView):
     def __init__(self, model, delete_func=None, entity_type_id=None):
-        Resource.__init__(self)
+        MethodView.__init__(self)
         self.model = model
         self.delete_func = delete_func
         self.entity_type_id = entity_type_id

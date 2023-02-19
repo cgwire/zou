@@ -1,5 +1,5 @@
 from flask import request, abort
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import StatementError
@@ -7,9 +7,9 @@ from sqlalchemy.exc import StatementError
 from zou.app.models.data_import_error import DataImportError
 
 
-class ShotgunImportErrorsResource(Resource):
+class ShotgunImportErrorsResource(MethodView):
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
 
     @jwt_required()
     def get(self):
@@ -42,9 +42,9 @@ class ShotgunImportErrorsResource(Resource):
         return error.serialize(), 201
 
 
-class ShotgunImportErrorResource(Resource):
+class ShotgunImportErrorResource(MethodView):
     def __init__(self):
-        Resource.__init__(self)
+        MethodView.__init__(self)
 
     @jwt_required()
     def delete(self, error_id):

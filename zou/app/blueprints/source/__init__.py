@@ -2,8 +2,7 @@
 This module is named source instead of import because import is a Python
 keyword.
 """
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .shotgun.project import (
     ImportShotgunProjectsResource,
@@ -134,5 +133,4 @@ routes = [
     ("/import/kitsu/tasks", ImportKitsuTasksResource),
 ]
 
-blueprint = Blueprint("/import", "import")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("import", routes)

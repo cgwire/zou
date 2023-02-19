@@ -1,6 +1,6 @@
-from flask_restful import Resource
+from flask.views import MethodView
 
 
-class HelloResource(Resource):
+class HelloResource(MethodView):
     def get(self):
         return {"Hello": "world"}

@@ -1,7 +1,7 @@
 import datetime
 
 from flask import abort, request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.services.exception import (
@@ -29,7 +29,7 @@ from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
 
-class AddPreviewResource(Resource):
+class AddPreviewResource(MethodView):
     """
     Add a preview to given task. Revision is automatically set: it is
     equal to last revision + 1.
@@ -77,7 +77,7 @@ class AddPreviewResource(Resource):
         return preview_file, 201
 
 
-class AddExtraPreviewResource(Resource):
+class AddExtraPreviewResource(MethodView):
     """
     Add a preview to given comment.
     """
@@ -165,7 +165,7 @@ class AddExtraPreviewResource(Resource):
         return "", 204
 
 
-class TaskPreviewsResource(Resource):
+class TaskPreviewsResource(MethodView):
     """
     Return previews linked to given task.
     """
@@ -194,7 +194,7 @@ class TaskPreviewsResource(Resource):
         return files_service.get_preview_files_for_task(task_id)
 
 
-class TaskCommentsResource(Resource):
+class TaskCommentsResource(MethodView):
     """
     Return comments linked to given task.
     """
@@ -228,7 +228,7 @@ class TaskCommentsResource(Resource):
         )
 
 
-class TaskCommentResource(Resource):
+class TaskCommentResource(MethodView):
     """
     Remove given comment and update linked task accordingly.
     """
@@ -320,7 +320,7 @@ class TaskCommentResource(Resource):
         return "", 204
 
 
-class PersonTasksResource(Resource):
+class PersonTasksResource(MethodView):
     """
     Return task assigned to given user of which status has is_done flag sets
     to false.
@@ -357,7 +357,7 @@ class PersonTasksResource(Resource):
         return tasks_service.get_person_tasks(person_id, projects)
 
 
-class PersonRelatedTasksResource(Resource):
+class PersonRelatedTasksResource(MethodView):
     """
     For all entities assigned to given person (that have at least one task
     assigned to given person), returns all tasks for given task type.
@@ -393,7 +393,7 @@ class PersonRelatedTasksResource(Resource):
         return tasks_service.get_person_related_tasks(person_id, task_type_id)
 
 
-class PersonDoneTasksResource(Resource):
+class PersonDoneTasksResource(MethodView):
     """
     Return task assigned to given user of which status has is_done flag sets
     to true. It return only tasks related to open projects.
@@ -431,7 +431,7 @@ class PersonDoneTasksResource(Resource):
         return tasks_service.get_person_done_tasks(person_id, projects)
 
 
-class CreateShotTasksResource(Resource):
+class CreateShotTasksResource(MethodView):
     """
     Create a new task for given shot and task type.
     """
@@ -480,7 +480,7 @@ class CreateShotTasksResource(Resource):
         return tasks, 201
 
 
-class CreateEntityTasksResource(Resource):
+class CreateEntityTasksResource(MethodView):
     @jwt_required()
     def post(self, project_id, entity_type, task_type_id):
         """
@@ -538,7 +538,7 @@ class CreateEntityTasksResource(Resource):
         return tasks, 201
 
 
-class CreateAssetTasksResource(Resource):
+class CreateAssetTasksResource(MethodView):
     """
     Create a new task for given asset and task type.
     """
@@ -586,7 +586,7 @@ class CreateAssetTasksResource(Resource):
         return tasks, 201
 
 
-class CreateEditTasksResource(Resource):
+class CreateEditTasksResource(MethodView):
     """
     Create a new task for given edit and task type.
     """
@@ -634,7 +634,7 @@ class CreateEditTasksResource(Resource):
         return tasks, 201
 
 
-class ToReviewResource(Resource, ArgsMixin):
+class ToReviewResource(MethodView, ArgsMixin):
     """
     Change a task status to "to review". It creates a new preview file entry
     and set path from the hard disk.
@@ -740,7 +740,7 @@ class ToReviewResource(Resource, ArgsMixin):
         )
 
 
-class ClearAssignationResource(Resource, ArgsMixin):
+class ClearAssignationResource(MethodView, ArgsMixin):
     """
     Remove all assignations set to given task.
     """
@@ -806,7 +806,7 @@ class ClearAssignationResource(Resource, ArgsMixin):
         return args["task_ids"], args["person_id"]
 
 
-class TasksAssignResource(Resource, ArgsMixin):
+class TasksAssignResource(MethodView, ArgsMixin):
     """
     Assign given task lists to given person. If a given task ID is wrong,
     it ignores it.
@@ -879,7 +879,7 @@ class TasksAssignResource(Resource, ArgsMixin):
         return tasks_service.assign_task(task_id, person_id, assigner_id)
 
 
-class TaskAssignResource(Resource, ArgsMixin):
+class TaskAssignResource(MethodView, ArgsMixin):
     """
     Assign given task to given person.
     """
@@ -945,7 +945,7 @@ class TaskAssignResource(Resource, ArgsMixin):
         return tasks_service.assign_task(task_id, person_id)
 
 
-class TaskFullResource(Resource):
+class TaskFullResource(MethodView):
     """
     Return a task with many information: full details for assignees, full
     details for task type, full details for task status, etc.
@@ -978,7 +978,7 @@ class TaskFullResource(Resource):
         return task
 
 
-class TaskForEntityResource(Resource):
+class TaskForEntityResource(MethodView):
     """
     Return tasks related to given entity asset, episode, sequence, shot or
     scene.
@@ -1015,7 +1015,7 @@ class TaskForEntityResource(Resource):
         )
 
 
-class SetTimeSpentResource(Resource, ArgsMixin):
+class SetTimeSpentResource(MethodView, ArgsMixin):
     """
     Set time spent by a person on a task for a given day.
     """
@@ -1079,7 +1079,7 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             abort(404)
 
 
-class AddTimeSpentResource(Resource, ArgsMixin):
+class AddTimeSpentResource(MethodView, ArgsMixin):
     """
     Add given timeframe to time spent by a person on a task for a given day.
     """
@@ -1141,7 +1141,7 @@ class AddTimeSpentResource(Resource, ArgsMixin):
             abort(404)
 
 
-class GetTimeSpentResource(Resource):
+class GetTimeSpentResource(MethodView):
     """
     Get time spent on a given task.
     """
@@ -1172,7 +1172,7 @@ class GetTimeSpentResource(Resource):
         return tasks_service.get_time_spents(task_id)
 
 
-class GetTimeSpentDateResource(Resource):
+class GetTimeSpentDateResource(MethodView):
     """
     Get time spent on a given task and date.
     """
@@ -1212,7 +1212,7 @@ class GetTimeSpentDateResource(Resource):
             abort(404)
 
 
-class DeleteAllTasksForTaskTypeResource(Resource):
+class DeleteAllTasksForTaskTypeResource(MethodView):
     """
     Delete all tasks for a given task type and project. It's mainly used
     when tasks are created by mistake at the beginning of the project.
@@ -1253,7 +1253,7 @@ class DeleteAllTasksForTaskTypeResource(Resource):
         return "", 204
 
 
-class DeleteTasksResource(Resource):
+class DeleteTasksResource(MethodView):
     """
     Delete tasks matching id list given in parameter. See it as a way to batch
     delete tasks.
@@ -1286,7 +1286,7 @@ class DeleteTasksResource(Resource):
         return task_ids, 200
 
 
-class ProjectSubscriptionsResource(Resource):
+class ProjectSubscriptionsResource(MethodView):
     """
     Retrieve all subcriptions to tasks related to given project.
     It's mainly used for synchronisation purpose.
@@ -1316,7 +1316,7 @@ class ProjectSubscriptionsResource(Resource):
         return notifications_service.get_subscriptions_for_project(project_id)
 
 
-class ProjectNotificationsResource(Resource, ArgsMixin):
+class ProjectNotificationsResource(MethodView, ArgsMixin):
     """
     Retrieve all notifications related to given project.
     It's mainly used for synchronisation purpose.
@@ -1349,7 +1349,7 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
         )
 
 
-class ProjectTasksResource(Resource, ArgsMixin):
+class ProjectTasksResource(MethodView, ArgsMixin):
     """
     Retrieve all tasks related to given project.
     It's mainly used for synchronisation purpose.
@@ -1380,7 +1380,7 @@ class ProjectTasksResource(Resource, ArgsMixin):
         return tasks_service.get_tasks_for_project(project_id, page)
 
 
-class ProjectCommentsResource(Resource, ArgsMixin):
+class ProjectCommentsResource(MethodView, ArgsMixin):
     """
     Retrieve all comments to tasks related to given project.
     It's mainly used for synchronisation purpose.
@@ -1411,7 +1411,7 @@ class ProjectCommentsResource(Resource, ArgsMixin):
         return tasks_service.get_comments_for_project(project_id, page)
 
 
-class ProjectPreviewFilesResource(Resource, ArgsMixin):
+class ProjectPreviewFilesResource(MethodView, ArgsMixin):
     """
     Preview files related to a given project.
     """
@@ -1440,7 +1440,7 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
         return files_service.get_preview_files_for_project(project_id, page)
 
 
-class SetTaskMainPreviewResource(Resource):
+class SetTaskMainPreviewResource(MethodView):
     @jwt_required()
     def put(self, task_id):
         """

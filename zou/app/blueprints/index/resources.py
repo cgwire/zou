@@ -5,7 +5,7 @@ import requests
 from datetime import datetime
 
 from flask import Response, abort
-from flask_restful import Resource
+from flask.views import MethodView
 from zou import __version__
 
 from zou.app import app, config
@@ -15,7 +15,7 @@ from zou.app.services import projects_service, stats_service
 from flask_jwt_extended import jwt_required
 
 
-class IndexResource(Resource):
+class IndexResource(MethodView):
     def get(self):
         """
         Get API name and version.
@@ -29,7 +29,7 @@ class IndexResource(Resource):
         return {"api": app.config["APP_NAME"], "version": __version__}
 
 
-class BaseStatusResource(Resource):
+class BaseStatusResource(MethodView):
     def get_status(self):
         is_db_up = True
         try:
@@ -223,7 +223,7 @@ class InfluxStatusResource(BaseStatusResource):
         }
 
 
-class StatsResource(Resource):
+class StatsResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -242,7 +242,7 @@ class StatsResource(Resource):
         return stats_service.get_main_stats()
 
 
-class ConfigResource(Resource):
+class ConfigResource(MethodView):
     def get(self):
         """
         Get crisp token.

@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 from slugify import slugify
 
@@ -18,7 +18,7 @@ from zou.app.services import (
 from zou.app.utils import csv_utils
 
 
-class PlaylistCsvExport(Resource):
+class PlaylistCsvExport(MethodView):
     def check_permissions(self, project_id):
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()

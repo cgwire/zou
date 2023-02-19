@@ -1,5 +1,4 @@
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .resources import (
     TaskFullResource,
@@ -114,5 +113,4 @@ routes = [
     ),
 ]
 
-blueprint = Blueprint("tasks", "tasks")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("tasks", routes)

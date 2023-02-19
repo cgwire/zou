@@ -2,8 +2,7 @@
 This module is named source instead of import because import is a Python
 keyword.
 """
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .resources import (
     ConfigResource,
@@ -25,5 +24,4 @@ routes = [
     ("/config", ConfigResource),
 ]
 
-blueprint = Blueprint("index", "index")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("index", routes)

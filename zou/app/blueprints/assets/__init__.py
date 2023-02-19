@@ -1,5 +1,4 @@
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .resources import (
     AssetsAndTasksResource,
@@ -61,5 +60,4 @@ routes = [
     ("/data/projects/<project_id>/assets", ProjectAssetsResource),
 ]
 
-blueprint = Blueprint("assets", "assets")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("assets", routes)

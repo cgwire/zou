@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
@@ -15,7 +15,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions
 
 
-class CastingResource(Resource):
+class CastingResource(MethodView):
     @jwt_required()
     def get(self, project_id, entity_id):
         """
@@ -72,7 +72,7 @@ class CastingResource(Resource):
         return breakdown_service.update_casting(entity_id, casting)
 
 
-class EpisodesCastingResource(Resource):
+class EpisodesCastingResource(MethodView):
     @jwt_required()
     def get(self, project_id):
         """
@@ -95,7 +95,7 @@ class EpisodesCastingResource(Resource):
         return breakdown_service.get_production_episodes_casting(project_id)
 
 
-class EpisodeSequenceAllCastingResource(Resource):
+class EpisodeSequenceAllCastingResource(MethodView):
     @jwt_required()
     def get(self, project_id, episode_id):
         """
@@ -126,7 +126,7 @@ class EpisodeSequenceAllCastingResource(Resource):
         )
 
 
-class SequenceAllCastingResource(Resource):
+class SequenceAllCastingResource(MethodView):
     @jwt_required()
     def get(self, project_id):
         """
@@ -150,7 +150,7 @@ class SequenceAllCastingResource(Resource):
         return breakdown_service.get_all_sequences_casting(project_id)
 
 
-class SequenceCastingResource(Resource):
+class SequenceCastingResource(MethodView):
     @jwt_required()
     def get(self, project_id, sequence_id):
         """
@@ -180,7 +180,7 @@ class SequenceCastingResource(Resource):
         return breakdown_service.get_sequence_casting(sequence_id)
 
 
-class AssetTypeCastingResource(Resource):
+class AssetTypeCastingResource(MethodView):
     @jwt_required()
     def get(self, project_id, asset_type_id):
         """
@@ -212,7 +212,7 @@ class AssetTypeCastingResource(Resource):
         )
 
 
-class ShotAssetInstancesResource(Resource, ArgsMixin):
+class ShotAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, shot_id):
         """
@@ -263,7 +263,7 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
         return shot, 201
 
 
-class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
+class RemoveShotAssetInstanceResource(MethodView, ArgsMixin):
     @jwt_required()
     def delete(self, shot_id, asset_instance_id):
         """
@@ -296,7 +296,7 @@ class RemoveShotAssetInstanceResource(Resource, ArgsMixin):
         return "", 204
 
 
-class SceneAssetInstancesResource(Resource, ArgsMixin):
+class SceneAssetInstancesResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, scene_id):
         """
@@ -349,7 +349,7 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
         return asset_instance, 201
 
 
-class SceneCameraInstancesResource(Resource):
+class SceneCameraInstancesResource(MethodView):
     @jwt_required()
     def get(self, scene_id):
         """
@@ -373,7 +373,7 @@ class SceneCameraInstancesResource(Resource):
         return breakdown_service.get_camera_instances_for_scene(scene_id)
 
 
-class ProjectEntityLinksResource(Resource):
+class ProjectEntityLinksResource(MethodView):
     @jwt_required()
     def get(self, project_id):
         """
@@ -398,7 +398,7 @@ class ProjectEntityLinksResource(Resource):
         return entities_service.get_entity_links_for_project(project_id)
 
 
-class ProjectEntityLinkResource(Resource):
+class ProjectEntityLinkResource(MethodView):
     @jwt_required()
     def delete(self, project_id, entity_link_id):
         """

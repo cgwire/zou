@@ -1,24 +1,17 @@
-from flask_restful import Api, output_json
+from flask import Blueprint
 
 
-def configure_api_from_blueprint(blueprint, route_tuples):
+def create_blueprint_for_api(blueprint_name, route_tuples):
     """
-    Creates a Flask Restful api object based on information from given
-    blueprint. API is configured to return JSON objects.
+    Creates a Flask Blueprint object based on given informations.
 
-    Each blueprint is describe by a list of tuple. Each tuple is composed of a
-    route and the related resource (controller).
+    Each blueprint is described by its name. Each tuple is composed of a
+    route and the related MethodView.
     """
-
-    api = Api(blueprint, catch_all_404s=True)
-
-    api.representations = {
-        "application/json; charset=utf-8": output_json,
-        "application/json": output_json,
-    }
-
+    blueprint = Blueprint(blueprint_name, blueprint_name)
     for route_tuple in route_tuples:
-        (path, resource) = route_tuple
-        api.add_resource(resource, path)
+        (path, method_view) = route_tuple
+        view = method_view.as_view(method_view.__name__)
+        blueprint.add_url_rule(path, view_func=view)
 
-    return api
+    return blueprint

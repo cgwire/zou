@@ -1,5 +1,4 @@
-from flask import Blueprint
-from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils.api import create_blueprint_for_api
 
 from .resources import (
     AuthenticatedResource,
@@ -29,5 +28,4 @@ routes = [
     ("/auth/fido", FIDOResource),
 ]
 
-blueprint = Blueprint("auth", "auth")
-api = configure_api_from_blueprint(blueprint, routes)
+blueprint = create_blueprint_for_api("auth", routes)

@@ -1,7 +1,7 @@
 import datetime
 
 from flask import abort, request, current_app
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime
@@ -28,7 +28,7 @@ from zou.app.services.auth_service import (
 )
 
 
-class NewPersonResource(Resource, ArgsMixin):
+class NewPersonResource(MethodView, ArgsMixin):
     """
     Create a new user in the database.
     """
@@ -120,7 +120,7 @@ class NewPersonResource(Resource, ArgsMixin):
         return args
 
 
-class DesktopLoginsResource(Resource, ArgsMixin):
+class DesktopLoginsResource(MethodView, ArgsMixin):
     """
     Allow to create and retrieve desktop login logs. Desktop login logs can only
     be created by current user.
@@ -196,7 +196,7 @@ class DesktopLoginsResource(Resource, ArgsMixin):
         return desktop_login_log, 201
 
 
-class PresenceLogsResource(Resource):
+class PresenceLogsResource(MethodView):
     """
     Return a csv file containing the presence logs based on a daily basis.
     """
@@ -227,7 +227,7 @@ class PresenceLogsResource(Resource):
         return csv_utils.build_csv_response(presence_logs)
 
 
-class TimeSpentsResource(Resource, ArgsMixin):
+class TimeSpentsResource(MethodView, ArgsMixin):
     """
     Get all time spents for the given person.
     Optionnaly can accept date range parameters.
@@ -261,7 +261,7 @@ class TimeSpentsResource(Resource, ArgsMixin):
             )
 
 
-class DateTimeSpentsResource(Resource):
+class DateTimeSpentsResource(MethodView):
     """
     Get time spents for given person and date.
     """
@@ -321,7 +321,7 @@ class DateTimeSpentsResource(Resource):
             abort(404)
 
 
-class DayOffResource(Resource):
+class DayOffResource(MethodView):
     """
     Get day off object for given person and date.
     """
@@ -364,7 +364,7 @@ class DayOffResource(Resource):
             abort(404)
 
 
-class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
+class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
     """
     Parent class for all person durations time spents resource.
     """
@@ -487,7 +487,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
             abort(404)
 
 
-class PersonMonthAllTimeSpentsResource(Resource):
+class PersonMonthAllTimeSpentsResource(MethodView):
     """
     Get all time spents for a given person and month.
     """
@@ -608,7 +608,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             abort(404)
 
 
-class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
+class PersonMonthQuotaShotsResource(MethodView, ArgsMixin):
     """
     Get ended shots used for quota calculation of this month.
     """
@@ -662,7 +662,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
             abort(404)
 
 
-class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
+class PersonWeekQuotaShotsResource(MethodView, ArgsMixin):
     """
     Get ended shots used for quota calculation of this week.
     """
@@ -716,7 +716,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
             abort(404)
 
 
-class PersonDayQuotaShotsResource(Resource, ArgsMixin):
+class PersonDayQuotaShotsResource(MethodView, ArgsMixin):
     """
     Get ended shots used for quota calculation of this day.
     """
@@ -778,7 +778,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
             abort(404)
 
 
-class TimeSpentDurationResource(Resource, ArgsMixin):
+class TimeSpentDurationResource(MethodView, ArgsMixin):
     """
     Parent class for all durations time spents resource.
     """
@@ -924,7 +924,7 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
         )
 
 
-class InvitePersonResource(Resource):
+class InvitePersonResource(MethodView):
     """
     Sends an email to given person to invite him/her to connect to Kitsu.
     """
@@ -952,7 +952,7 @@ class InvitePersonResource(Resource):
         return {"success": True, "message": "Email sent"}
 
 
-class DayOffForMonthResource(Resource, ArgsMixin):
+class DayOffForMonthResource(MethodView, ArgsMixin):
     """
     Return all day off recorded for given month.
     """
@@ -990,7 +990,7 @@ class DayOffForMonthResource(Resource, ArgsMixin):
             )
 
 
-class PersonWeekDayOffResource(Resource, ArgsMixin):
+class PersonWeekDayOffResource(MethodView, ArgsMixin):
     """
     Return all day off recorded for given week and person.
     """
@@ -1033,7 +1033,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
         )
 
 
-class PersonMonthDayOffResource(Resource, ArgsMixin):
+class PersonMonthDayOffResource(MethodView, ArgsMixin):
     """
     Return all day off recorded for given month and person.
     """
@@ -1076,7 +1076,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
         )
 
 
-class PersonYearDayOffResource(Resource, ArgsMixin):
+class PersonYearDayOffResource(MethodView, ArgsMixin):
     """
     Return all day off recorded for given year and person.
     """
@@ -1112,7 +1112,7 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
         )
 
 
-class AddToDepartmentResource(Resource, ArgsMixin):
+class AddToDepartmentResource(MethodView, ArgsMixin):
     """
     Add a user to given department.
     """
@@ -1153,7 +1153,7 @@ class AddToDepartmentResource(Resource, ArgsMixin):
         return person, 201
 
 
-class RemoveFromDepartmentResource(Resource, ArgsMixin):
+class RemoveFromDepartmentResource(MethodView, ArgsMixin):
     """
     Remove a user from given department.
     """
@@ -1193,7 +1193,7 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
         return "", 204
 
 
-class ChangePasswordForPersonResource(Resource, ArgsMixin):
+class ChangePasswordForPersonResource(MethodView, ArgsMixin):
     """
     Allow admin to change password for given user.
     """
@@ -1300,7 +1300,7 @@ Thank you and see you soon on Kitsu,
         return (args["password"], args["password_2"])
 
 
-class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
+class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
     """
     Allow admin to disable two factor authentication for given user.
     """

@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask.views import MethodView
 from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
@@ -15,7 +15,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions, query
 
 
-class EditResource(Resource, ArgsMixin):
+class EditResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, edit_id):
         """
@@ -67,7 +67,7 @@ class EditResource(Resource, ArgsMixin):
         return "", 204
 
 
-class EditsResource(Resource):
+class EditsResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -106,7 +106,7 @@ class EditsResource(Resource):
         return edits_service.get_edits(criterions)
 
 
-class AllEditsResource(Resource):
+class AllEditsResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -145,7 +145,7 @@ class AllEditsResource(Resource):
         return edits_service.get_edits(criterions)
 
 
-class EditTaskTypesResource(Resource):
+class EditTaskTypesResource(MethodView):
     @jwt_required()
     def get(self, edit_id):
         """
@@ -170,7 +170,7 @@ class EditTaskTypesResource(Resource):
         return tasks_service.get_task_types_for_edit(edit_id)
 
 
-class EditTasksResource(Resource, ArgsMixin):
+class EditTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, edit_id):
         """
@@ -196,7 +196,7 @@ class EditTasksResource(Resource, ArgsMixin):
         return tasks_service.get_tasks_for_edit(edit_id, relations=relations)
 
 
-class EpisodeEditTasksResource(Resource, ArgsMixin):
+class EpisodeEditTasksResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, episode_id):
         """
@@ -226,7 +226,7 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
         )
 
 
-class EpisodeEditsResource(Resource, ArgsMixin):
+class EpisodeEditsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, episode_id):
         """
@@ -254,7 +254,7 @@ class EpisodeEditsResource(Resource, ArgsMixin):
         )
 
 
-class EditPreviewsResource(Resource):
+class EditPreviewsResource(MethodView):
     @jwt_required()
     def get(self, edit_id):
         """
@@ -280,7 +280,7 @@ class EditPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(edit_id)
 
 
-class EditsAndTasksResource(Resource):
+class EditsAndTasksResource(MethodView):
     @jwt_required()
     def get(self):
         """
@@ -322,7 +322,7 @@ class EditsAndTasksResource(Resource):
         return edits_service.get_edits_and_tasks(criterions)
 
 
-class ProjectEditsResource(Resource, ArgsMixin):
+class ProjectEditsResource(MethodView, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -414,7 +414,7 @@ class ProjectEditsResource(Resource, ArgsMixin):
         )
 
 
-class EditVersionsResource(Resource):
+class EditVersionsResource(MethodView):
     """
     Retrieve data versions of given edit.
     """
