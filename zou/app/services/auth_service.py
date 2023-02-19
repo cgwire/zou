@@ -183,7 +183,9 @@ def ldap_auth_strategy(person, password, app):
                 user = f"CN={person['full_name']},{app.config['LDAP_BASE_DN']}"
                 authentication = SIMPLE
             elif app.config["LDAP_IS_AD"]:
-                user = f"{app.config['LDAP_DOMAIN']}\{person['desktop_login']}"
+                user = (
+                    f"{app.config['LDAP_DOMAIN']}\\{person['desktop_login']}"
+                )
                 authentication = NTLM
             else:
                 user = f"uid={person['desktop_login']},{app.config['LDAP_BASE_DN']}"

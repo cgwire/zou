@@ -249,7 +249,7 @@ def sync_with_ldap_server():
             user = LDAP_USER
             authentication = SIMPLE
         elif LDAP_IS_AD:
-            user = f"{LDAP_DOMAIN}\{LDAP_USER}"
+            user = f"{LDAP_DOMAIN}\\{LDAP_USER}"
             authentication = NTLM
         else:
             user = f"uid={LDAP_USER},{LDAP_BASE_DN}"
