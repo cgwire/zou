@@ -109,9 +109,19 @@ def get_projects_with_extra_data(
                 Entity.query.join(EntityType)
                 .filter(EntityType.name == "Episode")
                 .filter(Entity.project_id == project.id)
+                .filter(Entity.status == "running")
                 .order_by(Entity.name)
                 .first()
             )
+            if first_episode is None:
+                first_episode = (
+                    Entity.query.join(EntityType)
+                    .filter(EntityType.name == "Episode")
+                    .filter(Entity.project_id == project.id)
+                    .order_by(Entity.name)
+                    .first()
+                )
+
             if first_episode is not None:
                 project_dict["first_episode_id"] = fields.serialize_value(
                     first_episode.id
