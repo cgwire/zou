@@ -54,6 +54,13 @@ def open_projects(name=None):
     return get_projects_with_extra_data(query)
 
 
+def open_project_ids():
+    """
+    Return all open project ids. Allow to filter projects by name.
+    """
+    return [project["id"] for project in open_projects()]
+
+
 def get_projects_with_extra_data(
     query, for_client=False, vendor_departments=None
 ):
