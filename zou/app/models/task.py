@@ -33,8 +33,8 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     description = db.Column(db.String(200))
 
     priority = db.Column(db.Integer, default=0)
-    duration = db.Column(db.Integer, default=0)
-    estimation = db.Column(db.Integer, default=0)
+    duration = db.Column(db.Float, default=0)
+    estimation = db.Column(db.Float, default=0)
     completion_rate = db.Column(db.Integer, default=0)
     retake_count = db.Column(db.Integer, default=0)
     sort_order = db.Column(db.Integer, default=0)

@@ -9,7 +9,7 @@ class TimeSpent(db.Model, BaseMixin, SerializerMixin):
     Describes the time spent by someone on a task.
     """
 
-    duration = db.Column(db.Integer, nullable=False)
+    duration = db.Column(db.Float, nullable=False)
     date = db.Column(db.Date, nullable=False)
 
     task_id = db.Column(

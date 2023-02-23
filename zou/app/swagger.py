@@ -568,7 +568,7 @@ swagger_template = {
                     "type": "string",
                     "description": "Name of organisaition",
                 },
-                "hours_by_day": {"type": "integer"},
+                "hours_by_day": {"type": "float"},
                 "has_avatar": {
                     "type": "boolean",
                     "default": "False",
@@ -1200,12 +1200,12 @@ swagger_template = {
                     "description": "Priority of task",
                 },
                 "duration": {
-                    "type": "integer",
+                    "type": "float",
                     "default": "0",
                     "description": "Duration of task",
                 },
                 "estimation": {
-                    "type": "integer",
+                    "type": "float",
                     "default": "0",
                     "description": "Estimation of duration of task",
                 },
@@ -1352,7 +1352,7 @@ swagger_template = {
         "TimeSpent": {
             "type": "object",
             "properties": {
-                "duration": {"type": "integer"},
+                "duration": {"type": "float"},
                 "date": {"type": "string", "format": "date"},
                 "task_id": {
                     "type": "string",

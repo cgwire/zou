@@ -1047,7 +1047,7 @@ class SetTimeSpentResource(Resource):
                 type: object
                 properties:
                     duration:
-                        type: integer
+                        type: float
         responses:
             201:
                 description: Time spent by given person on given task for given day is set
@@ -1075,7 +1075,7 @@ class SetTimeSpentResource(Resource):
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("duration", default=0)
+        parser.add_argument("duration", default=0, type=float)
         args = parser.parse_args()
         return args
 
@@ -1117,7 +1117,7 @@ class AddTimeSpentResource(Resource):
                 type: object
                 properties:
                     duration:
-                        type: integer
+                        type: float
         responses:
             201:
                 description: Given timeframe added to time spent by given person on given task for given day
@@ -1143,7 +1143,7 @@ class AddTimeSpentResource(Resource):
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("duration", default=0, type=int)
+        parser.add_argument("duration", default=0, type=float)
         args = parser.parse_args()
         return args
 
