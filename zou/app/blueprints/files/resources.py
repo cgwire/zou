@@ -1937,7 +1937,7 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
         )
 
 
-class GuessFromPathResource(Resource):
+class GuessFromPathResource(Resource, ArgsMixin):
     """
     Get list of possible project file tree templates matching a file path
     and data ids corresponding to template tokens.
@@ -1954,13 +1954,18 @@ class GuessFromPathResource(Resource):
         )
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "project_id", help="The project id is required.", required=True
+        return self.get_args(
+            [
+                {
+                    "name": "project_id",
+                    "help": "The project id is required.",
+                    "required": True,
+                },
+                {
+                    "name": "file_path",
+                    "help": "The file path is required.",
+                    "required": True,
+                },
+                ["sep", "/"],
+            ]
         )
-        parser.add_argument(
-            "file_path", help="The file path is required.", required=True
-        )
-        parser.add_argument("sep", default="/")
-        args = parser.parse_args()
-        return args

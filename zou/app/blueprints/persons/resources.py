@@ -227,7 +227,7 @@ class PresenceLogsResource(Resource):
         return csv_utils.build_csv_response(presence_logs)
 
 
-class TimeSpentsResource(Resource):
+class TimeSpentsResource(Resource, ArgsMixin):
     """
     Get all time spents for the given person.
     Optionnaly can accept date range parameters.
@@ -236,7 +236,7 @@ class TimeSpentsResource(Resource):
     @jwt_required()
     def get(self, person_id):
         permissions.check_admin_permissions()
-        arguments = self.get_arguments()
+        arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         if not start_date and not end_date:
             return time_spents_service.get_time_spents(person_id)
@@ -259,12 +259,6 @@ class TimeSpentsResource(Resource):
                     start_date, end_date
                 ),
             )
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("start_date", default=None)
-        parser.add_argument("end_date", default=None)
-        return parser.parse_args()
 
 
 class DateTimeSpentsResource(Resource):

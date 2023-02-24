@@ -978,7 +978,7 @@ class TimeSpentsResource(Resource):
 
     @jwt_required()
     def get(self):
-        arguments = self.get_arguments()
+        arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         current_user = persons_service.get_current_user()
         if not start_date and not end_date:
@@ -1002,12 +1002,6 @@ class TimeSpentsResource(Resource):
                     start_date, end_date
                 ),
             )
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("start_date", default=None)
-        parser.add_argument("end_date", default=None)
-        return parser.parse_args()
 
 
 class DateTimeSpentsResource(Resource):
