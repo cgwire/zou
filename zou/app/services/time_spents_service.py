@@ -200,7 +200,9 @@ def get_table_from_time_spents(time_spents, detail_level="month"):
     return result
 
 
-def get_time_spents(person_id, date, project_ids=None, department_ids=None):
+def get_time_spents(
+    person_id, date=None, project_ids=None, department_ids=None
+):
     """
     Return time spents for given person and date.
     """
@@ -219,6 +221,20 @@ def get_time_spents(person_id, date, project_ids=None, department_ids=None):
     except DataError:
         raise WrongDateFormatException
     return fields.serialize_list(query.all())
+
+
+def get_time_spents_range(person_id, start_date, end_date):
+    """
+    Returns time spents for person and date range.
+    """
+    try:
+        query = TimeSpent.query.filter_by(person_id=person_id)
+        time_spents = query.filter(
+            TimeSpent.date.between(start_date, end_date)
+        ).all()
+    except DataError:
+        raise WrongDateFormatException
+    return fields.serialize_list(time_spents)
 
 
 def get_time_spent(person_id, task_id, date):
