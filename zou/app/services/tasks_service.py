@@ -613,7 +613,7 @@ def _build_preview_map_for_comments(comment_ids, is_client=False):
         .filter(preview_link_table.c.comment.in_(comment_ids))
         .add_columns(preview_link_table.c.comment)
     )
-    for (preview, comment_id) in query.all():
+    for preview, comment_id in query.all():
         comment_id = str(comment_id)
         if comment_id not in preview_map:
             preview_map[comment_id] = []
@@ -1512,12 +1512,17 @@ def get_full_task(task_id):
         pass
 
     if entity["parent_id"] is not None:
-        if entity_type["name"] not in ["Asset", "Shot"]:
-            episode_id = entity["parent_id"]
-        else:
+        if entity_type["name"] == "Sequence":
+            sequence = entity
+        elif entity_type["name"] in ["Shot", "Scene"]:
             sequence = shots_service.get_sequence(entity["parent_id"])
-            task["sequence"] = sequence
-            episode_id = sequence["parent_id"]
+        else:
+            # Getting here means the entity is an asset, and assets are not
+            # linked to specific sequences or episodes.
+            return task
+
+        task["sequence"] = sequence
+        episode_id = sequence["parent_id"]
         if episode_id is not None:
             episode = shots_service.get_episode(episode_id)
             task["episode"] = episode
