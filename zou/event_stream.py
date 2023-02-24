@@ -113,15 +113,15 @@ def set_application_routes(socketio, app):
     def disconnected():
         try:
             verify_jwt_in_request()
+            user_id = get_jwt()["user_id"]
+            # needed to be able to clear empty rooms
+            tmp_rooms_data = dict(rooms_data)
+            for room_id in tmp_rooms_data:
+                _leave_room(room_id, user_id)
+            server_stats["nb_connections"] -= 1
+            app.logger.info("Websocket client disconnected")
         except Exception:
             pass
-        user_id = get_jwt()["user_id"]
-        # needed to be able to clear empty rooms
-        tmp_rooms_data = dict(rooms_data)
-        for room_id in tmp_rooms_data:
-            _leave_room(room_id, user_id)
-        server_stats["nb_connections"] -= 1
-        app.logger.info("Websocket client disconnected")
 
     @socketio.on_error("/events")
     def on_error(error):
@@ -227,8 +227,8 @@ def set_auth(app):
     jwt = JWTManager(app)  # JWT auth tokens
 
     @jwt.token_in_blocklist_loader
-    def check_if_token_is_revoked(decrypted_token):
-        return auth_tokens_store.is_revoked(decrypted_token)
+    def check_if_token_is_revoked(_, payload):
+        return auth_tokens_store.is_revoked(payload)
 
 
 (app, socketio) = create_app()
