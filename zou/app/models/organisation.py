@@ -10,7 +10,7 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     """
 
     name = db.Column(db.String(80), unique=True, nullable=False)
-    hours_by_day = db.Column(db.Integer(), default=8, nullable=False)
+    hours_by_day = db.Column(db.Float, default=8, nullable=False)
     has_avatar = db.Column(db.Boolean(), default=False)
     use_original_file_name = db.Column(db.Boolean(), default=False)
     timesheets_locked = db.Column(db.Boolean(), default=False)

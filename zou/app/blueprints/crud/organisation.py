@@ -23,5 +23,5 @@ class OrganisationResource(BaseModelResource):
 
     def pre_update(self, instance_dict, data):
         if "hours_by_day" in data:
-            data["hours_by_day"] = int(float(data["hours_by_day"]))
+            data["hours_by_day"] = float(data["hours_by_day"])
         return data
