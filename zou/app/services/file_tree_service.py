@@ -2,15 +2,19 @@ import os
 import re
 import json
 
+from collections import OrderedDict
 from slugify import slugify
 
 from zou.app import app
 
+from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.models.output_type import OutputType
 from zou.app.models.task_type import TaskType
 from zou.app.models.task import Task
 from zou.app.models.department import Department
+from zou.app.models.project import Project
 
 from zou.app.services import (
     assets_service,
@@ -697,6 +701,14 @@ class PathTokens(object):
     DEPARTMENT = "Department"
     TASK_TYPE = "TaskType"
     TASK = "Task"
+    OUTPUT_TYPE = "OutputType"
+    NAME = "Name"
+    REPRESENTATION = "Representation"
+    SOFTWARE = "Software"
+    VERSION = "Version"
+    ENTITY_TYPE = "TemporalEntityType"
+    ENTITY = "TemporalEntity"
+    INSTANCE = "Instance"
 
 
 def get_shot_task_from_path(file_path, project, mode="working", sep="/"):
@@ -755,16 +767,35 @@ def get_asset_task_from_path(file_path, project, mode="working", sep="/"):
 
 
 def extract_variable_values_from_path(elements, template_elements):
-    data_names = {}
-
+    data_names = OrderedDict()
+    max_count = min(len(elements), len(template_elements))
     for i, template_element in enumerate(template_elements):
-        token = re.search("<(\w*)>", template_element)
+        if i == max_count:
+            break
 
-        if token is not None:
-            data_type = token.group()
-            data_type = data_type[1 : len(data_type) - 1]
-            value = elements[i].replace("_", " ")
-            value = value.capitalize()
+        # Use prefix and suffix to get only the token value.
+        # For example, for `v<Version>` and `v003`, the result will be `003`
+        # without the `v` prefix.
+        token = re.search(
+            r"(?P<prefix>\w*)<(?P<token>\w*)>(?P<suffix>\w*)", template_element
+        )
+
+        if token is None:
+            if template_element == elements[i]:
+                continue
+            else:
+                raise WrongPathFormatException(
+                    "{} doesn't match {}".format(elements, template_elements)
+                )
+
+        data_type = token.group("token")
+        value = elements[i].replace("_", " ")
+        value = value[
+            len(token.group("prefix")) : len(value)
+            - len(token.group("suffix"))
+        ]
+
+        if not data_names.get(data_type):
             data_names[data_type] = value
 
     return data_names
@@ -797,8 +828,158 @@ def get_path_folders(project, file_path, mode="working", sep="/"):
     return file_path.split(sep)
 
 
-def guess_shot(project, episode_name, sequence_name, shot_name):
+def get_data_from_token(type_token, value_token, constraints=None):
+    """
+    Get the first corresponding data using the given type and value tokens.
+    """
+    if not constraints:
+        constraints = {}
+    data = None
 
+    if type_token == PathTokens.ASSET:
+        # An asset depends on a project and an asset type
+        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
+            PathTokens.ASSET_TYPE
+        ):
+            return None
+
+        data = Entity.get_by_case_insensitive(
+            name=value_token,
+            entity_type_id=constraints[PathTokens.ASSET_TYPE],
+            project_id=constraints[PathTokens.PROJECT],
+        )
+
+    elif type_token == PathTokens.ASSET_TYPE:
+        data = EntityType.get_by_case_insensitive(name=value_token)
+
+    elif type_token == PathTokens.DEPARTMENT:
+        data = Department.get_by_case_insensitive(name=value_token)
+
+    elif type_token == PathTokens.EPISODE:
+        # An episode depends on a project
+        if not constraints.get(PathTokens.PROJECT):
+            return None
+
+        data = Entity.get_by_case_insensitive(
+            name=value_token,
+            entity_type_id=shots_service.get_episode_type()["id"],
+            project_id=constraints[PathTokens.PROJECT],
+        )
+
+    elif type_token == PathTokens.SEQUENCE:
+        # A sequence depends on a project and an episode
+        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
+            PathTokens.EPISODE
+        ):
+            return None
+
+        data = Entity.get_by_case_insensitive(
+            name=value_token,
+            entity_type_id=shots_service.get_sequence_type()["id"],
+            parent_id=constraints[PathTokens.EPISODE],
+            project_id=constraints[PathTokens.PROJECT],
+        )
+
+    elif type_token == PathTokens.SCENE:
+        # A scene depends on a project and a sequence
+        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
+            PathTokens.EPISODE
+        ):
+            return None
+
+        data = Entity.get_by_case_insensitive(
+            name=value_token,
+            entity_type_id=shots_service.get_scene_type()["id"],
+            project_id=constraints[PathTokens.PROJECT],
+            parent_id=constraints[PathTokens.SEQUENCE],
+        )
+
+    elif type_token == PathTokens.OUTPUT_TYPE:
+        data = OutputType.get_by_case_insensitive(name=value_token)
+
+    elif type_token == PathTokens.SHOT:
+        # A shot depends on a project and a sequence
+        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
+            PathTokens.SEQUENCE
+        ):
+            return None
+
+        data = Entity.get_by_case_insensitive(
+            name=value_token,
+            entity_type_id=shots_service.get_shot_type()["id"],
+            parent_id=constraints[PathTokens.SEQUENCE],
+            project_id=constraints[PathTokens.PROJECT],
+        )
+
+    elif type_token == PathTokens.TASK:
+        # A task depends on a project, a task type and an entity
+        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
+            PathTokens.TASK_TYPE
+        ):
+            return None
+
+        kwargs = {
+            "name": value_token,
+            "task_type_id": constraints[PathTokens.TASK_TYPE],
+            "project_id": constraints[PathTokens.PROJECT],
+        }
+
+        for entity in [PathTokens.SCENE, PathTokens.ASSET, PathTokens.SHOT]:
+            if constraints.get(entity):
+                kwargs["entity_id"] = constraints[entity]
+                break
+        else:
+            return None
+
+        data = Task.get_by_case_insensitive(**kwargs)
+
+    elif type_token == PathTokens.TASK_TYPE:
+        data = TaskType.get_by_case_insensitive(name=value_token)
+
+    elif type_token == PathTokens.PROJECT:
+        data = Project.get_by_case_insensitive(name=value_token)
+
+    elif type_token == PathTokens.NAME:
+        data = value_token
+
+    elif type_token == PathTokens.REPRESENTATION:
+        data = value_token
+
+    elif type_token == PathTokens.VERSION:
+        try:
+            data = int(value_token)
+        except ValueError:
+            return None
+
+    elif type_token == PathTokens.ENTITY_TYPE:
+        data = EntityType.get_by_case_insensitive(name=value_token)
+
+    elif type_token == PathTokens.ENTITY:
+        # An entity depends on a project and an entity type
+        if not constraints.get(PathTokens.PROJECT) or not constraints.get(
+            PathTokens.ENTITY_TYPE
+        ):
+            return None
+
+        data = Entity.get_by_case_insensitive(
+            name=value_token,
+            entity_type_id=constraints[PathTokens.ENTITY_TYPE],
+            project_id=constraints[PathTokens.PROJECT],
+        )
+
+    elif type_token == PathTokens.INSTANCE:
+        if not constraints.get(PathTokens.EPISODE):
+            return None
+
+        data = AssetInstance.get_by_case_insensitive(
+            name=slugify(value_token, separator="_"),
+            episode_id=constraints.get(PathTokens.EPISODE),
+        )
+
+    return data
+
+
+def guess_shot(project, episode_name, sequence_name, shot_name):
     episode_id = None
     if len(episode_name) > 0:
         episode = Entity.get_by(
@@ -835,7 +1016,6 @@ def guess_shot(project, episode_name, sequence_name, shot_name):
 
 
 def guess_asset(project, asset_type_name, asset_name):
-
     asset_type_id = None
     if len(asset_type_name) > 0:
         asset_type = EntityType.get_by(name=asset_type_name)
@@ -879,3 +1059,95 @@ def guess_task(entity, task_type, task_name):
         raise TaskNotFoundException
     else:
         return task
+
+
+def guess_from_path(project_id, file_path, sep="/"):
+    """
+    Get list of possible project file tree templates matching a file path
+    and data ids corresponding to template tokens.
+
+    Example:
+        .. code-block:: text
+
+        [
+            {
+                'Asset': '<asset_id>',
+                'Project': '<project_id>',
+                'Template': 'asset'
+            },
+            {
+                'Project': '<project_id>',
+                'Template': 'instance'
+            },
+            ...
+        ]
+    """
+    matching_templates = []
+    project = projects_service.get_project(project_id)
+    tree = get_tree_from_project(project)
+
+    for mode in tree.keys():
+        # Apply mode style to file path
+        style = tree[mode]["folder_path"].get("style", "")
+        root = apply_style(get_root_path(tree, mode, sep), style)
+        styled_path = apply_style(file_path, style)
+
+        if not styled_path.startswith(root):
+            continue
+
+        styled_path = styled_path[len(root) :]
+
+        # Try to get template data from path
+        for template, template_path in tree[mode]["folder_path"].items():
+            template_elements = template_path.split(sep)
+            elements = styled_path.split(sep)
+
+            # Case when template doesn't match given file path content
+            try:
+                tokens = extract_variable_values_from_path(
+                    elements, template_elements
+                )
+            except WrongPathFormatException:
+                continue
+
+            if not tokens:
+                continue
+
+            template_data = {
+                "Template": template,
+            }
+
+            # Fill template data dictionary following tokens order in
+            # template path (left to right): some data needs a previous data
+            # to be found.
+            # This prevents getting wrong data in database, like a data
+            # with same name in other project.
+            for template_element in template_elements:
+                # Get template_element corresponding token.
+                # Some template_element don't have a corresponding token,
+                # like "05_publish" folder, for example.
+                for token, token_value in tokens.items():
+                    if "<{}>".format(token) in template_element:
+                        break
+                else:
+                    continue
+
+                # Try to get data from database using token and its value
+                data = get_data_from_token(token, token_value, template_data)
+
+                # Stop trying to get data from given template on latest valid
+                # data found.
+                if not data:
+                    break
+
+                if isinstance(data, str):
+                    template_data[token] = data
+                elif isinstance(data, int):
+                    template_data[token] = str(data)
+                else:
+                    template_data[token] = data.serialize()["id"]
+
+            if template_data not in matching_templates:
+                matching_templates.append(template_data)
+
+    return matching_templates
