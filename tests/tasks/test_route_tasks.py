@@ -217,7 +217,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         notifications = notifications_service.get_last_notifications("mention")
         self.assertEqual(len(notifications), 1)
 
-        news_list = news_service.get_last_news_for_project(self.project_id)
+        news_list = news_service.get_last_news_for_project(
+            project_id=self.project_id
+        )
         self.assertEqual(len(news_list["data"]), 2)
 
     def test_edit_comment(self):
