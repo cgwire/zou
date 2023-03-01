@@ -1,6 +1,7 @@
 import math
 
 from sqlalchemy import func
+from sqlalchemy.orm import aliased
 
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
@@ -82,6 +83,7 @@ def delete_news_for_comment(comment_id):
 
 
 def get_last_news_for_project(
+    project_ids=[],
     project_id=None,
     news_id=None,
     entity_id=None,
@@ -93,6 +95,7 @@ def get_last_news_for_project(
     page_size=50,
     before=None,
     after=None,
+    episode_id=None
 ):
     """
     Return last 50 news for given project. Add related information to make it
@@ -115,8 +118,20 @@ def get_last_news_for_project(
     if project_id is not None:
         query = query.filter(Task.project_id == project_id)
 
+    if len(project_ids) > 0:
+        query = query.filter(
+            Project.id.in_(project_ids)
+        )
+
     if entity_id is not None:
         query = query.filter(Entity.id == entity_id)
+
+    if episode_id is not None:
+        Sequence = aliased(Entity, name="sequence")
+        query = query.join(
+            Sequence, Entity.parent_id == Sequence.id
+        ).filter(Sequence.parent_id == episode_id)
+        print(episode_id, query)
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id)
@@ -210,10 +225,12 @@ def _get_news_total(query, page_size):
 
 
 def get_news_stats_for_project(
-    project_id,
+    project_ids=[],
+    project_id=None,
     only_preview=False,
     task_type_id=None,
     task_status_id=None,
+    episode_id=None,
     author_id=None,
     before=None,
     after=None,
@@ -232,9 +249,16 @@ def get_news_stats_for_project(
         .group_by(
             Comment.task_status_id,
         )
-        .filter(Task.project_id == project_id)
         .filter(News.change == True)
     )
+
+    if project_id is not None:
+        query = query.filter(Task.project_id == project_id)
+
+    if len(project_ids) > 0:
+        query = query.filter(
+            Project.id.in_(project_ids)
+        )
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id)
@@ -244,6 +268,12 @@ def get_news_stats_for_project(
 
     if author_id is not None:
         query = query.filter(News.author_id == author_id)
+
+    if episode_id is not None:
+        Sequence = aliased(Entity, name="sequence")
+        query = query.join(
+            Sequence, Entity.parent_id == Sequence.id
+        ).filter(Sequence.parent_id == episode_id)
 
     if only_preview:
         query = query.filter(News.preview_file_id != None)
@@ -262,7 +292,7 @@ def get_news_stats_for_project(
 
 @cache.memoize_function(120)
 def get_news(project_id, news_id):
-    return get_last_news_for_project(project_id, news_id=news_id)
+    return get_last_news_for_project(project_id=project_id, news_id=news_id)
 
 
 def get_news_for_entity(entity_id):

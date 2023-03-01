@@ -281,7 +281,7 @@ def get_scenes_for_sequence(sequence_id):
 
 def get_open_projects(name=None):
     """
-    Get all open projects for which current user has a task assigned.
+    Get all open projects for which current user is part of the team.
     """
     query = (
         Project.query.join(ProjectStatus)
@@ -304,6 +304,13 @@ def get_open_projects(name=None):
     return projects_service.get_projects_with_extra_data(
         query, for_client, vendor_departments
     )
+
+
+def get_open_project_ids():
+    """
+    Get all open project ids for which current user is part of the team.
+    """
+    return [project["id"] for project in get_open_projects()]
 
 
 def get_projects(name=None):

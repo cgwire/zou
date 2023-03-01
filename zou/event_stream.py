@@ -19,7 +19,6 @@ rooms_data = {}
 
 # Review room helpers
 
-
 def _get_empty_room(current_frame=0):
     return {
         "people": [],
@@ -199,6 +198,12 @@ def set_playlist_room_routes(socketio, app):
     def on_update_annotation(data):
         room_id = data["playlist_id"]
         emit("preview-room:update-annotation", data, room=room_id)
+
+    @socketio.on("preview-room:change-version", namespace="/events")
+    @jwt_required
+    def on_change_version(data):
+        room_id = data["playlist_id"]
+        emit("preview-room:change-version", data, room=room_id)
 
     return app
 
