@@ -79,7 +79,7 @@ class NewsServiceTestCase(ApiDBTestCase):
                 self.task_dict, comment
             )
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"]
+            project_id=self.task_dict["project_id"]
         )
         self.assertEqual(len(news_list["data"]), 50)
         news = news_list["data"][0]
@@ -88,12 +88,12 @@ class NewsServiceTestCase(ApiDBTestCase):
         self.assertEqual(news["project_id"], self.task_dict["project_id"])
 
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"], page=2
+            project_id=self.task_dict["project_id"], page=2
         )
         self.assertEqual(len(news_list["data"]), 30)
 
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"], news_id=news["id"]
+            project_id=self.task_dict["project_id"], news_id=news["id"]
         )
         self.assertEqual(len(news_list["data"]), 1)
 
@@ -112,15 +112,15 @@ class NewsServiceTestCase(ApiDBTestCase):
                 created_at=datetime.now() - timedelta(days=i),
             )
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"]
+            project_id=self.task_dict["project_id"]
         )
         self.assertEqual(len(news_list["data"]), 6)
         date = (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d")
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"], after=date
+            project_id=self.task_dict["project_id"], after=date
         )
         self.assertEqual(len(news_list["data"]), 2)
         news_list = news_service.get_last_news_for_project(
-            self.task_dict["project_id"], before=date
+            project_id=self.task_dict["project_id"], before=date
         )
         self.assertEqual(len(news_list["data"]), 4)
