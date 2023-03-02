@@ -151,3 +151,20 @@ class NotificationsServiceTestCase(ApiDBTestCase):
             self.task_dict
         )
         self.assertFalse(self.person_dict["id"] in recipients)
+
+    def test_is_person_subscribed(self):
+        self.generate_fixture_comment()
+        is_subscribed = notifications_service.is_person_subscribed(
+            self.person_dict["id"], self.task_dict["id"]
+        )
+        self.assertFalse(is_subscribed)
+        notifications_service.subscribe_to_task(
+            self.person_dict["id"], self.task_dict["id"]
+        )
+        is_subscribed = notifications_service.is_person_subscribed(
+            self.person_dict["id"], self.task_dict["id"]
+        )
+        self.assertTrue(is_subscribed)
+
+    def test_get_subscriptions_for_user(self):
+        pass
