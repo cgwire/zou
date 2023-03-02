@@ -17,7 +17,7 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions, query
+from zou.app.utils import fields, query, permissions
 
 
 class ShotResource(Resource, ArgsMixin):
@@ -1017,6 +1017,8 @@ class EpisodeSequencesResource(Resource):
             200:
                 description: All sequence entries for given episode
         """
+        if not fields.is_valid_id(episode_id):
+            return []
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
         criterions = query.get_query_criterions_from_request(request)
