@@ -302,7 +302,7 @@ server {
     }
 
     location /socket.io {
-    proxy_http_version 1.1;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header Upgrade $http_upgrade;
@@ -312,7 +312,7 @@ server {
 }
 ```
 
-*sudo service zou-events startNB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
+*NB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
 
 Finally, make sure that default configuration is removed: 
 
