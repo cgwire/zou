@@ -26,8 +26,6 @@ from zou.app.services.exception import (
     WorkingFileNotFoundException,
     OutputTypeNotFoundException,
     PersonNotFoundException,
-    WrongFileTreeFileException,
-    MalformedFileTreeException,
     EntryAlreadyExistsException,
 )
 
@@ -218,37 +216,31 @@ class WorkingFilePathResource(MethodView, ArgsMixin):
             separator,
         ) = self.get_arguments()
 
-        try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
 
-            software = files_service.get_software(software_id)
-            is_revision_set_by_user = revision != 0
-            if not is_revision_set_by_user:
-                revision = files_service.get_next_working_file_revision(
-                    task_id, name
-                )
-            file_path = file_tree_service.get_working_folder_path(
-                task,
-                mode=mode,
-                software=software,
-                name=name,
-                sep=separator,
-                revision=revision,
+        software = files_service.get_software(software_id)
+        is_revision_set_by_user = revision != 0
+        if not is_revision_set_by_user:
+            revision = files_service.get_next_working_file_revision(
+                task_id, name
             )
-            file_name = file_tree_service.get_working_file_name(
-                task,
-                mode=mode,
-                revision=revision,
-                software=software,
-                name=name,
-            )
-        except MalformedFileTreeException as exception:
-            return (
-                {"message": str(exception), "received_data": request.json},
-                400,
-            )
+        file_path = file_tree_service.get_working_folder_path(
+            task,
+            mode=mode,
+            software=software,
+            name=name,
+            sep=separator,
+            revision=revision,
+        )
+        file_name = file_tree_service.get_working_file_name(
+            task,
+            mode=mode,
+            revision=revision,
+            software=software,
+            name=name,
+        )
 
         return {"path": file_path, "name": file_name}, 200
 
@@ -341,45 +333,39 @@ class EntityOutputFilePathResource(MethodView, ArgsMixin):
                 description: Malformed file tree
         """
         args = self.get_arguments()
-        try:
-            entity = entities_service.get_entity(entity_id)
-            user_service.check_project_access(entity["project_id"])
-            user_service.check_entity_access(entity_id)
-            output_type = files_service.get_output_type(args["output_type_id"])
-            task_type = tasks_service.get_task_type(args["task_type_id"])
-            entity = entities_service.get_entity(entity_id)
+        entity = entities_service.get_entity(entity_id)
+        user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
+        output_type = files_service.get_output_type(args["output_type_id"])
+        task_type = tasks_service.get_task_type(args["task_type_id"])
+        entity = entities_service.get_entity(entity_id)
 
-            is_revision_set_by_user = args["revision"] != 0
-            if not is_revision_set_by_user:
-                revision = files_service.get_next_output_file_revision(
-                    entity_id, args["name"]
-                )
-            else:
-                revision = args["revision"]
+        is_revision_set_by_user = args["revision"] != 0
+        if not is_revision_set_by_user:
+            revision = files_service.get_next_output_file_revision(
+                entity_id, args["name"]
+            )
+        else:
+            revision = args["revision"]
 
-            folder_path = file_tree_service.get_output_folder_path(
-                entity,
-                mode=args["mode"],
-                output_type=output_type,
-                task_type=task_type,
-                name=args["name"],
-                representation=args["representation"],
-                sep=args["separator"],
-                revision=args["revision"],
-            )
-            file_name = file_tree_service.get_output_file_name(
-                entity,
-                mode=args["mode"],
-                revision=revision,
-                output_type=output_type,
-                task_type=task_type,
-                name=args["name"],
-            )
-        except MalformedFileTreeException as exception:
-            return (
-                {"message": str(exception), "received_data": request.json},
-                400,
-            )
+        folder_path = file_tree_service.get_output_folder_path(
+            entity,
+            mode=args["mode"],
+            output_type=output_type,
+            task_type=task_type,
+            name=args["name"],
+            representation=args["representation"],
+            sep=args["separator"],
+            revision=args["revision"],
+        )
+        file_name = file_tree_service.get_output_file_name(
+            entity,
+            mode=args["mode"],
+            revision=revision,
+            output_type=output_type,
+            task_type=task_type,
+            name=args["name"],
+        )
 
         return {"folder_path": folder_path, "file_name": file_name}, 200
 
@@ -467,42 +453,34 @@ class InstanceOutputFilePathResource(MethodView, ArgsMixin):
         """
         args = self.get_arguments()
 
-        try:
-            asset_instance = assets_service.get_asset_instance(
-                asset_instance_id
-            )
-            entity = entities_service.get_entity(temporal_entity_id)
-            asset = assets_service.get_asset(asset_instance["asset_id"])
-            output_type = files_service.get_output_type(args["output_type_id"])
-            task_type = tasks_service.get_task_type(args["task_type_id"])
-            user_service.check_project_access(asset["project_id"])
-            user_service.check_entity_access(asset["id"])
+        asset_instance = assets_service.get_asset_instance(asset_instance_id)
+        entity = entities_service.get_entity(temporal_entity_id)
+        asset = assets_service.get_asset(asset_instance["asset_id"])
+        output_type = files_service.get_output_type(args["output_type_id"])
+        task_type = tasks_service.get_task_type(args["task_type_id"])
+        user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset["id"])
 
-            folder_path = file_tree_service.get_instance_folder_path(
-                asset_instance,
-                entity,
-                output_type=output_type,
-                task_type=task_type,
-                mode=args["mode"],
-                name=args["name"],
-                representation=args["representation"],
-                revision=args["revision"],
-                sep=args["separator"],
-            )
-            file_name = file_tree_service.get_instance_file_name(
-                asset_instance,
-                entity,
-                output_type=output_type,
-                task_type=task_type,
-                mode=args["mode"],
-                name=args["name"],
-                revision=args["revision"],
-            )
-        except MalformedFileTreeException as exception:
-            return (
-                {"message": str(exception), "received_data": request.json},
-                400,
-            )
+        folder_path = file_tree_service.get_instance_folder_path(
+            asset_instance,
+            entity,
+            output_type=output_type,
+            task_type=task_type,
+            mode=args["mode"],
+            name=args["name"],
+            representation=args["representation"],
+            revision=args["revision"],
+            sep=args["separator"],
+        )
+        file_name = file_tree_service.get_instance_file_name(
+            asset_instance,
+            entity,
+            output_type=output_type,
+            task_type=task_type,
+            mode=args["mode"],
+            name=args["name"],
+            revision=args["revision"],
+        )
 
         return {"folder_path": folder_path, "file_name": file_name}, 200
 
@@ -1877,15 +1855,11 @@ class SetTreeResource(MethodView, ArgsMixin):
             ]
         )
 
-        try:
-            user_service.check_project_access(project_id)
-            tree = file_tree_service.get_tree_from_file(args["tree_name"])
-            project = projects_service.update_project(
-                project_id, {"file_tree": tree}
-            )
-        except WrongFileTreeFileException:
-            abort(400, "Selected tree is not available")
-
+        user_service.check_project_access(project_id)
+        tree = file_tree_service.get_tree_from_file(args["tree_name"])
+        project = projects_service.update_project(
+            project_id, {"file_tree": tree}
+        )
         return project
 
 

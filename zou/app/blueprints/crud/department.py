@@ -2,6 +2,8 @@ from .base import BaseModelResource, BaseModelsResource
 
 from zou.app.models.department import Department
 
+from zou.app.services.exception import ArgumentsException
+
 from zou.app.services import tasks_service
 
 

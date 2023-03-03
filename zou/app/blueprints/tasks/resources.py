@@ -8,7 +8,6 @@ from zou.app.services.exception import (
     TaskNotFoundException,
     PersonNotFoundException,
     MalformedFileTreeException,
-    WrongDateFormatException,
 )
 from zou.app.services import (
     assets_service,
@@ -1075,8 +1074,6 @@ class SetTimeSpentResource(MethodView, ArgsMixin):
             return time_spent, 201
         except ValueError:
             abort(404)
-        except WrongDateFormatException:
-            abort(404)
 
 
 class AddTimeSpentResource(MethodView, ArgsMixin):
@@ -1136,8 +1133,6 @@ class AddTimeSpentResource(MethodView, ArgsMixin):
             )
             return time_spent, 201
         except ValueError:
-            abort(404)
-        except WrongDateFormatException:
             abort(404)
 
 
@@ -1203,13 +1198,10 @@ class GetTimeSpentDateResource(MethodView):
             404:
                 description: Wrong date format
         """
-        try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-            return tasks_service.get_time_spents(task_id, date)
-        except WrongDateFormatException:
-            abort(404)
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        return tasks_service.get_time_spents(task_id, date)
 
 
 class DeleteAllTasksForTaskTypeResource(MethodView):

@@ -17,8 +17,6 @@ from zou.app.services import (
 
 from zou.app.utils import permissions
 
-from zou.app.services.exception import WrongDateFormatException
-
 
 class AssetTasksResource(MethodView):
     """
@@ -991,17 +989,9 @@ class TimeSpentsResource(MethodView):
                 " an `end_date` must be given.",
             )
 
-        try:
-            return time_spents_service.get_time_spents_range(
-                current_user["id"], start_date, end_date
-            )
-        except WrongDateFormatException:
-            abort(
-                400,
-                "Wrong date format for {} and/or {}".format(
-                    start_date, end_date
-                ),
-            )
+        return time_spents_service.get_time_spents_range(
+            current_user["id"], start_date, end_date
+        )
 
 
 class DateTimeSpentsResource(MethodView):
@@ -1011,13 +1001,8 @@ class DateTimeSpentsResource(MethodView):
 
     @jwt_required()
     def get(self, date):
-        try:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_time_spents(
-                current_user["id"], date
-            )
-        except WrongDateFormatException:
-            abort(404)
+        current_user = persons_service.get_current_user()
+        return time_spents_service.get_time_spents(current_user["id"], date)
 
 
 class TaskTimeSpentResource(MethodView):
@@ -1051,13 +1036,10 @@ class TaskTimeSpentResource(MethodView):
             404:
                 description: Wrong date format
         """
-        try:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_time_spent(
-                current_user["id"], task_id, date
-            )
-        except WrongDateFormatException:
-            abort(404)
+        current_user = persons_service.get_current_user()
+        return time_spents_service.get_time_spent(
+            current_user["id"], task_id, date
+        )
 
 
 class DayOffResource(MethodView):
@@ -1085,11 +1067,8 @@ class DayOffResource(MethodView):
             404:
                 description: Wrong date format
         """
-        try:
-            current_user = persons_service.get_current_user()
-            return time_spents_service.get_day_off(current_user["id"], date)
-        except WrongDateFormatException:
-            abort(404)
+        current_user = persons_service.get_current_user()
+        return time_spents_service.get_day_off(current_user["id"], date)
 
 
 class ContextResource(MethodView):

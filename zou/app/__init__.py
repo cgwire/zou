@@ -1,25 +1,22 @@
 import os
 import flask_fs
 import traceback
+import json
 
-from flask import Flask, jsonify, current_app
+from flask import Flask, current_app
 from flasgger import Swagger
 from flask_jwt_extended import JWTManager
 from flask_principal import Principal, identity_changed, Identity
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
-from jwt import ExpiredSignatureError
 from babel.core import UnknownLocaleError
+from werkzeug.exceptions import HTTPException
 
 from . import config, swagger
 from .stores import auth_tokens_store
 from .services.exception import (
-    ModelWithRelationsDeletionException,
     PersonNotFoundException,
-    WrongIdFormatException,
-    WrongParameterException,
-    WrongTaskTypeForEntityException,
 )
 from .utils import fs, logs
 
@@ -65,57 +62,38 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 
-@app.errorhandler(404)
-def page_not_found(error):
-    return jsonify(error=True, message=str(error)), 404
-
-
-@app.errorhandler(WrongIdFormatException)
-def id_parameter_format_error(error):
-    return (
-        jsonify(
-            error=True,
-            message="One of the ID sent in parameter is not properly formatted.",
-        ),
-        400,
-    )
-
-
-@app.errorhandler(WrongParameterException)
-def wrong_parameter(error):
-    return jsonify(error=True, message=str(error)), 400
-
-
-@app.errorhandler(ExpiredSignatureError)
-def wrong_token_signature(error):
-    return jsonify(error=True, message=str(error)), 401
-
-
-@app.errorhandler(ModelWithRelationsDeletionException)
-def try_delete_model_with_relations(error):
-    return jsonify(error=True, message=str(error)), 400
-
-
-@app.errorhandler(WrongTaskTypeForEntityException)
-def wrong_task_type_for_entity(error):
-    return jsonify(error=True, message=str(error)), 400
-
-
-@app.errorhandler(UnknownLocaleError)
-def wrong_locale_label(error):
-    return jsonify(error=True, message=str(error)), 400
-
-
-if not config.DEBUG:
-
-    @app.errorhandler(Exception)
-    def server_error(error):
-        stacktrace = traceback.format_exc()
-        current_app.logger.error(stacktrace)
-        return (
-            jsonify(error=True, message=str(error), stacktrace=stacktrace),
-            500,
+@app.errorhandler(Exception)
+def handle_http_exception(e):
+    """Return JSON instead of HTML for exceptions."""
+    if isinstance(e, HTTPException):
+        response = e.get_response()
+        # replace the body with JSON
+        response.data = json.dumps(
+            {
+                "error": True,
+                "code": e.code,
+                "name": e.name,
+                "description": e.description,
+            }
         )
+        response.content_type = "application/json"
+    else:
+        status_code = 500
+        if isinstance(e, UnknownLocaleError):
+            status_code = 400
+        response_data = {
+            "error": True,
+            "code": status_code,
+            "name": e.__class__.__name__,
+            "description": str(e),
+        }
+        response = response_data, status_code
+    stacktrace = traceback.format_exc()
+    if not config.DEBUG:
+        current_app.logger.error(stacktrace)
+    else:
+        current_app.logger.info(stacktrace)
+    return response
 
 
 def configure_auth():

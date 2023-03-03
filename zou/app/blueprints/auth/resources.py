@@ -21,17 +21,13 @@ from zou.app.utils import auth, emails
 from zou.app.services import persons_service, auth_service, events_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
-    EmailOTPAlreadyEnabledException,
     EmailOTPNotEnabledException,
-    FIDONoPreregistrationException,
     FIDONotEnabledException,
-    FIDOServerException,
     MissingOTPException,
     NoAuthStrategyConfigured,
     NoTwoFactorAuthenticationEnabled,
     PersonNotFoundException,
     TooMuchLoginFailedAttemps,
-    TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
@@ -505,26 +501,11 @@ class RegistrationResource(MethodView, ArgsMixin):
             last_name,
         ) = self.get_arguments()
 
-        try:
-            email = auth.validate_email(email)
-            auth.validate_password(password, password_2)
-            password = auth.encrypt_password(password)
-            persons_service.create_person(
-                email, password, first_name, last_name
-            )
-            return {"registration_success": True}, 201
-        except auth.PasswordsNoMatchException:
-            return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
-                400,
-            )
-        except auth.PasswordTooShortException:
-            return {"error": True, "message": "Password is too short."}, 400
-        except auth.EmailNotValidException as exception:
-            return {"error": True, "message": str(exception)}, 400
+        email = auth.validate_email(email)
+        auth.validate_password(password, password_2)
+        password = auth.encrypt_password(password)
+        persons_service.create_person(email, password, first_name, last_name)
+        return {"registration_success": True}, 201
 
     def get_arguments(self):
         args = self.get_args(
@@ -646,18 +627,6 @@ Thank you and see you soon on Kitsu,
             emails.send_email(subject, html, user["email"])
             return {"success": True}
 
-        except auth.PasswordsNoMatchException:
-            return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
-                400,
-            )
-        except auth.PasswordTooShortException:
-            return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
-            return {"error": True, "message": "User is unactive."}, 400
         except WrongPasswordException:
             return {"error": True, "message": "Old password is wrong."}, 400
 
@@ -739,37 +708,23 @@ class ResetPasswordResource(MethodView, ArgsMixin):
             ]
         )
 
-        try:
-            token_from_store = auth_tokens_store.get(
-                "reset-token-%s" % args["email"]
+        token_from_store = auth_tokens_store.get(
+            "reset-token-%s" % args["email"]
+        )
+        auth_tokens_store.delete("reset-token-%s" % args["email"])
+        if token_from_store == args["token"]:
+            auth.validate_password(args["password"], args["password2"])
+            password = auth.encrypt_password(args["password"])
+            persons_service.update_password(args["email"], password)
+            current_app.logger.info(
+                "User %s has reset his password" % args["email"]
             )
-            auth_tokens_store.delete("reset-token-%s" % args["email"])
-            if token_from_store == args["token"]:
-                auth.validate_password(args["password"], args["password2"])
-                password = auth.encrypt_password(args["password"])
-                persons_service.update_password(args["email"], password)
-                current_app.logger.info(
-                    "User %s has reset his password" % args["email"]
-                )
-                return {"success": True}
-            else:
-                return (
-                    {"error": True, "message": "Wrong or expired token."},
-                    400,
-                )
-
-        except auth.PasswordsNoMatchException:
+            return {"success": True}
+        else:
             return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
+                {"error": True, "message": "Wrong or expired token."},
                 400,
             )
-        except auth.PasswordTooShortException:
-            return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
-            return {"error": True, "message": "User is inactive."}, 400
 
     def post(self):
         """
@@ -865,19 +820,13 @@ class TOTPResource(MethodView, ArgsMixin):
                          Wrong or expired token
                          Inactive user
         """
-        try:
-            totp_provisionning_uri, totp_secret = auth_service.pre_enable_totp(
-                persons_service.get_current_user()["id"]
-            )
-            return {
-                "totp_provisionning_uri": totp_provisionning_uri,
-                "otp_secret": totp_secret,
-            }
-        except TOTPAlreadyEnabledException:
-            return (
-                {"error": True, "message": "TOTP already enabled."},
-                400,
-            )
+        totp_provisionning_uri, totp_secret = auth_service.pre_enable_totp(
+            persons_service.get_current_user()["id"]
+        )
+        return {
+            "totp_provisionning_uri": totp_provisionning_uri,
+            "otp_secret": totp_secret,
+        }
 
     @jwt_required()
     def post(self):
@@ -902,11 +851,6 @@ class TOTPResource(MethodView, ArgsMixin):
                 persons_service.get_current_user()["id"], args["totp"]
             )
             return {"otp_recovery_codes": otp_recovery_codes}
-        except TOTPAlreadyEnabledException:
-            return (
-                {"error": True, "message": "TOTP already enabled."},
-                400,
-            )
         except WrongOTPException:
             return (
                 {
@@ -956,11 +900,6 @@ class TOTPResource(MethodView, ArgsMixin):
                 raise WrongOTPException
             auth_service.disable_totp(person["id"])
             return {"success": True}
-        except TOTPNotEnabledException:
-            return (
-                {"error": True, "message": "TOTP not enabled."},
-                400,
-            )
         except (WrongOTPException, MissingOTPException):
             return (
                 {
@@ -1000,27 +939,13 @@ class EmailOTPResource(MethodView, ArgsMixin):
             location="values",
         )
 
-        try:
-            try:
-                person = persons_service.get_person_by_email_dekstop_login(
-                    args["email"]
-                )
-            except PersonNotFoundException:
-                raise WrongUserException()
-            if not person["email_otp_enabled"]:
-                raise EmailOTPNotEnabledException
-            auth_service.send_email_otp(person)
-            return {"success": True}
-        except EmailOTPNotEnabledException:
-            return (
-                {"error": True, "message": "OTP by email not enabled."},
-                400,
-            )
-        except WrongUserException:
-            return (
-                {"error": True, "message": "User not found."},
-                404,
-            )
+        person = persons_service.get_person_by_email_dekstop_login(
+            args["email"]
+        )
+        if not person["email_otp_enabled"]:
+            raise EmailOTPNotEnabledException
+        auth_service.send_email_otp(person)
+        return {"success": True}
 
     @jwt_required()
     def put(self):
@@ -1038,16 +963,10 @@ class EmailOTPResource(MethodView, ArgsMixin):
                          Wrong or expired token
                          Inactive user
         """
-        try:
-            auth_service.pre_enable_email_otp(
-                persons_service.get_current_user()["id"]
-            )
-            return {"success": True}
-        except EmailOTPAlreadyEnabledException:
-            return (
-                {"error": True, "message": "OTP by email already enabled."},
-                400,
-            )
+        auth_service.pre_enable_email_otp(
+            persons_service.get_current_user()["id"]
+        )
+        return {"success": True}
 
     @jwt_required()
     def post(self):
@@ -1072,11 +991,6 @@ class EmailOTPResource(MethodView, ArgsMixin):
                 persons_service.get_current_user()["id"], args["email_otp"]
             )
             return {"otp_recovery_codes": otp_recovery_codes}
-        except EmailOTPAlreadyEnabledException:
-            return (
-                {"error": True, "message": "OTP by email already enabled."},
-                400,
-            )
         except WrongOTPException:
             return (
                 {
@@ -1129,11 +1043,6 @@ class EmailOTPResource(MethodView, ArgsMixin):
                 raise WrongOTPException
             auth_service.disable_email_otp(person["id"])
             return {"success": True}
-        except EmailOTPNotEnabledException:
-            return (
-                {"error": True, "message": "OTP by email not enabled."},
-                400,
-            )
         except (WrongOTPException, MissingOTPException):
             return (
                 {
@@ -1171,26 +1080,12 @@ class FIDOResource(MethodView, ArgsMixin):
             location="values",
         )
 
-        try:
-            try:
-                person = persons_service.get_person_by_email_dekstop_login(
-                    args["email"]
-                )
-            except PersonNotFoundException:
-                raise WrongUserException()
-            if not person["fido_enabled"]:
-                raise FIDONotEnabledException
-            return auth_service.get_challenge_fido(person["id"])
-        except FIDONotEnabledException:
-            return (
-                {"error": True, "message": "FIDO not enabled."},
-                400,
-            )
-        except WrongUserException:
-            return (
-                {"error": True, "message": "User not found."},
-                404,
-            )
+        person = persons_service.get_person_by_email_dekstop_login(
+            args["email"]
+        )
+        if not person["fido_enabled"]:
+            raise FIDONotEnabledException
+        return auth_service.get_challenge_fido(person["id"])
 
     @jwt_required()
     def put(self):
@@ -1228,33 +1123,19 @@ class FIDOResource(MethodView, ArgsMixin):
                          Wrong or expired token
                          Inactive user
         """
-        try:
-            args = self.get_args(
-                [
-                    ("registration_response", {}, True, dict),
-                    ("device_name", "", True),
-                ]
-            )
+        args = self.get_args(
+            [
+                ("registration_response", {}, True, dict),
+                ("device_name", "", True),
+            ]
+        )
 
-            otp_recovery_codes = auth_service.register_fido(
-                persons_service.get_current_user()["id"],
-                args["registration_response"],
-                args["device_name"],
-            )
-            return {"otp_recovery_codes": otp_recovery_codes}
-        except FIDONoPreregistrationException:
-            return (
-                {"error": True, "message": "No preregistration before."},
-                400,
-            )
-        except FIDOServerException:
-            return (
-                {
-                    "error": True,
-                    "message": "FIDO server exception your registration response is probly wrong.",
-                },
-                400,
-            )
+        otp_recovery_codes = auth_service.register_fido(
+            persons_service.get_current_user()["id"],
+            args["registration_response"],
+            args["device_name"],
+        )
+        return {"otp_recovery_codes": otp_recovery_codes}
 
     @jwt_required()
     def delete(self):
@@ -1299,11 +1180,6 @@ class FIDOResource(MethodView, ArgsMixin):
                 raise WrongOTPException
             auth_service.unregister_fido(person["id"], args["device_name"])
             return {"success": True}
-        except FIDONotEnabledException:
-            return (
-                {"error": True, "message": "FIDO not enabled."},
-                400,
-            )
         except (WrongOTPException, MissingOTPException):
             return (
                 {
@@ -1369,14 +1245,6 @@ class RecoveryCodesResource(MethodView, ArgsMixin):
                     "error": True,
                     "message": "OTP verification failed.",
                     "wrong_OTP": True,
-                },
-                400,
-            )
-        except NoTwoFactorAuthenticationEnabled:
-            return (
-                {
-                    "error": True,
-                    "message": "No two factor authentication enabled.",
                 },
                 400,
             )

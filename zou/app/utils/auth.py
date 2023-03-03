@@ -1,19 +1,20 @@
 import flask_bcrypt
 import email_validator
 
+from werkzeug.exceptions import BadRequest
 from zou.app import config
 
 
-class PasswordTooShortException(BaseException):
-    pass
+class PasswordTooShortException(BadRequest):
+    description = "Password is too short."
 
 
-class PasswordsNoMatchException(BaseException):
-    pass
+class PasswordsNoMatchException(BadRequest):
+    description = "Confirmation password doesn't match."
 
 
-class EmailNotValidException(BaseException):
-    pass
+class EmailNotValidException(BadRequest):
+    description = "Email is not valid."
 
 
 def encrypt_password(password):

@@ -1,4 +1,4 @@
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, BadRequest, Forbidden
 
 
 class EpisodeNotFoundException(NotFound):
@@ -121,15 +121,15 @@ class MetadataDescriptorNotFoundException(NotFound):
     pass
 
 
-class MalformedFileTreeException(Exception):
+class MalformedFileTreeException(BadRequest):
     pass
 
 
-class WrongFileTreeFileException(Exception):
+class WrongFileTreeFileException(BadRequest):
     pass
 
 
-class WrongPathFormatException(Exception):
+class WrongPathFormatException(BadRequest):
     pass
 
 
@@ -145,11 +145,11 @@ class WrongUserException(Exception):
     pass
 
 
-class WrongPasswordException(Exception):
+class WrongPasswordException(BadRequest):
     pass
 
 
-class MissingOTPException(Exception):
+class MissingOTPException(BadRequest):
     def __init__(
         self,
         preferred_two_factor_authentication,
@@ -163,79 +163,81 @@ class MissingOTPException(Exception):
         )
 
 
-class WrongOTPException(Exception):
+class WrongOTPException(BadRequest):
     pass
 
 
-class TOTPAlreadyEnabledException(Exception):
+class TOTPAlreadyEnabledException(BadRequest):
+    description = "TOTP already enabled."
+
+
+class TOTPNotEnabledException(BadRequest):
+    description = "TOTP not enabled."
+
+
+class TwoFactorAuthenticationNotEnabledException(BadRequest):
+    description = "Two factor authentication not enabled for this user."
+
+
+class FIDONoPreregistrationException(BadRequest):
+    description = "No preregistration before."
+
+
+class FIDOServerException(BadRequest):
+    description = (
+        "FIDO server exception your registration response is probably wrong."
+    )
+
+
+class FIDONotEnabledException(BadRequest):
+    description = "FIDO not enabled."
+
+
+class EmailOTPAlreadyEnabledException(BadRequest):
+    description = "OTP by email already enabled."
+
+
+class EmailOTPNotEnabledException(BadRequest):
+    description = "OTP by email not enabled."
+
+
+class NoTwoFactorAuthenticationEnabled(BadRequest):
+    description = "No two factor authentication enabled."
+
+
+class TooMuchLoginFailedAttemps(BadRequest):
     pass
 
 
-class TOTPNotEnabledException(Exception):
+class UserCantConnectDueToNoFallback(BadRequest):
     pass
 
 
-class TwoFactorAuthenticationNotEnabledException(Exception):
+class UnactiveUserException(BadRequest):
+    description = "User is unactive."
+
+
+class WrongDateFormatException(BadRequest):
+    description = "Wrong date format."
+
+
+class EntryAlreadyExistsException(BadRequest):
     pass
 
 
-class FIDONoPreregistrationException(Exception):
+class ArgumentsException(BadRequest):
     pass
 
 
-class FIDOServerException(Exception):
+class WrongIdFormatException(BadRequest):
+    description = "One of the ID sent in parameter is not properly formatted."
+
+
+class WrongParameterException(BadRequest):
     pass
 
 
-class FIDONotEnabledException(Exception):
-    pass
-
-
-class EmailOTPAlreadyEnabledException(Exception):
-    pass
-
-
-class EmailOTPNotEnabledException(Exception):
-    pass
-
-
-class NoTwoFactorAuthenticationEnabled(Exception):
-    pass
-
-
-class TooMuchLoginFailedAttemps(Exception):
-    pass
-
-
-class UserCantConnectDueToNoFallback(Exception):
-    pass
-
-
-class UnactiveUserException(Exception):
-    pass
-
-
-class WrongDateFormatException(Exception):
-    pass
-
-
-class EntryAlreadyExistsException(Exception):
-    pass
-
-
-class ArgumentsException(Exception):
-    pass
-
-
-class WrongIdFormatException(Exception):
-    pass
-
-
-class WrongParameterException(Exception):
-    pass
-
-
-class ModelWithRelationsDeletionException(Exception):
+class ModelWithRelationsDeletionException(BadRequest):
     pass
 
 
@@ -247,7 +249,7 @@ class StatusAutomationNotFoundException(NotFound):
     pass
 
 
-class WrongTaskTypeForEntityException(Exception):
+class WrongTaskTypeForEntityException(BadRequest):
     pass
 
 

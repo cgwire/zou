@@ -18,10 +18,7 @@ from zou.app.services import (
 from zou.app.utils import permissions, csv_utils, auth, emails, fields
 from zou.app.services.exception import (
     DepartmentNotFoundException,
-    WrongDateFormatException,
     WrongParameterException,
-    UnactiveUserException,
-    TwoFactorAuthenticationNotEnabledException,
 )
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
@@ -248,17 +245,9 @@ class TimeSpentsResource(MethodView, ArgsMixin):
                 " an `end_date` must be given.",
             )
 
-        try:
-            return time_spents_service.get_time_spents_range(
-                person_id, start_date, end_date
-            )
-        except WrongDateFormatException:
-            abort(
-                400,
-                "Wrong date format for {} and/or {}".format(
-                    start_date, end_date
-                ),
-            )
+        return time_spents_service.get_time_spents_range(
+            person_id, start_date, end_date
+        )
 
 
 class DateTimeSpentsResource(MethodView):
@@ -310,15 +299,12 @@ class DateTimeSpentsResource(MethodView):
                         ).get("departments", [])
                 else:
                     raise permissions.PermissionDenied
-        try:
-            return time_spents_service.get_time_spents(
-                person_id,
-                date,
-                project_ids=project_ids,
-                department_ids=department_ids,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return time_spents_service.get_time_spents(
+            person_id,
+            date,
+            project_ids=project_ids,
+            department_ids=department_ids,
+        )
 
 
 class DayOffResource(MethodView):
@@ -358,10 +344,7 @@ class DayOffResource(MethodView):
                 permissions.check_at_least_supervisor_permissions()
             except permissions.PermissionDenied:
                 return []
-        try:
-            return time_spents_service.get_day_off(person_id, date)
-        except WrongDateFormatException:
-            abort(404)
+        return time_spents_service.get_day_off(person_id, date)
 
 
 class PersonDurationTimeSpentsResource(MethodView, ArgsMixin):
@@ -429,14 +412,11 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
-        try:
-            return time_spents_service.get_year_time_spents(
-                person_id,
-                year,
-                **self.get_project_department_arguments(person_id),
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return time_spents_service.get_year_time_spents(
+            person_id,
+            year,
+            **self.get_project_department_arguments(person_id),
+        )
 
 
 class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
@@ -476,15 +456,12 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
-        try:
-            return time_spents_service.get_month_time_spents(
-                person_id,
-                year,
-                month,
-                **self.get_project_department_arguments(person_id),
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return time_spents_service.get_month_time_spents(
+            person_id,
+            year,
+            month,
+            **self.get_project_department_arguments(person_id),
+        )
 
 
 class PersonMonthAllTimeSpentsResource(MethodView):
@@ -495,13 +472,10 @@ class PersonMonthAllTimeSpentsResource(MethodView):
     @jwt_required()
     def get(self, person_id, year, month):
         user_service.check_person_access(person_id)
-        try:
-            timespents = time_spents_service.get_time_spents_for_month(
-                year, month, person_id=person_id
-            )
-            return fields.serialize_list(timespents)
-        except WrongDateFormatException:
-            abort(404)
+        timespents = time_spents_service.get_time_spents_for_month(
+            year, month, person_id=person_id
+        )
+        return fields.serialize_list(timespents)
 
 
 class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
@@ -541,15 +515,12 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
-        try:
-            return time_spents_service.get_week_time_spents(
-                person_id,
-                year,
-                week,
-                **self.get_project_department_arguments(person_id),
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return time_spents_service.get_week_time_spents(
+            person_id,
+            year,
+            week,
+            **self.get_project_department_arguments(person_id),
+        )
 
 
 class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
@@ -596,16 +567,13 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
-        try:
-            return time_spents_service.get_day_time_spents(
-                person_id,
-                year,
-                month,
-                day,
-                **self.get_project_department_arguments(person_id),
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return time_spents_service.get_day_time_spents(
+            person_id,
+            year,
+            month,
+            day,
+            **self.get_project_department_arguments(person_id),
+        )
 
 
 class PersonMonthQuotaShotsResource(MethodView, ArgsMixin):
@@ -649,17 +617,14 @@ class PersonMonthQuotaShotsResource(MethodView, ArgsMixin):
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
         weighted = self.get_bool_parameter("weighted", default="true")
-        try:
-            return shots_service.get_month_quota_shots(
-                person_id,
-                year,
-                month,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                weighted=weighted,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return shots_service.get_month_quota_shots(
+            person_id,
+            year,
+            month,
+            project_id=project_id,
+            task_type_id=task_type_id,
+            weighted=weighted,
+        )
 
 
 class PersonWeekQuotaShotsResource(MethodView, ArgsMixin):
@@ -703,17 +668,14 @@ class PersonWeekQuotaShotsResource(MethodView, ArgsMixin):
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
         weighted = self.get_bool_parameter("weighted", default="true")
-        try:
-            return shots_service.get_week_quota_shots(
-                person_id,
-                year,
-                week,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                weighted=weighted,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return shots_service.get_week_quota_shots(
+            person_id,
+            year,
+            week,
+            project_id=project_id,
+            task_type_id=task_type_id,
+            weighted=weighted,
+        )
 
 
 class PersonDayQuotaShotsResource(MethodView, ArgsMixin):
@@ -764,18 +726,15 @@ class PersonDayQuotaShotsResource(MethodView, ArgsMixin):
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
         weighted = self.get_bool_parameter("weighted", default="true")
-        try:
-            return shots_service.get_day_quota_shots(
-                person_id,
-                year,
-                month,
-                day,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                weighted=weighted,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        return shots_service.get_day_quota_shots(
+            person_id,
+            year,
+            month,
+            day,
+            project_id=project_id,
+            task_type_id=task_type_id,
+            weighted=weighted,
+        )
 
 
 class TimeSpentDurationResource(MethodView, ArgsMixin):
@@ -1234,25 +1193,24 @@ class ChangePasswordForPersonResource(MethodView, ArgsMixin):
         """
         (password, password_2) = self.get_arguments()
 
-        try:
-            permissions.check_admin_permissions()
-            person = persons_service.get_person(person_id)
-            current_user = persons_service.get_current_user()
-            auth.validate_password(password, password_2)
-            password = auth.encrypt_password(password)
-            persons_service.update_password(person["email"], password)
-            current_app.logger.warning(
-                "User %s has changed the password of %s"
-                % (current_user["email"], person["email"])
-            )
-            organisation = persons_service.get_organisation()
-            time_string = format_datetime(
-                datetime.datetime.utcnow(),
-                tzinfo=person["timezone"],
-                locale=person["locale"],
-            )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            html = f"""<p>Hello {person["first_name"]},</p>
+        permissions.check_admin_permissions()
+        person = persons_service.get_person(person_id)
+        current_user = persons_service.get_current_user()
+        auth.validate_password(password, password_2)
+        password = auth.encrypt_password(password)
+        persons_service.update_password(person["email"], password)
+        current_app.logger.warning(
+            "User %s has changed the password of %s"
+            % (current_user["email"], person["email"])
+        )
+        organisation = persons_service.get_organisation()
+        time_string = format_datetime(
+            datetime.datetime.utcnow(),
+            tzinfo=person["timezone"],
+            locale=person["locale"],
+        )
+        person_IP = request.headers.get("X-Forwarded-For", None)
+        html = f"""<p>Hello {person["first_name"]},</p>
 <p>
 Your password was changed at this date: {time_string}.
 The IP of the user who changed your password is: {person_IP}.
@@ -1264,22 +1222,9 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-            subject = f"{organisation['name']} - Kitsu: password changed"
-            emails.send_email(subject, html, person["email"])
-            return {"success": True}
-
-        except auth.PasswordsNoMatchException:
-            return (
-                {
-                    "error": True,
-                    "message": "Confirmation password doesn't match.",
-                },
-                400,
-            )
-        except auth.PasswordTooShortException:
-            return {"error": True, "message": "Password is too short."}, 400
-        except UnactiveUserException:
-            return {"error": True, "message": "User is unactive."}, 400
+        subject = f"{organisation['name']} - Kitsu: password changed"
+        emails.send_email(subject, html, person["email"])
+        return {"success": True}
 
     def get_arguments(self):
         args = self.get_args(
@@ -1329,23 +1274,22 @@ class DisableTwoFactorAuthenticationPersonResource(MethodView, ArgsMixin):
           400:
             description: Inactive user
         """
-        try:
-            permissions.check_admin_permissions()
-            person = persons_service.get_person(person_id)
-            current_user = persons_service.get_current_user()
-            disable_two_factor_authentication_for_person(person["id"])
-            current_app.logger.warning(
-                "User %s has disabled the two factor authentication of %s"
-                % (current_user["email"], person["email"])
-            )
-            organisation = persons_service.get_organisation()
-            time_string = format_datetime(
-                datetime.datetime.utcnow(),
-                tzinfo=person["timezone"],
-                locale=person["locale"],
-            )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            html = f"""<p>Hello {person["first_name"]},</p>
+        permissions.check_admin_permissions()
+        person = persons_service.get_person(person_id)
+        current_user = persons_service.get_current_user()
+        disable_two_factor_authentication_for_person(person["id"])
+        current_app.logger.warning(
+            "User %s has disabled the two factor authentication of %s"
+            % (current_user["email"], person["email"])
+        )
+        organisation = persons_service.get_organisation()
+        time_string = format_datetime(
+            datetime.datetime.utcnow(),
+            tzinfo=person["timezone"],
+            locale=person["locale"],
+        )
+        person_IP = request.headers.get("X-Forwarded-For", None)
+        html = f"""<p>Hello {person["first_name"]},</p>
 <p>
 Your two factor authentication was disabled at this date: {time_string}.
 The IP of the user who disabled your two factor authentication is: {person_IP}.
@@ -1357,14 +1301,6 @@ Thank you and see you soon on Kitsu,
 {organisation["name"]} Team
 </p>
 """
-            subject = f"{organisation['name']} - Kitsu: two factor authentication disabled"
-            emails.send_email(subject, html, person["email"])
-            return {"success": True}
-
-        except UnactiveUserException:
-            return {"error": True, "message": "User is unactive."}, 400
-        except TwoFactorAuthenticationNotEnabledException:
-            return {
-                "error": True,
-                "message": "Two factor authentication not enabled for this user.",
-            }, 400
+        subject = f"{organisation['name']} - Kitsu: two factor authentication disabled"
+        emails.send_email(subject, html, person["email"])
+        return {"success": True}

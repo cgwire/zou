@@ -40,7 +40,10 @@
                 "${file}"
             ],
             "cwd": "${workspaceFolder}",
-            "env": {"DB_DATABASE": "zoudbtest"},
+            "env": {
+                "DB_DATABASE": "zoudbtest",
+                "DEBUG": "1"
+            },
             "justMyCode": false
         },
         {
