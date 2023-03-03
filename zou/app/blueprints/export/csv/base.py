@@ -17,7 +17,7 @@ class BaseCsvExport(Resource):
     def prepare_import(self):
         pass
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Export as csv.

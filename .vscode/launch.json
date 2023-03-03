@@ -27,8 +27,35 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
-            "env": {"PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"},
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}"},
             "justMyCode": false
-        }
+        },
+        {
+            "name": "Python: Test current File",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "${file}"
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {"DB_DATABASE": "zoudbtest"},
+            "justMyCode": false
+        },
+        {
+            "name": "Python: Real Time",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/zou/event_stream.py",
+            "console": "integratedTerminal",
+            "cwd": "${fileDirname}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${env:PYTHONPATH}",
+                "DEBUG": "1"
+            },
+            "gevent": true,
+            "justMyCode": false
+        },
     ]
 }

@@ -64,104 +64,121 @@ def init_data():
     """
     Put the minimum required data into the database to start with it.
     """
-    projects_service.get_open_status()
-    projects_service.get_closed_status()
-    print("Project status initialized.")
+    with app.app_context():
+        projects_service.get_open_status()
+        projects_service.get_closed_status()
+        print("Project status initialized.")
 
-    assets_service.get_or_create_asset_type("Character")
-    assets_service.get_or_create_asset_type("Prop")
-    assets_service.get_or_create_asset_type("Environment")
-    assets_service.get_or_create_asset_type("FX")
-    print("Asset types initialized.")
+        assets_service.get_or_create_asset_type("Character")
+        assets_service.get_or_create_asset_type("Prop")
+        assets_service.get_or_create_asset_type("Environment")
+        assets_service.get_or_create_asset_type("FX")
+        print("Asset types initialized.")
 
-    shots_service.get_episode_type()
-    shots_service.get_sequence_type()
-    shots_service.get_shot_type()
-    print("Shot types initialized.")
+        shots_service.get_episode_type()
+        shots_service.get_sequence_type()
+        shots_service.get_shot_type()
+        print("Shot types initialized.")
 
-    edits_service.get_edit_type()
-    print("Edit type initialized.")
+        edits_service.get_edit_type()
+        print("Edit type initialized.")
 
-    modeling = tasks_service.get_or_create_department("Modeling", "#78909C")
-    animation = tasks_service.get_or_create_department("Animation", "#009688")
-    fx = tasks_service.get_or_create_department("FX", "#26C6DA")
-    compositing = tasks_service.get_or_create_department(
-        "Compositing", "#F06292"
-    )
-    concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
-    layout = tasks_service.get_or_create_department("Layout", "#7CB342")
+        modeling = tasks_service.get_or_create_department(
+            "Modeling", "#78909C"
+        )
+        animation = tasks_service.get_or_create_department(
+            "Animation", "#009688"
+        )
+        fx = tasks_service.get_or_create_department("FX", "#26C6DA")
+        compositing = tasks_service.get_or_create_department(
+            "Compositing", "#F06292"
+        )
+        concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
+        layout = tasks_service.get_or_create_department("Layout", "#7CB342")
 
-    tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
-    tasks_service.get_or_create_task_type(modeling, "Modeling", "#78909C", 2)
-    tasks_service.get_or_create_task_type(modeling, "Shading", "#64B5F6", 3)
-    tasks_service.get_or_create_task_type(animation, "Rigging", "#9CCC65", 4)
+        tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
+        tasks_service.get_or_create_task_type(
+            modeling, "Modeling", "#78909C", 2
+        )
+        tasks_service.get_or_create_task_type(
+            modeling, "Shading", "#64B5F6", 3
+        )
+        tasks_service.get_or_create_task_type(
+            animation, "Rigging", "#9CCC65", 4
+        )
 
-    tasks_service.get_or_create_task_type(
-        concept,
-        "Storyboard",
-        "#43A047",
-        priority=1,
-        for_entity="Shot",
-    )
-    tasks_service.get_or_create_task_type(
-        layout,
-        "Layout",
-        "#7CB342",
-        priority=2,
-        for_entity="Shot",
-    )
-    tasks_service.get_or_create_task_type(
-        animation,
-        "Animation",
-        "#009688",
-        priority=3,
-        for_entity="Shot",
-    )
-    tasks_service.get_or_create_task_type(
-        compositing,
-        "Lighting",
-        "#F9A825",
-        priority=4,
-        for_entity="Shot",
-    )
-    tasks_service.get_or_create_task_type(
-        fx, "FX", "#26C6DA", priority=5, for_entity="Shot"
-    )
-    tasks_service.get_or_create_task_type(
-        compositing,
-        "Rendering",
-        "#F06292",
-        priority=6,
-        for_entity="Shot",
-    )
-    tasks_service.get_or_create_task_type(
-        compositing,
-        "Compositing",
-        "#ff5252",
-        priority=7,
-        for_entity="Shot",
-    )
-    tasks_service.get_or_create_task_type(
-        compositing,
-        "Edit",
-        "#9b298c",
-        priority=8,
-        for_entity="Edit",
-    )
-    print("Task types initialized.")
+        tasks_service.get_or_create_task_type(
+            concept,
+            "Storyboard",
+            "#43A047",
+            priority=1,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            layout,
+            "Layout",
+            "#7CB342",
+            priority=2,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            animation,
+            "Animation",
+            "#009688",
+            priority=3,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            compositing,
+            "Lighting",
+            "#F9A825",
+            priority=4,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            fx, "FX", "#26C6DA", priority=5, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing,
+            "Rendering",
+            "#F06292",
+            priority=6,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            compositing,
+            "Compositing",
+            "#ff5252",
+            priority=7,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            compositing,
+            "Edit",
+            "#9b298c",
+            priority=8,
+            for_entity="Edit",
+        )
+        print("Task types initialized.")
 
-    tasks_service.get_default_status()
-    tasks_service.get_or_create_status("Work In Progress", "wip", "#3273dc")
-    tasks_service.get_or_create_status(
-        "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
-    )
-    tasks_service.get_or_create_status(
-        "Retake", "retake", "#ff3860", is_retake=True
-    )
-    tasks_service.get_or_create_status("Done", "done", "#22d160", is_done=True)
-    tasks_service.get_or_create_status("Ready To Start", "ready", "#fbc02d")
+        tasks_service.get_default_status()
+        tasks_service.get_or_create_status(
+            "Work In Progress", "wip", "#3273dc"
+        )
+        tasks_service.get_or_create_status(
+            "Waiting For Approval", "wfa", "#ab26ff", is_feedback_request=True
+        )
+        tasks_service.get_or_create_status(
+            "Retake", "retake", "#ff3860", is_retake=True
+        )
+        tasks_service.get_or_create_status(
+            "Done", "done", "#22d160", is_done=True
+        )
+        tasks_service.get_or_create_status(
+            "Ready To Start", "ready", "#fbc02d"
+        )
 
-    print("Task status initialized.")
+        print("Task status initialized.")
 
 
 def sync_with_ldap_server():
@@ -332,23 +349,16 @@ def sync_with_ldap_server():
             )
 
     def save_thumbnail(person, thumbnail):
-        from zou.app import app
-
-        with app.app_context():
-            thumbnail_path = "/tmp/ldap_th.jpg"
-            with open(thumbnail_path, "wb") as th_file:
-                th_file.write(thumbnail)
-            thumbnail_png_path = thumbnail_utils.convert_jpg_to_png(
-                thumbnail_path
-            )
-            thumbnail_utils.turn_into_thumbnail(
-                thumbnail_png_path, size=thumbnail_utils.BIG_SQUARE_SIZE
-            )
-            file_store.add_picture(
-                "thumbnails", person["id"], thumbnail_png_path
-            )
-            os.remove(thumbnail_png_path)
-            persons_service.update_person(person["id"], {"has_avatar": True})
+        thumbnail_path = "/tmp/ldap_th.jpg"
+        with open(thumbnail_path, "wb") as th_file:
+            th_file.write(thumbnail)
+        thumbnail_png_path = thumbnail_utils.convert_jpg_to_png(thumbnail_path)
+        thumbnail_utils.turn_into_thumbnail(
+            thumbnail_png_path, size=thumbnail_utils.BIG_SQUARE_SIZE
+        )
+        file_store.add_picture("thumbnails", person["id"], thumbnail_png_path)
+        os.remove(thumbnail_png_path)
+        persons_service.update_person(person["id"], {"has_avatar": True})
 
     ldap_users = get_ldap_users()
     update_person_list_with_ldap_users(ldap_users)
@@ -367,12 +377,13 @@ def import_data_from_another_instance(
     Retrieve and save all the data from another API instance. It doesn't
     change the IDs.
     """
-    sync_service.init(target, login, password)
-    if not only_projects:
-        sync_service.run_main_data_sync(project=project)
-    if not no_projects:
-        sync_service.run_project_data_sync(project=project)
-        sync_service.run_other_sync(project=project)
+    with app.app_context():
+        sync_service.init(target, login, password)
+        if not only_projects:
+            sync_service.run_main_data_sync(project=project)
+        if not no_projects:
+            sync_service.run_project_data_sync(project=project)
+            sync_service.run_other_sync(project=project)
 
 
 def run_sync_change_daemon(event_target, target, login, password, logs_dir):
@@ -380,14 +391,15 @@ def run_sync_change_daemon(event_target, target, login, password, logs_dir):
     Listen to event websocket. Each time a change occurs, it retrieves the
     related data and save it in the current instance.
     """
-    event_client = sync_service.init_events_listener(
-        target, event_target, login, password, logs_dir
-    )
-    sync_service.add_main_sync_listeners(event_client)
-    sync_service.add_project_sync_listeners(event_client)
-    sync_service.add_special_sync_listeners(event_client)
-    print("Start listening.")
-    sync_service.run_listeners(event_client)
+    with app.app_context():
+        event_client = sync_service.init_events_listener(
+            target, event_target, login, password, logs_dir
+        )
+        sync_service.add_main_sync_listeners(event_client)
+        sync_service.add_project_sync_listeners(event_client)
+        sync_service.add_special_sync_listeners(event_client)
+        print("Start listening.")
+        sync_service.run_listeners(event_client)
 
 
 def run_sync_file_change_daemon(
@@ -397,12 +409,13 @@ def run_sync_file_change_daemon(
     Listen to event websocket. Each time a change occurs, it retrieves the
     related file and save it in the current instance storage.
     """
-    event_client = sync_service.init_events_listener(
-        target, event_target, login, password, logs_dir
-    )
-    sync_service.add_file_listeners(event_client)
-    print("Start listening.")
-    sync_service.run_listeners(event_client)
+    with app.app_context():
+        event_client = sync_service.init_events_listener(
+            target, event_target, login, password, logs_dir
+        )
+        sync_service.add_file_listeners(event_client)
+        print("Start listening.")
+        sync_service.run_listeners(event_client)
 
 
 def import_last_changes_from_another_instance(
@@ -412,10 +425,11 @@ def import_last_changes_from_another_instance(
     Retrieve and save all the data related to most recent events from another
     API instance. It doesn't change the IDs.
     """
-    sync_service.init(target, login, password)
-    print("Last events syncing started.")
-    sync_service.run_last_events_sync(minutes=minutes, page_size=300)
-    print("Last events syncing ended.")
+    with app.app_context():
+        sync_service.init(target, login, password)
+        print("Last events syncing started.")
+        sync_service.run_last_events_sync(minutes=minutes, page_size=300)
+        print("Last events syncing ended.")
 
 
 def import_last_file_changes_from_another_instance(
@@ -426,10 +440,11 @@ def import_last_file_changes_from_another_instance(
     from another API instance (new previews and thumbnails).
     It doesn't change the IDs.
     """
-    sync_service.init(target, login, password)
-    print("Last files syncing started.")
-    sync_service.run_last_events_files(minutes=minutes, page_size=50)
-    print("Last files syncing ended.")
+    with app.app_context():
+        sync_service.init(target, login, password)
+        print("Last files syncing started.")
+        sync_service.run_last_events_files(minutes=minutes, page_size=50)
+        print("Last files syncing ended.")
 
 
 def import_files_from_another_instance(target, login, password, project=None):
@@ -437,13 +452,15 @@ def import_files_from_another_instance(target, login, password, project=None):
     Retrieve and save all the data related most recent events from another API
     instance. It doesn't change the IDs.
     """
-    sync_service.init(target, login, password)
-    sync_service.download_files_from_another_instance(project=project)
+    with app.app_context():
+        sync_service.init(target, login, password)
+        sync_service.download_files_from_another_instance(project=project)
 
 
 def download_file_from_storage():
-    sync_service.download_entity_thumbnails_from_storage()
-    sync_service.download_preview_files_from_storage()
+    with app.app_context():
+        sync_service.download_entity_thumbnails_from_storage()
+        sync_service.download_preview_files_from_storage()
 
 
 def dump_database():
@@ -458,29 +475,33 @@ def dump_database():
 
 
 def upload_files_to_cloud_storage(days):
-    backup_service.upload_entity_thumbnails_to_storage(days)
-    backup_service.upload_preview_files_to_storage(days)
+    with app.app_context():
+        backup_service.upload_entity_thumbnails_to_storage(days)
+        backup_service.upload_preview_files_to_storage(days)
 
 
 def reset_tasks_data(project_id):
-    deletion_service.reset_tasks_data(project_id)
+    with app.app_context():
+        tasks_service.reset_tasks_data(project_id)
 
 
 def remove_old_data(days_old=90):
-    print("Start removing non critical data older than %s." % days_old)
-    print("Removing old events...")
-    deletion_service.remove_old_events(days_old)
-    print("Removing old login logs...")
-    deletion_service.remove_old_login_logs(days_old)
-    print("Removing old notitfications...")
-    deletion_service.remove_old_notifications(days_old)
-    print("Old data removed.")
+    with app.app_context():
+        print("Start removing non critical data older than %s." % days_old)
+        print("Removing old events...")
+        deletion_service.remove_old_events(days_old)
+        print("Removing old login logs...")
+        deletion_service.remove_old_login_logs(days_old)
+        print("Removing old notitfications...")
+        deletion_service.remove_old_notifications(days_old)
+        print("Old data removed.")
 
 
 def reset_search_index():
-    print("Resetting search index.")
-    index_service.reset_index()
-    print("Search index resetted.")
+    with app.app_context():
+        print("Resetting search index.")
+        index_service.reset_index()
+        print("Search index resetted.")
 
 
 def init_search_index():
@@ -490,9 +511,10 @@ def init_search_index():
 
 
 def search_asset(query):
-    assets = index_service.search_assets(query)
-    if len(assets) == 0:
-        print("No asset found")
-    for asset in assets:
-        print(asset["name"], asset["id"])
-    return assets
+    with app.app_context():
+        assets = index_service.search_assets(query)
+        if len(assets) == 0:
+            print("No asset found")
+        for asset in assets:
+            print(asset["name"], asset["id"])
+        return assets

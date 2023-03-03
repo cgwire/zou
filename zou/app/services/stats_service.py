@@ -329,7 +329,7 @@ def _add_stats(
     retake_count,
     nb_frames,
 ):
-    for (key1, key2) in [
+    for key1, key2 in [
         ("all", "all"),
         ("all", task_type_id),
         (episode_id, "all"),
@@ -363,7 +363,7 @@ def _add_evolution_stats(
     retake_count,
     nb_frames,
 ):
-    for (key1, key2) in [(episode_id, "all"), (episode_id, task_type_id)]:
+    for key1, key2 in [(episode_id, "all"), (episode_id, task_type_id)]:
         # In this loop we compute the "evolution" statistics
         # They represent the dynamics of the production
         max_retake_count = results[key1][key2]["max_retake_count"]

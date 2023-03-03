@@ -7,7 +7,7 @@ from zou.app.services import index_service, projects_service, user_service
 
 
 class SearchResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Search for resource
@@ -25,7 +25,8 @@ class SearchResource(Resource, ArgsMixin):
                 description: List of assets and persons that contain the query (3 results max)
         """
         args = self.get_args([("query", "", True)])
-        query = args.get("query")
+
+        query = args["query"]
         if len(query) < 3:
             return {"assets": []}
 

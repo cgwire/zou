@@ -90,7 +90,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             Subscription.delete_all_by(entity_id=entity["id"])
         return entity
 
-    @jwt_required
+    @jwt_required()
     def put(self, instance_id):
         """
         Update a model with data given in the request body. JSON format is

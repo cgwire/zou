@@ -46,9 +46,9 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             "/data/projects/%s/entities/%s/casting"
             % (self.project_id, self.episode_id)
         )
-        self.assertEquals(len(casting), 2)
-        self.assertEquals(casting[0]["asset_name"], "Rabbit")
-        self.assertEquals(casting[1]["asset_name"], "Tree")
+        self.assertEqual(len(casting), 2)
+        self.assertEqual(casting[0]["asset_name"], "Rabbit")
+        self.assertEqual(casting[1]["asset_name"], "Tree")
 
     def test_get_shot_casting(self):
         new_casting = [
@@ -64,18 +64,18 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             "/data/projects/%s/entities/%s/casting"
             % (self.project_id, self.shot_id)
         )
-        self.assertEquals(len(casting), 2)
-        self.assertEquals(casting[0]["asset_name"], "Rabbit")
-        self.assertEquals(casting[1]["asset_name"], "Tree")
+        self.assertEqual(len(casting), 2)
+        self.assertEqual(casting[0]["asset_name"], "Rabbit")
+        self.assertEqual(casting[1]["asset_name"], "Tree")
 
         # Test automatic addition to related episode
         casting = self.get(
             "/data/projects/%s/entities/%s/casting"
             % (self.project_id, self.episode_id)
         )
-        self.assertEquals(len(casting), 2)
-        self.assertEquals(casting[0]["asset_name"], "Rabbit")
-        self.assertEquals(casting[1]["asset_name"], "Tree")
+        self.assertEqual(len(casting), 2)
+        self.assertEqual(casting[0]["asset_name"], "Rabbit")
+        self.assertEqual(casting[1]["asset_name"], "Tree")
 
     def test_remove_from_episode_casting(self):
         new_casting = [
@@ -101,13 +101,13 @@ class BreakdownServiceTestCase(ApiDBTestCase):
             "/data/projects/%s/entities/%s/casting"
             % (self.project_id, self.episode_id)
         )
-        self.assertEquals(len(casting), 1)
+        self.assertEqual(len(casting), 1)
         casting = self.get(
             "/data/projects/%s/entities/%s/casting"
             % (self.project_id, self.shot_id)
         )
-        self.assertEquals(len(casting), 1)
-        self.assertEquals(casting[0]["asset_name"], "Tree")
+        self.assertEqual(len(casting), 1)
+        self.assertEqual(casting[0]["asset_name"], "Tree")
 
     def test_get_episode_assets(self):
         new_casting = [
@@ -121,10 +121,10 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         )
         assets = self.get("/data/assets?episode_id=%s" % self.episode_id)
         assets = sorted(assets, key=lambda a: a["name"])
-        self.assertEquals(len(assets), 2)
-        self.assertEquals(assets[0]["name"], "Rabbit")
-        self.assertEquals(assets[1]["name"], "Tree")
+        self.assertEqual(len(assets), 2)
+        self.assertEqual(assets[0]["name"], "Rabbit")
+        self.assertEqual(assets[1]["name"], "Tree")
 
         self.asset.update({"source_id": self.episode_id})
         assets = self.get("/data/assets?episode_id=%s" % self.episode_id)
-        self.assertEquals(len(assets), 3)
+        self.assertEqual(len(assets), 3)

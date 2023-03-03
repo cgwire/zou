@@ -15,6 +15,10 @@ from zou.app.services.exception import (
 )
 from zou.app import app, config
 
+from zou import __file__ as root_path
+
+migrations_path = os.path.join(os.path.dirname(root_path), "migrations")
+
 
 @click.group()
 def cli():
@@ -27,10 +31,7 @@ def init_db():
 
     print("Creating database and tables...")
     with app.app_context():
-        import zou
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.upgrade(directory=directory)
+        flask_migrate.upgrade(directory=migrations_path)
     print("Database and tables created.")
 
 
@@ -42,10 +43,7 @@ def migrate_db(message):
     (for development only).
     """
     with app.app_context():
-        import zou
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.migrate(directory=directory, message=message)
+        flask_migrate.migrate(directory=migrations_path, message=message)
 
 
 @cli.command()
@@ -56,10 +54,7 @@ def downgrade_db(revision):
     (for development only). For revision you can use an hash or a relative migration identifier.
     """
     with app.app_context():
-        import zou
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.downgrade(directory=directory, revision=revision)
+        flask_migrate.downgrade(directory=migrations_path, revision=revision)
 
 
 @cli.command()
@@ -67,30 +62,21 @@ def clear_db():
     "Drop all tables from database"
 
     with app.app_context():
-        import zou
-
         print("Deleting database and tables...")
         dbhelpers.drop_all()
         print("Database and tables deleted.")
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.stamp(directory=directory, revision="base")
+        flask_migrate.stamp(directory=migrations_path, revision="base")
 
 
 @cli.command()
 def reset_db():
     "Drop all tables then recreates them."
     with app.app_context():
-        import zou
-
         print("Deleting database and tables...")
         dbhelpers.drop_all()
         print("Database and tables deleted.")
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.stamp(directory=directory, revision="base")
-
-        flask_migrate.upgrade(directory=directory)
+        flask_migrate.stamp(directory=migrations_path, revision="base")
+        flask_migrate.upgrade(directory=migrations_path)
         print("Database and tables created.")
 
 
@@ -98,10 +84,7 @@ def reset_db():
 def upgrade_db():
     "Upgrade database schema."
     with app.app_context():
-        import zou
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.upgrade(directory=directory)
+        flask_migrate.upgrade(directory=migrations_path)
 
 
 @cli.command()
@@ -109,23 +92,17 @@ def upgrade_db():
 def stamp_db(revision):
     "Set the database schema revision to current one."
     with app.app_context():
-        import zou
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
         if revision is None:
-            flask_migrate.stamp(directory=directory)
+            flask_migrate.stamp(directory=migrations_path)
         else:
-            flask_migrate.stamp(directory=directory, revision=revision)
+            flask_migrate.stamp(directory=migrations_path, revision=revision)
 
 
 @cli.command()
 def reset_migrations():
     "Set the database schema revision to first one."
     with app.app_context():
-        import zou
-
-        directory = os.path.join(os.path.dirname(zou.__file__), "migrations")
-        flask_migrate.stamp(directory=directory, revision="base")
+        flask_migrate.stamp(directory=migrations_path, revision="base")
 
 
 @cli.command()
@@ -135,28 +112,34 @@ def create_admin(email, password):
     """
     Create an admin user to allow usage of the API when database is empty.
     """
-    try:
-        person = persons_service.get_person_by_email(email)
-        if person["role"] != "admin":
-            persons_service.update_person(person["id"], {"role": "admin"})
-            print("Existing user's role has been upgraded to 'admin'.")
-    except PersonNotFoundException:
+    with app.app_context():
         try:
-            auth.validate_password(password)
-            # Allow "admin@example.com" to be invalid.
-            if email != "admin@example.com":
-                auth.validate_email(email)
-            password = auth.encrypt_password(password)
-            persons_service.create_person(
-                email, password, "Super", "Admin", role="admin"
-            )
-            print("Admin successfully created.")
-        except auth.PasswordTooShortException:
-            print("Password is too short.")
-            sys.exit(1)
-        except auth.EmailNotValidException:
-            print("Email is not valid.")
-            sys.exit(1)
+            person = persons_service.get_person_by_email(email)
+            if person["role"] != "admin":
+                persons_service.update_person(person["id"], {"role": "admin"})
+                print("Existing user's role has been upgraded to 'admin'.")
+        except PersonNotFoundException:
+            try:
+                auth.validate_password(password)
+                # Allow "admin@example.com" to be invalid.
+                if email != "admin@example.com":
+                    auth.validate_email(email)
+                password = auth.encrypt_password(password)
+                persons_service.create_person(
+                    email, password, "Super", "Admin", role="admin"
+                )
+                print("Admin successfully created.")
+
+            except IntegrityError:
+                print("User already exists for this email.")
+                sys.exit(1)
+
+            except auth.PasswordTooShortException:
+                print("Password is too short.")
+                sys.exit(1)
+            except auth.EmailNotValidException:
+                print("Email is not valid.")
+                sys.exit(1)
 
 
 @cli.command()
@@ -183,22 +166,25 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     Disable two factor authentication for given user.
     """
-    try:
-        person_id = persons_service.get_person_by_email_dekstop_login(
-            email_or_desktop_login
-        )
-        auth_service.disable_two_factor_authentication_for_person(person_id)
-        print(
-            f"Two factor authentication disabled for {email_or_desktop_login}."
-        )
-    except PersonNotFoundException:
-        print(f"Email ({email_or_desktop_login}) not listed in database.")
-        sys.exit(1)
-    except TwoFactorAuthenticationNotEnabledException:
-        print(
-            f"Two factor authentication can't be disabled for {email_or_desktop_login} because it's not activated."
-        )
-        sys.exit(1)
+    with app.app_context():
+        try:
+            person_id = persons_service.get_person_by_email_dekstop_login(
+                email_or_desktop_login
+            )
+            auth_service.disable_two_factor_authentication_for_person(
+                person_id
+            )
+            print(
+                f"Two factor authentication disabled for {email_or_desktop_login}."
+            )
+        except PersonNotFoundException:
+            print(f"Email ({email_or_desktop_login}) not listed in database.")
+            sys.exit(1)
+        except TwoFactorAuthenticationNotEnabledException:
+            print(
+                f"Two factor authentication can't be disabled for {email_or_desktop_login} because it's not activated."
+            )
+            sys.exit(1)
 
 
 @cli.command()
@@ -208,14 +194,15 @@ def change_password(email, password):
     """
     Change the password of given user.
     """
-    try:
-        auth.validate_password(password)
-        password = auth.encrypt_password(password)
-        persons_service.update_password(email, password)
-        print("Password changed for %s" % email)
-    except auth.PasswordTooShortException:
-        print("The password is too short.")
-        sys.exit(1)
+    with app.app_context():
+        try:
+            auth.validate_password(password)
+            password = auth.encrypt_password(password)
+            persons_service.update_password(email, password)
+            print("Password changed for %s" % email)
+        except auth.PasswordTooShortException:
+            print("The password is too short.")
+            sys.exit(1)
 
 
 @cli.command()
@@ -225,20 +212,21 @@ def set_person_as_active(email, unactive):
     """
     Set a person as active.
     """
-    try:
-        if persons_service.is_user_limit_reached():
-            raise IsUserLimitReachedException
-        person = persons_service.get_person_by_email_raw(email)
-        person.update({"active": not unactive})
-        print(
-            f'Person {email} is set as an {"active" if not unactive else "unactive"} user.'
-        )
-    except IsUserLimitReachedException:
-        print(f"User limit reached (limit {config.USER_LIMIT}).")
-        sys.exit(1)
-    except PersonNotFoundException:
-        print(f"Email ({email}) not listed in database.")
-        sys.exit(1)
+    with app.app_context():
+        try:
+            if persons_service.is_user_limit_reached():
+                raise IsUserLimitReachedException
+            person = persons_service.get_person_by_email_raw(email)
+            person.update({"active": not unactive})
+            print(
+                f'Person {email} is set as an {"active" if not unactive else "unactive"} user.'
+            )
+        except IsUserLimitReachedException:
+            print(f"User limit reached (limit {config.USER_LIMIT}).")
+            sys.exit(1)
+        except PersonNotFoundException:
+            print(f"Email ({email}) not listed in database.")
+            sys.exit(1)
 
 
 @cli.command()
@@ -246,13 +234,14 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    try:
-        if persons_service.is_user_limit_reached():
-            raise IsUserLimitReachedException
-        commands.sync_with_ldap_server()
-    except IsUserLimitReachedException:
-        print("User limit reached (limit %i)." % config.USER_LIMIT)
-        sys.exit(1)
+    with app.app_context():
+        try:
+            if persons_service.is_user_limit_reached():
+                raise IsUserLimitReachedException
+            commands.sync_with_ldap_server()
+        except IsUserLimitReachedException:
+            print("User limit reached (limit %i)." % config.USER_LIMIT)
+            sys.exit(1)
 
 
 @cli.command()

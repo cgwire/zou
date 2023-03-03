@@ -1,7 +1,7 @@
 import datetime
 
-from flask import abort, request
-from flask_restful import Resource, reqparse, current_app
+from flask import abort, request, current_app
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime
@@ -28,12 +28,12 @@ from zou.app.services.auth_service import (
 )
 
 
-class NewPersonResource(Resource):
+class NewPersonResource(Resource, ArgsMixin):
     """
     Create a new user in the database.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Create a new user in the database.
@@ -96,30 +96,37 @@ class NewPersonResource(Resource):
         return person, 201
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "email", help="The email is required.", required=True
+        args = self.get_args(
+            [
+                {
+                    "name": "email",
+                    "help": "The email is required.",
+                    "required": True,
+                },
+                {
+                    "name": "first_name",
+                    "help": "The first name is required.",
+                    "required": True,
+                },
+                ("last_name", ""),
+                ("phone", ""),
+                ("role", "user"),
+                ("desktop_login", ""),
+                {"name": "departments", "action": "append"},
+                "password",
+            ]
         )
-        parser.add_argument(
-            "first_name", help="The first name is required.", required=True
-        )
-        parser.add_argument("last_name", default="")
-        parser.add_argument("phone", default="")
-        parser.add_argument("role", default="user")
-        parser.add_argument("desktop_login", default="")
-        parser.add_argument("departments", default=None, action="append")
-        parser.add_argument("password", default=None)
-        args = parser.parse_args()
+
         return args
 
 
-class DesktopLoginsResource(Resource):
+class DesktopLoginsResource(Resource, ArgsMixin):
     """
     Allow to create and retrieve desktop login logs. Desktop login logs can only
     be created by current user.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id):
         """
         Retrieve desktop login logs.
@@ -148,7 +155,7 @@ class DesktopLoginsResource(Resource):
         persons_service.get_person(person_id)
         return persons_service.get_desktop_login_logs(person_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, person_id):
         """
         Create desktop login logs.
@@ -173,7 +180,7 @@ class DesktopLoginsResource(Resource):
             201:
                 description: Desktop login log entry created.
         """
-        arguments = self.get_arguments()
+        args = self.get_args([("date", datetime.datetime.now())])
 
         current_user = persons_service.get_current_user()
         if (
@@ -183,15 +190,10 @@ class DesktopLoginsResource(Resource):
             raise permissions.PermissionDenied
 
         desktop_login_log = persons_service.create_desktop_login_logs(
-            person_id, arguments["date"]
+            person_id, args["date"]
         )
 
         return desktop_login_log, 201
-
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("date", default=datetime.datetime.now())
-        return parser.parse_args()
 
 
 class PresenceLogsResource(Resource):
@@ -199,7 +201,7 @@ class PresenceLogsResource(Resource):
     Return a csv file containing the presence logs based on a daily basis.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, month_date):
         """
         Return a csv file containing the presence logs based on a daily basis.
@@ -225,16 +227,16 @@ class PresenceLogsResource(Resource):
         return csv_utils.build_csv_response(presence_logs)
 
 
-class TimeSpentsResource(Resource):
+class TimeSpentsResource(Resource, ArgsMixin):
     """
     Get all time spents for the given person.
     Optionnaly can accept date range parameters.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id):
         permissions.check_admin_permissions()
-        arguments = self.get_arguments()
+        arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         if not start_date and not end_date:
             return time_spents_service.get_time_spents(person_id)
@@ -258,19 +260,13 @@ class TimeSpentsResource(Resource):
                 ),
             )
 
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("start_date", default=None)
-        parser.add_argument("end_date", default=None)
-        return parser.parse_args()
-
 
 class DateTimeSpentsResource(Resource):
     """
     Get time spents for given person and date.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, date):
         """
         Get time spents for given person and date.
@@ -330,7 +326,7 @@ class DayOffResource(Resource):
     Get day off object for given person and date.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, date):
         """
         Get day off object for given person and date.
@@ -408,7 +404,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
     Get aggregated time spents for given person and year.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year):
         """
         Get aggregated time spents for given person and year.
@@ -448,7 +444,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
     Get aggregated time spents for given person and month.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, month):
         """
         Get aggregated time spents for given person and month.
@@ -496,7 +492,7 @@ class PersonMonthAllTimeSpentsResource(Resource):
     Get all time spents for a given person and month.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, month):
         user_service.check_person_access(person_id)
         try:
@@ -513,7 +509,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
     Get aggregated time spents for given person and week.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, week):
         """
         Get aggregated time spents for given person and week.
@@ -561,7 +557,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
     Get aggregated time spents for given person and day.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, month, day):
         """
         Get aggregated time spents for given person and day.
@@ -617,7 +613,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
     Get ended shots used for quota calculation of this month.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, month):
         """
         Get ended shots used for quota calculation of this month.
@@ -671,7 +667,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
     Get ended shots used for quota calculation of this week.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, week):
         """
         Get ended shots used for quota calculation of this week.
@@ -725,7 +721,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
     Get ended shots used for quota calculation of this day.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, month, day):
         """
         Get ended shots used for quota calculation of this day.
@@ -823,7 +819,7 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
     month.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, year, month):
         """
         Return a table giving time spent by user and by day for given year and month.
@@ -858,7 +854,7 @@ class TimeSpentYearsResource(TimeSpentDurationResource):
     Return a table giving time spent by user and by month for given year.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Return a table giving time spent by user and by month for given year.
@@ -879,7 +875,7 @@ class TimeSpentMonthsResource(TimeSpentDurationResource):
     Return a table giving time spent by user and by month for given year.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, year):
         """
         Return a table giving time spent by user and by month for given year.
@@ -906,7 +902,7 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
     Return a table giving time spent by user and by week for given year.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, year):
         """
         Return a table giving time spent by user and by week for given year.
@@ -933,7 +929,7 @@ class InvitePersonResource(Resource):
     Sends an email to given person to invite him/her to connect to Kitsu.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id):
         """
         Sends an email to given person to invite him/her to connect to Kitsu.
@@ -961,7 +957,7 @@ class DayOffForMonthResource(Resource, ArgsMixin):
     Return all day off recorded for given month.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, year, month):
         """
         Return all day off recorded for given month.
@@ -999,7 +995,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
     Return all day off recorded for given week and person.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, week):
         """
         Return all day off recorded for given week and person.
@@ -1042,7 +1038,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
     Return all day off recorded for given month and person.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year, month):
         """
         Return all day off recorded for given month and person.
@@ -1085,7 +1081,7 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
     Return all day off recorded for given year and person.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, person_id, year):
         """
         Return all day off recorded for given year and person.
@@ -1121,7 +1117,7 @@ class AddToDepartmentResource(Resource, ArgsMixin):
     Add a user to given department.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, person_id):
         """
         Add a user to given department.
@@ -1139,12 +1135,14 @@ class AddToDepartmentResource(Resource, ArgsMixin):
             201:
                 description: User added to given department
         """
-        permissions.check_admin_permissions()
         args = self.get_args(
             [
                 ("department_id", None, True),
             ]
         )
+
+        permissions.check_admin_permissions()
+
         try:
             department = tasks_service.get_department(args["department_id"])
         except DepartmentNotFoundException:
@@ -1160,7 +1158,7 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
     Remove a user from given department.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, person_id, department_id):
         """
         Remove a user from given department.
@@ -1200,7 +1198,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
     Allow admin to change password for given user.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, person_id):
         """
         Allow admin to change password for given user.
@@ -1284,16 +1282,20 @@ Thank you and see you soon on Kitsu,
             return {"error": True, "message": "User is unactive."}, 400
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "password", required=True, help="New password is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "password",
+                    "required": True,
+                    "help": "New password is missing.",
+                },
+                {
+                    "name": "password_2",
+                    "required": True,
+                    "help": "New password confirmation is missing.",
+                },
+            ]
         )
-        parser.add_argument(
-            "password_2",
-            required=True,
-            help="New password confirmation is missing.",
-        )
-        args = parser.parse_args()
 
         return (args["password"], args["password_2"])
 
@@ -1303,7 +1305,7 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
     Allow admin to disable two factor authentication for given user.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, person_id):
         """
         Allow admin to disable two factor authentication for given user.

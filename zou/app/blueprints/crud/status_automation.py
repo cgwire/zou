@@ -1,5 +1,5 @@
+from flask import current_app
 from flask_jwt_extended import jwt_required
-from flask_restful import current_app
 from sqlalchemy.exc import IntegrityError, StatementError
 
 from .base import BaseModelsResource, BaseModelResource
@@ -30,7 +30,7 @@ class StatusAutomationResource(BaseModelResource):
         status_automations_service.clear_status_automation_cache()
         return status_automation
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         """
         Delete status automation corresponding at given ID and return it as a JSON

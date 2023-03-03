@@ -91,7 +91,6 @@ PROJECT_STYLES = [
 
 
 class Project(base, BaseMixin):
-
     __tablename__ = "project"
 
     name = sa.Column(sa.String(80), nullable=False, unique=True, index=True)

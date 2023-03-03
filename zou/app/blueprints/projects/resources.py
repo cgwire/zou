@@ -14,13 +14,13 @@ from zou.app.utils import permissions
 from zou.app.services.exception import WrongParameterException
 
 
-class OpenProjectsResource(Resource):
+class OpenProjectsResource(Resource, ArgsMixin):
     """
     Return the list of projects currently running. Most of the time, past
     projects are not needed.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Return the list of projects currently running.
@@ -32,20 +32,20 @@ class OpenProjectsResource(Resource):
             200:
               description: All running projects
         """
-        name = request.args.get("name", None)
+        name = self.get_text_parameter("name")
         if permissions.has_admin_permissions():
             return projects_service.open_projects(name)
         else:
             return user_service.get_open_projects(name)
 
 
-class AllProjectsResource(Resource):
+class AllProjectsResource(Resource, ArgsMixin):
     """
     Return all projects listed in database. Ensure that user has at least
     the manager level before that.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Return all projects listed in database.
@@ -57,7 +57,7 @@ class AllProjectsResource(Resource):
             200:
               description: All projects listed in database
         """
-        name = request.args.get("name", None)
+        name = self.get_text_parameter("name")
         try:
             permissions.check_admin_permissions()
 
@@ -77,7 +77,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
     Allow to manage the people listed in a production team.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Return the people listed in a production team.
@@ -105,7 +105,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
                 persons.append(person.present_minimal())
         return persons
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Manage the people listed in a production team.
@@ -124,6 +124,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
               description: Person added to production team
         """
         args = self.get_args([("person_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         return (
             projects_service.add_team_member(project_id, args["person_id"]),
@@ -136,7 +137,7 @@ class ProductionTeamRemoveResource(Resource):
     Allow to remove people listed in a production team.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, person_id):
         """
         Remove people listed in a production team.
@@ -170,7 +171,7 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
     Allow to add an asset type linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Add an asset type linked to a production.
@@ -195,6 +196,7 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
               description: Asset type added to production
         """
         args = self.get_args([("asset_type_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_asset_type_setting(
             project_id, args["asset_type_id"]
@@ -207,7 +209,7 @@ class ProductionAssetTypeRemoveResource(Resource):
     Allow to remove an asset type linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, asset_type_id):
         """
         Remove an asset type from a production.
@@ -241,7 +243,7 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
     Retrieve task types linked to the production
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve task types linked to the production
@@ -268,7 +270,7 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
     Allow to add a task type linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Add an task type linked to a production.
@@ -300,6 +302,7 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
         args = self.get_args(
             [("task_type_id", "", True), ("priority", None, False)]
         )
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
             project_id, args["task_type_id"], args["priority"]
@@ -312,7 +315,7 @@ class ProductionTaskTypeRemoveResource(Resource):
     Allow to remove a task type linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, task_type_id):
         """
         Remove a task type from a production.
@@ -346,7 +349,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
     Allow to add a task type linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Return task statuses linked to a production
@@ -367,7 +370,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         return projects_service.get_project_task_statuses(project_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Add a task type linked to a production.
@@ -392,6 +395,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
               description: Task type added to production
         """
         args = self.get_args([("task_status_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_status_setting(
             project_id, args["task_status_id"]
@@ -404,7 +408,7 @@ class ProductionTaskStatusRemoveResource(Resource):
     Allow to remove an task status linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, task_status_id):
         """
         Remove a task status from a production.
@@ -438,7 +442,7 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
     Allow to add a status automation linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Get a status automation linked to a production.
@@ -459,7 +463,7 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(project_id)
         return projects_service.get_project_status_automations(project_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Add a status automation linked to a production.
@@ -484,6 +488,7 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
               description: Status automation added to production
         """
         args = self.get_args([("status_automation_id", "", True)])
+
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_status_automation_setting(
             project_id, args["status_automation_id"]
@@ -496,7 +501,7 @@ class ProductionStatusAutomationRemoveResource(Resource):
     Allow to remove a status automation linked to a production.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, status_automation_id):
         """
         Remove a status automation from a production.
@@ -533,7 +538,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
     extra fields listed in the data attribute of entities.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Get all metadata descriptors
@@ -558,7 +563,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             project_id, for_client
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create a new metadata descriptor
@@ -582,8 +587,8 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 ("entity_type", "Asset", False),
                 ("name", "", True),
                 ("for_client", "False", False),
-                ("choices", [], False, "append"),
-                ("departments", [], False, "append"),
+                ("choices", [], False, list, "append"),
+                ("departments", [], False, list, "append"),
             ]
         )
 
@@ -626,7 +631,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
     to describe extra fields listed in the data attribute of entities.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, descriptor_id):
         """
         Get a metadata descriptor.
@@ -654,7 +659,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         return projects_service.get_metadata_descriptor(descriptor_id)
 
-    @jwt_required
+    @jwt_required()
     def put(self, project_id, descriptor_id):
         """
         Update a metadata descriptor.
@@ -703,8 +708,8 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             [
                 ("name", "", False),
                 ("for_client", "False", False),
-                ("choices", [], False, "append"),
-                ("departments", [], False, "append"),
+                ("choices", [], False, list, "append"),
+                ("departments", [], False, list, "append"),
             ]
         )
         user_service.check_all_departments_access(
@@ -722,7 +727,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
         return projects_service.update_metadata_descriptor(descriptor_id, args)
 
-    @jwt_required
+    @jwt_required()
     def delete(self, project_id, descriptor_id):
         """
         Delete a metadata descriptor.
@@ -762,7 +767,7 @@ class ProductionTimeSpentsResource(Resource):
     Resource to retrieve time spents for given production.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve time spents for given production
@@ -789,7 +794,7 @@ class ProductionMilestonesResource(Resource):
     Resource to retrieve milestones for given production.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve milestones for given production
@@ -816,7 +821,7 @@ class ProductionScheduleItemsResource(Resource):
     Resource to retrieve schedule items for given production.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve schedule items for given production
@@ -844,7 +849,7 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
     Resource to retrieve schedule items for given production.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve task type schedule items for given production
@@ -872,7 +877,7 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
     Resource to retrieve asset types schedule items for given task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, task_type_id):
         """
         Retrieve asset types schedule items for given task type
@@ -908,7 +913,7 @@ class ProductionEpisodesScheduleItemsResource(Resource):
     Resource to retrieve episodes schedule items for given task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, task_type_id):
         """
         Retrieve episodes schedule items for given task type
@@ -944,7 +949,7 @@ class ProductionSequencesScheduleItemsResource(Resource):
     Resource to retrieve sequences schedule items for given task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, task_type_id):
         """
         Retrieve sequences schedule items for given task type

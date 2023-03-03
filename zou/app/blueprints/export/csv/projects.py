@@ -12,7 +12,9 @@ class ProjectsCsvExport(BaseCsvExport):
         return ["Name", "Status"]
 
     def build_query(self):
-        query = Project.query.join(ProjectStatus)
+        query = Project.query.join(
+            ProjectStatus, Project.project_status_id == ProjectStatus.id
+        )
         query = query.add_columns(ProjectStatus.name)
         query = query.order_by(Project.name)
         return query

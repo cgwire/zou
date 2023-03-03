@@ -253,16 +253,16 @@ class PlaylistTestCase(ApiDBTestCase):
         preview_file = preview_files_service.get_last_preview_file_for_task(
             self.task_id
         )
-        self.assertEquals(preview_file["revision"], 1)
+        self.assertEqual(preview_file["revision"], 1)
 
         preview_file = self.generate_fixture_preview_file(revision=2)
         preview_file = preview_files_service.get_last_preview_file_for_task(
             self.task_id
         )
-        self.assertEquals(preview_file["revision"], 2)
+        self.assertEqual(preview_file["revision"], 2)
 
         preview_file = self.generate_fixture_preview_file(revision=3)
         preview_file = preview_files_service.get_last_preview_file_for_task(
             self.task_id
         )
-        self.assertEquals(preview_file["revision"], 3)
+        self.assertEqual(preview_file["revision"], 3)

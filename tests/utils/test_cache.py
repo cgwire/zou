@@ -4,7 +4,6 @@ from zou.app.utils import cache
 
 
 class CacheTestCase(unittest.TestCase):
-
     __name__ = "test_handler"
 
     def setUp(self):

@@ -5,7 +5,6 @@ from tests.base import ApiDBTestCase
 
 
 class EventsTestCase(ApiDBTestCase):
-
     __name__ = "test_handler"
 
     def setUp(self):

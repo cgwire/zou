@@ -3,7 +3,7 @@ import os
 
 from flask import request, abort, current_app
 from flask import send_file as flask_send_file
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
 from zou.app import config
@@ -47,9 +47,9 @@ def send_storage_file(working_file_id, as_attachment=False):
         config, get_local_path, open_file, prefix, working_file_id, extension
     )
 
-    attachment_filename = ""
+    download_name = ""
     if as_attachment:
-        attachment_filename = working_file_id
+        download_name = working_file_id
 
     try:
         return flask_send_file(
@@ -57,7 +57,7 @@ def send_storage_file(working_file_id, as_attachment=False):
             conditional=True,
             mimetype=mimetype,
             as_attachment=as_attachment,
-            attachment_filename=attachment_filename,
+            download_name=download_name,
         )
     except IOError as e:
         current_app.logger.error(e)
@@ -98,7 +98,7 @@ class WorkingFileFileResource(Resource):
         uploaded_file.save(file_path)
         return file_path
 
-    @jwt_required
+    @jwt_required()
     def get(self, working_file_id):
         """
         Download a working file.
@@ -126,7 +126,7 @@ class WorkingFileFileResource(Resource):
         self.check_access(working_file_id)
         return send_storage_file(working_file_id)
 
-    @jwt_required
+    @jwt_required()
     def post(self, working_file_id):
         """
         Store a working file.
@@ -157,14 +157,14 @@ class WorkingFileFileResource(Resource):
         return working_file, 201
 
 
-class WorkingFilePathResource(Resource):
+class WorkingFilePathResource(Resource, ArgsMixin):
     """
     Generate from file tree template a working file path based on several
     parameters: task, software, mode, revision and separator. Revision can be
     computed automatically as next revision if not given.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id):
         """
         Generate a working file path from file tree template.
@@ -257,14 +257,16 @@ class WorkingFilePathResource(Resource):
             "3ds Max", "max", ".max"
         )
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", default="main")
-        parser.add_argument("mode", default="working")
-        parser.add_argument("software_id", default=maxsoft["id"])
-        parser.add_argument("comment", default="")
-        parser.add_argument("revision", default=0)
-        parser.add_argument("sep", default="/")
-        args = parser.parse_args()
+        args = self.get_args(
+            [
+                ("name", "main"),
+                ("mode", "working"),
+                ("software_id", maxsoft["id"]),
+                ("comment", ""),
+                ("revision", 0),
+                ("sep", "/"),
+            ]
+        )
 
         return (
             args["name"],
@@ -284,7 +286,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
     not given.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, entity_id):
         """
         Generate an output file path from file tree template
@@ -403,7 +405,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
     Revision can be computed automatically as next revision in case no revision is given in parameter.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Generate an output file path from file tree template
@@ -524,7 +526,7 @@ class LastWorkingFilesResource(Resource):
     Return last working files revision for each file name for given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return last working files revision for each file name for given task.
@@ -556,7 +558,7 @@ class TaskWorkingFilesResource(Resource):
     Return all working file revisions for a given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return last working files revision for each file name for given task.
@@ -583,7 +585,7 @@ class TaskWorkingFilesResource(Resource):
         return result
 
 
-class NewWorkingFileResource(Resource):
+class NewWorkingFileResource(Resource, ArgsMixin):
     """
     A working file is a file used to produce output files.
     It is the file the CG artist is working on.
@@ -591,7 +593,7 @@ class NewWorkingFileResource(Resource):
     A path is generated for each file created. The path format is defined in the file tree template file.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id):
         """
         Create new working file.
@@ -708,18 +710,23 @@ class NewWorkingFileResource(Resource):
             "3ds Max", "max", ".max"
         )
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name", help="The asset name is required.", required=True
+        args = self.get_args(
+            [
+                {
+                    "name": "name",
+                    "help": "The asset name is required.",
+                    "required": True,
+                },
+                ("description", ""),
+                ("mode", "working"),
+                ("comment", ""),
+                ("person_id", person["id"]),
+                ("software_id", maxsoft["id"]),
+                {"name": "revision", "default": 0, "type": int},
+                ("sep", "/"),
+            ]
         )
-        parser.add_argument("description", default="")
-        parser.add_argument("mode", default="working")
-        parser.add_argument("comment", default="")
-        parser.add_argument("person_id", default=person["id"])
-        parser.add_argument("software_id", default=maxsoft["id"])
-        parser.add_argument("revision", default=0, type=int)
-        parser.add_argument("sep", default="/")
-        args = parser.parse_args()
+
         return (
             args["name"],
             args["mode"],
@@ -737,7 +744,7 @@ class ModifiedFileResource(Resource):
     Update working file modification date with current date.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, working_file_id):
         """
         Update working file modification date with current date.
@@ -765,12 +772,12 @@ class ModifiedFileResource(Resource):
         return working_file
 
 
-class CommentWorkingFileResource(Resource):
+class CommentWorkingFileResource(Resource, ArgsMixin):
     """
     Update comment on given working file.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self, working_file_id):
         """
         Update comment on given working file.
@@ -797,22 +804,22 @@ class CommentWorkingFileResource(Resource):
             200:
                 description: Comment updated on given working file
         """
-        comment = self.get_comment_from_args()
+        args = self.get_args(
+            [
+                {
+                    "name": "comment",
+                    "required": True,
+                    "help": "Comment field expected.",
+                }
+            ]
+        )
+
         working_file = files_service.get_working_file(working_file_id)
         task = tasks_service.get_task(working_file["task_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
-        working_file = self.update_comment(working_file_id, comment)
+        working_file = self.update_comment(working_file_id, args["comment"])
         return working_file
-
-    def get_comment_from_args(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "comment", required=True, help="Comment field expected."
-        )
-        args = parser.parse_args()
-        comment = args["comment"]
-        return comment
 
     def update_comment(self, working_file_id, comment):
         working_file = files_service.update_working_file(
@@ -834,7 +841,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
     Revision is automatically set.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, entity_id):
         """
         Create new output file linked to a given entity.
@@ -1056,7 +1063,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
     output file.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Create new output file linked to assets through an instance of this asset for a given shot.
@@ -1290,7 +1297,7 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
     Get next revision for given entity, output type, task type and name.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, entity_id):
         """
         Get next revision for given entity, output type, task type and name.
@@ -1355,7 +1362,7 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
     Get next revision for given asset instance, output type, task type and name.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
         Get next revision for given asset instance, output type, task type and name.
@@ -1428,13 +1435,13 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
         )
 
 
-class LastEntityOutputFilesResource(Resource):
+class LastEntityOutputFilesResource(Resource, ArgsMixin):
     """
     Last revisions of output files for given entity grouped by output type
     and file name.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Get last revisions of output files for given entity grouped by output type and file name.
@@ -1452,26 +1459,37 @@ class LastEntityOutputFilesResource(Resource):
             200:
                 description: Last revisions of output files for given entity grouped by output type and file name
         """
+        args = self.get_args(
+            [
+                "output_type_id",
+                "task_type_id",
+                "representation",
+                "file_status_id",
+                "name",
+            ],
+            location="values",
+        )
+
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
         return files_service.get_last_output_files_for_entity(
             entity["id"],
-            output_type_id=request.args.get("output_type_id", None),
-            task_type_id=request.args.get("task_type_id", None),
-            representation=request.args.get("representation", None),
-            file_status_id=request.args.get("file_status_id", None),
-            name=request.args.get("name", None),
+            output_type_id=args["output_type_id"],
+            task_type_id=args["task_type_id"],
+            representation=args["representation"],
+            file_status_id=args["file_status_id"],
+            name=args["name"],
         )
 
 
-class LastInstanceOutputFilesResource(Resource):
+class LastInstanceOutputFilesResource(Resource, ArgsMixin):
     """
     Last revisions of output files for given instance grouped by output type
     and file name.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
         """
         Get last revisions of output files for given instance grouped by output type and file name.
@@ -1495,6 +1513,17 @@ class LastInstanceOutputFilesResource(Resource):
             200:
                 description: Last revisions of output files for given instance grouped by output type and file name
         """
+        args = self.get_args(
+            [
+                "output_type_id",
+                "task_type_id",
+                "representation",
+                "file_status_id",
+                "name",
+            ],
+            location="values",
+        )
+
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
         user_service.check_project_access(entity["project_id"])
@@ -1502,11 +1531,11 @@ class LastInstanceOutputFilesResource(Resource):
         return files_service.get_last_output_files_for_instance(
             asset_instance["id"],
             temporal_entity_id,
-            output_type_id=request.args.get("output_type_id", None),
-            task_type_id=request.args.get("task_type_id", None),
-            representation=request.args.get("representation", None),
-            file_status_id=request.args.get("file_status_id", None),
-            name=request.args.get("name", None),
+            output_type_id=args["output_type_id"],
+            task_type_id=args["task_type_id"],
+            representation=args["representation"],
+            file_status_id=args["file_status_id"],
+            name=args["name"],
         )
 
 
@@ -1515,7 +1544,7 @@ class EntityOutputTypesResource(Resource):
     Return all types of output generated for given entity.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Return all types of output generated for given entity.
@@ -1543,7 +1572,7 @@ class InstanceOutputTypesResource(Resource):
     Return all types of output generated for given instance.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
         """
         Return all types of output generated for given instance.
@@ -1575,12 +1604,12 @@ class InstanceOutputTypesResource(Resource):
         )
 
 
-class EntityOutputTypeOutputFilesResource(Resource):
+class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
     """
     Get all output files for given entity and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id, output_type_id):
         """
         Get all output files for given entity and given output type.
@@ -1604,7 +1633,7 @@ class EntityOutputTypeOutputFilesResource(Resource):
             200:
                 description:  All output files for given entity and given output type
         """
-        representation = request.args.get("representation", None)
+        representation = self.get_text_parameter("representation")
 
         entity = entities_service.get_entity(entity_id)
         files_service.get_output_type(output_type_id)
@@ -1618,12 +1647,12 @@ class EntityOutputTypeOutputFilesResource(Resource):
         return output_files
 
 
-class InstanceOutputTypeOutputFilesResource(Resource):
+class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
     """
     Get all output files for given asset instance and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
         """
         Get all output files for given asset instance and given output type.
@@ -1653,7 +1682,7 @@ class InstanceOutputTypeOutputFilesResource(Resource):
             200:
                 description:  All output files for given asset instance and given output type
         """
-        representation = request.args.get("representation", None)
+        representation = self.get_text_parameter("representation")
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = assets_service.get_asset(asset_instance["asset_id"])
@@ -1670,12 +1699,12 @@ class InstanceOutputTypeOutputFilesResource(Resource):
         )
 
 
-class EntityOutputFilesResource(Resource):
+class EntityOutputFilesResource(Resource, ArgsMixin):
     """
     Get all output files for given asset instance and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Get all output files for given asset instance and given output type.
@@ -1693,22 +1722,27 @@ class EntityOutputFilesResource(Resource):
             200:
                 description:  All output files for given asset instance and given output type
         """
+        args = self.get_args(
+            [
+                "output_type_id",
+                "task_type_id",
+                "representation",
+                "file_status_id",
+                "name",
+            ],
+            location="values",
+        )
+
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
-        task_type_id = request.args.get("task_type_id")
-        output_type_id = request.args.get("output_type_id")
-        name = request.args.get("name")
-        representation = request.args.get("representation")
-        file_status_id = request.args.get("file_status_id")
-
         return files_service.get_output_files_for_entity(
             entity["id"],
-            task_type_id=task_type_id,
-            output_type_id=output_type_id,
-            name=name,
-            representation=representation,
-            file_status_id=file_status_id,
+            task_type_id=args["task_type_id"],
+            output_type_id=args["output_type_id"],
+            name=args["name"],
+            representation=args["representation"],
+            file_status_id=args["file_status_id"],
         )
 
 
@@ -1717,7 +1751,7 @@ class InstanceOutputFilesResource(Resource):
     Get all output files for given asset instance and given output type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, asset_instance_id):
         """
         Get all output files for given asset instance and given output type.
@@ -1735,25 +1769,30 @@ class InstanceOutputFilesResource(Resource):
             200:
                 description: All output files for given asset instance and given output type
         """
+        args = self.get_args(
+            [
+                "temporal_entity_id",
+                "output_type_id",
+                "task_type_id",
+                "representation",
+                "file_status_id",
+                "name",
+            ],
+            location="values",
+        )
+
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = assets_service.get_asset(asset_instance["asset_id"])
         user_service.check_project_access(asset["project_id"])
 
-        temporal_entity_id = request.args.get("temporal_entity_id")
-        task_type_id = request.args.get("task_type_id")
-        output_type_id = request.args.get("output_type_id")
-        name = request.args.get("name")
-        representation = request.args.get("representation")
-        file_status_id = request.args.get("file_status_id")
-
         return files_service.get_output_files_for_instance(
             asset_instance["id"],
-            temporal_entity_id=temporal_entity_id,
-            task_type_id=task_type_id,
-            output_type_id=output_type_id,
-            name=name,
-            representation=representation,
-            file_status_id=file_status_id,
+            temporal_entity_id=args["temporal_entity_id"],
+            task_type_id=args["task_type_id"],
+            output_type_id=args["output_type_id"],
+            name=args["name"],
+            representation=args["representation"],
+            file_status_id=args["file_status_id"],
         )
 
 
@@ -1763,7 +1802,7 @@ class FileResource(Resource):
     output file.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, file_id):
         """
         Get information about a file that could be a working file as much as an output file.
@@ -1794,14 +1833,14 @@ class FileResource(Resource):
         return file_dict
 
 
-class SetTreeResource(Resource):
+class SetTreeResource(Resource, ArgsMixin):
     """
     Define a template file to use for given project. Template files are located
     on the server side. Each template has a name which means that you just have
     to give a name to "select" the template to link with the project.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Define a template file to use for given project.
@@ -1832,11 +1871,19 @@ class SetTreeResource(Resource):
             400:
                 description: Selected tree not available
         """
-        tree_name = self.get_arguments()
+        args = self.get_args(
+            [
+                {
+                    "name": "tree_name",
+                    "help": "The name of the tree to set is required.",
+                    "required": True,
+                }
+            ]
+        )
 
         try:
             user_service.check_project_access(project_id)
-            tree = file_tree_service.get_tree_from_file(tree_name)
+            tree = file_tree_service.get_tree_from_file(args["tree_name"])
             project = projects_service.update_project(
                 project_id, {"file_tree": tree}
             )
@@ -1845,24 +1892,13 @@ class SetTreeResource(Resource):
 
         return project
 
-    def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "tree_name",
-            help="The name of the tree to set is required.",
-            required=True,
-        )
-        args = parser.parse_args()
-
-        return args.get("tree_name", "")
-
 
 class EntityWorkingFilesResource(Resource, ArgsMixin):
     """
     Get all working files for a given entity and possibly a task and a name.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Get all working files for a given entity and possibly a task and a name.
@@ -1880,25 +1916,34 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
             200:
                 description:  All working files for given entity and possibly a task and a name
         """
-        task_id = request.args.get("task_id", None)
-        name = request.args.get("name", None)
-        relations = self.get_bool_parameter("relations")
+        args = self.get_args(
+            [
+                "task_id",
+                "name",
+            ],
+            location="values",
+        )
+
+        relations = self.get_relations()
 
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
 
         return files_service.get_working_files_for_entity(
-            entity_id, task_id=task_id, name=name, relations=relations
+            entity_id,
+            task_id=args["task_id"],
+            name=args["name"],
+            relations=relations,
         )
 
 
-class GuessFromPathResource(Resource):
+class GuessFromPathResource(Resource, ArgsMixin):
     """
     Get list of possible project file tree templates matching a file path
     and data ids corresponding to template tokens.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         data = self.get_arguments()
 
@@ -1909,13 +1954,18 @@ class GuessFromPathResource(Resource):
         )
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "project_id", help="The project id is required.", required=True
+        return self.get_args(
+            [
+                {
+                    "name": "project_id",
+                    "help": "The project id is required.",
+                    "required": True,
+                },
+                {
+                    "name": "file_path",
+                    "help": "The file path is required.",
+                    "required": True,
+                },
+                ["sep", "/"],
+            ]
         )
-        parser.add_argument(
-            "file_path", help="The file path is required.", required=True
-        )
-        parser.add_argument("sep", default="/")
-        args = parser.parse_args()
-        return args

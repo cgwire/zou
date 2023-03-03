@@ -18,7 +18,7 @@ from zou.app.services.exception import (
 from zou.app.models.department import Department
 
 
-class PersonsResource(BaseModelsResource):
+class PersonsResource(BaseModelsResource, ArgsMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
 
@@ -27,7 +27,7 @@ class PersonsResource(BaseModelsResource):
             query = self.model.query
 
         if permissions.has_manager_permissions():
-            if request.args.get("with_pass_hash") == "true":
+            if self.get_bool_parameter("with_pass_hash"):
                 return [
                     person.serialize(relations=relations)
                     for person in query.all()
@@ -77,7 +77,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         else:
             raise permissions.PermissionDenied
 
-    @jwt_required
+    @jwt_required()
     def get(self, instance_id):
         """
         Retrieves the given person.
@@ -144,7 +144,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data["departments"] = departments
         return data
 
-    @jwt_required
+    @jwt_required()
     def delete(self, instance_id):
         """
         Delete a person corresponding at given ID and return it as a JSON

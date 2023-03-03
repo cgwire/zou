@@ -27,7 +27,7 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
     Result is paginated and can be sorted.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all playlists related to given project.
@@ -66,7 +66,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
     The full list is returned because the number of playlists in an episode is not that big.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, episode_id):
         """
         Retrieve all playlists related to given episode.
@@ -111,7 +111,7 @@ class ProjectPlaylistResource(Resource):
     Retrieve all playlists related to given project.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, playlist_id):
         """
         Retrieve all playlists related to given project.
@@ -149,7 +149,7 @@ class EntityPreviewsResource(Resource):
     Keys are related task type ids and values are arrays of preview for this task type.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Retrieve all previews related to a given entity.
@@ -179,7 +179,7 @@ class PlaylistDownloadResource(Resource):
     Download given playlist as a .mp4 after given build job is finished.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, playlist_id, build_job_id):
         """
         Download given playlist build as .mp4.
@@ -236,7 +236,7 @@ class PlaylistDownloadResource(Resource):
                 context_name += "_%s" % slugify.slugify(
                     episode_name, separator="_"
                 )
-            attachment_filename = "%s_%s_%s.mp4" % (
+            download_name = "%s_%s_%s.mp4" % (
                 slugify.slugify(build_job["created_at"], separator="").replace(
                     "t", "_"
                 ),
@@ -248,7 +248,7 @@ class PlaylistDownloadResource(Resource):
                 conditional=True,
                 mimetype="video/mp4",
                 as_attachment=True,
-                attachment_filename=attachment_filename,
+                download_name=download_name,
             )
 
 
@@ -257,7 +257,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
     Build given playlist as mp4 movie.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, playlist_id):
         """
         Build given playlist as mp4 movie.
@@ -326,7 +326,7 @@ class PlaylistZipDownloadResource(Resource):
     Download given playlist as zip.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, playlist_id):
         """
         Download given playlist as zip.
@@ -367,7 +367,7 @@ class PlaylistZipDownloadResource(Resource):
             context_name += "_%s" % slugify.slugify(
                 episode_name, separator="_"
             )
-        attachment_filename = "%s_%s.zip" % (
+        download_name = "%s_%s.zip" % (
             context_name,
             slugify.slugify(playlist["name"], separator="_"),
         )
@@ -377,7 +377,7 @@ class PlaylistZipDownloadResource(Resource):
             conditional=True,
             mimetype="application/zip",
             as_attachment=True,
-            attachment_filename=attachment_filename,
+            download_name=download_name,
         )
 
 
@@ -386,7 +386,7 @@ class BuildJobResource(Resource):
     Retrieve or remove a given build job related to a given playlist.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, playlist_id, build_job_id):
         """
         Retrieve build job related to given playlist.
@@ -415,7 +415,7 @@ class BuildJobResource(Resource):
         user_service.check_playlist_access(playlist)
         return playlists_service.get_build_job(build_job_id)
 
-    @jwt_required
+    @jwt_required()
     def delete(self, playlist_id, build_job_id):
         """
         Remove given build job related to given playlist.
@@ -452,7 +452,7 @@ class ProjectBuildJobsResource(Resource):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all build jobs related to given project.
@@ -482,7 +482,7 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all playlists related to given project.
@@ -513,7 +513,7 @@ class TempPlaylistResource(Resource, ArgsMixin):
     It's mainly used for synchronisation purpose.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Retrieve all playlists related to given project.
@@ -535,6 +535,6 @@ class TempPlaylistResource(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         task_ids = request.json.get("task_ids", [])
         sort = self.get_bool_parameter("sort")
-        return playlists_service.generate_temp_playlist(
-            task_ids, sort=sort
-        ) or []
+        return (
+            playlists_service.generate_temp_playlist(task_ids, sort=sort) or []
+        )

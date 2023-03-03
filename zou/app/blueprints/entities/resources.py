@@ -1,5 +1,4 @@
-from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
@@ -12,7 +11,7 @@ from zou.app.services import (
 
 
 class EntityNewsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Retrieve all news linked to a given entity.
@@ -36,7 +35,7 @@ class EntityNewsResource(Resource):
 
 
 class EntityPreviewFilesResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Retrieve all preview files linked to a given entity.
@@ -60,7 +59,7 @@ class EntityPreviewFilesResource(Resource):
 
 
 class EntityTimeSpentsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, entity_id):
         """
         Retrieve all time spents linked to a given entity.

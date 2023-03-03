@@ -1,8 +1,8 @@
 import datetime
 import urllib.parse
 
-from flask import request, jsonify, abort
-from flask_restful import Resource, reqparse, current_app
+from flask import request, jsonify, abort, current_app
+from flask_restful import Resource
 from flask_principal import (
     Identity,
     AnonymousIdentity,
@@ -43,11 +43,10 @@ from zou.app.services.exception import (
 
 from flask_jwt_extended import (
     jwt_required,
-    jwt_refresh_token_required,
     create_access_token,
     create_refresh_token,
     get_jwt_identity,
-    get_raw_jwt,
+    get_jwt,
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
@@ -56,27 +55,19 @@ from flask_jwt_extended import (
 
 def is_from_browser(user_agent):
     return user_agent.browser in [
-        "camino",
-        "chrome",
-        "firefox",
-        "galeon",
-        "kmeleon",
-        "konqueror",
-        "links",
-        "lynx",
-        "msie",
-        "msn",
-        "netscape",
-        "opera",
-        "safari",
-        "seamonkey",
-        "webkit",
+        "Brave",
+        "Chrome",
+        "Edge",
+        "Firefox",
+        "Opera",
+        "Safari",
+        "Vivaldi",
     ]
 
 
 def logout():
     try:
-        current_token = get_raw_jwt()
+        current_token = get_jwt()
         jti = current_token["jti"]
         auth_service.revoke_tokens(app, jti)
     except Exception:
@@ -92,7 +83,6 @@ def wrong_auth_handler(identity_user=None):
 
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
-
     if identity.id is not None:
         from zou.app.services import persons_service
 
@@ -147,7 +137,7 @@ class AuthenticatedResource(Resource):
     if current user is still logged in.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Returns information if the user is authenticated else it returns a 401
@@ -182,7 +172,7 @@ class LogoutResource(Resource):
     cannot access to API anymore.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Log user out by revoking his auth tokens.
@@ -214,7 +204,7 @@ class LogoutResource(Resource):
             return logout_data
 
 
-class LoginResource(Resource):
+class LoginResource(Resource, ArgsMixin):
     """
     Log in user by creating and registering auth tokens. Login is based
     on email and password. If no user match given email and a destkop ID,
@@ -295,8 +285,14 @@ class LoginResource(Resource):
                     400,
                 )
 
-            access_token = create_access_token(identity=user["email"])
-            refresh_token = create_refresh_token(identity=user["email"])
+            access_token = create_access_token(
+                identity=user["email"],
+                additional_claims={"user_id": user["id"]},
+            )
+            refresh_token = create_refresh_token(
+                identity=user["email"],
+                additional_claims={"user_id": user["id"]},
+            )
             auth_service.register_tokens(app, access_token, refresh_token)
             identity_changed.send(
                 current_app._get_current_object(),
@@ -408,18 +404,20 @@ class LoginResource(Resource):
             return {"error": True, "login": False, "message": message}, 500
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "email", required=True, help="User email is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "email",
+                    "required": True,
+                    "help": "User email is missing.",
+                },
+                ("password", "default"),
+                "totp",
+                "email_otp",
+                ("fido_authentication_response", None, False, dict),
+                "recovery_code",
+            ]
         )
-        parser.add_argument("password", default="default")
-        parser.add_argument("totp", default=None)
-        parser.add_argument("email_otp", default=None)
-        parser.add_argument(
-            "fido_authentication_response", default=None, type=dict
-        )
-        parser.add_argument("recovery_code", default=None)
-        args = parser.parse_args()
 
         return (
             args["email"],
@@ -432,7 +430,7 @@ class LoginResource(Resource):
 
 
 class RefreshTokenResource(Resource):
-    @jwt_refresh_token_required
+    @jwt_required(refresh=True)
     def get(self):
         """
         Tokens are considered as outdated every two weeks.
@@ -444,8 +442,11 @@ class RefreshTokenResource(Resource):
           200:
             description: Access Token
         """
-        email = get_jwt_identity()
-        access_token = create_access_token(identity=email)
+        user = persons_service.get_current_user()
+        access_token = create_access_token(
+            identity=user["email"],
+            additional_claims={"user_id": user["id"]},
+        )
         auth_service.register_tokens(app, access_token)
         if is_from_browser(request.user_agent):
             response = jsonify({"refresh": True})
@@ -454,7 +455,7 @@ class RefreshTokenResource(Resource):
             return {"access_token": access_token}
 
 
-class RegistrationResource(Resource):
+class RegistrationResource(Resource, ArgsMixin):
     """
     Allow a user to register himself to the service.
     """
@@ -526,25 +527,35 @@ class RegistrationResource(Resource):
             return {"error": True, "message": str(exception)}, 400
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "email", required=True, help="User email is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "email",
+                    "required": True,
+                    "help": "User email is missing.",
+                },
+                {
+                    "name": "first_name",
+                    "required": True,
+                    "help": "First name is missing.",
+                },
+                {
+                    "name": "last_name",
+                    "required": True,
+                    "help": "Last name is missing.",
+                },
+                {
+                    "name": "password",
+                    "required": True,
+                    "help": "Password is missing.",
+                },
+                {
+                    "name": "password_2",
+                    "required": True,
+                    "help": "Confirmation password is missing.",
+                },
+            ]
         )
-        parser.add_argument(
-            "first_name", required=True, help="First name is missing."
-        )
-        parser.add_argument(
-            "last_name", required=True, help="Last name is missing."
-        )
-        parser.add_argument(
-            "password", required=True, help="Password is missing."
-        )
-        parser.add_argument(
-            "password_2",
-            required=True,
-            help="Confirmation password is missing.",
-        )
-        args = parser.parse_args()
 
         return (
             args["email"],
@@ -555,7 +566,7 @@ class RegistrationResource(Resource):
         )
 
 
-class ChangePasswordResource(Resource):
+class ChangePasswordResource(Resource, ArgsMixin):
     """
     Allow the user to change his password. Prior to modify the password,
     it requires to give the current password (to make sure the user changing
@@ -564,7 +575,7 @@ class ChangePasswordResource(Resource):
     make mistake by typing his new password.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Allow the user to change his password.
@@ -651,19 +662,25 @@ Thank you and see you soon on Kitsu,
             return {"error": True, "message": "Old password is wrong."}, 400
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "old_password", required=True, help="Old password is missing."
+        args = self.get_args(
+            [
+                {
+                    "name": "old_password",
+                    "required": True,
+                    "help": "Old password is missing.",
+                },
+                {
+                    "name": "password",
+                    "required": True,
+                    "help": "New password is missing.",
+                },
+                {
+                    "name": "password_2",
+                    "required": True,
+                    "help": "New password confirmation is missing.",
+                },
+            ]
         )
-        parser.add_argument(
-            "password", required=True, help="New password is missing."
-        )
-        parser.add_argument(
-            "password_2",
-            required=True,
-            help="New password confirmation is missing.",
-        )
-        args = parser.parse_args()
 
         return (args["old_password"], args["password"], args["password_2"])
 
@@ -713,7 +730,15 @@ class ResetPasswordResource(Resource, ArgsMixin):
                          Wrong or expired token
                          Inactive user
         """
-        args = self.get_put_arguments()
+        args = self.get_args(
+            [
+                ("email", "", True),
+                ("token", "", True),
+                ("password", "", True),
+                ("password2", "", True),
+            ]
+        )
+
         try:
             token_from_store = auth_tokens_store.get(
                 "reset-token-%s" % args["email"]
@@ -767,7 +792,8 @@ class ResetPasswordResource(Resource, ArgsMixin):
           400:
             description: Email not listed in database
         """
-        args = self.get_arguments()
+        args = self.get_args([("email", "", True)])
+
         try:
             user = persons_service.get_person_by_email(args["email"])
         except PersonNotFoundException:
@@ -802,7 +828,7 @@ password: <a href="{reset_url}">{reset_url}</a>
 </p>
 
 <p>
-This link will expire after 2 days. After, you have to do a new request to reset your password.
+This link will expire after 2 hours. After, you have to do a new request to reset your password.
 This email was sent at this date: {time_string}.
 The IP of the person who requested this is: {person_IP}.
 </p>
@@ -817,26 +843,13 @@ Thank you and see you soon on Kitsu,
         emails.send_email(subject, html, args["email"])
         return {"success": "Reset token sent"}
 
-    def get_arguments(self):
-        return self.get_args([("email", "", True)])
-
-    def get_put_arguments(self):
-        return self.get_args(
-            [
-                ("email", "", True),
-                ("token", "", True),
-                ("password", "", True),
-                ("password2", "", True),
-            ]
-        )
-
 
 class TOTPResource(Resource, ArgsMixin):
     """
     Resource to allow a user to enable/disable TOTP.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to pre-enable TOTP.
@@ -866,7 +879,7 @@ class TOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Resource to allow a user to enable TOTP.
@@ -883,6 +896,7 @@ class TOTPResource(Resource, ArgsMixin):
                          Inactive user
         """
         args = self.get_args([("totp", "", True)])
+
         try:
             otp_recovery_codes = auth_service.enable_totp(
                 persons_service.get_current_user()["id"], args["totp"]
@@ -903,7 +917,7 @@ class TOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def delete(self):
         """
         Resource to allow a user to disable TOTP.
@@ -921,10 +935,11 @@ class TOTPResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
@@ -981,8 +996,10 @@ class EmailOTPResource(Resource, ArgsMixin):
         args = self.get_args(
             [
                 ("email", None, True),
-            ]
+            ],
+            location="values",
         )
+
         try:
             try:
                 person = persons_service.get_person_by_email_dekstop_login(
@@ -1005,7 +1022,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 404,
             )
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to pre-enable OTP by email.
@@ -1032,7 +1049,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Resource to allow a user to enable OTP by email.
@@ -1049,6 +1066,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                          Inactive user
         """
         args = self.get_args([("email_otp", "", True)])
+
         try:
             otp_recovery_codes = auth_service.enable_email_otp(
                 persons_service.get_current_user()["id"], args["email_otp"]
@@ -1069,7 +1087,7 @@ class EmailOTPResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def delete(self):
         """
         Resource to allow a user to disable OTP by email.
@@ -1090,10 +1108,11 @@ class EmailOTPResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
@@ -1148,8 +1167,10 @@ class FIDOResource(Resource, ArgsMixin):
         args = self.get_args(
             [
                 ("email", None, True),
-            ]
+            ],
+            location="values",
         )
+
         try:
             try:
                 person = persons_service.get_person_by_email_dekstop_login(
@@ -1171,7 +1192,7 @@ class FIDOResource(Resource, ArgsMixin):
                 404,
             )
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to pre-register a FIDO device.
@@ -1191,7 +1212,7 @@ class FIDOResource(Resource, ArgsMixin):
             persons_service.get_current_user()["id"]
         )
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Resource to allow a user to register a FIDO device.
@@ -1210,10 +1231,11 @@ class FIDOResource(Resource, ArgsMixin):
         try:
             args = self.get_args(
                 [
-                    ("registration_response", {}, True, None, dict),
+                    ("registration_response", {}, True, dict),
                     ("device_name", "", True),
                 ]
             )
+
             otp_recovery_codes = auth_service.register_fido(
                 persons_service.get_current_user()["id"],
                 args["registration_response"],
@@ -1234,7 +1256,7 @@ class FIDOResource(Resource, ArgsMixin):
                 400,
             )
 
-    @jwt_required
+    @jwt_required()
     def delete(self):
         """
         Resource to allow a user to unregister a FIDO device.
@@ -1255,11 +1277,12 @@ class FIDOResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
                 ("device_name", None, True),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
@@ -1297,7 +1320,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
     Resource to allow a user to generate new recovery codes.
     """
 
-    @jwt_required
+    @jwt_required()
     def put(self):
         """
         Resource to allow a user to generate new recovery codes.
@@ -1317,10 +1340,11 @@ class RecoveryCodesResource(Resource, ArgsMixin):
             [
                 ("totp", None, False),
                 ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, None, dict),
+                ("fido_authentication_response", {}, False, dict),
                 ("recovery_code", None, False),
             ]
         )
+
         try:
             person = persons_service.get_current_user(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(

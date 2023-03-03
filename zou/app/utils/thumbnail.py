@@ -4,8 +4,7 @@ import math
 
 from zou.app.utils import fs
 
-from PIL import Image
-from PIL import ImageFile
+from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -33,7 +32,6 @@ def save_file(tmp_folder, instance_id, file_to_save):
 
 
 def convert_jpg_to_png(file_source_path):
-
     """
     Convert .jpg file located at given path into a .png file with same name.
     """
@@ -71,7 +69,7 @@ def make_im_bigger_if_needed(im, size):
     im_width, im_height = im.size
     width, height = size
     if im_width < width and im_height < height:
-        im = im.resize(size, Image.ANTIALIAS)
+        im = im.resize(size, Image.Resampling.LANCZOS)
     return im
 
 
@@ -91,7 +89,7 @@ def fit_to_target_size(im, size):
         if w > width:
             w = width
             h = int(math.ceil(float(width) / original_ratio))
-        im = im.resize((w, h), Image.ANTIALIAS)
+        im = im.resize((w, h), Image.Resampling.LANCZOS)
     return im
 
 
@@ -111,7 +109,7 @@ def turn_into_thumbnail(file_path, size=None):
     im = make_im_bigger_if_needed(im, size)
     im = fit_to_target_size(im, size)
 
-    im.thumbnail(size, Image.LANCZOS)
+    im.thumbnail(size, Image.Resampling.LANCZOS)
     if im.mode == "CMYK":
         im = im.convert("RGBA")
     final = Image.new("RGBA", size, (0, 0, 0, 0))
@@ -127,7 +125,7 @@ def resize(file_path, size):
     Resize given picture
     """
     im = Image.open(file_path)
-    im = im.resize(size, Image.ANTIALIAS)
+    im = im.resize(size, Image.Resampling.LANCZOS)
     if im.mode == "CMYK":
         im = im.convert("RGB")
     im.save(file_path, "PNG")

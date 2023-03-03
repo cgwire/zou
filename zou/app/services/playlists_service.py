@@ -10,7 +10,6 @@ from zipfile import ZipFile
 
 from flask import current_app
 from flask_fs.errors import FileNotFound
-from flask_mail import Message
 from slugify import slugify
 from sqlalchemy import or_
 
@@ -223,7 +222,7 @@ def set_preview_files_for_entities(playlist_dict):
     )
 
     is_pictures = False
-    for (preview_file, task_type_id, entity_id) in preview_files:
+    for preview_file, task_type_id, entity_id in preview_files:
         entity_id = str(entity_id)
         task_type_id = str(task_type_id)
         if entity_id not in previews:
@@ -697,11 +696,11 @@ def get_playlist_file_name(playlist):
     Build file name for the movie file matching given playlist.
     """
     project = projects_service.get_project(playlist["project_id"])
-    attachment_filename = "%s_%s" % (
+    download_name = "%s_%s" % (
         slugify(project["name"]),
         slugify(playlist["name"]),
     )
-    return slugify(attachment_filename)
+    return slugify(download_name)
 
 
 def get_playlist_movie_file_path(build_job):
@@ -813,9 +812,13 @@ def generate_temp_playlist(task_ids, sort=True):
             if "episode_name" in entities[0]:
                 return sorted(entities, key=itemgetter("episode_name", "name"))
             elif "sequence_name" in entities[0]:
-                return sorted(entities, key=itemgetter("sequence_name", "name"))
+                return sorted(
+                    entities, key=itemgetter("sequence_name", "name")
+                )
             elif "asset_type_name" in entities[0]:
-                return sorted(entities, key=itemgetter("asset_type_name", "name"))
+                return sorted(
+                    entities, key=itemgetter("asset_type_name", "name")
+                )
             else:
                 return entities
         except:

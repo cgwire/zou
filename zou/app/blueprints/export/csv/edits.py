@@ -13,7 +13,7 @@ from zou.app.utils import csv_utils
 
 
 class EditsCsvExport(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Export edits linked to a given project as csv.
@@ -94,7 +94,7 @@ class EditsCsvExport(Resource):
                 ]
             )
 
-        for (_, field_name) in metadata_infos:
+        for _, field_name in metadata_infos:
             result_metadata = result.get("data", {}) or {}
             row.append(result_metadata.get(field_name, ""))
 

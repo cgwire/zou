@@ -17,7 +17,7 @@ from zou.app.services import (
 
 
 class DownloadAttachmentResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, attachment_file_id, file_name):
         """
         Download attachment file.
@@ -63,7 +63,7 @@ class DownloadAttachmentResource(Resource):
                 conditional=True,
                 mimetype=attachment_file["mimetype"],
                 as_attachment=False,
-                attachment_filename=attachment_file["name"],
+                download_name=attachment_file["name"],
             )
         except Exception:
             abort(404)
@@ -75,7 +75,7 @@ class AckCommentResource(Resource):
     acknowledgement.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Acknowledge given comment.
@@ -114,7 +114,7 @@ class CommentTaskResource(Resource):
     given task status.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id):
         """
         Create a new comment for given task.
@@ -191,20 +191,31 @@ class CommentTaskResource(Resource):
 
     def get_arguments(self):
         parser = reqparse.RequestParser()
+        if request.is_json:
+            location = ["values", "json"]
+        else:
+            location = "values"
         parser.add_argument(
-            "task_status_id", required=True, help="Task Status ID is missing"
+            "task_status_id",
+            required=True,
+            help="Task Status ID is missing",
+            location=location,
         )
-        parser.add_argument("comment", default="")
-        parser.add_argument("person_id", default="")
-        parser.add_argument("created_at", default="")
-        if request.json is None:
-            parser.add_argument("checklist", default="[]")
+        parser.add_argument("comment", default="", location=location)
+        parser.add_argument("person_id", default="", location=location)
+        parser.add_argument("created_at", default="", location=location)
+        if request.is_json:
+            parser.add_argument("checklist", default="[]", location=location)
             args = parser.parse_args()
             checklist = args["checklist"]
             checklist = json.loads(checklist)
         else:
             parser.add_argument(
-                "checklist", type=dict, action="append", default=[]
+                "checklist",
+                type=dict,
+                action="append",
+                default=[],
+                location=location,
             )
             args = parser.parse_args()
             checklist = args["checklist"]
@@ -219,7 +230,7 @@ class CommentTaskResource(Resource):
 
 
 class AttachmentResource(Resource):
-    @jwt_required
+    @jwt_required()
     def delete(self, task_id, comment_id, attachment_id):
         """
         Delete attachment linked to a comment matching given ID.
@@ -259,7 +270,7 @@ class AttachmentResource(Resource):
 
 
 class AddAttachmentToCommentResource(Resource):
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Add given files to the comment entry as attachments.
@@ -310,7 +321,7 @@ class CommentManyTasksResource(Resource):
     given task status.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, project_id):
         """
         Create several comments at once.
@@ -415,7 +426,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
     Reply to given comment. Add comment to its replies list.
     """
 
-    @jwt_required
+    @jwt_required()
     def post(self, task_id, comment_id):
         """
         Reply to given comment.
@@ -449,6 +460,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
                 ("text", "", False),
             ]
         )
+
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -460,7 +472,7 @@ class DeleteReplyCommentResource(Resource):
     Delete given comment reply.
     """
 
-    @jwt_required
+    @jwt_required()
     def delete(self, task_id, comment_id, reply_id):
         """
         Delete given comment reply.
@@ -501,7 +513,7 @@ class DeleteReplyCommentResource(Resource):
 
 
 class ProjectAttachmentFiles(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Return all attachment files related to given project.
@@ -530,7 +542,7 @@ class TaskAttachmentFiles(Resource):
     Return all attachment files related to given task.
     """
 
-    @jwt_required
+    @jwt_required()
     def get(self, task_id):
         """
         Return all attachment files related to given task.

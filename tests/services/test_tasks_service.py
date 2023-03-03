@@ -468,21 +468,16 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(comment["mentions"][0], str(self.person.id))
 
     def test_get_full_task(self):
-        from zou.app import app
+        task = tasks_service.get_full_task(self.task.id, self.person.id)
+        self.assertEqual(task["project"]["name"], self.project.name)
+        self.assertEqual(task["assigner"]["id"], str(self.assigner.id))
+        self.assertEqual(task["persons"][0]["id"], str(self.person.id))
+        self.assertEqual(task["task_status"]["id"], str(self.task_status.id))
+        self.assertEqual(task["task_type"]["id"], str(self.task_type.id))
+        self.assertEqual(task["is_subscribed"], False)
 
-        with app.app_context():
-            task = tasks_service.get_full_task(self.task.id)
-            self.assertEqual(task["project"]["name"], self.project.name)
-            self.assertEqual(task["assigner"]["id"], str(self.assigner.id))
-            self.assertEqual(task["persons"][0]["id"], str(self.person.id))
-            self.assertEqual(
-                task["task_status"]["id"], str(self.task_status.id)
-            )
-            self.assertEqual(task["task_type"]["id"], str(self.task_type.id))
-            self.assertEqual(task["is_subscribed"], False)
-
-            task = tasks_service.get_full_task(self.shot_task.id)
-            self.assertEqual(task["sequence"]["id"], str(self.sequence.id))
+        task = tasks_service.get_full_task(self.shot_task.id, self.person.id)
+        self.assertEqual(task["sequence"]["id"], str(self.sequence.id))
 
     def test_get_next_position(self):
         self.generate_fixture_preview_file(revision=1)
@@ -505,7 +500,7 @@ class TaskServiceTestCase(ApiDBTestCase):
         preview_files = PreviewFile.query.filter_by(
             task_id=self.task_id, revision=2
         ).order_by(PreviewFile.position)
-        for (i, preview_file) in enumerate(preview_files):
+        for i, preview_file in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[0].id), preview_file_id)
 
@@ -513,6 +508,6 @@ class TaskServiceTestCase(ApiDBTestCase):
         preview_files = PreviewFile.query.filter_by(
             task_id=self.task_id, revision=2
         ).order_by(PreviewFile.position)
-        for (i, preview_file) in enumerate(preview_files):
+        for i, preview_file in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[2].id), preview_file_id)

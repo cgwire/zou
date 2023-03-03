@@ -2,9 +2,8 @@ import os
 import flask_fs
 import traceback
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, current_app
 from flasgger import Swagger
-from flask_restful import current_app
 from flask_jwt_extended import JWTManager
 from flask_principal import Principal, identity_changed, Identity
 from flask_sqlalchemy import SQLAlchemy
@@ -26,9 +25,11 @@ from .utils import fs, logs
 
 from zou.app.utils import cache
 from zou.app.utils.sentry import init_sentry
+from zou.app.utils.user_agent import ParsedUserAgent
 
 init_sentry()
 app = Flask(__name__)
+app.request_class.user_agent_class = ParsedUserAgent
 app.config.from_object(config)
 
 logs.configure_logs(app)
@@ -120,14 +121,14 @@ if not config.DEBUG:
 def configure_auth():
     from zou.app.services import persons_service
 
-    @jwt.token_in_blacklist_loader
-    def check_if_token_is_revoked(decrypted_token):
-        return auth_tokens_store.is_revoked(decrypted_token)
+    @jwt.token_in_blocklist_loader
+    def check_if_token_is_revoked(_, payload):
+        return auth_tokens_store.is_revoked(payload)
 
-    @jwt.user_loader_callback_loader
-    def add_permissions(callback):
+    @jwt.user_lookup_loader
+    def add_permissions(_, payload):
         try:
-            user = persons_service.get_current_user()
+            user = persons_service.get_person(payload["user_id"])
             if user is not None:
                 identity_changed.send(
                     current_app._get_current_object(),

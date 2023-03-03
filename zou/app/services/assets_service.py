@@ -169,7 +169,7 @@ def get_full_assets(criterions={}):
         query = query.filter(user_service.build_assignee_filter())
     data = query.all()
     assets = []
-    for (asset_model, project_name, asset_type_name) in data:
+    for asset_model, project_name, asset_type_name in data:
         asset = asset_model.serialize(obj_type="Asset")
         asset["project_name"] = project_name
         asset["asset_type_name"] = asset_type_name
@@ -225,7 +225,6 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         if episode_id == "main":
             tasks_query = tasks_query.filter(Entity.source_id == None)
         elif episode_id != "all":
-
             tasks_query = tasks_query.outerjoin(
                 EntityLink, EntityLink.entity_out_id == Entity.id
             )
@@ -290,7 +289,6 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         task_last_comment_date,
         person_id,
     ) in query_result:
-
         if asset.source_id is None:
             source_id = ""
         else:

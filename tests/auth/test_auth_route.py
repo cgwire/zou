@@ -169,8 +169,11 @@ class AuthTestCase(ApiDBTestCase):
         credentials = {"email": "alice@doe.com", "password": "87654321"}
 
         headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
         response = self.app.post(
-            "auth/change-password", data=new_password, headers=headers
+            "auth/change-password",
+            data=json.dumps(new_password),
+            headers=headers,
         )
         self.assertEqual(response.status_code, 200)
         self.logout(tokens)
@@ -201,12 +204,13 @@ class AuthTestCase(ApiDBTestCase):
             " Chrome/39.0.2171.95 Safari/537.36'}"
         )
         headers = {"User-Agent": user_agent}
+        headers["Content-type"] = "application/json"
 
         response = self.app.get("data/persons")
         self.assertEqual(response.status_code, 401)
         response = self.app.post(
             "auth/login",
-            data=fields.serialize_value(self.credentials),
+            data=json.dumps(fields.serialize_value(self.credentials)),
             headers=headers,
         )
         self.assertTrue("access_token" in response.headers["Set-Cookie"])

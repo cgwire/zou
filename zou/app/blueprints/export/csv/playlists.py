@@ -23,7 +23,7 @@ class PlaylistCsvExport(Resource):
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
 
-    @jwt_required
+    @jwt_required()
     def get(self, playlist_id):
         """
         Export a given playlist as csv.

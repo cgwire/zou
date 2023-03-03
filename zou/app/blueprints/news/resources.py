@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -50,19 +50,21 @@ class NewsMixin():
         return result
 
     def get_arguments(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("only_preview", default=False, type=bool)
-        parser.add_argument("task_type_id", default=None)
-        parser.add_argument("task_status_id", default=None)
-        parser.add_argument("person_id", default=None)
-        parser.add_argument("project_id", default=None)
-        parser.add_argument("episode_id", default=None)
-        parser.add_argument("page", default=1, type=int)
-        parser.add_argument("page_size", default=50, type=int)
-        parser.add_argument("after", default=None)
-        parser.add_argument("before", default=None)
-        args = parser.parse_args()
-
+        args = self.get_args(
+            [
+                {"name": "only_preview", "default": False, "type": bool},
+                "task_type_id",
+                "task_status_id",
+                "person_id",
+                "project_id",
+                "episode_id",
+                {"name": "page", "default": 1, "type": int},
+                {"name": "page_size", "default": 50, "type": int},
+                "after",
+                "before",
+            ],
+            location="values",
+        )
         return (
             args["only_preview"],
             args["task_type_id"],
@@ -77,7 +79,7 @@ class NewsMixin():
 
 
 class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Retrieve all news related to a given project
@@ -140,7 +142,7 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
 
 
 class NewsResource(Resource, NewsMixin, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all news related to a given project
@@ -208,7 +210,7 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
 
 
 class ProjectSingleNewsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id, news_id):
         """
         Retrieve a single given news related to a given project

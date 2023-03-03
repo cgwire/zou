@@ -25,7 +25,6 @@ class EntityTypesResource(BaseModelsResource):
         events.emit("asset-type:new", {"asset_type_id": instance_dict["id"]})
 
     def update_data(self, data):
-
         # Handle asset types the task type is dedicated to
         data["task_types"] = assets_service.get_task_types_from_asset_type(
             data

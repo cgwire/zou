@@ -11,7 +11,7 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_asset_types()
 
     def test_import_casting(self):
-        for (name, asset_type_id) in [
+        for name, asset_type_id in [
             ("Lake", self.asset_type_environment.id),
             ("Mine", self.asset_type_environment.id),
             ("Boat", self.asset_type_props.id),

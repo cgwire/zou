@@ -23,7 +23,7 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         Resource.__init__(self)
         self.model = model
 
-    @jwt_required
+    @jwt_required()
     def post(self):
         """
         Import Kitsu resource.

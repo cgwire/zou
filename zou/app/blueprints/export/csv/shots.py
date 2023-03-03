@@ -14,7 +14,7 @@ from zou.app.utils import csv_utils, query
 
 
 class ShotsCsvExport(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self, project_id):
         """
         Export shots linked to a given project as csv.
@@ -124,7 +124,7 @@ class ShotsCsvExport(Resource):
                 ]
             )
 
-        for (_, field_name) in metadata_infos:
+        for _, field_name in metadata_infos:
             row.append(result.get("data", {}).get(field_name, ""))
 
         for column in validation_columns:

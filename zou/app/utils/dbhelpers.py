@@ -1,12 +1,13 @@
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.engine.url import URL
+from sqlalchemy.orm import close_all_sessions
 
 
 def get_db_uri():
     from zou.app.config import DATABASE
 
-    return URL(**DATABASE)
+    return URL.create(**DATABASE)
 
 
 def is_db_exists():
@@ -44,5 +45,5 @@ def drop_all():
     from zou.app import db
 
     db.session.flush()
-    db.session.close()
+    close_all_sessions()
     return db.drop_all()

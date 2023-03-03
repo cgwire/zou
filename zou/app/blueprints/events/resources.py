@@ -9,7 +9,7 @@ from zou.app.services.exception import WrongParameterException
 
 
 class EventsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve last events.
@@ -52,8 +52,10 @@ class EventsResource(Resource, ArgsMixin):
                 ("only_files", False, False),
                 ("page_size", 100, False),
                 ("project_id", None, False),
-            ]
+            ],
+            location="values",
         )
+
         permissions.check_manager_permissions()
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
@@ -75,7 +77,7 @@ class EventsResource(Resource, ArgsMixin):
 
 
 class LoginLogsResource(Resource, ArgsMixin):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve all login logs.
@@ -96,9 +98,8 @@ class LoginLogsResource(Resource, ArgsMixin):
             200:
                 description: All login logs
         """
-        args = self.get_args(
-            [("before", None, None), ("page_size", 100, False)]
-        )
+        args = self.get_args(["before", ("page_size", 100)], location="values")
+
         permissions.check_manager_permissions()
         before = None
         if args["before"] is not None:

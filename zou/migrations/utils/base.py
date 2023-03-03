@@ -6,7 +6,6 @@ import sqlalchemy as sa
 
 
 class BaseMixin(object):
-
     id = sa.Column(
         UUIDType(binary=False), primary_key=True, default=fields.gen_uuid
     )

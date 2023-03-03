@@ -224,7 +224,7 @@ class InfluxStatusResource(BaseStatusResource):
 
 
 class StatsResource(Resource):
-    @jwt_required
+    @jwt_required()
     def get(self):
         """
         Retrieve main stats.
