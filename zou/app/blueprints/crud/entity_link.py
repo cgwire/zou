@@ -18,7 +18,7 @@ class EntityLinkResource(BaseModelResource):
         BaseModelResource.__init__(self, EntityLink)
 
     def get_model_or_404(self, instance_id):
-        if not fields.is_valid_id(instance_id):
+        if not fields.is_valid_uuid(instance_id):
             raise WrongParameterException("Malformed ID.")
         instance = self.model.get_by(id=instance_id)
         if instance is None:

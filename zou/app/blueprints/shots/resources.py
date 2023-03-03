@@ -1026,7 +1026,7 @@ class EpisodeSequencesResource(MethodView):
             200:
                 description: All sequence entries for given episode
         """
-        if not fields.is_valid_id(episode_id):
+        if not fields.is_valid_uuid(episode_id):
             return []
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])

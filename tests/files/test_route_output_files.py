@@ -4,6 +4,8 @@ from zou.app.models.output_type import OutputType
 
 from zou.app.services import files_service, tasks_service
 
+from zou.app.utils.fields import gen_uuid
+
 
 class RouteOutputFilesTestCase(ApiDBTestCase):
     def setUp(self):
@@ -325,7 +327,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
     def test_get_next_revision_wrong_data(self):
         self.generate_fixture_output_type()
         self.post(
-            "/data/entities/unknown/output-files/next-revision",
+            "/data/entities/%s/output-files/next-revision" % gen_uuid(),
             {
                 "name": "main",
                 "output_type_id": self.output_type.id,

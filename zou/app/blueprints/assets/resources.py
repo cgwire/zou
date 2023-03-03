@@ -72,7 +72,7 @@ class AssetResource(MethodView, ArgsMixin):
         """
         force = self.get_force()
 
-        asset = assets_service.get_full_asset(asset_id)
+        asset = assets_service.get_asset(asset_id)
         user_service.check_manager_project_access(asset["project_id"])
 
         assets_service.remove_asset(asset_id, force=force)

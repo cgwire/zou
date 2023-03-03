@@ -61,7 +61,7 @@ class EventsResource(MethodView, ArgsMixin):
         page_size = args["page_size"]
         only_files = args["only_files"] == "true"
         project_id = args.get("project_id", None)
-        if project_id is not None and not fields.is_valid_id(project_id):
+        if project_id is not None and not fields.is_valid_uuid(project_id):
             raise WrongParameterException(
                 "The project_id parameter is not a valid id"
             )

@@ -261,7 +261,7 @@ class BaseModelResource(MethodView):
         self.instance = None
 
     def get_model_or_404(self, instance_id):
-        if not fields.is_valid_id(instance_id):
+        if not fields.is_valid_uuid(instance_id):
             raise WrongParameterException("Malformed ID.")
         instance = self.model.get(instance_id)
         if instance is None:

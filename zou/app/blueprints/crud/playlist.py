@@ -18,7 +18,7 @@ class PlaylistsResource(BaseModelsResource):
     def update_data(self, data):
         if "episode_id" in data and data["episode_id"] in ["all", "main"]:
             data["episode_id"] = None
-        if "task_type_id" in data and not fields.is_valid_id(
+        if "task_type_id" in data and not fields.is_valid_uuid(
             data["task_type_id"]
         ):
             data["task_type_id"] = None

@@ -8,6 +8,10 @@ from babel import Locale
 from ipaddress import IPv4Address
 from sqlalchemy_utils.types.choice import Choice
 
+_UUID_RE = re.compile(
+    "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}){1}"
+)
+
 
 def serialize_value(value):
     """
@@ -119,8 +123,5 @@ def get_default_date_object(date_string):
     return date_obj
 
 
-def is_valid_id(uuid):
-    _UUID_RE = re.compile(
-        "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}){1}"
-    )
-    return _UUID_RE.match(uuid)
+def is_valid_uuid(uuid_value):
+    return isinstance(uuid_value, uuid.UUID) or _UUID_RE.match(uuid_value)

@@ -15,32 +15,38 @@ from .resources import (
 
 
 routes = [
-    ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
     (
-        "/data/tasks/<task_id>/comments/<comment_id>/reply",
+        "/data/tasks/<uuid:task_id>/comments/<uuid:comment_id>/ack",
+        AckCommentResource,
+    ),
+    (
+        "/data/tasks/<uuid:task_id>/comments/<uuid:comment_id>/reply",
         ReplyCommentResource,
     ),
     (
-        "/data/tasks/<task_id>/comments/<comment_id>/attachments/<attachment_id>",
+        "/data/tasks/<uuid:task_id>/comments/<uuid:comment_id>/attachments/<uuid:attachment_id>",
         AttachmentResource,
     ),
     (
-        "/data/tasks/<task_id>/comments/<comment_id>/reply/<reply_id>",
+        "/data/tasks/<uuid:task_id>/comments/<uuid:comment_id>/reply/<uuid:reply_id>",
         DeleteReplyCommentResource,
     ),
     (
-        "/data/attachment-files/<attachment_file_id>/file/<file_name>",
+        "/data/attachment-files/<uuid:attachment_file_id>/file/<string:file_name>",
         DownloadAttachmentResource,
     ),
     (
-        "/actions/tasks/<task_id>/comments/<comment_id>/add-attachment",
+        "/actions/tasks/<uuid:task_id>/comments/<uuid:comment_id>/add-attachment",
         AddAttachmentToCommentResource,
     ),
-    ("/data/projects/<project_id>/attachment-files", ProjectAttachmentFiles),
-    ("/data/tasks/<task_id>/attachment-files", TaskAttachmentFiles),
-    ("/actions/tasks/<task_id>/comment", CommentTaskResource),
     (
-        "/actions/projects/<project_id>/tasks/comment-many",
+        "/data/projects/<uuid:project_id>/attachment-files",
+        ProjectAttachmentFiles,
+    ),
+    ("/data/tasks/<uuid:task_id>/attachment-files", TaskAttachmentFiles),
+    ("/actions/tasks/<uuid:task_id>/comment", CommentTaskResource),
+    (
+        "/actions/projects/<uuid:project_id>/tasks/comment-many",
         CommentManyTasksResource,
     ),
 ]

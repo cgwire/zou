@@ -28,77 +28,83 @@ from .resources import (
 routes = [
     ("/data/projects/open", OpenProjectsResource),
     ("/data/projects/all", AllProjectsResource),
-    ("/data/projects/<project_id>/team", ProductionTeamResource),
+    ("/data/projects/<uuid:project_id>/team", ProductionTeamResource),
     (
-        "/data/projects/<project_id>/task-types",
+        "/data/projects/<uuid:project_id>/task-types",
         ProductionTaskTypesResource,
     ),
     (
-        "/data/projects/<project_id>/team/<person_id>",
+        "/data/projects/<uuid:project_id>/team/<uuid:person_id>",
         ProductionTeamRemoveResource,
     ),
     (
-        "/data/projects/<project_id>/settings/asset-types",
+        "/data/projects/<uuid:project_id>/settings/asset-types",
         ProductionAssetTypeResource,
     ),
     (
-        "/data/projects/<project_id>/settings/asset-types/<asset_type_id>",
+        "/data/projects/<uuid:project_id>/settings/asset-types/<uuid:asset_type_id>",
         ProductionAssetTypeRemoveResource,
     ),
     (
-        "/data/projects/<project_id>/settings/task-types",
+        "/data/projects/<uuid:project_id>/settings/task-types",
         ProductionTaskTypeResource,
     ),
     (
-        "/data/projects/<project_id>/settings/task-types/<task_type_id>",
+        "/data/projects/<uuid:project_id>/settings/task-types/<uuid:task_type_id>",
         ProductionTaskTypeRemoveResource,
     ),
     (
-        "/data/projects/<project_id>/settings/task-status",
+        "/data/projects/<uuid:project_id>/settings/task-status",
         ProductionTaskStatusResource,
     ),
     (
-        "/data/projects/<project_id>/settings/task-status/<task_status_id>",
+        "/data/projects/<uuid:project_id>/settings/task-status/<uuid:task_status_id>",
         ProductionTaskStatusRemoveResource,
     ),
     (
-        "/data/projects/<project_id>/settings/status-automations",
+        "/data/projects/<uuid:project_id>/settings/status-automations",
         ProductionStatusAutomationResource,
     ),
     (
-        "/data/projects/<project_id>/settings/status-automations/<status_automation_id>",
+        "/data/projects/<uuid:project_id>/settings/status-automations/<uuid:status_automation_id>",
         ProductionStatusAutomationRemoveResource,
     ),
     (
-        "/data/projects/<project_id>/metadata-descriptors",
+        "/data/projects/<uuid:project_id>/metadata-descriptors",
         ProductionMetadataDescriptorsResource,
     ),
     (
-        "/data/projects/<project_id>/metadata-descriptors/<descriptor_id>",
+        "/data/projects/<uuid:project_id>/metadata-descriptors/<uuid:descriptor_id>",
         ProductionMetadataDescriptorResource,
     ),
-    ("/data/projects/<project_id>/milestones", ProductionMilestonesResource),
     (
-        "/data/projects/<project_id>/schedule-items",
+        "/data/projects/<uuid:project_id>/milestones",
+        ProductionMilestonesResource,
+    ),
+    (
+        "/data/projects/<uuid:project_id>/schedule-items",
         ProductionScheduleItemsResource,
     ),
     (
-        "/data/projects/<project_id>/schedule-items/task-types",
+        "/data/projects/<uuid:project_id>/schedule-items/task-types",
         ProductionTaskTypeScheduleItemsResource,
     ),
     (
-        "/data/projects/<project_id>/schedule-items/<task_type_id>/asset-types",
+        "/data/projects/<uuid:project_id>/schedule-items/<uuid:task_type_id>/asset-types",
         ProductionAssetTypesScheduleItemsResource,
     ),
     (
-        "/data/projects/<project_id>/schedule-items/<task_type_id>/episodes",
+        "/data/projects/<uuid:project_id>/schedule-items/<uuid:task_type_id>/episodes",
         ProductionEpisodesScheduleItemsResource,
     ),
     (
-        "/data/projects/<project_id>/schedule-items/<task_type_id>/sequences",
+        "/data/projects/<uuid:project_id>/schedule-items/<uuid:task_type_id>/sequences",
         ProductionSequencesScheduleItemsResource,
     ),
-    ("/data/projects/<project_id>/time-spents", ProductionTimeSpentsResource),
+    (
+        "/data/projects/<uuid:project_id>/time-spents",
+        ProductionTimeSpentsResource,
+    ),
 ]
 
 blueprint = create_blueprint_for_api("projects", routes)

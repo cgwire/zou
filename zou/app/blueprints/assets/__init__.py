@@ -25,39 +25,42 @@ from .resources import (
 
 routes = [
     ("/data/asset-types", AssetTypesResource),
-    ("/data/asset-types/<asset_type_id>", AssetTypeResource),
+    ("/data/asset-types/<uuid:asset_type_id>", AssetTypeResource),
     ("/data/assets", AllAssetsAliasResource),
     ("/data/assets/all", AllAssetsResource),
     ("/data/assets/with-tasks", AssetsAndTasksResource),
-    ("/data/assets/<asset_id>", AssetResource),
-    ("/data/assets/<asset_id>/assets", AssetAssetsResource),
-    ("/data/assets/<asset_id>/tasks", AssetTasksResource),
-    ("/data/assets/<asset_id>/task-types", AssetTaskTypesResource),
-    ("/data/assets/<asset_id>/cast-in", AssetCastInResource),
-    ("/data/assets/<asset_id>/casting", AssetCastingResource),
+    ("/data/assets/<uuid:asset_id>", AssetResource),
+    ("/data/assets/<uuid:asset_id>/assets", AssetAssetsResource),
+    ("/data/assets/<uuid:asset_id>/tasks", AssetTasksResource),
+    ("/data/assets/<uuid:asset_id>/task-types", AssetTaskTypesResource),
+    ("/data/assets/<uuid:asset_id>/cast-in", AssetCastInResource),
+    ("/data/assets/<uuid:asset_id>/casting", AssetCastingResource),
     (
-        "/data/assets/<asset_id>/shot-asset-instances",
+        "/data/assets/<uuid:asset_id>/shot-asset-instances",
         AssetShotAssetInstancesResource,
     ),
     (
-        "/data/assets/<asset_id>/scene-asset-instances",
+        "/data/assets/<uuid:asset_id>/scene-asset-instances",
         AssetSceneAssetInstancesResource,
     ),
     (
-        "/data/assets/<asset_id>/asset-asset-instances",
+        "/data/assets/<uuid:asset_id>/asset-asset-instances",
         AssetAssetInstancesResource,
     ),
     (
-        "/data/projects/<project_id>/asset-types/<asset_type_id>/assets",
+        "/data/projects/<uuid:project_id>/asset-types/<uuid:asset_type_id>/assets",
         ProjectAssetTypeAssetsResource,
     ),
     (
-        "/data/projects/<project_id>/asset-types/<asset_type_id>/assets/new",
+        "/data/projects/<uuid:project_id>/asset-types/<uuid:asset_type_id>/assets/new",
         NewAssetResource,
     ),
-    ("/data/projects/<project_id>/asset-types", ProjectAssetTypesResource),
-    ("/data/shots/<shot_id>/asset-types", ShotAssetTypesResource),
-    ("/data/projects/<project_id>/assets", ProjectAssetsResource),
+    (
+        "/data/projects/<uuid:project_id>/asset-types",
+        ProjectAssetTypesResource,
+    ),
+    ("/data/shots/<uuid:shot_id>/asset-types", ShotAssetTypesResource),
+    ("/data/projects/<uuid:project_id>/assets", ProjectAssetsResource),
 ]
 
 blueprint = create_blueprint_for_api("assets", routes)

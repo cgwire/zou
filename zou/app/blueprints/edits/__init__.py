@@ -18,14 +18,14 @@ routes = [
     ("/data/edits", AllEditsResource),
     ("/data/edits/all", EditsResource),
     ("/data/edits/with-tasks", EditsAndTasksResource),
-    ("/data/edits/<edit_id>", EditResource),
-    ("/data/edits/<edit_id>/task-types", EditTaskTypesResource),
-    ("/data/edits/<edit_id>/tasks", EditTasksResource),
-    ("/data/edits/<edit_id>/preview-files", EditPreviewsResource),
-    ("/data/edits/<edit_id>/versions", EditVersionsResource),
-    ("/data/episodes/<episode_id>/edits", EpisodeEditsResource),
-    ("/data/episodes/<episode_id>/edit-tasks", EpisodeEditTasksResource),
-    ("/data/projects/<project_id>/edits", ProjectEditsResource),
+    ("/data/edits/<uuid:edit_id>", EditResource),
+    ("/data/edits/<uuid:edit_id>/task-types", EditTaskTypesResource),
+    ("/data/edits/<uuid:edit_id>/tasks", EditTasksResource),
+    ("/data/edits/<uuid:edit_id>/preview-files", EditPreviewsResource),
+    ("/data/edits/<uuid:edit_id>/versions", EditVersionsResource),
+    ("/data/episodes/<uuid:episode_id>/edits", EpisodeEditsResource),
+    ("/data/episodes/<uuid:episode_id>/edit-tasks", EpisodeEditTasksResource),
+    ("/data/projects/<uuid:project_id>/edits", ProjectEditsResource),
 ]
 
 

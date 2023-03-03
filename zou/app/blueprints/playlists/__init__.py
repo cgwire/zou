@@ -16,32 +16,41 @@ from .resources import (
 
 
 routes = [
-    ("/data/projects/<project_id>/playlists", ProjectPlaylistsResource),
-    ("/data/projects/<project_id>/playlists/all", ProjectAllPlaylistsResource),
+    ("/data/projects/<uuid:project_id>/playlists", ProjectPlaylistsResource),
     (
-        "/data/projects/<project_id>/episodes/<episode_id>/playlists",
+        "/data/projects/<uuid:project_id>/playlists/all",
+        ProjectAllPlaylistsResource,
+    ),
+    (
+        "/data/projects/<uuid:project_id>/episodes/<uuid:episode_id>/playlists",
         EpisodePlaylistsResource,
     ),
     (
-        "/data/projects/<project_id>/playlists/<playlist_id>",
+        "/data/projects/<uuid:project_id>/playlists/<uuid:playlist_id>",
         ProjectPlaylistResource,
     ),
     (
-        "/data/playlists/entities/<entity_id>/preview-files",
+        "/data/playlists/entities/<uuid:entity_id>/preview-files",
         EntityPreviewsResource,
     ),
-    ("/data/playlists/<playlist_id>/jobs/<build_job_id>", BuildJobResource),
-    ("/data/projects/<project_id>/build-jobs", ProjectBuildJobsResource),
-    ("/data/playlists/<playlist_id>/build/mp4", BuildPlaylistMovieResource),
     (
-        "/data/playlists/<playlist_id>/jobs/<build_job_id>/build/mp4",
+        "/data/playlists/<uuid:playlist_id>/jobs/<uuid:build_job_id>",
+        BuildJobResource,
+    ),
+    ("/data/projects/<uuid:project_id>/build-jobs", ProjectBuildJobsResource),
+    (
+        "/data/playlists/<uuid:playlist_id>/build/mp4",
+        BuildPlaylistMovieResource,
+    ),
+    (
+        "/data/playlists/<uuid:playlist_id>/jobs/<uuid:build_job_id>/build/mp4",
         PlaylistDownloadResource,
     ),
     (
-        "/data/playlists/<playlist_id>/download/zip",
+        "/data/playlists/<uuid:playlist_id>/download/zip",
         PlaylistZipDownloadResource,
     ),
-    ("/data/projects/<project_id>/playlists/temp", TempPlaylistResource),
+    ("/data/projects/<uuid:project_id>/playlists/temp", TempPlaylistResource),
 ]
 
 blueprint = create_blueprint_for_api("playlists", routes)

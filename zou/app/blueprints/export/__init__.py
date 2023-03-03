@@ -16,11 +16,11 @@ from .csv.time_spents import TimeSpentsCsvExport
 from .csv.edits import EditsCsvExport
 
 routes = [
-    ("/export/csv/projects/<project_id>/assets.csv", AssetsCsvExport),
-    ("/export/csv/projects/<project_id>/shots.csv", ShotsCsvExport),
-    ("/export/csv/projects/<project_id>/casting.csv", CastingCsvExport),
-    ("/export/csv/projects/<project_id>/edits.csv", EditsCsvExport),
-    ("/export/csv/playlists/<playlist_id>", PlaylistCsvExport),
+    ("/export/csv/projects/<uuid:project_id>/assets.csv", AssetsCsvExport),
+    ("/export/csv/projects/<uuid:project_id>/shots.csv", ShotsCsvExport),
+    ("/export/csv/projects/<uuid:project_id>/casting.csv", CastingCsvExport),
+    ("/export/csv/projects/<uuid:project_id>/edits.csv", EditsCsvExport),
+    ("/export/csv/playlists/<uuid:playlist_id>", PlaylistCsvExport),
     ("/export/csv/persons.csv", PersonsCsvExport),
     ("/export/csv/projects.csv", ProjectsCsvExport),
     ("/export/csv/tasks.csv", TasksCsvExport),

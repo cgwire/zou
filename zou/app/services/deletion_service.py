@@ -244,7 +244,9 @@ def remove_tasks(project_id, task_ids):
     Remove fully given tasks and related for given project. The project id
     filter is there to facilitate right management.
     """
-    task_ids = [task_id for task_id in task_ids if fields.is_valid_id(task_id)]
+    task_ids = [
+        task_id for task_id in task_ids if fields.is_valid_uuid(task_id)
+    ]
     tasks = Task.query.filter(Project.id == project_id).filter(
         Task.id.in_(task_ids)
     )

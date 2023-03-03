@@ -32,75 +32,93 @@ from .resources import (
 
 routes = [
     ("/data/persons/new", NewPersonResource),
-    ("/data/persons/<person_id>/desktop-login-logs", DesktopLoginsResource),
-    ("/data/persons/presence-logs/<month_date>", PresenceLogsResource),
-    ("/data/persons/<person_id>/time-spents", TimeSpentsResource),
-    ("/data/persons/<person_id>/time-spents/<date>", DateTimeSpentsResource),
-    ("/data/persons/<person_id>/day-offs/<date>", DayOffResource),
     (
-        "/data/persons/<person_id>/time-spents/year/<year>",
+        "/data/persons/<uuid:person_id>/desktop-login-logs",
+        DesktopLoginsResource,
+    ),
+    ("/data/persons/presence-logs/<string:month_date>", PresenceLogsResource),
+    ("/data/persons/<uuid:person_id>/time-spents", TimeSpentsResource),
+    (
+        "/data/persons/<uuid:person_id>/time-spents/<string:date>",
+        DateTimeSpentsResource,
+    ),
+    ("/data/persons/<uuid:person_id>/day-offs/<string:date>", DayOffResource),
+    (
+        "/data/persons/<uuid:person_id>/time-spents/year/<string:year>",
         PersonYearTimeSpentsResource,
     ),
     (
-        "/data/persons/<person_id>/time-spents/month/<year>/<month>",
+        "/data/persons/<uuid:person_id>/time-spents/month/<string:year>/<string:month>",
         PersonMonthTimeSpentsResource,
     ),
     (
-        "/data/persons/<person_id>/time-spents/month/all/<year>/<month>",
+        "/data/persons/<uuid:person_id>/time-spents/month/all/<string:year>/<string:month>",
         PersonMonthAllTimeSpentsResource,
     ),
     (
-        "/data/persons/<person_id>/time-spents/week/<year>/<week>",
+        "/data/persons/<uuid:person_id>/time-spents/week/<string:year>/<string:week>",
         PersonWeekTimeSpentsResource,
     ),
     (
-        "/data/persons/<person_id>/time-spents/day/<year>/<month>/<day>",
+        "/data/persons/<uuid:person_id>/time-spents/day/<string:year>/<string:month>/<string:day>",
         PersonDayTimeSpentsResource,
     ),
     (
-        "/data/persons/<person_id>/quota-shots/month/<year>/<month>",
+        "/data/persons/<uuid:person_id>/quota-shots/month/<string:year>/<string:month>",
         PersonMonthQuotaShotsResource,
     ),
     (
-        "/data/persons/<person_id>/quota-shots/week/<year>/<week>",
+        "/data/persons/<uuid:person_id>/quota-shots/week/<string:year>/<string:week>",
         PersonWeekQuotaShotsResource,
     ),
     (
-        "/data/persons/<person_id>/quota-shots/day/<year>/<month>/<day>",
+        "/data/persons/<uuid:person_id>/quota-shots/day/<string:year>/<string:month>/<string:day>",
         PersonDayQuotaShotsResource,
     ),
     ("/data/persons/time-spents/year-table/", TimeSpentYearsResource),
-    ("/data/persons/time-spents/month-table/<year>", TimeSpentMonthsResource),
-    ("/data/persons/time-spents/week-table/<year>", TimeSpentWeekResource),
     (
-        "/data/persons/time-spents/day-table/<year>/<month>",
+        "/data/persons/time-spents/month-table/<string:year>",
+        TimeSpentMonthsResource,
+    ),
+    (
+        "/data/persons/time-spents/week-table/<string:year>",
+        TimeSpentWeekResource,
+    ),
+    (
+        "/data/persons/time-spents/day-table/<string:year>/<string:month>",
         TimeSpentMonthResource,
     ),
-    ("/data/persons/day-offs/<year>/<month>", DayOffForMonthResource),
     (
-        "/data/persons/<person_id>/day-offs/week/<year>/<week>",
+        "/data/persons/day-offs/<string:year>/<string:month>",
+        DayOffForMonthResource,
+    ),
+    (
+        "/data/persons/<uuid:person_id>/day-offs/week/<string:year>/<string:week>",
         PersonWeekDayOffResource,
     ),
     (
-        "/data/persons/<person_id>/day-offs/month/<year>/<month>",
+        "/data/persons/<uuid:person_id>/day-offs/month/<string:year>/<string:month>",
         PersonMonthDayOffResource,
     ),
     (
-        "/data/persons/<person_id>/day-offs/year/<year>",
+        "/data/persons/<uuid:person_id>/day-offs/year/<string:year>",
         PersonYearDayOffResource,
     ),
-    ("/actions/persons/<person_id>/invite", InvitePersonResource),
-    ("/actions/persons/<person_id>/departments/add", AddToDepartmentResource),
+    ("/actions/persons/<uuid:person_id>/invite", InvitePersonResource),
     (
-        "/actions/persons/<person_id>/departments/<department_id>",
+        "/actions/persons/<uuid:person_id>/departments/add",
+        AddToDepartmentResource,
+    ),
+    (
+        "/actions/persons/<uuid:person_id>/departments/<uuid:department_id>",
         RemoveFromDepartmentResource,
     ),
     (
-        "/actions/persons/<person_id>/change-password",
+        "/actions/persons/<uuid:person_id>/change-password",
         ChangePasswordForPersonResource,
     ),
     (
-        "/actions/persons/<person_id>/disable-two-factor-authentication",
+        "/actions/persons/<uuid:person_id>/disable-two-factor-authentication",
         DisableTwoFactorAuthenticationPersonResource,
     ),
 ]

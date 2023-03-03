@@ -29,84 +29,93 @@ from .resources import (
 )
 
 routes = [
-    ("/data/files/<file_id>", FileResource),
-    ("/data/tasks/<task_id>/working-files", TaskWorkingFilesResource),
-    ("/data/tasks/<task_id>/working-files/new", NewWorkingFileResource),
+    ("/data/files/<uuid:file_id>", FileResource),
+    ("/data/tasks/<uuid:task_id>/working-files", TaskWorkingFilesResource),
+    ("/data/tasks/<uuid:task_id>/working-files/new", NewWorkingFileResource),
     (
-        "/data/tasks/<task_id>/working-files/last-revisions",
+        "/data/tasks/<uuid:task_id>/working-files/last-revisions",
         LastWorkingFilesResource,
     ),
-    ("/data/tasks/<task_id>/working-file-path", WorkingFilePathResource),
+    ("/data/tasks/<uuid:task_id>/working-file-path", WorkingFilePathResource),
     (
-        "/data/asset-instances/<asset_instance_id>"
-        "/entities/<temporal_entity_id>/output-files/new",
+        "/data/asset-instances/<uuid:asset_instance_id>"
+        "/entities/<uuid:temporal_entity_id>/output-files/new",
         NewInstanceOutputFileResource,
     ),
     (
-        "/data/asset-instances/<asset_instance_id>"
-        "/entities/<temporal_entity_id>/output-files/next-revision",
+        "/data/asset-instances/<uuid:asset_instance_id>"
+        "/entities/<uuid:temporal_entity_id>/output-files/next-revision",
         GetNextInstanceOutputFileRevisionResource,
     ),
     (
-        "/data/asset-instances/<asset_instance_id>"
-        "/entities/<temporal_entity_id>/output-files/last-revisions",
+        "/data/asset-instances/<uuid:asset_instance_id>"
+        "/entities/<uuid:temporal_entity_id>/output-files/last-revisions",
         LastInstanceOutputFilesResource,
     ),
     (
-        "/data/asset-instances/<asset_instance_id>"
-        "/entities/<temporal_entity_id>/output-types",
+        "/data/asset-instances/<uuid:asset_instance_id>"
+        "/entities/<uuid:temporal_entity_id>/output-types",
         InstanceOutputTypesResource,
     ),
     (
-        "/data/asset-instances/<asset_instance_id>"
-        "/entities/<temporal_entity_id>/output-types"
-        "/<output_type_id>/output-files",
+        "/data/asset-instances/<uuid:asset_instance_id>"
+        "/entities/<uuid:temporal_entity_id>/output-types"
+        "/<uuid:output_type_id>/output-files",
         InstanceOutputTypeOutputFilesResource,
     ),
     (
-        "/data/asset-instances/<asset_instance_id>"
-        "/entities/<temporal_entity_id>/output-file-path",
+        "/data/asset-instances/<uuid:asset_instance_id>"
+        "/entities/<uuid:temporal_entity_id>/output-file-path",
         InstanceOutputFilePathResource,
     ),
-    ("/data/entities/<entity_id>/working-files", EntityWorkingFilesResource),
     (
-        "/data/entities/<entity_id>/output-files/new",
+        "/data/entities/<uuid:entity_id>/working-files",
+        EntityWorkingFilesResource,
+    ),
+    (
+        "/data/entities/<uuid:entity_id>/output-files/new",
         NewEntityOutputFileResource,
     ),
     (
-        "/data/entities/<entity_id>/output-files/next-revision",
+        "/data/entities/<uuid:entity_id>/output-files/next-revision",
         GetNextEntityOutputFileRevisionResource,
     ),
     (
-        "/data/entities/<entity_id>/output-files/last-revisions",
+        "/data/entities/<uuid:entity_id>/output-files/last-revisions",
         LastEntityOutputFilesResource,
     ),
-    ("/data/entities/<entity_id>/output-types", EntityOutputTypesResource),
     (
-        "/data/entities/<entity_id>/output-types/<output_type_id>/output-files",
+        "/data/entities/<uuid:entity_id>/output-types",
+        EntityOutputTypesResource,
+    ),
+    (
+        "/data/entities/<uuid:entity_id>/output-types/<uuid:output_type_id>/output-files",
         EntityOutputTypeOutputFilesResource,
     ),
-    ("/data/entities/<entity_id>/output-files", EntityOutputFilesResource),
     (
-        "/data/asset-instances/<asset_instance_id>/output-files",
+        "/data/entities/<uuid:entity_id>/output-files",
+        EntityOutputFilesResource,
+    ),
+    (
+        "/data/asset-instances/<uuid:asset_instance_id>/output-files",
         InstanceOutputFilesResource,
     ),
     (
-        "/data/entities/<entity_id>/output-file-path",
+        "/data/entities/<uuid:entity_id>/output-file-path",
         EntityOutputFilePathResource,
     ),
     ("/data/entities/guess_from_path", GuessFromPathResource),
     (
-        "/data/working-files/<working_file_id>/file",
+        "/data/working-files/<uuid:working_file_id>/file",
         WorkingFileFileResource,
     ),
-    ("/actions/projects/<project_id>/set-file-tree", SetTreeResource),
+    ("/actions/projects/<uuid:project_id>/set-file-tree", SetTreeResource),
     (
-        "/actions/working-files/<working_file_id>/comment",
+        "/actions/working-files/<uuid:working_file_id>/comment",
         CommentWorkingFileResource,
     ),
     (
-        "/actions/working-files/<working_file_id>/modified",
+        "/actions/working-files/<uuid:working_file_id>/modified",
         ModifiedFileResource,
     ),
 ]

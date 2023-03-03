@@ -27,83 +27,83 @@ from .resources import (
 routes = [
     ("/data/playlists/preview-files/running", RunningPreviewFiles),
     (
-        "/pictures/preview-files/<instance_id>",
+        "/pictures/preview-files/<uuid:instance_id>",
         CreatePreviewFilePictureResource,
     ),
     (
-        "/movies/originals/preview-files/<instance_id>.mp4",
+        "/movies/originals/preview-files/<uuid:instance_id>.mp4",
         PreviewFileMovieResource,
     ),
     (
-        "/movies/originals/preview-files/<instance_id>/download",
+        "/movies/originals/preview-files/<uuid:instance_id>/download",
         PreviewFileMovieDownloadResource,
     ),
     (
-        "/movies/low/preview-files/<instance_id>.mp4",
+        "/movies/low/preview-files/<uuid:instance_id>.mp4",
         PreviewFileLowMovieResource,
     ),
     (
-        "/pictures/thumbnails/preview-files/<instance_id>.png",
+        "/pictures/thumbnails/preview-files/<uuid:instance_id>.png",
         PreviewFileThumbnailResource,
     ),
     (
-        "/pictures/thumbnails-square/preview-files/<instance_id>.png",
+        "/pictures/thumbnails-square/preview-files/<uuid:instance_id>.png",
         PreviewFileThumbnailSquareResource,
     ),
     (
-        "/pictures/originals/preview-files/<instance_id>.png",
+        "/pictures/originals/preview-files/<uuid:instance_id>.png",
         PreviewFileOriginalResource,
     ),
     (
-        "/pictures/originals/preview-files/<instance_id>.<extension>",
+        "/pictures/originals/preview-files/<uuid:instance_id>.<extension>",
         PreviewFileResource,
     ),
     (
-        "/pictures/originals/preview-files/<instance_id>/download",
+        "/pictures/originals/preview-files/<uuid:instance_id>/download",
         PreviewFileDownloadResource,
     ),
     (
-        "/pictures/previews/preview-files/<instance_id>.png",
+        "/pictures/previews/preview-files/<uuid:instance_id>.png",
         PreviewFilePreviewResource,
     ),
     (
-        "/pictures/thumbnails/organisations/<instance_id>",
+        "/pictures/thumbnails/organisations/<uuid:instance_id>",
         CreateOrganisationThumbnailResource,
     ),
     (
-        "/pictures/thumbnails/organisations/<instance_id>.png",
+        "/pictures/thumbnails/organisations/<uuid:instance_id>.png",
         OrganisationThumbnailResource,
     ),
     (
-        "/pictures/thumbnails/persons/<instance_id>",
+        "/pictures/thumbnails/persons/<uuid:instance_id>",
         CreatePersonThumbnailResource,
     ),
     (
-        "/pictures/thumbnails/persons/<instance_id>.png",
+        "/pictures/thumbnails/persons/<uuid:instance_id>.png",
         PersonThumbnailResource,
     ),
     (
-        "/pictures/thumbnails/projects/<instance_id>",
+        "/pictures/thumbnails/projects/<uuid:instance_id>",
         CreateProjectThumbnailResource,
     ),
     (
-        "/pictures/thumbnails/projects/<instance_id>.png",
+        "/pictures/thumbnails/projects/<uuid:instance_id>.png",
         ProjectThumbnailResource,
     ),
     (
-        "/actions/entities/<entity_id>/set-main-preview/<preview_file_id>",
+        "/actions/entities/<uuid:entity_id>/set-main-preview/<uuid:preview_file_id>",
         LegacySetMainPreviewResource,
     ),
     (
-        "/actions/preview-files/<preview_file_id>/set-main-preview",
+        "/actions/preview-files/<uuid:preview_file_id>/set-main-preview",
         SetMainPreviewResource,
     ),
     (
-        "/actions/preview-files/<preview_file_id>/update-position",
+        "/actions/preview-files/<uuid:preview_file_id>/update-position",
         UpdatePreviewPositionResource,
     ),
     (
-        "/actions/preview-files/<preview_file_id>/update-annotations",
+        "/actions/preview-files/<uuid:preview_file_id>/update-annotations",
         UpdateAnnotationsResource,
     ),
 ]

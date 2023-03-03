@@ -8,9 +8,12 @@ from .resources import (
 
 
 routes = [
-    ("/data/entities/<entity_id>/news", EntityNewsResource),
-    ("/data/entities/<entity_id>/preview-files", EntityPreviewFilesResource),
-    ("/data/entities/<entity_id>/time-spents", EntityTimeSpentsResource),
+    ("/data/entities/<uuid:entity_id>/news", EntityNewsResource),
+    (
+        "/data/entities/<uuid:entity_id>/preview-files",
+        EntityPreviewFilesResource,
+    ),
+    ("/data/entities/<uuid:entity_id>/time-spents", EntityTimeSpentsResource),
 ]
 
 blueprint = create_blueprint_for_api("entities", routes)
