@@ -193,8 +193,16 @@ class CommentTaskResource(Resource):
         parser = reqparse.RequestParser()
         if request.is_json:
             location = ["values", "json"]
+            parser.add_argument(
+                "checklist",
+                type=dict,
+                action="append",
+                default=[],
+                location=location,
+            )
         else:
             location = "values"
+            parser.add_argument("checklist", default="[]", location=location)
         parser.add_argument(
             "task_status_id",
             required=True,
@@ -204,28 +212,15 @@ class CommentTaskResource(Resource):
         parser.add_argument("comment", default="", location=location)
         parser.add_argument("person_id", default="", location=location)
         parser.add_argument("created_at", default="", location=location)
-        if request.is_json:
-            parser.add_argument("checklist", default="[]", location=location)
-            args = parser.parse_args()
-            checklist = args["checklist"]
-            checklist = json.loads(checklist)
-        else:
-            parser.add_argument(
-                "checklist",
-                type=dict,
-                action="append",
-                default=[],
-                location=location,
-            )
-            args = parser.parse_args()
-            checklist = args["checklist"]
-
+        args = parser.parse_args()
         return (
             args["task_status_id"],
             args["comment"],
             args["person_id"],
             args["created_at"],
-            checklist,
+            args["checklist"]
+            if request.is_json
+            else json.loads(args["checklist"]),
         )
 
 
