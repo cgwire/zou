@@ -32,8 +32,7 @@ def send_to_slack(token, userid, message):
                         "text": {"type": "mrkdwn", "text": message},
                     }
                 ]
-                client.api_call(
-                    "chat.postMessage",
+                client.chat_postMessage(
                     channel="@%s" % userid,
                     blocks=blocks,
                     as_user=True,
