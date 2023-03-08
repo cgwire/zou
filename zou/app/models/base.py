@@ -37,7 +37,7 @@ class BaseMixin(object):
         """
         Shorthand to retrieve data by id.
         """
-        return cls.query.get(id)
+        return db.session.get(cls, id)
 
     @classmethod
     def get_by(cls, **kw):

@@ -44,7 +44,7 @@ DATABASE = {
     "password": os.getenv("DB_PASSWORD", "mysecretpassword"),
     "database": os.getenv("DB_DATABASE", "zoudb"),
 }
-SQLALCHEMY_DATABASE_URI = str(dbhelpers.get_db_uri())
+SQLALCHEMY_DATABASE_URI = dbhelpers.get_db_uri()
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENGINE_OPTIONS = {
     "pool_size": int(os.getenv("DB_POOL_SIZE", 30)),

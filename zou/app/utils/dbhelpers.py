@@ -7,15 +7,7 @@ from sqlalchemy.orm import close_all_sessions
 def get_db_uri():
     from zou.app.config import DATABASE
 
-    return URL.create(**DATABASE)
-
-
-def is_db_exists():
-    """
-    Check that database exist.
-    """
-    engine = create_engine(get_db_uri())
-    return database_exists(engine.url)
+    return URL.create(**DATABASE).render_as_string(hide_password=False)
 
 
 def reset_all():
@@ -30,9 +22,9 @@ def create_all():
     """
     Create all database tables.
     """
-    from zou.app import db
+    from zou.app import db, config
 
-    engine = create_engine(get_db_uri())
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
     if not database_exists(engine.url):
         create_database(engine.url)
     return db.create_all()

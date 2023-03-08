@@ -425,7 +425,7 @@ def update_variable(
     revision=1,
     style="lowercase",
 ):
-    variables = re.findall("<([\w\.]*)>", template)
+    variables = re.findall(r"<([\w\.]*)>", template)
 
     render = template
     for variable in variables:

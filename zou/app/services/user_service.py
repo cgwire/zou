@@ -132,7 +132,8 @@ def get_tasks_for_entity(entity_id):
     Get all tasks assigned to current user and related to given entity.
     """
     query = (
-        Task.query.join(Project, ProjectStatus)
+        Task.query.join(Project)
+        .join(ProjectStatus)
         .filter(Task.entity_id == entity_id)
         .filter(build_assignee_filter())
         .filter(build_open_project_filter())
@@ -147,7 +148,9 @@ def get_task_types_for_entity(entity_id):
     entity.
     """
     query = (
-        TaskType.query.join(Task, Project, ProjectStatus)
+        TaskType.query.join(Task)
+        .join(Project)
+        .join(ProjectStatus)
         .filter(Task.entity_id == entity_id)
         .filter(build_assignee_filter())
         .filter(build_open_project_filter())
@@ -183,7 +186,8 @@ def get_asset_types_for_project(project_id):
     query = (
         EntityType.query.join(Entity, Entity.entity_type_id == EntityType.id)
         .join(Task, Task.entity_id == Entity.id)
-        .join(Project, ProjectStatus)
+        .join(Project)
+        .join(ProjectStatus)
         .filter(Project.id == project_id)
         .filter(build_assignee_filter())
         .filter(build_open_project_filter())
@@ -252,7 +256,10 @@ def get_shots_for_sequence(sequence_id):
     """
     shot_type = shots_service.get_shot_type()
     query = (
-        Entity.query.join(Task, Project, ProjectStatus, EntityType)
+        Entity.query.join(Task)
+        .join(Project)
+        .join(ProjectStatus)
+        .join(EntityType)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Entity.parent_id == sequence_id)
         .filter(build_assignee_filter())
@@ -269,7 +276,10 @@ def get_scenes_for_sequence(sequence_id):
     """
     scene_type = shots_service.get_scene_type()
     query = (
-        Entity.query.join(Task, Project, ProjectStatus, EntityType)
+        Entity.query.join(Task)
+        .join(Project)
+        .join(ProjectStatus)
+        .join(EntityType)
         .filter(Entity.entity_type_id == scene_type["id"])
         .filter(Entity.parent_id == sequence_id)
         .filter(build_assignee_filter())
@@ -773,7 +783,8 @@ def get_user_filters(current_user_id):
     result = {}
 
     filters = (
-        SearchFilter.query.join(Project, ProjectStatus)
+        SearchFilter.query.join(Project)
+        .join(ProjectStatus)
         .filter(SearchFilter.person_id == current_user_id)
         .filter(build_open_project_filter())
         .all()
