@@ -293,14 +293,15 @@ def get_open_projects(name=None):
     """
     Get all open projects for which current user is part of the team.
     """
-    query = (
-        Project.query.join(ProjectStatus)
-        .filter(build_team_filter())
-        .filter(build_open_project_filter())
+    query = Project.query.join(ProjectStatus).filter(
+        build_open_project_filter()
     )
 
     if name is not None:
         query = query.filter(Project.name == name)
+
+    if not permissions.has_admin_permissions():
+        query = query.filter(build_team_filter())
 
     for_client = False
     vendor_departments = None
