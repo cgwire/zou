@@ -100,7 +100,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
         persons = []
         for person in project.team:
             if permissions.has_manager_permissions():
-                persons.append(person.serialize_safe())
+                persons.append(person.serialize_safe(relations=True))
             else:
                 persons.append(person.present_minimal())
         return persons
@@ -593,8 +593,8 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 ("entity_type", "Asset", False),
                 ("name", "", True),
                 ("for_client", "False", False),
-                ("choices", [], False, list, "append"),
-                ("departments", [], False, list, "append"),
+                ("choices", [], False, str, "append"),
+                ("departments", [], False, str, "append"),
             ]
         )
 
@@ -714,8 +714,8 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             [
                 ("name", "", False),
                 ("for_client", "False", False),
-                ("choices", [], False, list, "append"),
-                ("departments", [], False, list, "append"),
+                ("choices", [], False, str, "append"),
+                ("departments", [], False, str, "append"),
             ]
         )
         user_service.check_all_departments_access(

@@ -44,6 +44,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.assertEqual(descriptors[0]["id"], descriptor["id"])
         self.assertEqual(descriptors[0]["field_name"], "contractor")
         self.assertEqual(descriptors[1]["field_name"], "environment_type")
+        self.assertEqual(descriptors[1]["choices"], ["indoor", "outdoor"])
 
         projects = self.get("data/projects/open/")
         self.assertEqual(len(projects), 1)
