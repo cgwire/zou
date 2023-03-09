@@ -491,59 +491,53 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
     Build a movie for all files for a given playlist into the temporary folder.
     """
     success = False
-    try:
-        previews = playlist_previews(shots, only_movies=True)
-        movie_file_path = get_playlist_movie_file_path(job)
-        tmp_file_paths = retrieve_playlist_tmp_files(previews)
+    from zou.app import app
 
-        if not remote:
-            success = False
-            if not full:
-                success = _run_concatenation(
-                    playlist,
-                    job,
-                    tmp_file_paths,
-                    movie_file_path,
-                    params,
-                    movie.concat_demuxer,
-                )
+    with app.app_context():
+        try:
+            previews = playlist_previews(shots, only_movies=True)
+            movie_file_path = get_playlist_movie_file_path(job)
+            tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
-            # Try again using concat filter
-            if not success:
-                success = _run_concatenation(
-                    playlist,
-                    job,
-                    tmp_file_paths,
-                    movie_file_path,
-                    params,
-                    movie.concat_filter,
-                )
-        else:
-            from zou.app import app
+            if not remote:
+                success = False
+                if not full:
+                    success = _run_concatenation(
+                        playlist,
+                        job,
+                        tmp_file_paths,
+                        movie_file_path,
+                        params,
+                        movie.concat_demuxer,
+                    )
 
-            with app.app_context():
+                # Try again using concat filter
+                if not success:
+                    success = _run_concatenation(
+                        playlist,
+                        job,
+                        tmp_file_paths,
+                        movie_file_path,
+                        params,
+                        movie.concat_filter,
+                    )
+            else:
                 try:
                     _run_remote_job_build_playlist(
                         app, job, previews, params, movie_file_path, full
                     )
                     success = True
                 except Exception as exc:
-                    from zou.app import app
+                    app.logger.error(exc)
+                    success = False
 
-                    with app.app_context():
-                        app.logger.error(exc)
-                        success = False
-
-    except Exception as exc:
-        from zou.app import app
-
-        with app.app_context():
+        except Exception as exc:
             app.logger.error(exc)
-        success = False
+            success = False
 
-    # exception will be logged by rq
-    finally:
-        job = end_build_job(playlist, job, success)
+        # exception will be logged by rq
+        finally:
+            job = end_build_job(playlist, job, success)
 
     if not success:
         raise Exception("Failure while building playlist %r" % playlist["id"])
