@@ -108,7 +108,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Manage the people listed in a production team.
+        Add a person to a production team.
         ---
         tags:
           - Projects
@@ -119,9 +119,15 @@ class ProductionTeamResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-              description: Person added to production team
+              description: Person added to the production team
         """
         args = self.get_args([("person_id", "", True)])
 
