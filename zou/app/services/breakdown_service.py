@@ -242,7 +242,7 @@ def update_casting(entity_id, casting):
         assets = _extract_removal(entity_dict, casting)
         for asset_id in assets:
             _remove_asset_from_episode_shots(asset_id, entity_id)
-    entity.update({"entities_out": [], "entities_out_length": 0})
+    entity.update({"entities_out": [], "nb_entities_out": 0})
     for cast in casting:
         if "asset_id" in cast and "nb_occurences" in cast:
             create_casting_link(
@@ -734,7 +734,6 @@ def refresh_shot_casting_stats(shot, priority_map=None):
     For all tasks related to given shot, it computes how many assets are
     available for this task and saves the result on the task level.
     """
-
     if priority_map is None:
         priority_map = _get_task_type_priority_map(shot["project_id"])
     casting = get_entity_casting(shot["id"])

@@ -100,7 +100,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
         persons = []
         for person in project.team:
             if permissions.has_manager_permissions():
-                persons.append(person.serialize_safe())
+                persons.append(person.serialize_safe(relations=True))
             else:
                 persons.append(person.present_minimal())
         return persons
@@ -108,7 +108,7 @@ class ProductionTeamResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Manage the people listed in a production team.
+        Add a person to a production team.
         ---
         tags:
           - Projects
@@ -119,9 +119,15 @@ class ProductionTeamResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-              description: Person added to production team
+              description: Person added to the production team
         """
         args = self.get_args([("person_id", "", True)])
 
@@ -587,8 +593,8 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 ("entity_type", "Asset", False),
                 ("name", "", True),
                 ("for_client", "False", False),
-                ("choices", [], False, list, "append"),
-                ("departments", [], False, list, "append"),
+                ("choices", [], False, str, "append"),
+                ("departments", [], False, str, "append"),
             ]
         )
 
@@ -708,8 +714,8 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             [
                 ("name", "", False),
                 ("for_client", "False", False),
-                ("choices", [], False, list, "append"),
-                ("departments", [], False, list, "append"),
+                ("choices", [], False, str, "append"),
+                ("departments", [], False, str, "append"),
             ]
         )
         user_service.check_all_departments_access(
