@@ -198,13 +198,22 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
     def test_get_open_projects(self):
         projects = self.get("data/user/projects/open")
+        self.assertEqual(len(projects), 1)
+
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+        projects = self.get("data/user/projects/open")
         self.assertEqual(len(projects), 0)
 
         project = Project.get(self.project_id)
-        person = Person.get(self.user_id)
+        person = Person.get(self.user_cg_artist["id"])
         project.team.append(person)
         project.save()
 
+        projects = self.get("data/user/projects/open")
+        self.assertEqual(len(projects), 1)
+
+        self.log_in_admin()
         projects = self.get("data/user/projects/open")
         self.assertEqual(len(projects), 1)
 
@@ -212,6 +221,10 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         project.team[:] = []
         project.save()
 
+        projects = self.get("data/user/projects/open")
+        self.assertEqual(len(projects), 1)
+
+        self.log_in_cg_artist()
         projects = self.get("data/user/projects/open")
         self.assertEqual(len(projects), 0)
 
