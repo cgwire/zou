@@ -915,9 +915,9 @@ def get_person_tasks_to_check(department_ids, project_ids):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     query = (
-        Task.query.join(Project)
-        .join(TaskType)
-        .join(TaskStatus)
+        Task.query.join(Project, Project.id == Task.project_id)
+        .join(TaskType, TaskType.id == Task.task_type_id)
+        .join(TaskStatus, TaskStatus.id == Task.task_status_id)
         .join(Entity, Entity.id == Task.entity_id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .outerjoin(Sequence, Sequence.id == Entity.parent_id)
