@@ -843,25 +843,29 @@ def get_data_from_token(type_token, value_token, constraints=None):
         ):
             return None
 
-        data = Entity.get_by_case_insensitive(
-            name=value_token,
+        data = Entity.get_by(
+            name=Entity.name.ilike(value_token),
             entity_type_id=constraints[PathTokens.ASSET_TYPE],
             project_id=constraints[PathTokens.PROJECT],
         )
 
     elif type_token == PathTokens.ASSET_TYPE:
-        data = EntityType.get_by_case_insensitive(name=value_token)
+        data = EntityType.get_by(
+            name=EntityType.name.ilike(value_token)
+        )
 
     elif type_token == PathTokens.DEPARTMENT:
-        data = Department.get_by_case_insensitive(name=value_token)
+        data = Department.get_by(
+            name=Department.name.ilike(value_token)
+        )
 
     elif type_token == PathTokens.EPISODE:
         # An episode depends on a project
         if not constraints.get(PathTokens.PROJECT):
             return None
 
-        data = Entity.get_by_case_insensitive(
-            name=value_token,
+        data = Entity.get_by(
+            name=Entity.name.ilike(value_token),
             entity_type_id=shots_service.get_episode_type()["id"],
             project_id=constraints[PathTokens.PROJECT],
         )
@@ -873,8 +877,8 @@ def get_data_from_token(type_token, value_token, constraints=None):
         ):
             return None
 
-        data = Entity.get_by_case_insensitive(
-            name=value_token,
+        data = Entity.get_by(
+            name=Entity.name.ilike(value_token),
             entity_type_id=shots_service.get_sequence_type()["id"],
             parent_id=constraints[PathTokens.EPISODE],
             project_id=constraints[PathTokens.PROJECT],
@@ -887,15 +891,17 @@ def get_data_from_token(type_token, value_token, constraints=None):
         ):
             return None
 
-        data = Entity.get_by_case_insensitive(
-            name=value_token,
+        data = Entity.get_by(
+            name=Entity.name.ilike(value_token),
             entity_type_id=shots_service.get_scene_type()["id"],
             project_id=constraints[PathTokens.PROJECT],
             parent_id=constraints[PathTokens.SEQUENCE],
         )
 
     elif type_token == PathTokens.OUTPUT_TYPE:
-        data = OutputType.get_by_case_insensitive(name=value_token)
+        data = OutputType.get_by(
+            name=OutputType.name.ilike(value_token)
+        )
 
     elif type_token == PathTokens.SHOT:
         # A shot depends on a project and a sequence
@@ -904,8 +910,8 @@ def get_data_from_token(type_token, value_token, constraints=None):
         ):
             return None
 
-        data = Entity.get_by_case_insensitive(
-            name=value_token,
+        data = Entity.get_by(
+            name=Entity.name.ilike(value_token),
             entity_type_id=shots_service.get_shot_type()["id"],
             parent_id=constraints[PathTokens.SEQUENCE],
             project_id=constraints[PathTokens.PROJECT],
@@ -919,7 +925,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
             return None
 
         kwargs = {
-            "name": value_token,
+            "name": Task.name.ilike(value_token),
             "task_type_id": constraints[PathTokens.TASK_TYPE],
             "project_id": constraints[PathTokens.PROJECT],
         }
@@ -931,13 +937,15 @@ def get_data_from_token(type_token, value_token, constraints=None):
         else:
             return None
 
-        data = Task.get_by_case_insensitive(**kwargs)
+        data = Task.get_by(**kwargs)
 
     elif type_token == PathTokens.TASK_TYPE:
-        data = TaskType.get_by_case_insensitive(name=value_token)
+        data = TaskType.get_by(
+            name=TaskType.name.ilike(value_token))
 
     elif type_token == PathTokens.PROJECT:
-        data = Project.get_by_case_insensitive(name=value_token)
+        data = Project.get_by(
+            name=Project.name.ilike(value_token))
 
     elif type_token == PathTokens.NAME:
         data = value_token
@@ -952,7 +960,9 @@ def get_data_from_token(type_token, value_token, constraints=None):
             return None
 
     elif type_token == PathTokens.ENTITY_TYPE:
-        data = EntityType.get_by_case_insensitive(name=value_token)
+        data = EntityType.get_by(
+            name=EntityType.name.ilike(value_token)
+        )
 
     elif type_token == PathTokens.ENTITY:
         # An entity depends on a project and an entity type
@@ -961,8 +971,8 @@ def get_data_from_token(type_token, value_token, constraints=None):
         ):
             return None
 
-        data = Entity.get_by_case_insensitive(
-            name=value_token,
+        data = Entity.get_by(
+            name=Entity.name.ilike(value_token),
             entity_type_id=constraints[PathTokens.ENTITY_TYPE],
             project_id=constraints[PathTokens.PROJECT],
         )
@@ -971,9 +981,9 @@ def get_data_from_token(type_token, value_token, constraints=None):
         if not constraints.get(PathTokens.EPISODE):
             return None
 
-        data = AssetInstance.get_by_case_insensitive(
-            name=slugify(value_token, separator="_"),
-            episode_id=constraints.get(PathTokens.EPISODE),
+        data = AssetInstance.get_by(
+            name=AssetInstance.name.ilike(value_token),
+            episode_id=constraints.get(PathTokens.EPISODE)
         )
 
     return data
