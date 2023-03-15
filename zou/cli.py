@@ -99,6 +99,14 @@ def stamp_db(revision):
 
 
 @cli.command()
+def clear_memory_cache():
+    "Clear Redis memory cache."
+    from zou.app import cache
+    with app.app_context():
+        cache.clear()
+
+
+@cli.command()
 def reset_migrations():
     "Set the database schema revision to first one."
     with app.app_context():
