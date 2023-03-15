@@ -540,5 +540,6 @@ def get_last_preview_file_for_task(task_id):
         .first()
     )
     if preview is None:
-        raise PreviewFileNotFoundException
-    return preview.serialize()
+        return None
+    else:
+        return preview.serialize()

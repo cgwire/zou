@@ -1467,10 +1467,13 @@ class SetTaskMainPreviewResource(Resource):
         preview_file = preview_files_service.get_last_preview_file_for_task(
             task_id
         )
-        entity = entities_service.update_entity_preview(
-            task["entity_id"], preview_file["id"]
-        )
-        assets_service.clear_asset_cache(entity["id"])
-        shots_service.clear_shot_cache(entity["id"])
-        edits_service.clear_edit_cache(entity["id"])
+        if preview_file is not None:
+            entity = entities_service.update_entity_preview(
+                task["entity_id"], preview_file["id"]
+            )
+            assets_service.clear_asset_cache(entity["id"])
+            shots_service.clear_shot_cache(entity["id"])
+            edits_service.clear_edit_cache(entity["id"])
+            shots_service.clear_episode_cache(entity["id"])
+            shots_service.clear_sequence_cache(entity["id"])
         return entity
