@@ -12,8 +12,7 @@ class EventsResource(BaseModelsResource):
             query = self.model.query
 
         return self.model.serialize_list(
-            query.limit(1000).all(),
-            relations=relations
+            query.limit(1000).all(), relations=relations
         )
 
 

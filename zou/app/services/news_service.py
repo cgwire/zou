@@ -95,7 +95,7 @@ def get_last_news_for_project(
     page_size=50,
     before=None,
     after=None,
-    episode_id=None
+    episode_id=None,
 ):
     """
     Return last 50 news for given project. Add related information to make it
@@ -119,18 +119,16 @@ def get_last_news_for_project(
         query = query.filter(Task.project_id == project_id)
 
     if len(project_ids) > 0:
-        query = query.filter(
-            Project.id.in_(project_ids)
-        )
+        query = query.filter(Project.id.in_(project_ids))
 
     if entity_id is not None:
         query = query.filter(Entity.id == entity_id)
 
     if episode_id is not None:
         Sequence = aliased(Entity, name="sequence")
-        query = query.join(
-            Sequence, Entity.parent_id == Sequence.id
-        ).filter(Sequence.parent_id == episode_id)
+        query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
+            Sequence.parent_id == episode_id
+        )
         print(episode_id, query)
 
     if task_status_id is not None:
@@ -256,9 +254,7 @@ def get_news_stats_for_project(
         query = query.filter(Task.project_id == project_id)
 
     if len(project_ids) > 0:
-        query = query.filter(
-            Project.id.in_(project_ids)
-        )
+        query = query.filter(Project.id.in_(project_ids))
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id)
@@ -271,9 +267,9 @@ def get_news_stats_for_project(
 
     if episode_id is not None:
         Sequence = aliased(Entity, name="sequence")
-        query = query.join(
-            Sequence, Entity.parent_id == Sequence.id
-        ).filter(Sequence.parent_id == episode_id)
+        query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
+            Sequence.parent_id == episode_id
+        )
 
     if only_preview:
         query = query.filter(News.preview_file_id != None)

@@ -19,6 +19,7 @@ rooms_data = {}
 
 # Review room helpers
 
+
 def _get_empty_room(current_frame=0):
     return {
         "people": [],
