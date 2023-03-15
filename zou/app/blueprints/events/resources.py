@@ -53,7 +53,6 @@ class EventsResource(Resource, ArgsMixin):
                 ("page_size", 100, False),
                 ("project_id", None, False),
             ],
-            location="values",
         )
 
         permissions.check_manager_permissions()
@@ -98,7 +97,7 @@ class LoginLogsResource(Resource, ArgsMixin):
             200:
                 description: All login logs
         """
-        args = self.get_args(["before", ("page_size", 100)], location="values")
+        args = self.get_args(["before", ("page_size", 100)])
 
         permissions.check_manager_permissions()
         before = None

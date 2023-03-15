@@ -4,7 +4,7 @@ from zou.app.utils.api import configure_api_from_blueprint
 from .resources import (
     NewsResource,
     ProjectNewsResource,
-    ProjectSingleNewsResource
+    ProjectSingleNewsResource,
 )
 
 

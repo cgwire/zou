@@ -7,8 +7,7 @@ from zou.app.services.exception import NewsNotFoundException
 from zou.app.utils import permissions
 
 
-class NewsMixin():
-
+class NewsMixin:
     def get_news(self, project_ids=[]):
         (
             only_preview,
@@ -63,7 +62,6 @@ class NewsMixin():
                 "after",
                 "before",
             ],
-            location="values",
         )
         return (
             args["only_preview"],

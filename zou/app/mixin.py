@@ -10,8 +10,10 @@ class ArgsMixin(object):
     Helpers to retrieve parameters from GET or POST queries.
     """
 
-    def get_args(self, descriptors, location=["values", "json"]):
+    def get_args(self, descriptors, location=None):
         parser = reqparse.RequestParser()
+        if location is None:
+            location = ["values", "json"] if request.is_json else ["values"]
         for descriptor in descriptors:
             action = None
             data_type = str
