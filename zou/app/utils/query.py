@@ -34,7 +34,7 @@ def get_paginated_results(query, page, relations=False):
     """
     if page < 1:
         entries = query.all()
-        return fields.serialize_list(entries)
+        return fields.serialize_models(entries, relations=relations)
     else:
         limit = app.config["NB_RECORDS_PER_PAGE"]
         total = query.count()
