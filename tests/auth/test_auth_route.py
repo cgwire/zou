@@ -62,6 +62,15 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsAuthenticated(tokens)
         self.logout(tokens)
 
+    def test_login_args_not_json(self):
+        response = self.app.post(
+            f"auth/login?email={self.credentials['email']}&password={self.credentials['password']}"
+        )
+        self.assertEqual(response.status_code, 200)
+        tokens = json.loads(response.data.decode("utf-8"))
+        self.assertIsAuthenticated(tokens)
+        self.logout(tokens)
+
     def test_unactive_login(self):
         self.person.update({"active": False})
         self.person.save()
