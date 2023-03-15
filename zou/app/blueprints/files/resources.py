@@ -1467,7 +1467,6 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
                 "file_status_id",
                 "name",
             ],
-            location="values",
         )
 
         entity = entities_service.get_entity(entity_id)
@@ -1521,7 +1520,6 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
                 "file_status_id",
                 "name",
             ],
-            location="values",
         )
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -1730,7 +1728,6 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
                 "file_status_id",
                 "name",
             ],
-            location="values",
         )
 
         entity = entities_service.get_entity(entity_id)
@@ -1778,7 +1775,6 @@ class InstanceOutputFilesResource(Resource):
                 "file_status_id",
                 "name",
             ],
-            location="values",
         )
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
@@ -1921,7 +1917,6 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
                 "task_id",
                 "name",
             ],
-            location="values",
         )
 
         relations = self.get_relations()
