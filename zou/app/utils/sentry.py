@@ -1,3 +1,7 @@
+from flask_jwt_extended.exceptions import NoAuthorizationError
+from jwt import ExpiredSignatureError
+from werkzeug.exceptions import Forbidden, NotFound
+
 from zou.app import config
 
 if config.SENTRY_DSN:
@@ -18,4 +22,10 @@ def init_sentry():
                 RqIntegration(),
             ],
             traces_sample_rate=config.SENTRY_SR,
+            ignore_errors=[
+                NoAuthorizationError,
+                NotFound,
+                Forbidden,
+                ExpiredSignatureError,
+            ],
         )
