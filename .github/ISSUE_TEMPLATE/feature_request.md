@@ -7,4 +7,4 @@ assignees: ''
 
 ---
 
-Please use https://cgwire.canny.io for any feature request. Every feature request done on Github will be closed.
+Please use https://cgwire.canny.io for any big feature request.
