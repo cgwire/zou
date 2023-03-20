@@ -11,7 +11,7 @@ assignees: EvanBldy
 
 Studio name: 
 Zou version: 
-Production type:
+Zou installation type: (for example: hosted by CGWire, self-hosted, docker etc)
 
 **Describe the bug**
 A clear and concise description of what the bug is.

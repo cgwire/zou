@@ -3,8 +3,8 @@ name: Feature request
 about: Suggest an idea for this project
 title: ''
 labels: enhancement
-assignees: ''
+assignees: EvanBldy
 
 ---
 
-Please use https://cgwire.canny.io for any feature request. Every feature request done on Github will be closed.
+Please use https://cgwire.canny.io for any big feature request.
