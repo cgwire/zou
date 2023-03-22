@@ -471,10 +471,10 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
     def test_get_metadata_columns(self):
         projects_service.add_metadata_descriptor(
-            self.project_id, "asset", "test client", [], True
+            self.project_id, "asset", "test client", "string", [], True
         )
         projects_service.add_metadata_descriptor(
-            self.project_id, "asset", "test", [], False
+            self.project_id, "asset", "test", "string", [], False
         )
         self.generate_fixture_user_client()
         self.log_in_client()

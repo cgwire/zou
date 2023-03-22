@@ -1,4 +1,4 @@
-from sqlalchemy_utils import UUIDType
+from sqlalchemy_utils import UUIDType, ChoiceType
 from sqlalchemy.dialects.postgresql import JSONB
 
 from zou.app import db
@@ -17,6 +17,14 @@ department_metadata_descriptor_link = db.Table(
     ),
 )
 
+METADATA_DESCRIPTOR_TYPES = [
+    ("string", "String"),
+    ("number", "Number"),
+    ("list", "List"),
+    ("boolean", "Boolean"),
+    ("checklist", "Checklist"),
+]
+
 
 class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     """
@@ -32,6 +40,7 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     )
     entity_type = db.Column(db.String(60), nullable=False, index=True)
     name = db.Column(db.String(120), nullable=False)
+    data_type = db.Column(ChoiceType(METADATA_DESCRIPTOR_TYPES))
     field_name = db.Column(db.String(120), nullable=False)
     choices = db.Column(JSONB)
     for_client = db.Column(db.Boolean(), default=False, index=True)

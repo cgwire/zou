@@ -17,6 +17,7 @@ Cosmos Landromat;E01;Edit;Description of the Edit;0.21;;opn;John Doe\r\n"""
             project_id=self.project.id,
             name="Start frame",
             field_name="start_frame",
+            data_type="list",
             choices=["0", "100"],
             entity_type="Edit",
         )
