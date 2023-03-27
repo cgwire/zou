@@ -323,9 +323,13 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
                 {"entity_link_id": link.id, "nb_occurences": nb_occurences},
                 project_id=project_id,
             )
-    except (IntegrityError, StaleDataError, DetachedInstanceError):
+    except IntegrityError:
         current_app.logger.warning(
-            "Attempt to create duplicated entity links via zou.app.services.breakdown_service.create_casting_link"
+            "Attempt to create duplicated entity links (link already created) via zou.app.services.breakdown_service.create_casting_link"
+        )
+    except (StaleDataError, DetachedInstanceError):
+        current_app.logger.warning(
+            "Attempt to create duplicated entity links (race condition) via zou.app.services.breakdown_service.create_casting_link"
         )
     return link
 
