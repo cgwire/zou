@@ -1,13 +1,15 @@
 from slugify import slugify
 from sqlalchemy import desc
 from sqlalchemy.orm import aliased
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import StaleDataError, DetachedInstanceError
 
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.project import ProjectTaskTypeLink
 
 from zou.app.utils import fields, events
 
@@ -16,6 +18,8 @@ from zou.app.services import (
     entities_service,
     shots_service,
 )
+
+from flask import current_app
 
 """
 Breakdown can be represented in two ways:
@@ -288,33 +292,40 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
     """
     Add a link between given entity and given asset.
     """
-    link = EntityLink.get_by(entity_in_id=entity_in_id, entity_out_id=asset_id)
-    entity = entities_service.get_entity(entity_in_id)
-    project_id = str(entity["project_id"])
-    if link is None:
-        _create_episode_casting_link(entity, asset_id, 1, label)
-        link = EntityLink.create(
-            entity_in_id=entity_in_id,
-            entity_out_id=asset_id,
-            nb_occurences=nb_occurences,
-            label=label,
+    try:
+        link = EntityLink.get_by(
+            entity_in_id=entity_in_id, entity_out_id=asset_id
         )
-        events.emit(
-            "entity-link:new",
-            {
-                "entity_link_id": link.id,
-                "entity_in_id": link.entity_in_id,
-                "entity_out_id": link.entity_out_id,
-                "nb_occurences": nb_occurences,
-            },
-            project_id=project_id,
-        )
-    else:
-        link.update({"nb_occurences": nb_occurences, "label": label})
-        events.emit(
-            "entity-link:update",
-            {"entity_link_id": link.id, "nb_occurences": nb_occurences},
-            project_id=project_id,
+        entity = entities_service.get_entity(entity_in_id)
+        project_id = str(entity["project_id"])
+        if link is None:
+            _create_episode_casting_link(entity, asset_id, 1, label)
+            link = EntityLink.create(
+                entity_in_id=entity_in_id,
+                entity_out_id=asset_id,
+                nb_occurences=nb_occurences,
+                label=label,
+            )
+            events.emit(
+                "entity-link:new",
+                {
+                    "entity_link_id": link.id,
+                    "entity_in_id": link.entity_in_id,
+                    "entity_out_id": link.entity_out_id,
+                    "nb_occurences": nb_occurences,
+                },
+                project_id=project_id,
+            )
+        else:
+            link.update({"nb_occurences": nb_occurences, "label": label})
+            events.emit(
+                "entity-link:update",
+                {"entity_link_id": link.id, "nb_occurences": nb_occurences},
+                project_id=project_id,
+            )
+    except (IntegrityError, StaleDataError, DetachedInstanceError):
+        current_app.logger.warning(
+            "Attempt to create duplicated entity links via zou.app.services.breakdown_service.create_casting_link"
         )
     return link
 
