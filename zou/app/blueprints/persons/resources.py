@@ -1241,7 +1241,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
-            current_app.logger.warn(
+            current_app.logger.warning(
                 "User %s has changed the password of %s"
                 % (current_user["email"], person["email"])
             )
@@ -1334,7 +1334,7 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
             person = persons_service.get_person(person_id)
             current_user = persons_service.get_current_user()
             disable_two_factor_authentication_for_person(person["id"])
-            current_app.logger.warn(
+            current_app.logger.warning(
                 "User %s has disabled the two factor authentication of %s"
                 % (current_user["email"], person["email"])
             )
