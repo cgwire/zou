@@ -325,11 +325,15 @@ def create_casting_link(entity_in_id, asset_id, nb_occurences=1, label=""):
             )
     except IntegrityError:
         current_app.logger.warning(
-            "Attempt to create duplicated entity links (link already created) via zou.app.services.breakdown_service.create_casting_link"
+            "Attempt to create duplicated entity links (link already created) via breakdown_service.create_casting_link (raised by sqlalchemy.exc.IntegrityError)"
         )
-    except (StaleDataError, DetachedInstanceError):
+    except StaleDataError:
         current_app.logger.warning(
-            "Attempt to create duplicated entity links (race condition) via zou.app.services.breakdown_service.create_casting_link"
+            "Attempt to create duplicated entity links (concurrent modification) via zou.app.services.breakdown_service.create_casting_link (raised by sqlalchemy.orm.exc.StaleDataError)"
+        )
+    except DetachedInstanceError:
+        current_app.logger.warning(
+            "Attempt to create duplicated entity links (attempt to access unloaded attributes on a mapped instance that is detached) via zou.app.services.breakdown_service.create_casting_link (raised by sqlalchemy.orm.exc.DetachedInstanceError)"
         )
     return link
 
