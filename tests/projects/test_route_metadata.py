@@ -83,7 +83,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.put(
             "data/projects/%s/metadata-descriptors/%s"
             % (self.project_id, descriptor["id"]),
-            {"name": "Team"},
+            {"name": "Team", "data_type": "list"},
         )
         descriptors = self.get(
             "data/projects/%s/metadata-descriptors" % self.project_id
@@ -101,7 +101,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.put(
             "data/projects/%s/metadata-descriptors/%s"
             % (self.project_id, descriptor["id"]),
-            {"name": "Team"},
+            {"name": "Team", "data_type": "list"},
             403,
         )
 
