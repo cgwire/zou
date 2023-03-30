@@ -592,6 +592,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             [
                 ("entity_type", "Asset", False),
                 ("name", "", True),
+                ("data_type", "string", True),
                 ("for_client", "False", False),
                 ("choices", [], False, str, "append"),
                 ("departments", [], False, str, "append"),
@@ -623,6 +624,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 project_id,
                 args["entity_type"],
                 args["name"],
+                args["data_type"],
                 args["choices"],
                 args["for_client"],
                 args["departments"],
@@ -714,6 +716,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             [
                 ("name", "", False),
                 ("for_client", "False", False),
+                ("data_type", "string", True),
                 ("choices", [], False, str, "append"),
                 ("departments", [], False, str, "append"),
             ]

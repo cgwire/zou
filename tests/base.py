@@ -916,6 +916,7 @@ class ApiDBTestCase(ApiTestCase):
         self.meta_descriptor = MetadataDescriptor.create(
             project_id=self.project.id,
             name="Contractor",
+            data_type="list",
             field_name="contractor",
             choices=["value 1", "value 2"],
             entity_type=entity_type,

@@ -13,12 +13,12 @@ class MetadataDescriptorsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, MetadataDescriptor)
 
-    def all_entries(self, query=None, relations=False):
+    def all_entries(self, query=None, relations=True):
         if query is None:
             query = self.model.query
 
         return [
-            metadata_descriptor.serialize(relations=True)
+            metadata_descriptor.serialize(relations=relations)
             for metadata_descriptor in query.all()
         ]
 

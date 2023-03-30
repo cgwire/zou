@@ -22,6 +22,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             {
                 "entity_type": "Asset",
                 "name": "environment type",
+                "data_type": "list",
                 "choices": ["indoor", "outdoor"],
             },
         )
@@ -34,6 +35,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             {
                 "entity_type": "Shot",
                 "name": "Contractor",
+                "data_type": "list",
                 "choices": ["studio1", "studio2"],
             },
         )
@@ -42,9 +44,11 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         )
         self.assertEqual(len(descriptors), 2)
         self.assertEqual(descriptors[0]["id"], descriptor["id"])
+        self.assertEqual(descriptors[0]["data_type"], "list")
         self.assertEqual(descriptors[0]["field_name"], "contractor")
         self.assertEqual(descriptors[1]["field_name"], "environment_type")
         self.assertEqual(descriptors[1]["choices"], ["indoor", "outdoor"])
+        self.assertEqual(descriptors[1]["data_type"], "list")
 
         projects = self.get("data/projects/open/")
         self.assertEqual(len(projects), 1)
@@ -58,6 +62,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             {
                 "entity_type": "Asset",
                 "name": "environment type",
+                "data_type": "list",
                 "choices": ["indoor", "outdoor"],
             },
             403,
@@ -69,6 +74,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
             {
                 "entity_type": "Asset",
                 "name": "Contractor",
+                "data_type": "list",
                 "choices": ["contractor 1", "contractor 2"],
             },
         )
@@ -77,7 +83,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.put(
             "data/projects/%s/metadata-descriptors/%s"
             % (self.project_id, descriptor["id"]),
-            {"name": "Team"},
+            {"name": "Team", "data_type": "list"},
         )
         descriptors = self.get(
             "data/projects/%s/metadata-descriptors" % self.project_id
@@ -88,20 +94,20 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_unallowed_update_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(
-            self.project_id, "Asset", "Contractor", [], False
+            self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.generate_fixture_user_manager()
         self.log_in_manager()
         self.put(
             "data/projects/%s/metadata-descriptors/%s"
             % (self.project_id, descriptor["id"]),
-            {"name": "Team"},
+            {"name": "Team", "data_type": "list"},
             403,
         )
 
     def test_delete_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(
-            self.project_id, "Asset", "Contractor", [], False
+            self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.asset.update({"data": {"contractor": "contractor 1"}})
         self.delete(
@@ -117,7 +123,7 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
 
     def test_unallowed_delete_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(
-            self.project_id, "Asset", "Contractor", [], False
+            self.project_id, "Asset", "Contractor", "string", [], False
         )
         self.generate_fixture_user_manager()
         self.log_in_manager()

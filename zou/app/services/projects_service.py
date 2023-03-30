@@ -20,11 +20,12 @@ from zou.app.services.exception import (
     ProjectNotFoundException,
     MetadataDescriptorNotFoundException,
     DepartmentNotFoundException,
+    WrongParameterException,
 )
 
 from zou.app.utils import fields, events, cache
 
-from sqlalchemy.exc import StatementError
+from sqlalchemy.exc import StatementError, IntegrityError
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy import or_
 
@@ -94,6 +95,7 @@ def get_projects_with_extra_data(
                     "id": fields.serialize_value(descriptor.id),
                     "name": descriptor.name,
                     "field_name": descriptor.field_name,
+                    "data_type": fields.serialize_value(descriptor.data_type),
                     "choices": descriptor.choices,
                     "for_client": descriptor.for_client or False,
                     "entity_type": descriptor.entity_type,
@@ -407,7 +409,13 @@ def _save_project(project):
 
 
 def add_metadata_descriptor(
-    project_id, entity_type, name, choices, for_client, departments=[]
+    project_id,
+    entity_type,
+    name,
+    data_type,
+    choices,
+    for_client,
+    departments=[],
 ):
     if not departments:
         departments = []
@@ -421,15 +429,19 @@ def add_metadata_descriptor(
     except StatementError:
         raise DepartmentNotFoundException()
 
-    descriptor = MetadataDescriptor.create(
-        project_id=project_id,
-        entity_type=entity_type,
-        name=name,
-        choices=choices,
-        for_client=for_client,
-        departments=departments_objects,
-        field_name=slugify.slugify(name, separator="_"),
-    )
+    try:
+        descriptor = MetadataDescriptor.create(
+            project_id=project_id,
+            entity_type=entity_type,
+            name=name,
+            data_type=data_type,
+            choices=choices,
+            for_client=for_client,
+            departments=departments_objects,
+            field_name=slugify.slugify(name, separator="_"),
+        )
+    except Exception as e:
+        raise WrongParameterException
     events.emit(
         "metadata-descriptor:new",
         {"metadata_descriptor_id": str(descriptor.id)},

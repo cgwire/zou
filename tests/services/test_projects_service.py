@@ -163,13 +163,14 @@ class ProjectServiceTestCase(ApiDBTestCase):
 
     def test_add_asset_metadata_descriptor(self):
         descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Is Outdoor", [], False
+            self.project.id, "Asset", "Is Outdoor", "string", [], False
         )
         self.assertIsNotNone(MetadataDescriptor.get(descriptor["id"]))
         descriptor = projects_service.add_metadata_descriptor(
             self.project.id,
             "Asset",
             "Contractor",
+            "list",
             ["contractor 1", "contractor 2"],
             False,
         )
@@ -190,7 +191,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         asset = self.generate_fixture_asset_type()
         asset = self.generate_fixture_asset()
         descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", [], False
+            self.project.id, "Asset", "Contractor", "string", [], False
         )
         asset.update({"data": {"contractor": "contractor 1"}})
         self.assertTrue("contractor" in asset.data)
@@ -209,7 +210,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         asset = self.generate_fixture_asset_type()
         asset = self.generate_fixture_asset()
         descriptor = projects_service.add_metadata_descriptor(
-            self.project.id, "Asset", "Contractor", [], False
+            self.project.id, "Asset", "Contractor", "string", [], False
         )
         asset.update({"data": {"contractor": "contractor 1"}})
         self.assertTrue("contractor" in asset.data)

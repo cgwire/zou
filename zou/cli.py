@@ -102,6 +102,7 @@ def stamp_db(revision):
 def clear_memory_cache():
     "Clear Redis memory cache."
     from zou.app import cache
+
     with app.app_context():
         cache.clear()
 
