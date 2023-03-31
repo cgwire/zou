@@ -55,9 +55,7 @@ class EditTasksTestCase(BaseEditTestCase):
         edits = self.get("data/edits/with-tasks?project_id=%s" % project_id)
         self.assertEqual(edits[0]["data"]["contractor"], "test")
 
-        persons_service.remove_from_department(
-            str(self.department_id), person_id
-        )
+        persons_service.remove_from_department(self.department_id, person_id)
         edits = self.get("data/edits/with-tasks?project_id=%s" % project_id)
         self.assertTrue("contractor" not in edits[0]["data"])
 

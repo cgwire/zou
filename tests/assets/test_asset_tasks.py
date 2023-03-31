@@ -78,9 +78,7 @@ class AssetTasksTestCase(ApiDBTestCase):
         assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
         self.assertEqual(assets[0]["data"]["contractor"], "test")
 
-        persons_service.remove_from_department(
-            str(self.department_id), person_id
-        )
+        persons_service.remove_from_department(self.department_id, person_id)
         assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
         self.assertTrue("contractor" not in assets[0]["data"])
 

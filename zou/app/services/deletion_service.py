@@ -335,14 +335,16 @@ def remove_person(person_id, force=True):
         TimeSpent.delete_all_by(person_id=person_id)
         for project in Project.query.filter(Project.team.contains(person)):
             project.team = [
-                member for member in project.team if member.id != person_id
+                member
+                for member in project.team
+                if str(member.id) != str(person_id)
             ]
             project.save()
         for task in Task.query.filter(Task.assignees.contains(person)):
             task.assignees = [
                 assignee
                 for assignee in task.assignees
-                if assignee.id != person_id
+                if str(assignee.id) != str(person_id)
             ]
             task.save()
         for task in Task.get_all_by(assigner_id=person_id):

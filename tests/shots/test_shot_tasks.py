@@ -76,9 +76,7 @@ class ShotTasksTestCase(ApiDBTestCase):
         shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
         self.assertEqual(shots[0]["data"]["contractor"], "test")
 
-        persons_service.remove_from_department(
-            str(self.department_id), person_id
-        )
+        persons_service.remove_from_department(self.department_id, person_id)
         shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
         self.assertTrue("contractor" not in shots[0]["data"])
 
