@@ -441,7 +441,7 @@ def remove_from_department(department_id, person_id):
     person.departments = [
         department
         for department in person.departments
-        if str(department.id) != department_id
+        if department.id != department_id
     ]
     person.save()
     return person.serialize(relations=True)

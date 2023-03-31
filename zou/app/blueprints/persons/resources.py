@@ -1143,7 +1143,7 @@ class RemoveFromDepartmentResource(MethodView, ArgsMixin):
         """
         permissions.check_admin_permissions()
         try:
-            department = tasks_service.get_department(department_id)
+            tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"

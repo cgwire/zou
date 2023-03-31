@@ -322,7 +322,7 @@ def remove_person(person_id, force=True):
             comment.acknowledgements = [
                 member
                 for member in comment.acknowledgements
-                if str(member.id) != person_id
+                if member.id != person_id
             ]
             comment.save()
         ApiEvent.delete_all_by(user_id=person_id)
@@ -335,16 +335,14 @@ def remove_person(person_id, force=True):
         TimeSpent.delete_all_by(person_id=person_id)
         for project in Project.query.filter(Project.team.contains(person)):
             project.team = [
-                member
-                for member in project.team
-                if str(member.id) != person_id
+                member for member in project.team if member.id != person_id
             ]
             project.save()
         for task in Task.query.filter(Task.assignees.contains(person)):
             task.assignees = [
                 assignee
                 for assignee in task.assignees
-                if str(assignee.id) != person_id
+                if assignee.id != person_id
             ]
             task.save()
         for task in Task.get_all_by(assigner_id=person_id):
@@ -352,10 +350,7 @@ def remove_person(person_id, force=True):
         for output_file in OutputFile.get_all_by(person_id=person_id):
             output_file.update({"person_id": None})
         for working_file in WorkingFile.get_all_by(person_id=person_id):
-            output_file.update({"person_id": None})
-        for task in WorkingFile.get_all_by(person_id=person_id):
-            output_file.update({"person_id": None})
-
+            working_file.update({"person_id": None})
     try:
         person.delete()
         events.emit("person:delete", {"person_id": person.id})

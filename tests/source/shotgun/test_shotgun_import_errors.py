@@ -54,7 +54,7 @@ class DataImportErrorTestCase(ShotgunTestCase):
         self.assertEqual(len(errors), 0)
 
     def test_delete_event_error_wrong_id_format(self):
-        errors = self.delete("/import/shotgun/errors/unknown", 404)
+        errors = self.delete("/import/shotgun/errors/unknown", 405)
         errors = self.get("/import/shotgun/errors")
         self.assertEqual(len(errors), 1)
 

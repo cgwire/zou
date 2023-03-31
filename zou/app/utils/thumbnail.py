@@ -21,7 +21,7 @@ def save_file(tmp_folder, instance_id, file_to_save):
     this function.
     """
     extension = "." + file_to_save.filename.split(".")[-1].lower()
-    file_name = instance_id + extension.lower()
+    file_name = str(instance_id) + extension.lower()
     file_path = os.path.join(tmp_folder, file_name)
     file_to_save.save(file_path)
     im = Image.open(file_path)

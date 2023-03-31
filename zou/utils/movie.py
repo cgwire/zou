@@ -42,7 +42,7 @@ def save_file(tmp_folder, instance_id, file_to_save):
     temporary storage.
     """
     extension = file_to_save.filename[-4:]
-    file_name = instance_id + extension.lower() + ".tmp"
+    file_name = str(instance_id) + extension.lower() + ".tmp"
     file_path = os.path.join(tmp_folder, file_name)
     file_to_save.save(file_path)
     return file_path

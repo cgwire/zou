@@ -1021,7 +1021,7 @@ def create_scene(project_id, sequence_id, name):
     if sequence_id is not None:
         # raises SequenceNotFound if it fails.
         sequence = get_sequence(sequence_id)
-        if sequence["project_id"] != project_id:
+        if sequence["project_id"] != str(project_id):
             raise SequenceNotFoundException
 
     scene = Entity.get_by(
