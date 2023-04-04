@@ -139,8 +139,6 @@ def _manage_status_change(task_status, task, comment):
 
         if task_status["is_feedback_request"]:
             new_data["end_date"] = datetime.datetime.now()
-        else:
-            new_data["end_date"] = None
 
         if (
             task_status["short_name"] == "wip"
