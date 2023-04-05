@@ -1,5 +1,5 @@
 from zou.app.models.project_status import ProjectStatus
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class ProjectStatussResource(BaseModelsResource):

@@ -1,6 +1,6 @@
 from zou.app.models.organisation import Organisation
 from zou.app.utils import fields
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class OrganisationsResource(BaseModelsResource):

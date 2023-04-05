@@ -1,5 +1,5 @@
 from zou.app.models.output_type import OutputType
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class OutputTypesResource(BaseModelsResource):

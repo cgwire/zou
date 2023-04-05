@@ -1,6 +1,6 @@
 from zou.app.models.event import ApiEvent
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class EventsResource(BaseModelsResource):

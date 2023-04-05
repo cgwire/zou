@@ -7,7 +7,7 @@ from zou.app.models.person import Person
 from zou.app.services import deletion_service, index_service, persons_service
 from zou.app.utils import permissions
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.mixin import ArgsMixin
 

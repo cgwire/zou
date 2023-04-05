@@ -2,7 +2,7 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 
 from zou.app.models.department import Department
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from sqlalchemy.exc import StatementError
 

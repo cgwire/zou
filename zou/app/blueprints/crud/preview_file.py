@@ -8,7 +8,7 @@ from zou.app.services import (
 )
 from zou.app.utils import permissions
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 
 class PreviewFilesResource(BaseModelsResource):

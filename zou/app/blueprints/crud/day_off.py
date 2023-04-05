@@ -1,7 +1,7 @@
 from zou.app.models.day_off import DayOff
 from zou.app.models.time_spent import TimeSpent
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.services import user_service
 from zou.app.utils import date_helpers, permissions

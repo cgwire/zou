@@ -1,6 +1,6 @@
 from zou.app.models.news import News
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class NewssResource(BaseModelsResource):

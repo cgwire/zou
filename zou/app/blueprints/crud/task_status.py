@@ -1,6 +1,6 @@
 from zou.app.models.task_status import TaskStatus
 from zou.app.services import tasks_service
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class TaskStatusesResource(BaseModelsResource):

@@ -1,7 +1,10 @@
 from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
-from .resources import EventsResource, LoginLogsResource
+from zou.app.blueprints.events.resources import (
+    EventsResource,
+    LoginLogsResource,
+)
 
 routes = [
     ("/data/events/last", EventsResource),

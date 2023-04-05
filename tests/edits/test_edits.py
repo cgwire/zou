@@ -1,4 +1,4 @@
-from .base import BaseEditTestCase
+from tests.edits.base import BaseEditTestCase
 from zou.app.services import edits_service
 from zou.app.utils import events
 
