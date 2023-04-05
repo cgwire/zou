@@ -13,3 +13,15 @@ def envtobool(key, default=False):
         raise ValueError(
             f"Environment variable {key} cannot be converted to a boolean value."
         )
+
+
+def env_to_list_from_semicolon(key, default=[]):
+    """
+    Convert an environment variable to a list.
+    Items are separated by semicolon.
+    """
+    env_value = os.getenv(key, None)
+    if env_value is None:
+        return default
+    else:
+        return env_value.split(";")

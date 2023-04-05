@@ -26,11 +26,13 @@ from zou.app.models.working_file import WorkingFile
 
 from zou.app.utils import events, fields
 from zou.app.stores import file_store
+from zou.app import config
 
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
     CommentNotFoundException,
     ModelWithRelationsDeletionException,
+    PersonInProtectedAccounts,
 )
 
 
@@ -353,6 +355,10 @@ def remove_person(person_id, force=True):
             output_file.update({"person_id": None})
         for task in WorkingFile.get_all_by(person_id=person_id):
             output_file.update({"person_id": None})
+    elif person.email in config.PROTECTED_ACCOUNTS:
+        raise PersonInProtectedAccounts(
+            "Can't delete this person it's a protected account."
+        )
 
     try:
         person.delete()
