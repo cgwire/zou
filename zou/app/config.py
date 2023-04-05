@@ -3,7 +3,7 @@ import datetime
 import tempfile
 
 from zou.app.utils import dbhelpers
-from zou.app.utils.env import envtobool, env_to_list_from_semicolon
+from zou.app.utils.env import envtobool, env_with_semicolon_to_list
 
 PROPAGATE_EXCEPTIONS = True
 RESTFUL_JSON = {"ensure_ascii": False}
@@ -133,7 +133,7 @@ DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
 
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
-PROTECTED_ACCOUNTS = env_to_list_from_semicolon("PROTECTED_ACCOUNTS")
+PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 
 # Deprecated
 TO_REVIEW_TASK_STATUS = "To review"

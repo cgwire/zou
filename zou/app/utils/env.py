@@ -15,7 +15,7 @@ def envtobool(key, default=False):
         )
 
 
-def env_to_list_from_semicolon(key, default=[]):
+def env_with_semicolon_to_list(key, default=[]):
     """
     Convert an environment variable to a list.
     Items are separated by semicolon.
