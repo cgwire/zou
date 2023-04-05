@@ -1,10 +1,9 @@
-import os
+from zou.app import app, config
+from flask_socketio import SocketIO
+import logging
 from gevent import monkey
 
 monkey.patch_all()
-import logging
-from flask_socketio import SocketIO
-from zou.app import app, config
 
 FORMAT = "%(message)s"
 logging.basicConfig(level=logging.INFO, format=FORMAT)

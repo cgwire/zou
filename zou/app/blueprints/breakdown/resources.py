@@ -12,7 +12,6 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions
 
 
 class CastingResource(Resource):

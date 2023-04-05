@@ -4,7 +4,6 @@ from zou.app.models.project import Project
 from zou.app.services import (
     user_service,
     tasks_service,
-    persons_service,
 )
 from zou.app.utils import permissions
 

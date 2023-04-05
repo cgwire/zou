@@ -599,7 +599,7 @@ def get_folder_from_episode(entity):
     try:
         episode = shots_service.get_episode_from_sequence(sequence)
         episode_name = episode["name"]
-    except:
+    except BaseException:
         episode_name = "e001"
 
     return episode_name
@@ -850,14 +850,10 @@ def get_data_from_token(type_token, value_token, constraints=None):
         )
 
     elif type_token == PathTokens.ASSET_TYPE:
-        data = EntityType.get_by(
-            name=EntityType.name.ilike(value_token)
-        )
+        data = EntityType.get_by(name=EntityType.name.ilike(value_token))
 
     elif type_token == PathTokens.DEPARTMENT:
-        data = Department.get_by(
-            name=Department.name.ilike(value_token)
-        )
+        data = Department.get_by(name=Department.name.ilike(value_token))
 
     elif type_token == PathTokens.EPISODE:
         # An episode depends on a project
@@ -899,9 +895,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
         )
 
     elif type_token == PathTokens.OUTPUT_TYPE:
-        data = OutputType.get_by(
-            name=OutputType.name.ilike(value_token)
-        )
+        data = OutputType.get_by(name=OutputType.name.ilike(value_token))
 
     elif type_token == PathTokens.SHOT:
         # A shot depends on a project and a sequence
@@ -940,12 +934,10 @@ def get_data_from_token(type_token, value_token, constraints=None):
         data = Task.get_by(**kwargs)
 
     elif type_token == PathTokens.TASK_TYPE:
-        data = TaskType.get_by(
-            name=TaskType.name.ilike(value_token))
+        data = TaskType.get_by(name=TaskType.name.ilike(value_token))
 
     elif type_token == PathTokens.PROJECT:
-        data = Project.get_by(
-            name=Project.name.ilike(value_token))
+        data = Project.get_by(name=Project.name.ilike(value_token))
 
     elif type_token == PathTokens.NAME:
         data = value_token
@@ -960,9 +952,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
             return None
 
     elif type_token == PathTokens.ENTITY_TYPE:
-        data = EntityType.get_by(
-            name=EntityType.name.ilike(value_token)
-        )
+        data = EntityType.get_by(name=EntityType.name.ilike(value_token))
 
     elif type_token == PathTokens.ENTITY:
         # An entity depends on a project and an entity type
@@ -983,7 +973,7 @@ def get_data_from_token(type_token, value_token, constraints=None):
 
         data = AssetInstance.get_by(
             name=AssetInstance.name.ilike(value_token),
-            episode_id=constraints.get(PathTokens.EPISODE)
+            episode_id=constraints.get(PathTokens.EPISODE),
         )
 
     return data

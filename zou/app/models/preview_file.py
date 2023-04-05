@@ -1,5 +1,3 @@
-import enum
-
 from sqlalchemy_utils import UUIDType, ChoiceType
 
 from zou.app import db
@@ -70,7 +68,7 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
         if "comments" in data:
             del data["comments"]
         previous_data = cls.get(data["id"])
-        if "status" not in data or data["status"] == None:
+        if "status" not in data or data["status"] is None:
             data["status"] = "ready"
         if previous_data is None:
             return (cls.create(**data), False)

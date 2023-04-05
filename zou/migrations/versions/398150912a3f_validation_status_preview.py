@@ -5,6 +5,7 @@ Revises: 3b0d1321079e
 Create Date: 2021-11-09 00:07:04.543076
 
 """
+from zou.app.models.preview_file import VALIDATION_STATUSES
 from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
@@ -15,9 +16,6 @@ revision = "398150912a3f"
 down_revision = "3b0d1321079e"
 branch_labels = None
 depends_on = None
-
-
-from zou.app.models.preview_file import VALIDATION_STATUSES
 
 
 def upgrade():

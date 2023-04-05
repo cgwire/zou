@@ -451,8 +451,9 @@ def get_output_files_for_entity(
     if file_status_id:
         query = query.filter(OutputFile.file_status_id == file_status_id)
 
-    query = query.filter(OutputFile.asset_instance_id == None)
-    query = query.filter(OutputFile.temporal_entity_id == None)
+    query = query.filter(OutputFile.asset_instance_id == None).filter(
+        OutputFile.temporal_entity_id == None
+    )
 
     output_files = (
         query.filter(OutputFile.revision >= 0)
@@ -547,8 +548,9 @@ def get_last_output_files_for_entity(
             OutputFile.representation,
         )
 
-    query = query.filter(OutputFile.entity_id == entity_id)
-    query = query.filter(OutputFile.asset_instance_id == None)
+    query = query.filter(OutputFile.entity_id == entity_id).filter(
+        OutputFile.asset_instance_id == None
+    )
     if file_status_id:
         query = query.filter(OutputFile.file_status_id == file_status_id)
     if task_type_id:

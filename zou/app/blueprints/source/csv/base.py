@@ -118,7 +118,7 @@ class BaseCsvImportResource(Resource, ArgsMixin):
 
     def get_id_from_cache(self, cache, name):
         cached_object = cache[name]
-        if type(cached_object) is dict:
+        if isinstance(cached_object, dict):
             return cached_object["id"]
         else:
             return cached_object.id

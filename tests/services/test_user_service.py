@@ -4,7 +4,6 @@ from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.services import (
     comments_service,
-    notifications_service,
     persons_service,
     projects_service,
     tasks_service,
@@ -66,8 +65,6 @@ class UserServiceTestCase(ApiDBTestCase):
         return Person.get(self.user["id"])
 
     def test_check_project_access(self):
-        from zou.app import app
-
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         with self.assertRaises(permissions.PermissionDenied):
@@ -93,8 +90,6 @@ class UserServiceTestCase(ApiDBTestCase):
         self.assertEqual(projects[0]["id"], str(self.project_id))
 
     def test_check_entity_access(self):
-        from zou.app import app
-
         self.asset_id = str(self.asset.id)
         self.generate_fixture_user_vendor()
         self.log_in_vendor()

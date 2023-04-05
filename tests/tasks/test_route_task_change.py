@@ -4,7 +4,6 @@ from tests.base import ApiDBTestCase
 
 from zou.app.utils import events
 
-from zou.app.models.task import Task
 from zou.app.services import projects_service, tasks_service
 
 from PIL import Image

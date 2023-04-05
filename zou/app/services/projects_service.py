@@ -25,7 +25,7 @@ from zou.app.services.exception import (
 
 from zou.app.utils import fields, events, cache
 
-from sqlalchemy.exc import StatementError, IntegrityError
+from sqlalchemy.exc import StatementError
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy import or_
 

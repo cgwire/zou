@@ -17,7 +17,7 @@ except redis.ConnectionError:
         import fakeredis
 
         revoked_tokens_store = fakeredis.FakeStrictRedis()
-    except:
+    except BaseException:
         print("Cannot access to the required Redis instance")
         sys.exit(1)
 

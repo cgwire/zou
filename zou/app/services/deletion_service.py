@@ -210,7 +210,7 @@ def clear_picture_files(preview_file_id):
     ]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
-        except:
+        except BaseException:
             pass
 
 
@@ -221,12 +221,12 @@ def clear_movie_files(preview_file_id):
     """
     try:
         file_store.remove_movie("previews", preview_file_id)
-    except:
+    except BaseException:
         pass
     for image_type in ["thumbnails", "thumbnails-square", "previews"]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
-        except:
+        except BaseException:
             pass
 
 
@@ -237,7 +237,7 @@ def clear_generic_files(preview_file_id):
     """
     try:
         file_store.remove_file("previews", preview_file_id)
-    except:
+    except BaseException:
         pass
 
 

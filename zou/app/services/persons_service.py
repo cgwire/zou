@@ -464,6 +464,6 @@ def clear_avatar(person_id):
     clear_person_cache()
     try:
         file_store.remove_picture("thumbnails", person_id)
-    except:
+    except BaseException:
         pass
     return person.serialize()

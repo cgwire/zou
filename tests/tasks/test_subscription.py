@@ -1,7 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import notifications_service
-
 
 class SubscriptionRouteTestCase(ApiDBTestCase):
     def setUp(self):

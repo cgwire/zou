@@ -6,7 +6,6 @@ from zou.app import db
 from zou.app.models.entity_type import EntityType
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
-from zou.app.models.task_type import TaskType
 from zou.app.services import shots_service
 
 

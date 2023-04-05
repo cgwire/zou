@@ -5,6 +5,9 @@ Revises: 6c597e842afa
 Create Date: 2021-07-30 15:22:32.641313
 
 """
+from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.utils import fields
+from sqlalchemy.orm.session import Session
 from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
@@ -15,10 +18,6 @@ revision = "4e3738cdc34c"
 down_revision = "6c597e842afa"
 branch_labels = None
 depends_on = None
-
-from sqlalchemy.orm.session import Session
-from zou.app.utils import fields
-from zou.app.models.project import ProjectTaskTypeLink
 
 
 def upgrade():

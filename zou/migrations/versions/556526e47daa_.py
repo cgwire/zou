@@ -8,7 +8,6 @@ Create Date: 2019-03-23 22:01:57.576051
 from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
-from sqlalchemy.dialects import postgresql
 import sqlalchemy_utils
 import uuid
 

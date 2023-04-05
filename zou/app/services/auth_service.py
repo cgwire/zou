@@ -366,7 +366,7 @@ def check_fido(person, authentication_response):
             ),
             authentication_response,
         )
-    except:
+    except BaseException:
         return False
     return True
 
@@ -592,7 +592,7 @@ def register_fido(person_id, registration_response, device_name):
         raise FIDONoPreregistrationException()
     try:
         auth_data = fido_server.register_complete(state, registration_response)
-    except:
+    except BaseException:
         raise FIDOServerException()
     credential_data = {
         "device_name": device_name,

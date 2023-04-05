@@ -1,6 +1,5 @@
 from __future__ import with_statement
 
-import sqlalchemy_utils
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool

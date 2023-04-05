@@ -19,7 +19,7 @@ except redis.ConnectionError:
         import fakeredis
 
         revoked_tokens_store = fakeredis.FakeStrictRedis()
-    except:
+    except BaseException:
         sys.exit(1)
 
 if config.ENABLE_JOB_QUEUE:

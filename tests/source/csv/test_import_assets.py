@@ -5,7 +5,6 @@ from tests.base import ApiDBTestCase
 from zou.app import db
 
 from zou.app.models.entity import Entity
-from zou.app.models.entity_type import EntityType
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -133,7 +132,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             os.path.join("csv", "assets_broken_02.csv")
         )
         result = self.upload_file(path, file_path_fixture, 400)
-        if type(result) != str:
+        if not isinstance(result, str):
             result = result.decode("utf-8")
         error = json.loads(result)
         self.assertEqual(error["message"], "Could not determine delimiter")
@@ -147,7 +146,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
             os.path.join("csv", "assets_broken_03.csv")
         )
         result = self.upload_file(path, file_path_fixture, 400)
-        if type(result) != str:
+        if not isinstance(result, str):
             result = result.decode("utf-8")
         error = json.loads(result)
         self.assertEqual(error["line_number"], 1)

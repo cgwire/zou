@@ -106,12 +106,12 @@ def get_entity_from_preview_file(preview_file_id):
 def update_preview_file(preview_file_id, data, silent=False):
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-    except:
+    except BaseException:
         # Dirty hack because sometimes the preview file retrieval crashes.
         try:
             time.sleep(1)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-        except:
+        except BaseException:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)

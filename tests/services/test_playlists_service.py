@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.playlist import Playlist
-from zou.app.services import files_service, playlists_service
+from zou.app.services import playlists_service
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):

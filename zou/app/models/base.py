@@ -86,7 +86,7 @@ class BaseMixin(object):
         try:
             db.session.add(instance)
             db.session.commit()
-        except:
+        except BaseException:
             db.session.rollback()
             db.session.remove()
             raise
@@ -172,7 +172,7 @@ class BaseMixin(object):
             self.updated_at = datetime.datetime.now()
             db.session.add(self)
             db.session.commit()
-        except:
+        except BaseException:
             db.session.rollback()
             db.session.remove()
             raise
@@ -185,7 +185,7 @@ class BaseMixin(object):
         try:
             db.session.delete(self)
             db.session.commit()
-        except:
+        except BaseException:
             db.session.rollback()
             db.session.remove()
             raise
@@ -209,7 +209,7 @@ class BaseMixin(object):
                 setattr(self, key, value)
             db.session.add(self)
             db.session.commit()
-        except:
+        except BaseException:
             db.session.rollback()
             db.session.remove()
             raise

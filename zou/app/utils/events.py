@@ -95,7 +95,7 @@ def save_event(event, data, project_id=None):
 
         person = get_current_user_raw()
         person_id = person.id
-    except:
+    except BaseException:
         person_id = None
 
     if project_id == "None":

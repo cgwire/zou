@@ -46,7 +46,7 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
                 description: Resource imported
         """
         kitsu_entries = request.json
-        if type(kitsu_entries) != list:
+        if not isinstance(kitsu_entries, list):
             raise WrongParameterException("A list of entities is expected.")
 
         instances = []
@@ -82,7 +82,7 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
             task = tasks_service.get_task(str(entry.object_id))
             project_id = task["project_id"]
             user_service.check_project_access(project_id)
-        except:
+        except BaseException:
             return False
         return True
 
@@ -104,7 +104,7 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         try:
             project_id = entry["project_id"]
             user_service.check_project_access(project_id)
-        except:
+        except BaseException:
             return False
         return True
 
@@ -134,7 +134,7 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         try:
             project_id = entry["project_id"]
             user_service.check_project_access(project_id)
-        except:
+        except BaseException:
             return False
         return True
 
@@ -151,7 +151,7 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
             entity = entities_service.get_entity(entry["entity_in_id"])
             project_id = entity["project_id"]
             user_service.check_project_access(project_id)
-        except:
+        except BaseException:
             return False
         return True
 
