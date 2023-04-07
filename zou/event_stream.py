@@ -1,3 +1,7 @@
+from gevent import monkey
+
+monkey.patch_all()
+
 from flask import Flask, jsonify
 from flask_jwt_extended import (
     get_jwt,
@@ -9,10 +13,6 @@ from flask_socketio import SocketIO, disconnect, join_room, emit
 from zou.app import config
 from zou.app.stores import auth_tokens_store
 from zou.app.utils.sentry import init_sentry
-
-from gevent import monkey
-
-monkey.patch_all()
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}
