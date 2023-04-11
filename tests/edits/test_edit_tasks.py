@@ -1,4 +1,4 @@
-from .base import BaseEditTestCase
+from tests.edits.base import BaseEditTestCase
 from zou.app.services import (
     projects_service,
     tasks_service,

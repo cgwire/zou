@@ -20,7 +20,7 @@ from zou.app.utils import events, fields, date_helpers
 
 from werkzeug.exceptions import NotFound
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class EntityEventMixin(object):

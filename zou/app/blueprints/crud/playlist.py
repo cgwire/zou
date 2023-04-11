@@ -1,7 +1,7 @@
 from zou.app.models.playlist import Playlist
 from zou.app.services import user_service, playlists_service
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import fields
 
 

@@ -465,7 +465,7 @@ class CreateShotTasksResource(Resource):
 
         shot_ids = request.json
         shots = []
-        if type(shot_ids) == list and len(shot_ids) > 0:
+        if isinstance(shot_ids, list) and len(shot_ids) > 0:
             for shot_id in shot_ids:
                 shot = shots_service.get_shot(shot_id)
                 if shot["project_id"] == project_id:
@@ -522,7 +522,7 @@ class CreateEntityTasksResource(Resource):
 
         entity_ids = request.json
         entities = []
-        if type(entity_ids) == list and len(entity_ids) > 0:
+        if isinstance(entity_ids, list) and len(entity_ids) > 0:
             for entity_id in entity_ids:
                 entity = entities_service.get_entity(entity_id)
                 if entity["project_id"] == project_id:
@@ -572,7 +572,7 @@ class CreateAssetTasksResource(Resource):
 
         asset_ids = request.json
         assets = []
-        if type(asset_ids) == list and len(asset_ids) > 0:
+        if isinstance(asset_ids, list) and len(asset_ids) > 0:
             for asset_id in asset_ids:
                 asset = assets_service.get_asset(asset_id)
                 if asset["project_id"] == project_id:
@@ -620,7 +620,7 @@ class CreateEditTasksResource(Resource):
 
         edit_ids = request.json
         edits = []
-        if type(edit_ids) == list and len(edit_ids) > 0:
+        if isinstance(edit_ids, list) and len(edit_ids) > 0:
             for edit_id in edit_ids:
                 edit = edits_service.get_edit(edit_id)
                 if edit["project_id"] == project_id:

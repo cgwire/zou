@@ -143,7 +143,7 @@ def get_first_shot_preview_file_id(playlist):
     if (
         playlist.shots is not None
         and len(playlist.shots) > 0
-        and type(playlist.shots) == list
+        and isinstance(playlist.shots, list)
         and "preview_file_id" in playlist.shots[0]
     ):
         first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
@@ -815,7 +815,7 @@ def generate_temp_playlist(task_ids, sort=True):
                 )
             else:
                 return entities
-        except:
+        except BaseException:
             return entities
     else:
         return []

@@ -1,4 +1,4 @@
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, Forbidden
 
 
 class EpisodeNotFoundException(NotFound):
@@ -50,6 +50,10 @@ class TaskTypeNotFoundException(NotFound):
 
 
 class PersonNotFoundException(NotFound):
+    pass
+
+
+class PersonInProtectedAccounts(Forbidden):
     pass
 
 

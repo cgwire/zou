@@ -1,10 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
-    assets_service,
     breakdown_service,
-    projects_service,
-    tasks_service,
 )
 
 

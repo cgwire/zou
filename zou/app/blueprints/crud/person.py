@@ -1,4 +1,4 @@
-from flask import abort, request
+from flask import abort
 from flask_jwt_extended import jwt_required
 from flask_restful import current_app
 from sqlalchemy.exc import StatementError
@@ -7,15 +7,18 @@ from zou.app.models.person import Person
 from zou.app.services import deletion_service, index_service, persons_service
 from zou.app.utils import permissions
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.mixin import ArgsMixin
 
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongParameterException,
+    PersonInProtectedAccounts,
 )
 from zou.app.models.department import Department
+
+from zou.app import config
 
 
 class PersonsResource(BaseModelsResource, ArgsMixin):
@@ -112,6 +115,13 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and persons_service.is_user_limit_reached()
         ):
             raise WrongParameterException("User limit reached.")
+        if (
+            data.get("active") is False
+            and instance_dict["email"] in config.PROTECTED_ACCOUNTS
+        ):
+            raise PersonInProtectedAccounts(
+                "Can't set this person as inactive it's a protected account."
+            )
         return data
 
     def post_update(self, instance_dict):

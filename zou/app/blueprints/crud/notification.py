@@ -1,7 +1,7 @@
 from zou.app.models.notification import Notification
 from zou.app.utils import permissions
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class NotificationsResource(BaseModelsResource):

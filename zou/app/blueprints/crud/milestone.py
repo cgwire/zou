@@ -1,7 +1,7 @@
 from zou.app.models.milestone import Milestone
 from zou.app.services import user_service
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class MilestonesResource(BaseModelsResource):

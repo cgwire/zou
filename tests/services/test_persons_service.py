@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import persons_service, tasks_service
+from zou.app.services import persons_service
 from zou.app.services.exception import PersonNotFoundException
 from zou.app.utils import auth
 

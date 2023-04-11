@@ -1,7 +1,6 @@
 from tests.base import ApiDBTestCase
 
 
-from zou.app import app
 from zou.app.services import tasks_service, time_spents_service
 
 

@@ -288,7 +288,6 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(time_spent["duration"], 2 * duration)
 
     def test_get_time_spents(self):
-        pass
         """
         person_id = self.person.id
         user_id = self.user["id"]

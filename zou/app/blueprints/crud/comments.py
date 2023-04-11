@@ -11,13 +11,12 @@ from zou.app.services import (
     deletion_service,
     notifications_service,
     persons_service,
-    projects_service,
     tasks_service,
     user_service,
 )
 from zou.app.utils import events, permissions
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.services.exception import CommentNotFoundException
 

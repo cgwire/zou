@@ -17,7 +17,7 @@ from zou.app.services import (
 )
 from zou.app.utils import events, permissions, fields
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class ProjectsResource(BaseModelsResource):

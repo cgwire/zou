@@ -5,7 +5,6 @@ made on the target database.
 """
 import redis
 
-from functools import wraps
 from flask_caching import Cache
 from zou.app import config
 

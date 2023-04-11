@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiTestCase
 
-from zou.app import api, app
+from zou.app import api
 
 
 class PluginTestCase(ApiTestCase):

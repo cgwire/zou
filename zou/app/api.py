@@ -5,27 +5,27 @@ from zou.app.utils import events, api as api_utils
 
 from flask import Blueprint
 
-from .blueprints.assets import blueprint as assets_blueprint
-from .blueprints.auth import blueprint as auth_blueprint
-from .blueprints.breakdown import blueprint as breakdown_blueprint
-from .blueprints.comments import blueprint as comments_blueprint
-from .blueprints.crud import blueprint as crud_blueprint
-from .blueprints.entities import blueprint as entities_blueprint
-from .blueprints.events import blueprint as events_blueprint
-from .blueprints.export import blueprint as export_blueprint
-from .blueprints.files import blueprint as files_blueprint
-from .blueprints.index import blueprint as index_blueprint
-from .blueprints.search import blueprint as search_blueprint
-from .blueprints.news import blueprint as news_blueprint
-from .blueprints.persons import blueprint as persons_blueprint
-from .blueprints.playlists import blueprint as playlists_blueprint
-from .blueprints.projects import blueprint as projects_blueprint
-from .blueprints.previews import blueprint as previews_blueprint
-from .blueprints.source import blueprint as import_blueprint
-from .blueprints.shots import blueprint as shots_blueprint
-from .blueprints.tasks import blueprint as tasks_blueprint
-from .blueprints.user import blueprint as user_blueprint
-from .blueprints.edits import blueprint as edits_blueprint
+from zou.app.blueprints.assets import blueprint as assets_blueprint
+from zou.app.blueprints.auth import blueprint as auth_blueprint
+from zou.app.blueprints.breakdown import blueprint as breakdown_blueprint
+from zou.app.blueprints.comments import blueprint as comments_blueprint
+from zou.app.blueprints.crud import blueprint as crud_blueprint
+from zou.app.blueprints.entities import blueprint as entities_blueprint
+from zou.app.blueprints.events import blueprint as events_blueprint
+from zou.app.blueprints.export import blueprint as export_blueprint
+from zou.app.blueprints.files import blueprint as files_blueprint
+from zou.app.blueprints.index import blueprint as index_blueprint
+from zou.app.blueprints.search import blueprint as search_blueprint
+from zou.app.blueprints.news import blueprint as news_blueprint
+from zou.app.blueprints.persons import blueprint as persons_blueprint
+from zou.app.blueprints.playlists import blueprint as playlists_blueprint
+from zou.app.blueprints.projects import blueprint as projects_blueprint
+from zou.app.blueprints.previews import blueprint as previews_blueprint
+from zou.app.blueprints.source import blueprint as import_blueprint
+from zou.app.blueprints.shots import blueprint as shots_blueprint
+from zou.app.blueprints.tasks import blueprint as tasks_blueprint
+from zou.app.blueprints.user import blueprint as user_blueprint
+from zou.app.blueprints.edits import blueprint as edits_blueprint
 
 
 def configure(app):

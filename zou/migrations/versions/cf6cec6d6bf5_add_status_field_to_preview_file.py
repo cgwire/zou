@@ -5,6 +5,7 @@ Revises: ffeed4956ab1
 Create Date: 2021-01-18 23:16:58.046608
 
 """
+from zou.app.models.preview_file import STATUSES
 from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
@@ -15,9 +16,6 @@ revision = "cf6cec6d6bf5"
 down_revision = "ffeed4956ab1"
 branch_labels = None
 depends_on = None
-
-
-from zou.app.models.preview_file import STATUSES
 
 
 def upgrade():

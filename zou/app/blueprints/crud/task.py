@@ -19,7 +19,7 @@ from zou.app.utils import permissions
 
 from zou.app.services.exception import WrongTaskTypeForEntityException
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 
 class TasksResource(BaseModelsResource):

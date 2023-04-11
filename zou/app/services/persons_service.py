@@ -1,4 +1,3 @@
-import slugify
 import datetime
 import urllib.parse
 
@@ -25,6 +24,7 @@ from zou.app.stores import file_store, auth_tokens_store
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     PersonNotFoundException,
+    PersonInProtectedAccounts,
 )
 
 
@@ -236,6 +236,14 @@ def update_person(person_id, data):
     Update person entry with data given in parameter.
     """
     person = Person.get(person_id)
+    if (
+        data.get("active") is False
+        and person.email in config.PROTECTED_ACCOUNTS
+    ):
+        raise PersonInProtectedAccounts(
+            "Can't set this person as inactive it's a protected account."
+        )
+
     if "email" in data and data["email"] is not None:
         data["email"] = data["email"].strip()
     person.update(data)
@@ -456,6 +464,6 @@ def clear_avatar(person_id):
     clear_person_cache()
     try:
         file_store.remove_picture("thumbnails", person_id)
-    except:
+    except BaseException:
         pass
     return person.serialize()

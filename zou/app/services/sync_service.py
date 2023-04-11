@@ -699,7 +699,7 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
             for chunk in dl_func(prefix, preview_file_id):
                 tmp_file.write(chunk)
         print("%s downloaded" % file_path)
-    except:
+    except BaseException:
         pass
 
 

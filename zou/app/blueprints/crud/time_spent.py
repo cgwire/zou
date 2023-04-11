@@ -1,7 +1,7 @@
 from flask import abort
 from zou.app.models.time_spent import TimeSpent
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 
 class TimeSpentsResource(BaseModelsResource):

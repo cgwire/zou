@@ -1,9 +1,7 @@
 import datetime
-import uuid
 
 from tests.base import ApiDBTestCase
 from mixer.backend.flask import mixer
-from zou.app.models.person import Person
 
 
 class DateTestCase(ApiDBTestCase):

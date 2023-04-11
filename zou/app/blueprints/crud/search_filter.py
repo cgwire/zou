@@ -1,6 +1,6 @@
 from zou.app.models.search_filter import SearchFilter
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class SearchFiltersResource(BaseModelsResource):

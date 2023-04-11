@@ -1,7 +1,7 @@
 from zou.app.blueprints.source.csv.base import BaseCsvImportResource
 
 from zou.app.models.person import Person
-from zou.app.services import index_service, persons_service
+from zou.app.services import index_service
 from zou.app.utils import permissions
 
 

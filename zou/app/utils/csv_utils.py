@@ -4,7 +4,6 @@ except ImportError:
     from io import StringIO
 import csv
 
-from zou.app import config
 from flask import make_response
 from slugify import slugify
 

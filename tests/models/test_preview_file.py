@@ -104,7 +104,8 @@ class PreviewFileTestCase(ApiDBTestCase):
         self.log_in_vendor()
         preview_files_vendor = self.get(route)
         for preview_file in preview_files_vendor:
-            # tasks_service.get_task doesn't contain assignees, thus we use Task class
+            # tasks_service.get_task doesn't contain assignees, thus we use
+            # Task class
             task = Task.get(preview_file["task_id"])
             assignees_ids = [str(assignee.id) for assignee in task.assignees]
             self.assertIn(self.user_vendor_id, assignees_ids)
@@ -145,7 +146,8 @@ class PreviewFileTestCase(ApiDBTestCase):
 
         self.log_in_vendor()
         preview_file_vendor = self.get(route2_2)
-        # tasks_service.get_task doesn't contain assignees, thus we use Task class
+        # tasks_service.get_task doesn't contain assignees, thus we use Task
+        # class
         task = Task.get(preview_file_vendor["task_id"])
         assignees_ids = [str(assignee.id) for assignee in task.assignees]
         self.assertIn(self.user_vendor_id, assignees_ids)

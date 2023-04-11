@@ -1,5 +1,3 @@
-import datetime
-
 from tests.base import ApiDBTestCase
 
 from zou.app.services import persons_service

@@ -1,5 +1,5 @@
 from zou.app.models.software import Software
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class SoftwaresResource(BaseModelsResource):

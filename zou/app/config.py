@@ -3,7 +3,7 @@ import datetime
 import tempfile
 
 from zou.app.utils import dbhelpers
-from zou.app.utils.env import envtobool
+from zou.app.utils.env import envtobool, env_with_semicolon_to_list
 
 PROPAGATE_EXCEPTIONS = True
 RESTFUL_JSON = {"ensure_ascii": False}
@@ -108,7 +108,6 @@ JOB_QUEUE_NOMAD_NORMALIZE_JOB = os.getenv("JOB_QUEUE_NOMAD_NORMALIZE_JOB", "")
 JOB_QUEUE_NOMAD_HOST = os.getenv("JOB_QUEUE_NOMAD_HOST", "zou-nomad-01.zou")
 JOB_QUEUE_TIMEOUT = os.getenv("JOB_QUEUE_TIMEOUT", 3600)
 
-
 LDAP_HOST = os.getenv("LDAP_HOST", "127.0.0.1")
 LDAP_PORT = os.getenv("LDAP_PORT", "389")
 LDAP_BASE_DN = os.getenv("LDAP_BASE_DN", "cn=Users,dc=zou,dc=local")
@@ -118,7 +117,6 @@ LDAP_FALLBACK = envtobool("LDAP_FALLBACK", False)
 LDAP_IS_AD = envtobool("LDAP_IS_AD", False)
 LDAP_IS_AD_SIMPLE = envtobool("LDAP_IS_AD_SIMPLE", False)
 LDAP_SSL = envtobool("LDAP_SSL", False)
-
 
 LOGS_MODE = os.getenv("LOGS_MODE", "default")
 LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
@@ -131,11 +129,11 @@ SENTRY_DEBUG_URL = os.getenv("SENTRY_DEBUG_URL", False)
 
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 
-USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
-
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
 
+USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
+PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 
 # Deprecated
 TO_REVIEW_TASK_STATUS = "To review"

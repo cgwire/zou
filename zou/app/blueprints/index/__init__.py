@@ -5,7 +5,7 @@ keyword.
 from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
-from .resources import (
+from zou.app.blueprints.index.resources import (
     ConfigResource,
     IndexResource,
     InfluxStatusResource,

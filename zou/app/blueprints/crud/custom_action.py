@@ -1,6 +1,6 @@
 from zou.app.models.custom_action import CustomAction
 
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.services import custom_actions_service, user_service
 

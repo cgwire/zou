@@ -26,11 +26,13 @@ from zou.app.models.working_file import WorkingFile
 
 from zou.app.utils import events, fields
 from zou.app.stores import file_store
+from zou.app import config
 
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
     CommentNotFoundException,
     ModelWithRelationsDeletionException,
+    PersonInProtectedAccounts,
 )
 
 
@@ -208,7 +210,7 @@ def clear_picture_files(preview_file_id):
     ]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
-        except:
+        except BaseException:
             pass
 
 
@@ -219,12 +221,12 @@ def clear_movie_files(preview_file_id):
     """
     try:
         file_store.remove_movie("previews", preview_file_id)
-    except:
+    except BaseException:
         pass
     for image_type in ["thumbnails", "thumbnails-square", "previews"]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
-        except:
+        except BaseException:
             pass
 
 
@@ -235,7 +237,7 @@ def clear_generic_files(preview_file_id):
     """
     try:
         file_store.remove_file("previews", preview_file_id)
-    except:
+    except BaseException:
         pass
 
 
@@ -353,6 +355,10 @@ def remove_person(person_id, force=True):
             output_file.update({"person_id": None})
         for task in WorkingFile.get_all_by(person_id=person_id):
             output_file.update({"person_id": None})
+    elif person.email in config.PROTECTED_ACCOUNTS:
+        raise PersonInProtectedAccounts(
+            "Can't delete this person it's a protected account."
+        )
 
     try:
         person.delete()

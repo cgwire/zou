@@ -1,4 +1,4 @@
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.models.entity_type import EntityType
 from zou.app.utils import events

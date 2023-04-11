@@ -40,9 +40,8 @@ def clean_auth_tokens():
     for key in auth_tokens_store.keys():
         value = json.loads(auth_tokens_store.get(key))
 
-        if type(value) is bool:
+        if isinstance(value, bool):
             auth_tokens_store.delete(key)
-
         else:
             is_revoked = value["revoked"] == True
             expiration = datetime.datetime.fromtimestamp(value["token"]["exp"])
@@ -293,7 +292,7 @@ def sync_with_ldap_server():
                 except PersonNotFoundException:
                     pass
 
-            if len(email) == 0 or email == "[]" or type(email) != str:
+            if len(email) == 0 or email == "[]" or not isinstance(email, str):
                 email = "%s@%s" % (desktop_login, EMAIL_DOMAIN)
 
             if person is None and active is True:
@@ -308,7 +307,7 @@ def sync_with_ldap_server():
                     )
                     print("User %s created." % desktop_login)
                     persons_updated.append(person["id"])
-                except:
+                except BaseException:
                     print(
                         "User %s creation failed (email duplicated?)."
                         % (desktop_login)
@@ -329,7 +328,7 @@ def sync_with_ldap_server():
                     )
                     print("User %s updated." % desktop_login)
                     persons_updated.append(person["id"])
-                except:
+                except BaseException:
                     print(
                         "User %s update failed (email duplicated?)."
                         % (desktop_login)

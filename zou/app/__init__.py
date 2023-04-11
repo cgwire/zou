@@ -12,18 +12,17 @@ from flask_mail import Mail
 from jwt import ExpiredSignatureError
 from babel.core import UnknownLocaleError
 
-from . import config, swagger
-from .stores import auth_tokens_store
-from .services.exception import (
+from zou.app import config, swagger
+from zou.app.stores import auth_tokens_store
+from zou.app.services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
     WrongIdFormatException,
     WrongParameterException,
     WrongTaskTypeForEntityException,
 )
-from .utils import fs, logs
 
-from zou.app.utils import cache
+from zou.app.utils import cache, fs, logs
 from zou.app.utils.sentry import init_sentry
 from zou.app.utils.user_agent import ParsedUserAgent
 
@@ -140,7 +139,7 @@ def configure_auth():
 
 
 def load_api():
-    from . import api
+    from zou.app import api
 
     api.configure(app)
 

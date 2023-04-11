@@ -10,7 +10,6 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import assignees_table
 from zou.app.models.task import Task
-from zou.app.models.subscription import Subscription
 
 from zou.app.services.exception import (
     PreviewFileNotFoundException,
@@ -285,7 +284,7 @@ def remove_entity_link(link_id):
         link = EntityLink.get_by(id=link_id)
         link.delete()
         return link.serialize()
-    except:
+    except BaseException:
         raise EntityLinkNotFoundException
 
 

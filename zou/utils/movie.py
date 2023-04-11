@@ -72,7 +72,6 @@ def generate_tile(movie_path):
     """
     ffmpeg -i {movie_path} -vf 'scale=150:100,tile=8x8' -an -vsync 0 tile%03d.png
     """
-    pass
 
 
 def get_movie_size(movie_path):

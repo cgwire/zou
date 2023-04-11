@@ -1,5 +1,5 @@
 from zou.app.models.file_status import FileStatus
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class FileStatusesResource(BaseModelsResource):

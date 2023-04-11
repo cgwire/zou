@@ -1,4 +1,4 @@
-from .base import BaseModelsResource, BaseModelResource
+from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project

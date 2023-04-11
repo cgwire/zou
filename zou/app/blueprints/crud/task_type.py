@@ -1,10 +1,8 @@
-from zou.app import db
-from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 from zou.app.services.exception import ArgumentsException
-from zou.app.services import tasks_service, projects_service
+from zou.app.services import tasks_service
 
-from .base import BaseModelResource, BaseModelsResource
+from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class TaskTypesResource(BaseModelsResource):
