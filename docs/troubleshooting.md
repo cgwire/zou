@@ -41,7 +41,7 @@ If one of the service is set to false, it means that it is down or that
 Zou cannot connect to it. Zou cannot run properly in that case.
 
 NB: Database refers to Posgres, Key Value Store refers to Redis, Event
-Stream refers to `zou-events` service, job queue refers to `zou-rq` service.
+Stream refers to `zou-events` service, job queue refers to `zou-jobs` service.
 
 # Changing password
 
@@ -81,7 +81,7 @@ asynchronous jobs (email sending, video normalization and playlist buird).
 To see the job queue logs, run the following command:
 
 ```bash
-journalctl -u zou-rq.service
+journalctl -u zou-jobs.service
 ```
 
 ## Postgres connection slots

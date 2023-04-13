@@ -63,6 +63,7 @@ The installation requires:
 * An up and running Redis server instance (version >= 2.0)
 * A Nginx instance
 
+
 ## Setup
 
 
