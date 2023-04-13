@@ -142,3 +142,8 @@ If you want to run a specific test (you can list several):
 ```
 DB_DATABASE=zoutest py.test tests/models/test_entity_type.py
 ```
+
+### Debug email sending
+
+If you set properly the `MAIL_DEBUG=1` flag, the body of each sent email is
+displayed in the console.
