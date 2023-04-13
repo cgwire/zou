@@ -40,3 +40,9 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         branch: apidocs
+    - name: Push on bump.sh
+      uses: bump-sh/github-action@v1
+      with:
+        doc: fa57376e-c678-4abc-903b-7ef06a99a2c6
+        token: ${{secrets.BUMP_TOKEN}}
+        file: openapi.json
