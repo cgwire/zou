@@ -215,6 +215,7 @@ def set_preview_files_for_entities(playlist_dict):
         .order_by(TaskType.priority.desc())
         .order_by(TaskType.name)
         .order_by(PreviewFile.revision.desc())
+        .order_by(PreviewFile.position)
         .order_by(PreviewFile.created_at)
         .add_column(Task.task_type_id)
         .add_column(Task.entity_id)
