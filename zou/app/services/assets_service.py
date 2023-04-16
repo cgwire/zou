@@ -669,6 +669,7 @@ def update_asset(asset_id, data):
         {"asset_id": asset_id, "data": data},
         project_id=str(asset.project_id),
     )
+    clear_asset_cache(asset_id)
     return asset.serialize(obj_type="Asset")
 
 
