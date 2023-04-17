@@ -152,8 +152,10 @@ def get_time_spents_for_month(
     date = datetime.datetime(int(year), int(month), 1)
     next_month = date + relativedelta.relativedelta(months=1)
     query = TimeSpent.query.filter(
-        TimeSpent.date >= date.strftime("%Y-%m-%d")
-    ).filter(TimeSpent.date < next_month.strftime("%Y-%m-%d"))
+        TimeSpent.date.between(
+            date.strftime("%Y-%m-%d"), next_month.strftime("%Y-%m-%d")
+        )
+    )
 
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
@@ -276,8 +278,7 @@ def get_year_time_spents(
     start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= start,
-        TimeSpent.date < end,
+        TimeSpent.date.between(start, end),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -294,8 +295,7 @@ def get_month_time_spents(
     start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= start,
-        TimeSpent.date < end,
+        TimeSpent.date.between(start, end),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -312,8 +312,7 @@ def get_week_time_spents(
     start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= start,
-        TimeSpent.date < end,
+        TimeSpent.date.between(start, end),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -330,8 +329,7 @@ def get_day_time_spents(
     start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= start,
-        TimeSpent.date < end,
+        TimeSpent.date.between(start, end),
         project_id=project_id,
         department_ids=department_ids,
     )
