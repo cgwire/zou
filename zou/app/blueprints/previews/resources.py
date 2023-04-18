@@ -1011,7 +1011,8 @@ class SetMainPreviewResource(Resource):
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         asset = entities_service.update_entity_preview(
-            task["entity_id"], preview_file_id
+            task["entity_id"],
+            preview_file_id,
         )
         assets_service.clear_asset_cache(asset["id"])
         shots_service.clear_shot_cache(asset["id"])
@@ -1141,3 +1142,47 @@ class RunningPreviewFiles(Resource, ArgsMixin):
         """
         permissions.check_admin_permissions()
         return preview_files_service.get_running_preview_files()
+
+
+class ExtractFrameFromPreview(Resource, ArgsMixin):
+    """
+    Extract the current frame of the preview
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        """
+        Extract a frame from a preview_file
+         ---
+         tags:
+           - Previews
+         description: Extract a frame from a preview_file
+         parameters:
+           - in: path
+             name: preview_file_id
+             required: True
+             type: string
+             format: UUID
+             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+         responses:
+             200:
+                 description: Extracted frame
+        """
+        args = self.get_args([("frame_number", 0, False, int)])
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        extracted_frame_path = (
+            preview_files_service.extract_frame_from_preview_file(
+                preview_file, args["frame_number"]
+            )
+        )
+
+        flask_send_file(
+            extracted_frame_path,
+            conditional=True,
+            mimetype="image/png",
+            as_attachment=True,
+            download_name=os.path.basename(extracted_frame_path),
+        )
