@@ -560,7 +560,8 @@ def extract_frame_from_preview_file(preview_file, frame_number):
             preview_file["id"],
             "mp4",
         )
-    # exception ou renvoyer image si png ?
+    else:
+        raise PreviewFileNotFoundException
 
     fps = get_preview_file_fps(project)
     extracted_frame_path = movie.extract_frame_from_movie(
@@ -568,3 +569,14 @@ def extract_frame_from_preview_file(preview_file, frame_number):
     )
 
     return extracted_frame_path
+
+
+def replace_extracted_frame_for_preview_file(preview_file, frame_number):
+    extracted_frame_path = extract_frame_from_preview_file(
+        preview_file, frame_number
+    )
+    thumbnail_utils.turn_into_thumbnail(extracted_frame_path)
+    file_store.add_picture(
+        "thumbnails", preview_file["id"], extracted_frame_path
+    )
+    save_variants(preview_file["id"], extracted_frame_path)
