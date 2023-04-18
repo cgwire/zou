@@ -24,9 +24,13 @@ class SearchResource(Resource, ArgsMixin):
             200:
                 description: List of assets and persons that contain the query (3 results max)
         """
-        args = self.get_args([("query", "", True)])
+        args = self.get_args([
+            ("query", "", True),
+            ("limit", 3, False, int)
+        ])
 
         query = args["query"]
+        limit = args["limit"]
         if len(query) < 3:
             return {"assets": []}
 
@@ -34,10 +38,13 @@ class SearchResource(Resource, ArgsMixin):
             projects = projects_service.open_projects()
         else:
             projects = user_service.get_open_projects()
-        persons = index_service.search_persons(query)
+        persons = index_service.search_persons(query, limit=limit)
         open_project_ids = [project["id"] for project in projects]
+        assets = index_service.search_assets(
+            query, open_project_ids, limit=limit
+        )
 
         return {
-            "assets": index_service.search_assets(query, open_project_ids),
+            "assets": assets,
             "persons": persons,
         }
