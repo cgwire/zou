@@ -4,6 +4,7 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -43,8 +44,9 @@ class TimeSpentsCsvExport(BaseCsvExport):
             )
             .join(Task, TimeSpent.task_id == Task.id)
             .join(Entity, Task.entity_id == Entity.id)
-            .join(EntityType, Entity.entity_type_id == Entity.id)
+            .join(EntityType, Entity.entity_type_id == EntityType.id)
             .join(Project, Task.project_id == Project.id)
+            .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
             .join(TaskType, Task.task_type_id == TaskType.id)
             .join(Person, TimeSpent.person_id == Person.id)
             .add_columns(Project.name)
@@ -54,6 +56,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
             .add_columns(TaskType.name)
             .add_columns(Person.first_name)
             .add_columns(Person.last_name)
+            .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         )
         return query
 
