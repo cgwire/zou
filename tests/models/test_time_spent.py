@@ -47,6 +47,11 @@ class TimeSpentTestCase(ApiDBTestCase):
         time_spents = self.get("data/time-spents")
         self.assertEqual(len(time_spents), 4)
 
+        time_spents = self.get(
+            "data/time-spents?person_id=%s" % self.person.id
+        )
+        self.assertEqual(len(time_spents), 4)
+
     def test_update_time_spent(self):
         time_spent = self.get_first("data/time-spents")
         data = {"duration": 7200}
