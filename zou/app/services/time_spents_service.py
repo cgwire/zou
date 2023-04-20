@@ -273,7 +273,6 @@ def get_year_time_spents(
     Return aggregated time spents at task level for given person and month.
     """
     start, end = date_helpers.get_year_interval(year)
-    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
         TimeSpent.date >= start,
@@ -291,7 +290,6 @@ def get_month_time_spents(
     Return aggregated time spents at task level for given person and month.
     """
     start, end = date_helpers.get_month_interval(year, month)
-    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
         TimeSpent.date >= start,
@@ -309,7 +307,6 @@ def get_week_time_spents(
     Return aggregated time spents at task level for given person and week.
     """
     start, end = date_helpers.get_week_interval(year, week)
-    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
         TimeSpent.date >= start,
@@ -327,7 +324,6 @@ def get_day_time_spents(
     Return aggregated time spents at task level for given person and day.
     """
     start, end = date_helpers.get_day_interval(year, month, day)
-    start, end = get_timezoned_interval(start, end)
     entries = get_person_time_spent_entries(
         person_id,
         TimeSpent.date >= start,
@@ -432,7 +428,6 @@ def get_day_offs_for_month(year, month):
     Get all day off entries for given year and month.
     """
     start, end = date_helpers.get_month_interval(year, month)
-    start, end = get_timezoned_interval(start, end)
     return get_day_offs_between(start, end)
 
 
@@ -441,7 +436,6 @@ def get_person_day_offs_for_week(person_id, year, week):
     Get all day off entries for given person, year and week.
     """
     start, end = date_helpers.get_week_interval(year, week)
-    start, end = get_timezoned_interval(start, end)
     return get_day_offs_between(start, end, person_id=person_id)
 
 
@@ -450,7 +444,6 @@ def get_person_day_offs_for_month(person_id, year, month):
     Get all day off entries for given person, year and week.
     """
     start, end = date_helpers.get_month_interval(year, month)
-    start, end = get_timezoned_interval(start, end)
     return get_day_offs_between(start, end, person_id=person_id)
 
 
@@ -459,7 +452,6 @@ def get_person_day_offs_for_year(person_id, year):
     Get all day off entries for given person, year.
     """
     start, end = date_helpers.get_year_interval(year)
-    start, end = get_timezoned_interval(start, end)
     return get_day_offs_between(start, end, person_id=person_id)
 
 
