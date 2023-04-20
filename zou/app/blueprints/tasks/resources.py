@@ -29,10 +29,10 @@ from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
 
 
-class AddPreviewResource(Resource):
+class AddPreviewResource(Resource, ArgsMixin):
     """
     Add a preview to given task. Revision is automatically set: it is
-    equal to last revision + 1.
+    equal to last revision + 1, or can be set manually.
     """
 
     @jwt_required()
@@ -42,7 +42,7 @@ class AddPreviewResource(Resource):
         ---
         tags:
         - Tasks
-        description: "Revision is automatically set: it is equal to last revision + 1."
+        description: "Revision is automatically set: it is equal to last revision + 1, or can be set manually."
         parameters:
           - in: path
             name: task_id
@@ -56,6 +56,14 @@ class AddPreviewResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: revision
+            required: False
+            schema:
+                type: object
+                properties:
+                    duration:
+                        type: integer
           - in: formData
             name: file
             type: file
@@ -64,6 +72,8 @@ class AddPreviewResource(Resource):
             201:
                 description: Preview added to given task
         """
+        args = self.get_args([("revision", 0, False, int)])
+
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -72,7 +82,7 @@ class AddPreviewResource(Resource):
         tasks_service.get_task_status(comment["task_status_id"])
         person = persons_service.get_current_user()
         preview_file = tasks_service.add_preview_file_to_comment(
-            comment_id, person["id"], task_id
+            comment_id, person["id"], task_id, args["revision"]
         )
         return preview_file, 201
 
