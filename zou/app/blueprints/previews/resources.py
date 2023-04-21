@@ -47,6 +47,7 @@ ALLOWED_FILE_EXTENSION = [
     ".ae",
     ".ai",
     ".blend",
+    ".clip",
     ".comp",
     ".exr",
     ".fbx",

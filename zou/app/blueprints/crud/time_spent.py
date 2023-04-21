@@ -8,8 +8,8 @@ class TimeSpentsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, TimeSpent)
 
-    def apply_filters(self, options):
-        query = super(TimeSpentsResource, self).apply_filters(options)
+    def apply_filters(self, query, options):
+        query = super(TimeSpentsResource, self).apply_filters(query, options)
         start_date = options.get("start_date", None)
         end_date = options.get("end_date", None)
         if not start_date and not end_date:
