@@ -12,9 +12,17 @@ from flask_jwt_extended import jwt_required
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
-from zou.app.services import shots_service, projects_service
+from zou.app.services import shots_service, projects_service, user_service
 from zou.app.blueprints.previews.resources import ALLOWED_MOVIE_EXTENSION
 
+from zou.app.models.task_type import TaskType
+from zou.app.models.project import ProjectTaskTypeLink
+from zou.app.models.task_type import TaskType
+
+
+from zou.app.services.tasks_service import (
+    create_tasks,
+)
 
 mapping_substitutions_to_regex = {
     "${project_name}": "(?P<project_name>\w*)",
@@ -31,6 +39,7 @@ mapping_substitutions_to_regex = {
 class EDLBaseResource(Resource, ArgsMixin):
     def post(self, project_id, episode_id=None):
         args = self.post_args()
+        user_service.check_manager_project_access(project_id)
         uploaded_file = request.files["file"]
         file_name = "%s.edl" % uuid.uuid4()
         file_path = os.path.join(config.TMP_DIR, file_name)
@@ -55,6 +64,11 @@ class EDLBaseResource(Resource, ArgsMixin):
         self.project = projects_service.get_project(project_id)
         self.is_tv_show = projects_service.is_tv_show(self.project)
         self.episode_id = episode_id
+        self.task_types_in_project_for_shots = (
+            TaskType.query.join(ProjectTaskTypeLink)
+            .filter(ProjectTaskTypeLink.project_id == project_id)
+            .filter(TaskType.for_entity == "Shot")
+        )
 
         self.nomenclature = nomenclature
         regex_nomenclature = nomenclature
@@ -90,7 +104,7 @@ class EDLBaseResource(Resource, ArgsMixin):
             self.shot_map[key] = shot["id"]
 
     def run_import(self, project_id, file_path):
-        result = []
+        result = {"updated_shots": [], "created_shots": []}
         try:
             timeline = otio.adapters.read_from_file(
                 file_path,
@@ -153,14 +167,18 @@ class EDLBaseResource(Resource, ArgsMixin):
 
                     if shot_id is None:
                         shot = shots_service.create_shot(**future_shot_values)
+                        result["created_shots"].append(shot)
                     else:
                         shot = shots_service.update_shot(
                             shot_id, future_shot_values
                         )
+                        result["updated_shots"].append(shot)
 
-                    result.append(shot)
                 if isinstance(track, otio.schema.Transition):
                     pass
+
+        for task_type in self.task_types_in_project_for_shots:
+            create_tasks(task_type.serialize(), result["created_shots"])
 
         return result
 
