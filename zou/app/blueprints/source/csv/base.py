@@ -33,9 +33,6 @@ class RowException(Exception):
 
 
 class BaseCsvImportResource(Resource, ArgsMixin):
-    def __init__(self):
-        Resource.__init__(self)
-
     @jwt_required()
     def post(self):
         """

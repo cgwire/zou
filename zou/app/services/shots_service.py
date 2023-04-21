@@ -772,7 +772,7 @@ def get_sequences_for_episode(episode_id, only_assigned=False):
         )
         return fields.serialize_models(query.all())
     else:
-        return get_episodes({"parent_id": episode_id})
+        return get_sequences({"parent_id": episode_id})
 
 
 def get_shots_for_project(project_id, only_assigned=False):
