@@ -981,7 +981,7 @@ class LegacySetMainPreviewResource(Resource):
         )
 
 
-class SetMainPreviewResource(Resource):
+class SetMainPreviewResource(Resource, ArgsMixin):
     """
     Set given preview as main preview of the related entity. This preview will
     be used to illustrate the entity.
@@ -1006,10 +1006,14 @@ class SetMainPreviewResource(Resource):
             200:
                 description: Given preview set as main preview
         """
+        args = self.get_args([("frame_number", 0, False, int)])
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
+        preview_files_service.replace_extracted_frame_for_preview_file(
+            preview_file, args["frame_number"]
+        )
         asset = entities_service.update_entity_preview(
             task["entity_id"],
             preview_file_id,
@@ -1179,10 +1183,10 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
             )
         )
 
-        flask_send_file(
+        return flask_send_file(
             extracted_frame_path,
             conditional=True,
             mimetype="image/png",
-            as_attachment=True,
+            as_attachment=False,
             download_name=os.path.basename(extracted_frame_path),
         )
