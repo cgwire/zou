@@ -68,6 +68,58 @@ def generate_thumbnail(movie_path):
     return file_target_path
 
 
+def extract_frame_from_movie(movie_path, frame_number, movie_fps):
+    """
+    Extract a frame from the movie given at movie path. It
+    takes a picture at the specified time of the movie.
+    """
+    folder_path = os.path.dirname(movie_path)
+    file_source_name = os.path.basename(movie_path)
+    file_target_name = f"{file_source_name[:-4]}_{frame_number}.png"
+    file_target_path = os.path.join(folder_path, file_target_name)
+
+    time_per_frame = 1 / float(movie_fps)
+    frame_time = (
+        frame_number - 1
+    ) * time_per_frame  # corriger le frame_time (ne correspond pas avec ce qui est affiché dans le navigateur)
+
+    try:
+        ffmpeg.input(movie_path, ss=frame_time).output(
+            file_target_path, vframes=1
+        ).overwrite_output().run(
+            quiet=False
+        )  # voir pour supprimer le fichier après ?
+    except ffmpeg._run.Error as e:
+        log_ffmpeg_error(e, "extracting_frame")
+        raise (e)
+
+    return file_target_path
+
+
+def get_all_frames(movie_path):
+    """
+    Generate thumbnails to represent the movie given at movie path. It
+    takes a picture at each frame of the movie.
+    """
+    folder_path = os.path.join(os.getcwd(), "movie_frames")
+    os.makedirs(folder_path, exist_ok=True)
+    file_source_name = os.path.basename(movie_path)
+    file_target_name = f"{file_source_name[:-4]}_%d.png"
+    file_target_path = os.path.join(folder_path, file_target_name)
+
+    try:
+        (
+            ffmpeg.input(movie_path)
+            .output(file_target_path, vsync=0)
+            .run(quiet=True)
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating thumbnails: {e}")
+        raise e
+
+    return folder_path
+
+
 def generate_tile(movie_path):
     """
     ffmpeg -i {movie_path} -vf 'scale=150:100,tile=8x8' -an -vsync 0 tile%03d.png

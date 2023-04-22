@@ -23,6 +23,7 @@ from zou.app.blueprints.previews.resources import (
     SetMainPreviewResource,
     UpdateAnnotationsResource,
     UpdatePreviewPositionResource,
+    ExtractFrameFromPreview,
 )
 
 routes = [
@@ -98,6 +99,10 @@ routes = [
     (
         "/actions/preview-files/<preview_file_id>/set-main-preview",
         SetMainPreviewResource,
+    ),
+    (
+        "/data/preview-files/<preview_file_id>/extract-frame",
+        ExtractFrameFromPreview,
     ),
     (
         "/actions/preview-files/<preview_file_id>/update-position",

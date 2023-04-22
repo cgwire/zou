@@ -543,3 +543,28 @@ def get_last_preview_file_for_task(task_id):
         return None
     else:
         return preview.serialize()
+
+
+def extract_frame_from_preview_file(preview_file, frame_number):
+    try:
+        project = get_project_from_preview_file(preview_file["id"])
+    except PreviewFileNotFoundException:
+        raise PreviewFileNotFoundException
+
+    if preview_file["extension"] == "mp4":
+        preview_file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_movie_path,
+            file_store.open_movie,
+            "previews",
+            preview_file["id"],
+            "mp4",
+        )
+    # exception ou renvoyer image si png ?
+
+    fps = get_preview_file_fps(project)
+    extracted_frame_path = movie.extract_frame_from_movie(
+        preview_file_path, frame_number, fps
+    )
+
+    return extracted_frame_path
