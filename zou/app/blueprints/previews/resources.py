@@ -30,7 +30,10 @@ from zou.app.utils import (
     permissions,
     thumbnail as thumbnail_utils,
 )
-from zou.app.services.exception import PreviewFileNotFoundException
+from zou.app.services.exception import (
+    ArgumentsException,
+    PreviewFileNotFoundException
+)
 
 
 ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".jpe"]
@@ -1007,13 +1010,19 @@ class SetMainPreviewResource(Resource, ArgsMixin):
                 description: Given preview set as main preview
         """
         args = self.get_args([("frame_number", 0, False, int)])
+        frame_number = args["frame_number"]
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
-        preview_files_service.replace_extracted_frame_for_preview_file(
-            preview_file, args["frame_number"]
-        )
+        if frame_number > 0:
+            if preview_file["extension"] != "mp4":
+                raise ArgumentsException(
+                    "Can't use a given frame on non movie preview"
+                )
+            preview_files_service.replace_extracted_frame_for_preview_file(
+                preview_file, frame_number
+            )
         asset = entities_service.update_entity_preview(
             task["entity_id"],
             preview_file_id,
