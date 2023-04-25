@@ -283,11 +283,15 @@ def save_variants(preview_file_id, original_picture_path):
     """
     Build variants of a picture file and save them in the main storage.
     """
+    from zou.app import app as current_app
+
     variants = thumbnail_utils.generate_preview_variants(
         original_picture_path, preview_file_id
     )
     variants.append(("original", original_picture_path))
     for name, path in variants:
+        current_app.logger.info(name)
+        current_app.logger.info(path)
         file_store.add_picture(name, preview_file_id, path)
         os.remove(path)
 
@@ -575,8 +579,7 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     extracted_frame_path = extract_frame_from_preview_file(
         preview_file, frame_number
     )
-    thumbnail_utils.turn_into_thumbnail(extracted_frame_path)
-    file_store.add_picture(
-        "thumbnails", preview_file["id"], extracted_frame_path
+    extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
+        extracted_frame_path
     )
     save_variants(preview_file["id"], extracted_frame_path)
