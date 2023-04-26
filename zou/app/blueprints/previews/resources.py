@@ -32,17 +32,17 @@ from zou.app.utils import (
 )
 from zou.app.services.exception import (
     ArgumentsException,
-    PreviewFileNotFoundException
+    PreviewFileNotFoundException,
 )
 
 
-ALLOWED_PICTURE_EXTENSION = [".png", ".jpg", ".jpeg", ".jpe"]
+ALLOWED_PICTURE_EXTENSION = [".jpe", ".jpeg", ".jpg", ".png"]
 ALLOWED_MOVIE_EXTENSION = [
     ".avi",
-    ".mp4",
     ".m4v",
     ".mkv",
     ".mov",
+    ".mp4",
     ".webm",
     ".wmv",
 ]
@@ -57,9 +57,12 @@ ALLOWED_FILE_EXTENSION = [
     ".fla",
     ".flv",
     ".gif",
+    ".glb",
+    ".gltf",
     ".hip",
     ".ma",
     ".mb",
+    ".mp3",
     ".obj",
     ".pdf",
     ".psd",
@@ -67,11 +70,8 @@ ALLOWED_FILE_EXTENSION = [
     ".sbbkp",
     ".svg",
     ".swf",
-    ".zip",
-    ".mp3",
     ".wav",
-    ".glb",
-    ".gltf",
+    ".zip",
 ]
 
 
