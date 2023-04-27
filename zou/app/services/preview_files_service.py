@@ -575,8 +575,7 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     extracted_frame_path = extract_frame_from_preview_file(
         preview_file, frame_number
     )
-    thumbnail_utils.turn_into_thumbnail(extracted_frame_path)
-    file_store.add_picture(
-        "thumbnails", preview_file["id"], extracted_frame_path
+    extracted_frame_path = thumbnail_utils.turn_into_thumbnail(
+        extracted_frame_path
     )
     save_variants(preview_file["id"], extracted_frame_path)

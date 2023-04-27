@@ -45,7 +45,10 @@ class EDLBaseResource(Resource, ArgsMixin):
         file_path = os.path.join(config.TMP_DIR, file_name)
         uploaded_file.save(file_path)
         self.prepare_import(
-            project_id, episode_id, args["nomenclature"], args["match_case"]
+            project_id,
+            episode_id,
+            args["naming_convention"],
+            args["match_case"],
         )
         try:
             result = self.run_import(project_id, file_path)
@@ -57,7 +60,9 @@ class EDLBaseResource(Resource, ArgsMixin):
     def post_args(self):
         return {}
 
-    def prepare_import(self, project_id, episode_id, nomenclature, match_case):
+    def prepare_import(
+        self, project_id, episode_id, naming_convention, match_case
+    ):
         self.sequence_map = {}
         self.shot_map = {}
         self.project_id = project_id
@@ -70,11 +75,11 @@ class EDLBaseResource(Resource, ArgsMixin):
             .filter(TaskType.for_entity == "Shot")
         )
 
-        self.nomenclature = nomenclature
-        regex_nomenclature = nomenclature
+        self.naming_convention = naming_convention
+        regex_naming_convention = naming_convention
         for k, v in mapping_substitutions_to_regex.items():
-            regex_nomenclature = regex_nomenclature.replace(k, v)
-        self.regex_pattern = re.compile(regex_nomenclature)
+            regex_naming_convention = regex_naming_convention.replace(k, v)
+        self.regex_pattern = re.compile(regex_naming_convention)
         self.match_case = match_case
 
         if self.is_tv_show:
@@ -88,7 +93,7 @@ class EDLBaseResource(Resource, ArgsMixin):
         for sequence in sequences:
             self.sequence_map[sequence["id"]] = sequence["name"]
 
-        template = Template(self.nomenclature)
+        template = Template(self.naming_convention)
         for shot in shots:
             sequence_key = self.sequence_map[shot["parent_id"]]
             substitutions = {
@@ -216,7 +221,7 @@ class EDLImportResource(EDLBaseResource):
         return self.get_args(
             [
                 (
-                    "nomenclature",
+                    "naming_convention",
                     "${project_name}_${sequence_name}-${shot_name}",
                     False,
                     str,
@@ -264,7 +269,7 @@ class EDLImportEpisodeResource(EDLBaseResource):
         return self.get_args(
             [
                 (
-                    "nomenclature",
+                    "naming_convention",
                     "${project_name}_${episode_name}-${sequence_name}-${shot_name}",
                     False,
                     str,
