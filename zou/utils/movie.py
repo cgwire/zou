@@ -76,7 +76,7 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     """
     folder_path = os.path.dirname(movie_path)
     file_source_name = os.path.basename(movie_path)
-    file_target_name = f"original_{file_source_name[:-4]}.png"
+    file_target_name = f"{file_source_name[:-4]}_{frame_number}.png"
     file_target_path = os.path.join(folder_path, file_target_name)
 
     frame_time = otio.opentime.RationalTime(

@@ -139,6 +139,7 @@ def send_storage_file(
             if (
                 preview_file.get("file_size") is not None
                 and preview_file["file_size"] > 0
+                and preview_file["extension"] == extension
             ):
                 file_size = preview_file["file_size"]
     except PreviewFileNotFoundException:
