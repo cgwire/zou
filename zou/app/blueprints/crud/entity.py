@@ -120,12 +120,13 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             entity_dict = self.serialize_instance(entity)
 
             if shots_service.is_shot(entity_dict):
+                index_service.remove_shot_index(entity_dict["id"])
+                index_service.index_shot(entity)
                 shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
             elif assets_service.is_asset(entity):
-                if "name" in data:
-                    index_service.remove_asset_index(entity_dict["id"])
-                    index_service.index_asset(entity)
+                index_service.remove_asset_index(entity_dict["id"])
+                index_service.index_asset(entity)
                 if is_ready_for_changed:
                     breakdown_service.refresh_casting_stats(entity_dict)
                 assets_service.clear_asset_cache(entity_dict["id"])

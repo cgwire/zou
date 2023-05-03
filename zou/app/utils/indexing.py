@@ -1,21 +1,6 @@
 from whoosh import index
 from whoosh.query import Or, Term
-from whoosh.qparser import QueryParser
-from whoosh.fields import Schema, BOOLEAN, NGRAMWORDS, ID
-
-
-def get_schema(schema):
-    kwargs = {}
-    for key, value in schema.items():
-        if value == "indexed":
-            kwargs[key] = NGRAMWORDS(minsize=2, sortable=True)
-        elif value == "id_stored":
-            kwargs[key] = ID(stored=True)
-        elif value == "unique_id_stored":
-            kwargs[key] = ID(unique=True, stored=True)
-        elif value == "boolean":
-            kwargs[key] = BOOLEAN(stored=True)
-    return Schema(**kwargs)
+from whoosh.qparser import MultifieldParser
 
 
 def create_index(path, schema):
@@ -34,7 +19,11 @@ def index_data(ix, data):
 
 
 def search(ix, query, project_ids=[], limit=10):
-    query_parser = QueryParser("name", schema=ix.schema)
+    fields = ["name"]
+    for field in ix.reader().indexed_field_names():
+        if field.startswith("data_"):
+            fields.append(field)
+    query_parser = MultifieldParser(fields, schema=ix.schema)
     whoosh_query = query_parser.parse(query)
     is_project_filter = len(project_ids) > 0
     ids = []

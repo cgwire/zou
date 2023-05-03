@@ -3,30 +3,46 @@ import os
 from zou.app.utils import fs, indexing
 from zou.app import app
 
-asset_schema = indexing.get_schema(
-    {
-        "name": "indexed",
-        "id": "unique_id_stored",
-        "project_id": "id_stored",
-        "episode_id": "id_stored",
-    }
-)
+from whoosh.fields import NGRAMWORDS, ID, Schema, SchemaClass
 
-person_schema = indexing.get_schema(
-    {"name": "indexed", "id": "unique_id_stored"}
+
+asset_schema = Schema(
+    name=NGRAMWORDS(minsize=2, sortable=True),
+    id=ID(unique=True, stored=True),
+    project_id=ID(stored=True),
+    episode_id=ID(stored=True),
 )
+asset_schema.add("data_*", NGRAMWORDS(minsize=2, sortable=True), glob=True)
+
+
+class PersonSchema(SchemaClass):
+    name = NGRAMWORDS(minsize=2, sortable=True)
+    id = ID(unique=True, stored=True)
+
+
+shot_schema = Schema(
+    name=NGRAMWORDS(minsize=2, sortable=True),
+    id=ID(unique=True, stored=True),
+    project_id=ID(stored=True),
+    sequence_id=ID(stored=True),
+)
+shot_schema.add("data_*", NGRAMWORDS(minsize=2, sortable=True), glob=True)
+
+map_indexes_schema = {
+    "assets": asset_schema,
+    "shots": shot_schema,
+    "persons": PersonSchema,
+}
 
 
 def init_indexes():
     indexes_folder = app.config["INDEXES_FOLDER"]
-    asset_index_path = os.path.join(indexes_folder, "assets")
-    asset_index = None
-    if not os.path.exists(asset_index_path):
-        fs.mkdir_p(asset_index_path)
-        asset_index = indexing.create_index(asset_index_path, asset_schema)
-    person_index_path = os.path.join(indexes_folder, "persons")
-    person_index = None
-    if not os.path.exists(person_index_path):
-        fs.mkdir_p(person_index_path)
-        person_index = indexing.create_index(person_index_path, person_schema)
-    return (asset_index, person_index)
+    indexes = {}
+    for file_index_name, schema in map_indexes_schema.items():
+        index_path = os.path.join(indexes_folder, file_index_name)
+        indexes[file_index_name] = None
+        if not os.path.exists(index_path):
+            fs.mkdir_p(index_path)
+        indexes[file_index_name] = indexing.create_index(index_path, schema)
+
+    return indexes
