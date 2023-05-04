@@ -7,7 +7,8 @@ from whoosh.fields import NGRAMWORDS, ID, Schema, SchemaClass
 
 
 asset_schema = Schema(
-    name=NGRAMWORDS(minsize=2, sortable=True),
+    name=NGRAMWORDS(minsize=2, sortable=True, field_boost=3.0),
+    description=NGRAMWORDS(minsize=2, sortable=True, field_boost=2.0),
     id=ID(unique=True, stored=True),
     project_id=ID(stored=True),
     episode_id=ID(stored=True),
@@ -21,7 +22,8 @@ class PersonSchema(SchemaClass):
 
 
 shot_schema = Schema(
-    name=NGRAMWORDS(minsize=2, sortable=True),
+    name=NGRAMWORDS(minsize=2, sortable=True, field_boost=3.0),
+    description=NGRAMWORDS(minsize=2, sortable=True, field_boost=2.0),
     id=ID(unique=True, stored=True),
     project_id=ID(stored=True),
     sequence_id=ID(stored=True),

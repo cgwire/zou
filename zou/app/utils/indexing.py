@@ -21,7 +21,7 @@ def index_data(ix, data):
 def search(ix, query, project_ids=[], limit=10):
     fields = ["name"]
     for field in ix.reader().indexed_field_names():
-        if field.startswith("data_"):
+        if field.startswith("data_") or field == "description":
             fields.append(field)
     query_parser = MultifieldParser(fields, schema=ix.schema)
     whoosh_query = query_parser.parse(query)

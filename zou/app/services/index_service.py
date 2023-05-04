@@ -187,6 +187,7 @@ def index_asset(asset, index=None):
             "project_id": asset_serialized["project_id"],
             "episode_id": asset_serialized["source_id"],
             "id": asset_serialized["id"],
+            "description": asset_serialized["description"],
             **metadatas,
         },
     )
@@ -226,6 +227,7 @@ def index_shot(shot, index=None):
             "project_id": shot_serialized["project_id"],
             "sequence_id": shot_serialized["parent_id"],
             "id": shot_serialized["id"],
+            "description": shot_serialized["description"],
             **metadatas,
         },
     )
