@@ -149,9 +149,9 @@ def search_shots(query, project_ids=[], limit=3):
         shot["project_name"] = project["name"]
         shot["sequence_name"] = sequence["name"]
         if projects_service.is_tv_show(project):
-            shot["episode_name"] = shots_service.get_episode_from_sequence(
-                sequence
-            )["name"]
+            episode = shots_service.get_episode_from_sequence(sequence)
+            shot["episode"] = episode["name"]
+            shot["episode_id"] = episode["id"]
         shots.append(shot)
     return shots
 
