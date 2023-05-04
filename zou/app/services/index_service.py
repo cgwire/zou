@@ -119,14 +119,15 @@ def search_assets(query, project_ids=[], limit=3):
     index = get_asset_index()
     assets = []
 
-    ids = indexing.search(index, query, project_ids, limit=limit)
+    results = indexing.search(index, query, project_ids, limit=limit)
 
-    for asset_id in ids:
+    for asset_id, matched_terms in results:
         asset = assets_service.get_asset(asset_id)
         asset_type = assets_service.get_asset_type(asset["entity_type_id"])
         project = projects_service.get_project(asset["project_id"])
         asset["project_name"] = project["name"]
         asset["asset_type_name"] = asset_type["name"]
+        asset["matched_terms"] = matched_terms
         assets.append(asset)
     return assets
 
@@ -140,9 +141,9 @@ def search_shots(query, project_ids=[], limit=3):
     index = get_shot_index()
     shots = []
 
-    ids = indexing.search(index, query, project_ids, limit=limit)
+    results = indexing.search(index, query, project_ids, limit=limit)
 
-    for shot_id in ids:
+    for shot_id, matched_terms in results:
         shot = shots_service.get_shot(shot_id)
         sequence = shots_service.get_sequence(shot["parent_id"])
         project = projects_service.get_project(shot["project_id"])
@@ -152,6 +153,7 @@ def search_shots(query, project_ids=[], limit=3):
             episode = shots_service.get_episode_from_sequence(sequence)
             shot["episode"] = episode["name"]
             shot["episode_id"] = episode["id"]
+        shot["matched_terms"] = matched_terms
         shots.append(shot)
     return shots
 
@@ -163,9 +165,10 @@ def search_persons(query, limit=3):
     """
     index = get_person_index()
     persons = []
-    ids = indexing.search(index, query, limit=limit)
-    for person_id in ids:
+    results = indexing.search(index, query, limit=limit)
+    for person_id, matched_terms in results:
         person = persons_service.get_person(person_id)
+        person["matched_terms"] = matched_terms
         persons.append(person)
     return persons
 

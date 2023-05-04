@@ -26,17 +26,21 @@ def search(ix, query, project_ids=[], limit=10):
     query_parser = MultifieldParser(fields, schema=ix.schema)
     whoosh_query = query_parser.parse(query)
     is_project_filter = len(project_ids) > 0
-    ids = []
+    results = []
     with ix.searcher() as searcher:
+        project_id_terms = None
         if is_project_filter:
             project_id_terms = Or(
                 [Term("project_id", project_id) for project_id in project_ids]
             )
-            results = searcher.search(
-                whoosh_query, filter=project_id_terms, limit=limit
-            )
-        else:
-            results = searcher.search(whoosh_query, limit=limit)
-        for result in results:
-            ids.append(result["id"])
-    return ids
+        search_results = searcher.search(
+            whoosh_query, filter=project_id_terms, limit=limit, terms=True
+        )
+        for result in search_results:
+            matched_terms = []
+            for matched_term in result.matched_terms():
+                matched_terms.append(
+                    (matched_term[0], matched_term[1].decode())
+                )
+            results.append((result["id"], matched_terms))
+    return results
