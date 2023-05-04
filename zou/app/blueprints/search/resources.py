@@ -29,7 +29,7 @@ class SearchResource(Resource, ArgsMixin):
           - in: formData
             name: index_names
             required: False
-            type: list
+            type: list of strings
             default: ["assets", "shots", "persons"]
             x-example: ["assets"]
         responses:
@@ -40,7 +40,13 @@ class SearchResource(Resource, ArgsMixin):
             [
                 ("query", "", True),
                 ("limit", 3, False, int),
-                ("index_names", ["assets", "shots", "persons"], False, list),
+                (
+                    "index_names",
+                    ["assets", "shots", "persons"],
+                    False,
+                    str,
+                    "append",
+                ),
             ]
         )
         query = args["query"]
