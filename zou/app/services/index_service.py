@@ -220,7 +220,8 @@ def index_shot(shot, index=None):
     metadatas = {}
     if shot_serialized["data"]:
         for k, v in shot_serialized["data"].items():
-            metadatas[f"data_{k}"] = str(v)
+            if k not in ["frame_in", "frame_out", "fps"]:
+                metadatas[f"data_{k}"] = str(v)
     return indexing.index_data(
         index,
         {
