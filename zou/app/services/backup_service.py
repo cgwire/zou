@@ -1,8 +1,7 @@
 import datetime
 import gzip
 import os
-
-from sh import pg_dump
+import subprocess
 
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
@@ -34,18 +33,22 @@ def generate_db_backup(host, port, user, password, database):
     """
     now = datetime.datetime.now().strftime("%Y-%m-%d")
     filename = "%s-zou-db-backup.sql.gz" % now
-    with gzip.open(filename, "wb") as archive:
-        pg_dump(
-            "-h",
-            host,
-            "-p",
-            port,
-            "-U",
-            user,
-            database,
-            _out=archive,
-            _env={"PGPASSWORD": password},
+    cmd = ["pg_dump", "-h", host, "-p", port, "-U", user, database]
+    with gzip.open(filename, "wb") as f:
+        popen = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            env={"PGPASSWORD": password},
         )
+
+        for stdout_line in iter(popen.stdout.readline, ""):
+            f.write(stdout_line.encode("utf-8"))
+
+        popen.stdout.close()
+        popen.wait()
+
+    print(f"Postgres dump created ({filename}).")
     return filename
 
 
