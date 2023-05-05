@@ -19,32 +19,59 @@ class SearchResource(Resource, ArgsMixin):
             name: query
             required: True
             type: string
-            x-example: Name of asset or person
+            x-example: test will search for test
+          - in: formData
+            name: limit
+            required: False
+            type: integer
+            default: 3
+            x-example: 3
+          - in: formData
+            name: index_names
+            required: False
+            type: list of strings
+            default: ["assets", "shots", "persons"]
+            x-example: ["assets"]
         responses:
             200:
-                description: List of assets and persons that contain the query (3 results max)
+                description: List of entities that contain the query
         """
-        args = self.get_args([
-            ("query", "", True),
-            ("limit", 3, False, int)
-        ])
-
+        args = self.get_args(
+            [
+                ("query", "", True),
+                ("limit", 3, False, int),
+                (
+                    "index_names",
+                    ["assets", "shots", "persons"],
+                    False,
+                    str,
+                    "append",
+                ),
+            ]
+        )
         query = args["query"]
         limit = args["limit"]
+        index_names = args["index_names"]
+        results = {}
         if len(query) < 3:
-            return {"assets": []}
+            return results
 
         if permissions.has_admin_permissions():
             projects = projects_service.open_projects()
         else:
             projects = user_service.get_open_projects()
-        persons = index_service.search_persons(query, limit=limit)
+        if "persons" in index_names:
+            results["persons"] = index_service.search_persons(
+                query, limit=limit
+            )
         open_project_ids = [project["id"] for project in projects]
-        assets = index_service.search_assets(
-            query, open_project_ids, limit=limit
-        )
+        if "assets" in index_names:
+            results["assets"] = index_service.search_assets(
+                query, open_project_ids, limit=limit
+            )
+        if "shots" in index_names:
+            results["shots"] = index_service.search_shots(
+                query, open_project_ids, limit=limit
+            )
 
-        return {
-            "assets": assets,
-            "persons": persons,
-        }
+        return results

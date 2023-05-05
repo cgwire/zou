@@ -28,6 +28,7 @@ from zou.app.services import (
     notifications_service,
     names_service,
     user_service,
+    index_service,
 )
 from zou.app.services.exception import (
     EpisodeNotFoundException,
@@ -1001,14 +1002,17 @@ def create_shot(
             nb_frames=nb_frames,
             description=description,
         )
-    events.emit(
-        "shot:new",
-        {
-            "shot_id": shot.id,
-            "episode_id": sequence["parent_id"],
-        },
-        project_id=project_id,
-    )
+
+        index_service.index_shot(shot)
+        events.emit(
+            "shot:new",
+            {
+                "shot_id": shot.id,
+                "episode_id": sequence["parent_id"],
+            },
+            project_id=project_id,
+        )
+
     return shot.serialize(obj_type="Shot")
 
 
@@ -1048,10 +1052,14 @@ def update_shot(shot_id, data_dict):
     """
     shot = get_shot_raw(shot_id)
     shot.update(data_dict)
+
+    index_service.remove_shot_index(shot.id)
+    index_service.index_shot(shot)
     clear_shot_cache(shot_id)
     events.emit(
         "shot:update", {"shot_id": shot_id}, project_id=str(shot.project_id)
     )
+
     return shot.serialize()
 
 
@@ -1460,3 +1468,11 @@ def _get_timezoned_interval(start, end):
     """
     timezone = user_service.get_timezone()
     return date_helpers.get_timezoned_interval(start, end, timezone)
+
+
+def get_all_raw_shots():
+    """
+    Get all assets from the database.
+    """
+    query = Entity.query.filter(Entity.entity_type_id == get_shot_type()["id"])
+    return query.all()

@@ -6,7 +6,7 @@ from zou.app.blueprints.source.csv.base import (
 from zou.app.models.entity import Entity
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
-from zou.app.services import shots_service, projects_service
+from zou.app.services import shots_service, projects_service, index_service
 from zou.app.services.tasks_service import (
     create_task,
     create_tasks,
@@ -230,6 +230,8 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
 
         if entity is None:
             entity = Entity.create(**{**shot_values, **shot_new_values})
+
+            index_service.index_shot(entity)
             events.emit(
                 "shot:new", {"shot_id": str(entity.id)}, project_id=project_id
             )
@@ -240,6 +242,9 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
 
         elif self.is_update:
             entity.update(shot_new_values)
+
+            index_service.remove_shot_index(entity.id)
+            index_service.index_shot(entity)
             events.emit(
                 "shot:update",
                 {"shot_id": str(entity.id)},

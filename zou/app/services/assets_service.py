@@ -649,19 +649,21 @@ def create_asset(
         data=data,
         source_id=source_id,
     )
-    asset_dict = asset.serialize(obj_type="Asset")
+
     index_service.index_asset(asset)
     events.emit(
         "asset:new",
         {"asset_id": asset.id, "asset_type": asset_type.id},
         project_id=str(project.id),
     )
-    return asset_dict
+
+    return asset.serialize(obj_type="Asset")
 
 
 def update_asset(asset_id, data):
     asset = get_asset_raw(asset_id)
     asset.update(data)
+
     index_service.remove_asset_index(asset_id)
     index_service.index_asset(asset)
     events.emit(
@@ -670,6 +672,7 @@ def update_asset(asset_id, data):
         project_id=str(asset.project_id),
     )
     clear_asset_cache(asset_id)
+
     return asset.serialize(obj_type="Asset")
 
 

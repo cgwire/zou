@@ -229,8 +229,8 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         if entity is None:
             entity = Entity.create(**{**asset_values, **asset_new_values})
-            index_service.index_asset(entity)
 
+            index_service.index_asset(entity)
             events.emit(
                 "asset:new",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
@@ -243,6 +243,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         elif self.is_update:
             entity.update(asset_new_values)
+
+            index_service.remove_asset_index(entity.id)
+            index_service.index_asset(entity)
             events.emit(
                 "asset:update",
                 {"asset_id": str(entity.id), "episode_id": episode_id},
