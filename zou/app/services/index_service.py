@@ -13,6 +13,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     shots_service,
+    files_service,
 )
 
 from whoosh.index import EmptyIndexError
@@ -127,6 +128,13 @@ def search_assets(query, project_ids=[], limit=3):
         project = projects_service.get_project(asset["project_id"])
         asset["project_name"] = project["name"]
         asset["asset_type_name"] = asset_type["name"]
+        if asset["preview_file_id"] is not None:
+            preview_file = files_service.get_preview_file(
+                asset["preview_file_id"]
+            )
+            asset["preview_file_extension"] = preview_file["extension"]
+        else:
+            asset["preview_file_extension"] = None
         asset["matched_terms"] = matched_terms
         assets.append(asset)
     return assets
@@ -149,6 +157,13 @@ def search_shots(query, project_ids=[], limit=3):
         project = projects_service.get_project(shot["project_id"])
         shot["project_name"] = project["name"]
         shot["sequence_name"] = sequence["name"]
+        if shot["preview_file_id"] is not None:
+            preview_file = files_service.get_preview_file(
+                shot["preview_file_id"]
+            )
+            shot["preview_file_extension"] = preview_file["extension"]
+        else:
+            shot["preview_file_extension"] = None
         if projects_service.is_tv_show(project):
             episode = shots_service.get_episode_from_sequence(sequence)
             shot["episode"] = episode["name"]
