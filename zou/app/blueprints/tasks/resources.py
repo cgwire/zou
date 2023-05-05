@@ -1477,8 +1477,9 @@ class SetTaskMainPreviewResource(Resource):
         preview_file = preview_files_service.get_last_preview_file_for_task(
             task_id
         )
+        entity = entities_service.get_entity(task["entity_id"])
         if preview_file is not None:
-            entity = entities_service.update_entity_preview(
+            entities_service.update_entity_preview(
                 task["entity_id"], preview_file["id"]
             )
             assets_service.clear_asset_cache(entity["id"])
