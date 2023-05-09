@@ -118,9 +118,13 @@ def search_assets(query, project_ids=[], limit=3):
     name (3 results maximum by default).
     """
     index = get_asset_index()
+    fields = ["name", "description"]
+    for field in index.reader().indexed_field_names():
+        if field.startswith("data_"):
+            fields.append(field)
     assets = []
 
-    results = indexing.search(index, query, project_ids, limit=limit)
+    results = indexing.search(index, fields, query, project_ids, limit=limit)
 
     for asset_id, matched_terms in results:
         asset = assets_service.get_asset(asset_id)
@@ -147,9 +151,14 @@ def search_shots(query, project_ids=[], limit=3):
     name (3 results maximum by default).
     """
     index = get_shot_index()
+    fields = ["name", "description"]
+    for field in index.reader().indexed_field_names():
+        if field.startswith("data_"):
+            fields.append(field)
+
     shots = []
 
-    results = indexing.search(index, query, project_ids, limit=limit)
+    results = indexing.search(index, fields, query, project_ids, limit=limit)
 
     for shot_id, matched_terms in results:
         shot = shots_service.get_shot(shot_id)
@@ -179,8 +188,10 @@ def search_persons(query, limit=3):
     a list of persons (3 results maximum by default).
     """
     index = get_person_index()
+    fields = ["name"]
+
     persons = []
-    results = indexing.search(index, query, limit=limit)
+    results = indexing.search(index, fields, query, limit=limit)
     for person_id, matched_terms in results:
         person = persons_service.get_person(person_id)
         person["matched_terms"] = matched_terms

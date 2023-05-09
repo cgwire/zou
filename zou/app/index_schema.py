@@ -7,28 +7,36 @@ from whoosh.fields import NGRAMWORDS, ID, Schema, SchemaClass
 
 
 asset_schema = Schema(
-    name=NGRAMWORDS(minsize=2, sortable=True, field_boost=3.0),
-    description=NGRAMWORDS(minsize=2, sortable=True, field_boost=2.0),
+    name=NGRAMWORDS(minsize=3, maxsize=16, sortable=True, field_boost=20.0),
+    description=NGRAMWORDS(
+        minsize=3, maxsize=16, sortable=True, field_boost=10.0
+    ),
     id=ID(unique=True, stored=True),
     project_id=ID(stored=True),
     episode_id=ID(stored=True),
 )
-asset_schema.add("data_*", NGRAMWORDS(minsize=2, sortable=True), glob=True)
+asset_schema.add(
+    "data_*", NGRAMWORDS(minsize=3, maxsize=16, sortable=True), glob=True
+)
 
 
 class PersonSchema(SchemaClass):
-    name = NGRAMWORDS(minsize=2, sortable=True)
+    name = NGRAMWORDS(minsize=3, maxsize=16, sortable=True)
     id = ID(unique=True, stored=True)
 
 
 shot_schema = Schema(
-    name=NGRAMWORDS(minsize=2, sortable=True, field_boost=3.0),
-    description=NGRAMWORDS(minsize=2, sortable=True, field_boost=2.0),
+    name=NGRAMWORDS(minsize=3, maxsize=16, sortable=True, field_boost=20.0),
+    description=NGRAMWORDS(
+        minsize=3, maxsize=16, sortable=True, field_boost=10.0
+    ),
     id=ID(unique=True, stored=True),
     project_id=ID(stored=True),
     sequence_id=ID(stored=True),
 )
-shot_schema.add("data_*", NGRAMWORDS(minsize=2, sortable=True), glob=True)
+shot_schema.add(
+    "data_*", NGRAMWORDS(minsize=3, maxsize=16, sortable=True), glob=True
+)
 
 map_indexes_schema = {
     "assets": asset_schema,
