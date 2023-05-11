@@ -854,12 +854,13 @@ def remove_shot(shot_id, force=False):
         Subscription.delete_all_by(entity_id=shot_id)
         EntityLink.delete_all_by(entity_in_id=shot_id)
         shot.delete()
-        clear_shot_cache(shot_id)
         events.emit(
             "shot:delete",
             {"shot_id": shot_id},
             project_id=str(shot.project_id),
         )
+        index_service.remove_shot_index(shot_id)
+        clear_shot_cache(shot_id)
 
     deleted_shot = shot.serialize(obj_type="Shot")
     return deleted_shot

@@ -14,7 +14,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset()
         self.generate_fixture_sequence()
-        self.generate_fixture_shot()
+        self.generate_fixture_shot(name="SH001")
         self.generate_fixture_asset_character()
         self.generate_fixture_asset_character("Sprite")
         self.generate_fixture_asset_character("Cat")
@@ -43,6 +43,13 @@ class AssetSearchTestCase(ApiDBTestCase):
                 "role": "manager",
             },
         )
+
+    def create_shot_pl004(self):
+        return self.post(
+            "data/projects/%s/shots" % self.project_id,
+            {"name": "pl004", "sequence_id": str(self.sequence.id)},
+        )
+
 
     def test_search_assets_exact(self):
         assets = self.post("data/search", {"query": "rabbit"}, 200)["assets"]
@@ -111,3 +118,16 @@ class AssetSearchTestCase(ApiDBTestCase):
         self.delete("data/persons/%s" % person["id"])
         persons = self.post("data/search", {"query": "girafe"}, 200)["persons"]
         self.assertEqual(len(persons), 0)
+
+    def test_search_shots_exact(self):
+        shots = self.post("data/search", {"query": "sh001"}, 200)["shots"]
+        self.assertEqual(len(shots), 1)
+
+    def test_search_shots_partial(self):
+        shots = self.post("data/search", {"query": "sH00"}, 200)["shots"]
+        self.assertEqual(len(shots), 1)
+
+    def test_search_shots_after_creation(self):
+        shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
+        shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
+        self.assertEqual(len(shots), 0)

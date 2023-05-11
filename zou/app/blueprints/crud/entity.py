@@ -196,3 +196,5 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     def post_delete(self, entity_dict):
         if assets_service.is_asset_dict(entity_dict):
             index_service.remove_asset_index(entity_dict["id"])
+        elif shots_service.is_shot(entity_dict):
+            index_service.remove_shot_index(entity_dict["id"])

@@ -9,8 +9,13 @@ from flask_principal import Principal, identity_changed, Identity
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
+
 from jwt import ExpiredSignatureError
 from babel.core import UnknownLocaleError
+from meilisearch.errors import (
+    MeilisearchApiError,
+    MeilisearchCommunicationError
+)
 
 from zou.app import config, swagger
 from zou.app.stores import auth_tokens_store
@@ -103,6 +108,21 @@ def wrong_task_type_for_entity(error):
 @app.errorhandler(UnknownLocaleError)
 def wrong_locale_label(error):
     return jsonify(error=True, message=str(error)), 400
+
+
+@app.errorhandler(MeilisearchCommunicationError)
+def indexer_not_reachable(error):
+    current_app.logger.error("Indexer not reachable")
+    return jsonify(error=True, message="Indexer not reachable"), 500
+
+
+@app.errorhandler(MeilisearchApiError)
+def indexer_key_error(error):
+    if error.code == "invalid_api_key":
+        current_app.logger.error("The indexer key is rejected")
+        return jsonify(error=True, message="The indexer key is rejected"), 500
+    else:
+        raise error
 
 
 if not config.DEBUG:

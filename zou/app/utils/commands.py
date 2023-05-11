@@ -22,7 +22,6 @@ from zou.app.services import (
 )
 from zou.app.models.person import Person
 from sqlalchemy.sql.expression import not_
-from zou.app.index_schema import init_indexes
 
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -501,12 +500,6 @@ def reset_search_index():
         print("Resetting search index.")
         index_service.reset_index()
         print("Search index resetted.")
-
-
-def init_search_index():
-    print("Initialising search index.")
-    init_indexes()
-    print("Search index initialised.")
 
 
 def search_asset(query):
