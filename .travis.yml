@@ -10,6 +10,8 @@ addons:
     packages:
       - ffmpeg
       - postgresql-12
+service:
+  - docker
 env:
   global:
   - PGPORT=5432
@@ -25,6 +27,7 @@ before_install:
  - sudo service postgresql restart
  - sleep 1
  - pg_config --version
+ - docker run -d -p 7700:7700 getmeili/meilisearch
 install:
   - "pip install -U pip setuptools"
   - "pip install -r requirements.txt"
