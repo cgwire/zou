@@ -51,6 +51,13 @@ SQLALCHEMY_ENGINE_OPTIONS = {
     "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", 60)),
 }
 
+INDEXER = {
+    "host": os.getenv("INDEXER_HOST", "localhost"),
+    "port": os.getenv("INDEXER_PORT", "7700"),
+    "protocol": os.getenv("INDEXER_PROTOCOL", "http"),
+    "key": os.getenv("INDEXER_KEY", "masterkey"),
+}
+
 NB_RECORDS_PER_PAGE = 100
 
 PREVIEW_FOLDER = os.getenv(
@@ -58,9 +65,6 @@ PREVIEW_FOLDER = os.getenv(
     os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
-INDEXES_FOLDER = os.getenv(
-    "INDEXES_FOLDER", os.path.join(os.getcwd(), "indexes")
-)
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
 EVENT_STREAM_PORT = os.getenv("EVENT_STREAM_PORT", 5001)
