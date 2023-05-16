@@ -1,4 +1,5 @@
 import meilisearch
+from meilisearch.errors import MeilisearchApiError
 
 client = None
 
@@ -29,7 +30,11 @@ def create_index(
     Create a new index and configure it properly by setting searchable_fields
     and allowing to filter on project ids.
     """
-    index = get_index(index_name)
+    index = None
+    try:
+        index = get_index(index_name)
+    except MeilisearchApiError:
+        pass
     if index is None:
         task = client.create_index(index_name)
         client.wait_for_task(task.task_uid)
