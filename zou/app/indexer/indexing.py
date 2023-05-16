@@ -36,7 +36,9 @@ def create_index(
     except MeilisearchApiError:
         pass
     if index is None:
-        task = client.create_index(index_name)
+        task = client.create_index(index_name, {
+            "primaryKey": "id"
+        })
         client.wait_for_task(task.task_uid)
         index = get_index(index_name)
     index.update_searchable_attributes(searchable_fields)
