@@ -73,11 +73,32 @@ class BaseStatusResource(Resource):
             app.logger.error("Job queue is not accessible", exc_info=1)
             is_jq_up = False
 
+        is_indexer_up = True
+        try:
+            requests.get(
+                "{protocol}://{host}:{port}".format(
+                    protocol=config.INDEXER["protocol"],
+                    host=config.INDEXER["host"],
+                    port=config.INDEXER["port"]
+                )
+            )
+        except Exception:
+            is_indexer_up = False
+
+
         version = __version__
 
         api_name = app.config["APP_NAME"]
 
-        return (api_name, version, is_db_up, is_kv_up, is_es_up, is_jq_up)
+        return (
+            api_name,
+            version,
+            is_db_up,
+            is_kv_up,
+            is_es_up,
+            is_jq_up,
+            is_indexer_up
+        )
 
 
 class StatusResource(BaseStatusResource):
@@ -98,6 +119,7 @@ class StatusResource(BaseStatusResource):
             is_kv_up,
             is_es_up,
             is_jq_up,
+            is_indexer_up,
         ) = self.get_status()
 
         return {
@@ -107,6 +129,7 @@ class StatusResource(BaseStatusResource):
             "key-value-store-up": is_kv_up,
             "event-stream-up": is_es_up,
             "job-queue-up": is_jq_up,
+            "indexer-up": is_indexer_up,
         }
 
 
@@ -175,6 +198,7 @@ class TxtStatusResource(BaseStatusResource):
             is_kv_up,
             is_es_up,
             is_jq_up,
+            is_indexer_up
         ) = self.get_status()
 
         text = """name: %s
@@ -183,6 +207,7 @@ database-up: %s
 event-stream-up: %s
 key-value-store-up: %s
 job-queue-up: %s
+indexer-up: %s
 """ % (
             api_name,
             version,
@@ -190,6 +215,7 @@ job-queue-up: %s
             "up" if is_kv_up else "down",
             "up" if is_es_up else "down",
             "up" if is_jq_up else "down",
+            "up" if is_indexer_up else "down",
         )
         return Response(text, mimetype="text")
 
@@ -212,6 +238,7 @@ class InfluxStatusResource(BaseStatusResource):
             is_kv_up,
             is_es_up,
             is_jq_up,
+            is_indexer_up
         ) = self.get_status()
 
         return {
@@ -219,6 +246,7 @@ class InfluxStatusResource(BaseStatusResource):
             "key-value-store-up": int(is_kv_up),
             "event-stream-up": int(is_es_up),
             "job-queue-up": int(is_jq_up),
+            "indexer-up": int(is_indexer_up),
             "time": datetime.timestamp(datetime.now()),
         }
 
@@ -253,4 +281,10 @@ class ConfigResource(Resource):
             200:
                 description: Crisp token
         """
-        return {"crisp_token": app.config["CRISP_TOKEN"]}
+        return {
+            "crisp_token": app.config["CRISP_TOKEN"],
+            "indexer_configured": (
+                len(app.config["INDEXER"]["key"]) > 0 and
+                app.config["INDEXER"]["key"] != "masterkey"
+            )
+        }
