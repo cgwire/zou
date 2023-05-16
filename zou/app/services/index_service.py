@@ -1,3 +1,4 @@
+from zou.app import app
 from zou.app.indexer import indexing
 
 from zou.app.services import (
@@ -206,30 +207,48 @@ def index_asset(asset):
     """
     Register asset into the index.
     """
-    index = get_asset_index()
-    document = prepare_asset(asset)
-    indexing.index_document(index, document)
-    return document
+    try:
+        index = get_asset_index()
+        document = prepare_asset(asset)
+        indexing.index_document(index, document)
+        return document
+    except:
+        app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+        return {}
 
 
 def index_person(person):
     """
     Register person into the index.
     """
-    index = get_person_index()
-    document = prepare_person(person)
-    indexing.index_document(index, document)
-    return document
+    try:
+        index = get_person_index()
+        document = prepare_person(person)
+        indexing.index_document(index, document)
+        return document
+    except:
+        app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+        return {}
 
 
 def index_shot(shot):
     """
     Register shot into the index.
     """
-    index = get_shot_index()
-    document = prepare_shot(shot)
-    indexing.index_document(index, document)
-    return document
+    try:
+        index = get_shot_index()
+        document = prepare_shot(shot)
+        indexing.index_document(index, document)
+        return document
+    except:
+        app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+        return {}
 
 
 def prepare_asset(asset):
@@ -316,18 +335,36 @@ def remove_asset_index(asset_id):
     """
     Remove document matching given asset id from asset index.
     """
-    return indexing.remove_document(get_asset_index(), asset_id)
+    try:
+        return indexing.remove_document(get_asset_index(), asset_id)
+    except:
+        app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+        return {}
 
 
 def remove_person_index(person_id):
     """
     Remove document matching given person id from person index.
     """
-    return indexing.remove_document(get_person_index(), person_id)
+    try:
+        return indexing.remove_document(get_person_index(), person_id)
+    except:
+        app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+        return {}
 
 
 def remove_shot_index(shot_id):
     """
     Remove document matching given shot id from shot index.
     """
-    return indexing.remove_document(get_shot_index(), shot_id)
+    try:
+        return indexing.remove_document(get_shot_index(), shot_id)
+    except:
+        app.logger.error(
+            "Indexer is not reachable, indexation failed."
+        )
+        return {}
