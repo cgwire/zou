@@ -150,7 +150,7 @@ def get_movie_size(movie_path):
 
 
 def normalize_encoding(
-    movie_path, task, file_target_path, fps, b, width, height
+    movie_path, task, file_target_path, fps, b, width, height, keyframes=1
 ):
     logger.info(task)
     stream = ffmpeg.input(movie_path)
@@ -168,7 +168,7 @@ def normalize_encoding(
         color_trc=1,
         colorspace=1,
         movflags="+faststart",
-        x264opts="keyint=1:scenecut=0",
+        x264opts=f"keyint={keyframes}:scenecut=0",
         s="%sx%s" % (width, height),
     )
     try:
@@ -220,6 +220,7 @@ def normalize_movie(movie_path, fps, width, height):
         "28M",
         width,
         height,
+        keyframes=2
     )
 
     # Low def version
@@ -232,9 +233,10 @@ def normalize_movie(movie_path, fps, width, height):
         "Compute low def version",
         low_file_target_path,
         fps,
-        "5M",
+        "6M",
         low_width,
         low_height,
+        keyframes=2
     )
 
     return file_target_path, low_file_target_path, err
