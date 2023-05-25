@@ -582,10 +582,8 @@ def _run_remote_job_build_playlist(
     ]
     input_bytes = zlib.compress(bytes(json.dumps(preview_ids), "utf-8"))
     input_string = base64.b64encode(input_bytes).decode("ascii")
-    bucket_prefix = config.FS_BUCKET_PREFIX
     params = {
         "version": "1",
-        "bucket_prefix": bucket_prefix,
         "output_filename": Path(movie_file_path).name,
         "output_key": file_store.make_key("playlists", job["id"]),
         "input": input_string,

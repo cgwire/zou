@@ -1,12 +1,10 @@
+import os
 import json
 import sys
 
 from pathlib import Path
 
-from zou.remote.storage import ObjectStorageClient, S3Client, SwiftClient
-
-ObjectStorageClient.register(S3Client)
-ObjectStorageClient.register(SwiftClient)
+from flask_fs import Storage
 
 
 def get_config_from_payload():
@@ -39,11 +37,41 @@ def check_config_version(config):
     return version
 
 
-def get_storage(config):
-    if config["FS_BACKEND"] == "s3":
-        return S3Client(config)
-    elif config["FS_BACKEND"] == "swift":
-        return SwiftClient(config)
-    else:
+class FakeApp(object):
+    def __init__(self, config):
+        self.config = config
+
+
+def get_storage(config, bucket):
+    if config["FS_BACKEND"] not in ["s3", "swift"]:
         print("Unknown object storage backend (%r)" % config["FS_BACKEND"])
         sys.exit(1)
+
+    storage = Storage(
+        "%s%s" % (config.get("FS_BUCKET_PREFIX", ""), bucket),
+        overwrite=True,
+    )
+    app = FakeApp(config)
+    storage.configure(app)
+
+    return storage
+
+
+def make_key(prefix, id):
+    return f"{prefix}-{id}"
+
+
+def get_file_from_storage(storage, output_file_path, key):
+    if (
+        not os.path.isfile(output_file_path)
+        or os.path.getsize(output_file_path) == 0
+    ):
+        with open(output_file_path, "wb") as output_file:
+            output_file.write(storage.read(key, output_file))
+    return output_file_path
+
+
+def put_file_to_storage(storage, input_file_path, key):
+    with open(input_file_path, "rb") as input_file:
+        storage.write(key, input_file)
+    return input_file_path

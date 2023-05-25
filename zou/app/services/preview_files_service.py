@@ -265,10 +265,8 @@ def prepare_and_store_movie(
 
 
 def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
-    bucket_prefix = config.FS_BUCKET_PREFIX
     params = {
         "version": "1",
-        "bucket_prefix": bucket_prefix,
         "preview_file_id": preview_file_id,
         "width": width,
         "height": height,
