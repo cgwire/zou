@@ -9,7 +9,11 @@ def run_job(app, config, nomad_job_name, params):
     nomad_host = config.JOB_QUEUE_NOMAD_HOST
 
     params.update(
-        {k: v for k, v in config.__dict__.items() if k.startswith("FS_")}
+        {
+            k: v
+            for k, v in config.__dict__.items()
+            if k.startswith("FS_") and v is not None
+        }
     )
 
     data = json.dumps(params).encode("utf-8")

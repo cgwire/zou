@@ -61,17 +61,17 @@ def make_key(prefix, id):
     return f"{prefix}-{id}"
 
 
-def get_file_from_storage(storage, output_file_path, key):
+def get_file_from_storage(storage, output_file_path, filename):
     if (
         not os.path.isfile(output_file_path)
         or os.path.getsize(output_file_path) == 0
     ):
         with open(output_file_path, "wb") as output_file:
-            output_file.write(storage.read(key, output_file))
+            output_file.write(storage.read(filename))
     return output_file_path
 
 
-def put_file_to_storage(storage, input_file_path, key):
+def put_file_to_storage(storage, input_file_path, filename):
     with open(input_file_path, "rb") as input_file:
-        storage.write(key, input_file)
+        storage.write(filename, input_file)
     return input_file_path
