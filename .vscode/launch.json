@@ -11,10 +11,6 @@
                 "FLASK_DEBUG": "1",
                 "DEBUG": "1",
                 "MAIL_DEBUG": "1",
-                "DB_DATABASE": "zoudbtestcrypto",
-                "PREVIEW_FOLDER": "/mnt/DATA/DEV/zou/previews_crypto",
-                "FS_AES256_ENCRYPTED": "1",
-                "FS_AES256_KEY": "2op9UimtK-jlrExyUBXnLBfnCV_vsZ5I4IVHXOzzkls="
             },
             "args": [
                 "run",
