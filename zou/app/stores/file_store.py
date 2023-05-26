@@ -30,7 +30,7 @@ def clear_bucket(bucket):
 
 
 def make_key(prefix, id):
-    return "%s-%s" % (prefix, id)
+    return f"{prefix}-{id}"
 
 
 def make_read_generator(bucket, key):

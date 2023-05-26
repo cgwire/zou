@@ -8,26 +8,13 @@ import time
 def run_job(app, config, nomad_job_name, params):
     nomad_host = config.JOB_QUEUE_NOMAD_HOST
 
-    params.update({"FS_BACKEND": config.FS_BACKEND})
-    if config.FS_BACKEND == "s3":
-        params.update(
-            {
-                "S3_ENDPOINT": config.FS_S3_ENDPOINT,
-                "AWS_DEFAULT_REGION": config.FS_S3_REGION,
-                "AWS_ACCESS_KEY_ID": config.FS_S3_ACCESS_KEY,
-                "AWS_SECRET_ACCESS_KEY": config.FS_S3_SECRET_KEY,
-            }
-        )
-    elif config.FS_BACKEND == "swift":
-        params.update(
-            {
-                "OS_USERNAME": config.FS_SWIFT_USER,
-                "OS_PASSWORD": config.FS_SWIFT_KEY,
-                "OS_AUTH_URL": config.FS_SWIFT_AUTHURL,
-                "OS_TENANT_NAME": config.FS_SWIFT_TENANT_NAME,
-                "OS_REGION_NAME": config.FS_SWIFT_REGION_NAME,
-            }
-        )
+    params.update(
+        {
+            k: v
+            for k, v in config.__dict__.items()
+            if k.startswith("FS_") and v is not None
+        }
+    )
 
     data = json.dumps(params).encode("utf-8")
     payload = base64.b64encode(data).decode("utf-8")
