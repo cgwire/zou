@@ -112,13 +112,6 @@ sudo mkdir /opt/zou/previews
 sudo chown -R zou:www-data /opt/zou
 ```
 
-Create a folder to store the full text search indexes:
-
-```
-sudo mkdir /opt/zou/indexes
-sudo chown -R zou:www-data /opt/zou/indexes
-```
-
 Create a folder to store the temp files:
 
 ```
@@ -169,7 +162,7 @@ sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-db
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
 
-### Prepare key value store
+### Prepare the key value store
 
 Currently Redis require no extra configuration. 
 
@@ -182,6 +175,47 @@ vm.overcommit_memory = 1
 
 If you want to do performance tuning, have a look at [this
 article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
+
+
+### Set up the indexer (optional)
+
+Create a meilisearch user:
+
+```
+sudo useradd meilisearch 
+```
+
+Install Meilisearch:
+
+```
+echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/sources.list.d/fury.list
+sudo apt update && sudo apt install meilisearch
+```
+
+Define a master key then create the service file for meilisearch:
+
+*Path: /etc/systemd/system/meilisearch.service*
+
+```
+[Unit]
+Description=Meilisearch search engine
+After=network.target
+
+[Service]
+User=meilisearch
+Group=meilisearch
+ExecStart=/usr/bin/meilisearch --master-key="yourmasterkey"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Install and start the Meilisearch indexer:
+
+```
+sudo service meilisearch start
+```
+
 
 ### Configure Gunicorn
 
@@ -446,7 +480,6 @@ cd /opt/kitsu
 sudo git reset --hard
 sudo git pull --rebase origin build
 ```
-
 
 ## Admin users
 

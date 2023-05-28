@@ -22,6 +22,14 @@ the list of all expected parameters.
 * `KV_HOST` (default: localhost): The Redis server host.
 * `KV_PORT` (default: 6379): The Redis server port.
 
+## Indexer
+
+Kitsu uses the Meilisearch service for its indexation.
+
+* `INDEXER_KEY` (default: masterkey): The key required by Meilisearch.
+* `INDEXER_HOST` (default: localhost): The Meilisearch host.
+* `INDEXER_PORT` (default: 7700): The Meilisearch port.
+
 ## Authentication
 
 * `AUTH_STRATEGY` (default: auth\_local\_classic): Allow to chose between
