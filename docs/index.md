@@ -210,7 +210,7 @@ ExecStart=/usr/bin/meilisearch --master-key="yourmasterkey"
 WantedBy=multi-user.target
 ```
 
-Install and start the Meilisearch indexer:
+To finish, start the Meilisearch indexer:
 
 ```
 sudo service meilisearch start
