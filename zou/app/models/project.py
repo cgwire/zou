@@ -9,6 +9,7 @@ PROJECT_STYLES = [
     ("2d", "2D Animation"),
     ("3d", "3D Animation"),
     ("2d3d", "2D/3D Animation"),
+    ("ar", "Augmented Reality"),
     ("vfx", "VFX"),
     ("stop-motion", "Stop Motion"),
     ("motion-design", "Motion Design"),
@@ -16,6 +17,8 @@ PROJECT_STYLES = [
     ("commercial", "Commercial"),
     ("catalog", "Catalog"),
     ("immersive", "Immersive Experience"),
+    ("nft", "NFT Collection"),
+    ("video-game", "Video Game"),
 ]
 
 
