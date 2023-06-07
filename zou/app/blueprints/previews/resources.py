@@ -743,16 +743,6 @@ class BaseCreatePictureResource(Resource):
     def prepare_creation(self, instance_id):
         pass
 
-    def clear_cache_file(self, preview_file_id):
-        if config.FS_BACKEND != "local":
-            file_path = os.path.join(
-                config.TMP_DIR,
-                "cache-%s-%s.%s" % ("thumbnails", preview_file_id, "png"),
-            )
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        return preview_file_id
-
     def emit_event(self, instance_id):
         model_name = self.data_type[:-1]
         events.emit(
@@ -804,7 +794,9 @@ class BaseCreatePictureResource(Resource):
         )
         file_store.add_picture("thumbnails", instance_id, thumbnail_path)
         os.remove(thumbnail_path)
-        self.clear_cache_file(instance_id)
+        preview_files_service.clear_variant_from_cache(
+            instance_id, "thumbnails"
+        )
 
         thumbnail_url_path = thumbnail_utils.url_path(
             self.data_type, instance_id

@@ -285,11 +285,26 @@ def save_variants(preview_file_id, original_picture_path):
         original_picture_path, preview_file_id
     )
     variants.append(("original", original_picture_path))
-    for name, path in variants:
-        file_store.add_picture(name, preview_file_id, path)
+    for prefix, path in variants:
+        file_store.add_picture(prefix, preview_file_id, path)
         os.remove(path)
+        clear_variant_from_cache(preview_file_id, prefix)
 
-    return []  # variants
+    return variants
+
+
+def clear_variant_from_cache(preview_file_id, prefix):
+    """
+    Clear a variant from the cache to force to redownload from object storage.
+    """
+    if config.FS_BACKEND != "local":
+        file_path = os.path.join(
+            config.TMP_DIR,
+            "cache-%s-%s.%s" % (prefix, preview_file_id, "png"),
+        )
+        if os.path.exists(file_path):
+            os.remove(file_path)
+    return preview_file_id
 
 
 def update_preview_file_position(preview_file_id, position):
