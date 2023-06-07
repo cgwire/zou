@@ -79,12 +79,11 @@ class BaseStatusResource(Resource):
                 "{protocol}://{host}:{port}".format(
                     protocol=config.INDEXER["protocol"],
                     host=config.INDEXER["host"],
-                    port=config.INDEXER["port"]
+                    port=config.INDEXER["port"],
                 )
             )
         except Exception:
             is_indexer_up = False
-
 
         version = __version__
 
@@ -97,7 +96,7 @@ class BaseStatusResource(Resource):
             is_kv_up,
             is_es_up,
             is_jq_up,
-            is_indexer_up
+            is_indexer_up,
         )
 
 
@@ -198,7 +197,7 @@ class TxtStatusResource(BaseStatusResource):
             is_kv_up,
             is_es_up,
             is_jq_up,
-            is_indexer_up
+            is_indexer_up,
         ) = self.get_status()
 
         text = """name: %s
@@ -238,7 +237,7 @@ class InfluxStatusResource(BaseStatusResource):
             is_kv_up,
             is_es_up,
             is_jq_up,
-            is_indexer_up
+            is_indexer_up,
         ) = self.get_status()
 
         return {
@@ -284,7 +283,7 @@ class ConfigResource(Resource):
         return {
             "crisp_token": app.config["CRISP_TOKEN"],
             "indexer_configured": (
-                len(app.config["INDEXER"]["key"]) > 0 and
-                app.config["INDEXER"]["key"] != "masterkey"
-            )
+                len(app.config["INDEXER"]["key"]) > 0
+                and app.config["INDEXER"]["key"] != "masterkey"
+            ),
         }

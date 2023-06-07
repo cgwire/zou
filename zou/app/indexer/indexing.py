@@ -9,22 +9,19 @@ def init():
     Configure Meilisearch client.
     """
     from zou.app import config
+
     global client
     if client is None:
         protocol = config.INDEXER["protocol"]
         host = config.INDEXER["host"]
         port = config.INDEXER["port"]
         client = meilisearch.Client(
-            f"{protocol}://{host}:{port}",
-            config.INDEXER["key"]
+            f"{protocol}://{host}:{port}", config.INDEXER["key"]
         )
 
 
 def create_index(
-    index_name,
-    displayed_fields=[],
-    searchable_fields=[],
-    filterable_fields=[]
+    index_name, displayed_fields=[], searchable_fields=[], filterable_fields=[]
 ):
     """
     Create a new index and configure it properly by setting searchable_fields
@@ -36,18 +33,18 @@ def create_index(
     except MeilisearchApiError:
         pass
     if index is None:
-        task = client.create_index(index_name, {
-            "primaryKey": "id"
-        })
+        task = client.create_index(index_name, {"primaryKey": "id"})
         client.wait_for_task(task.task_uid)
         index = get_index(index_name)
     index.update_searchable_attributes(searchable_fields)
-    index.update_settings({
-        'filterableAttributes': filterable_fields,
-        'sortableAttributes': [
-            'name',
-        ]
-    })
+    index.update_settings(
+        {
+            "filterableAttributes": filterable_fields,
+            "sortableAttributes": [
+                "name",
+            ],
+        }
+    )
 
     return index
 
@@ -97,7 +94,7 @@ def search(ix, query, project_ids=[], limit=10):
     search_options = {
         "limit": limit,
         "sort": ["name:asc"],
-        "showMatchesPosition": True
+        "showMatchesPosition": True,
     }
     if len(project_ids) > 0:
         search_options["filter"] = f"project_id IN [{project_ids}]"

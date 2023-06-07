@@ -50,7 +50,6 @@ class AssetSearchTestCase(ApiDBTestCase):
             {"name": "pl004", "sequence_id": str(self.sequence.id)},
         )
 
-
     def test_search_assets_exact(self):
         assets = self.post("data/search", {"query": "rabbit"}, 200)["assets"]
         self.assertEqual(len(assets), 1)

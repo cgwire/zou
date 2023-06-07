@@ -14,7 +14,7 @@ from jwt import ExpiredSignatureError
 from babel.core import UnknownLocaleError
 from meilisearch.errors import (
     MeilisearchApiError,
-    MeilisearchCommunicationError
+    MeilisearchCommunicationError,
 )
 
 from zou.app import config, swagger
