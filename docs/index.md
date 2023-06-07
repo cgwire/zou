@@ -192,6 +192,13 @@ echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/
 sudo apt update && sudo apt install meilisearch
 ```
 
+Create a folder for the index:
+```
+sudo mkdir /opt/meilisearch
+sudo chown -R meilisearch: /opt/meilisearch
+```
+
+
 Define a master key then create the service file for meilisearch:
 
 *Path: /etc/systemd/system/meilisearch.service*
@@ -204,6 +211,7 @@ After=network.target
 [Service]
 User=meilisearch
 Group=meilisearch
+WorkingDirectory=/opt/meilisearch
 ExecStart=/usr/bin/meilisearch --master-key="yourmasterkey"
 
 [Install]
