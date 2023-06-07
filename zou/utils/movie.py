@@ -220,7 +220,7 @@ def normalize_movie(movie_path, fps, width, height):
         "28M",
         width,
         height,
-        keyframes=2
+        keyframes=2,
     )
 
     # Low def version
@@ -236,7 +236,7 @@ def normalize_movie(movie_path, fps, width, height):
         "6M",
         low_width,
         low_height,
-        keyframes=2
+        keyframes=2,
     )
 
     return file_target_path, low_file_target_path, err

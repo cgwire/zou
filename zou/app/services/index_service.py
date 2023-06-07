@@ -32,7 +32,7 @@ def get_shot_index():
 
 def chunks(lst, n):
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]
 
 
 def reset_index():
@@ -77,17 +77,9 @@ def reset_asset_index():
         "assets",
         assets_service.get_all_raw_assets,
         prepare_asset,
-        displayed_fields=[
-            "id",
-            "asset_type_id",
-            "episode_id"
-        ],
-        searchable_fields=[
-            "name",
-            "description",
-            "metadatas"
-        ],
-        filterable_fields=["project_id"]
+        displayed_fields=["id", "asset_type_id", "episode_id"],
+        searchable_fields=["name", "description", "metadatas"],
+        filterable_fields=["project_id"],
     )
 
 
@@ -102,7 +94,7 @@ def reset_person_index():
         ],
         searchable_fields=[
             "name",
-        ]
+        ],
     )
 
 
@@ -111,17 +103,9 @@ def reset_shot_index():
         "shots",
         shots_service.get_all_raw_shots,
         prepare_shot,
-        displayed_fields=[
-            "id",
-            "asset_type_id",
-            "episode_id"
-        ],
-        searchable_fields=[
-            "name",
-            "description",
-            "metadatas"
-        ],
-        filterable_fields=["project_id"]
+        displayed_fields=["id", "asset_type_id", "episode_id"],
+        searchable_fields=["name", "description", "metadatas"],
+        filterable_fields=["project_id"],
     )
 
 
@@ -213,9 +197,7 @@ def index_asset(asset):
         indexing.index_document(index, document)
         return document
     except:
-        app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
+        app.logger.error("Indexer is not reachable, indexation failed.")
         return {}
 
 
@@ -229,9 +211,7 @@ def index_person(person):
         indexing.index_document(index, document)
         return document
     except:
-        app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
+        app.logger.error("Indexer is not reachable, indexation failed.")
         return {}
 
 
@@ -245,9 +225,7 @@ def index_shot(shot):
         indexing.index_document(index, document)
         return document
     except:
-        app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
+        app.logger.error("Indexer is not reachable, indexation failed.")
         return {}
 
 
@@ -315,7 +293,11 @@ def prepare_shot(shot, index=None):
     if shot_serialized["data"]:
         for k, v in shot_serialized["data"].items():
             if k not in [
-                "frame_in", "frame_out", "fps", "handle_in", "handle_out"
+                "frame_in",
+                "frame_out",
+                "fps",
+                "handle_in",
+                "handle_out",
             ]:
                 metadatas[f"{k}"] = str(v)
 
@@ -338,9 +320,7 @@ def remove_asset_index(asset_id):
     try:
         return indexing.remove_document(get_asset_index(), asset_id)
     except:
-        app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
+        app.logger.error("Indexer is not reachable, indexation failed.")
         return {}
 
 
@@ -351,9 +331,7 @@ def remove_person_index(person_id):
     try:
         return indexing.remove_document(get_person_index(), person_id)
     except:
-        app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
+        app.logger.error("Indexer is not reachable, indexation failed.")
         return {}
 
 
@@ -364,7 +342,5 @@ def remove_shot_index(shot_id):
     try:
         return indexing.remove_document(get_shot_index(), shot_id)
     except:
-        app.logger.error(
-            "Indexer is not reachable, indexation failed."
-        )
+        app.logger.error("Indexer is not reachable, indexation failed.")
         return {}
