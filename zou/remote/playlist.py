@@ -38,10 +38,12 @@ def fetch_inputs(storage, outdir, preview_file_ids):
         filename = f"cache-previews-{input_id}.mp4"
         file_path = os.path.join(outdir, filename)
         input_paths.append(
-            get_file_from_storage(
-                storage, file_path, make_key("previews", input_id)
-            ),
-            filename,
+            (
+                get_file_from_storage(
+                    storage, file_path, make_key("previews", input_id)
+                ),
+                filename,
+            )
         )
     return input_paths
 
