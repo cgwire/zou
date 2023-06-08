@@ -48,35 +48,42 @@ def get_file_path_and_file(
         file_path = os.path.join(
             config.TMP_DIR, "cache-%s-%s.%s" % (prefix, instance_id, extension)
         )
+
         if is_unvalid_file(file_path, file_size):
-            with open(file_path, "wb") as tmp_file:
-                try:
+            download_failed = False
+            try:
+                with open(file_path, "wb") as tmp_file:
                     for chunk in open_file(prefix, instance_id):
                         tmp_file.write(chunk)
-                except RuntimeError:
-                    pass
+            except:
+                download_failed = True
 
-        if is_unvalid_file(file_path, file_size):  # download failed
-            time.sleep(3)
-            with open(file_path, "wb") as tmp_file:
+            if is_unvalid_file(
+                file_path, file_size, download_failed
+            ):  # download failed
+                time.sleep(3)
+                download_failed = False
                 try:
-                    for chunk in open_file(prefix, instance_id):
-                        tmp_file.write(chunk)
-                except RuntimeError:
-                    pass
+                    with open(file_path, "wb") as tmp_file:
+                        for chunk in open_file(prefix, instance_id):
+                            tmp_file.write(chunk)
+                except:
+                    download_failed = True
 
-            if is_unvalid_file(file_path, file_size):  # download failed again
-                rm_file(file_path)
-                raise DownloadFromStorageFailedException
+                if is_unvalid_file(
+                    file_path, file_size, download_failed
+                ):  # download failed again
+                    rm_file(file_path)
+                    raise DownloadFromStorageFailedException
 
     return file_path
 
 
-def is_unvalid_file(file_path, file_size=None):
+def is_unvalid_file(file_path, file_size=None, download_failed=False):
     """
     Check if file is absent, is empty or does match given size.
     """
-    if not os.path.exists(file_path):
+    if download_failed or not os.path.exists(file_path):
         return True
     elif file_size is None:
         return get_file_size(file_path) == 0
