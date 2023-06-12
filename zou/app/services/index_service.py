@@ -234,12 +234,16 @@ def prepare_asset(asset):
     Prepare a indexation document from given asset.
     """
     asset_serialized = asset.serialize()
+    asset_type = assets_service.get_asset_type(
+        asset_serialized["entity_type_id"]
+    )
     metadatas = {}
     if asset_serialized["data"]:
         for k, v in asset_serialized["data"].items():
             metadatas[f"{k}"] = str(v)
     name = asset_serialized["name"]
     name = name + " " + name.replace("_", " ").replace("-", " ")
+    name = asset_type["name"] + " " + name
     data = {
         "id": asset_serialized["id"],
         "name": name,
