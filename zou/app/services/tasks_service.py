@@ -3,6 +3,7 @@ import datetime
 import uuid
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
+from sqlalchemy.sql import func
 from sqlalchemy.orm import aliased
 
 from zou.app import app, db
@@ -1600,3 +1601,32 @@ def reset_task_data(task_id):
     project_id = str(task.project_id)
     events.emit("task:update", {"task_id": task.id}, project_id)
     return task.serialize()
+
+
+def get_persons_tasks_dates():
+    """
+    For schedule usages, for each active person, it returns the first start
+    date of all tasks of assigned to this person and the last end date.
+    """
+    project_ids = projects_service.open_project_ids()
+    query = (
+        Task
+        .query
+        .with_entities(
+            Person.id,
+            func.min(Task.start_date),
+            func.max(Task.due_date)
+        )
+        .filter(Person.active)
+        .filter(Task.project_id.in_(project_ids))
+        .group_by(Person.id)
+        .join(Task.assignees)
+    )
+    return [
+        {
+            "person_id": str(person_id),
+            "min_date": str(min_date),
+            "max_date": str(max_date),
+        }
+        for (person_id, min_date, max_date) in query.all()
+    ]
