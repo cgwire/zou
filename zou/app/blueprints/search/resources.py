@@ -39,6 +39,7 @@ class SearchResource(Resource, ArgsMixin):
         args = self.get_args(
             [
                 ("query", "", True),
+                ("project_id", None, False),
                 ("limit", 3, False, int),
                 (
                     "index_names",
@@ -51,6 +52,7 @@ class SearchResource(Resource, ArgsMixin):
         )
         query = args["query"]
         limit = args["limit"]
+        project_id = args["project_id"]
         index_names = args["index_names"]
         results = {}
         if len(query) < 3:
@@ -60,18 +62,25 @@ class SearchResource(Resource, ArgsMixin):
             projects = projects_service.open_projects()
         else:
             projects = user_service.get_open_projects()
+        project_ids = [project["id"] for project in projects]
+
+        if project_id is not None and len(project_id) > 0:
+            if project_id in project_ids:
+                project_ids = [project_id]
+            else:
+                project_ids = []
+
         if "persons" in index_names:
             results["persons"] = index_service.search_persons(
                 query, limit=limit
             )
-        open_project_ids = [project["id"] for project in projects]
         if "assets" in index_names:
             results["assets"] = index_service.search_assets(
-                query, open_project_ids, limit=limit
+                query, project_ids, limit=limit
             )
         if "shots" in index_names:
             results["shots"] = index_service.search_shots(
-                query, open_project_ids, limit=limit
+                query, project_ids, limit=limit
             )
 
         return results

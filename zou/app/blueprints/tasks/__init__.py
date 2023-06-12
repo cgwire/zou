@@ -32,6 +32,7 @@ from zou.app.blueprints.tasks.resources import (
     SetTimeSpentResource,
     AddTimeSpentResource,
     SetTaskMainPreviewResource,
+    PersonsTasksDatesResource,
 )
 
 
@@ -61,6 +62,7 @@ routes = [
         ProjectSubscriptionsResource,
     ),
     ("/data/projects/<project_id>/tasks", ProjectTasksResource),
+    ("/data/persons/task-dates", PersonsTasksDatesResource),
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/delete-tasks",
         DeleteAllTasksForTaskTypeResource,
