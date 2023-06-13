@@ -1491,7 +1491,6 @@ class SetTaskMainPreviewResource(Resource):
 
 
 class PersonsTasksDatesResource(Resource):
-
     @jwt_required()
     @permissions.require_admin
     def get(self):
@@ -1510,8 +1509,7 @@ class PersonsTasksDatesResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: For each person, the first start date of all tasks
-                of assigned to this person and the last end date.
+                description: For each person, the first start date of all tasks of assigned to this person and the last end date.
         """
         permissions.check_admin_permissions()
         return tasks_service.get_persons_tasks_dates()

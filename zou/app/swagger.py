@@ -49,7 +49,7 @@ $ curl -H "Authorization: Bearer $jwt" <server_address>/api/data/projects
 """
 
 swagger_template = {
-    "swagger": "2.0",
+    "openapi": "3.1",
     "info": {
         "title": "Kitsu API",
         "description": description,
