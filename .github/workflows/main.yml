@@ -21,6 +21,7 @@ jobs:
        script: |
          cd /opt/zou
          source /etc/zou/zou.env
+         sudo /opt/zou/zouenv/bin/pip uninstall -y zou
          sudo /opt/zou/zouenv/bin/pip install --upgrade git+https://github.com/cgwire/zou.git
          sudo -E -u zou /opt/zou/zouenv/bin/zou upgrade-db
          sudo systemctl restart zou zou-events zou-jobs
