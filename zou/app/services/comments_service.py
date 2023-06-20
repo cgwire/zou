@@ -147,7 +147,7 @@ def _manage_status_change(task_status, task, comment):
             new_data["real_start_date"] = datetime.datetime.now()
 
     tasks_service.update_task(task["id"], new_data)
-    task.update(new_data)
+
     if status_changed:
         events.emit(
             "task:status-changed",
@@ -159,6 +159,7 @@ def _manage_status_change(task_status, task, comment):
             },
             project_id=task["project_id"],
         )
+    task.update(new_data)
     return task, status_changed
 
 
