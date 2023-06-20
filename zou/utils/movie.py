@@ -80,7 +80,7 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     file_target_path = os.path.join(folder_path, file_target_name)
 
     frame_time = otio.opentime.RationalTime(
-        frame_number, float(movie_fps)
+        frame_number - 1, float(movie_fps)
     ).to_time_string()
 
     try:

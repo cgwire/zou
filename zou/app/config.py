@@ -58,7 +58,7 @@ INDEXER = {
     "key": os.getenv("INDEXER_KEY", "masterkey"),
 }
 
-NB_RECORDS_PER_PAGE = 100
+NB_RECORDS_PER_PAGE = int(os.getenv("NB_RECORDS_PER_PAGE", 100))
 
 PREVIEW_FOLDER = os.getenv(
     "PREVIEW_FOLDER",

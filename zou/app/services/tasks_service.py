@@ -1610,12 +1610,8 @@ def get_persons_tasks_dates():
     """
     project_ids = projects_service.open_project_ids()
     query = (
-        Task
-        .query
-        .with_entities(
-            Person.id,
-            func.min(Task.start_date),
-            func.max(Task.due_date)
+        Task.query.with_entities(
+            Person.id, func.min(Task.start_date), func.max(Task.due_date)
         )
         .filter(Person.active)
         .filter(Task.project_id.in_(project_ids))
