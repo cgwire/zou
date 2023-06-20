@@ -1002,13 +1002,13 @@ class SetMainPreviewResource(Resource, ArgsMixin):
             200:
                 description: Given preview set as main preview
         """
-        args = self.get_args([("frame_number", 0, False, int)])
+        args = self.get_args([("frame_number", None, False, int)])
         frame_number = args["frame_number"]
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
-        if frame_number > 0:
+        if frame_number is not None:
             if preview_file["extension"] != "mp4":
                 raise ArgumentsException(
                     "Can't use a given frame on non movie preview"
