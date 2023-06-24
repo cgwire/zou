@@ -51,6 +51,7 @@ def get_file_path_and_file(
 
         if is_unvalid_file(file_path, file_size):
             download_failed = False
+            exception = None
             try:
                 with open(file_path, "wb") as tmp_file:
                     for chunk in open_file(prefix, instance_id):
@@ -67,14 +68,18 @@ def get_file_path_and_file(
                     with open(file_path, "wb") as tmp_file:
                         for chunk in open_file(prefix, instance_id):
                             tmp_file.write(chunk)
-                except:
+                except Exception as e:
                     download_failed = True
+                    exception = e
 
                 if is_unvalid_file(
                     file_path, file_size, download_failed
                 ):  # download failed again
                     rm_file(file_path)
-                    raise DownloadFromStorageFailedException
+                    if exception is not None:
+                        raise exception
+                    else:
+                        raise DownloadFromStorageFailedException
 
     return file_path
 
