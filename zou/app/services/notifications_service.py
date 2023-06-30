@@ -12,6 +12,7 @@ from zou.app.services import (
     assets_service,
     emails_service,
     persons_service,
+    projects_service,
     tasks_service,
 )
 from zou.app.services.exception import PersonNotFoundException
@@ -141,7 +142,8 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
         except PersonNotFoundException:
             pass
 
-    for recipient_id in comment["mentions"]:
+    mentions = get_mentioned_people(task["project_id"], comment)
+    for recipient_id in mentions:
         if recipient_id != comment["person_id"]:
             notification = create_notification(
                 recipient_id,
@@ -166,6 +168,22 @@ def create_notifications_for_task_and_comment(task, comment, change=False):
     return recipient_ids
 
 
+def get_mentioned_people(project_id, comment):
+    """
+    Return all people mentioned in the comment: the one listed via their name
+    and the one listed via their department.
+    """
+    mentions = comment["mentions"]
+    for department_id in comment["department_mentions"]:
+        persons = projects_service.get_department_team(
+            project_id,
+            department_id
+        )
+        for person in persons:
+            mentions.append(str(person.id))
+    return mentions
+
+
 def create_notifications_for_task_and_reply(task, comment, reply):
     """
     For given task, comment and reply, create a notification for every assignee
@@ -187,7 +205,7 @@ def create_notifications_for_task_and_reply(task, comment, reply):
                 reply_id=reply["id"],
                 read=False,
                 type="reply",
-                created_at=comment["created_at"],
+                created_at=reply["created_at"],
             )
             emails_service.send_reply_notification(
                 recipient_id, author_id, comment, task, reply
@@ -203,6 +221,32 @@ def create_notifications_for_task_and_reply(task, comment, reply):
             )
         except PersonNotFoundException:
             pass
+
+    mentions = get_mentioned_people(task["project_id"], reply)
+    for recipient_id in mentions:
+        if recipient_id != reply["person_id"]:
+            notification = create_notification(
+                recipient_id,
+                comment_id=comment["id"],
+                author_id=reply["person_id"],
+                task_id=task["id"],
+                reply_id=reply["id"],
+                read=False,
+                type="reply-mention",
+            )
+            emails_service.send_mention_notification(
+                recipient_id, author_id, comment, task
+            )
+            events.emit(
+                "notification:new",
+                {
+                    "notification_id": notification["id"],
+                    "person_id": recipient_id,
+                },
+                project_id=task["project_id"],
+                persist=False,
+            )
+
     return recipient_ids
 
 
@@ -217,7 +261,8 @@ def reset_notifications_for_mentions(comment):
     notifications = []
     task = tasks_service.get_task(comment["object_id"])
     author_id = comment["person_id"]
-    for recipient_id in comment["mentions"]:
+    mentions = get_mentioned_people(task["project_id"], comment["mentions"])
+    for recipient_id in mentions:
         notification = create_notification(
             recipient_id,
             comment_id=comment["id"],
