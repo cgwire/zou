@@ -1154,7 +1154,7 @@ def update_task(task_id, data):
     task = get_task_raw(task_id)
 
     if is_finished(task, data):
-        data["end_date"] = datetime.datetime.now()
+        data["end_date"] = datetime.datetime.utcnow()
 
     task.update(data)
     clear_task_cache(task_id)

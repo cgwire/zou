@@ -138,13 +138,13 @@ def _manage_status_change(task_status, task, comment):
             new_data["retake_count"] = retake_count + 1
 
         if task_status["is_feedback_request"]:
-            new_data["end_date"] = datetime.datetime.now()
+            new_data["end_date"] = datetime.datetime.utcnow()
 
         if (
             task_status["short_name"] == "wip"
             and task["real_start_date"] is None
         ):
-            new_data["real_start_date"] = datetime.datetime.now()
+            new_data["real_start_date"] = datetime.datetime.utcnow()
 
     tasks_service.update_task(task["id"], new_data)
 

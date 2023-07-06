@@ -44,7 +44,7 @@ def clean_auth_tokens():
         else:
             is_revoked = value["revoked"] == True
             expiration = datetime.datetime.fromtimestamp(value["token"]["exp"])
-            is_expired = expiration < datetime.datetime.now()
+            is_expired = expiration < datetime.datetime.utcnow()
 
             if is_revoked or is_expired:
                 auth_tokens_store.delete(key)
