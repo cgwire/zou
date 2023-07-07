@@ -25,14 +25,14 @@ from zou.app.services.tasks_service import (
 )
 
 mapping_substitutions_to_regex = {
-    "${project_name}": "(?P<project_name>\w*)",
-    "$project_name": "(?P<project_name>\w*)",
-    "${episode_name}": "(?P<episode_name>\w*)",
-    "$episode_name": "(?P<episode_name>\w*)",
-    "${sequence_name}": "(?P<sequence_name>\w*)",
-    "$sequence_name": "(?P<sequence_name>\w*)",
-    "${shot_name}": "(?P<shot_name>\w*)",
-    "$shot_name": "(?P<shot_name>\w*)",
+    "${project_name}": r"(?P<project_name>\w*)",
+    "$project_name": r"(?P<project_name>\w*)",
+    "${episode_name}": r"(?P<episode_name>\w*)",
+    "$episode_name": r"(?P<episode_name>\w*)",
+    "${sequence_name}": r"(?P<sequence_name>\w*)",
+    "$sequence_name": r"(?P<sequence_name>\w*)",
+    "${shot_name}": r"(?P<shot_name>\w*)",
+    "$shot_name": r"(?P<shot_name>\w*)",
 }
 
 
