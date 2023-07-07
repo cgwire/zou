@@ -216,9 +216,17 @@ def sync_with_ldap_server():
         query = "(objectClass=person)"
         if is_ad:
             query = "(&(objectClass=person)(!(objectClass=computer)))"
-        if len(LDAP_GROUP) > 0 and is_ad:
-            query = "(&(objectClass=person)(memberOf=%s))" % LDAP_GROUP
-        conn.search(LDAP_BASE_DN, query, attributes=attributes)
+        if len(LDAP_GROUP) > 0:
+            if is_ad:
+                query = f"(&(objectClass=person)(memberOf={LDAP_GROUP}))"
+            else:
+                conn.search(
+                    LDAP_BASE_DN,
+                    f"(&(objectClass=groupofUniqueNames)(cn={LDAP_GROUP}))",
+                    attributes=["uniqueMember"],
+                )
+                group_members = conn.entries[0].uniqueMember.values
+            conn.search(LDAP_BASE_DN, query, attributes=attributes)
         return [
             {
                 "first_name": clean_value(entry.givenName or entry.cn),
@@ -237,6 +245,11 @@ def sync_with_ldap_server():
             for entry in conn.entries
             if clean_value(entry.sAMAccountName if is_ad else entry.uid)
             not in excluded_accounts
+            and (
+                len(LDAP_GROUP) > 0
+                and not is_ad
+                and entry.entry_dn in group_members
+            )
         ]
 
     def get_ldap_users():
