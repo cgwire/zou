@@ -11,6 +11,7 @@ from zou.app.services import (
     assets_service,
     breakdown_service,
     entities_service,
+    edits_service,
     index_service,
     persons_service,
     shots_service,
@@ -132,6 +133,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 assets_service.clear_asset_cache(entity_dict["id"])
             elif shots_service.is_sequence(entity_dict):
                 shots_service.clear_sequence_cache(entity_dict["id"])
+            elif shots_service.is_edit(entity_dict):
+                edits_service.clear_edit_cache(entity_dict["id"])
             elif shots_service.is_episode(entity_dict):
                 shots_service.clear_episode_cache(entity_dict["id"])
             entities_service.clear_entity_cache(entity_dict["id"])
