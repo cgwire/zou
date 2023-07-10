@@ -61,6 +61,11 @@ def get_episode_type():
 
 
 @cache.memoize_function(1200)
+def get_edit_type():
+    return entities_service.get_temporal_entity_type_by_name("Edit")
+
+
+@cache.memoize_function(1200)
 def get_sequence_type():
     return entities_service.get_temporal_entity_type_by_name("Sequence")
 
@@ -635,6 +640,14 @@ def is_sequence(entity):
     return str(entity["entity_type_id"]) == sequence_type["id"]
 
 
+def is_edit(entity):
+    """
+    Returns True if given entity has 'Edit' as entity type
+    """
+    edit_type = get_edit_type()
+    return str(entity["entity_type_id"]) == edit_type["id"]
+
+
 def is_episode(entity):
     """
     Returns True if given entity has 'Episode' as entity type
@@ -1083,6 +1096,8 @@ def get_base_entity_type_name(entity_dict):
         type_name = "Shot"
     elif is_sequence(entity_dict):
         type_name = "Sequence"
+    elif is_edit(entity_dict):
+        type_name = "Edit"
     elif is_episode(entity_dict):
         type_name = "Episode"
     elif is_scene(entity_dict):
