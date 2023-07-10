@@ -79,7 +79,7 @@ def get_preview_file_fps(project):
     """
     fps = "25.00"
     if project.get("fps", None) is not None:
-        fps = "%.2f" % float(project["fps"].replace(",", "."))
+        fps = "%.3f" % float(project["fps"].replace(",", "."))
     return fps
 
 
