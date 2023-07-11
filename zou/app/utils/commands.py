@@ -231,7 +231,7 @@ def sync_with_ldap_server():
             {
                 "first_name": clean_value(entry.givenName or entry.cn),
                 "last_name": clean_value(entry.sn),
-                "email": clean_value(entry.mail),
+                "email": entry.mail.values,
                 "desktop_login": clean_value(
                     entry.sAMAccountName if is_ad else entry.uid
                 ),
@@ -293,19 +293,34 @@ def sync_with_ldap_server():
             else:
                 thumbnail = ""
 
+            if len(email) == 0:
+                email_list = ["%s@%s" % (desktop_login, EMAIL_DOMAIN)]
+            else:
+
+                def sort_mails(email):
+                    if email == desktop_login:
+                        return -2
+                    elif EMAIL_DOMAIN in email:
+                        return -1
+                    else:
+                        return 0
+
+                email_list = sorted(email, key=sort_mails)
+            email = email_list[0]
+
             person = None
             try:
                 person = persons_service.get_person_by_desktop_login(
                     desktop_login
                 )
             except PersonNotFoundException:
-                try:
-                    person = persons_service.get_person_by_email(email)
-                except PersonNotFoundException:
-                    pass
-
-            if len(email) == 0 or email == "[]" or not isinstance(email, str):
-                email = "%s@%s" % (desktop_login, EMAIL_DOMAIN)
+                for mail in email_list:
+                    try:
+                        person = persons_service.get_person_by_email(mail)
+                        email = mail
+                        break
+                    except PersonNotFoundException:
+                        pass
 
             if person is None and active is True:
                 try:
