@@ -242,11 +242,11 @@ class PlaylistTestCase(ApiDBTestCase):
 
     def test_get_preview_file_fps(self):
         fps = get_preview_file_fps({"fps": "24.00"})
-        self.assertEqual(fps, "24.00")
+        self.assertEqual(fps, "24.000")
         fps = get_preview_file_fps({})
-        self.assertEqual(fps, "25.00")
+        self.assertEqual(fps, "25.000")
         fps = get_preview_file_fps({"fps": None})
-        self.assertEqual(fps, "25.00")
+        self.assertEqual(fps, "25.000")
 
     def test_get_last_preview_file_for_task(self):
         preview_file = self.generate_fixture_preview_file()
