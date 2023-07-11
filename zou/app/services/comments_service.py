@@ -264,7 +264,7 @@ def new_comment(
         object_type=object_type,
         task_status_id=task_status_id,
         person_id=person_id,
-        mentions=get_comment_mentions(task_id, text),
+        mentions=get_comment_mentions(task["project_id"], text),
         department_mentions=get_comment_department_mentions(
             task_id,
             text
