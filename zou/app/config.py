@@ -56,6 +56,7 @@ INDEXER = {
     "port": os.getenv("INDEXER_PORT", "7700"),
     "protocol": os.getenv("INDEXER_PROTOCOL", "http"),
     "key": os.getenv("INDEXER_KEY", "masterkey"),
+    "timeout": int(os.getenv("INDEXER_TIMEOUT", 5000)),
 }
 
 NB_RECORDS_PER_PAGE = int(os.getenv("NB_RECORDS_PER_PAGE", 100))

@@ -1,5 +1,6 @@
 import meilisearch
 from meilisearch.errors import MeilisearchApiError
+from zou.app import config
 
 client = None
 
@@ -8,21 +9,18 @@ def init():
     """
     Configure Meilisearch client.
     """
-    from zou.app import config
-
-    global client
     if client is None:
         protocol = config.INDEXER["protocol"]
         host = config.INDEXER["host"]
         port = config.INDEXER["port"]
         client = meilisearch.Client(
-            f"{protocol}://{host}:{port}", config.INDEXER["key"]
+            f"{protocol}://{host}:{port}",
+            config.INDEXER["key"],
+            timeout=config.INDEXER["timeout"],
         )
 
 
-def create_index(
-    index_name, displayed_fields=[], searchable_fields=[], filterable_fields=[]
-):
+def create_index(index_name, searchable_fields=[], filterable_fields=[]):
     """
     Create a new index and configure it properly by setting searchable_fields
     and allowing to filter on project ids.
@@ -34,7 +32,9 @@ def create_index(
         pass
     if index is None:
         task = client.create_index(index_name, {"primaryKey": "id"})
-        client.wait_for_task(task.task_uid)
+        client.wait_for_task(
+            task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
+        )
         index = get_index(index_name)
     index.update_searchable_attributes(searchable_fields)
     index.update_settings(
@@ -63,7 +63,9 @@ def clear_index(index_name):
     """
     index = get_index(index_name)
     task = index.delete_all_documents()
-    client.wait_for_task(task.task_uid)
+    client.wait_for_task(
+        task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
+    )
     return index
 
 
@@ -72,7 +74,9 @@ def index_document(index, document):
     Add given document to given index.
     """
     task = index.add_documents([document])
-    client.wait_for_task(task.task_uid)
+    client.wait_for_task(
+        task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
+    )
     return index
 
 
@@ -81,7 +85,9 @@ def index_documents(index, documents):
     Add given documents to given index.
     """
     task = index.add_documents(documents)
-    client.wait_for_task(task.task_uid)
+    client.wait_for_task(
+        task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
+    )
     return documents
 
 
