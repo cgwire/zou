@@ -1,5 +1,3 @@
-import sys
-
 from sqlalchemy_utils import (
     UUIDType,
     EmailType,
@@ -87,10 +85,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
 
     def __repr__(self):
-        if sys.version_info[0] < 3:
-            return "<Person %s>" % self.full_name().encode("utf-8")
-        else:
-            return "<Person %s>" % self.full_name()
+        return "<Person %s>" % self.full_name()
 
     def full_name(self):
         return "%s %s" % (self.first_name, self.last_name)
@@ -152,7 +147,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         is_update = False
         previous_person = cls.get(person["id"])
 
-        if "password" in person:
+        if "password" in person and person["password"] is not None:
             person["password"] = person["password"].encode()
 
         department_ids = None
