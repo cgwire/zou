@@ -180,7 +180,7 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             201:
                 description: Desktop login log entry created.
         """
-        args = self.get_args([("date", datetime.datetime.now())])
+        args = self.get_args([("date", datetime.datetime.utcnow())])
 
         current_user = persons_service.get_current_user()
         if (

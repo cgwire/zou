@@ -169,7 +169,7 @@ class BaseMixin(object):
         instance fields.
         """
         try:
-            self.updated_at = datetime.datetime.now()
+            self.updated_at = datetime.datetime.utcnow()
             db.session.add(self)
             db.session.commit()
         except BaseException:
@@ -204,7 +204,7 @@ class BaseMixin(object):
         instance fields.
         """
         try:
-            self.updated_at = datetime.datetime.now()
+            self.updated_at = datetime.datetime.utcnow()
             for key, value in data.items():
                 setattr(self, key, value)
             db.session.add(self)
@@ -219,7 +219,7 @@ class BaseMixin(object):
         Shorthand to update an entry via the database session based on current
         instance fields. It doesn't generate a commit.
         """
-        self.updated_at = datetime.datetime.now()
+        self.updated_at = datetime.datetime.utcnow()
         for key, value in data.items():
             setattr(self, key, value)
         db.session.add(self)

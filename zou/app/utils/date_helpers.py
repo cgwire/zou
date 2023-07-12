@@ -7,7 +7,7 @@ from zou.app.services.exception import WrongDateFormatException
 
 
 def get_now():
-    return get_string_with_timezone_from_date(datetime.now(), "UTC")
+    return get_string_with_timezone_from_date(datetime.utcnow(), "UTC")
 
 
 def get_date_from_now(nb_days):

@@ -104,7 +104,7 @@ def check_auth(
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
         update_login_failed_attemps(
-            person["id"], login_failed_attemps + 1, datetime.now()
+            person["id"], login_failed_attemps + 1, datetime.utcnow()
         )
         raise WrongPasswordException()
 
@@ -117,7 +117,7 @@ def check_auth(
             recovery_code,
         ):
             update_login_failed_attemps(
-                person["id"], login_failed_attemps + 1, datetime.now()
+                person["id"], login_failed_attemps + 1, datetime.utcnow()
             )
             raise WrongOTPException()
 
@@ -235,7 +235,7 @@ def check_login_failed_attemps(person):
         login_failed_attemps >= 5
         and date_helpers.get_datetime_from_string(person["last_login_failed"])
         + timedelta(minutes=1)
-        > datetime.now()
+        > datetime.utcnow()
     ):
         raise TooMuchLoginFailedAttemps()
     return login_failed_attemps
@@ -771,7 +771,7 @@ def check_login_failed_attemps(person):
         login_failed_attemps >= 5
         and date_helpers.get_datetime_from_string(person["last_login_failed"])
         + timedelta(minutes=1)
-        > datetime.now()
+        > datetime.utcnow()
     ):
         raise TooMuchLoginFailedAttemps()
     return login_failed_attemps

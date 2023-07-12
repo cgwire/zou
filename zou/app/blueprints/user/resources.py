@@ -664,7 +664,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
             201:
                 description: Desktop login logs created
         """
-        arguments = self.get_args(["date", datetime.datetime.now()])
+        arguments = self.get_args(["date", datetime.datetime.utcnow()])
         current_user = persons_service.get_current_user()
         desktop_login_log = persons_service.create_desktop_login_logs(
             current_user["id"], arguments["date"]

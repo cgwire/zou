@@ -246,7 +246,7 @@ class InfluxStatusResource(BaseStatusResource):
             "event-stream-up": int(is_es_up),
             "job-queue-up": int(is_jq_up),
             "indexer-up": int(is_indexer_up),
-            "time": datetime.timestamp(datetime.now()),
+            "time": datetime.timestamp(datetime.utcnow()),
         }
 
 
