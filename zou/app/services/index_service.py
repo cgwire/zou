@@ -49,7 +49,6 @@ def reset_entry_index(
     index_name,
     get_entries,
     prepare_entry,
-    displayed_fields=[],
     searchable_fields=[],
     filterable_fields=[],
 ):
@@ -58,7 +57,7 @@ def reset_entry_index(
     func to get entries to index, func to index a given entry.
     """
     index = indexing.create_index(
-        index_name, displayed_fields, searchable_fields, filterable_fields
+        index_name, searchable_fields, filterable_fields
     )
     indexing.clear_index(index_name)
     entries = get_entries()
@@ -77,7 +76,6 @@ def reset_asset_index():
         "assets",
         assets_service.get_all_raw_assets,
         prepare_asset,
-        displayed_fields=["id", "asset_type_id", "episode_id"],
         searchable_fields=["name", "description", "metadatas"],
         filterable_fields=["project_id"],
     )
@@ -88,10 +86,6 @@ def reset_person_index():
         "persons",
         persons_service.get_all_raw_active_persons,
         prepare_person,
-        displayed_fields=[
-            "id",
-            "name",
-        ],
         searchable_fields=[
             "name",
         ],
@@ -103,7 +97,6 @@ def reset_shot_index():
         "shots",
         shots_service.get_all_raw_shots,
         prepare_shot,
-        displayed_fields=["id", "asset_type_id", "episode_id"],
         searchable_fields=["name", "description", "metadatas"],
         filterable_fields=["project_id"],
     )

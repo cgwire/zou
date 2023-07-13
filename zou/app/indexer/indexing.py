@@ -9,6 +9,7 @@ def init():
     """
     Configure Meilisearch client.
     """
+    global client
     if client is None:
         protocol = config.INDEXER["protocol"]
         host = config.INDEXER["host"]
