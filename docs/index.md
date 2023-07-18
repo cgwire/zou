@@ -2,11 +2,11 @@
 
 # Welcome to the Kitsu API (Zou) documentation
 
-The Kitsu API allows to store and manage the data of your animation/VFX production.
-Through it you can link all the tools of your pipeline and make sure they are
+The Kitsu API allows you to store and manage the data of your animation/VFX production.
+Through it, you can link all the tools of your pipeline and make sure they are
 all synchronized. 
 
-To integrate it in your tools you can rely on the dedicated Python
+To integrate it into your tools you can rely on the dedicated Python
 client named [Gazu](https://gazu.cg-wire.com). 
 
 # Who is it for?
@@ -15,7 +15,7 @@ The Kitsu API is made for Technical Directors, ITs and
 Software Engineers from animation and VFX studios. With this API they can enhance
 the tools they provide to the studio departments.
 
-On top of the API, you can deploy the Kitsu frontend, which bring you the full
+On top of the API, you can deploy the Kitsu frontend, which brings you the full
 bundle of the collaboration platform developed by CGWire.
 
 # Features 
@@ -23,13 +23,13 @@ bundle of the collaboration platform developed by CGWire.
 The Kitsu API can:
 
 * Store production data: projects, shots, assets, tasks, files
-  metadata and validations.
+  metadata, and validations.
 * Store preview files of any kind.
 * Publish an event stream of changes.
 * Provide folder and file paths for any task.
 * Export main data to CSV files.
 
-For more details you can check [the full specification](https://kitsu-api.cg-wire.com).
+For more details, you can check [the full specification](https://kitsu-api.cg-wire.com).
 
 # Quickstart (Docker Image)
 
@@ -42,7 +42,7 @@ instance via this command:
 docker run -d -p 80:80 --name cgwire cgwire/cgwire
 ```
 
-Then you can access to the Kitsu API, through `http://localhost/api` and
+Then you can access the Kitsu API, through `http://localhost/api` and
 enjoy the Kitsu web UI at `http://localhost`.
 
 The credentials are:
@@ -59,8 +59,8 @@ The installation requires:
 
 * Ubuntu (version >= 20.04)
 * Python (version >= 3.6)
-* An up and running Postgres instance (version >= 9.2)
-* An up and running Redis server instance (version >= 2.0)
+* An up-and-running Postgres instance (version >= 9.2)
+* An up-and-running Redis server instance (version >= 2.0)
 * A Nginx instance
 
 
@@ -69,7 +69,7 @@ The installation requires:
 
 ### Dependencies
 
-First let's install third parties software:
+First, let's install third parties software:
 
 ```bash
 sudo apt-get install postgresql postgresql-client postgresql-server-dev-all
@@ -145,14 +145,14 @@ Enter new password:
 Enter it again: 
 ```
 
-Then exit from the postgres client console.
+Then exit from the Postgres client console.
 
-Alternatively, if you want to set the password avoiding interactive prompts use : 
+Alternatively, if you want to set the password to avoid interactive prompts use : 
 ```bash
 psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
 ```
 
-Finally, create database tables (it is required to leave the posgres console
+Finally, create database tables (it is required to leave the Postgres console
 and to activate the Zou virtual environment):
 
 ```
@@ -162,9 +162,9 @@ sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-db
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
 
-### Prepare the key value store
+### Prepare the key-value store
 
-Currently Redis require no extra configuration. 
+Currently, Redis requires no extra configuration. 
 
 To remove warnings in Redis logs and improve background saving success rate,
 you can add this to `/etc/sysctl.conf`:
@@ -179,7 +179,7 @@ article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
 
 ### Set up the indexer (optional)
 
-Create a meilisearch user:
+Create a Meilisearch user:
 
 ```
 sudo useradd meilisearch 
@@ -199,7 +199,7 @@ sudo chown -R meilisearch: /opt/meilisearch
 ```
 
 
-Define a master key then create the service file for meilisearch:
+Define a master key then create the service file for Meilisearch:
 
 *Path: /etc/systemd/system/meilisearch.service*
 
@@ -227,9 +227,9 @@ sudo service meilisearch start
 
 ### Configure Gunicorn
 
-#### Configure main API server
+#### Configure the main API server
 
-First, create configuration folder:
+First, create a configuration folder:
 
 ```
 sudo mkdir /etc/zou
@@ -253,7 +253,7 @@ sudo mkdir /opt/zou/logs
 sudo chown zou: /opt/zou/logs
 ```
 
-Then we daemonize the *gunicorn* process via Systemd. For that we add a new
+Then we daemonize the *gunicorn* process via Systemd. For that, we add a new
 file that will add a new daemon to be managed by Systemd:
 
 *Path: /etc/systemd/system/zou.service*
@@ -323,7 +323,7 @@ WantedBy=multi-user.target
 
 ### Configure Nginx
 
-Finally we serve the API through a Nginx server. For that, add this
+Finally, we serve the API through a Nginx server. For that, add this
 configuration file to Nginx to redirect the traffic to the Gunicorn servers:
 
 *Path: /etc/nginx/sites-available/zou*
@@ -370,7 +370,7 @@ We enable that Nginx configuration with this command:
 sudo ln -s /etc/nginx/sites-available/zou /etc/nginx/sites-enabled
 ```
 
-Finally we can start our daemon and restart Nginx:
+Finally, we can start our daemon and restart Nginx:
 
 ```bash
 sudo systemctl enable zou
@@ -422,7 +422,7 @@ That's it! Your Zou instance is now up to date.
 [Kitsu](https://kitsu.cg-wire.com) is a javascript UI that allows to manage Zou
 data from the browser.
 
-Deploying Kitsu requires to retrieve the built version. For that let's grab it
+Deploying Kitsu requires retrieving the built version. For that let's grab it
 from Github: 
 
 ```
@@ -491,8 +491,8 @@ sudo git pull --rebase origin build
 
 ## Admin users
 
-To start with Zou you need to add an admin user. This user will be able to to
-log in and to create other users. For that go into the terminal and run the
+To start with Zou you need to add an admin user. This user will be able to 
+log in and create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
@@ -500,8 +500,8 @@ cd /opt/zou/
 sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
 ```
 
-It expects the password as first argument. Then your user will be created with
-the email as login, `default` as password and "Super Admin" as first name and
+It expects the password as the first argument. Then your user will be created with
+the email as login, `default` as password, and "Super Admin" as first name and
 last name.
 
 ## Initialise data:
@@ -527,7 +527,7 @@ To know more about what is possible to do with the CGWire API, refer to the
 
 # Packaging
 
-Get the sources, increment the version located in the `zou/__init__.py` file.
+Get the sources, and increment the version located in the `zou/__init__.py` file.
 Tag the repository with the new version and run the following commands:
 
 ```bash
@@ -541,7 +541,7 @@ twine upload dist/<package>.whl
 # About authors
 
 Kitsu is written by CGWire, a company based in France. We help animation and
-VFX studios to collaborate better through efficient tooling.
+VFX studios collaborate better through efficient tooling.
 
 Visit [cg-wire.com](https://cg-wire.com) for more information.
 
