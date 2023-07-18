@@ -7,7 +7,7 @@ The indexer is optional. Kitsu can run without it.
 
 ## Setup the indexer
 
-First, retrieve the meilisearch package:
+First, retrieve the Meilisearch package:
 
 ```
 # Add Meilisearch package
@@ -17,7 +17,7 @@ echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/
 sudo apt update && sudo apt install meilisearch
 ```
 
-Define a master key then create the service file for meilisearch:
+Define a master key then create the service file for Meilisearch:
 
 *Path: /etc/systemd/system/meilisearch.service*
 
@@ -66,10 +66,16 @@ full-text search.
 
 ## Refreshing indexes
 
-If for any reasons, the indexer was not running during changes in the Kitsu
+If for any reason, the indexer was not running during changes in the Kitsu
 database, you can reset it at any time. Simply use this command (assuming all
 environment variables are properly set).
 
 ```
-zou reset-search-index
+zou reset-search-index zou reset-search-index
+```
+
+Or add directly your environment variables in the command:
+
+```
+DB_PASSWORD=yourdbpasword INDEXER_KEY=yourindexerapikey zou reset-search-index
 ```
