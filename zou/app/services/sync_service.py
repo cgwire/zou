@@ -38,9 +38,10 @@ from zou.app.stores import file_store
 from flask_fs.backends.local import LocalBackend
 from zou.app.utils import events
 from zou.app import app
+from multiprocessing.pool import ThreadPool as Pool
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.ERROR)
 console_handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(formatter)
@@ -737,18 +738,32 @@ def download_preview(preview_file):
     download_file(file_path, "previews", dl_func, preview_file_id)
 
 
-def download_files_from_another_instance(project=None):
+def download_files_from_another_instance(
+    project=None, multithreaded=False, number_workers=False
+):
     """
     Download all files from target instance.
     """
-    download_thumbnails_from_another_instance("person")
-    download_thumbnails_from_another_instance("organisation")
-    download_thumbnails_from_another_instance("project", project=project)
-    download_preview_files_from_another_instance(project=project)
-    download_attachment_files_from_another_instance(project=project)
+    pool = None
+    if multithreaded:
+        pool = Pool(number_workers)
+
+    download_thumbnails_from_another_instance("person", pool=pool)
+    download_thumbnails_from_another_instance("organisation", pool=pool)
+    download_thumbnails_from_another_instance(
+        "project", project=project, pool=pool
+    )
+    download_preview_files_from_another_instance(project=project, pool=pool)
+    download_attachment_files_from_another_instance(project=project, pool=pool)
+
+    if pool is not None:
+        pool.close()
+        pool.join()
 
 
-def download_thumbnails_from_another_instance(model_name, project=None):
+def download_thumbnails_from_another_instance(
+    model_name, project=None, pool=None
+):
     """
     Download all thumbnails from target instance for given model.
     """
@@ -762,15 +777,21 @@ def download_thumbnails_from_another_instance(model_name, project=None):
 
     for instance in instances:
         if instance.has_avatar:
-            download_thumbnail_from_another_instance(model_name, instance.id)
+            if pool is None:
+                download_thumbnail_from_another_instance(
+                    model_name, instance.id
+                )
+            else:
+                pool.apply_async(
+                    download_thumbnail_from_another_instance,
+                    (model_name, instance.id),
+                )
 
 
 def download_thumbnail_from_another_instance(model_name, model_id):
     """
     Download into the local storage the thumbnail for a given model instance.
     """
-    from zou.app import app
-
     with app.app_context():
         file_path = "/tmp/thumbnails-%s.png" % str(model_id)
         path = "/pictures/thumbnails/%ss/%s.png" % (model_name, model_id)
@@ -785,7 +806,7 @@ def download_thumbnail_from_another_instance(model_name, model_id):
         return path
 
 
-def download_preview_files_from_another_instance(project=None):
+def download_preview_files_from_another_instance(project=None, pool=None):
     """
     Download all preview files and related (thumbnails and low def included).
     """
@@ -800,16 +821,18 @@ def download_preview_files_from_another_instance(project=None):
         preview_files = PreviewFile.query.all()
 
     for preview_file in preview_files:
-        download_preview_from_another_instance(preview_file)
+        if pool is None:
+            download_preview_from_another_instance(preview_file)
+        else:
+            pool.apply_async(
+                download_preview_from_another_instance, (preview_file,)
+            )
 
 
 def download_preview_from_another_instance(preview_file):
     """
     Download all files link to preview file entry: orginal file and variants.
     """
-
-    from zou.app import app
-
     print(
         "download preview %s (%s)" % (preview_file.id, preview_file.extension)
     )
@@ -890,9 +913,7 @@ def download_file_from_another_instance(
         print("%s download failed" % file_path)
 
 
-def download_attachment_files_from_another_instance(project=None):
-    from zou.app import app
-
+def download_attachment_files_from_another_instance(project=None, pool=None):
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         attachment_files = (
@@ -905,9 +926,15 @@ def download_attachment_files_from_another_instance(project=None):
         attachment_files = AttachmentFile.query.all()
     for attachment_file in attachment_files:
         with app.app_context():
-            download_attachment_file_from_another_instance(
-                attachment_file.present()
-            )
+            if pool is None:
+                download_attachment_file_from_another_instance(
+                    attachment_file.present()
+                )
+            else:
+                pool.apply_async(
+                    download_attachment_file_from_another_instance,
+                    (attachment_file.present(),),
+                )
 
 
 def download_attachment_file_from_another_instance(attachment_file):
