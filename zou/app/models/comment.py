@@ -94,10 +94,13 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     pinned = db.Column(db.Boolean)
 
     task_status_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("task_status.id")
+        UUIDType(binary=False), db.ForeignKey("task_status.id"), index=True
     )
     person_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("person.id"), nullable=False
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        nullable=False,
+        index=True
     )
     preview_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("preview_file.id")
