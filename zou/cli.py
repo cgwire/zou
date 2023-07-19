@@ -287,9 +287,13 @@ def sync_full(
 
 
 @cli.command()
-@click.option("--target", default="http://localhost:5000")
+@click.option("--target", default="http://localhost:5000", show_default=True)
+@click.option(
+    "--multithreaded", is_flag=True, show_default=True, default=False
+)
+@click.option("--number_workers", default=30, show_default=True)
 @click.option("--project")
-def sync_full_files(target, project=None):
+def sync_full_files(target, multithreaded, number_workers, project=None):
     """
     Retrieve all files from target instance. It expects that credentials to
     connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
@@ -299,7 +303,12 @@ def sync_full_files(target, project=None):
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_files_from_another_instance(
-        target, login, password, project=project
+        target,
+        login,
+        password,
+        project=project,
+        multithreaded=multithreaded,
+        number_workers=number_workers,
     )
     print("Syncing ended.")
 
