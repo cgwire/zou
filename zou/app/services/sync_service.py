@@ -5,6 +5,7 @@ import sys
 
 import gazu
 import sqlalchemy
+import traceback
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
@@ -41,7 +42,7 @@ from zou.app import app
 from multiprocessing.pool import ThreadPool as Pool
 
 logger = logging.getLogger()
-logger.setLevel(logging.ERROR)
+logger.setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
 console_handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(formatter)
@@ -252,7 +253,7 @@ def run_project_data_sync(project=None):
     for project in projects:
         logger.info("Syncing %s..." % project["name"])
         for event in project_events:
-            print("Syncing %ss..." % event)
+            logger.info("Syncing %ss..." % event)
             path = event_name_model_path_map[event]
             model = event_name_model_map[event]
             sync_project_entries(project, path, model)
@@ -699,7 +700,7 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
         with open(file_path, "wb") as tmp_file:
             for chunk in dl_func(prefix, preview_file_id):
                 tmp_file.write(chunk)
-        print("%s downloaded" % file_path)
+        logger.info("%s downloaded" % file_path)
     except BaseException:
         pass
 
@@ -708,7 +709,7 @@ def download_preview(preview_file):
     """
     Download all files link to preview file entry: orginal file and variants.
     """
-    print(
+    logger.info(
         "download preview %s (%s)" % (preview_file.id, preview_file.extension)
     )
     is_movie = preview_file.extension == "mp4"
@@ -739,7 +740,7 @@ def download_preview(preview_file):
 
 
 def download_files_from_another_instance(
-    project=None, multithreaded=False, number_workers=False
+    project=None, multithreaded=False, number_workers=30, number_attemps=3
 ):
     """
     Download all files from target instance.
@@ -748,13 +749,21 @@ def download_files_from_another_instance(
     if multithreaded:
         pool = Pool(number_workers)
 
-    download_thumbnails_from_another_instance("person", pool=pool)
-    download_thumbnails_from_another_instance("organisation", pool=pool)
     download_thumbnails_from_another_instance(
-        "project", project=project, pool=pool
+        "person", pool=pool, number_attemps=number_attemps
     )
-    download_preview_files_from_another_instance(project=project, pool=pool)
-    download_attachment_files_from_another_instance(project=project, pool=pool)
+    download_thumbnails_from_another_instance(
+        "organisation", pool=pool, number_attemps=number_attemps
+    )
+    download_thumbnails_from_another_instance(
+        "project", project=project, pool=pool, number_attemps=number_attemps
+    )
+    download_preview_files_from_another_instance(
+        project=project, pool=pool, number_attemps=number_attemps
+    )
+    download_attachment_files_from_another_instance(
+        project=project, pool=pool, number_attemps=number_attemps
+    )
 
     if pool is not None:
         pool.close()
@@ -762,7 +771,7 @@ def download_files_from_another_instance(
 
 
 def download_thumbnails_from_another_instance(
-    model_name, project=None, pool=None
+    model_name, project=None, pool=None, number_attemps=3
 ):
     """
     Download all thumbnails from target instance for given model.
@@ -779,34 +788,50 @@ def download_thumbnails_from_another_instance(
         if instance.has_avatar:
             if pool is None:
                 download_thumbnail_from_another_instance(
-                    model_name, instance.id
+                    model_name, instance.id, number_attemps
                 )
             else:
                 pool.apply_async(
                     download_thumbnail_from_another_instance,
-                    (model_name, instance.id),
+                    (model_name, instance.id, number_attemps),
                 )
 
 
-def download_thumbnail_from_another_instance(model_name, model_id):
+def download_thumbnail_from_another_instance(
+    model_name, model_id, number_attemps=3
+):
     """
     Download into the local storage the thumbnail for a given model instance.
     """
     with app.app_context():
         file_path = "/tmp/thumbnails-%s.png" % str(model_id)
         path = "/pictures/thumbnails/%ss/%s.png" % (model_name, model_id)
-        try:
-            gazu.client.download(path, file_path)
-            file_store.add_picture("thumbnails", model_id, file_path)
-            os.remove(file_path)
-            print("%s downloaded" % file_path)
-        except Exception as e:
-            print(e)
-            print("%s download failed" % file_path)
-        return path
+        for _ in range(0, number_attemps):
+            try:
+                response = gazu.client.download(path, file_path)
+                if response.status_code == 404:
+                    logger.error(f"Not found ({path}).")
+                elif response.status_code == 500:
+                    logger.error(f"Error while downloading ({path}).")
+            except Exception:
+                logger.error(f"Download failed ({path}):")
+                logger.error(traceback.format_exc())
+            if os.path.exists(file_path):
+                try:
+                    file_store.add_picture("thumbnails", model_id, file_path)
+                    logger.info(f"Downloaded and uploaded ({path}).")
+                    break
+                except Exception:
+                    logger.error(f"Upload failed ({path}):")
+                    logger.error(traceback.format_exc())
+                finally:
+                    os.remove(file_path)
+            return path
 
 
-def download_preview_files_from_another_instance(project=None, pool=None):
+def download_preview_files_from_another_instance(
+    project=None, pool=None, number_attemps=3
+):
     """
     Download all preview files and related (thumbnails and low def included).
     """
@@ -822,20 +847,20 @@ def download_preview_files_from_another_instance(project=None, pool=None):
 
     for preview_file in preview_files:
         if pool is None:
-            download_preview_from_another_instance(preview_file)
+            download_preview_from_another_instance(
+                preview_file, number_attemps
+            )
         else:
             pool.apply_async(
-                download_preview_from_another_instance, (preview_file,)
+                download_preview_from_another_instance,
+                (preview_file, number_attemps),
             )
 
 
-def download_preview_from_another_instance(preview_file):
+def download_preview_from_another_instance(preview_file, number_attemps=3):
     """
     Download all files link to preview file entry: orginal file and variants.
     """
-    print(
-        "download preview %s (%s)" % (preview_file.id, preview_file.extension)
-    )
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"
     is_file = not is_movie and not is_picture
@@ -855,6 +880,7 @@ def download_preview_from_another_instance(preview_file):
                         prefix,
                         preview_file_id,
                         "png",
+                        number_attemps=number_attemps,
                     )
 
         if is_movie:
@@ -865,6 +891,7 @@ def download_preview_from_another_instance(preview_file):
                         prefix,
                         preview_file_id,
                         preview_file.extension,
+                        number_attemps=number_attemps,
                     )
 
         elif is_file:
@@ -874,11 +901,12 @@ def download_preview_from_another_instance(preview_file):
                     "previews",
                     preview_file_id,
                     preview_file.extension,
+                    number_attemps=number_attemps,
                 )
 
 
 def download_file_from_another_instance(
-    save_func, prefix, preview_file_id, extension
+    save_func, prefix, preview_file_id, extension, number_attemps=3
 ):
     """
     Download preview file for given preview from object storage and store it
@@ -897,23 +925,33 @@ def download_file_from_another_instance(
             preview_file_id,
             extension,
         )
-    try:
-        file_path = "/tmp/%s.%s" % (preview_file_id, extension)
-        response = gazu.client.download(path, file_path)
-        if response.status_code == 404:
-            print("not found", preview_file_id)
-        if response.status_code == 500:
-            print("error while downloading", preview_file_id)
-        else:
-            save_func(prefix, preview_file_id, file_path)
-        os.remove(file_path)
-        print("%s (%s) downloaded" % (file_path, prefix))
-    except Exception as e:
-        print(e)
-        print("%s download failed" % file_path)
+    file_path = "/tmp/%s.%s" % (preview_file_id, extension)
+    for _ in range(0, number_attemps):
+        try:
+            response = gazu.client.download(path, file_path)
+            if response.status_code == 404:
+                logger.error(f"Not found ({path}).")
+            elif response.status_code == 500:
+                logger.error(f"Error while downloading ({path}).")
+        except Exception:
+            logger.error(f"Download failed ({path}):")
+            logger.error(traceback.format_exc())
+        if os.path.exists(file_path):
+            try:
+                save_func(prefix, preview_file_id, file_path)
+                logger.info(f"Downloaded and uploaded ({path}).")
+                break
+            except Exception:
+                logger.error(f"Upload failed ({path}):")
+                logger.error(traceback.format_exc())
+            finally:
+                os.remove(file_path)
+    return path
 
 
-def download_attachment_files_from_another_instance(project=None, pool=None):
+def download_attachment_files_from_another_instance(
+    project=None, pool=None, number_attemps=3
+):
     if project:
         project_dict = gazu.project.get_project_by_name(project)
         attachment_files = (
@@ -928,28 +966,44 @@ def download_attachment_files_from_another_instance(project=None, pool=None):
         with app.app_context():
             if pool is None:
                 download_attachment_file_from_another_instance(
-                    attachment_file.present()
+                    attachment_file.present(), number_attemps
                 )
             else:
                 pool.apply_async(
                     download_attachment_file_from_another_instance,
-                    (attachment_file.present(),),
+                    (attachment_file.present(), number_attemps),
                 )
 
 
-def download_attachment_file_from_another_instance(attachment_file):
+def download_attachment_file_from_another_instance(
+    attachment_file, number_attemps=3
+):
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
     path = "/data/attachment-files/%s/file/%s" % (
         attachment_file_id,
         attachment_file["name"],
     )
-    try:
-        file_path = "/tmp/%s.%s" % (attachment_file_id, extension)
-        gazu.client.download(path, file_path)
-        file_store.add_file("attachments", attachment_file_id, file_path)
-        os.remove(file_path)
-        print("%s (%s) downloaded" % (file_path, "attachment"))
-    except Exception as e:
-        print(e)
-        print("%s download failed" % file_path)
+    file_path = "/tmp/%s.%s" % (attachment_file_id, extension)
+    for _ in range(0, number_attemps):
+        try:
+            response = gazu.client.download(path, file_path)
+            if response.status_code == 404:
+                logger.error(f"Not found ({path}).")
+            elif response.status_code == 500:
+                logger.error(f"Error while downloading ({path}).")
+        except Exception:
+            logger.error(f"Download failed ({path}):")
+            logger.error(traceback.format_exc())
+        if os.path.exists(file_path):
+            try:
+                file_store.add_file(
+                    "attachments", attachment_file_id, file_path
+                )
+                logger.info(f"Downloaded and uploaded ({path}).")
+                break
+            except Exception:
+                logger.error(f"Upload failed ({path}):")
+                logger.error(traceback.format_exc())
+            finally:
+                os.remove(file_path)
