@@ -478,6 +478,7 @@ def import_files_from_another_instance(
     project=None,
     multithreaded=False,
     number_workers=30,
+    number_attemps=3,
 ):
     """
     Retrieve and save all the data related most recent events from another API
@@ -494,6 +495,7 @@ def import_files_from_another_instance(
             project=project,
             multithreaded=multithreaded,
             number_workers=number_workers,
+            number_attemps=number_attemps,
         )
 
 
