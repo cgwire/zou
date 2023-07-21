@@ -107,9 +107,8 @@ def main():
                 storage, output_movie_path, config["output_key"]
             )
         else:
-            logger.info(
+            logger.error(
                 "Playlist creation failed: %s" % result.get("message"),
-                file=sys.stderr,
             )
             sys.exit(1)
 
