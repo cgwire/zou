@@ -118,7 +118,7 @@ def _check_retake_capping(task_status, task):
 
 
 def _get_comment_author(person_id):
-    if person_id:
+    if person_id is not None and person_id != "":
         person = persons_service.get_person(person_id)
     else:
         person = persons_service.get_current_user()
@@ -421,12 +421,16 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     )
 
 
-def reply_comment(comment_id, text):
+def reply_comment(comment_id, text, person_id=None):
     """
     Add a reply entry to the JSONB field of given comment model. Create
     notifications needed for this.
     """
-    person = persons_service.get_current_user()
+    person = None
+    if person_id is None:
+        person = persons_service.get_current_user()
+    else:
+        person = persons_service.get_person(person_id)
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id, relations=True)
     if comment.replies is None:

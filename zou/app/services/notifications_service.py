@@ -261,7 +261,7 @@ def reset_notifications_for_mentions(comment):
     notifications = []
     task = tasks_service.get_task(comment["object_id"])
     author_id = comment["person_id"]
-    mentions = get_mentioned_people(task["project_id"], comment["mentions"])
+    mentions = get_mentioned_people(task["project_id"], comment)
     for recipient_id in mentions:
         notification = create_notification(
             recipient_id,

@@ -432,11 +432,11 @@ class TaskServiceTestCase(ApiDBTestCase):
 
     def test_get_comment_mentions(self):
         mentions = comments_service.get_comment_mentions(
-            self.task_id, "Test @Emma Doe"
+            self.project_id, "Test @Emma Doe"
         )
         self.assertEqual(len(mentions), 0)
         mentions = comments_service.get_comment_mentions(
-            self.task_id, "Test @John Doe"
+            self.project_id, "Test @John Doe"
         )
         self.assertEqual(mentions[0], self.person)
 

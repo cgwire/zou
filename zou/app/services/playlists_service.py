@@ -826,7 +826,9 @@ def generate_playlisted_entity_from_task(task_id):
     doesn't persist anything.
     """
     task = tasks_service.get_task(task_id)
+    task = tasks_service.get_task(task_id)
     entity = entities_service.get_entity(task["entity_id"])
+    task = tasks_service.get_task(task_id)
     if shots_service.is_shot(entity):
         playlisted_entity = get_base_shot_for_playlist(entity, task_id)
     elif shots_service.is_sequence(entity):
@@ -868,8 +870,12 @@ def get_base_episode_for_playlist(entity, task_id):
 
 def get_base_sequence_for_playlist(entity, task_id):
     sequence = shots_service.get_sequence(entity["id"])
-    episode = shots_service.get_episode(sequence["parent_id"])
-    if episode:
+    episode = None
+    try:
+        episode = shots_service.get_episode(sequence["parent_id"])
+    except:
+        pass
+    if episode is not None:
         playlisted_entity = {
             "id": sequence["id"],
             "name": sequence["name"],
