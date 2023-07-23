@@ -923,7 +923,6 @@ def download_file_from_another_instance(
         path = "/movies/low/preview-files/%s.mp4" % preview_file_id
     else:
         path = "/pictures/originals/preview-files/%s.%s" % (
-            path_prefix,
             preview_file_id,
             extension,
         )
