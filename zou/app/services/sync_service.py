@@ -914,7 +914,7 @@ def download_file_from_another_instance(
     save_func, prefix, preview_file_id, extension, number_attemps=3
 ):
     """
-    Download preview file for given preview from object storage and store it
+    Download the preview file for the given preview from object storage and store it
     locally.
     """
     if prefix == "previews" and extension == "mp4":
@@ -922,10 +922,7 @@ def download_file_from_another_instance(
     elif prefix == "low":
         path = "/movies/low/preview-files/%s.mp4" % preview_file_id
     else:
-        path_prefix = prefix
-        if prefix == "original":
-            path_prefix = prefix + "s"
-        path = "/pictures/%s/preview-files/%s.%s" % (
+        path = "/pictures/originals/preview-files/%s.%s" % (
             path_prefix,
             preview_file_id,
             extension,
