@@ -161,6 +161,7 @@ def get_last_news_for_project(
         Comment.task_status_id,
         Task.entity_id,
         PreviewFile.extension,
+        PreviewFile.annotations,
         Entity.preview_file_id,
     )
 
@@ -178,6 +179,7 @@ def get_last_news_for_project(
         task_status_id,
         task_entity_id,
         preview_file_extension,
+        preview_file_annotations,
         entity_preview_file_id,
     ) in news_list:
         (full_entity_name, episode_id) = names_service.get_full_entity_name(
@@ -197,6 +199,7 @@ def get_last_news_for_project(
                     "task_entity_id": task_entity_id,
                     "preview_file_id": news.preview_file_id,
                     "preview_file_extension": preview_file_extension,
+                    "preview_file_annotations": preview_file_annotations,
                     "project_id": project_id,
                     "project_name": project_name,
                     "created_at": news.created_at,

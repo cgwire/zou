@@ -32,9 +32,14 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
     data = db.Column(JSONB)
 
     file_status_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("file_status.id"), nullable=False
+        UUIDType(binary=False),
+        db.ForeignKey("file_status.id"),
+        nullable=False,
+        index=True
     )
-    entity_id = db.Column(UUIDType(binary=False), db.ForeignKey("entity.id"))
+    entity_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
+    )
     asset_instance_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("asset_instance.id"), index=True
     )
@@ -44,9 +49,11 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
     task_type_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_type.id"), index=True
     )
-    person_id = db.Column(UUIDType(binary=False), db.ForeignKey("person.id"))
+    person_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("person.id"), index=True
+    )
     source_file_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("working_file.id")
+        UUIDType(binary=False), db.ForeignKey("working_file.id"), index=True
     )
     source_file = relationship("WorkingFile", back_populates="outputs")
     temporal_entity_id = db.Column(
@@ -54,6 +61,7 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
         db.ForeignKey("entity.id"),
         default=None,
         nullable=True,
+        index=True
     )
 
     __table_args__ = (

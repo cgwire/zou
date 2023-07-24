@@ -958,14 +958,18 @@ def get_last_notifications(
         )
         preview_file_id = None
         mentions = []
+        department_mentions = []
+        reply_mentions = []
+        reply_department_mentions = []
         if comment_id is not None:
             comment = Comment.get(comment_id)
             if len(comment.previews) > 0:
                 preview_file_id = comment.previews[0].id
             mentions = comment.mentions or []
+            department_mentions = comment.department_mentions or []
 
         reply_text = ""
-        if notification.type == "reply":
+        if notification.type in ["reply", "reply-mention"]:
             reply = next(
                 (
                     reply
@@ -974,6 +978,9 @@ def get_last_notifications(
                 ),
                 None,
             )
+            reply_mentions = reply.get("mentions", []) or []
+            reply_department_mentions = \
+                reply.get("departement_mentions", []) or []
             if reply is not None:
                 reply_text = reply["text"]
 
@@ -993,6 +1000,9 @@ def get_last_notifications(
                     "task_type_id": task_type_id,
                     "task_status_id": task_status_id,
                     "mentions": mentions,
+                    "department_mentions": department_mentions,
+                    "reply_mentions": reply_mentions,
+                    "reply_department_mentions": reply_department_mentions,
                     "preview_file_id": preview_file_id,
                     "project_id": project_id,
                     "project_name": project_name,

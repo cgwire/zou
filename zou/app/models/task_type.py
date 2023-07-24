@@ -20,7 +20,7 @@ class TaskType(db.Model, BaseMixin, SerializerMixin):
     shotgun_id = db.Column(db.Integer, index=True)
 
     department_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("department.id")
+        UUIDType(binary=False), db.ForeignKey("department.id"), index=True
     )
 
     __table_args__ = (

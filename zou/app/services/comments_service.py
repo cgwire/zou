@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
+from zou.app.models.department import Department
 from zou.app.models.notification import Notification
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -117,7 +118,7 @@ def _check_retake_capping(task_status, task):
 
 
 def _get_comment_author(person_id):
-    if person_id:
+    if person_id is not None and person_id != "":
         person = persons_service.get_person(person_id)
     else:
         person = persons_service.get_current_user()
@@ -263,7 +264,11 @@ def new_comment(
         object_type=object_type,
         task_status_id=task_status_id,
         person_id=person_id,
-        mentions=get_comment_mentions(task_id, text),
+        mentions=get_comment_mentions(task["project_id"], text),
+        department_mentions=get_comment_department_mentions(
+            task_id,
+            text
+        ),
         checklist=checklist,
         text=text,
         created_at=created_at_date,
@@ -297,28 +302,22 @@ def add_attachments_to_comment(comment, files):
     return comment
 
 
-def get_comment_mentions(object_id, text):
-    """
-    Check for people mention (@full name) in text and returns matching person
-    active records.
-    """
-    task = tasks_service.get_task_raw(object_id)
-    project = Project.get(task.project_id)
-    mentions = []
-    for person in project.team:
-        if re.search("@%s( |$)" % person.full_name(), text) is not None:
-            mentions.append(person)
-    return mentions
-
-
 def reset_mentions(comment):
     task = tasks_service.get_task(comment["object_id"])
-    mentions = get_comment_mentions(task["id"], comment["text"])
+    mentions = get_comment_mentions(task["project_id"], comment["text"])
+    department_mentions = get_comment_department_mentions(
+            task["project_id"],
+            comment["text"]
+        )
     comment_to_update = Comment.get(comment["id"])
     comment_to_update.mentions = mentions
+    comment_to_update.department_mentions = department_mentions
     comment_to_update.save()
     comment_dict = comment_to_update.serialize()
     comment_dict["mentions"] = [str(mention.id) for mention in mentions]
+    comment_dict["department_mentions"] = [
+        str(mention.id) for mention in department_mentions
+    ]
     return comment_dict
 
 
@@ -422,12 +421,16 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     )
 
 
-def reply_comment(comment_id, text):
+def reply_comment(comment_id, text, person_id=None):
     """
     Add a reply entry to the JSONB field of given comment model. Create
     notifications needed for this.
     """
-    person = persons_service.get_current_user()
+    person = None
+    if person_id is None:
+        person = persons_service.get_current_user()
+    else:
+        person = persons_service.get_person(person_id)
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id, relations=True)
     if comment.replies is None:
@@ -437,6 +440,10 @@ def reply_comment(comment_id, text):
         "date": date_helpers.get_now(),
         "person_id": person["id"],
         "text": text,
+        "mentions": get_comment_mention_ids(task["project_id"], text),
+        "department_mentions": \
+            get_comment_department_mention_ids(task["project_id"], text),
+        "created_at": date_helpers.get_now()
     }
     replies = list(comment.replies)
     replies.append(reply)
@@ -484,3 +491,43 @@ def delete_reply(comment_id, reply_id):
         persist=False,
     )
     return comment.serialize()
+
+
+def get_comment_mentions(project_id, text):
+    """
+    Check for people mention (@full name) in text and returns matching person
+    active records.
+    """
+    project = Project.get(project_id)
+    mentions = []
+    for person in project.team:
+        if re.search("@%s( |$)" % person.full_name(), text) is not None:
+            mentions.append(person)
+    return mentions
+
+
+def get_comment_mention_ids(project_id, text):
+    return [
+        str(mention.id)
+        for mention in get_comment_mentions(project_id, text)
+    ]
+
+
+def get_comment_department_mentions(project_id, text):
+    """
+    Check for department mention (@name) in text and returns matching person
+    active records.
+    """
+    departments = Department.query.all()
+    mentions = []
+    for department in departments:
+        if re.search("@%s( |$)" % department.name, text) is not None:
+            mentions.append(department)
+    return mentions
+
+
+def get_comment_department_mention_ids(project_id, text):
+    return [
+        str(mention.id)
+        for mention in get_comment_department_mentions(project_id, text)
+    ]

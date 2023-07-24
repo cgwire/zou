@@ -3,8 +3,12 @@ import slugify
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.person import Person
-from zou.app.models.project import Project, ProjectTaskTypeLink
+from zou.app.models.person import Person, department_link
+from zou.app.models.project import (
+    Project,
+    ProjectPersonLink,
+    ProjectTaskTypeLink,
+)
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task_type import TaskType
@@ -627,3 +631,20 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
         str(task_type_link.task_type_id): task_type_link.priority
         for task_type_link in task_types
     }
+
+
+def get_department_team(project_id, department_id):
+    persons = (
+        Person.query
+        .join(
+            ProjectPersonLink,
+            ProjectPersonLink.person_id == Person.id
+        )
+        .join(
+            department_link,
+            department_link.columns.person_id == Person.id
+        )
+        .filter(ProjectPersonLink.project_id == project_id)
+        .filter(department_link.columns.department_id == department_id)
+    ).all()
+    return persons

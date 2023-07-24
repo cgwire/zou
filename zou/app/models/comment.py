@@ -40,6 +40,23 @@ mentions_table = db.Table(
 )
 
 
+department_mentions_table = db.Table(
+    "comment_department_mentions",
+    db.Column(
+        "comment",
+        UUIDType(binary=False),
+        db.ForeignKey("comment.id"),
+        primary_key=True,
+    ),
+    db.Column(
+        "department",
+        UUIDType(binary=False),
+        db.ForeignKey("department.id"),
+        primary_key=True,
+    ),
+)
+
+
 acknowledgements_table = db.Table(
     "comment_acknoledgments",
     db.Column(
@@ -77,10 +94,13 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     pinned = db.Column(db.Boolean)
 
     task_status_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("task_status.id")
+        UUIDType(binary=False), db.ForeignKey("task_status.id"), index=True
     )
     person_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("person.id"), nullable=False
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        nullable=False,
+        index=True
     )
     preview_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("preview_file.id")
@@ -89,6 +109,9 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         "PreviewFile", secondary=preview_link_table, backref="comments"
     )
     mentions = db.relationship("Person", secondary=mentions_table)
+    department_mentions = db.relationship(
+        "Department", secondary=department_mentions_table
+    )
     acknowledgements = db.relationship(
         "Person", secondary=acknowledgements_table
     )
@@ -104,9 +127,13 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
     def set_mentions(self, person_ids):
         from zou.app.models.person import Person
-
         self.mentions = []
         self.set_many_to_one("mentions", Person, person_ids)
+
+    def set_department_mentions(self, department_ids):
+        from zou.app.models.department import Department
+        self.mentions = []
+        self.set_many_to_one("department_mentions", Department, department_ids)
 
     def set_acknowledgements(self, person_ids):
         from zou.app.models.person import Person
@@ -135,6 +162,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         data.pop("type", None)
         preview_file_ids = data.pop("previews", None)
         mention_ids = data.pop("mentions", None)
+        department_mention_ids = data.pop("department_mentions", None)
         acknowledgement_ids = data.pop("acknowledgements", None)
         attachment_file_ids = data.pop("attachment_files", None)
 
@@ -151,6 +179,9 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
         if mention_ids is not None:
             previous_comment.set_mentions(mention_ids)
+
+        if department_mention_ids is not None:
+            previous_comment.set_department_mentions(department_mention_ids)
 
         if acknowledgement_ids is not None:
             previous_comment.set_acknowledgements(acknowledgement_ids)

@@ -14,6 +14,7 @@ from zou.app.models.comment import (
     Comment,
     acknowledgements_table,
     mentions_table,
+    department_mentions_table,
     preview_link_table,
 )
 from zou.app.models.department import Department
@@ -496,12 +497,16 @@ def get_comments(task_id, is_client=False, is_manager=False):
     if len(comments) > 0:
         ack_map = _build_ack_map_for_comments(comment_ids)
         mention_map = _build_mention_map_for_comments(comment_ids)
+        department_mention_map = \
+            _build_department_mention_map_for_comments(comment_ids)
         preview_map = _build_preview_map_for_comments(comment_ids, is_client)
         attachment_file_map = _build_attachment_map_for_comments(comment_ids)
         for comment in comments:
             comment["acknowledgements"] = ack_map.get(comment["id"], [])
             comment["previews"] = preview_map.get(comment["id"], [])
             comment["mentions"] = mention_map.get(comment["id"], [])
+            comment["department_mentions"] = \
+                department_mention_map.get(comment["id"], [])
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
@@ -609,6 +614,21 @@ def _build_mention_map_for_comments(comment_ids):
         if comment_id not in mention_map:
             mention_map[comment_id] = []
         mention_map[comment_id].append(person_id)
+    return mention_map
+
+
+def _build_department_mention_map_for_comments(comment_ids):
+    mention_map = {}
+    for link in (
+        db.session.query(department_mentions_table)
+        .filter(department_mentions_table.c.comment.in_(comment_ids))
+        .all()
+    ):
+        comment_id = str(link.comment)
+        department_id = str(link.department)
+        if comment_id not in mention_map:
+            mention_map[comment_id] = []
+        mention_map[comment_id].append(department_id)
     return mention_map
 
 
