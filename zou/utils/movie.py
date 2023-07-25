@@ -118,10 +118,32 @@ def get_all_frames(movie_path):
     return folder_path
 
 
-def generate_tile(movie_path):
+def generate_tile(movie_path, movie_fps):
     """
-    ffmpeg -i {movie_path} -vf 'scale=150:100,tile=8x8' -an -vsync 0 tile%03d.png
+    Generates a tile from a movie.
     """
+    folder_path = os.path.dirname(movie_path)
+    file_source_name = os.path.basename(movie_path)
+    file_target_name = f"{file_source_name[:-4]}_tile.png"
+    file_target_path = os.path.join(folder_path, file_target_name)
+    command = [
+    'ffprobe',
+    '-i', movie_path,
+    '-show_entries', 'format=duration',
+    '-v', 'error', 
+    '-of', 'default=noprint_wrappers=1:nokey=1' 
+    ]
+    #w,h = get_movie_size(movie_path)
+
+    output = subprocess.check_output(command, universal_newlines=True)
+    duration_in_seconds = float(output)
+
+    float_movie_fps = float(movie_fps)
+    duration_in_frames = int(duration_in_seconds * float_movie_fps)
+    rows = math.ceil(duration_in_frames / 8)
+    command = f'ffmpeg -i "{movie_path}" -vf "fps=1,scale=720:480,tile=8x{rows}" {file_target_name}'
+    subprocess.call(command, shell=True)
+    return file_target_path
 
 
 def get_movie_size(movie_path):
