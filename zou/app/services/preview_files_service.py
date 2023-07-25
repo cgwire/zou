@@ -251,6 +251,11 @@ def prepare_and_store_movie(
         file_size = os.path.getsize(normalized_movie_path)
         current_app.logger.info("thumbnail created %s" % original_picture_path)
 
+        #Build tiles
+        tile_path = movie.generate_tile(normalized_movie_path, fps)
+        file_store.add_picture("Tile", preview_file_id, tile_path)
+        current_app.logger.info("Tile created %s" % tile_path)
+
         # Remove files and update status
         os.remove(uploaded_movie_path)
         if normalize:
