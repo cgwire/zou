@@ -24,6 +24,7 @@ from zou.app.blueprints.previews.resources import (
     UpdateAnnotationsResource,
     UpdatePreviewPositionResource,
     ExtractFrameFromPreview,
+    ExtractTileFromPreview,
 )
 
 routes = [
@@ -111,6 +112,10 @@ routes = [
     (
         "/actions/preview-files/<preview_file_id>/update-annotations",
         UpdateAnnotationsResource,
+    ),
+    (
+        "/data/preview-files/<preview_file_id>/extract-frame",
+        ExtractTileFromPreview,
     ),
 ]
 blueprint = Blueprint("thumbnails", "thumbnails")

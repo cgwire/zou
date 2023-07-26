@@ -253,7 +253,7 @@ def prepare_and_store_movie(
 
         #Build tiles
         tile_path = movie.generate_tile(normalized_movie_path, fps)
-        file_store.add_picture("Tile", preview_file_id, tile_path)
+        file_store.add_picture("tile", preview_file_id, tile_path)
         current_app.logger.info("Tile created %s" % tile_path)
 
         # Remove files and update status
@@ -597,3 +597,29 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
         extracted_frame_path
     )
     save_variants(preview_file["id"], extracted_frame_path)
+
+
+def extract_tile_from_preview_file(preview_file):
+    try:
+        project = get_project_from_preview_file(preview_file["id"])
+    except PreviewFileNotFoundException:
+        raise PreviewFileNotFoundException
+
+    if preview_file["extension"] == "mp4":
+        preview_file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_movie_path,
+            file_store.open_movie,
+            "previews",
+            preview_file["id"],
+            "mp4",
+        )
+    else:
+        raise PreviewFileNotFoundException
+
+    fps = get_preview_file_fps(project)
+    extracted_tile_path = movie.generate_tile(
+        preview_file_path, fps
+    )
+
+    return extracted_tile_path
