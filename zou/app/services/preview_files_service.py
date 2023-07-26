@@ -251,10 +251,11 @@ def prepare_and_store_movie(
         file_size = os.path.getsize(normalized_movie_path)
         current_app.logger.info("thumbnail created %s" % original_picture_path)
 
-        #Build tiles
+        # Build tiles
         tile_path = movie.generate_tile(normalized_movie_path, fps)
-        file_store.add_picture("tile", preview_file_id, tile_path)
-        current_app.logger.info("Tile created %s" % tile_path)
+        file_store.add_picture("tiles", preview_file_id, tile_path)
+        os.remove(tile_path)
+        current_app.logger.info("tile created %s" % tile_path)
 
         # Remove files and update status
         os.remove(uploaded_movie_path)
@@ -618,8 +619,6 @@ def extract_tile_from_preview_file(preview_file):
         raise PreviewFileNotFoundException
 
     fps = get_preview_file_fps(project)
-    extracted_tile_path = movie.generate_tile(
-        preview_file_path, fps
-    )
+    extracted_tile_path = movie.generate_tile(preview_file_path, fps)
 
     return extracted_tile_path
