@@ -102,7 +102,7 @@ routes = [
         SetMainPreviewResource,
     ),
     (
-        "/data/preview-files/<preview_file_id>/extract-frame",
+        "/movies/preview-files/<preview_file_id>/extract-frame",
         ExtractFrameFromPreview,
     ),
     (
@@ -114,7 +114,7 @@ routes = [
         UpdateAnnotationsResource,
     ),
     (
-        "/data/preview-files/<preview_file_id>/extract-tile",
+        "/movies/preview-files/<preview_file_id>/extract-tile",
         ExtractTileFromPreview,
     ),
 ]
