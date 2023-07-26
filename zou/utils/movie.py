@@ -126,23 +126,23 @@ def generate_tile(movie_path, movie_fps):
     file_source_name = os.path.basename(movie_path)
     file_target_name = f"{file_source_name[:-4]}_tile.png"
     file_target_path = os.path.join(folder_path, file_target_name)
-    command = [
-    'ffprobe',
-    '-i', movie_path,
-    '-show_entries', 'format=duration',
-    '-v', 'error', 
-    '-of', 'default=noprint_wrappers=1:nokey=1' 
-    ]
-    #w,h = get_movie_size(movie_path)
-
-    output = subprocess.check_output(command, universal_newlines=True)
-    duration_in_seconds = float(output)
-
+    
+    probe = ffmpeg.probe(movie_path, show_entries='format=duration', v='error', of='default=noprint_wrappers=1:nokey=1')
+    duration_in_seconds = float(probe['format']['duration'])
     float_movie_fps = float(movie_fps)
     duration_in_frames = int(duration_in_seconds * float_movie_fps)
     rows = math.ceil(duration_in_frames / 8)
-    command = f'ffmpeg -i "{movie_path}" -vf "fps=1,scale=720:480,tile=8x{rows}" {file_target_name}'
-    subprocess.call(command, shell=True)
+
+    try:
+        (
+            ffmpeg.input(movie_path)
+            .output(file_target_name, vf=f'fps=1,scale=720:480,tile=8x{rows}')
+            .run(quiet=True)
+        )
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating tile: {e}")
+        raise e
+    
     return file_target_path
 
 
