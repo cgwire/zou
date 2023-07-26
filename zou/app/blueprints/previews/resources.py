@@ -1192,3 +1192,27 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
             as_attachment=False,
             download_name=os.path.basename(extracted_frame_path),
         )
+    
+class ExtractTileFromPreview(Resource):
+    """
+    Extract a tile from a preview_file
+    """
+    @jwt_required()
+    def get(self, preview_file_id):
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        extracted_tile_path = (
+            preview_files_service.extract_tile_from_preview_file(
+                preview_file
+            )
+        )
+
+        return flask_send_file(
+            extracted_tile_path,
+            conditional=True,
+            mimetype="image/png",
+            as_attachment=False,
+            download_name=os.path.basename(extracted_tile_path),
+        )
