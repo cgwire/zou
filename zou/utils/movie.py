@@ -111,7 +111,7 @@ def get_all_frames(movie_path):
             .output(file_target_path, vsync=0)
             .run(quiet=True)
         )
-    except subprocess.CalledProcessError as e:
+    except ffmpeg._run.Error as e:
         print(f"Error generating thumbnails: {e}")
         raise e
 
@@ -139,7 +139,7 @@ def generate_tile(movie_path, movie_fps):
             .output(file_target_name, vf=f'fps=1,scale=720:480,tile=8x{rows}')
             .run(quiet=True)
         )
-    except subprocess.CalledProcessError as e:
+    except ffmpeg._run.Error as e:
         print(f"Error generating tile: {e}")
         raise e
     
