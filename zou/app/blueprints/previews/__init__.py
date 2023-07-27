@@ -12,6 +12,7 @@ from zou.app.blueprints.previews.resources import (
     PreviewFileThumbnailSquareResource,
     PreviewFilePreviewResource,
     PreviewFileOriginalResource,
+    PreviewFileTileResource,
     CreateOrganisationThumbnailResource,
     OrganisationThumbnailResource,
     CreateProjectThumbnailResource,
@@ -68,6 +69,10 @@ routes = [
     (
         "/pictures/previews/preview-files/<instance_id>.png",
         PreviewFilePreviewResource,
+    ),
+    (
+        "pictures/tiles/preview-files/<instance_id>.png",
+        PreviewFileTileResource,
     ),
     (
         "/pictures/thumbnails/organisations/<instance_id>",
