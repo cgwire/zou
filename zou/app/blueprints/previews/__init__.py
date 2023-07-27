@@ -71,7 +71,7 @@ routes = [
         PreviewFilePreviewResource,
     ),
     (
-        "pictures/tiles/preview-files/<instance_id>.png",
+        "/movies/tiles/preview-files/<preview_file_id>.png",
         PreviewFileTileResource,
     ),
     (
@@ -107,7 +107,7 @@ routes = [
         SetMainPreviewResource,
     ),
     (
-        "/movies/preview-files/<preview_file_id>/extract-frame",
+        "/actions/preview-files/<preview_file_id>/extract-frame",
         ExtractFrameFromPreview,
     ),
     (
