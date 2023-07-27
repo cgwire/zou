@@ -135,7 +135,7 @@ def generate_tile(movie_path, movie_fps):
 
     try:
         ffmpeg.input(movie_path).output(
-            file_target_path, vf=f"scale=720:480,tile=8x{rows}"
+            file_target_path, vf=f"scale=352:240,tile=8x{rows}"
         ).run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "generating_tile")

@@ -708,6 +708,11 @@ class PreviewFileThumbnailResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "thumbnails")
 
 
+class PreviewFileTileResource(BasePreviewPictureResource):
+    def __init__(self):
+        BasePreviewPictureResource.__init__(self, "tiles")
+
+
 class PreviewFilePreviewResource(BasePreviewPictureResource):
     """
     Smaller version of uploaded image.
