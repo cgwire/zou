@@ -119,7 +119,7 @@ routes = [
         UpdateAnnotationsResource,
     ),
     (
-        "/movies/preview-files/<preview_file_id>/extract-tile",
+        "/actions/preview-files/<preview_file_id>/extract-tile",
         ExtractTileFromPreview,
     ),
 ]
