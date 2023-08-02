@@ -71,7 +71,7 @@ routes = [
         PreviewFilePreviewResource,
     ),
     (
-        "/movies/tiles/preview-files/<preview_file_id>.png",
+        "/movies/tiles/preview-files/<instance_id>.png",
         PreviewFileTileResource,
     ),
     (
