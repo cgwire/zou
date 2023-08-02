@@ -55,6 +55,8 @@ class EDLBaseResource(Resource, ArgsMixin):
         except Exception as e:
             current_app.logger.error("Import EDL failed: %s" % (str(e)))
             return {"error": True, "message": str(e)}, 400
+        finally:
+            os.remove(file_path)
         return result, 201
 
     def post_args(self):
@@ -116,8 +118,8 @@ class EDLBaseResource(Resource, ArgsMixin):
                 rate=projects_service.get_project_fps(project_id),
                 ignore_timecode_mismatch=True,
             )
-        except otio.exceptions.OTIOError:
-            raise Exception("Failed to parse EDL file.")
+        except Exception as e:
+            raise Exception("Failed to parse EDL file: %s" % str(e))
         for video_track in timeline.video_tracks():
             for track in video_track:
                 if isinstance(track, otio.schema.Clip):
@@ -146,6 +148,9 @@ class EDLBaseResource(Resource, ArgsMixin):
                                 self.episode_id,
                                 shot_infos_extracted["sequence_name"],
                             )["id"]
+                            self.sequence_map[
+                                shot_infos_extracted["sequence_name"]
+                            ] = sequence_id
 
                         future_shot_values = {
                             "project_id": self.project_id,
@@ -215,7 +220,7 @@ class EDLImportResource(EDLBaseResource):
             400:
                 description: The .EDL file is not properly formatted.
         """
-        super().post(**kwargs)
+        return super().post(**kwargs)
 
     def post_args(self):
         return self.get_args(
