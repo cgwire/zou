@@ -2,6 +2,8 @@ import os
 import shutil
 import tempfile
 import unittest
+from PIL import Image
+import math
 
 from pathlib import Path
 from urllib import request
@@ -123,3 +125,33 @@ class MovieTestCase(unittest.TestCase):
         width_playlist, height_playlist = movie.get_movie_size(out)
         self.assertEqual(width, width_playlist)
         self.assertEqual(height, height_playlist)
+
+    def test_create_tile(self):
+
+        script_path = os.path.abspath(__file__)
+
+        script_dir = os.path.dirname(script_path)
+
+        video_filename = "010_010_0030.mp4"
+
+        video = os.path.join(script_dir, video_filename)
+
+        video_width, video_height = movie.get_movie_size(video)
+        tile_path = movie.generate_tile(video, movie_fps=25)
+        image = Image.open(tile_path)
+
+        img_width, img_height = image.size
+
+        probe = ffmpeg.probe(video)
+        duration_in_seconds = float(probe['streams'][0]['duration'])
+        float_movie_fps = eval(probe['streams'][0]['r_frame_rate'])
+        duration_in_frames = int(duration_in_seconds * float_movie_fps)
+        rows = math.ceil((duration_in_frames / 8) + 2)
+
+        video_width, video_height = movie.get_movie_size(video)
+        aspect_ratio = (video_width/video_height)
+        target_width = math.floor(aspect_ratio * 120)
+
+        self.assertEqual(img_width, target_width*8)
+        self.assertEqual(img_height, 120*rows)
+        
