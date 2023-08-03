@@ -52,8 +52,8 @@ class EDLBaseResource(Resource, ArgsMixin):
         try:
             result = self.run_import(project_id, file_path)
         except Exception as e:
-            current_app.logger.error("Import EDL failed: %s" % (str(e)))
-            return {"error": True, "message": str(e)}, 400
+            current_app.logger.error(f"Import EDL failed: {repr(e)}")
+            return {"error": True, "message": f"{repr(e)}"}, 400
         finally:
             os.remove(file_path)
         return result, 201
@@ -131,10 +131,18 @@ class EDLBaseResource(Resource, ArgsMixin):
                         shot_id = None
                         matched_values = re.match(self.regex_pattern, name)
                         if matched_values is None:
-                            raise Exception(
+                            raise KeyError(
                                 "No matched value while extracting shot informations."
                             )
                         shot_infos_extracted = matched_values.groupdict()
+                        if "sequence_name" not in shot_infos_extracted.keys():
+                            raise KeyError(
+                                "No sequence name found while extracting shot informations."
+                            )
+                        if "shot_name" not in shot_infos_extracted.keys():
+                            raise KeyError(
+                                "No shot name found while extracting shot informations."
+                            )
 
                         sequence_id = self.sequence_map.get(
                             shot_infos_extracted["sequence_name"]
@@ -157,20 +165,30 @@ class EDLBaseResource(Resource, ArgsMixin):
                         }
 
                     data = future_shot_values["data"] or {}
-                    start_time_frame = (
-                        track.trimmed_range_in_parent().start_time.to_frames()
-                    )
-                    data["frame_in"] = start_time_frame + 1
-                    data["frame_out"] = (
-                        start_time_frame
-                        + track.trimmed_range_in_parent().duration.to_frames()
-                    )
+                    try:
+                        start_time_frame = (
+                            track.trimmed_range().start_time.to_frames()
+                        )
+                        data["frame_in"] = start_time_frame + 1
+                        data["frame_out"] = (
+                            start_time_frame
+                            + track.trimmed_range().duration.to_frames()
+                        )
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Parsing frame_in / out failed: {repr(e)}"
+                        )
 
                     future_shot_values["data"] = data
 
-                    future_shot_values[
-                        "nb_frames"
-                    ] = track.source_range.duration.to_frames()
+                    try:
+                        future_shot_values[
+                            "nb_frames"
+                        ] = track.source_range.duration.to_frames()
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Parsing nb_frames failed: {repr(e)}"
+                        )
 
                     if shot_id is None:
                         shot = shots_service.create_shot(**future_shot_values)
