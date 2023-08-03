@@ -13,7 +13,6 @@ from zou.app import config
 
 from zou.app.mixin import ArgsMixin
 from zou.app.services import shots_service, projects_service, user_service
-from zou.app.blueprints.previews.resources import ALLOWED_MOVIE_EXTENSION
 
 from zou.app.models.task_type import TaskType
 from zou.app.models.project import ProjectTaskTypeLink
@@ -123,9 +122,7 @@ class EDLBaseResource(Resource, ArgsMixin):
         for video_track in timeline.video_tracks():
             for track in video_track:
                 if isinstance(track, otio.schema.Clip):
-                    name, extension = os.path.splitext(track.name)
-                    if extension not in ALLOWED_MOVIE_EXTENSION:
-                        continue
+                    name, _ = os.path.splitext(track.name)
                     name_to_search = name if self.match_case else name.lower()
                     if name_to_search in self.shot_map:
                         shot_id = self.shot_map[name_to_search]
