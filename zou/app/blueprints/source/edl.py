@@ -13,7 +13,6 @@ from zou.app import config
 
 from zou.app.mixin import ArgsMixin
 from zou.app.services import shots_service, projects_service, user_service
-from zou.app.blueprints.previews.resources import ALLOWED_MOVIE_EXTENSION
 
 from zou.app.models.task_type import TaskType
 from zou.app.models.project import ProjectTaskTypeLink
@@ -53,8 +52,15 @@ class EDLBaseResource(Resource, ArgsMixin):
         try:
             result = self.run_import(project_id, file_path)
         except Exception as e:
-            current_app.logger.error("Import EDL failed: %s" % (str(e)))
-            return {"error": True, "message": str(e)}, 400
+            current_app.logger.error(
+                f"Import EDL failed: {type(e).__name__}: {str(e)}"
+            )
+            return {
+                "error": True,
+                "message": f"{type(e).__name__}: {str(e)}",
+            }, 400
+        finally:
+            os.remove(file_path)
         return result, 201
 
     def post_args(self):
@@ -116,14 +122,12 @@ class EDLBaseResource(Resource, ArgsMixin):
                 rate=projects_service.get_project_fps(project_id),
                 ignore_timecode_mismatch=True,
             )
-        except otio.exceptions.OTIOError:
-            raise Exception("Failed to parse EDL file.")
+        except Exception as e:
+            raise Exception("Failed to parse EDL file: %s" % str(e))
         for video_track in timeline.video_tracks():
             for track in video_track:
                 if isinstance(track, otio.schema.Clip):
-                    name, extension = os.path.splitext(track.name)
-                    if extension not in ALLOWED_MOVIE_EXTENSION:
-                        continue
+                    name, _ = os.path.splitext(track.name)
                     name_to_search = name if self.match_case else name.lower()
                     if name_to_search in self.shot_map:
                         shot_id = self.shot_map[name_to_search]
@@ -132,10 +136,18 @@ class EDLBaseResource(Resource, ArgsMixin):
                         shot_id = None
                         matched_values = re.match(self.regex_pattern, name)
                         if matched_values is None:
-                            raise Exception(
+                            raise KeyError(
                                 "No matched value while extracting shot informations."
                             )
                         shot_infos_extracted = matched_values.groupdict()
+                        if "sequence_name" not in shot_infos_extracted.keys():
+                            raise KeyError(
+                                "No sequence name found while extracting shot informations."
+                            )
+                        if "shot_name" not in shot_infos_extracted.keys():
+                            raise KeyError(
+                                "No shot name found while extracting shot informations."
+                            )
 
                         sequence_id = self.sequence_map.get(
                             shot_infos_extracted["sequence_name"]
@@ -146,6 +158,9 @@ class EDLBaseResource(Resource, ArgsMixin):
                                 self.episode_id,
                                 shot_infos_extracted["sequence_name"],
                             )["id"]
+                            self.sequence_map[
+                                shot_infos_extracted["sequence_name"]
+                            ] = sequence_id
 
                         future_shot_values = {
                             "project_id": self.project_id,
@@ -155,20 +170,37 @@ class EDLBaseResource(Resource, ArgsMixin):
                         }
 
                     data = future_shot_values["data"] or {}
-                    start_time_frame = (
-                        track.trimmed_range_in_parent().start_time.to_frames()
-                    )
-                    data["frame_in"] = start_time_frame + 1
-                    data["frame_out"] = (
-                        start_time_frame
-                        + track.trimmed_range_in_parent().duration.to_frames()
-                    )
+                    try:
+                        data[
+                            "frame_in"
+                        ] = (
+                            track.trimmed_range_in_parent().start_time.to_frames()
+                        )
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Parsing frame_in failed: {type(e).__name__}: {str(e)}"
+                        )
+                    try:
+                        data["frame_out"] = (
+                            track.trimmed_range_in_parent()
+                            .end_time_inclusive()
+                            .to_frames()
+                        )
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Parsing frame_out failed: {type(e).__name__}: {str(e)}"
+                        )
 
                     future_shot_values["data"] = data
 
-                    future_shot_values[
-                        "nb_frames"
-                    ] = track.source_range.duration.to_frames()
+                    try:
+                        future_shot_values[
+                            "nb_frames"
+                        ] = track.source_range.duration.to_frames()
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Parsing nb_frames failed: {type(e).__name__}: {str(e)}"
+                        )
 
                     if shot_id is None:
                         shot = shots_service.create_shot(**future_shot_values)
@@ -215,7 +247,7 @@ class EDLImportResource(EDLBaseResource):
             400:
                 description: The .EDL file is not properly formatted.
         """
-        super().post(**kwargs)
+        return super().post(**kwargs)
 
     def post_args(self):
         return self.get_args(

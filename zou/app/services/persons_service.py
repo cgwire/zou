@@ -137,6 +137,22 @@ def get_person_by_desktop_login(desktop_login):
     return person.serialize()
 
 
+def get_person_by_ldap_uid(ldap_uid):
+    """
+    Return person that matches given ldap_uid as a dictionary.
+    """
+    if ldap_uid is None:
+        raise PersonNotFoundException()
+    try:
+        person = Person.get_by(ldap_uid=ldap_uid)
+    except StatementError:
+        raise PersonNotFoundException()
+
+    if person is None:
+        raise PersonNotFoundException()
+    return person.serialize()
+
+
 @cache.memoize_function(120)
 def get_person_by_email_dekstop_login(email_or_desktop_login):
     """
@@ -184,6 +200,7 @@ def create_person(
     desktop_login="",
     departments=[],
     is_generated_from_ldap=False,
+    ldap_uid=None,
     serialize=True,
 ):
     """
@@ -214,6 +231,7 @@ def create_person(
         desktop_login=desktop_login,
         departments=departments_objects,
         is_generated_from_ldap=is_generated_from_ldap,
+        ldap_uid=ldap_uid,
     )
     index_service.index_person(person)
     events.emit("person:new", {"person_id": person.id})

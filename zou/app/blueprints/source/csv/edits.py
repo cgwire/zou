@@ -68,7 +68,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             .filter(TaskType.for_entity == "Edit")
         )
         self.task_statuses = {
-            status["id"]: [status[n] for n in ("name", "short_name")]
+            status["id"]: [status[n].lower() for n in ("name", "short_name")]
             for status in get_task_statuses()
         }
         self.current_user_id = get_current_user()["id"]
@@ -80,7 +80,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             task_status_id = None
             if task_status_name not in [None, ""]:
                 for status_id, status_names in self.task_statuses.items():
-                    if task_status_name in status_names:
+                    if task_status_name.lower() in status_names:
                         task_status_id = status_id
                         break
                 if task_status_id is None:
