@@ -52,8 +52,13 @@ class EDLBaseResource(Resource, ArgsMixin):
         try:
             result = self.run_import(project_id, file_path)
         except Exception as e:
-            current_app.logger.error(f"Import EDL failed: {repr(e)}")
-            return {"error": True, "message": f"{repr(e)}"}, 400
+            current_app.logger.error(
+                f"Import EDL failed: {type(e).__name__}: {str(e)}"
+            )
+            return {
+                "error": True,
+                "message": f"{type(e).__name__}: {str(e)}",
+            }, 400
         finally:
             os.remove(file_path)
         return result, 201
@@ -166,17 +171,24 @@ class EDLBaseResource(Resource, ArgsMixin):
 
                     data = future_shot_values["data"] or {}
                     try:
-                        start_time_frame = (
-                            track.trimmed_range().start_time.to_frames()
-                        )
-                        data["frame_in"] = start_time_frame + 1
-                        data["frame_out"] = (
-                            start_time_frame
-                            + track.trimmed_range().duration.to_frames()
+                        data[
+                            "frame_in"
+                        ] = (
+                            track.trimmed_range_in_parent().start_time.to_frames()
                         )
                     except Exception as e:
                         current_app.logger.error(
-                            f"Parsing frame_in / out failed: {repr(e)}"
+                            f"Parsing frame_in failed: {type(e).__name__}: {str(e)}"
+                        )
+                    try:
+                        data["frame_out"] = (
+                            track.trimmed_range_in_parent()
+                            .end_time_inclusive()
+                            .to_frames()
+                        )
+                    except Exception as e:
+                        current_app.logger.error(
+                            f"Parsing frame_out failed: {type(e).__name__}: {str(e)}"
                         )
 
                     future_shot_values["data"] = data
@@ -187,7 +199,7 @@ class EDLBaseResource(Resource, ArgsMixin):
                         ] = track.source_range.duration.to_frames()
                     except Exception as e:
                         current_app.logger.error(
-                            f"Parsing nb_frames failed: {repr(e)}"
+                            f"Parsing nb_frames failed: {type(e).__name__}: {str(e)}"
                         )
 
                     if shot_id is None:
