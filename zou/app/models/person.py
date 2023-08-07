@@ -91,6 +91,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     )
 
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
+    ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
     def __repr__(self):
         return "<Person %s>" % self.full_name()

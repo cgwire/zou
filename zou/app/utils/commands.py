@@ -210,9 +210,10 @@ def sync_with_ldap_server():
                 "sAMAccountName",
                 "thumbnailPhoto",
                 "userAccountControl",
+                "objectGUID",
             ]
         else:
-            attributes += ["uid", "jpegPhoto"]
+            attributes += ["uid", "jpegPhoto", "uniqueIdentifier"]
         query = "(objectClass=person)"
         if is_ad:
             query = "(&(objectClass=person)(!(objectClass=computer)))"
@@ -228,27 +229,40 @@ def sync_with_ldap_server():
                 )
                 group_members = conn.entries[0].uniqueMember.values
         conn.search(LDAP_BASE_DN, query, attributes=attributes)
-        return [
-            {
-                "first_name": clean_value(entry.givenName or entry.cn),
-                "last_name": clean_value(entry.sn),
-                "email": entry.mail.values,
-                "desktop_login": clean_value(
-                    entry.sAMAccountName if is_ad else entry.uid
-                ),
-                "thumbnail": (
-                    entry.thumbnailPhoto if is_ad else entry.jpegPhoto
-                ).raw_values,
-                "active": (bool(entry.userAccountControl.value & 2) is False)
-                if is_ad
-                else True,
-            }
-            for entry in conn.entries
-            if clean_value(entry.sAMAccountName if is_ad else entry.uid)
-            not in excluded_accounts
-            and group_members is None
-            or entry.entry_dn in group_members
-        ]
+        ldap_users = []
+        for entry in conn.entries:
+            if (
+                clean_value(entry.sAMAccountName if is_ad else entry.uid)
+                not in excluded_accounts
+                and group_members is None
+                or entry.entry_dn in group_members
+            ):
+                if is_ad:
+                    ldap_uid = clean_value(entry.objectGUID)
+                elif entry.uniqueIdentifier:
+                    ldap_uid = clean_value(entry.uniqueIdentifier)
+                else:
+                    ldap_uid = None
+                ldap_users.append(
+                    {
+                        "first_name": clean_value(entry.givenName or entry.cn),
+                        "last_name": clean_value(entry.sn),
+                        "email": entry.mail.values,
+                        "desktop_login": clean_value(
+                            entry.sAMAccountName if is_ad else entry.uid
+                        ),
+                        "thumbnail": (
+                            entry.thumbnailPhoto if is_ad else entry.jpegPhoto
+                        ).raw_values,
+                        "active": (
+                            bool(entry.userAccountControl.value & 2) is False
+                        )
+                        if is_ad
+                        else True,
+                        "ldap_uid": ldap_uid,
+                    }
+                )
+        return ldap_users
 
     def get_ldap_users():
         excluded_accounts = LDAP_EXCLUDED_ACCOUNTS.split(",")
@@ -285,6 +299,7 @@ def sync_with_ldap_server():
             last_name = user["last_name"]
             desktop_login = user["desktop_login"]
             email = user["email"]
+            ldap_uid = user["ldap_uid"]
             active = user.get("active", True)
             if "thumbnail" in user and len(user["thumbnail"]) > 0:
                 thumbnail = user["thumbnail"][0]
@@ -308,17 +323,20 @@ def sync_with_ldap_server():
 
             person = None
             try:
-                person = persons_service.get_person_by_desktop_login(
-                    desktop_login
-                )
+                person = persons_service.get_person_by_ldap_uid(ldap_uid)
             except PersonNotFoundException:
-                for mail in email_list:
-                    try:
-                        person = persons_service.get_person_by_email(mail)
-                        email = mail
-                        break
-                    except PersonNotFoundException:
-                        pass
+                try:
+                    person = persons_service.get_person_by_desktop_login(
+                        desktop_login
+                    )
+                except PersonNotFoundException:
+                    for mail in email_list:
+                        try:
+                            person = persons_service.get_person_by_email(mail)
+                            email = mail
+                            break
+                        except PersonNotFoundException:
+                            pass
 
             if person is None and active is True:
                 try:
@@ -329,6 +347,7 @@ def sync_with_ldap_server():
                         last_name,
                         desktop_login=desktop_login,
                         is_generated_from_ldap=True,
+                        ldap_uid=ldap_uid,
                     )
                     print("User %s created." % desktop_login)
                     persons_updated.append(person["id"])
@@ -349,6 +368,7 @@ def sync_with_ldap_server():
                             "active": active,
                             "is_generated_from_ldap": True,
                             "desktop_login": desktop_login,
+                            "ldap_uid": ldap_uid,
                         },
                     )
                     print("User %s updated." % desktop_login)
