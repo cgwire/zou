@@ -3,6 +3,7 @@
 import os
 import json
 import datetime
+import tempfile
 
 
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
@@ -525,15 +526,29 @@ def download_file_from_storage():
         sync_service.download_preview_files_from_storage()
 
 
-def dump_database():
+def dump_database(store=False):
+    now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    filename = f"zou-db-backup-{now}.sql.gz"
+    if store:
+        filename = os.path.join(tempfile.gettempdir(), filename)
+
     filename = backup_service.generate_db_backup(
         app.config["DATABASE"]["host"],
         app.config["DATABASE"]["port"],
         app.config["DATABASE"]["username"],
         app.config["DATABASE"]["password"],
         app.config["DATABASE"]["database"],
+        filename,
     )
-    backup_service.store_db_backup(filename)
+
+    if store:
+        backup_service.store_db_backup(os.path.basename(filename), filename)
+        os.remove(filename)
+        print(
+            f"Postgres dump added to store (dbbackup/{os.path.basename(filename)})."
+        )
+    else:
+        print(f"Postgres dump created ({os.path.realpath(filename)}).")
 
 
 def upload_files_to_cloud_storage(days):

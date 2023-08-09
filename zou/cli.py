@@ -395,12 +395,13 @@ def download_storage_files():
 
 
 @cli.command()
-def dump_database():
+@click.option("--store", is_flag=True)
+def dump_database(store=False):
     """
     Dump database described in Zou environment variables and save it to
     configured object storage.
     """
-    commands.dump_database()
+    commands.dump_database(store)
 
 
 @cli.command()
