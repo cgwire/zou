@@ -66,7 +66,7 @@ def get_year_interval(year):
     Get a tuple containing start date and end date for given year.
     """
     year = int(year)
-    if year > datetime.now().year or year < 2010:
+    if year > datetime.utcnow().year or year < 2010:
         raise WrongDateFormatException
 
     start = datetime(year, 1, 1)
@@ -80,7 +80,7 @@ def get_month_interval(year, month):
     """
     year = int(year)
     month = int(month)
-    if year > datetime.now().year or year < 2010 or month < 1 or month > 12:
+    if year > datetime.utcnow().year or year < 2010 or month < 1 or month > 12:
         raise WrongDateFormatException
 
     start = datetime(year, month, 1)
@@ -94,7 +94,7 @@ def get_week_interval(year, week):
     """
     year = int(year)
     week = int(week)
-    if year > datetime.now().year or year < 2010 or week < 1 or week > 52:
+    if year > datetime.utcnow().year or year < 2010 or week < 1 or week > 52:
         raise WrongDateFormatException
     start = isoweek.Week(year, week).monday()
     end = start + relativedelta.relativedelta(days=7)
@@ -109,7 +109,7 @@ def get_day_interval(year, month, day):
     month = int(month)
     day = int(day)
     if (
-        year > datetime.now().year
+        year > datetime.utcnow().year
         or year < 2010
         or month < 1
         or month > 12
