@@ -27,12 +27,10 @@ local_file = LocalBackend(
 )
 
 
-def generate_db_backup(host, port, user, password, database):
+def generate_db_backup(host, port, user, password, database, filename):
     """
     Generate a Postgres dump file from the database.
     """
-    now = datetime.datetime.now().strftime("%Y-%m-%d")
-    filename = "%s-zou-db-backup.sql.gz" % now
     cmd = ["pg_dump", "-h", host, "-p", port, "-U", user, database]
     with gzip.open(filename, "wb") as f:
         popen = subprocess.Popen(
@@ -48,11 +46,10 @@ def generate_db_backup(host, port, user, password, database):
         popen.stdout.close()
         popen.wait()
 
-    print(f"Postgres dump created ({filename}).")
     return filename
 
 
-def store_db_backup(filename):
+def store_db_backup(filename, path):
     """
     Store given file located in the same directory, inside the files bucket
     using the `dbbackup` prefix.
@@ -60,7 +57,7 @@ def store_db_backup(filename):
     from zou.app import app
 
     with app.app_context():
-        file_store.add_file("dbbackup", filename, filename)
+        file_store.add_file("dbbackup", filename, path)
 
 
 def upload_preview_files_to_storage(days=None):
