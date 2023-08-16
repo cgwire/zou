@@ -7,6 +7,7 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy import func
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions
@@ -83,9 +84,8 @@ class BaseModelsResource(Resource, ArgsMixin):
                 elif value_is_list:
                     value_array = json.loads(value)
                     in_filter.append(field_key.in_(value_array))
-
                 else:
-                    filters[key] = value
+                    filters[key] = func.cast(value, field_key.type)
 
         return (many_join_filter, in_filter, name_filter, filters)
 

@@ -129,7 +129,6 @@ def get_last_news_for_project(
         query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
             Sequence.parent_id == episode_id
         )
-        print(episode_id, query)
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id).filter(
@@ -146,10 +145,10 @@ def get_last_news_for_project(
         query = query.filter(News.preview_file_id != None)
 
     if after is not None:
-        query = query.filter(News.created_at > after)
+        query = query.filter(News.created_at > func.date(after))
 
     if before is not None:
-        query = query.filter(News.created_at < before)
+        query = query.filter(News.created_at < func.date(before))
 
     (total, nb_pages) = _get_news_total(query, page_size)
 
@@ -279,10 +278,10 @@ def get_news_stats_for_project(
         query = query.filter(News.preview_file_id != None)
 
     if after is not None:
-        query = query.filter(News.created_at > after)
+        query = query.filter(News.created_at > func.date(after))
 
     if before is not None:
-        query = query.filter(News.created_at < before)
+        query = query.filter(News.created_at < func.date(before))
     stats = {}
     for task_status_id, count in query.all():
         if task_status_id is not None:

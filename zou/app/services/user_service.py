@@ -1,4 +1,5 @@
 from sqlalchemy.orm import aliased
+from sqlalchemy import func
 
 from zou.app import config
 from zou.app.models.comment import Comment
@@ -925,10 +926,10 @@ def get_last_notifications(
         query = query.filter(Notification.id == notification_id)
 
     if after is not None:
-        query = query.filter(Notification.created_at > after)
+        query = query.filter(Notification.created_at > func.date(after))
 
     if before is not None:
-        query = query.filter(Notification.created_at < before)
+        query = query.filter(Notification.created_at < func.date(before))
 
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)
@@ -979,8 +980,9 @@ def get_last_notifications(
                 None,
             )
             reply_mentions = reply.get("mentions", []) or []
-            reply_department_mentions = \
+            reply_department_mentions = (
                 reply.get("departement_mentions", []) or []
+            )
             if reply is not None:
                 reply_text = reply["text"]
 

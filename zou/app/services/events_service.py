@@ -1,6 +1,7 @@
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.utils import fields
+from sqlalchemy import func
 
 
 def get_last_events(
@@ -13,10 +14,10 @@ def get_last_events(
     query = ApiEvent.query.order_by(ApiEvent.created_at.desc())
 
     if after is not None:
-        query = query.filter(ApiEvent.created_at > after)
+        query = query.filter(ApiEvent.created_at > func.date(after))
 
     if before is not None:
-        query = query.filter(ApiEvent.created_at < before)
+        query = query.filter(ApiEvent.created_at < func.date(before))
 
     if only_files:
         query = query.filter(
@@ -68,7 +69,7 @@ def get_last_login_logs(before=None, page_size=100):
     )
 
     if before is not None:
-        query = query.filter(LoginLog.created_at < before)
+        query = query.filter(LoginLog.created_at < func.date(before))
 
     login_logs = query.limit(page_size).all()
     return [
