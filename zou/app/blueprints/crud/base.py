@@ -83,7 +83,14 @@ class BaseModelsResource(Resource, ArgsMixin):
 
                 elif value_is_list:
                     value_array = json.loads(value)
-                    in_filter.append(field_key.in_(value_array))
+                    in_filter.append(
+                        field_key.in_(
+                            [
+                                func.cast(value, field_key.type)
+                                for value in value_array
+                            ]
+                        )
+                    )
                 else:
                     filters[key] = func.cast(value, field_key.type)
 
