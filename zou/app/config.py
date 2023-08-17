@@ -37,7 +37,7 @@ JWT_COOKIE_SAMESITE = "Lax"
 JWT_IDENTITY_CLAIM = "sub"
 
 DATABASE = {
-    "drivername": os.getenv("DB_DRIVER", "postgresql"),
+    "drivername": os.getenv("DB_DRIVER", "postgresql+psycopg"),
     "host": os.getenv("DB_HOST", "localhost"),
     "port": os.getenv("DB_PORT", "5432"),
     "username": os.getenv("DB_USERNAME", "postgres"),

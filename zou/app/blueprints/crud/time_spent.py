@@ -1,5 +1,6 @@
 from flask import abort
 from zou.app.models.time_spent import TimeSpent
+from sqlalchemy import func
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
@@ -22,7 +23,12 @@ class TimeSpentsResource(BaseModelsResource):
                 "`end_date` must be given.",
             )
 
-        return query.filter(self.model.date.between(start_date, end_date))
+        return query.filter(
+            self.model.date.between(
+                func.cast(start_date, TimeSpent.date.type)
+            ),
+            func.cast(end_date, TimeSpent.date.type),
+        )
 
 
 class TimeSpentResource(BaseModelResource):

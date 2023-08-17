@@ -19,6 +19,7 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
     """
     A notification is stored each time a comment is posted.
     """
+
     read = db.Column(db.Boolean, nullable=False, default=False)
     change = db.Column(db.Boolean, nullable=False, default=False)
     type = db.Column(ChoiceType(TYPES))

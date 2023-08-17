@@ -265,10 +265,7 @@ def new_comment(
         task_status_id=task_status_id,
         person_id=person_id,
         mentions=get_comment_mentions(task["project_id"], text),
-        department_mentions=get_comment_department_mentions(
-            task_id,
-            text
-        ),
+        department_mentions=get_comment_department_mentions(task_id, text),
         checklist=checklist,
         text=text,
         created_at=created_at_date,
@@ -306,9 +303,8 @@ def reset_mentions(comment):
     task = tasks_service.get_task(comment["object_id"])
     mentions = get_comment_mentions(task["project_id"], comment["text"])
     department_mentions = get_comment_department_mentions(
-            task["project_id"],
-            comment["text"]
-        )
+        task["project_id"], comment["text"]
+    )
     comment_to_update = Comment.get(comment["id"])
     comment_to_update.mentions = mentions
     comment_to_update.department_mentions = department_mentions
@@ -441,9 +437,10 @@ def reply_comment(comment_id, text, person_id=None):
         "person_id": person["id"],
         "text": text,
         "mentions": get_comment_mention_ids(task["project_id"], text),
-        "department_mentions": \
-            get_comment_department_mention_ids(task["project_id"], text),
-        "created_at": date_helpers.get_now()
+        "department_mentions": get_comment_department_mention_ids(
+            task["project_id"], text
+        ),
+        "created_at": date_helpers.get_now(),
     }
     replies = list(comment.replies)
     replies.append(reply)
@@ -508,8 +505,7 @@ def get_comment_mentions(project_id, text):
 
 def get_comment_mention_ids(project_id, text):
     return [
-        str(mention.id)
-        for mention in get_comment_mentions(project_id, text)
+        str(mention.id) for mention in get_comment_mentions(project_id, text)
     ]
 
 

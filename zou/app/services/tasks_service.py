@@ -480,7 +480,9 @@ def get_time_spents(task_id, date=None):
     result["total"] = 0
     time_spents = TimeSpent.query.filter_by(task_id=task_id)
     if date is not None:
-        time_spents = time_spents.filter_by(date=date)
+        time_spents = time_spents.filter_by(
+            date=func.cast(date, TimeSpent.date.type)
+        )
     for time_spent in time_spents.all():
         result[str(time_spent.person_id)].append(time_spent.serialize())
         result["total"] += time_spent.duration
@@ -497,16 +499,18 @@ def get_comments(task_id, is_client=False, is_manager=False):
     if len(comments) > 0:
         ack_map = _build_ack_map_for_comments(comment_ids)
         mention_map = _build_mention_map_for_comments(comment_ids)
-        department_mention_map = \
-            _build_department_mention_map_for_comments(comment_ids)
+        department_mention_map = _build_department_mention_map_for_comments(
+            comment_ids
+        )
         preview_map = _build_preview_map_for_comments(comment_ids, is_client)
         attachment_file_map = _build_attachment_map_for_comments(comment_ids)
         for comment in comments:
             comment["acknowledgements"] = ack_map.get(comment["id"], [])
             comment["previews"] = preview_map.get(comment["id"], [])
             comment["mentions"] = mention_map.get(comment["id"], [])
-            comment["department_mentions"] = \
-                department_mention_map.get(comment["id"], [])
+            comment["department_mentions"] = department_mention_map.get(
+                comment["id"], []
+            )
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
@@ -1280,7 +1284,9 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
     try:
         time_spent = TimeSpent.get_by(
-            task_id=task_id, person_id=person_id, date=date
+            task_id=task_id,
+            person_id=person_id,
+            date=func.cast(date, TimeSpent.date.type),
         )
     except DataError:
         raise WrongDateFormatException

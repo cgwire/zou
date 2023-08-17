@@ -100,7 +100,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         nullable=False,
-        index=True
+        index=True,
     )
     preview_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("preview_file.id")
@@ -127,11 +127,13 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
 
     def set_mentions(self, person_ids):
         from zou.app.models.person import Person
+
         self.mentions = []
         self.set_many_to_one("mentions", Person, person_ids)
 
     def set_department_mentions(self, department_ids):
         from zou.app.models.department import Department
+
         self.mentions = []
         self.set_many_to_one("department_mentions", Department, department_ids)
 
