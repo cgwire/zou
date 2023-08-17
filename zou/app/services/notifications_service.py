@@ -176,8 +176,7 @@ def get_mentioned_people(project_id, comment):
     mentions = comment["mentions"]
     for department_id in comment["department_mentions"]:
         persons = projects_service.get_department_team(
-            project_id,
-            department_id
+            project_id, department_id
         )
         for person in persons:
             mentions.append(str(person.id))

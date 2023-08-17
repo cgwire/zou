@@ -35,7 +35,7 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("file_status.id"),
         nullable=False,
-        index=True
+        index=True,
     )
     entity_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
@@ -61,7 +61,7 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
         db.ForeignKey("entity.id"),
         default=None,
         nullable=True,
-        index=True
+        index=True,
     )
 
     __table_args__ = (

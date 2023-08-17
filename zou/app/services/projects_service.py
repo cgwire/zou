@@ -635,15 +635,10 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
 
 def get_department_team(project_id, department_id):
     persons = (
-        Person.query
-        .join(
-            ProjectPersonLink,
-            ProjectPersonLink.person_id == Person.id
+        Person.query.join(
+            ProjectPersonLink, ProjectPersonLink.person_id == Person.id
         )
-        .join(
-            department_link,
-            department_link.columns.person_id == Person.id
-        )
+        .join(department_link, department_link.columns.person_id == Person.id)
         .filter(ProjectPersonLink.project_id == project_id)
         .filter(department_link.columns.department_id == department_id)
     ).all()

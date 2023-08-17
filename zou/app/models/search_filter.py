@@ -17,12 +17,8 @@ class SearchFilter(db.Model, BaseMixin, SerializerMixin):
     search_query = db.Column(db.String(500), nullable=False, default="")
 
     person_id = db.Column(
-        UUIDType(binary=False),
-        db.ForeignKey("person.id"),
-        index=True
+        UUIDType(binary=False), db.ForeignKey("person.id"), index=True
     )
     project_id = db.Column(
-        UUIDType(binary=False),
-        db.ForeignKey("project.id"),
-        index=True
+        UUIDType(binary=False), db.ForeignKey("project.id"), index=True
     )
