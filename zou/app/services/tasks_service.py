@@ -480,7 +480,9 @@ def get_time_spents(task_id, date=None):
     result["total"] = 0
     time_spents = TimeSpent.query.filter_by(task_id=task_id)
     if date is not None:
-        time_spents = time_spents.filter_by(date=func.date(date))
+        time_spents = time_spents.filter_by(
+            date=func.cast(date, TimeSpent.date.type)
+        )
     for time_spent in time_spents.all():
         result[str(time_spent.person_id)].append(time_spent.serialize())
         result["total"] += time_spent.duration
@@ -1282,7 +1284,9 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
     try:
         time_spent = TimeSpent.get_by(
-            task_id=task_id, person_id=person_id, date=func.date(date)
+            task_id=task_id,
+            person_id=person_id,
+            date=func.cast(date, TimeSpent.date.type),
         )
     except DataError:
         raise WrongDateFormatException

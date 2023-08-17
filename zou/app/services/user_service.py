@@ -926,10 +926,16 @@ def get_last_notifications(
         query = query.filter(Notification.id == notification_id)
 
     if after is not None:
-        query = query.filter(Notification.created_at > func.date(after))
+        query = query.filter(
+            Notification.created_at
+            > func.cast(after, Notification.created_at.type)
+        )
 
     if before is not None:
-        query = query.filter(Notification.created_at < func.date(before))
+        query = query.filter(
+            Notification.created_at
+            < func.cast(before, Notification.created_at.type)
+        )
 
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)

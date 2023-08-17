@@ -145,10 +145,14 @@ def get_last_news_for_project(
         query = query.filter(News.preview_file_id != None)
 
     if after is not None:
-        query = query.filter(News.created_at > func.date(after))
+        query = query.filter(
+            News.created_at > func.cast(after, News.created_at.type)
+        )
 
     if before is not None:
-        query = query.filter(News.created_at < func.date(before))
+        query = query.filter(
+            News.created_at < func.cast(before, News.created_at.type)
+        )
 
     (total, nb_pages) = _get_news_total(query, page_size)
 
@@ -278,10 +282,14 @@ def get_news_stats_for_project(
         query = query.filter(News.preview_file_id != None)
 
     if after is not None:
-        query = query.filter(News.created_at > func.date(after))
+        query = query.filter(
+            News.created_at > func.cast(after, News.created_at.type)
+        )
 
     if before is not None:
-        query = query.filter(News.created_at < func.date(before))
+        query = query.filter(
+            News.created_at < func.cast(before, News.created_at.type)
+        )
     stats = {}
     for task_status_id, count in query.all():
         if task_status_id is not None:

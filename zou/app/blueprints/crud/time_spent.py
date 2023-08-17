@@ -24,7 +24,10 @@ class TimeSpentsResource(BaseModelsResource):
             )
 
         return query.filter(
-            self.model.date.between(func.date(start_date), func.date(end_date))
+            self.model.date.between(
+                func.cast(start_date, TimeSpent.date.type)
+            ),
+            func.cast(end_date, TimeSpent.date.type),
         )
 
 

@@ -14,10 +14,14 @@ def get_last_events(
     query = ApiEvent.query.order_by(ApiEvent.created_at.desc())
 
     if after is not None:
-        query = query.filter(ApiEvent.created_at > func.date(after))
+        query = query.filter(
+            ApiEvent.created_at > func.cast(after, ApiEvent.created_at.type)
+        )
 
     if before is not None:
-        query = query.filter(ApiEvent.created_at < func.date(before))
+        query = query.filter(
+            ApiEvent.created_at < func.cast(before, ApiEvent.created_at.type)
+        )
 
     if only_files:
         query = query.filter(
@@ -69,7 +73,9 @@ def get_last_login_logs(before=None, page_size=100):
     )
 
     if before is not None:
-        query = query.filter(LoginLog.created_at < func.date(before))
+        query = query.filter(
+            LoginLog.created_at < func.cast(before, LoginLog.created_at.type)
+        )
 
     login_logs = query.limit(page_size).all()
     return [

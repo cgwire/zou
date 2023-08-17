@@ -124,7 +124,8 @@ def get_time_spents_for_year(
     if year is not None:
         query = query.filter(
             TimeSpent.date.between(
-                func.date("%s-01-01" % year), func.date("%s-12-31" % year)
+                datetime.datetime(int(year), 1, 1),
+                datetime.datetime(int(year), 12, 31),
             )
         )
 
@@ -209,7 +210,7 @@ def get_time_spents(
     """
     try:
         query = TimeSpent.query.filter_by(
-            person_id=person_id, date=func.date(date)
+            person_id=person_id, date=func.cast(date, TimeSpent.date.type)
         )
 
         if project_ids is not None or department_ids is not None:
@@ -233,7 +234,10 @@ def get_time_spents_range(person_id, start_date, end_date):
     try:
         query = TimeSpent.query.filter_by(person_id=person_id)
         time_spents = query.filter(
-            TimeSpent.date.between(func.date(start_date), func.date(end_date))
+            TimeSpent.date.between(
+                func.cast(start_date, TimeSpent.date.type),
+                func.cast(end_date, TimeSpent.date.type),
+            )
         ).all()
     except DataError:
         raise WrongDateFormatException
@@ -246,7 +250,9 @@ def get_time_spent(person_id, task_id, date):
     """
     try:
         time_spent = TimeSpent.query.filter_by(
-            person_id=person_id, task_id=task_id, date=func.date(date)
+            person_id=person_id,
+            task_id=task_id,
+            date=func.cast(date, TimeSpent.date.type),
         ).first()
     except DataError:
         raise WrongDateFormatException
@@ -261,7 +267,9 @@ def get_day_off(person_id, date):
     Return day off for given person and date.
     """
     try:
-        day_off = DayOff.get_by(person_id=person_id, date=func.date(date))
+        day_off = DayOff.get_by(
+            person_id=person_id, date=func.cast(date, TimeSpent.date.type)
+        )
     except DataError:
         raise WrongDateFormatException
     if day_off is not None:
@@ -279,8 +287,8 @@ def get_year_time_spents(
     start, end = date_helpers.get_year_interval(year)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= func.date(start),
-        TimeSpent.date < func.date(end),
+        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
+        TimeSpent.date < func.cast(end, TimeSpent.date.type),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -296,8 +304,8 @@ def get_month_time_spents(
     start, end = date_helpers.get_month_interval(year, month)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= func.date(start),
-        TimeSpent.date < func.date(end),
+        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
+        TimeSpent.date < func.cast(end, TimeSpent.date.type),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -313,8 +321,8 @@ def get_week_time_spents(
     start, end = date_helpers.get_week_interval(year, week)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= func.date(start),
-        TimeSpent.date < func.date(end),
+        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
+        TimeSpent.date < func.cast(end, TimeSpent.date.type),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -330,8 +338,8 @@ def get_day_time_spents(
     start, end = date_helpers.get_day_interval(year, month, day)
     entries = get_person_time_spent_entries(
         person_id,
-        TimeSpent.date >= func.date(start),
-        TimeSpent.date < func.date(end),
+        TimeSpent.date >= func.cast(start, TimeSpent.date.type),
+        TimeSpent.date < func.cast(end, TimeSpent.date.type),
         project_id=project_id,
         department_ids=department_ids,
     )
@@ -468,8 +476,8 @@ def get_day_offs_between(start, end, person_id=None):
         query = query.filter(DayOff.person_id == person_id)
 
     return DayOff.serialize_list(
-        query.filter(DayOff.date >= func.date(start))
-        .filter(DayOff.date < func.date(end))
+        query.filter(DayOff.date >= func.cast(start, TimeSpent.date.type))
+        .filter(DayOff.date < func.cast(end, TimeSpent.date.type))
         .all()
     )
 
