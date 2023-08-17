@@ -71,7 +71,7 @@ database, you can reset it at any time. Simply use this command (assuming all
 environment variables are properly set).
 
 ```
-zou reset-search-index zou reset-search-index
+zou reset-search-index
 ```
 
 Or add directly your environment variables in the command:
