@@ -207,10 +207,11 @@ class PlaylistDownloadResource(Resource):
             400:
                 description: Build not finished, need to retry later
         """
+        user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_playlist_access(playlist, supervisor_access=True)
         project = projects_service.get_project(playlist["project_id"])
         build_job = playlists_service.get_build_job(build_job_id)
-        user_service.check_project_access(playlist["project_id"])
 
         if build_job["status"] != "succeeded":
             return {"error": True, "message": "Build is not finished"}, 400
@@ -348,10 +349,10 @@ class PlaylistZipDownloadResource(Resource):
                 schema:
                     type: file
         """
-        playlist = playlists_service.get_playlist(playlist_id)
-        project = projects_service.get_project(playlist["project_id"])
         user_service.block_access_to_vendor()
-        user_service.check_playlist_access(playlist)
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_playlist_access(playlist, supervisor_access=True)
+        project = projects_service.get_project(playlist["project_id"])
         zip_file_path = playlists_service.build_playlist_zip_file(playlist)
 
         context_name = slugify.slugify(project["name"], separator="_")

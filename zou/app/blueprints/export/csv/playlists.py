@@ -19,10 +19,6 @@ from zou.app.utils import csv_utils
 
 
 class PlaylistCsvExport(Resource):
-    def check_permissions(self, project_id):
-        user_service.check_project_access(project_id)
-        user_service.block_access_to_vendor()
-
     @jwt_required()
     def get(self, playlist_id):
         """
@@ -41,9 +37,10 @@ class PlaylistCsvExport(Resource):
             200:
                 description: Playlist exported as csv
         """
+        user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_playlist_access(playlist, supervisor_access=True)
         project = projects_service.get_project(playlist["project_id"])
-        self.check_permissions(project["id"])
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()
         task_ids = []
