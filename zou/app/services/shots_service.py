@@ -2,6 +2,7 @@ from datetime import timedelta
 from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy import func
 
 from zou.app.utils import (
     cache,
@@ -1383,8 +1384,8 @@ def get_weighted_quota_shots_between(
         .filter(Task.task_type_id == task_type_id)
         .filter(Task.end_date != None)
         .filter(TimeSpent.person_id == person_id)
-        .filter(TimeSpent.date >= start)
-        .filter(TimeSpent.date < end)
+        .filter(TimeSpent.date >= func.cast(start, TimeSpent.date.type))
+        .filter(TimeSpent.date < func.cast(end, TimeSpent.date.type))
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
@@ -1461,7 +1462,12 @@ def get_raw_quota_shots_between(
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
-        .filter(Task.end_date.between(start, end))
+        .filter(
+            Task.end_date.between(
+                func.cast(start, Task.end_date.type),
+                func.cast(end, Task.end_date.type),
+            )
+        )
         .filter(Task.assignees.contains(person))
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
