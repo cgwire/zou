@@ -7,10 +7,9 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy import func
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import events, fields, permissions
+from zou.app.utils import events, fields, permissions, query
 from zou.app.services.exception import (
     ArgumentsException,
     WrongParameterException,
@@ -86,13 +85,13 @@ class BaseModelsResource(Resource, ArgsMixin):
                     in_filter.append(
                         field_key.in_(
                             [
-                                func.cast(value, field_key.type)
+                                query.cast_value(value, field_key)
                                 for value in value_array
                             ]
                         )
                     )
                 else:
-                    filters[key] = func.cast(value, field_key.type)
+                    filters[key] = query.cast_value(value, field_key)
 
         return (many_join_filter, in_filter, name_filter, filters)
 

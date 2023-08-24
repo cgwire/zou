@@ -1,7 +1,8 @@
 import math
 
 from zou.app import app
-from zou.app.utils import fields
+from zou.app.utils import fields, string
+from sqlalchemy import func
 
 
 def get_query_criterions_from_request(request):
@@ -77,3 +78,10 @@ def apply_sort_by(model, query, sort_by):
     else:
         sort_field = model.updated_at.desc()
     return query.order_by(sort_field)
+
+
+def cast_value(value, field_key):
+    if field_key.type.python_type is bool:
+        return string.strtobool(value)
+    else:
+        return func.cast(value, field_key.type)
