@@ -133,21 +133,24 @@ def create_admin(email, password):
                 # Allow "admin@example.com" to be invalid.
                 if email != "admin@example.com":
                     auth.validate_email(email)
+                if persons_service.is_user_limit_reached():
+                    raise IsUserLimitReachedException
                 password = auth.encrypt_password(password)
                 persons_service.create_person(
                     email, password, "Super", "Admin", role="admin"
                 )
                 print("Admin successfully created.")
-
             except IntegrityError:
                 print("User already exists for this email.")
                 sys.exit(1)
-
             except auth.PasswordTooShortException:
                 print("Password is too short.")
                 sys.exit(1)
             except auth.EmailNotValidException:
                 print("Email is not valid.")
+                sys.exit(1)
+            except IsUserLimitReachedException:
+                print(f"User limit reached (limit {config.USER_LIMIT}).")
                 sys.exit(1)
 
 
@@ -223,7 +226,7 @@ def set_person_as_active(email, unactive):
     """
     with app.app_context():
         try:
-            if persons_service.is_user_limit_reached():
+            if persons_service.is_user_limit_reached() and not unactive:
                 raise IsUserLimitReachedException
             person = persons_service.get_person_by_email_raw(email)
             person.update({"active": not unactive})
@@ -244,12 +247,12 @@ def sync_with_ldap_server():
     For each user account in your LDAP server, it creates a new user.
     """
     with app.app_context():
-        try:
-            if persons_service.is_user_limit_reached():
-                raise IsUserLimitReachedException
-            commands.sync_with_ldap_server()
-        except IsUserLimitReachedException:
-            print("User limit reached (limit %i)." % config.USER_LIMIT)
+        commands.sync_with_ldap_server()
+        if persons_service.is_user_limit_reached():
+            print(
+                "User limit reached (limit %i). New users will not be added."
+                % config.USER_LIMIT
+            )
             sys.exit(1)
 
 
