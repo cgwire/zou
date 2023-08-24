@@ -94,10 +94,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
     def __repr__(self):
-        return "<Person %s>" % self.full_name()
+        return f"<Person {self.full_name()}>"
 
     def full_name(self):
-        return "%s %s" % (self.first_name, self.last_name)
+        return f"{self.first_name} {self.last_name}"
 
     def fido_devices(self):
         if self.fido_credentials is None:
