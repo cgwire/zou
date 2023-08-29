@@ -117,12 +117,19 @@ du -sh /opt/zou/previews/files
 du -sh /opt/zou/previews/pictures
 ```
 
-The error is explicit: your drive is full. You have three options there:
+The error is explicit: your drive is full. You have multiple options:
 
 * Add more space
+* Use a s3 compatible service
 * Delete unused files
 * Delete data into Kitsu old projects, old shots or old preview revisions (or
   both).
+* Create a cronjob that deletes tmp files older than 5 days:
+
+```bash
+# clean kitsu tmp folder
+17      2       *       *       *       /usr/bin/find /opt/zou/tmp/ -mtime +5 -exec rm {} \;
+```
 
 ### Unable to successfully upgrade from a much earlier version
 
