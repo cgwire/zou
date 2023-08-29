@@ -46,12 +46,12 @@ Stream refers to `zou-events` service, job queue refers to `zou-jobs` service.
 # Changing password
 
 If, for any reasons, the user cannot access to his rest password email, you can
-put his password back to "default" with the following command:
+change his password with the following command:
 
 ```bash
 cd /opt/zou
 . zouenv/bin/activate
-DB_PASSWORD=yourdbpassword zou set-default-password email@studio.com
+DB_PASSWORD=yourdbpassword zou change-password email@studio.com --password newsecretpassword
 ```
 
 ## Installing on Ubuntu server or minimal desktop
