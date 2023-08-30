@@ -1,4 +1,5 @@
 from sqlalchemy_utils import UUIDType, ChoiceType
+
 from sqlalchemy.dialects.postgresql import JSONB
 
 from zou.app import db
@@ -110,6 +111,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     episode_span = db.Column(db.Integer, default=0)
     max_retakes = db.Column(db.Integer, default=0)
     is_clients_isolated = db.Column(db.Boolean(), default=False)
+    is_preview_download_allowed = db.Column(db.Boolean(), default=False)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True
