@@ -132,7 +132,7 @@ class MovieTestCase(unittest.TestCase):
 
         script_dir = os.path.dirname(script_path)
 
-        video_filename = "010_010_0030.mp4"
+        video_filename = "preview01.mp4"
 
         video = os.path.join(script_dir, video_filename)
 
