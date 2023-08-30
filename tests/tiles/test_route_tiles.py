@@ -46,13 +46,20 @@ class RouteTileTestCase(ApiDBTestCase):
 
     def test_extract_tile(self):
  
-        path = (
-            "/actions/preview-files/%s/extract-tile" % self.preview_file_id
-        )
+        path = "/actions/preview-files/%s/extract-tile" % self.preview_file_id
 
         file_path_fixture = self.get_fixture_file_path(
-            os.path.join("tiles", "tile01.png")
+            os.path.join("tiles", "preview01.mp4")
         )
+
+        self.upload_file(path, file_path_fixture)
+
+        current_path = os.path.dirname(__file__)
+        result_file_path = os.path.join(TEST_FOLDER, "tile01.png")
+        result_file_path = os.path.join(
+            current_path, "..", "..", result_file_path
+        )
+        os.mkdir(TEST_FOLDER)
 
         path = "/movies/tiles/preview-files/%s.png" % self.preview_file_id
         result_file_path = self.get_file_path("tile01.png")
@@ -60,4 +67,4 @@ class RouteTileTestCase(ApiDBTestCase):
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)        
 
-        self.assertEqual(result_image.size, (2200,3000))
+        self.assertEqual(result_image.size, (1704, 3840))
