@@ -21,6 +21,7 @@ METADATA_DESCRIPTOR_TYPES = [
     ("string", "String"),
     ("number", "Number"),
     ("list", "List"),
+    ("taglist", "Taglist"),
     ("boolean", "Boolean"),
     ("checklist", "Checklist"),
 ]
