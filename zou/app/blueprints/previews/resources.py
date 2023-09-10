@@ -218,12 +218,15 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         original_file_name = ".".join(file_name_parts)
 
         if extension in ALLOWED_PICTURE_EXTENSION:
-            self.save_picture_preview(instance_id, uploaded_file)
+            metadada = self.save_picture_preview(instance_id, uploaded_file)
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {
                     "extension": "png",
                     "original_name": original_file_name,
+                    "width": metadada["width"],
+                    "height": metadada["height"],
+                    "file_size": metadada["file_size"],
                     "status": "ready",
                 },
             )
@@ -276,12 +279,17 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             tmp_folder, instance_id, uploaded_file
         )
         file_size = fs.get_file_size(original_tmp_path)
-        preview_files_service.update_preview_file(
-            instance_id, {"file_size": file_size}, silent=True
-        )
-        return preview_files_service.save_variants(
+        width, height = thumbnail_utils.get_dimensions(original_tmp_path)
+        preview_files_service.save_variants(
             instance_id, original_tmp_path
         )
+        return {
+            "preview_file_id": instance_id,
+            "file_size": file_size,
+            "extension": "png",
+            "width": width,
+            "height": height,
+        }
 
     def save_movie_preview(
         self, preview_file_id, uploaded_file, normalize=True

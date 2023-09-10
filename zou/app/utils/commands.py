@@ -16,6 +16,7 @@ from zou.app.services import (
     edits_service,
     index_service,
     persons_service,
+    preview_files_service,
     projects_service,
     shots_service,
     sync_service,
@@ -623,3 +624,18 @@ def search_asset(query):
         for asset in assets:
             print(asset["name"], asset["id"])
         return assets
+
+
+def generate_tiles():
+    with app.app_context():
+        preview_files_service.generate_tiles_for_movie_previews()
+
+
+def reset_movie_file_metadata():
+    with app.app_context():
+        preview_files_service.reset_movie_file_metadata()
+
+
+def reset_picture_file_metadata():
+    with app.app_context():
+        preview_files_service.reset_picture_file_metadata()

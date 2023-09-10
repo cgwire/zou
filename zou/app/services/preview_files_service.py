@@ -1,4 +1,5 @@
 import os
+
 import re
 import time
 
@@ -245,6 +246,7 @@ def prepare_and_store_movie(
 
         # Build thumbnails
         size = movie.get_movie_size(normalized_movie_path)
+        width, height = size
         original_picture_path = movie.generate_thumbnail(normalized_movie_path)
         thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
@@ -265,7 +267,12 @@ def prepare_and_store_movie(
                 os.remove(normalized_movie_low_path)
 
         preview_file = update_preview_file_raw(
-            preview_file_raw, {"status": "ready", "file_size": file_size}
+            preview_file_raw, {
+                "status": "ready",
+                "file_size": file_size,
+                width: width,
+                height: height,
+            }
         )
         return preview_file
 
@@ -622,3 +629,88 @@ def extract_tile_from_preview_file(preview_file):
     extracted_tile_path = movie.generate_tile(preview_file_path, fps)
 
     return extracted_tile_path
+
+def reset_movie_file_metadata():
+    """
+    Reset preview file size information of open projects.
+    """
+    preview_files = (
+        PreviewFile.query.join(Task)
+        .join(Project)
+        .join(ProjectStatus)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(PreviewFile.status.not_in(("broken", "processing")))
+        .filter(PreviewFile.extension == "mp4")
+    )
+    for preview_file in preview_files:
+        try:
+            preview_file_path = fs.get_file_path_and_file(
+                config,
+                file_store.get_local_movie_path,
+                file_store.open_movie,
+                "previews",
+                str(preview_file.id),
+                "mp4",
+            )
+            size = movie.get_movie_size(preview_file_path)
+            file_size = os.path.getsize(preview_file_path)
+            width, height = size
+            update_preview_file_raw(
+                preview_file, {
+                    "width": width,
+                    "height": height,
+                    "file_size": file_size,
+                }
+            )
+            print(
+                f"Size information stored for {preview_file.id}",
+            )
+        except Exception as e:
+            print(
+                "Failed to store information for preview file %s: %s",
+                str(preview_file.id),
+                e,
+            )
+
+
+def reset_picture_file_metadata():
+    """
+    Reset preview file size information of open projects.
+    """
+    preview_files = (
+        PreviewFile.query.join(Task)
+        .join(Project)
+        .join(ProjectStatus)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(PreviewFile.status.not_in(("broken", "processing")))
+        .filter(PreviewFile.extension == "png")
+    )
+    for preview_file in preview_files:
+        try:
+            preview_file_path = fs.get_file_path_and_file(
+                config,
+                file_store.get_local_picture_path,
+                file_store.open_picture,
+                "original",
+                str(preview_file.id),
+                "png",
+            )
+            width, height = thumbnail_utils.get_dimensions(preview_file_path)
+            file_size = os.path.getsize(preview_file_path)
+            update_preview_file_raw(
+                preview_file, {
+                    "width": width,
+                    "height": height,
+                    "file_size": file_size,
+                }
+            )
+            print(
+                f"Size information stored for {preview_file.id}",
+            )
+        except Exception as e:
+            print(
+                "Failed to store information for preview file %s: %s",
+                str(preview_file.id),
+                e,
+            )
+

@@ -169,6 +169,14 @@ def get_movie_size(movie_path):
     return (width, height)
 
 
+def get_movie_ratio(movie_path):
+    """
+    Returns movie ratio (width / height).
+    """
+    width, height = get_movie_size(movie_path)
+    return width / height
+
+
 def normalize_encoding(
     movie_path, task, file_target_path, fps, b, width, height, keyframes=1
 ):

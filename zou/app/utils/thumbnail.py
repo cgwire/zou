@@ -93,6 +93,14 @@ def fit_to_target_size(im, size):
     return im
 
 
+def get_dimensions(file_path):
+    """
+    Return dimensions of given picture (width and height).
+    """
+    im = Image.open(file_path)
+    return im.size
+
+
 def turn_into_thumbnail(file_path, size=None):
     """
     Turn given picture into a smaller version.
