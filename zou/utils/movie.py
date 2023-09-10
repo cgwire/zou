@@ -131,14 +131,17 @@ def generate_tile(movie_path, movie_fps):
     duration_in_seconds = float(probe["streams"][0]["duration"])
     float_movie_fps = float(movie_fps)
     duration_in_frames = int(duration_in_seconds * float_movie_fps)
-    rows = math.ceil(duration_in_frames / 8)
+    rows = min(math.ceil(duration_in_frames / 8), 240)
+    ratio = get_movie_ratio(movie_path)
+    height = 100
+    width = math.ceil(height * ratio)
 
     try:
         ffmpeg.input(movie_path).output(
-            file_target_path, vf=f"scale=426:240,tile=8x{rows}"
+            file_target_path, vf=f"scale={width}:{height},tile=8x{rows}"
         ).run(quiet=True)
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, "generating_tile")
+        log_ffmpeg_error(e, "An error occured while generating the tile.")
         raise e
 
     return file_target_path

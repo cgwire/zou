@@ -1191,7 +1191,6 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_manager_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
         extracted_frame_path = (
             preview_files_service.extract_frame_from_preview_file(
                 preview_file, args["frame_number"]
@@ -1223,6 +1222,7 @@ class ExtractTileFromPreview(Resource):
         extracted_tile_path = (
             preview_files_service.extract_tile_from_preview_file(preview_file)
         )
+        file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
         try:
             return flask_send_file(
                 extracted_tile_path,
