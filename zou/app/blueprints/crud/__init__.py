@@ -93,6 +93,10 @@ from zou.app.blueprints.crud.search_filter import (
     SearchFiltersResource,
     SearchFilterResource,
 )
+from zou.app.blueprints.crud.search_filter_group import (
+    SearchFilterGroupsResource,
+    SearchFilterGroupResource,
+)
 from zou.app.blueprints.crud.software import (
     SoftwaresResource,
     SoftwareResource,
@@ -172,6 +176,8 @@ routes = [
     ("/data/notifications/<instance_id>", NotificationResource),
     ("/data/search-filters/", SearchFiltersResource),
     ("/data/search-filters/<instance_id>", SearchFilterResource),
+    ("/data/search-filter-groups/", SearchFilterGroupsResource),
+    ("/data/search-filter-groups/<instance_id>", SearchFilterGroupResource),
     ("/data/schedule-items/", ScheduleItemsResource),
     ("/data/schedule-items/<instance_id>", ScheduleItemResource),
     ("/data/news/", NewssResource),

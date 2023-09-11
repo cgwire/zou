@@ -30,6 +30,7 @@ from zou.app.models.project_status import ProjectStatus
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
@@ -91,6 +92,7 @@ event_name_model_map = {
     "schedule-item": ScheduleItem,
     "subscription": Subscription,
     "search-filter": SearchFilter,
+    "search-filter-group": SearchFilterGroup,
     "task": Task,
     "task-status": TaskStatus,
     "task-type": TaskType,
@@ -268,6 +270,7 @@ def run_other_sync(project=None, with_events=False):
     Retrieve and import all search filters and events from target instance.
     """
     sync_entries("search-filters", SearchFilter, project=project)
+    sync_entries("search-filter-groups", SearchFilterGroup, project=project)
     sync_entries("day-offs", SearchFilter, project=project)
     if with_events:
         sync_entries("events", ApiEvent, project=project)

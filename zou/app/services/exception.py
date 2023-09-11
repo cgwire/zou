@@ -113,6 +113,10 @@ class SearchFilterNotFoundException(NotFound):
     pass
 
 
+class SearchFilterGroupNotFoundException(NotFound):
+    pass
+
+
 class NotificationNotFoundException(NotFound):
     pass
 

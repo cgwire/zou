@@ -164,7 +164,8 @@ class AssetTypeAssetsResource(Resource):
     @jwt_required()
     def get(self, project_id, asset_type_id):
         """
-        Return assets of which type is given asset type and are listed in given project if user has access to this project.
+        Return assets of which type is given asset type and are listed in given
+        project if user has access to this project.
         ---
         tags:
         - User
@@ -183,7 +184,8 @@ class AssetTypeAssetsResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Assets of which type is given asset type and are listed in given project
+                description: Assets of which type is given asset type and are
+                listed in given project
         """
         projects_service.get_project(project_id)
         assets_service.get_asset_type(asset_type_id)
@@ -592,7 +594,7 @@ class FilterResource(Resource, ArgsMixin):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Given filter updated
+                description: Given filter with updated data.
         """
         data = self.get_args(
             [
@@ -620,16 +622,167 @@ class FilterResource(Resource, ArgsMixin):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Given filter deleted
+                description: Empty response
         """
         user_service.remove_filter(filter_id)
         return "", 204
 
 
+class FilterGroupsResource(Resource, ArgsMixin):
+    """
+    Allow to create and retrieve filter groups for current user and only for
+    open projects.
+    """
+
+    @jwt_required()
+    def get(self):
+        """
+        Retrieve filter groups for current user and only for open projects.
+        ---
+        tags:
+        - User
+        responses:
+            200:
+                description: Filter groups for current user and only for open
+                             projects
+        """
+        return user_service.get_filter_groups()
+
+    @jwt_required()
+    def post(self):
+        """
+        Create filter group for current user and only for open projects.
+        ---
+        tags:
+        - User
+        parameters:
+          - in: formData
+            name: name
+            required: True
+            type: string
+            x-example: Name of filter
+          - in: formData
+            name: color
+            required: True
+            type: string
+          - in: formData
+            name: list_type
+            required: True
+            type: string
+          - in: formData
+            name: entity_type
+            required: False
+            type: string
+          - in: formData
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Filter groups for the current user and only for
+                             open projects created.
+        """
+        arguments = self.get_arguments()
+
+        return (
+            user_service.create_filter_group(
+                arguments["list_type"],
+                arguments["name"],
+                arguments["color"],
+                arguments["project_id"],
+                arguments["entity_type"],
+            ),
+            201,
+        )
+
+    def get_arguments(self):
+        return self.get_args(
+            [
+                ("name", "", True),
+                ("color", "", True),
+                ("list_type", "todo", True),
+                ("project_id", None, False),
+                ("entity_type", None, False),
+            ]
+        )
+
+
+class FilterGroupResource(Resource, ArgsMixin):
+    """
+    Allow to remove or update given filter group if it's owned by
+    the current user.
+    """
+
+    @jwt_required()
+    def get(self, search_filter_group_id):
+        """
+        Retrieve given filter group for the current user.
+        ---
+        tags:
+        - User
+        responses:
+            200:
+                description: Filter groups for the current user and only for
+                             open projects
+        """
+        return user_service.get_filter_group(search_filter_group_id)
+
+    @jwt_required()
+    def put(self, filter_group_id):
+        """
+        Update given filter group if it's owned by the current user.
+        ---
+        tags:
+        - User
+        parameters:
+          - in: path
+            name: filter_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Given filter group with updated data
+        """
+        data = self.get_args(
+            [
+                ("name", None, False),
+                ("color", None, False),
+            ]
+        )
+        data = self.clear_empty_fields(data)
+        user_filter = user_service.update_filter_group(filter_group_id, data)
+        return user_filter, 200
+
+    @jwt_required()
+    def delete(self, filter_group_id):
+        """
+        Delete given filter group if it's owned by the current user.
+        ---
+        tags:
+        - User
+        parameters:
+          - in: path
+            name: filter_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: Empty response
+        """
+        user_service.remove_filter_group(filter_group_id)
+        return "", 204
+
+
 class DesktopLoginLogsResource(Resource, ArgsMixin):
     """
-    Allow to create and retrieve desktop login logs. Desktop login logs can only
-    be created by current user.
+    Allow to create and retrieve desktop login logs. Desktop login logs can
+    only be created by the current user.
     """
 
     @jwt_required()
@@ -649,11 +802,12 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self):
         """
-        Create desktop login logs.
+        Create a desktop login log.
         ---
         tags:
         - User
-        description: Desktop login logs can only be created by current user.
+        description: The desktop login log can only be created by
+                     the current user.
         parameters:
           - in: formData
             name: date
@@ -662,7 +816,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
             x-example: "2022-07-12"
         responses:
             201:
-                description: Desktop login logs created
+                description: Desktop login log created
         """
         arguments = self.get_args(["date", datetime.datetime.utcnow()])
         current_user = persons_service.get_current_user()

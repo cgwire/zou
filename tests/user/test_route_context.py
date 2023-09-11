@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+
 from zou.app.services import (
     tasks_service,
     notifications_service,
@@ -279,6 +280,79 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         path = "data/user/done-tasks/"
         tasks = self.get(path)
         self.assertEqual(len(tasks), 1)
+
+    def test_get_filter_groups(self):
+        project_id = str(self.project.id)
+        path = "data/user/filter-groups/"
+        filter_group_1 = {
+            "list_type": "asset",
+            "name": "g1",
+            "color": "#000000",
+            "project_id": project_id,
+        }
+        filter_group_2 = {
+            "list_type": "shot",
+            "name": "g2",
+            "color": "#000000",
+            "project_id": project_id,
+        }
+        filter_group_3 = {
+            "list_type": "all",
+            "name": "g3",
+            "color": "#000000",
+            "project_id": project_id,
+        }
+        self.post(path, filter_group_1)
+        self.post(path, filter_group_2)
+        self.post(path, filter_group_3)
+
+        result = self.get(path)
+        self.assertTrue("asset" in result)
+        self.assertTrue("shot" in result)
+        self.assertTrue("all" in result)
+        self.assertEqual(len(result["asset"][project_id]), 1)
+        self.assertEqual(len(result["shot"][project_id]), 1)
+        self.assertEqual(len(result["all"][project_id]), 1)
+        self.assertEqual(
+            result["asset"][project_id][0]["name"], "g1"
+        )
+        self.assertEqual(result["shot"][project_id][0]["name"], "g2")
+        self.assertEqual(result["all"][project_id][0]["name"], "g3")
+
+    def test_update_filter_group(self):
+        project_id = str(self.project.id)
+        path = "data/user/filter-groups"
+        filter_group_1 = {
+            "list_type": "asset",
+            "name": "g1",
+            "color": "#000000",
+            "project_id": project_id,
+        }
+        search_filter_group = self.post(path, filter_group_1)
+        result = self.get(path)
+        self.assertTrue("asset" in result)
+        self.put("%s/%s" % (path, search_filter_group["id"]),
+                 {"name": "updated"})
+        result = self.get(
+            "data/search-filter-groups/%s" % search_filter_group["id"])
+        self.assertEqual(result["name"], "updated")
+
+    def test_remove_filter_group(self):
+        project_id = str(self.project.id)
+        path = "data/user/filter-groups"
+        filter_group_1 = {
+            "list_type": "asset",
+            "name": "g1",
+            "color": "#000000",
+            "project_id": project_id,
+        }
+        search_filter_group = self.post(path, filter_group_1)
+        result = self.get(path)
+        self.assertTrue("asset" in result)
+
+        self.delete("%s/%s" % (path, search_filter_group["id"]))
+        result = self.get(path)
+        self.assertFalse("asset" in result)
 
     def test_get_filters(self):
         project_id = str(self.project.id)
