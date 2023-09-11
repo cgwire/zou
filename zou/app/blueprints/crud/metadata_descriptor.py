@@ -1,4 +1,7 @@
-from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.metadata_descriptor import (
+    MetadataDescriptor,
+    METADATA_DESCRIPTOR_TYPES
+)
 
 from zou.app.models.department import Department
 
@@ -6,7 +9,10 @@ from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from sqlalchemy.exc import StatementError
 
-from zou.app.services.exception import DepartmentNotFoundException
+from zou.app.services.exception import (
+    ArgumentsException,
+    DepartmentNotFoundException
+)
 
 
 class MetadataDescriptorsResource(BaseModelsResource):
@@ -22,6 +28,18 @@ class MetadataDescriptorsResource(BaseModelsResource):
             for metadata_descriptor in query.all()
         ]
 
+    def check_creation_integrity(self, data):
+        """
+        Check if the data descriptor has a valid data_type.
+        """
+        if "data_type" in data:
+            types = [
+                type_name for type_name, label in METADATA_DESCRIPTOR_TYPES
+            ]
+            if data["data_type"] not in types:
+                raise ArgumentsException("Invalid data_type")
+        return True
+
 
 class MetadataDescriptorResource(BaseModelResource):
     def __init__(self):
@@ -34,6 +52,18 @@ class MetadataDescriptorResource(BaseModelResource):
         return instance_dict
 
     def update_data(self, data, instance_id):
+        """
+        Check if the data descriptor has a valid data_type and valid
+        departments.
+        """
+
+        if "data_type" in data:
+            types = [
+                type_name for type_name, label in METADATA_DESCRIPTOR_TYPES
+            ]
+            if data["data_type"] not in types:
+                raise ArgumentsException("Invalid data_type")
+
         if "departments" in data:
             try:
                 departments = []
