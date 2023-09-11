@@ -10,6 +10,7 @@ from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
@@ -28,6 +29,7 @@ from zou.app.services import (
 )
 from zou.app.services.exception import (
     SearchFilterNotFoundException,
+    SearchFilterGroupNotFoundException,
     NotificationNotFoundException,
 )
 from zou.app.utils import cache, fields, permissions
@@ -35,6 +37,10 @@ from zou.app.utils import cache, fields, permissions
 
 def clear_filter_cache(user_id):
     cache.cache.delete_memoized(get_user_filters, user_id)
+
+
+def clear_filter_group_cache(user_id):
+    cache.cache.delete_memoized(get_user_filter_groups, user_id)
 
 
 def clear_project_cache():
@@ -869,6 +875,128 @@ def remove_filter(search_filter_id):
     return search_filter.serialize()
 
 
+def get_filter_groups():
+    """
+    Retrieve search filter groups used by current user. It groups them by
+    list type and project_id. If the filter group is not related to a project,
+    the project_id is all.
+    """
+    current_user = persons_service.get_current_user()
+    return get_user_filter_groups(current_user["id"])
+
+
+@cache.memoize_function(120)
+def get_user_filter_groups(current_user_id):
+    """
+    Retrieve search filter groups used for given user. It groups them by
+    list type and project_id. If the filter group is not related to a project,
+    the project_id is all.
+    """
+
+    result = {}
+
+    filter_groups = (
+        SearchFilterGroup.query
+        .join(Project, Project.id == SearchFilterGroup.project_id)
+        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
+        .filter(SearchFilterGroup.person_id == current_user_id)
+        .filter(build_open_project_filter())
+        .all()
+    )
+
+    filter_groups = (
+        filter_groups
+        + SearchFilterGroup.query
+        .filter(SearchFilterGroup.person_id == current_user_id)
+        .filter(SearchFilterGroup.project_id == None)
+        .all()
+    )
+
+    for search_filter_group in filter_groups:
+        if search_filter_group.list_type not in result:
+            result[search_filter_group.list_type] = {}
+        subresult = result[search_filter_group.list_type]
+
+        if search_filter_group.project_id is None:
+            project_id = "all"
+        else:
+            project_id = str(search_filter_group.project_id)
+
+        if project_id not in subresult:
+            subresult[project_id] = []
+
+        subresult[project_id].append(search_filter_group.serialize())
+
+    return result
+
+
+def create_filter_group(
+    list_type,
+    name,
+    color,
+    project_id=None,
+    entity_type=None
+):
+    """
+    Add a new search filter group to the database.
+    """
+    current_user = persons_service.get_current_user()
+    search_filter_group = SearchFilterGroup.create(
+        list_type=list_type,
+        name=name,
+        color=color,
+        project_id=project_id,
+        person_id=current_user["id"],
+        entity_type=entity_type,
+    )
+    search_filter_group.serialize()
+    clear_filter_group_cache(current_user["id"])
+    return search_filter_group.serialize()
+
+
+def get_filter_group(search_filter_group_id):
+    """
+    Get given filter group from the database.
+    """
+    current_user = persons_service.get_current_user()
+    search_filter_group = SearchFilterGroup.get_by(
+        id=search_filter_group_id, person_id=current_user["id"]
+    )
+    if search_filter_group is None:
+        raise SearchFilterGroupNotFoundException
+    return search_filter_group.serialize()
+
+
+def update_filter_group(search_filter_group_id, data):
+    """
+    Update given filter group from database.
+    """
+    current_user = persons_service.get_current_user()
+    search_filter_group = SearchFilterGroup.get_by(
+        id=search_filter_group_id, person_id=current_user["id"]
+    )
+    if search_filter_group is None:
+        raise SearchFilterGroupNotFoundException
+    search_filter_group.update(data)
+    clear_filter_group_cache(current_user["id"])
+    return search_filter_group.serialize()
+
+
+def remove_filter_group(search_filter_group_id):
+    """
+    Remove given filter group from database.
+    """
+    current_user = persons_service.get_current_user()
+    search_filter_group = SearchFilterGroup.get_by(
+        id=search_filter_group_id, person_id=current_user["id"]
+    )
+    if search_filter_group is None:
+        raise SearchFilterGroupNotFoundException
+    search_filter_group.delete()
+    clear_filter_group_cache(current_user["id"])
+    return search_filter_group.serialize()
+
+
 def get_notification(notification_id):
     """
     Return notification matching given ID as a dictionnary.
@@ -1147,6 +1275,7 @@ def get_context():
     task_types = tasks_service.get_task_types()
     task_status_list = tasks_service.get_task_statuses()
     search_filters = get_filters()
+    search_filter_groups = get_filter_groups()
 
     return {
         "asset_types": asset_types,
@@ -1160,4 +1289,5 @@ def get_context():
         "task_types": task_types,
         "task_status": task_status_list,
         "search_filters": search_filters,
+        "search_filter_groups": search_filter_groups,
     }

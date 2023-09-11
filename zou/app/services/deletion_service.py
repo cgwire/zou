@@ -19,6 +19,7 @@ from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.search_filter import SearchFilter
+from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
@@ -299,6 +300,7 @@ def remove_project(project_id):
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
+    SearchFilterGroup.delete_all_by(project_id=project_id)
     SearchFilter.delete_all_by(project_id=project_id)
 
     for news in News.query.join(Task).filter_by(project_id=project_id).all():
@@ -328,6 +330,7 @@ def remove_person(person_id, force=True):
         ApiEvent.delete_all_by(user_id=person_id)
         Notification.delete_all_by(person_id=person_id)
         Notification.delete_all_by(author_id=person_id)
+        SearchFilterGroup.delete_all_by(person_id=person_id)
         SearchFilter.delete_all_by(person_id=person_id)
         DesktopLoginLog.delete_all_by(person_id=person_id)
         LoginLog.delete_all_by(person_id=person_id)
