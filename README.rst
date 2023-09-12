@@ -87,7 +87,7 @@ Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
 
 |CGWire Logo|
 
-.. |CI badge| image:: https://github.com/cgwire/zou/actions/workflows/ci.yml/badge.svg)
+.. |CI badge| image:: https://github.com/cgwire/zou/actions/workflows/ci.yml/badge.svg
    :target: https://github.com/cgwire/zou/actions/workflows/ci.yml
 .. |Gitter badge| image:: https://badges.gitter.im/cgwire/Lobby.png
    :target: https://gitter.im/cgwire/Lobby
