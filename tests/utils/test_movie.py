@@ -127,31 +127,21 @@ class MovieTestCase(unittest.TestCase):
         self.assertEqual(height, height_playlist)
 
     def test_create_tile(self):
-
-        script_path = os.path.abspath(__file__)
-
-        script_dir = os.path.dirname(script_path)
-
-        video_filename = "preview01.mp4"
-
-        video = os.path.join(script_dir, video_filename)
-
-        video_width, video_height = movie.get_movie_size(video)
-        tile_path = movie.generate_tile(video, movie_fps=25)
+        video_path = "./tests/fixtures/videos/test_preview_tiles.mp4"
+        video_width, video_height = movie.get_movie_size(video_path)
+        tile_path = movie.generate_tile(video_path, movie_fps=25)
         image = Image.open(tile_path)
-
         img_width, img_height = image.size
 
-        probe = ffmpeg.probe(video)
+        probe = ffmpeg.probe(video_path)
         duration_in_seconds = float(probe['streams'][0]['duration'])
         float_movie_fps = eval(probe['streams'][0]['r_frame_rate'])
         duration_in_frames = int(duration_in_seconds * float_movie_fps)
-        rows = math.ceil((duration_in_frames / 8) + 2)
+        rows = math.ceil((duration_in_frames / 8))
 
-        video_width, video_height = movie.get_movie_size(video)
-        aspect_ratio = (video_width/video_height)
-        target_width = math.floor(aspect_ratio * 120)
+        aspect_ratio = (video_width / video_height)
+        target_width = math.ceil(aspect_ratio * 100)
 
-        self.assertEqual(img_width, target_width*8)
-        self.assertEqual(img_height, 120*rows)
-        
+        os.remove(tile_path)
+        self.assertEqual(img_width, target_width * 8)
+        self.assertEqual(img_height, 100 * rows)

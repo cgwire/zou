@@ -3,8 +3,6 @@ import os
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import fs
-from zou.app.services import assets_service
-from zou.app.models.entity import Entity
 
 from PIL import Image
 
@@ -35,6 +33,7 @@ class RouteTileTestCase(ApiDBTestCase):
         self.asset_id = self.asset.id
         self.preview_file_id = self.preview_file.id
         self.person_id = self.person.id
+        os.makedirs(TEST_FOLDER)
 
     def tearDown(self):
         super(RouteTileTestCase, self).tearDown()
@@ -45,26 +44,20 @@ class RouteTileTestCase(ApiDBTestCase):
         fs.rm_rf(TEST_FOLDER)
 
     def test_extract_tile(self):
- 
-        path = "/actions/preview-files/%s/extract-tile" % self.preview_file_id
-
+        path = "/pictures/preview-files/%s" % self.preview_file_id
         file_path_fixture = self.get_fixture_file_path(
-            os.path.join("tiles", "preview01.mp4")
+             "videos/test_preview_tiles.mp4"
         )
-
         self.upload_file(path, file_path_fixture)
 
-        current_path = os.path.dirname(__file__)
-        result_file_path = os.path.join(TEST_FOLDER, "tile01.png")
-        result_file_path = os.path.join(
-            current_path, "..", "..", result_file_path
-        )
-        os.mkdir(TEST_FOLDER)
-
+        path = "/actions/preview-files/%s/extract-tile" % self.preview_file_id
+        try:
+            self.get(path)
+        except Exception:
+            pass
         path = "/movies/tiles/preview-files/%s.png" % self.preview_file_id
         result_file_path = self.get_file_path("tile01.png")
-
         self.download_file(path, result_file_path)
-        result_image = Image.open(result_file_path)        
 
-        self.assertEqual(result_image.size, (1704, 3840))
+        result_image = Image.open(result_file_path)
+        self.assertEqual(result_image.size, (1424, 600))

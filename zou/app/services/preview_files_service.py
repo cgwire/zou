@@ -273,8 +273,8 @@ def prepare_and_store_movie(
             preview_file_raw, {
                 "status": "ready",
                 "file_size": file_size,
-                width: width,
-                height: height,
+                "width": width,
+                "height": height,
             }
         )
         return preview_file
