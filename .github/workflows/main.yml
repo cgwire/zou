@@ -25,7 +25,7 @@ jobs:
          sudo /opt/zou/zouenv/bin/pip install --upgrade git+https://github.com/cgwire/zou.git
          sudo -E -u zou /opt/zou/zouenv/bin/zou upgrade-db
          sudo systemctl restart zou zou-events zou-jobs
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         ref: apidocs 
     - name: Update openapi.json
