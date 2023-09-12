@@ -22,7 +22,7 @@ jobs:
     container: ${{ matrix.container }}
     services:
       postgres:
-        image: postgres
+        image: "postgres:12.16"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
