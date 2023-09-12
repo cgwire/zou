@@ -44,6 +44,7 @@ if not app.config["FILE_TREE_FOLDER"]:
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
+app.extensions["sqlalchemy"].db = db
 
 app.secret_key = app.config["SECRET_KEY"]
 jwt = JWTManager(app)  # JWT auth tokens
