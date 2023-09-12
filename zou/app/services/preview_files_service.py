@@ -257,10 +257,13 @@ def prepare_and_store_movie(
         current_app.logger.info("thumbnail created %s" % original_picture_path)
 
         # Build tiles
-        tile_path = movie.generate_tile(normalized_movie_path, fps)
-        file_store.add_picture("tiles", preview_file_id, tile_path)
-        os.remove(tile_path)
-        current_app.logger.info("tile created %s" % tile_path)
+        try:
+            tile_path = movie.generate_tile(normalized_movie_path, fps)
+            file_store.add_picture("tiles", preview_file_id, tile_path)
+            os.remove(tile_path)
+            current_app.logger.info("tile created %s" % tile_path)
+        except Exception as exc:
+            current_app.logger.error("Failed to create tile", exc_info=1)
 
         # Remove files and update status
         os.remove(uploaded_movie_path)
