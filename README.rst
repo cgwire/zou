@@ -11,7 +11,7 @@ sure they are all synchronized.
 A dedicated Python client, `Gazu <https://gazu.cg-wire.com>`_, allows users to
 integrate Zou into the tools. 
 
-|Build badge| |Downloads badge| |Discord badge|
+|CI badge| |Downloads badge| |Discord badge|
 
 Features
 ~~~~~~~~
@@ -87,8 +87,8 @@ Visit `cg-wire.com <https://cg-wire.com>`__ for more information.
 
 |CGWire Logo|
 
-.. |Build badge| image:: https://app.travis-ci.com/cgwire/zou.svg?branch=master
-   :target: https://app.travis-ci.com/cgwire/zou
+.. |CI badge| image:: https://github.com/cgwire/zou/actions/workflows/ci.yml/badge.svg)
+   :target: https://github.com/cgwire/zou/actions/workflows/ci.yml
 .. |Gitter badge| image:: https://badges.gitter.im/cgwire/Lobby.png
    :target: https://gitter.im/cgwire/Lobby
 .. |CGWire Logo| image:: https://zou.cg-wire.com/cgwire.png
