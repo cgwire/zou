@@ -1,0 +1,61 @@
+---
+name: Zou CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  ci:
+    name: Test with different versions of Python 🐍
+    runs-on: ubuntu-22.04
+    env:
+      INDEXER_KEY: testkey0123456789
+      PGPASSWORD: mysecretpassword
+    strategy:
+      matrix:
+        version: [3.8, 3.11]
+    container: ${{ matrix.container }}
+    services:
+      postgres:
+        image: "postgres:12.16"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install ffmpeg
+        run: sudo apt-get install -y ffmpeg
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.version }}
+      - name: Upgrade pip 📦
+        run: >-
+          pip install --upgrade pip setuptools
+      - name: Install packages 📦
+        run: >-
+          pip install -r requirements.txt
+      - name: Create database 🗄
+        run: >-
+          psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
+      - name: Launch docker for meilisearch 🐳
+        run: |
+          docker pull getmeili/meilisearch:v1.1
+          docker run -it --rm -d -p 7700:7700 -e MEILI_MASTER_KEY=$INDEXER_KEY getmeili/meilisearch:v1.1
+      - name: Run tests 🧪
+        run: >-
+          py.test
+        env:
+          DEBUG: 1
+          MAIL_DEBUG: 1
