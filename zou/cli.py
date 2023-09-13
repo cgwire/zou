@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 import os
 import sys
 import flask_migrate
@@ -457,6 +458,30 @@ def init_search_index():
 def search_asset(query):
     """ """
     commands.search_asset(query)
+
+
+@cli.command()
+def generate_tiles():
+    """
+    Generate tiles for all movie previews in the database.
+    """
+    commands.generate_tiles()
+
+
+@cli.command()
+def reset_movie_file_metadata():
+    """
+    Store height and width metadata for all movie previews in the database.
+    """
+    commands.reset_movie_file_metadata()
+
+
+@cli.command()
+def reset_picture_file_metadata():
+    """
+    Store height and width metadata for all picture previews in the database.
+    """
+    commands.reset_picture_file_metadata()
 
 
 if __name__ == "__main__":

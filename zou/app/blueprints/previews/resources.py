@@ -218,12 +218,15 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         original_file_name = ".".join(file_name_parts)
 
         if extension in ALLOWED_PICTURE_EXTENSION:
-            self.save_picture_preview(instance_id, uploaded_file)
+            metadada = self.save_picture_preview(instance_id, uploaded_file)
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {
                     "extension": "png",
                     "original_name": original_file_name,
+                    "width": metadada["width"],
+                    "height": metadada["height"],
+                    "file_size": metadada["file_size"],
                     "status": "ready",
                 },
             )
@@ -276,12 +279,17 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             tmp_folder, instance_id, uploaded_file
         )
         file_size = fs.get_file_size(original_tmp_path)
-        preview_files_service.update_preview_file(
-            instance_id, {"file_size": file_size}, silent=True
-        )
-        return preview_files_service.save_variants(
+        width, height = thumbnail_utils.get_dimensions(original_tmp_path)
+        preview_files_service.save_variants(
             instance_id, original_tmp_path
         )
+        return {
+            "preview_file_id": instance_id,
+            "file_size": file_size,
+            "extension": "png",
+            "width": width,
+            "height": height,
+        }
 
     def save_movie_preview(
         self, preview_file_id, uploaded_file, normalize=True
@@ -706,6 +714,11 @@ class BasePreviewPictureResource(Resource):
 class PreviewFileThumbnailResource(BasePreviewPictureResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "thumbnails")
+
+
+class PreviewFileTileResource(BasePreviewPictureResource):
+    def __init__(self):
+        BasePreviewPictureResource.__init__(self, "tiles")
 
 
 class PreviewFilePreviewResource(BasePreviewPictureResource):
@@ -1178,17 +1191,45 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_manager_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
         extracted_frame_path = (
             preview_files_service.extract_frame_from_preview_file(
                 preview_file, args["frame_number"]
             )
         )
+        try:
+            return flask_send_file(
+                extracted_frame_path,
+                conditional=True,
+                mimetype="image/png",
+                as_attachment=False,
+                download_name=os.path.basename(extracted_frame_path),
+            )
+        finally:
+            os.remove(extracted_frame_path)
 
-        return flask_send_file(
-            extracted_frame_path,
-            conditional=True,
-            mimetype="image/png",
-            as_attachment=False,
-            download_name=os.path.basename(extracted_frame_path),
+
+class ExtractTileFromPreview(Resource):
+    """
+    Extract a tile from a preview_file
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        extracted_tile_path = (
+            preview_files_service.extract_tile_from_preview_file(preview_file)
         )
+        file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
+        try:
+            return flask_send_file(
+                extracted_tile_path,
+                conditional=True,
+                mimetype="image/png",
+                as_attachment=False,
+                download_name=os.path.basename(extracted_tile_path),
+            )
+        finally:
+            os.remove(extracted_tile_path)

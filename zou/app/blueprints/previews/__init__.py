@@ -12,6 +12,7 @@ from zou.app.blueprints.previews.resources import (
     PreviewFileThumbnailSquareResource,
     PreviewFilePreviewResource,
     PreviewFileOriginalResource,
+    PreviewFileTileResource,
     CreateOrganisationThumbnailResource,
     OrganisationThumbnailResource,
     CreateProjectThumbnailResource,
@@ -24,6 +25,7 @@ from zou.app.blueprints.previews.resources import (
     UpdateAnnotationsResource,
     UpdatePreviewPositionResource,
     ExtractFrameFromPreview,
+    ExtractTileFromPreview,
 )
 
 routes = [
@@ -69,6 +71,10 @@ routes = [
         PreviewFilePreviewResource,
     ),
     (
+        "/movies/tiles/preview-files/<instance_id>.png",
+        PreviewFileTileResource,
+    ),
+    (
         "/pictures/thumbnails/organisations/<instance_id>",
         CreateOrganisationThumbnailResource,
     ),
@@ -101,7 +107,7 @@ routes = [
         SetMainPreviewResource,
     ),
     (
-        "/data/preview-files/<preview_file_id>/extract-frame",
+        "/actions/preview-files/<preview_file_id>/extract-frame",
         ExtractFrameFromPreview,
     ),
     (
@@ -111,6 +117,10 @@ routes = [
     (
         "/actions/preview-files/<preview_file_id>/update-annotations",
         UpdateAnnotationsResource,
+    ),
+    (
+        "/actions/preview-files/<preview_file_id>/extract-tile",
+        ExtractTileFromPreview,
     ),
 ]
 blueprint = Blueprint("thumbnails", "thumbnails")

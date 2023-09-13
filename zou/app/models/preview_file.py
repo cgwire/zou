@@ -39,6 +39,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
         ChoiceType(VALIDATION_STATUSES), default="neutral"
     )
     annotations = db.Column(JSONB)
+    width = db.Column(db.Integer(), default=0)
+    height = db.Column(db.Integer(), default=0)
 
     task_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task.id"), index=True

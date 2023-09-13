@@ -56,7 +56,6 @@ class MetadataDescriptorResource(BaseModelResource):
         Check if the data descriptor has a valid data_type and valid
         departments.
         """
-
         if "data_type" in data:
             types = [
                 type_name for type_name, label in METADATA_DESCRIPTOR_TYPES

@@ -111,17 +111,40 @@ def get_all_frames(movie_path):
             .output(file_target_path, vsync=0)
             .run(quiet=True)
         )
-    except subprocess.CalledProcessError as e:
+    except ffmpeg._run.Error as e:
         print(f"Error generating thumbnails: {e}")
         raise e
 
     return folder_path
 
 
-def generate_tile(movie_path):
+def generate_tile(movie_path, movie_fps):
     """
-    ffmpeg -i {movie_path} -vf 'scale=150:100,tile=8x8' -an -vsync 0 tile%03d.png
+    Generates a tile from a movie.
     """
+    folder_path = os.path.dirname(movie_path)
+    file_source_name = os.path.basename(movie_path)
+    file_target_name = f"{file_source_name[:-4]}_tile.png"
+    file_target_path = os.path.join(folder_path, file_target_name)
+
+    probe = ffmpeg.probe(movie_path)
+    duration_in_seconds = float(probe["streams"][0]["duration"])
+    float_movie_fps = float(movie_fps)
+    duration_in_frames = int(duration_in_seconds * float_movie_fps)
+    rows = min(math.ceil(duration_in_frames / 8), 240)
+    ratio = get_movie_ratio(movie_path)
+    height = 100
+    width = math.ceil(height * ratio)
+
+    try:
+        ffmpeg.input(movie_path).output(
+            file_target_path, vf=f"scale={width}:{height},tile=8x{rows}"
+        ).run(quiet=True)
+    except ffmpeg._run.Error as e:
+        log_ffmpeg_error(e, "An error occured while generating the tile.")
+        raise e
+
+    return file_target_path
 
 
 def get_movie_size(movie_path):
@@ -147,6 +170,14 @@ def get_movie_size(movie_path):
         width = int(video["width"])
         height = int(video["height"])
     return (width, height)
+
+
+def get_movie_ratio(movie_path):
+    """
+    Returns movie ratio (width / height).
+    """
+    width, height = get_movie_size(movie_path)
+    return width / height
 
 
 def normalize_encoding(
