@@ -3,7 +3,7 @@ from flask_restful import Resource
 
 
 from zou.app.mixin import ArgsMixin
-from zou.app.models.project import Project
+from zou.app.models.project import Project, PROJECT_STYLES
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
     deletion_service,
@@ -19,6 +19,8 @@ from zou.app.utils import events, permissions, fields
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
+from zou.app.services.exception import ArgumentsException
+
 
 class ProjectsResource(BaseModelsResource):
     def __init__(self):
@@ -31,6 +33,16 @@ class ProjectsResource(BaseModelsResource):
             return query.filter(user_service.build_related_projects_filter())
 
     def check_read_permissions(self):
+        return True
+
+    def check_creation_integrity(self, data):
+        """
+        Check if the data descriptor has a valid production_style.
+        """
+        if "production_style" in data:
+            types = [type_name for type_name, _ in PROJECT_STYLES]
+            if data["production_style"] not in types:
+                raise ArgumentsException("Invalid production_style")
         return True
 
     def update_data(self, data):
@@ -135,6 +147,16 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def post_delete(self, project_dict):
         projects_service.clear_project_cache(project_dict["id"])
         return project_dict
+
+    def update_data(self, data, instance_id):
+        """
+        Check if the data descriptor has a valid production_style.
+        """
+
+        if "production_style" in data:
+            types = [type_name for type_name, _ in PROJECT_STYLES]
+            if data["production_style"] not in types:
+                raise ArgumentsException("Invalid production_style")
 
     @jwt_required()
     def delete(self, instance_id):

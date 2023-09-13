@@ -134,12 +134,12 @@ class MovieTestCase(unittest.TestCase):
         img_width, img_height = image.size
 
         probe = ffmpeg.probe(video_path)
-        duration_in_seconds = float(probe['streams'][0]['duration'])
-        float_movie_fps = eval(probe['streams'][0]['r_frame_rate'])
+        duration_in_seconds = float(probe["streams"][0]["duration"])
+        float_movie_fps = eval(probe["streams"][0]["r_frame_rate"])
         duration_in_frames = int(duration_in_seconds * float_movie_fps)
         rows = math.ceil((duration_in_frames / 8))
 
-        aspect_ratio = (video_width / video_height)
+        aspect_ratio = video_width / video_height
         target_width = math.ceil(aspect_ratio * 100)
 
         os.remove(tile_path)

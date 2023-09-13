@@ -19,8 +19,9 @@ class MetadataTestCase(ApiDBTestCase):
 
     def test_get_metadata_descriptor(self):
         descriptor = self.get_first("data/metadata-descriptors")
-        descriptor_again = \
-            self.get("data/metadata-descriptors/%s" % descriptor["id"])
+        descriptor_again = self.get(
+            "data/metadata-descriptors/%s" % descriptor["id"]
+        )
         self.assertEqual(descriptor, descriptor_again)
         self.get_404("data/metadata-descriptor/%s" % fields.gen_uuid())
 
@@ -49,8 +50,9 @@ class MetadataTestCase(ApiDBTestCase):
         descriptor = self.get_first("data/metadata-descriptors")
         data = {"name": "Descriptor test update"}
         self.put("data/metadata-descriptors/%s" % descriptor["id"], data)
-        descriptor_again = \
-            self.get("data/metadata-descriptors/%s" % descriptor["id"])
+        descriptor_again = self.get(
+            "data/metadata-descriptors/%s" % descriptor["id"]
+        )
         self.assertEqual(data["name"], descriptor_again["name"])
         self.put_404("data/metadata-descriptors/%s" % fields.gen_uuid(), data)
         data = {"data_type": "wrongdatatype"}

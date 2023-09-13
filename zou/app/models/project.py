@@ -20,6 +20,7 @@ PROJECT_STYLES = [
     ("immersive", "Immersive Experience"),
     ("nft", "NFT Collection"),
     ("video-game", "Video Game"),
+    ("vr", "Virtual Reality"),
 ]
 
 

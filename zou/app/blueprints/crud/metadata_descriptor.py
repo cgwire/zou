@@ -1,6 +1,6 @@
 from zou.app.models.metadata_descriptor import (
     MetadataDescriptor,
-    METADATA_DESCRIPTOR_TYPES
+    METADATA_DESCRIPTOR_TYPES,
 )
 
 from zou.app.models.department import Department
@@ -11,7 +11,7 @@ from sqlalchemy.exc import StatementError
 
 from zou.app.services.exception import (
     ArgumentsException,
-    DepartmentNotFoundException
+    DepartmentNotFoundException,
 )
 
 
@@ -33,9 +33,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
         Check if the data descriptor has a valid data_type.
         """
         if "data_type" in data:
-            types = [
-                type_name for type_name, label in METADATA_DESCRIPTOR_TYPES
-            ]
+            types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
                 raise ArgumentsException("Invalid data_type")
         return True
@@ -57,9 +55,7 @@ class MetadataDescriptorResource(BaseModelResource):
         departments.
         """
         if "data_type" in data:
-            types = [
-                type_name for type_name, label in METADATA_DESCRIPTOR_TYPES
-            ]
+            types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
                 raise ArgumentsException("Invalid data_type")
 

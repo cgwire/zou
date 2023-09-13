@@ -46,7 +46,7 @@ class RouteTileTestCase(ApiDBTestCase):
     def test_extract_tile(self):
         path = "/pictures/preview-files/%s" % self.preview_file_id
         file_path_fixture = self.get_fixture_file_path(
-             "videos/test_preview_tiles.mp4"
+            "videos/test_preview_tiles.mp4"
         )
         self.upload_file(path, file_path_fixture)
 

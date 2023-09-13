@@ -280,9 +280,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         )
         file_size = fs.get_file_size(original_tmp_path)
         width, height = thumbnail_utils.get_dimensions(original_tmp_path)
-        preview_files_service.save_variants(
-            instance_id, original_tmp_path
-        )
+        preview_files_service.save_variants(instance_id, original_tmp_path)
         return {
             "preview_file_id": instance_id,
             "file_size": file_size,
