@@ -17,6 +17,7 @@ jobs:
       INDEXER_KEY: testkey0123456789
       PGPASSWORD: mysecretpassword
     strategy:
+      fail-fast: false
       matrix:
         version: [3.8, 3.11]
     container: ${{ matrix.container }}
