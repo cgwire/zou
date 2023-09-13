@@ -24,7 +24,7 @@ from zou.app.utils import (
 )
 from zou.app.services.exception import (
     ArgumentsException,
-    PreviewFileNotFoundException
+    PreviewFileNotFoundException,
 )
 from zou.app.utils import fs
 
@@ -273,12 +273,13 @@ def prepare_and_store_movie(
                 os.remove(normalized_movie_low_path)
 
         preview_file = update_preview_file_raw(
-            preview_file_raw, {
+            preview_file_raw,
+            {
                 "status": "ready",
                 "file_size": file_size,
                 "width": width,
                 "height": height,
-            }
+            },
         )
         return preview_file
 
@@ -686,11 +687,12 @@ def reset_movie_file_metadata():
             file_size = os.path.getsize(preview_file_path)
             width, height = size
             update_preview_file_raw(
-                preview_file, {
+                preview_file,
+                {
                     "width": width,
                     "height": height,
                     "file_size": file_size,
-                }
+                },
             )
             print(
                 f"Size information stored for {preview_file.id}",
@@ -728,11 +730,12 @@ def reset_picture_file_metadata():
             width, height = thumbnail_utils.get_dimensions(preview_file_path)
             file_size = os.path.getsize(preview_file_path)
             update_preview_file_raw(
-                preview_file, {
+                preview_file,
+                {
                     "width": width,
                     "height": height,
                     "file_size": file_size,
-                }
+                },
             )
             print(
                 f"Size information stored for {preview_file.id}",
@@ -743,4 +746,3 @@ def reset_picture_file_metadata():
                 str(preview_file.id),
                 e,
             )
-

@@ -1,6 +1,6 @@
 from zou.app.models.metadata_descriptor import (
     MetadataDescriptor,
-    METADATA_DESCRIPTOR_TYPES
+    METADATA_DESCRIPTOR_TYPES,
 )
 
 from zou.app.models.department import Department
@@ -11,7 +11,7 @@ from sqlalchemy.exc import StatementError
 
 from zou.app.services.exception import (
     ArgumentsException,
-    DepartmentNotFoundException
+    DepartmentNotFoundException,
 )
 
 
