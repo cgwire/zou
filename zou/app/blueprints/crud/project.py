@@ -157,6 +157,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             types = [type_name for type_name, _ in PROJECT_STYLES]
             if data["production_style"] not in types:
                 raise ArgumentsException("Invalid production_style")
+        return data
 
     @jwt_required()
     def delete(self, instance_id):
