@@ -36,11 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt install -y ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt install -y ffmpeg
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.version }}
+          cache: pip
       - name: Upgrade pip 📦
         run: >-
           pip install --upgrade pip setuptools
