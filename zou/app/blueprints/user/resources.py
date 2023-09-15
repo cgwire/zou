@@ -612,6 +612,7 @@ class FilterResource(Resource, ArgsMixin):
             [
                 ("name", None, False),
                 ("search_query", None, False),
+                ("search_filter_group_id", None, False),
             ]
         )
         data = self.clear_empty_fields(data)
