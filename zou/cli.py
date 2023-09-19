@@ -469,19 +469,28 @@ def generate_tiles():
 
 
 @cli.command()
-def reset_movie_file_metadata():
+def reset_movie_files_metadata():
     """
     Store height and width metadata for all movie previews in the database.
     """
-    commands.reset_movie_file_metadata()
+    commands.reset_movie_files_metadata()
 
 
 @cli.command()
-def reset_picture_file_metadata():
+def reset_picture_files_metadata():
     """
     Store height and width metadata for all picture previews in the database.
     """
-    commands.reset_picture_file_metadata()
+    commands.reset_picture_files_metadata()
+
+
+@cli.command()
+def generate_tiles_and_reset_preview_files_metadata():
+    """
+    Generate tiles and store height and width metadata for all pictures/movies
+    previews in the database.
+    """
+    commands.generate_tiles_and_reset_preview_files_metadata()
 
 
 if __name__ == "__main__":

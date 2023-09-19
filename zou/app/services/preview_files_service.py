@@ -650,20 +650,18 @@ def generate_tiles_for_movie_previews():
             path = extract_tile_from_preview_file(preview_file.serialize())
             file_store.add_picture("tiles", str(preview_file.id), path)
             print(
-                f"Tile generated preview file for {preview_file.id}",
+                f"Tile generated for preview file {preview_file.id}",
             )
         except Exception as e:
             print(
-                "Failed to generate tile for preview file %s: %s",
-                str(preview_file.id),
-                e,
+                f"Failed to generate tile for preview file {preview_file.id}: {e}"
             )
     return preview_files
 
 
-def reset_movie_file_metadata():
+def reset_movie_files_metadata():
     """
-    Reset preview file size information of open projects.
+    Reset preview files size informations of open projects.
     """
     preview_files = (
         PreviewFile.query.join(Task)
@@ -683,9 +681,8 @@ def reset_movie_file_metadata():
                 str(preview_file.id),
                 "mp4",
             )
-            size = movie.get_movie_size(preview_file_path)
             file_size = os.path.getsize(preview_file_path)
-            width, height = size
+            width, height = movie.get_movie_size(preview_file_path)
             update_preview_file_raw(
                 preview_file,
                 {
@@ -695,19 +692,17 @@ def reset_movie_file_metadata():
                 },
             )
             print(
-                f"Size information stored for {preview_file.id}",
+                f"Size information stored preview file {preview_file.id}",
             )
         except Exception as e:
             print(
-                "Failed to store information for preview file %s: %s",
-                str(preview_file.id),
-                e,
+                f"Failed to store information for preview file {preview_file.id}: {e}"
             )
 
 
-def reset_picture_file_metadata():
+def reset_picture_files_metadata():
     """
-    Reset preview file size information of open projects.
+    Reset preview files size informations of open projects.
     """
     preview_files = (
         PreviewFile.query.join(Task)
@@ -738,11 +733,104 @@ def reset_picture_file_metadata():
                 },
             )
             print(
-                f"Size information stored for {preview_file.id}",
+                f"Size information stored for preview file {preview_file.id}",
             )
         except Exception as e:
             print(
-                "Failed to store information for preview file %s: %s",
-                str(preview_file.id),
-                e,
+                f"Failed to store information for preview file {preview_file.id}: {e}"
             )
+
+
+def generate_tiles_and_reset_preview_files_metadata():
+    """
+    Generate tiles for all movie previews and reset previews file size
+    informations of open projects.
+    """
+    preview_files = (
+        PreviewFile.query.join(Task)
+        .join(Project)
+        .join(ProjectStatus)
+        .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
+        .filter(PreviewFile.status.not_in(("broken", "processing")))
+        .filter(PreviewFile.extension.in_(("mp4", "png")))
+    )
+    preview_file_already_in_cache = False
+    for preview_file in preview_files:
+        preview_file_id = str(preview_file.id)
+        prefix = "previews" if preview_file.extension == "mp4" else "original"
+        if config.FS_BACKEND != "local":
+            preview_file_already_in_cache = os.path.isfile(
+                os.path.join(
+                    config.TMP_DIR,
+                    "cache-%s-%s.%s"
+                    % (prefix, preview_file_id, preview_file.extension),
+                )
+            )
+        try:
+            try:
+                preview_file_path = fs.get_file_path_and_file(
+                    config,
+                    file_store.get_local_movie_path
+                    if preview_file.extension == "mp4"
+                    else file_store.get_local_picture_path,
+                    file_store.open_movie
+                    if preview_file.extension == "mp4"
+                    else file_store.open_picture,
+                    prefix,
+                    preview_file_id,
+                    preview_file.extension,
+                )
+            except Exception as e:
+                print(f"Failed to get preview file {preview_file_id}: {e}")
+                continue
+            try:
+                if preview_file.extension == "mp4":
+                    project = get_project_from_preview_file(preview_file_id)
+                    fps = get_preview_file_fps(project)
+                    extracted_tile_path = movie.generate_tile(
+                        preview_file_path, fps
+                    )
+                    file_store.add_picture(
+                        "tiles", preview_file_id, extracted_tile_path
+                    )
+                    print(
+                        f"Tile generated for preview file {preview_file_id}",
+                    )
+            except Exception as e:
+                print(
+                    f"Failed to generate tile for preview file {preview_file_id}: {e}"
+                )
+            try:
+                if preview_file.extension == "mp4":
+                    width, height = movie.get_movie_size(preview_file_path)
+                else:
+                    width, height = thumbnail_utils.get_dimensions(
+                        preview_file_path
+                    )
+                file_size = os.path.getsize(preview_file_path)
+                update_preview_file_raw(
+                    preview_file,
+                    {
+                        "width": width,
+                        "height": height,
+                        "file_size": file_size,
+                    },
+                )
+                print(
+                    f"Size information stored for preview file {preview_file_id}",
+                )
+            except Exception as e:
+                print(
+                    f"Failed to store information for preview file {preview_file_id}: {e}",
+                )
+        finally:
+            if (
+                config.FS_BACKEND != "local"
+                and not preview_file_already_in_cache
+            ):
+                try:
+                    os.remove(preview_file_path)
+                except:
+                    pass
+
+    return preview_files

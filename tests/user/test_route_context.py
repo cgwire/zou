@@ -313,9 +313,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(result["asset"][project_id]), 1)
         self.assertEqual(len(result["shot"][project_id]), 1)
         self.assertEqual(len(result["all"][project_id]), 1)
-        self.assertEqual(
-            result["asset"][project_id][0]["name"], "g1"
-        )
+        self.assertEqual(result["asset"][project_id][0]["name"], "g1")
         self.assertEqual(result["shot"][project_id][0]["name"], "g2")
         self.assertEqual(result["all"][project_id][0]["name"], "g3")
 
@@ -331,10 +329,12 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         search_filter_group = self.post(path, filter_group_1)
         result = self.get(path)
         self.assertTrue("asset" in result)
-        self.put("%s/%s" % (path, search_filter_group["id"]),
-                 {"name": "updated"})
+        self.put(
+            "%s/%s" % (path, search_filter_group["id"]), {"name": "updated"}
+        )
         result = self.get(
-            "data/search-filter-groups/%s" % search_filter_group["id"])
+            "data/search-filter-groups/%s" % search_filter_group["id"]
+        )
         self.assertEqual(result["name"], "updated")
 
     def test_remove_filter_group(self):

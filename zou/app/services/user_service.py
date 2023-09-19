@@ -896,8 +896,9 @@ def get_user_filter_groups(current_user_id):
     result = {}
 
     filter_groups = (
-        SearchFilterGroup.query
-        .join(Project, Project.id == SearchFilterGroup.project_id)
+        SearchFilterGroup.query.join(
+            Project, Project.id == SearchFilterGroup.project_id
+        )
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
         .filter(SearchFilterGroup.person_id == current_user_id)
         .filter(build_open_project_filter())
@@ -906,8 +907,9 @@ def get_user_filter_groups(current_user_id):
 
     filter_groups = (
         filter_groups
-        + SearchFilterGroup.query
-        .filter(SearchFilterGroup.person_id == current_user_id)
+        + SearchFilterGroup.query.filter(
+            SearchFilterGroup.person_id == current_user_id
+        )
         .filter(SearchFilterGroup.project_id == None)
         .all()
     )
@@ -931,11 +933,7 @@ def get_user_filter_groups(current_user_id):
 
 
 def create_filter_group(
-    list_type,
-    name,
-    color,
-    project_id=None,
-    entity_type=None
+    list_type, name, color, project_id=None, entity_type=None
 ):
     """
     Add a new search filter group to the database.
