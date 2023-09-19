@@ -94,30 +94,6 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     return file_target_path
 
 
-def get_all_frames(movie_path):
-    """
-    Generate thumbnails to represent the movie given at movie path. It
-    takes a picture at each frame of the movie.
-    """
-    folder_path = os.path.join(os.getcwd(), "movie_frames")
-    os.makedirs(folder_path, exist_ok=True)
-    file_source_name = os.path.basename(movie_path)
-    file_target_name = f"{file_source_name[:-4]}_%d.png"
-    file_target_path = os.path.join(folder_path, file_target_name)
-
-    try:
-        (
-            ffmpeg.input(movie_path)
-            .output(file_target_path, vsync=0)
-            .run(quiet=True)
-        )
-    except ffmpeg._run.Error as e:
-        print(f"Error generating thumbnails: {e}")
-        raise e
-
-    return folder_path
-
-
 def generate_tile(movie_path, movie_fps):
     """
     Generates a tile from a movie.
@@ -126,7 +102,6 @@ def generate_tile(movie_path, movie_fps):
     file_source_name = os.path.basename(movie_path)
     file_target_name = f"{file_source_name[:-4]}_tile.png"
     file_target_path = os.path.join(folder_path, file_target_name)
-
     probe = ffmpeg.probe(movie_path)
     duration_in_seconds = float(probe["streams"][0]["duration"])
     float_movie_fps = float(movie_fps)
@@ -139,7 +114,7 @@ def generate_tile(movie_path, movie_fps):
     try:
         ffmpeg.input(movie_path).output(
             file_target_path, vf=f"scale={width}:{height},tile=8x{rows}"
-        ).run(quiet=True)
+        ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "An error occured while generating the tile.")
         raise e

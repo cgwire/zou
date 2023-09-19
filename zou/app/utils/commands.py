@@ -631,11 +631,16 @@ def generate_tiles():
         preview_files_service.generate_tiles_for_movie_previews()
 
 
-def reset_movie_file_metadata():
+def reset_movie_files_metadata():
     with app.app_context():
-        preview_files_service.reset_movie_file_metadata()
+        preview_files_service.reset_movie_files_metadata()
 
 
-def reset_picture_file_metadata():
+def reset_picture_files_metadata():
     with app.app_context():
-        preview_files_service.reset_picture_file_metadata()
+        preview_files_service.reset_picture_files_metadata()
+
+
+def generate_tiles_and_reset_preview_files_metadata():
+    with app.app_context():
+        preview_files_service.generate_tiles_and_reset_preview_files_metadata()
