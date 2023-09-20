@@ -14,6 +14,7 @@ from zou.app.services import (
     tasks_service,
     user_service,
 )
+from zou.app import config
 
 
 class DownloadAttachmentResource(Resource):
@@ -64,6 +65,7 @@ class DownloadAttachmentResource(Resource):
                 mimetype=attachment_file["mimetype"],
                 as_attachment=False,
                 download_name=attachment_file["name"],
+                max_age=config.CLIENT_CACHE_MAX_AGE,
             )
         except Exception:
             abort(404)
