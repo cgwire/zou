@@ -127,6 +127,7 @@ def send_storage_file(
     extension,
     mimetype="application/octet-stream",
     as_attachment=False,
+    max_age=60 * 60 * 24 * 7
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
@@ -165,6 +166,7 @@ def send_storage_file(
             mimetype=mimetype,
             as_attachment=as_attachment,
             download_name=download_name,
+            max_age=max_age,
         )
     except IOError as e:
         current_app.logger.error(e)
