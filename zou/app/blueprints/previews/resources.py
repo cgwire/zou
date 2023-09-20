@@ -127,7 +127,7 @@ def send_storage_file(
     extension,
     mimetype="application/octet-stream",
     as_attachment=False,
-    max_age=60 * 60 * 24 * 7
+    max_age=config.CLIENT_CACHE_MAX_AGE,
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in

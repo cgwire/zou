@@ -32,7 +32,9 @@ from zou.app.services.exception import (
 )
 
 
-def send_storage_file(working_file_id, as_attachment=False):
+def send_storage_file(
+    working_file_id, as_attachment=False, max_age=config.CLIENT_CACHE_MAX_AGE
+):
     """
     Send file from storage. If it's not a local storage, cache the file in
     a temporary folder before sending it. It accepts conditional headers.
@@ -58,6 +60,7 @@ def send_storage_file(working_file_id, as_attachment=False):
             mimetype=mimetype,
             as_attachment=as_attachment,
             download_name=download_name,
+            max_age=max_age,
         )
     except IOError as e:
         current_app.logger.error(e)

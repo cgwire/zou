@@ -36,6 +36,8 @@ JWT_SESSION_COOKIE = False
 JWT_COOKIE_SAMESITE = "Lax"
 JWT_IDENTITY_CLAIM = "sub"
 
+CLIENT_CACHE_MAX_AGE = int(os.getenv("CLIENT_CACHE_MAX_AGE", 604800))
+
 DATABASE = {
     "drivername": os.getenv("DB_DRIVER", "postgresql+psycopg"),
     "host": os.getenv("DB_HOST", "localhost"),
