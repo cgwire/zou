@@ -649,6 +649,7 @@ def generate_tiles_for_movie_previews():
         try:
             path = extract_tile_from_preview_file(preview_file.serialize())
             file_store.add_picture("tiles", str(preview_file.id), path)
+            os.remove(path)
             print(
                 f"Tile generated for preview file {preview_file.id}",
             )
@@ -793,6 +794,7 @@ def generate_tiles_and_reset_preview_files_metadata():
                     file_store.add_picture(
                         "tiles", preview_file_id, extracted_tile_path
                     )
+                    os.remove(extracted_tile_path)
                     print(
                         f"Tile generated for preview file {preview_file_id}",
                     )
