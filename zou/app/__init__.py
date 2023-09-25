@@ -29,10 +29,11 @@ from zou.app.services.exception import (
 
 from zou.app.utils import cache, fs, logs
 from zou.app.utils.sentry import init_sentry
-from zou.app.utils.user_agent import ParsedUserAgent
+from zou.app.utils.flask import ParsedUserAgent, ORJSONProvider
 
 init_sentry()
 app = Flask(__name__)
+app.json = ORJSONProvider(app)
 app.request_class.user_agent_class = ParsedUserAgent
 app.config.from_object(config)
 
