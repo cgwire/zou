@@ -48,7 +48,7 @@ def migrate_db(message):
 
 
 @cli.command()
-@click.option("--revision", default=None)
+@click.option("--revision", default="-1")
 def downgrade_db(revision):
     """
     Downgrade db to previous revision of the database schema

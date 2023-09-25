@@ -242,7 +242,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             )
 
         elif self.is_update:
-            entity.update(asset_new_values)
+            entity.update({**asset_values, **asset_new_values})
 
             index_service.remove_asset_index(entity.id)
             index_service.index_asset(entity)
