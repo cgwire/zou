@@ -1,5 +1,5 @@
 import math
-import json
+import orjson as json
 import sqlalchemy.orm as orm
 
 from flask import request, abort, current_app

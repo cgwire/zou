@@ -1,4 +1,4 @@
-import json
+import orjson as json
 import datetime
 
 from tests.base import ApiDBTestCase
@@ -34,7 +34,7 @@ class CommandsTestCase(ApiDBTestCase):
                     },
                     "revoked": False,
                 }
-            ).encode("utf-8"),
+            ),
         )
         self.store.add(
             "testkey2",
@@ -45,7 +45,7 @@ class CommandsTestCase(ApiDBTestCase):
                     },
                     "revoked": True,
                 }
-            ).encode("utf-8"),
+            ),
         )
         self.assertEqual(len(self.store.keys()), 2)
         commands.clean_auth_tokens()
@@ -63,7 +63,7 @@ class CommandsTestCase(ApiDBTestCase):
                     },
                     "revoked": False,
                 }
-            ).encode("utf-8"),
+            ),
         )
         self.store.add(
             "testkey2",
@@ -74,7 +74,7 @@ class CommandsTestCase(ApiDBTestCase):
                     },
                     "revoked": False,
                 }
-            ).encode("utf-8"),
+            ),
         )
 
         self.assertEqual(len(self.store.keys()), 2)

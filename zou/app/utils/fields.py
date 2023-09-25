@@ -26,10 +26,6 @@ def serialize_value(value):
         return serialize_orm_arrays(value)
     elif isinstance(value, bytes):
         return value.decode("utf-8")
-    elif isinstance(value, str):
-        return value
-    elif isinstance(value, int):
-        return value
     elif isinstance(value, list):
         return serialize_list(value)
     elif isinstance(value, Locale):

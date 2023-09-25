@@ -1,6 +1,6 @@
 import datetime
 import unittest
-import json
+import orjson as json
 import os
 import ntpath
 

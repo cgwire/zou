@@ -1,4 +1,5 @@
-from flask_restful import Api, output_json
+from flask_restful import Api
+from zou.app.utils.flask import output_json
 
 
 def configure_api_from_blueprint(blueprint, route_tuples):
@@ -13,7 +14,6 @@ def configure_api_from_blueprint(blueprint, route_tuples):
     api = Api(blueprint, catch_all_404s=True)
 
     api.representations = {
-        "application/json; charset=utf-8": output_json,
         "application/json": output_json,
     }
 
