@@ -1,5 +1,5 @@
 import os
-import orjson as json
+import json
 import sys
 
 from pathlib import Path

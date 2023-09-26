@@ -594,7 +594,7 @@ def _run_remote_job_build_playlist(
     preview_ids = [
         preview["id"] for preview in previews if preview["extension"] == "mp4"
     ]
-    input_bytes = zlib.compress(bytes(json.dumps(preview_ids), "utf-8"))
+    input_bytes = zlib.compress(json.dumps(preview_ids))
     input_string = base64.b64encode(input_bytes).decode("ascii")
     params = {
         "version": "1",

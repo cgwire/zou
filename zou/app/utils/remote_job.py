@@ -16,7 +16,7 @@ def run_job(app, config, nomad_job_name, params):
         }
     )
 
-    data = json.dumps(params).encode("utf-8")
+    data = json.dumps(params)
     payload = base64.b64encode(data).decode("utf-8")
     ncli = nomad.Nomad(host=nomad_host, timeout=5)
 
