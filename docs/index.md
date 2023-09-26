@@ -53,6 +53,30 @@ The credentials are:
 
 # Install 
 
+## Hardware prerequisites
+
+Users    | Cores | RAM
+---------|-------|----
+1-10     | 2     | 4
+11 - 30  | 2     | 8
+31 - 80  | 4     | 15
+81 - 200 | 8     | 30
+
+That's the recommended minimum. But it depends on the activity of the production/studio.
+
+* The size of the files/videos sent
+* The frequency with which files/videos are sent
+* The network speed available between the workstations and the instance.
+
+In terms of disk space, you need to allow for a factor of x2.5 x3 of all the files sent (large estimation).
+
+It is advisable to separate:
+
+* The database on another VM
+* `PREVIEW_FOLDER` directory on a separate volume
+
+This simplifies migration/augmentation of volumes.
+
 ## Pre-requisites
 
 The installation requires:
@@ -74,7 +98,7 @@ First, let's install third parties software:
 ```bash
 sudo apt-get install postgresql postgresql-client postgresql-server-dev-all
 sudo apt-get install redis-server
-sudo apt-get install python3 python3-pip
+sudo apt-get install python3 python3-pip python3-venv
 sudo apt-get install git
 sudo apt-get install nginx
 sudo apt-get install ffmpeg
@@ -90,7 +114,6 @@ Create zou user:
 ```bash
 sudo useradd --home /opt/zou zou 
 sudo mkdir /opt/zou
-sudo chown zou: /opt/zou
 sudo mkdir /opt/zou/backups
 sudo chown zou: /opt/zou/backups
 ```
@@ -98,18 +121,16 @@ sudo chown zou: /opt/zou/backups
 Install Zou and its dependencies:
 
 ```
-sudo pip3 install virtualenv
-cd /opt/zou
-sudo virtualenv zouenv
-sudo /opt/zou/zouenv/bin/pip3 install zou
-sudo chown -R zou:www-data .
+sudo python3 -m venv /opt/zou/zouenv
+sudo /opt/zou/zouenv/bin/python -m pip install --upgrade pip
+sudo /opt/zou/zouenv/bin/python -m pip install zou
 ```
 
 Create a folder to store the previews:
 
 ```
 sudo mkdir /opt/zou/previews
-sudo chown -R zou:www-data /opt/zou
+sudo chown -R zou:www-data /opt/zou/previews
 ```
 
 Create a folder to store the temp files:
@@ -124,14 +145,13 @@ sudo chown -R zou:www-data /opt/zou/tmp
 Create Zou database in postgres:
 
 ```
-sudo su -l postgres
-psql -c 'create database zoudb;' -U postgres
+sudo -u postgres psql -c 'create database zoudb;' -U postgres
 ```
 
 Set a password for your postgres user. For that start the Postgres CLI:
 
 ```bash
-psql
+sudo -u postgres psql
 ```
 
 Then set the password (*mysecretpassword* if you want to do some tests).
@@ -149,7 +169,7 @@ Then exit from the Postgres client console.
 
 Alternatively, if you want to set the password to avoid interactive prompts use : 
 ```bash
-psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
+sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
 ```
 
 Finally, create database tables (it is required to leave the Postgres console
@@ -157,7 +177,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-db
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-db
 ```
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
@@ -273,7 +293,7 @@ Group=www-data
 WorkingDirectory=/opt/zou
 # Append DB_USERNAME=username DB_HOST=server when default values aren't used
 # ffmpeg must be in PATH
-Environment="DB_PASSWORD=yourdbpassword"
+Environment="DB_PASSWORD=mysecretpassword"
 Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 Environment="PREVIEW_FOLDER=/opt/zou/previews"
@@ -387,8 +407,7 @@ sudo systemctl restart nginx
 First, you have to upgrade the zou package:
 
 ```bash
-cd /opt/zou
-sudo /opt/zou/zouenv/bin/pip3 install --upgrade zou
+sudo /opt/zou/zouenv/bin/python -m pip install --upgrade zou
 ```
 
 
@@ -397,8 +416,7 @@ sudo /opt/zou/zouenv/bin/pip3 install --upgrade zou
 Then, you need to upgrade the database schema:
 
 ```bash
-cd /opt/zou
-sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou upgrade-db
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
 ```
 
 
@@ -407,7 +425,6 @@ sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou upgrade-db
 Finally, restart the Zou service:
 
 ```bash
-sudo chown -R zou:www-data .
 sudo systemctl restart zou
 sudo systemctl restart zou-events
 ```
@@ -497,7 +514,7 @@ log in and create other users. For that go into the terminal and run the
 
 ```
 cd /opt/zou/
-sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
 ```
 
 It expects the password as the first argument. Then your user will be created with
@@ -509,8 +526,7 @@ last name.
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-cd /opt/zou/
-sudo -u zou DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-data
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-data
 ```
 
 # Configuration 
