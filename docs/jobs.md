@@ -48,7 +48,7 @@ After=network.target
 User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
-Environment="DB_PASSWORD=yourdbpassword"
+Environment="DB_PASSWORD=mysecretpassword"
 Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 Environment="PREVIEW_FOLDER=/opt/zou/previews"

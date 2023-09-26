@@ -10,7 +10,7 @@ Prior to look for logs or any clue about your problem, make sure that the
 database is up and up to date:
 
 ```bash
-DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou upgrade-db
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
 ```
 
 ## Error logs
@@ -49,7 +49,7 @@ If, for any reasons, the user cannot access to his rest password email, you can
 change his password with the following command:
 
 ```bash
-DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou change-password email@studio.com --password newsecretpassword
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou change-password email@studio.com --password newsecretpassword
 ```
 
 ## Installing on Ubuntu server or minimal desktop

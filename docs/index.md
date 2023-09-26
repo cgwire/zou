@@ -177,7 +177,7 @@ and to activate the Zou virtual environment):
 
 ```
 # Run it in your bash console.
-DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-db
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-db
 ```
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
@@ -293,7 +293,7 @@ Group=www-data
 WorkingDirectory=/opt/zou
 # Append DB_USERNAME=username DB_HOST=server when default values aren't used
 # ffmpeg must be in PATH
-Environment="DB_PASSWORD=yourdbpassword"
+Environment="DB_PASSWORD=mysecretpassword"
 Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 Environment="PREVIEW_FOLDER=/opt/zou/previews"
@@ -416,7 +416,7 @@ sudo /opt/zou/zouenv/bin/python -m pip install --upgrade zou
 Then, you need to upgrade the database schema:
 
 ```bash
-DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou upgrade-db
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
 ```
 
 
@@ -514,7 +514,7 @@ log in and create other users. For that go into the terminal and run the
 
 ```
 cd /opt/zou/
-DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
 ```
 
 It expects the password as the first argument. Then your user will be created with
@@ -526,7 +526,7 @@ last name.
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-DB_PASSWORD=yourdbpassword /opt/zou/zouenv/bin/zou init-data
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-data
 ```
 
 # Configuration 
