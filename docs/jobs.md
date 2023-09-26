@@ -30,9 +30,7 @@ If your main service file (zou.service) uses a S3 backend, you want to add the s
 If not yet installed, install the following package in your virtual environment:
 
 ```
-cd /opt/zou
-. zouenv/bin/activate
-pip install boto3
+sudo /opt/zou/zouenv/bin/python -m pip install boto3
 ```
 
 ## Setting up RQ, the job manager
