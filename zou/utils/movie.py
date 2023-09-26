@@ -10,7 +10,6 @@ import tempfile
 import ffmpeg
 import opentimelineio as otio
 
-from zou.app import config
 
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()
@@ -58,7 +57,7 @@ def generate_thumbnail(movie_path):
     """
     file_source_name = os.path.basename(movie_path)
     file_target_name = "%s.png" % file_source_name[:-4]
-    file_target_path = os.path.join(config.TMP_DIR, file_target_name)
+    file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
 
     try:
         ffmpeg.input(movie_path, ss="00:00:00").output(
@@ -77,7 +76,7 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     """
     file_source_name = os.path.basename(movie_path)
     file_target_name = f"{file_source_name[:-4]}_{frame_number}.png"
-    file_target_path = os.path.join(config.TMP_DIR, file_target_name)
+    file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
 
     frame_time = otio.opentime.RationalTime(
         frame_number - 1, float(movie_fps)
@@ -100,7 +99,7 @@ def generate_tile(movie_path, movie_fps):
     """
     file_source_name = os.path.basename(movie_path)
     file_target_name = f"{file_source_name[:-4]}_tile.png"
-    file_target_path = os.path.join(config.TMP_DIR, file_target_name)
+    file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
     probe = ffmpeg.probe(movie_path)
     duration_in_seconds = float(probe["streams"][0]["duration"])
     float_movie_fps = float(movie_fps)
@@ -191,9 +190,11 @@ def normalize_movie(movie_path, fps, width, height):
     """
     file_source_name = os.path.basename(movie_path)
     file_target_name = "%s.mp4" % file_source_name[:-8]
-    file_target_path = os.path.join(config.TMP_DIR, file_target_name)
+    file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
     low_file_target_name = "%s_low.mp4" % file_source_name[:-8]
-    low_file_target_path = os.path.join(config.TMP_DIR, low_file_target_name)
+    low_file_target_path = os.path.join(
+        tempfile.gettempdir(), low_file_target_name
+    )
 
     (w, h) = get_movie_size(movie_path)
     resize_factor = w / h
