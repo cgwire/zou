@@ -1,4 +1,4 @@
-import json
+import orjson as json
 
 from tests.base import ApiDBTestCase
 

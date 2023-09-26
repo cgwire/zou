@@ -6,7 +6,6 @@ from zou.app.utils import dbhelpers
 from zou.app.utils.env import envtobool, env_with_semicolon_to_list
 
 PROPAGATE_EXCEPTIONS = True
-RESTFUL_JSON = {"ensure_ascii": False}
 DEBUG = envtobool("DEBUG", False)
 DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 

@@ -1,6 +1,6 @@
 import base64
 
-import json
+import orjson as json
 import os
 import zlib
 

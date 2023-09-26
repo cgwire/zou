@@ -83,9 +83,7 @@ def wrong_auth_handler(identity_user=None):
 
 @identity_loaded.connect_via(app)
 def on_identity_loaded(sender, identity):
-    if identity.id is not None:
-        from zou.app.services import persons_service
-
+    if isinstance(identity.id, str):
         try:
             identity.user = persons_service.get_person(identity.id)
 

@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import os
-import json
+import orjson as json
 import datetime
 import tempfile
 

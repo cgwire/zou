@@ -13,6 +13,7 @@ from flask_socketio import SocketIO, disconnect, join_room, emit
 from zou.app import config
 from zou.app.stores import auth_tokens_store
 from zou.app.utils.sentry import init_sentry
+from zou.app.utils.flask import ORJSONProvider
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}
@@ -216,6 +217,7 @@ def create_app():
     )
     init_sentry()
     app = Flask(__name__)
+    app.json = ORJSONProvider(app)
     app.config.from_object(config)
     set_info_routes(socketio, app)
     set_application_routes(socketio, app)

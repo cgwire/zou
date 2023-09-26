@@ -1,6 +1,6 @@
 import os
 import re
-import json
+import orjson as json
 
 from collections import OrderedDict
 from slugify import slugify

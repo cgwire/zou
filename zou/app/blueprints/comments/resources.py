@@ -1,4 +1,4 @@
-import json
+import orjson as json
 
 from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource, reqparse
