@@ -29,7 +29,7 @@ def apply_criterions_to_db_query(model, db_query, criterions):
     return db_query.filter_by(**criterions)
 
 
-def get_paginated_results(query, page, relations=False):
+def get_paginated_results(query, page, limit=None, relations=False):
     """
     Apply pagination to the query object.
     """
@@ -37,7 +37,7 @@ def get_paginated_results(query, page, relations=False):
         entries = query.all()
         return fields.serialize_models(entries, relations=relations)
     else:
-        limit = app.config["NB_RECORDS_PER_PAGE"]
+        limit = limit or app.config["NB_RECORDS_PER_PAGE"]
         total = query.count()
         offset = (page - 1) * limit
 

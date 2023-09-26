@@ -372,7 +372,7 @@ class SceneCameraInstancesResource(Resource):
         return breakdown_service.get_camera_instances_for_scene(scene_id)
 
 
-class ProjectEntityLinksResource(Resource):
+class ProjectEntityLinksResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
@@ -394,7 +394,11 @@ class ProjectEntityLinksResource(Resource):
         """
         user_service.check_manager_project_access(project_id)
         projects_service.get_project(project_id)
-        return entities_service.get_entity_links_for_project(project_id)
+        page = self.get_page()
+        limit = self.get_limit()
+        return entities_service.get_entity_links_for_project(
+            project_id, page, limit
+        )
 
 
 class ProjectEntityLinkResource(Resource):
