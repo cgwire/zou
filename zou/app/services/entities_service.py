@@ -3,7 +3,7 @@ from zou.app.services import (
     projects_service,
     notifications_service,
 )
-from zou.app.utils import cache, events, fields
+from zou.app.utils import cache, events, fields, query as query_utils
 
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
@@ -152,15 +152,33 @@ def get_entities_for_project(
     return Entity.serialize_list(result, obj_type=obj_type)
 
 
-def get_entity_links_for_project(project_id):
+def get_entity_links_for_project(project_id, page=None, limit=None):
     """
     Retrieve entity links for
     """
     query = EntityLink.query.join(
         Entity, EntityLink.entity_in_id == Entity.id
     ).filter(Entity.project_id == project_id)
-    result = query.all()
-    return Entity.serialize_list(result)
+
+    results = []
+    if page is not None and page > 0:
+        if limit < 1:
+            limit = None
+        results = query_utils.get_paginated_result(query, page, limit=limit)
+    else:
+        for entity_link in query.all():
+            results.append(
+                {
+                    "id": entity_link.id,
+                    "entity_in_id": entity_link.entity_in_id,
+                    "entity_out_id": entity_link.entity_out_id,
+                    "nb_occurences": entity_link.nb_occurences,
+                    "label": entity_link.label,
+                    "data": entity_link.data,
+                    "type": "EntityLink",
+                }
+            )
+    return results
 
 
 def get_entities_and_tasks(criterions={}):

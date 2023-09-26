@@ -1,4 +1,5 @@
 from flask_jwt_extended import jwt_required
+
 from flask_restful import Resource
 
 
@@ -96,7 +97,10 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         self.protected_fields.append("team")
 
     def check_read_permissions(self, project):
-        user_service.check_project_access(project["id"])
+        return user_service.check_project_access(project["id"])
+
+    def check_update_permissions(self, project, data):
+        return user_service.check_manager_project_access(project["id"])
 
     def pre_update(self, project_dict, data):
         if "team" in data:

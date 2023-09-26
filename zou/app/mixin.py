@@ -67,10 +67,17 @@ class ArgsMixin(object):
 
     def get_page(self):
         """
-        Returns page requested by the user.
+        Returns page requested by the user as an integer.
         """
         options = request.args
         return int(options.get("page", "-1"))
+
+    def get_limit(self):
+        """
+        Returns limit requested by the user as an integer.
+        """
+        options = request.args
+        return int(options.get("limit", "-1"))
 
     def get_sort_by(self):
         """
@@ -115,14 +122,23 @@ class ArgsMixin(object):
         return self.get_bool_parameter("no_job")
 
     def get_text_parameter(self, field_name):
+        """
+        Returns text parameter value matching `field_name`.
+        """
         options = request.args
         return options.get(field_name, None)
 
     def get_bool_parameter(self, field_name, default="false"):
+        """
+        Returns bool parameter value matching `field_name`.
+        """
         options = request.args
         return options.get(field_name, default).lower() == "true"
 
     def get_date_parameter(self, field_name):
+        """
+        Returns date parameter value matching `field_name`.
+        """
         self.parse_date_parameter(self.get_text_parameter(field_name))
 
     def parse_date_parameter(self, param):
