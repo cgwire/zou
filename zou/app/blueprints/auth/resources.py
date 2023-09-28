@@ -313,7 +313,6 @@ class LoginResource(Resource, ArgsMixin):
                 set_access_cookies(response, access_token)
                 set_refresh_cookies(response, refresh_token)
                 events_service.create_login_log(user["id"], ip_address, "web")
-
             else:
                 events_service.create_login_log(
                     user["id"], ip_address, "script"
@@ -324,13 +323,13 @@ class LoginResource(Resource, ArgsMixin):
                     "access_token": access_token,
                     "refresh_token": refresh_token,
                 }
-
+            current_app.logger.info(f"User {email} is logged in.")
             return response
         except WrongUserException:
-            current_app.logger.info("User %s is not registered." % email)
+            current_app.logger.info(f"User {email} is not registered.")
             return {"login": False}, 400
         except WrongPasswordException:
-            current_app.logger.info("User %s gave a wrong password." % email)
+            current_app.logger.info(f"User {email} gave a wrong password.")
             return {"login": False}, 400
         except NoAuthStrategyConfigured:
             current_app.logger.info(
@@ -339,22 +338,26 @@ class LoginResource(Resource, ArgsMixin):
             return {"login": False}, 409
         except UserCantConnectDueToNoFallback:
             current_app.logger.info(
-                "User %s can't login due to no fallback from LDAP." % email
+                f"User {email} can't login due to no fallback from LDAP."
             )
             return {"login": False}, 400
         except TimeoutError:
             current_app.logger.info("Timeout occurs while logging in.")
             return {"login": False}, 400
         except UnactiveUserException:
+            current_app.logger.info(f"User {email} is unactive.")
             return (
                 {
                     "error": True,
                     "login": False,
-                    "message": "User is inactive, he cannot log in.",
+                    "message": "User is unactive, he cannot log in.",
                 },
                 400,
             )
         except TooMuchLoginFailedAttemps:
+            current_app.logger.info(
+                f"User {email} can't log in due to too much login failed attemps."
+            )
             return (
                 {
                     "error": True,
@@ -364,6 +367,9 @@ class LoginResource(Resource, ArgsMixin):
                 400,
             )
         except MissingOTPException as e:
+            current_app.logger.info(
+                f"User {email} can't log in due to missing OTP."
+            )
             return (
                 {
                     "error": True,
@@ -375,6 +381,9 @@ class LoginResource(Resource, ArgsMixin):
                 400,
             )
         except WrongOTPException:
+            current_app.logger.info(
+                f"User {email} can't log in due to wrong OTP."
+            )
             return (
                 {
                     "error": True,
