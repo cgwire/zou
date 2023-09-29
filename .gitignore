@@ -95,7 +95,6 @@ Vagrantfile
 /previews/
 /thumbnails/
 /indexes/
-release.sh
 
 tmp
 restore.sh
