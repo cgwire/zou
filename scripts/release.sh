@@ -1,3 +1,4 @@
+set -e
 git pull --rebase origin master
 last_release_number=$(python -c "from zou import __version__; print(__version__)")
 release_number=$(echo ${last_release_number} | awk -F. -v OFS=. '{$NF += 1 ; print}')
