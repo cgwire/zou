@@ -164,7 +164,7 @@ def get_entity_links_for_project(project_id, page=None, limit=None):
     if page is not None and page > 0:
         if limit < 1:
             limit = None
-        results = query_utils.get_paginated_result(query, page, limit=limit)
+        results = query_utils.get_paginated_results(query, page, limit=limit)
     else:
         for entity_link in query.all():
             results.append(
