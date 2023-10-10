@@ -162,24 +162,31 @@ def configure_auth():
 
 def load_api():
     from zou.app import api
+    from zou.app.utils import permissions
     from zou import __version__ as zou_version
 
     api.configure(app)
-    try:
-        from prometheus_flask_exporter.multiprocess import (
-            GunicornPrometheusMetrics,
-        )
 
-        metrics = GunicornPrometheusMetrics(
-            app, defaults_prefix="zou", group_by="url_rule"
-        )
-    except ValueError:
-        from prometheus_flask_exporter import RESTfulPrometheusMetrics
+    if config.PROMETHEUS_METRICS_ENABLED:
+        try:
+            from prometheus_flask_exporter.multiprocess import (
+                GunicornPrometheusMetrics,
+            )
 
-        metrics = RESTfulPrometheusMetrics(
-            app, api, defaults_prefix="zou", group_by="url_rule"
-        )
-    metrics.info("zou_info", "Application info", version=zou_version)
+            metrics = GunicornPrometheusMetrics(
+                app, defaults_prefix="zou", group_by="url_rule"
+            )
+        except ValueError:
+            from prometheus_flask_exporter import RESTfulPrometheusMetrics
+
+            metrics = RESTfulPrometheusMetrics(
+                app,
+                api,
+                defaults_prefix="zou",
+                group_by="url_rule",
+                metrics_decorator=permissions.require_admin,
+            )
+        metrics.info("zou_info", "Application info", version=zou_version)
 
     fs.mkdir_p(app.config["TMP_DIR"])
     configure_auth()

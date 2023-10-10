@@ -135,6 +135,8 @@ SENTRY_DSN = os.getenv("SENTRY_DSN", False)
 SENTRY_SR = float(os.getenv("SENTRY_SR", 1.0))
 SENTRY_DEBUG_URL = os.getenv("SENTRY_DEBUG_URL", False)
 
+PROMETHEUS_METRICS_ENABLED = envtobool("PROMETHEUS_METRICS_ENABLED", False)
+
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
