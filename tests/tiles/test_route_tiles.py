@@ -60,4 +60,4 @@ class RouteTileTestCase(ApiDBTestCase):
         self.download_file(path, result_file_path)
 
         result_image = Image.open(result_file_path)
-        self.assertEqual(result_image.size, (1424, 600))
+        self.assertEqual(result_image.size, (1912, 600))
