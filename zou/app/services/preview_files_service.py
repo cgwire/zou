@@ -258,7 +258,7 @@ def prepare_and_store_movie(
 
         # Build tiles
         try:
-            tile_path = movie.generate_tile(normalized_movie_path, fps)
+            tile_path = movie.generate_tile(normalized_movie_path)
             file_store.add_picture("tiles", preview_file_id, tile_path)
             os.remove(tile_path)
             current_app.logger.info("tile created %s" % tile_path)
@@ -626,8 +626,7 @@ def extract_tile_from_preview_file(preview_file):
             preview_file["id"],
             "mp4",
         )
-        fps = get_preview_file_fps(project)
-        extracted_tile_path = movie.generate_tile(preview_file_path, fps)
+        extracted_tile_path = movie.generate_tile(preview_file_path)
         return extracted_tile_path
     else:
         return ArgumentsException("Preview file is not a movie")
@@ -786,10 +785,8 @@ def generate_tiles_and_reset_preview_files_metadata():
                 continue
             try:
                 if preview_file.extension == "mp4":
-                    project = get_project_from_preview_file(preview_file_id)
-                    fps = get_preview_file_fps(project)
                     extracted_tile_path = movie.generate_tile(
-                        preview_file_path, fps
+                        preview_file_path
                     )
                     file_store.add_picture(
                         "tiles", preview_file_id, extracted_tile_path

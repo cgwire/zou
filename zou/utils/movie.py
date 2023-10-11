@@ -93,19 +93,19 @@ def extract_frame_from_movie(movie_path, frame_number, movie_fps):
     return file_target_path
 
 
-def generate_tile(movie_path, movie_fps):
+def generate_tile(movie_path):
     """
     Generates a tile from a movie.
     """
     file_source_name = os.path.basename(movie_path)
     file_target_name = f"{file_source_name[:-4]}_tile.png"
     file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
-    probe = ffmpeg.probe(movie_path)
-    duration_in_seconds = float(probe["streams"][0]["duration"])
-    float_movie_fps = float(movie_fps)
-    duration_in_frames = int(duration_in_seconds * float_movie_fps)
+    video_track = get_video_track(movie_path, "generate_tile")
+    duration = get_movie_duration(video_track=video_track)
+    fps = get_movie_fps(video_track=video_track)
+    duration_in_frames = int(duration * fps)
     rows = min(math.ceil(duration_in_frames / 8), 240)
-    ratio = get_movie_ratio(movie_path)
+    ratio = get_movie_display_aspect_ratio(video_track=video_track)
     height = 100
     width = math.ceil(height * ratio)
 
@@ -120,16 +120,16 @@ def generate_tile(movie_path, movie_fps):
     return file_target_path
 
 
-def get_movie_size(movie_path):
+def get_video_track(movie_path, action_name="get_video_track"):
     """
-    Returns movie resolution (extract a frame and returns its size).
+    Returns the video track of a movie.
     """
     try:
-        probe = ffmpeg.probe(movie_path)
+        probe = ffmpeg.probe(movie_path, select_streams="v")
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, "get_movie_size")
+        log_ffmpeg_error(e, action_name)
         raise (e)
-    video = next(
+    video_track = next(
         (
             stream
             for stream in probe["streams"]
@@ -137,20 +137,60 @@ def get_movie_size(movie_path):
         ),
         None,
     )
+    return video_track
+
+
+def get_movie_size(movie_path=None, video_track=None):
+    """
+    Returns movie resolution (extract a frame and returns its size).
+    """
+    if video_track is None:
+        video_track = get_video_track(movie_path, "get_movie_size")
     width = 1
     height = 1
-    if video is not None:
-        width = int(video["width"])
-        height = int(video["height"])
+    if video_track is not None:
+        width = int(video_track["width"])
+        height = int(video_track["height"])
     return (width, height)
 
 
-def get_movie_ratio(movie_path):
+def get_movie_fps(movie_path=None, video_track=None):
     """
-    Returns movie ratio (width / height).
+    Returns movie fps.
     """
-    width, height = get_movie_size(movie_path)
-    return width / height
+    if video_track is None:
+        video_track = get_video_track(movie_path, "get_movie_fps")
+    fps = 25
+    if video_track is not None:
+        fps = float(video_track["r_frame_rate"].split("/")[0])
+    return fps
+
+
+def get_movie_display_aspect_ratio(movie_path=None, video_track=None):
+    """
+    Returns movie display aspect ratio (width / height).
+    """
+    if video_track is None:
+        video_track = get_video_track(
+            movie_path, "get_movie_display_aspect_ratio"
+        )
+    ratio = 1
+    if video_track is not None:
+        width, height = video_track["display_aspect_ratio"].split(":")
+        ratio = float(width) / float(height)
+    return ratio
+
+
+def get_movie_duration(movie_path=None, video_track=None):
+    """
+    Returns movie duration in seconds.
+    """
+    if video_track is None:
+        video_track = get_video_track(movie_path, "get_movie_duration")
+    duration = 0
+    if video_track is not None:
+        duration = float(video_track["duration"])
+    return duration
 
 
 def normalize_encoding(
