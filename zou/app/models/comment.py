@@ -1,5 +1,7 @@
 from sqlalchemy_utils import UUIDType
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.hybrid import hybrid_property
+
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
@@ -99,9 +101,35 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     person_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
+    api_token_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("api_token.id"),
+        nullable=True,
+        index=True,
+    )
+
+    @hybrid_property
+    def author_id(self):
+        if self.person_id is not None:
+            return self.person_id
+        elif self.api_token_id is not None:
+            return self.api_token_id
+        else:
+            return None
+
+    @author_id.expression
+    def author_id(cls):
+        return db.case(
+            [
+                (cls.person_id != None, cls.person_id),
+                (cls.api_token_id != None, cls.api_token_id),
+            ],
+            else_=None,
+        )
+
     preview_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("preview_file.id")
     )

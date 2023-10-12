@@ -3,7 +3,9 @@ import slugify
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.person import Person, department_link
+from zou.app.models.person import Person
+from zou.app.models.api_token import ApiToken
+from zou.app.models.identity import DepartmentLink
 from zou.app.models.project import (
     Project,
     ProjectPersonLink,
@@ -294,11 +296,29 @@ def add_team_member(project_id, person_id):
     return _add_to_list_attr(project_id, Person, person_id, "team")
 
 
+def add_api_tokens_team_member(project_id, api_token_id):
+    """
+    Add an API token listed in database to the the project api_tokens_team.
+    """
+    return _add_to_list_attr(
+        project_id, ApiToken, api_token_id, "api_tokens_team"
+    )
+
+
 def remove_team_member(project_id, person_id):
     """
     Remove a person listed in database from the the project team.
     """
     return _remove_from_list_attr(project_id, Person, person_id, "team")
+
+
+def remove_api_tokens_team_member(project_id, api_token_id):
+    """
+    Remove an API token listed in database from the the project api_tokens_team.
+    """
+    return _remove_from_list_attr(
+        project_id, ApiToken, api_token_id, "api_tokens_team"
+    )
 
 
 def add_asset_type_setting(project_id, asset_type_id):
@@ -638,8 +658,8 @@ def get_department_team(project_id, department_id):
         Person.query.join(
             ProjectPersonLink, ProjectPersonLink.person_id == Person.id
         )
-        .join(department_link, department_link.columns.person_id == Person.id)
+        .join(DepartmentLink, DepartmentLink.person_id == Person.id)
         .filter(ProjectPersonLink.project_id == project_id)
-        .filter(department_link.columns.department_id == department_id)
+        .filter(DepartmentLink.department_id == department_id)
     ).all()
     return persons

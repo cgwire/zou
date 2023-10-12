@@ -1,4 +1,3 @@
-from functools import wraps
 from flask_principal import RoleNeed, Permission
 from werkzeug.exceptions import Forbidden
 
@@ -7,6 +6,9 @@ manager_permission = Permission(RoleNeed("manager"))
 supervisor_permission = Permission(RoleNeed("supervisor"))
 client_permission = Permission(RoleNeed("client"))
 vendor_permission = Permission(RoleNeed("vendor"))
+
+api_token_permission = Permission(RoleNeed("api_token"))
+person_permission = Permission(RoleNeed("person"))
 
 
 class PermissionDenied(Forbidden):
@@ -17,7 +19,7 @@ def has_manager_permissions():
     """
     Return True if user is an admin or a manager.
     """
-    return admin_permission.can() or manager_permission.can()
+    return manager_permission.can()
 
 
 def has_admin_permissions():
@@ -92,19 +94,12 @@ def check_admin_permissions():
         raise PermissionDenied
 
 
-def require_admin(function):
-    @wraps(function)
-    def decorated_function(*args, **kwargs):
-        check_admin_permissions()
-        return function(*args, **kwargs)
-
-    return decorated_function
-
-
-def require_manager(function):
-    @wraps(function)
-    def decorated_function(*args, **kwargs):
-        check_manager_permissions()
-        return function(*args, **kwargs)
-
-    return decorated_function
+def check_person_permissions():
+    """
+    Return True if user is a person. It raises a PermissionDenied exception in
+    case of failure.
+    """
+    if person_permission.can():
+        return True
+    else:
+        raise PermissionDenied

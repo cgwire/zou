@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.utils import fields
 
 PROJECT_STYLES = [
     ("2d", "2D Animation"),
@@ -26,11 +27,23 @@ PROJECT_STYLES = [
 
 class ProjectPersonLink(db.Model):
     __tablename__ = "project_person_link"
-    project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+    id = db.Column(
+        UUIDType(binary=False), primary_key=True, default=fields.gen_uuid
     )
     person_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("person.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        default=None,
+    )
+    api_token_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("api_token.id"),
+        default=None,
+    )
+    project_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        nullable=False,
     )
     shotgun_id = db.Column(db.Integer)
 
@@ -118,7 +131,20 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True
     )
 
-    team = db.relationship("Person", secondary="project_person_link")
+    team = db.relationship(
+        "Person",
+        secondary="project_person_link",
+        overlaps="api_tokens_team",
+        lazy="joined",
+    )
+
+    api_tokens_team = db.relationship(
+        "ApiToken",
+        secondary="project_person_link",
+        overlaps="team",
+        lazy="joined",
+    )
+
     asset_types = db.relationship(
         "EntityType", secondary="project_asset_type_link"
     )
@@ -140,6 +166,18 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             if link is None:
                 link = ProjectPersonLink(
                     project_id=self.id, person_id=person_id
+                )
+                db.session.add(link)
+        db.session.commit()
+
+    def set_api_tokens_team(self, api_tokens_ids):
+        for api_token_id in api_tokens_ids:
+            link = ProjectPersonLink.query.filter_by(
+                project_id=self.id, api_token_id=api_token_id
+            ).first()
+            if link is None:
+                link = ProjectPersonLink(
+                    project_id=self.id, api_token_id=api_token_id
                 )
                 db.session.add(link)
         db.session.commit()
@@ -178,6 +216,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         data.pop("type", None)
         data.pop("project_status_name", None)
         person_ids = data.pop("team", None)
+        api_tokens_ids = data.pop("api_tokens_team", None)
         task_type_ids = data.pop("task_types", None)
         task_status_ids = data.pop("task_statuses", None)
         asset_type_ids = data.pop("asset_types", None)
@@ -193,6 +232,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
         if person_ids is not None:
             previous_project.set_team(person_ids)
+
+        if api_tokens_ids is not None:
+            previous_project.set_api_tokens_team(api_tokens_ids)
 
         if task_type_ids is not None:
             previous_project.set_task_types(task_type_ids)

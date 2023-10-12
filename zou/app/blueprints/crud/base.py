@@ -20,6 +20,7 @@ class BaseModelsResource(Resource, ArgsMixin):
     def __init__(self, model):
         Resource.__init__(self)
         self.model = model
+        self.protected_fields = ["id", "created_at", "updated_at"]
 
     def all_entries(self, query=None, relations=False):
         if query is None:
@@ -129,6 +130,9 @@ class BaseModelsResource(Resource, ArgsMixin):
         return data
 
     def update_data(self, data):
+        for field in self.protected_fields:
+            if (data is not None) and field in data:
+                data.pop(field, None)
         return data
 
     def post_creation(self, instance):

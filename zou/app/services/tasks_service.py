@@ -28,6 +28,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
+from zou.app.models.api_token import ApiToken
 
 from zou.app.utils import cache, fields, query as query_utils
 
@@ -51,6 +52,7 @@ from zou.app.services import (
     shots_service,
     entities_service,
     edits_service,
+    identities_service,
 )
 
 
@@ -520,10 +522,10 @@ def get_comments(task_id, is_client=False, is_manager=False):
         task = get_task(task_id)
         project = projects_service.get_project(task["project_id"])
         for comment in comments:
-            person = persons_service.get_person(comment["person_id"])
-            current_user = persons_service.get_current_user()
-            is_author = comment["person_id"] == current_user["id"]
-            is_author_client = person["role"] == "client"
+            author = identities_service.get_identity(comment["author_id"])
+            current_user = identities_service.get_current_identity()
+            is_author = author["id"] == current_user["id"]
+            is_author_client = author["role"] == "client"
             is_clients_isolated = project.get("is_clients_isolated", False)
             is_allowed = (is_clients_isolated and is_author) or (
                 not is_clients_isolated and is_author_client
@@ -544,6 +546,7 @@ def _prepare_query(task_id, is_client, is_manager):
         Comment.query.order_by(Comment.created_at.desc())
         .filter_by(object_id=task_id)
         .join(Person, Comment.person_id == Person.id)
+        .join(ApiToken, Comment.api_token_id == ApiToken.id)
         .join(TaskStatus, Comment.task_status_id == TaskStatus.id)
         .add_columns(
             TaskStatus.name,
@@ -552,10 +555,14 @@ def _prepare_query(task_id, is_client, is_manager):
             Person.first_name,
             Person.last_name,
             Person.has_avatar,
+            ApiToken.name,
+            ApiToken.has_avatar,
         )
     )
     if not is_manager and not is_client:
-        query = query.filter(Person.role != "client")
+        query = query.filter(
+            func.coalesce(Person.role, ApiToken.role) != "client"
+        )
     return query
 
 
@@ -571,15 +578,24 @@ def _run_task_comments_query(query):
             person_first_name,
             person_last_name,
             person_has_avatar,
+            api_token_name,
+            api_token_has_avatar,
         ) = result
 
         comment_dict = comment.serialize()
-        comment_dict["person"] = {
-            "first_name": person_first_name,
-            "last_name": person_last_name,
-            "has_avatar": person_has_avatar,
-            "id": str(comment.person_id),
-        }
+        if comment.person_id is not None:
+            comment_dict["person"] = {
+                "first_name": person_first_name,
+                "last_name": person_last_name,
+                "has_avatar": person_has_avatar,
+                "id": comment.person_id,
+            }
+        elif comment.api_token_id is not None:
+            comment_dict["api_token"] = {
+                "name": api_token_name,
+                "has_avatar": api_token_has_avatar,
+                "id": comment.api_token_id,
+            }
         comment_dict["task_status"] = {
             "name": task_status_name,
             "short_name": task_status_short_name,
@@ -1082,7 +1098,7 @@ def create_tasks(task_type, entities):
     task_status = get_default_status()
     current_user_id = None
     try:
-        current_user_id = persons_service.get_current_user()["id"]
+        current_user_id = identities_service.get_current_identity()["id"]
     except RuntimeError:
         pass
 
@@ -1126,7 +1142,7 @@ def create_task(task_type, entity, name="main"):
     task_status = get_default_status()
     try:
         try:
-            current_user_id = persons_service.get_current_user()["id"]
+            current_user_id = identities_service.get_current_identity()["id"]
         except RuntimeError:
             current_user_id = None
         task = Task.create(

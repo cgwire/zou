@@ -24,6 +24,7 @@ from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.working_file import WorkingFile
+from zou.app.models.api_token import ApiToken
 
 from zou.app.utils import events, fields
 from zou.app.stores import file_store
@@ -34,6 +35,7 @@ from zou.app.services.exception import (
     CommentNotFoundException,
     ModelWithRelationsDeletionException,
     PersonInProtectedAccounts,
+    ApiTokenInProtectedAccounts,
 )
 
 
@@ -314,6 +316,10 @@ def remove_project(project_id):
 
 def remove_person(person_id, force=True):
     person = Person.get(person_id)
+    if person.email in config.PROTECTED_ACCOUNTS:
+        raise PersonInProtectedAccounts(
+            "Can't delete this person it's a protected account."
+        )
     if force:
         for comment in Comment.get_all_by(person_id=person_id):
             remove_comment(comment.id)
@@ -355,14 +361,9 @@ def remove_person(person_id, force=True):
         for output_file in OutputFile.get_all_by(person_id=person_id):
             output_file.update({"person_id": None})
         for working_file in WorkingFile.get_all_by(person_id=person_id):
-            output_file.update({"person_id": None})
-        for task in WorkingFile.get_all_by(person_id=person_id):
-            output_file.update({"person_id": None})
-    elif person.email in config.PROTECTED_ACCOUNTS:
-        raise PersonInProtectedAccounts(
-            "Can't delete this person it's a protected account."
-        )
-
+            working_file.update({"person_id": None})
+        for preview_file in PreviewFile.get_all_by(person_id=person_id):
+            preview_file.update({"person_id": None})
     try:
         person.delete()
         events.emit("person:delete", {"person_id": person.id})
@@ -372,6 +373,70 @@ def remove_person(person_id, force=True):
         )
 
     return person.serialize_safe()
+
+
+def remove_api_token(api_token_id, force=True):
+    api_token = ApiToken.get(api_token_id)
+    if api_token.email in config.PROTECTED_ACCOUNTS:
+        raise ApiTokenInProtectedAccounts(
+            "Can't delete this API Token it's a protected account."
+        )
+    if force:
+        for comment in Comment.get_all_by(api_token_id=api_token_id):
+            remove_comment(comment.id)
+        comments = Comment.query.filter(
+            Comment.acknowledgements.contains(api_token)
+        )
+        for comment in comments:
+            comment.acknowledgements = [
+                member
+                for member in comment.acknowledgements
+                if str(member.id) != api_token_id
+            ]
+            comment.save()
+        # TODO : check that
+        ApiEvent.delete_all_by(user_id=api_token_id)
+        Notification.delete_all_by(person_id=api_token_id)
+        Notification.delete_all_by(author_id=api_token_id)
+        SearchFilterGroup.delete_all_by(person_id=api_token_id)
+        SearchFilter.delete_all_by(person_id=api_token_id)
+        DesktopLoginLog.delete_all_by(person_id=api_token_id)
+        LoginLog.delete_all_by(person_id=api_token_id)
+        Subscription.delete_all_by(person_id=api_token_id)
+        TimeSpent.delete_all_by(person_id=api_token_id)
+        for project in Project.query.filter(
+            Project.api_tokens_team.contains(api_token)
+        ):
+            project.api_tokens_team = [
+                member
+                for member in project.api_tokens_team
+                if str(member.id) != api_token_id
+            ]
+            project.save()
+        for task in Task.query.filter(Task.assignees.contains(api_token)):
+            task.assignees = [
+                assignee
+                for assignee in task.assignees
+                if str(assignee.id) != api_token_id
+            ]
+            task.save()
+        for task in Task.get_all_by(assigner_id=api_token_id):
+            task.update({"assigner_id": None})
+        for output_file in OutputFile.get_all_by(person_id=api_token_id):
+            output_file.update({"person_id": None})
+        for working_file in WorkingFile.get_all_by(person_id=api_token_id):
+            working_file.update({"person_id": None})
+        for preview_file in PreviewFile.get_all_by(person_id=api_token_id):
+            preview_file.update({"person_id": None})
+    try:
+        api_token.delete()
+        events.emit("api_token:delete", {"api_token_id": api_token.id})
+    except IntegrityError:
+        raise ModelWithRelationsDeletionException(
+            "Some data are still linked to given person."
+        )
+
+    return api_token.serialize_safe()
 
 
 def remove_old_events(days_old=90):

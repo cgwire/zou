@@ -1,13 +1,13 @@
 # coding: utf-8
 
 import os
-import orjson as json
+import sys
 import datetime
 import tempfile
 
 
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
-from zou.app.utils import thumbnail as thumbnail_utils
+from zou.app.utils import thumbnail as thumbnail_utils, auth
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
@@ -21,9 +21,11 @@ from zou.app.services import (
     shots_service,
     sync_service,
     tasks_service,
+    api_tokens_service,
 )
 from zou.app.models.person import Person
 from sqlalchemy.sql.expression import not_
+from sqlalchemy.exc import IntegrityError
 
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -37,21 +39,12 @@ from zou.app import app
 
 def clean_auth_tokens():
     """
-    Remove all revoked tokens (most of the time outdated) from the key value
+    Remove all revoked tokens from the key value
     store.
     """
     for key in auth_tokens_store.keys():
-        value = json.loads(auth_tokens_store.get(key))
-
-        if isinstance(value, bool):
+        if auth_tokens_store.is_revoked(key):
             auth_tokens_store.delete(key)
-        else:
-            is_revoked = value["revoked"] == True
-            expiration = datetime.datetime.fromtimestamp(value["token"]["exp"])
-            is_expired = expiration < datetime.datetime.utcnow()
-
-            if is_revoked or is_expired:
-                auth_tokens_store.delete(key)
 
 
 def clear_all_auth_tokens():
@@ -648,3 +641,32 @@ def reset_picture_files_metadata():
 def generate_tiles_and_reset_preview_files_metadata():
     with app.app_context():
         preview_files_service.generate_tiles_and_reset_preview_files_metadata()
+
+
+def create_api_token(
+    email,
+    name,
+    description,
+    days_duration,
+    role,
+):
+    with app.app_context():
+        try:
+            # Allow "admin@example.com" to be invalid.
+            if email != "admin@example.com":
+                auth.validate_email(email)
+            api_token = api_tokens_service.create_api_token(
+                email,
+                name,
+                description,
+                days_duration,
+                role,
+                serialize=False,
+            )
+            serialized_api_token = (
+                api_tokens_service.create_access_token_from_instance(api_token)
+            )
+            print(serialized_api_token["access_token"])
+        except IntegrityError:
+            print("API token already exists for this name.")
+            sys.exit(1)

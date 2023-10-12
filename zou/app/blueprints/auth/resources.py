@@ -6,10 +6,15 @@ from flask_restful import Resource
 from flask_principal import (
     Identity,
     AnonymousIdentity,
-    RoleNeed,
-    UserNeed,
     identity_changed,
-    identity_loaded,
+)
+from flask_jwt_extended import (
+    jwt_required,
+    create_access_token,
+    create_refresh_token,
+    set_access_cookies,
+    set_refresh_cookies,
+    unset_jwt_cookies,
 )
 
 from sqlalchemy.exc import OperationalError, TimeoutError
@@ -17,8 +22,16 @@ from babel.dates import format_datetime
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import auth, emails
-from zou.app.services import persons_service, auth_service, events_service
+from zou.app.utils import auth, emails, permissions
+from zou.app.services import (
+    persons_service,
+    auth_service,
+    events_service,
+    identities_service,
+)
+
+from zou.app.utils.flask import is_from_browser
+
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
     EmailOTPAlreadyEnabledException,
@@ -39,92 +52,6 @@ from zou.app.services.exception import (
     WrongPasswordException,
     WrongUserException,
 )
-
-
-from flask_jwt_extended import (
-    jwt_required,
-    create_access_token,
-    create_refresh_token,
-    get_jwt_identity,
-    get_jwt,
-    set_access_cookies,
-    set_refresh_cookies,
-    unset_jwt_cookies,
-)
-
-
-def is_from_browser(user_agent):
-    return user_agent.browser in [
-        "Brave",
-        "Chrome",
-        "Edge",
-        "Firefox",
-        "Opera",
-        "Safari",
-        "Vivaldi",
-    ]
-
-
-def logout():
-    try:
-        current_token = get_jwt()
-        jti = current_token["jti"]
-        auth_service.revoke_tokens(app, jti)
-    except Exception:
-        pass
-
-
-def wrong_auth_handler(identity_user=None):
-    if request.path not in ["/auth/login", "/auth/logout"]:
-        abort(401)
-    else:
-        return identity_user
-
-
-@identity_loaded.connect_via(app)
-def on_identity_loaded(sender, identity):
-    if isinstance(identity.id, str):
-        try:
-            identity.user = persons_service.get_person(identity.id)
-
-            if hasattr(identity.user, "id"):
-                identity.provides.add(UserNeed(identity.user["id"]))
-
-            if identity.user is None:
-                raise PersonNotFoundException
-
-            if identity.user["role"] == "admin":
-                identity.provides.add(RoleNeed("admin"))
-                identity.provides.add(RoleNeed("manager"))
-
-            if identity.user["role"] == "manager":
-                identity.provides.add(RoleNeed("manager"))
-
-            if identity.user["role"] == "supervisor":
-                identity.provides.add(RoleNeed("supervisor"))
-
-            if identity.user["role"] == "client":
-                identity.provides.add(RoleNeed("client"))
-
-            if identity.user["role"] == "vendor":
-                identity.provides.add(RoleNeed("vendor"))
-
-            if not identity.user["active"]:
-                current_app.logger.error("Current user is not active anymore")
-                logout()
-                return wrong_auth_handler(identity.user)
-
-            return identity
-        except PersonNotFoundException:
-            return wrong_auth_handler()
-        except TimeoutError:
-            current_app.logger.error("Identity loading timed out")
-            return wrong_auth_handler()
-        except Exception as exception:
-            current_app.logger.error(exception, exc_info=1)
-            if hasattr(exception, "message"):
-                current_app.logger.error(exception.message)
-            return wrong_auth_handler()
 
 
 class AuthenticatedResource(Resource):
@@ -150,18 +77,13 @@ class AuthenticatedResource(Resource):
           401:
             description: Person not found
         """
-        try:
-            person = persons_service.get_person_by_email(
-                get_jwt_identity(), relations=True
-            )
-            organisation = persons_service.get_organisation()
-            return {
-                "authenticated": True,
-                "user": person,
-                "organisation": organisation,
-            }
-        except PersonNotFoundException:
-            abort(401)
+        person = identities_service.get_current_identity(relations=True)
+        organisation = persons_service.get_organisation()
+        return {
+            "authenticated": True,
+            "user": person,
+            "organisation": organisation,
+        }
 
 
 class LogoutResource(Resource):
@@ -171,6 +93,7 @@ class LogoutResource(Resource):
     """
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def get(self):
         """
         Log user out by revoking his auth tokens.
@@ -185,7 +108,7 @@ class LogoutResource(Resource):
             description: Access token not found
         """
         try:
-            logout()
+            auth_service.logout()
             identity_changed.send(
                 current_app._get_current_object(), identity=AnonymousIdentity()
             )
@@ -284,17 +207,23 @@ class LoginResource(Resource, ArgsMixin):
                 )
 
             access_token = create_access_token(
-                identity=user["email"],
-                additional_claims={"user_id": user["id"]},
+                identity=user["id"],
+                additional_claims={
+                    "email": user["email"],
+                    "identity_type": "person",
+                },
             )
             refresh_token = create_refresh_token(
-                identity=user["email"],
-                additional_claims={"user_id": user["id"]},
+                identity=user["id"],
+                additional_claims={
+                    "email": user["email"],
+                    "identity_type": "person",
+                },
             )
             auth_service.register_tokens(app, access_token, refresh_token)
             identity_changed.send(
                 current_app._get_current_object(),
-                identity=Identity(user["id"]),
+                identity=Identity(user["id"], "person"),
             )
 
             ip_address = request.environ.get(
@@ -352,7 +281,7 @@ class LoginResource(Resource, ArgsMixin):
                     "login": False,
                     "message": "User is unactive, he cannot log in.",
                 },
-                400,
+                401,
             )
         except TooMuchLoginFailedAttemps:
             current_app.logger.info(
@@ -438,6 +367,7 @@ class LoginResource(Resource, ArgsMixin):
 
 class RefreshTokenResource(Resource):
     @jwt_required(refresh=True)
+    @permissions.person_permission.require(403)
     def get(self):
         """
         Tokens are considered as outdated every two weeks.
@@ -449,10 +379,13 @@ class RefreshTokenResource(Resource):
           200:
             description: Access Token
         """
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         access_token = create_access_token(
-            identity=user["email"],
-            additional_claims={"user_id": user["id"]},
+            identity=user["id"],
+            additional_claims={
+                "email": user["email"],
+                "identity_type": "person",
+            },
         )
         auth_service.register_tokens(app, access_token)
         if is_from_browser(request.user_agent):
@@ -583,6 +516,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def post(self):
         """
         Allow the user to change his password.
@@ -618,7 +552,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
         (old_password, password, password_2) = self.get_arguments()
 
         try:
-            user = persons_service.get_current_user()
+            user = identities_service.get_current_identity()
             auth_service.check_auth(
                 app, user["email"], old_password, no_otp=True
             )
@@ -857,6 +791,7 @@ class TOTPResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def put(self):
         """
         Resource to allow a user to pre-enable TOTP.
@@ -874,7 +809,7 @@ class TOTPResource(Resource, ArgsMixin):
         """
         try:
             totp_provisionning_uri, totp_secret = auth_service.pre_enable_totp(
-                persons_service.get_current_user()["id"]
+                identities_service.get_current_identity()["id"]
             )
             return {
                 "totp_provisionning_uri": totp_provisionning_uri,
@@ -887,6 +822,7 @@ class TOTPResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def post(self):
         """
         Resource to allow a user to enable TOTP.
@@ -906,7 +842,7 @@ class TOTPResource(Resource, ArgsMixin):
 
         try:
             otp_recovery_codes = auth_service.enable_totp(
-                persons_service.get_current_user()["id"], args["totp"]
+                identities_service.get_current_identity()["id"], args["totp"]
             )
             return {"otp_recovery_codes": otp_recovery_codes}
         except TOTPAlreadyEnabledException:
@@ -925,6 +861,7 @@ class TOTPResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def delete(self):
         """
         Resource to allow a user to disable TOTP.
@@ -948,7 +885,7 @@ class TOTPResource(Resource, ArgsMixin):
         )
 
         try:
-            person = persons_service.get_current_user(unsafe=True)
+            person = identities_service.get_current_identity(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
                 person
             ):
@@ -1009,7 +946,7 @@ class EmailOTPResource(Resource, ArgsMixin):
 
         try:
             try:
-                person = persons_service.get_person_by_email_dekstop_login(
+                person = persons_service.get_person_by_email_desktop_login(
                     args["email"]
                 )
             except PersonNotFoundException:
@@ -1030,6 +967,7 @@ class EmailOTPResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def put(self):
         """
         Resource to allow a user to pre-enable OTP by email.
@@ -1047,7 +985,7 @@ class EmailOTPResource(Resource, ArgsMixin):
         """
         try:
             auth_service.pre_enable_email_otp(
-                persons_service.get_current_user()["id"]
+                identities_service.get_current_identity()["id"]
             )
             return {"success": True}
         except EmailOTPAlreadyEnabledException:
@@ -1057,6 +995,7 @@ class EmailOTPResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def post(self):
         """
         Resource to allow a user to enable OTP by email.
@@ -1076,7 +1015,8 @@ class EmailOTPResource(Resource, ArgsMixin):
 
         try:
             otp_recovery_codes = auth_service.enable_email_otp(
-                persons_service.get_current_user()["id"], args["email_otp"]
+                identities_service.get_current_identity()["id"],
+                args["email_otp"],
             )
             return {"otp_recovery_codes": otp_recovery_codes}
         except EmailOTPAlreadyEnabledException:
@@ -1095,6 +1035,7 @@ class EmailOTPResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def delete(self):
         """
         Resource to allow a user to disable OTP by email.
@@ -1121,7 +1062,7 @@ class EmailOTPResource(Resource, ArgsMixin):
         )
 
         try:
-            person = persons_service.get_current_user(unsafe=True)
+            person = identities_service.get_current_identity(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
                 person
             ):
@@ -1180,7 +1121,7 @@ class FIDOResource(Resource, ArgsMixin):
 
         try:
             try:
-                person = persons_service.get_person_by_email_dekstop_login(
+                person = persons_service.get_person_by_email_desktop_login(
                     args["email"]
                 )
             except PersonNotFoundException:
@@ -1200,6 +1141,7 @@ class FIDOResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def put(self):
         """
         Resource to allow a user to pre-register a FIDO device.
@@ -1216,9 +1158,10 @@ class FIDOResource(Resource, ArgsMixin):
                          Inactive user
         """
         return auth_service.pre_register_fido(
-            persons_service.get_current_user()["id"]
+            identities_service.get_current_identity()["id"]
         )
 
+    @permissions.person_permission.require(403)
     @jwt_required()
     def post(self):
         """
@@ -1244,7 +1187,7 @@ class FIDOResource(Resource, ArgsMixin):
             )
 
             otp_recovery_codes = auth_service.register_fido(
-                persons_service.get_current_user()["id"],
+                identities_service.get_current_identity()["id"],
                 args["registration_response"],
                 args["device_name"],
             )
@@ -1264,6 +1207,7 @@ class FIDOResource(Resource, ArgsMixin):
             )
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def delete(self):
         """
         Resource to allow a user to unregister a FIDO device.
@@ -1291,7 +1235,7 @@ class FIDOResource(Resource, ArgsMixin):
         )
 
         try:
-            person = persons_service.get_current_user(unsafe=True)
+            person = identities_service.get_current_identity(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
                 person
             ):
@@ -1328,6 +1272,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
+    @permissions.person_permission.require(403)
     def put(self):
         """
         Resource to allow a user to generate new recovery codes.
@@ -1353,7 +1298,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
         )
 
         try:
-            person = persons_service.get_current_user(unsafe=True)
+            person = identities_service.get_current_identity(unsafe=True)
             if not auth_service.person_two_factor_authentication_enabled(
                 person
             ):

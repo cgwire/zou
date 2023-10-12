@@ -20,6 +20,7 @@ from zou.app.services import (
     tasks_service,
     entities_service,
     user_service,
+    identities_service,
 )
 
 from zou.app.services.exception import (
@@ -674,7 +675,7 @@ class NewWorkingFileResource(Resource, ArgsMixin):
             user_service.check_entity_access(task["entity_id"])
             software = files_service.get_software(software_id)
             tasks_service.assign_task(
-                task_id, persons_service.get_current_user()["id"]
+                task_id, identities_service.get_current_identity()["id"]
             )
 
             if revision == 0:
@@ -708,7 +709,7 @@ class NewWorkingFileResource(Resource, ArgsMixin):
         return "%s%s%s" % (folder_path, sep, file_name)
 
     def get_arguments(self):
-        person = persons_service.get_current_user()
+        person = identities_service.get_current_identity()
         maxsoft = files_service.get_or_create_software(
             "3ds Max", "max", ".max"
         )
@@ -947,7 +948,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
             task_type = tasks_service.get_task_type(args["task_type_id"])
 
             if args["person_id"] is None:
-                person = persons_service.get_current_user()
+                person = identities_service.get_current_identity()
             else:
                 person = persons_service.get_person(args["person_id"])
 
@@ -1182,7 +1183,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
             if args["person_id"] is None:
-                person = persons_service.get_current_user()
+                person = identities_service.get_current_identity()
             else:
                 person = persons_service.get_person(args["person_id"])
 

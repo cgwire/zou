@@ -15,6 +15,7 @@ from zou.app.services import (
     projects_service,
     shots_service,
     user_service,
+    identities_service,
 )
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs, permissions
@@ -300,7 +301,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             # remote worker can not access files local to the web app
             assert not remote or config.FS_BACKEND in ["s3", "swift"]
 
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             queue_store.job_queue.enqueue(
                 playlists_service.build_playlist_job,
                 args=(

@@ -13,6 +13,7 @@ class TaskTypesResource(BaseModelsResource):
         return True
 
     def update_data(self, data):
+        data = super().update_data(data)
         name = data.get("name", None)
         task_type = TaskType.get_by(name=name)
         if task_type is not None:
@@ -34,6 +35,7 @@ class TaskTypeResource(BaseModelResource):
         return True
 
     def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
         name = data.get("name", None)
         if name is not None:
             task_type = TaskType.get_by(name=name)

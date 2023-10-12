@@ -16,7 +16,7 @@ class ApiEvent(db.Model, BaseMixin, SerializerMixin):
     name = db.Column(db.String(80), nullable=False, index=True)
     user_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
-    )
+    )  # TODO: add api_token_id
     project_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project.id"), index=True
     )

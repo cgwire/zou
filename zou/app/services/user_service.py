@@ -26,6 +26,7 @@ from zou.app.services import (
     shots_service,
     status_automations_service,
     tasks_service,
+    identities_service,
 )
 from zou.app.services.exception import (
     SearchFilterNotFoundException,
@@ -33,6 +34,14 @@ from zou.app.services.exception import (
     NotificationNotFoundException,
 )
 from zou.app.utils import cache, fields, permissions
+
+project_team_list = {
+    "person": {"relationship": Project.team, "name": "team"},
+    "api_token": {
+        "relationship": Project.api_tokens_team,
+        "name": "api_tokens_team",
+    },
+}
 
 
 def clear_filter_cache(user_id):
@@ -51,7 +60,7 @@ def build_assignee_filter():
     """
     Query filter for task to retrieve only tasks assigned to current user.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = identities_service.get_current_identity_raw()
     return Task.assignees.contains(current_user)
 
 
@@ -60,8 +69,10 @@ def build_team_filter():
     Query filter for task to retrieve only models from project for which the
     user is part of the team.
     """
-    current_user = persons_service.get_current_user_raw()
-    return Project.team.contains(current_user)
+    current_user = identities_service.get_current_identity_raw()
+    return project_team_list[current_user.__tablename__][
+        "relationship"
+    ].contains(current_user)
 
 
 def build_open_project_filter():
@@ -108,7 +119,7 @@ def get_todos():
     """
     Get all unfinished tasks assigned to current user.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     projects = related_projects()
     return tasks_service.get_person_tasks(current_user["id"], projects)
 
@@ -117,7 +128,7 @@ def get_done_tasks():
     """
     Get all finished tasks assigned to current user for open projects.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     projects = related_projects()
     return tasks_service.get_person_done_tasks(current_user["id"], projects)
 
@@ -126,7 +137,7 @@ def get_tasks_to_check():
     """
     Get all tasks waiting for feedback in the user department.
     """
-    current_user = persons_service.get_current_user(relations=True)
+    current_user = identities_service.get_current_identity(relations=True)
     projects = related_projects()
     project_ids = [project["id"] for project in projects]
     return tasks_service.get_person_tasks_to_check(
@@ -315,9 +326,9 @@ def get_open_projects(name=None):
     if permissions.has_client_permissions():
         for_client = True
     elif permissions.has_vendor_permissions():
-        vendor_departments = persons_service.get_current_user(relations=True)[
-            "departments"
-        ]
+        vendor_departments = identities_service.get_current_identity(
+            relations=True
+        )["departments"]
 
     return projects_service.get_projects_with_extra_data(
         query, for_client, vendor_departments
@@ -347,7 +358,7 @@ def check_working_on_entity(entity_id):
     """
     Return True if user has task assigned which is related to given entity.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = identities_service.get_current_identity_raw()
     query = Task.query.filter(Task.assignees.contains(current_user)).filter(
         Task.entity_id == entity_id
     )
@@ -362,7 +373,7 @@ def check_working_on_task(task_id):
     """
     Return True if user has task assigned.
     """
-    current_user = persons_service.get_current_user_raw()
+    current_user = identities_service.get_current_identity_raw()
     query = Task.query.filter(Task.assignees.contains(current_user)).filter(
         Task.id == task_id
     )
@@ -377,7 +388,7 @@ def check_person_access(person_id):
     """
     Return True if user is an admin or is matching given person id.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     if permissions.has_admin_permissions() or current_user["id"] == person_id:
         return True
     else:
@@ -393,11 +404,11 @@ def check_belong_to_project(project_id):
         return False
 
     project = projects_service.get_project_with_relations(str(project_id))
-    current_user = persons_service.get_current_user()
-    if current_user["id"] in project["team"]:
-        return True
-    else:
-        return False
+    current_user = identities_service.get_current_identity_raw()
+    return (
+        str(current_user.id)
+        in project[project_team_list[current_user.__tablename__]["name"]]
+    )
 
 
 def check_project_access(project_id):
@@ -464,7 +475,7 @@ def check_comment_access(comment_id):
         ):
             return True
         elif permissions.has_client_permissions():
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             project = projects_service.get_project(task["project_id"])
             if project.get("is_clients_isolated", False):
                 if not comment["person_id"] == current_user["id"]:
@@ -531,7 +542,7 @@ def check_supervisor_task_access(task, new_data={}):
             ["priority", "start_date", "due_date", "estimation"]
         )
         if len(set(new_data.keys()) - allowed_columns) == 0:
-            user_departments = persons_service.get_current_user(
+            user_departments = identities_service.get_current_identity(
                 relations=True
             )["departments"]
             if (
@@ -563,9 +574,9 @@ def check_supervisor_schedule_item_access(schedule_item, new_data={}):
     elif permissions.has_supervisor_permissions() and check_belong_to_project(
         schedule_item["project_id"]
     ):
-        user_departments = persons_service.get_current_user(relations=True)[
-            "departments"
-        ]
+        user_departments = identities_service.get_current_identity(
+            relations=True
+        )["departments"]
         if (
             user_departments == []
             or tasks_service.get_task_type(schedule_item["task_type_id"])[
@@ -599,7 +610,7 @@ def check_metadata_department_access(entity, new_data={}):
         # for which he is authorized
         allowed_columns = set(["data"])
         if len(set(new_data.keys()) - allowed_columns) == 0:
-            user_departments = persons_service.get_current_user(
+            user_departments = identities_service.get_current_identity(
                 relations=True
             )["departments"]
             if user_departments == []:
@@ -651,7 +662,7 @@ def check_task_departement_access(task_id, person_id):
     or is a supervisor in the department of the task or is an artist assigning
     himself in the department of the task.
     """
-    user = persons_service.get_current_user(relations=True)
+    user = identities_service.get_current_identity(relations=True)
     task = tasks_service.get_task(task_id)
     task_type = tasks_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
@@ -693,7 +704,7 @@ def check_task_departement_access_for_unassign(task_id, person_id=None):
     or is a supervisor in the department of the task or is an artist assigning
     himself in the department of the task.
     """
-    user = persons_service.get_current_user(relations=True)
+    user = identities_service.get_current_identity(relations=True)
     task = tasks_service.get_task(task_id)
     task_type = tasks_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
@@ -734,9 +745,9 @@ def check_all_departments_access(project_id, departments=[]):
     elif permissions.has_supervisor_permissions() and check_belong_to_project(
         project_id
     ):
-        user_departments = persons_service.get_current_user(relations=True)[
-            "departments"
-        ]
+        user_departments = identities_service.get_current_identity(
+            relations=True
+        )["departments"]
         is_allowed = departments and (
             user_departments == []
             or all(
@@ -766,7 +777,7 @@ def check_day_off_access(day_off):
     """
     Return true if current user is admin or day_off is for itself
     """
-    user = persons_service.get_current_user()
+    user = identities_service.get_current_identity()
     is_admin = permissions.has_admin_permissions()
     is_same_person = user["id"] == day_off["person_id"]
     if not (is_admin or is_same_person):
@@ -780,7 +791,7 @@ def get_filters():
     list type and project_id. If the filter is not related to a project,
     the project_id is all.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return get_user_filters(current_user["id"])
 
 
@@ -831,7 +842,7 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
     """
     Add a new search filter to the database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter = SearchFilter.create(
         list_type=list_type,
         name=name,
@@ -849,7 +860,7 @@ def update_filter(search_filter_id, data):
     """
     Update given filter from database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter = SearchFilter.get_by(
         id=search_filter_id, person_id=current_user["id"]
     )
@@ -864,7 +875,7 @@ def remove_filter(search_filter_id):
     """
     Remove given filter from database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter = SearchFilter.get_by(
         id=search_filter_id, person_id=current_user["id"]
     )
@@ -881,7 +892,7 @@ def get_filter_groups():
     list type and project_id. If the filter group is not related to a project,
     the project_id is all.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return get_user_filter_groups(current_user["id"])
 
 
@@ -938,7 +949,7 @@ def create_filter_group(
     """
     Add a new search filter group to the database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter_group = SearchFilterGroup.create(
         list_type=list_type,
         name=name,
@@ -956,7 +967,7 @@ def get_filter_group(search_filter_group_id):
     """
     Get given filter group from the database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter_group = SearchFilterGroup.get_by(
         id=search_filter_group_id, person_id=current_user["id"]
     )
@@ -969,7 +980,7 @@ def update_filter_group(search_filter_group_id, data):
     """
     Update given filter group from database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter_group = SearchFilterGroup.get_by(
         id=search_filter_group_id, person_id=current_user["id"]
     )
@@ -984,7 +995,7 @@ def remove_filter_group(search_filter_group_id):
     """
     Remove given filter group from database.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     search_filter_group = SearchFilterGroup.get_by(
         id=search_filter_group_id, person_id=current_user["id"]
     )
@@ -1011,7 +1022,7 @@ def get_unread_notifications_count(notification_id=None):
     """
     Return the number of unread notifications.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return Notification.query.filter_by(
         person_id=current_user["id"], read=False
     ).count()
@@ -1028,7 +1039,7 @@ def get_last_notifications(
     """
     Return last 100 user notifications.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     Author = aliased(Person, name="author")
     is_current_user_artist = current_user["role"] == "user"
     result = []
@@ -1163,7 +1174,7 @@ def mark_notifications_as_read():
     Mark all recent notifications for current_user as read. It is useful
     to mark a list of notifications as read after an user retrieved them.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     notifications = (
         Notification.query.filter_by(person_id=current_user["id"], read=False)
         .order_by(Notification.created_at)
@@ -1181,7 +1192,7 @@ def has_task_subscription(task_id):
     Returns true if a subscription entry exists for current user and given
     task.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.has_task_subscription(
         current_user["id"], task_id
     )
@@ -1191,7 +1202,7 @@ def subscribe_to_task(task_id):
     """
     Create a subscription entry for current user and given task
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.subscribe_to_task(current_user["id"], task_id)
 
 
@@ -1199,7 +1210,7 @@ def unsubscribe_from_task(task_id):
     """
     Remove subscription entry for current user and given task
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.unsubscribe_from_task(
         current_user["id"], task_id
     )
@@ -1210,7 +1221,7 @@ def has_sequence_subscription(sequence_id, task_type_id):
     Returns true if a subscription entry exists for current user and given
     sequence.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.has_sequence_subscription(
         current_user["id"], sequence_id, task_type_id
     )
@@ -1220,7 +1231,7 @@ def subscribe_to_sequence(sequence_id, task_type_id):
     """
     Create a subscription entry for current user and given sequence
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.subscribe_to_sequence(
         current_user["id"], sequence_id, task_type_id
     )
@@ -1230,7 +1241,7 @@ def unsubscribe_from_sequence(sequence_id, task_type_id):
     """
     Remove subscription entry for current user and given sequence
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.unsubscribe_from_sequence(
         current_user["id"], sequence_id, task_type_id
     )
@@ -1241,7 +1252,7 @@ def get_sequence_subscriptions(project_id, task_type_id):
     Return list of sequence ids for which the current user has subscriptions
     for given project and task type.
     """
-    current_user = persons_service.get_current_user()
+    current_user = identities_service.get_current_identity()
     return notifications_service.get_all_sequence_subscriptions(
         current_user["id"], project_id, task_type_id
     )
@@ -1249,7 +1260,7 @@ def get_sequence_subscriptions(project_id, task_type_id):
 
 def get_timezone():
     try:
-        timezone = persons_service.get_current_user()["timezone"]
+        timezone = identities_service.get_current_identity()["timezone"]
     except Exception:
         timezone = config.DEFAULT_TIMEZONE
     return timezone or config.DEFAULT_TIMEZONE

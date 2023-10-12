@@ -8,8 +8,6 @@ from sqlalchemy.exc import StatementError
 
 from babel.dates import format_datetime
 
-from flask_jwt_extended import get_jwt_identity
-
 from zou.app.models.department import Department
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.organisation import Organisation
@@ -18,7 +16,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config
 from zou.app.utils import fields, events, cache, emails
-from zou.app.services import index_service, auth_service
+from zou.app.services import index_service, auth_service, identities_service
 from zou.app.stores import file_store, auth_tokens_store
 
 from zou.app.services.exception import (
@@ -32,9 +30,10 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_person)
     cache.cache.delete_memoized(get_person_by_email)
     cache.cache.delete_memoized(get_person_by_desktop_login)
-    cache.cache.delete_memoized(get_person_by_email_dekstop_login)
+    cache.cache.delete_memoized(get_person_by_email_desktop_login)
     cache.cache.delete_memoized(get_active_persons)
     cache.cache.delete_memoized(get_persons)
+    identities_service.clear_identities_cache()
 
 
 @cache.memoize_function(120)
@@ -44,10 +43,10 @@ def get_persons(minimal=False):
     """
     persons = []
     for person in Person.query.all():
-        if not minimal:
-            persons.append(person.serialize_safe(relations=True))
-        else:
+        if minimal:
             persons.append(person.present_minimal(relations=True))
+        else:
+            persons.append(person.serialize_safe(relations=True))
     return persons
 
 
@@ -61,7 +60,7 @@ def get_all_raw_active_persons():
 @cache.memoize_function(120)
 def get_active_persons():
     """
-    Return all person with flag active set to True.
+    Return all persons with flag active set to True.
     """
     persons = (
         Person.query.filter_by(active=True)
@@ -90,12 +89,15 @@ def get_person_raw(person_id):
 
 
 @cache.memoize_function(120)
-def get_person(person_id):
+def get_person(person_id, unsafe=False, relations=True):
     """
     Return given person as a dictionary.
     """
     person = get_person_raw(person_id)
-    return person.serialize_safe(relations=True)
+    if unsafe:
+        return person.serialize(relations=relations)
+    else:
+        return person.serialize_safe(relations=relations)
 
 
 def get_person_by_email_raw(email):
@@ -154,7 +156,7 @@ def get_person_by_ldap_uid(ldap_uid):
 
 
 @cache.memoize_function(120)
-def get_person_by_email_dekstop_login(email_or_desktop_login):
+def get_person_by_email_desktop_login(email_or_desktop_login):
     """
     Return person that matches given email or desktop login as a dictionary.
     """
@@ -162,24 +164,6 @@ def get_person_by_email_dekstop_login(email_or_desktop_login):
         return get_person_by_email(email_or_desktop_login, unsafe=True)
     except PersonNotFoundException:
         return get_person_by_desktop_login(email_or_desktop_login)
-
-
-def get_current_user(unsafe=False, relations=False):
-    """
-    Return person from its auth token (the one that does the request) as a
-    dictionary.
-    """
-    return get_person_by_email(
-        get_jwt_identity(), unsafe=unsafe, relations=relations
-    )
-
-
-def get_current_user_raw():
-    """
-    Return person from its auth token (the one that does the request) as an
-    active record.
-    """
-    return get_person_by_email_raw(get_jwt_identity())
 
 
 def get_persons_map():
@@ -454,8 +438,9 @@ def add_to_department(department_id, person_id):
     """
     person = get_person_raw(person_id)
     department = Department.get(department_id)
-    person.departments = person.departments + [department]
+    person.departments.append(department)
     person.save()
+    clear_person_cache()
     return person.serialize(relations=True)
 
 
@@ -470,6 +455,7 @@ def remove_from_department(department_id, person_id):
         if str(department.id) != department_id
     ]
     person.save()
+    clear_person_cache()
     return person.serialize(relations=True)
 
 

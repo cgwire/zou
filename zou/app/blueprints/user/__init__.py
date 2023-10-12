@@ -1,5 +1,7 @@
 from flask import Blueprint
+from flask_jwt_extended import jwt_required
 from zou.app.utils.api import configure_api_from_blueprint
+from zou.app.utils import permissions
 
 from zou.app.blueprints.user.resources import (
     AssetTasksResource,
@@ -105,4 +107,8 @@ routes = [
 ]
 
 blueprint = Blueprint("user", "user")
-api = configure_api_from_blueprint(blueprint, routes)
+api = configure_api_from_blueprint(
+    blueprint,
+    routes,
+    decorators=[permissions.person_permission.require(403), jwt_required()],
+)

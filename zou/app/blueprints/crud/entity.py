@@ -16,6 +16,7 @@ from zou.app.services import (
     persons_service,
     shots_service,
     user_service,
+    identities_service,
 )
 from zou.app.utils import events, fields, date_helpers
 
@@ -171,7 +172,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         pname = previous_shot["name"]
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
-            current_user_id = persons_service.get_current_user()["id"]
+            current_user_id = identities_service.get_current_identity()["id"]
             previous_updated_at = fields.get_date_object(
                 previous_shot["updated_at"], date_format="%Y-%m-%dT%H:%M:%S"
             )

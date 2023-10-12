@@ -14,6 +14,7 @@ from zou.app.services import (
     time_spents_service,
     shots_service,
     user_service,
+    identities_service,
 )
 from zou.app.utils import permissions, csv_utils, auth, emails, fields
 from zou.app.services.exception import (
@@ -145,7 +146,7 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             200:
                 description: Desktop login logs
         """
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         if (
             current_user["id"] != person_id
             and not permissions.has_manager_permissions()
@@ -182,7 +183,7 @@ class DesktopLoginsResource(Resource, ArgsMixin):
         """
         args = self.get_args([("date", datetime.datetime.utcnow())])
 
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         if (
             current_user["id"] != person_id
             and not permissions.has_admin_permissions()
@@ -295,7 +296,7 @@ class DateTimeSpentsResource(Resource):
         department_ids = None
         project_ids = None
         if not permissions.has_admin_permissions():
-            if persons_service.get_current_user()["id"] != person_id:
+            if identities_service.get_current_identity()["id"] != person_id:
                 if (
                     permissions.has_manager_permissions()
                     or permissions.has_supervisor_permissions()
@@ -305,9 +306,11 @@ class DateTimeSpentsResource(Resource):
                         for project in user_service.get_projects()
                     ]
                     if permissions.has_supervisor_permissions():
-                        department_ids = persons_service.get_current_user(
-                            True
-                        ).get("departments", [])
+                        department_ids = (
+                            identities_service.get_current_identity(True).get(
+                                "departments", []
+                            )
+                        )
                 else:
                     raise permissions.PermissionDenied
         try:
@@ -352,7 +355,7 @@ class DayOffResource(Resource):
             404:
                 description: Wrong date format
         """
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         if current_user["id"] != person_id:
             try:
                 permissions.check_at_least_supervisor_permissions()
@@ -373,7 +376,7 @@ class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
         project_id = self.get_project_id()
         department_ids = None
         if not permissions.has_admin_permissions():
-            if persons_service.get_current_user()["id"] != person_id:
+            if identities_service.get_current_identity()["id"] != person_id:
                 if (
                     permissions.has_manager_permissions()
                     or permissions.has_supervisor_permissions()
@@ -387,9 +390,11 @@ class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
                     elif project_id not in project_ids:
                         raise permissions.PermissionDenied
                     if permissions.has_supervisor_permissions():
-                        department_ids = persons_service.get_current_user(
-                            True
-                        )["departments"]
+                        department_ids = (
+                            identities_service.get_current_identity(True)[
+                                "departments"
+                            ]
+                        )
                 else:
                     raise permissions.PermissionDenied
 
@@ -800,11 +805,11 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
                 elif project_id not in project_ids:
                     raise permissions.PermissionDenied
                 if permissions.has_supervisor_permissions():
-                    department_ids = persons_service.get_current_user(
+                    department_ids = identities_service.get_current_identity(
                         relations=True
                     )["departments"]
             else:
-                person_id = persons_service.get_current_user()["id"]
+                person_id = identities_service.get_current_identity()["id"]
 
         return {
             "person_id": person_id,
@@ -984,7 +989,7 @@ class DayOffForMonthResource(Resource, ArgsMixin):
         if permissions.has_admin_permissions():
             return time_spents_service.get_day_offs_for_month(year, month)
         else:
-            person_id = persons_service.get_current_user()["id"]
+            person_id = identities_service.get_current_identity()["id"]
             return time_spents_service.get_person_day_offs_for_month(
                 person_id, year, month
             )
@@ -1025,7 +1030,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
             200:
                 description: All day off recorded for given week and person
         """
-        user_id = persons_service.get_current_user()["id"]
+        user_id = identities_service.get_current_identity()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_week(
@@ -1068,7 +1073,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
             200:
                 description: All day off recorded for given month and person
         """
-        user_id = persons_service.get_current_user()["id"]
+        user_id = identities_service.get_current_identity()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_month(
@@ -1104,7 +1109,7 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
             200:
                 description: All day off recorded for given year and person
         """
-        user_id = persons_service.get_current_user()["id"]
+        user_id = identities_service.get_current_identity()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
         return time_spents_service.get_person_day_offs_for_year(
@@ -1237,7 +1242,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         try:
             permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
@@ -1332,7 +1337,7 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
         try:
             permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             disable_two_factor_authentication_for_person(person["id"])
             current_app.logger.warning(
                 "User %s has disabled the two factor authentication of %s"

@@ -15,6 +15,7 @@ from zou.app.services import (
     assets_service,
     tasks_service,
     status_automations_service,
+    api_tokens_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -49,6 +50,7 @@ class ProjectsResource(BaseModelsResource):
         return True
 
     def update_data(self, data):
+        data = super().update_data(data)
         open_status = projects_service.get_or_create_open_status()
         if "project_status_id" not in data:
             data["project_status_id"] = open_status["id"]
@@ -56,6 +58,11 @@ class ProjectsResource(BaseModelsResource):
             data["team"] = [
                 persons_service.get_person_raw(person_id)
                 for person_id in data["team"]
+            ]
+        if "api_tokens_team" in data:
+            data["api_tokens_team"] = [
+                api_tokens_service.get_api_token_raw(person_id)
+                for person_id in data["api_tokens_team"]
             ]
         if "asset_types" in data:
             data["asset_types"] = [
@@ -97,6 +104,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Project)
         self.protected_fields.append("team")
+        self.protected_fields.append("api_tokens_team")
 
     def check_read_permissions(self, project):
         return user_service.check_project_access(project["id"])
@@ -109,6 +117,11 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             data["team"] = [
                 persons_service.get_person_raw(person_id)
                 for person_id in data["team"]
+            ]
+        if "api_tokens_team" in data:
+            data["api_tokens_team"] = [
+                api_tokens_service.get_api_token_raw(person_id)
+                for person_id in data["api_tokens_team"]
             ]
         if "asset_types" in data:
             data["asset_types"] = [
@@ -158,7 +171,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         """
         Check if the data descriptor has a valid production_style.
         """
-
+        data = super().update_data(data, instance_id)
         if "production_style" in data:
             if data["production_style"] is None:
                 data["production_style"] = "2d3d"

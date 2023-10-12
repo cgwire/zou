@@ -13,6 +13,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     user_service,
+    identities_service,
 )
 from zou.app import config
 
@@ -151,6 +152,10 @@ class CommentTaskResource(Resource):
                         type: string
                         format: UUID
                         example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
+                    api_token_id:
+                        type: string
+                        format: UUID
+                        example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     created_at:
                         type: string
                         format: date-time
@@ -168,6 +173,7 @@ class CommentTaskResource(Resource):
             task_status_id,
             comment,
             person_id,
+            api_token_id,
             created_at,
             checklist,
         ) = self.get_arguments()
@@ -181,7 +187,7 @@ class CommentTaskResource(Resource):
             person_id = None
             created_at = None
         comment = comments_service.create_comment(
-            person_id,
+            person_id or api_token_id,
             task_id,
             task_status_id,
             comment,
@@ -213,12 +219,14 @@ class CommentTaskResource(Resource):
         )
         parser.add_argument("comment", default="", location=location)
         parser.add_argument("person_id", default="", location=location)
+        parser.add_argument("api_token_id", default="", location=location)
         parser.add_argument("created_at", default="", location=location)
         args = parser.parse_args()
         return (
             args["task_status_id"],
             args["comment"],
             args["person_id"],
+            args["api_token_id"],
             args["created_at"],
             args["checklist"]
             if request.is_json
@@ -257,7 +265,7 @@ class AttachmentResource(Resource):
             204:
                 description: Empty response
         """
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         comment = tasks_service.get_comment(comment_id)
         if comment["person_id"] != user["id"]:
             permissions.check_admin_permissions()
@@ -300,7 +308,7 @@ class AddAttachmentToCommentResource(Resource):
             201:
                 description: Given files added to the comment entry as attachments
         """
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         comment = tasks_service.get_comment(comment_id)
         if comment["person_id"] != user["id"]:
             permissions.check_admin_permissions()
@@ -371,7 +379,7 @@ class CommentManyTasksResource(Resource):
                 description: Given files added to the comment entry as attachments
         """
         comments = request.json
-        person = persons_service.get_current_user(relations=True)
+        person = identities_service.get_current_identity(relations=True)
         try:
             user_service.check_manager_project_access(project_id)
         except permissions.PermissionDenied:
@@ -503,7 +511,7 @@ class DeleteReplyCommentResource(Resource):
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         reply = comments_service.get_reply(comment_id, reply_id)
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         if reply["person_id"] != current_user["id"]:
             permissions.check_admin_permissions()
         return comments_service.delete_reply(comment_id, reply_id)

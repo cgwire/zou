@@ -9,7 +9,7 @@ from zou.app.models.time_spent import TimeSpent
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import names_service, persons_service
+from zou.app.services import names_service, persons_service, identities_service
 from zou.app.utils import date_helpers
 
 
@@ -18,7 +18,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
         BaseCsvExport.__init__(self)
 
     def prepare_import(self):
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         date = date_helpers.get_today_string_with_timezone(user["timezone"])
         self.file_name = "%s_open_projects_time_spents_export" % date
 

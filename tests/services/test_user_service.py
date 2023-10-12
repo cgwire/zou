@@ -4,10 +4,10 @@ from tests.base import ApiDBTestCase
 from zou.app.models.person import Person
 from zou.app.services import (
     comments_service,
-    persons_service,
     projects_service,
     tasks_service,
     user_service,
+    identities_service,
 )
 
 from zou.app.utils import permissions
@@ -45,15 +45,19 @@ class UserServiceTestCase(ApiDBTestCase):
         self.wip_status_id = self.task_status_wip.id
         self.to_review_status_id = self.task_status_to_review.id
 
-        self.old_get_current_user = persons_service.get_current_user
-        persons_service.get_current_user = self.get_current_user
-        self.old_get_current_user_raw = persons_service.get_current_user_raw
-        persons_service.get_current_user_raw = self.get_current_user_raw
+        self.old_get_current_user = identities_service.get_current_identity
+        identities_service.get_current_identity = self.get_current_user
+        self.old_get_current_user_raw = (
+            identities_service.get_current_identity_raw
+        )
+        identities_service.get_current_identity_raw = self.get_current_user_raw
 
     def tearDown(self):
         super(UserServiceTestCase, self).tearDown()
-        persons_service.get_current_user = self.old_get_current_user
-        persons_service.get_current_user_raw = self.old_get_current_user_raw
+        identities_service.get_current_identity = self.old_get_current_user
+        identities_service.get_current_identity_raw = (
+            self.old_get_current_user_raw
+        )
 
     def get_current_user(self):
         return self.user
@@ -101,7 +105,7 @@ class UserServiceTestCase(ApiDBTestCase):
         self.assertTrue(user_service.check_entity_access(str(self.asset_id)))
 
     def test_get_last_notifications(self):
-        persons_service.get_current_user = self.get_current_user_artist
+        identities_service.get_current_identity = self.get_current_user_artist
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         person_id = self.user_cg_artist["id"]

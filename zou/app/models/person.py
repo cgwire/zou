@@ -1,36 +1,12 @@
 from sqlalchemy_utils import (
-    UUIDType,
     EmailType,
-    LocaleType,
-    TimezoneType,
     ChoiceType,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
-from pytz import timezone as pytz_timezone
-from babel import Locale
-
 from zou.app import db
-from zou.app.models.serializer import SerializerMixin
-from zou.app.models.base import BaseMixin
-from zou.app import config
-
-
-department_link = db.Table(
-    "department_link",
-    db.Column(
-        "person_id",
-        UUIDType(binary=False),
-        db.ForeignKey("person.id"),
-        primary_key=True,
-    ),
-    db.Column(
-        "department_id",
-        UUIDType(binary=False),
-        db.ForeignKey("department.id"),
-        primary_key=True,
-    ),
-)
+from zou.app.models.identity import Identity
+from zou.app.models.department import Department
 
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
@@ -39,7 +15,7 @@ TWO_FACTOR_AUTHENTICATION_TYPES = [
 ]
 
 
-class Person(db.Model, BaseMixin, SerializerMixin):
+class Person(db.Model, Identity):
     """
     Describe a member of the studio (and an API user).
     """
@@ -49,12 +25,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     email = db.Column(EmailType, unique=True)
     phone = db.Column(db.String(30))
 
-    active = db.Column(db.Boolean(), default=True)
     archived = db.Column(db.Boolean(), default=False)
     last_presence = db.Column(db.Date())
 
     password = db.Column(db.LargeBinary(60))
-    desktop_login = db.Column(db.String(80))
     login_failed_attemps = db.Column(db.Integer, default=0)
     last_login_failed = db.Column(db.DateTime())
     totp_enabled = db.Column(db.Boolean(), default=False)
@@ -67,16 +41,11 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     preferred_two_factor_authentication = db.Column(
         ChoiceType(TWO_FACTOR_AUTHENTICATION_TYPES)
     )
+    desktop_login = db.Column(db.String(80))
+    is_generated_from_ldap = db.Column(db.Boolean(), default=False)
+    ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
     shotgun_id = db.Column(db.Integer, unique=True)
-    timezone = db.Column(
-        TimezoneType(backend="pytz"),
-        default=pytz_timezone(config.DEFAULT_TIMEZONE),
-    )
-    locale = db.Column(LocaleType, default=Locale("en", "US"))
-    data = db.Column(JSONB)
-    role = db.Column(db.String(30), default="user")
-    has_avatar = db.Column(db.Boolean(), default=False)
 
     notifications_enabled = db.Column(db.Boolean(), default=False)
     notifications_slack_enabled = db.Column(db.Boolean(), default=False)
@@ -85,13 +54,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_mattermost_userid = db.Column(db.String(60), default="")
     notifications_discord_enabled = db.Column(db.Boolean(), default=False)
     notifications_discord_userid = db.Column(db.String(60), default="")
-
-    departments = db.relationship(
-        "Department", secondary=department_link, lazy="joined"
-    )
-
-    is_generated_from_ldap = db.Column(db.Boolean(), default=False)
-    ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
     def __repr__(self):
         return f"<Person {self.full_name()}>"
@@ -109,15 +71,12 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             ]
 
     def serialize(self, obj_type="Person", relations=False):
-        data = SerializerMixin.serialize(self, "Person", relations=relations)
-        data["full_name"] = self.full_name()
+        data = super().serialize(obj_type, relations=relations)
         data["fido_devices"] = self.fido_devices()
         return data
 
     def serialize_safe(self, relations=False):
-        data = SerializerMixin.serialize(self, "Person", relations=relations)
-        data["full_name"] = self.full_name()
-        data["fido_devices"] = self.fido_devices()
+        data = super().serialize_safe(relations=relations)
         del data["password"]
         del data["totp_secret"]
         del data["email_otp_secret"]
@@ -126,7 +85,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         return data
 
     def present_minimal(self, relations=False):
-        data = SerializerMixin.serialize(self, "Person", relations=relations)
+        data = self.serialize(relations=relations)
         return {
             "id": data["id"],
             "first_name": data["first_name"],
@@ -140,8 +99,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         }
 
     def set_departments(self, department_ids):
-        from zou.app.models.department import Department
-
         self.departments = []
         for department_id in department_ids:
             department = Department.get(department_id)

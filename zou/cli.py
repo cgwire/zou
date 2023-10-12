@@ -117,7 +117,7 @@ def reset_migrations():
 
 @cli.command()
 @click.argument("email")
-@click.option("--password", required=True, default=None)
+@click.option("--password", required=True)
 def create_admin(email, password):
     """
     Create an admin user to allow usage of the API when database is empty.
@@ -181,7 +181,7 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     with app.app_context():
         try:
-            person_id = persons_service.get_person_by_email_dekstop_login(
+            person_id = persons_service.get_person_by_email_desktop_login(
                 email_or_desktop_login
             )
             auth_service.disable_two_factor_authentication_for_person(
@@ -202,7 +202,7 @@ def disable_two_factor_authentication(email_or_desktop_login):
 
 @cli.command()
 @click.argument("email")
-@click.option("--password", required=True, default=None)
+@click.option("--password", required=True)
 def change_password(email, password):
     """
     Change the password of given user.
@@ -491,6 +491,31 @@ def generate_tiles_and_reset_preview_files_metadata():
     previews in the database.
     """
     commands.generate_tiles_and_reset_preview_files_metadata()
+
+
+@cli.command()
+@click.option("--email", required=True)
+@click.option("--name", required=True)
+@click.option("--description", required=False, default=None)
+@click.option("--days_duration", required=False, default=None)
+@click.option("--role", required=False, default="user")
+def create_api_token(
+    email,
+    name,
+    description,
+    days_duration,
+    role,
+):
+    """
+    Create an API token.
+    """
+    commands.create_api_token(
+        email,
+        name,
+        description,
+        days_duration,
+        role,
+    )
 
 
 if __name__ == "__main__":

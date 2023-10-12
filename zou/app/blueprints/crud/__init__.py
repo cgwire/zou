@@ -64,6 +64,10 @@ from zou.app.blueprints.crud.output_type import (
 )
 from zou.app.blueprints.crud.news import NewssResource, NewsResource
 from zou.app.blueprints.crud.person import PersonResource, PersonsResource
+from zou.app.blueprints.crud.api_token import (
+    ApiTokenResource,
+    ApiTokensResource,
+)
 from zou.app.blueprints.crud.preview_file import (
     PreviewFilesResource,
     PreviewFileResource,
@@ -123,6 +127,8 @@ from zou.app.blueprints.crud.working_file import (
 routes = [
     ("/data/persons", PersonsResource),
     ("/data/persons/<instance_id>", PersonResource),
+    ("/data/api-tokens", ApiTokensResource),
+    ("/data/api-tokens/<instance_id>", ApiTokenResource),
     ("/data/projects", ProjectsResource),
     ("/data/projects/<instance_id>", ProjectResource),
     ("/data/project-status", ProjectStatussResource),

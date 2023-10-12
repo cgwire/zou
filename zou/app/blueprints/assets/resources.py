@@ -11,6 +11,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     user_service,
+    identities_service,
 )
 
 
@@ -100,9 +101,9 @@ class AllAssetsResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+            criterions[
+                "assigned_to"
+            ] = identities_service.get_current_identity()["id"]
         return assets_service.get_assets(criterions)
 
 
@@ -133,12 +134,12 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
         page = self.get_page()
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+            criterions[
+                "assigned_to"
+            ] = identities_service.get_current_identity()["id"]
             criterions["vendor_departments"] = [
                 str(department.id)
-                for department in persons_service.get_current_user_raw().departments
+                for department in identities_service.get_current_identity_raw().departments
             ]
         return assets_service.get_assets_and_tasks(criterions, page)
 
@@ -271,9 +272,9 @@ class ProjectAssetsResource(Resource):
         criterions = query.get_query_criterions_from_request(request)
         criterions["project_id"] = project_id
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+            criterions[
+                "assigned_to"
+            ] = identities_service.get_current_identity()["id"]
         return assets_service.get_assets(criterions)
 
 
@@ -311,9 +312,9 @@ class ProjectAssetTypeAssetsResource(Resource):
         criterions["project_id"] = project_id
         criterions["entity_type_id"] = asset_type_id
         if permissions.has_vendor_permissions():
-            criterions["assigned_to"] = persons_service.get_current_user()[
-                "id"
-            ]
+            criterions[
+                "assigned_to"
+            ] = identities_service.get_current_identity()["id"]
         return assets_service.get_assets(criterions)
 
 

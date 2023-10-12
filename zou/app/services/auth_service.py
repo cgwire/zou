@@ -5,10 +5,10 @@ import flask_bcrypt
 import fido2.features
 from datetime import datetime, timedelta
 
-from flask import request, session
+from flask import request, session, current_app
 from babel.dates import format_datetime
 
-from flask_jwt_extended import get_jti
+from flask_jwt_extended import get_jti, get_jwt
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from ldap3.core.exceptions import (
     LDAPSocketOpenError,
@@ -83,7 +83,7 @@ def check_auth(
     if not email:
         raise WrongUserException()
     try:
-        person = persons_service.get_person_by_email_dekstop_login(email)
+        person = persons_service.get_person_by_email_desktop_login(email)
     except PersonNotFoundException:
         raise WrongUserException()
 
@@ -697,6 +697,7 @@ def register_tokens(app, access_token, refresh_token=None):
     can be used like a session.
     """
     access_jti = get_jti(encoded_token=access_token)
+
     auth_tokens_store.add(
         access_jti, "false", app.config["JWT_ACCESS_TOKEN_EXPIRES"]
     )
@@ -775,3 +776,11 @@ def check_login_failed_attemps(person):
     ):
         raise TooMuchLoginFailedAttemps()
     return login_failed_attemps
+
+
+def logout():
+    try:
+        jti = get_jwt()["jti"]
+        revoke_tokens(current_app, jti)
+    except Exception:
+        pass

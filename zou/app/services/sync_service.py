@@ -35,6 +35,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
+from zou.app.models.api_token import ApiToken
 
 from zou.app.services import deletion_service, tasks_service
 from zou.app.stores import file_store
@@ -64,6 +65,7 @@ local_file = LocalBackend(
 
 
 event_name_model_map = {
+    "api-token": ApiToken,
     "attachment-file": AttachmentFile,
     "asset": Entity,
     "asset-type": EntityType,
@@ -100,6 +102,7 @@ event_name_model_map = {
 }
 
 event_name_model_path_map = {
+    "api-token": "api-tokens",
     "attachment-file": "attachment-files",
     "asset": "assets",
     "asset-type": "entity-types",
@@ -157,6 +160,7 @@ project_events = [
 ]
 
 main_events = [
+    "api-token",
     "person",
     "organisation",
     "project-status",
@@ -169,12 +173,14 @@ main_events = [
 ]
 
 thumbnail_events = [
+    "api-token",
     "organisation",
     "person",
     "project",
 ]
 
 file_events = [
+    "api-token:set-thumbnail",
     "preview-file:add-file",
     "organisation:set-thumbnail",
     "person:set-thumbnail",
@@ -354,7 +360,7 @@ def sync_entries(model_name, model, project=None):
     """
     instances = []
 
-    if model_name in ["organisations", "persons"]:
+    if model_name in ["organisations", "persons", "api-tokens"]:
         path = model_name + "?relations=true"
         if model_name == "persons":
             path += "&with_pass_hash=true"
@@ -663,6 +669,8 @@ def download_entity_thumbnails_from_storage():
         download_entity_thumbnail(organisation)
     for person in Person.query.all():
         download_entity_thumbnail(person)
+    for api_token in ApiToken.query.all():
+        download_entity_thumbnail(api_token)
 
 
 def download_preview_files_from_storage():
@@ -753,7 +761,9 @@ def download_files_from_another_instance(
     pool = None
     if multithreaded:
         pool = Pool(number_workers)
-
+    download_thumbnails_from_another_instance(
+        "api_token", pool=pool, number_attemps=number_attemps
+    )
     download_thumbnails_from_another_instance(
         "person", pool=pool, number_attemps=number_attemps
     )

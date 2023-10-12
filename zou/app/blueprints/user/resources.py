@@ -2,7 +2,6 @@ import datetime
 
 from flask import abort
 from flask_restful import Resource
-from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
 
@@ -13,6 +12,7 @@ from zou.app.services import (
     shots_service,
     time_spents_service,
     user_service,
+    identities_service,
 )
 
 from zou.app.utils import permissions
@@ -25,7 +25,6 @@ class AssetTasksResource(Resource):
     Return tasks related to given asset for current user.
     """
 
-    @jwt_required()
     def get(self, asset_id):
         """
         Return tasks related to given asset for current user.
@@ -52,7 +51,6 @@ class AssetTaskTypesResource(Resource):
     Return task types related to given asset for current user.
     """
 
-    @jwt_required()
     def get(self, asset_id):
         """
         Return task types related to given asset for current user.
@@ -79,7 +77,6 @@ class ShotTaskTypesResource(Resource):
     Return tasks related to given shot for current user.
     """
 
-    @jwt_required()
     def get(self, shot_id):
         """
         Return tasks related to given shot for current user.
@@ -106,7 +103,6 @@ class SceneTaskTypesResource(Resource):
     Return tasks related to given scene for current user.
     """
 
-    @jwt_required()
     def get(self, scene_id):
         """
         Return tasks related to given scene for current user.
@@ -133,7 +129,6 @@ class SequenceTaskTypesResource(Resource):
     Return task types related to given sequence for current user.
     """
 
-    @jwt_required()
     def get(self, sequence_id):
         """
         Return tasks related to given sequence for current user.
@@ -161,7 +156,6 @@ class AssetTypeAssetsResource(Resource):
     project if user has access to this project.
     """
 
-    @jwt_required()
     def get(self, project_id, asset_type_id):
         """
         Return assets of which type is given asset type and are listed in given
@@ -199,7 +193,6 @@ class OpenProjectsResource(Resource, ArgsMixin):
     Return open projects for which the user has at least one task assigned.
     """
 
-    @jwt_required()
     def get(self):
         """
         Return open projects for which the user has at least one task assigned.
@@ -221,7 +214,6 @@ class ProjectSequencesResource(Resource):
     to it.
     """
 
-    @jwt_required()
     def get(self, project_id):
         """
         Return sequences related to given project if the current user has access
@@ -250,7 +242,6 @@ class ProjectEpisodesResource(Resource):
     it.
     """
 
-    @jwt_required()
     def get(self, project_id):
         """
         Return episodes related to given project if the current user has access
@@ -279,7 +270,6 @@ class ProjectAssetTypesResource(Resource):
     to it.
     """
 
-    @jwt_required()
     def get(self, project_id):
         """
         Return asset types related to given project if the current user has
@@ -308,7 +298,6 @@ class SequenceShotsResource(Resource):
     to it.
     """
 
-    @jwt_required()
     def get(self, sequence_id):
         """
         Return shots related to given sequence if the current user has access
@@ -337,7 +326,6 @@ class SequenceScenesResource(Resource):
     to it.
     """
 
-    @jwt_required()
     def get(self, sequence_id):
         """
         Return scenes related to given sequence if the current user has access
@@ -365,7 +353,6 @@ class ShotTasksResource(Resource):
     Return tasks related to given shot for current user.
     """
 
-    @jwt_required()
     def get(self, shot_id):
         """
         Return tasks related to given shot for current user.
@@ -392,7 +379,6 @@ class SceneTasksResource(Resource):
     Return tasks related to given scene for current user.
     """
 
-    @jwt_required()
     def get(self, scene_id):
         """
         Return tasks related to given scene for current user.
@@ -419,7 +405,6 @@ class SequenceTasksResource(Resource):
     Return tasks related to given sequence for current user.
     """
 
-    @jwt_required()
     def get(self, sequence_id):
         """
         Return tasks related to given sequence for current user.
@@ -447,7 +432,6 @@ class TodosResource(Resource):
     has is_done attribute set to false.
     """
 
-    @jwt_required()
     def get(self):
         """
         Return tasks currently assigned to current user and of which status has
@@ -463,7 +447,6 @@ class TodosResource(Resource):
 
 
 class ToChecksResource(Resource):
-    @jwt_required()
     def get(self):
         """
         Return tasks requiring feedback for current user departments.
@@ -489,7 +472,6 @@ class DoneResource(Resource):
     has is_done attribute set to true. It returns only tasks of open projects.
     """
 
-    @jwt_required()
     def get(self):
         """
         Return tasks currently assigned to current user and of which status has
@@ -511,7 +493,6 @@ class FiltersResource(Resource, ArgsMixin):
     open projects.
     """
 
-    @jwt_required()
     def get(self):
         """
         Retrieve filters for current user and only for open projects.
@@ -524,7 +505,6 @@ class FiltersResource(Resource, ArgsMixin):
         """
         return user_service.get_filters()
 
-    @jwt_required()
     def post(self):
         """
         Create filter for current user and only for open projects.
@@ -590,7 +570,6 @@ class FilterResource(Resource, ArgsMixin):
     Allow to remove or update given filter if it's owned by current user.
     """
 
-    @jwt_required()
     def put(self, filter_id):
         """
         Update given filter if it's owned by current user.
@@ -619,7 +598,6 @@ class FilterResource(Resource, ArgsMixin):
         user_filter = user_service.update_filter(filter_id, data)
         return user_filter, 200
 
-    @jwt_required()
     def delete(self, filter_id):
         """
         Delete given filter if it's owned by current user.
@@ -647,7 +625,6 @@ class FilterGroupsResource(Resource, ArgsMixin):
     open projects.
     """
 
-    @jwt_required()
     def get(self):
         """
         Retrieve filter groups for current user and only for open projects.
@@ -661,7 +638,6 @@ class FilterGroupsResource(Resource, ArgsMixin):
         """
         return user_service.get_filter_groups()
 
-    @jwt_required()
     def post(self):
         """
         Create filter group for current user and only for open projects.
@@ -728,7 +704,6 @@ class FilterGroupResource(Resource, ArgsMixin):
     the current user.
     """
 
-    @jwt_required()
     def get(self, search_filter_group_id):
         """
         Retrieve given filter group for the current user.
@@ -742,7 +717,6 @@ class FilterGroupResource(Resource, ArgsMixin):
         """
         return user_service.get_filter_group(search_filter_group_id)
 
-    @jwt_required()
     def put(self, filter_group_id):
         """
         Update given filter group if it's owned by the current user.
@@ -770,7 +744,6 @@ class FilterGroupResource(Resource, ArgsMixin):
         user_filter = user_service.update_filter_group(filter_group_id, data)
         return user_filter, 200
 
-    @jwt_required()
     def delete(self, filter_group_id):
         """
         Delete given filter group if it's owned by the current user.
@@ -798,7 +771,6 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
     only be created by the current user.
     """
 
-    @jwt_required()
     def get(self):
         """
         Retrieve desktop login logs.
@@ -809,10 +781,9 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
             200:
                 description: Desktop login logs
         """
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         return persons_service.get_desktop_login_logs(current_user["id"])
 
-    @jwt_required()
     def post(self):
         """
         Create a desktop login log.
@@ -832,7 +803,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
                 description: Desktop login log created
         """
         arguments = self.get_args(["date", datetime.datetime.utcnow()])
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         desktop_login_log = persons_service.create_desktop_login_logs(
             current_user["id"], arguments["date"]
         )
@@ -840,7 +811,6 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
 
 
 class NotificationsResource(Resource, ArgsMixin):
-    @jwt_required()
     def get(self):
         """
         Return last 100 user notifications filtered by given parameters.
@@ -894,7 +864,6 @@ class NotificationResource(Resource):
     belongs to current user.
     """
 
-    @jwt_required()
     def get(self, notification_id):
         """
         Return notification matching given id, only if it's a notification that
@@ -922,7 +891,6 @@ class HasTaskSubscribedResource(Resource):
     Return true if current user has subscribed to given task.
     """
 
-    @jwt_required()
     def get(self, task_id):
         """
         Return true if current user has subscribed to given task.
@@ -951,7 +919,6 @@ class TaskSubscribeResource(Resource):
     the task.
     """
 
-    @jwt_required()
     def post(self, task_id):
         """
         Create a subscription entry for given task and current user.
@@ -980,7 +947,6 @@ class TaskUnsubscribeResource(Resource):
     The user will no longer receive notifications for this task.
     """
 
-    @jwt_required()
     def delete(self, task_id):
         """
         Remove the subscription entry matching given task and current user.
@@ -1009,7 +975,6 @@ class HasSequenceSubscribedResource(Resource):
     Return true if current user has subscribed to given sequence and task type.
     """
 
-    @jwt_required()
     def get(self, sequence_id, task_type_id):
         """
         Return true if current user has subscribed to given sequence and
@@ -1047,7 +1012,6 @@ class SequenceSubscribeResource(Resource):
     on tasks related to the sequence.
     """
 
-    @jwt_required()
     def post(self, sequence_id, task_type_id):
         """
         Create a subscription entry for given sequence,
@@ -1085,7 +1049,6 @@ class SequenceUnsubscribeResource(Resource):
     Remove a subscription entry for given sequence, task type and current user.
     """
 
-    @jwt_required()
     def delete(self, sequence_id, task_type_id):
         """
         Remove a subscription entry for given sequence, tasl type
@@ -1120,7 +1083,6 @@ class SequenceSubscriptionsResource(Resource):
     for given task type.
     """
 
-    @jwt_required()
     def get(self, project_id, task_type_id):
         """
         Return the list of sequence ids to which the current user has
@@ -1157,11 +1119,10 @@ class TimeSpentsResource(Resource):
     Optionnaly can accept date range parameters.
     """
 
-    @jwt_required()
     def get(self):
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         if not start_date and not end_date:
             return time_spents_service.get_time_spents(current_user["id"])
 
@@ -1190,10 +1151,9 @@ class DateTimeSpentsResource(Resource):
     Get time spents on for current user and given date.
     """
 
-    @jwt_required()
     def get(self, date):
         try:
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             return time_spents_service.get_time_spents(
                 current_user["id"], date
             )
@@ -1206,7 +1166,6 @@ class TaskTimeSpentResource(Resource):
     Get time spents for current user and given date.
     """
 
-    @jwt_required()
     def get(self, task_id, date):
         """
         Get time spents for current user and given date.
@@ -1233,7 +1192,7 @@ class TaskTimeSpentResource(Resource):
                 description: Wrong date format
         """
         try:
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             return time_spents_service.get_time_spent(
                 current_user["id"], task_id, date
             )
@@ -1246,7 +1205,6 @@ class DayOffResource(Resource):
     Get day off object for current user and given date.
     """
 
-    @jwt_required()
     def get(self, date):
         """
         Get day off object for current user and given date.
@@ -1267,14 +1225,13 @@ class DayOffResource(Resource):
                 description: Wrong date format
         """
         try:
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             return time_spents_service.get_day_off(current_user["id"], date)
         except WrongDateFormatException:
             abort(404)
 
 
 class ContextResource(Resource):
-    @jwt_required()
     def get(self):
         """
         Return context required to properly run a full app connected to the API
@@ -1291,7 +1248,6 @@ class ContextResource(Resource):
 
 
 class ClearAvatarResource(Resource):
-    @jwt_required()
     def delete(self):
         """
         Set `has_avatar` flag to False for current user and remove its avatar
@@ -1303,6 +1259,6 @@ class ClearAvatarResource(Resource):
             204:
                 description: Avatar file deleted
         """
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         persons_service.clear_avatar(user["id"])
         return "", 204

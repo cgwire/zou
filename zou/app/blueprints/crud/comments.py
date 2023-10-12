@@ -13,6 +13,7 @@ from zou.app.services import (
     persons_service,
     tasks_service,
     user_service,
+    identities_service,
 )
 from zou.app.utils import events, permissions
 
@@ -103,7 +104,7 @@ class CommentResource(BaseModelResource):
             return True
         else:
             comment = self.get_model_or_404(instance["id"])
-            current_user = persons_service.get_current_user()
+            current_user = identities_service.get_current_identity()
             return current_user["id"] == str(comment.person_id)
 
     def pre_delete(self, comment):

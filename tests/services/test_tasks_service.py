@@ -13,6 +13,7 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
     persons_service,
+    identities_service,
 )
 from zou.app.utils import events, fields
 
@@ -454,11 +455,11 @@ class TaskServiceTestCase(ApiDBTestCase):
         comments = tasks_service.get_comments(self.task_id, is_manager=False)
         self.assertEqual(len(comments), 3)
 
-        old_get_current_user = persons_service.get_current_user
-        persons_service.get_current_user = self.get_current_user
+        old_get_current_user = identities_service.get_current_identity
+        identities_service.get_current_identity = self.get_current_user
         comments = tasks_service.get_comments(self.task_id, is_client=True)
         self.assertEqual(len(comments), 1)
-        persons_service.get_current_user = old_get_current_user
+        identities_service.get_current_identity = old_get_current_user
 
     def test_new_comment(self):
         comment = comments_service.new_comment(

@@ -21,6 +21,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     user_service,
+    identities_service,
 )
 from zou.app.stores import queue_store
 from zou.utils import movie
@@ -883,7 +884,7 @@ class CreatePersonThumbnailResource(BaseCreatePictureResource):
 
     def check_permissions(self, instance_id):
         is_current_user = (
-            persons_service.get_current_user()["id"] != instance_id
+            identities_service.get_current_identity()["id"] != instance_id
         )
         if is_current_user and not permissions.has_manager_permissions():
             raise permissions.PermissionDenied
@@ -1113,7 +1114,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         is_client = permissions.has_client_permissions()
         is_supervisor_allowed = False
         if permissions.has_supervisor_permissions():
-            user_departments = persons_service.get_current_user(
+            user_departments = identities_service.get_current_identity(
                 relations=True
             )["departments"]
             if (
@@ -1131,7 +1132,7 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
         additions = request.json.get("additions", [])
         updates = request.json.get("updates", [])
         deletions = request.json.get("deletions", [])
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         return preview_files_service.update_preview_file_annotations(
             user["id"],
             task["project_id"],

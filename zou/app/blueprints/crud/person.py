@@ -4,7 +4,12 @@ from flask_restful import current_app
 from sqlalchemy.exc import StatementError
 
 from zou.app.models.person import Person
-from zou.app.services import deletion_service, index_service, persons_service
+from zou.app.services import (
+    deletion_service,
+    index_service,
+    persons_service,
+    identities_service,
+)
 from zou.app.utils import permissions
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
@@ -21,7 +26,7 @@ from zou.app.models.department import Department
 from zou.app import config
 
 
-class PersonsResource(BaseModelsResource, ArgsMixin):
+class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
 
@@ -62,14 +67,20 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return True
 
     def check_update_permissions(self, instance_dict, data):
-        if instance_dict["id"] != persons_service.get_current_user()["id"]:
+        if (
+            instance_dict["id"]
+            != identities_service.get_current_identity()["id"]
+        ):
             self.check_escalation_permissions(instance_dict, data)
         else:
             data.pop("role", None)
         return instance_dict
 
     def check_delete_permissions(self, instance_dict):
-        if instance_dict["id"] == persons_service.get_current_user()["id"]:
+        if (
+            instance_dict["id"]
+            == identities_service.get_current_identity()["id"]
+        ):
             raise permissions.PermissionDenied
         self.check_escalation_permissions(instance_dict)
         return instance_dict
@@ -140,6 +151,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
         if "password" in data:
             del data["password"]
         if "departments" in data:

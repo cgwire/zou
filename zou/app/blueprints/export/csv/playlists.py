@@ -14,6 +14,7 @@ from zou.app.services import (
     shots_service,
     user_service,
     tasks_service,
+    identities_service,
 )
 from zou.app.utils import csv_utils
 
@@ -69,7 +70,7 @@ class PlaylistCsvExport(Resource):
         if episode:
             context_name += " - %s" % episode["name"]
         context_name += " | %s" % entity_type
-        timezone = persons_service.get_current_user()["timezone"]
+        timezone = identities_service.get_current_identity()["timezone"]
         created_at = date_helpers.get_date_string_with_timezone(
             playlist["created_at"], timezone
         )
@@ -137,7 +138,7 @@ class PlaylistCsvExport(Resource):
     def get_date(self, comment):
         comment_date = comment.get("date", None)
         if comment_date is not None:
-            timezone = persons_service.get_current_user()["timezone"]
+            timezone = identities_service.get_current_identity()["timezone"]
             return date_helpers.get_date_string_with_timezone(
                 comment_date, timezone
             )

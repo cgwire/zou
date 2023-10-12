@@ -3,6 +3,7 @@ import unittest
 import orjson as json
 import os
 import ntpath
+import fakeredis
 
 from mixer.backend.flask import mixer
 
@@ -42,8 +43,13 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
+from zou.app.stores import auth_tokens_store
 
 TEST_FOLDER = os.path.join("tests", "tmp")
+
+auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
+    decode_responses=True
+)
 
 
 class ApiTestCase(unittest.TestCase):

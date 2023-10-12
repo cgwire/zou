@@ -137,6 +137,74 @@ class ProductionTeamResource(Resource, ArgsMixin):
         )
 
 
+class ProductionApiTokensTeamResource(Resource, ArgsMixin):
+    """
+    Allow to manage the people listed in a production API tokens team.
+    """
+
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Return the people listed in a production API tokens team.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: API tokens listed in a production API tokens team.
+        """
+        user_service.check_project_access(project_id)
+        project = projects_service.get_project_raw(project_id)
+        api_tokens = []
+        for api_token in project.api_tokens_team:
+            if permissions.has_manager_permissions():
+                api_token.append(api_token.serialize_safe(relations=True))
+            else:
+                api_token.append(api_token.present_minimal())
+        return api_tokens
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Add an API token to a production API tokens team.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: api_token_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+              description: API token added to the production API tokens team
+        """
+        args = self.get_args([("api_token_id", "", True)])
+
+        user_service.check_manager_project_access(project_id)
+        return (
+            projects_service.add_api_tokens_team_member(
+                project_id, args["api_token_id"]
+            ),
+            201,
+        )
+
+
 class ProductionTeamRemoveResource(Resource):
     """
     Allow to remove people listed in a production team.
@@ -168,6 +236,42 @@ class ProductionTeamRemoveResource(Resource):
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
+        return "", 204
+
+
+class ProductionApiTokensTeamRemoveResource(Resource):
+    """
+    Allow to remove API token listed in a production API tokens team.
+    """
+
+    @jwt_required()
+    def delete(self, project_id, api_token_id):
+        """
+        Remove people listed in a production API tokens team.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: api_token_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+              description: API token removed from production API tokens team
+        """
+        user_service.check_manager_project_access(project_id)
+        projects_service.remove_api_tokens_team_member(
+            project_id, api_token_id
+        )
         return "", 204
 
 

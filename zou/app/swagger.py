@@ -80,6 +80,7 @@ swagger_template = {
     },
     "security": [{"JWT Authorization": []}],
     "tags": [
+        {"name": "API Tokens"},
         {"name": "Authentication"},
         {"name": "Assets"},
         {"name": "Breakdown"},

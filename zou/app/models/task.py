@@ -61,7 +61,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     )
     assigner_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
-    )
+    )  # TODO: add api_token_id
     assignees = db.relationship("Person", secondary=assignees_table)
 
     __table_args__ = (

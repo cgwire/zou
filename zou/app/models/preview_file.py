@@ -45,7 +45,9 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     task_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task.id"), index=True
     )
-    person_id = db.Column(UUIDType(binary=False), db.ForeignKey("person.id"))
+    person_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("person.id")
+    )  # TODO: add api_token_id
     source_file_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("output_file.id")
     )

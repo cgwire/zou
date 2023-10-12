@@ -7,8 +7,12 @@ from zou.app.models.task_type import TaskType
 
 from zou.app.services import assets_service, projects_service, shots_service
 from zou.app.models.entity import Entity
-from zou.app.services import comments_service, index_service, tasks_service
-from zou.app.services.persons_service import get_current_user
+from zou.app.services import (
+    comments_service,
+    index_service,
+    tasks_service,
+    identities_service,
+)
 from zou.app.services.exception import WrongParameterException
 from zou.app.utils import events, cache
 
@@ -64,7 +68,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             status["id"]: [status[n].lower() for n in ("name", "short_name")]
             for status in tasks_service.get_task_statuses()
         }
-        self.current_user_id = get_current_user()["id"]
+        self.current_user_id = identities_service.get_current_identity()["id"]
         self.task_types_for_ready_for_map = {
             task_type.name: str(task_type.id)
             for task_type in TaskType.query.join(ProjectTaskTypeLink)

@@ -2,7 +2,8 @@ from ua_parser import user_agent_parser
 from werkzeug.user_agent import UserAgent
 from werkzeug.utils import cached_property
 from flask.json.provider import JSONProvider
-from flask import make_response
+from flask import make_response, request, abort
+
 import orjson
 
 orjson_options = orjson.OPT_NON_STR_KEYS
@@ -49,3 +50,22 @@ class ParsedUserAgent(UserAgent):
             for key in ("major", "minor", "patch")
             if (part := self._details["user_agent"][key]) is not None
         )
+
+
+def is_from_browser(user_agent):
+    return user_agent.browser in [
+        "Brave",
+        "Chrome",
+        "Edge",
+        "Firefox",
+        "Opera",
+        "Safari",
+        "Vivaldi",
+    ]
+
+
+def wrong_auth_handler(identity_user=None):
+    if request.path not in ["/auth/login", "/auth/logout"]:
+        raise abort(401)
+    else:
+        return identity_user

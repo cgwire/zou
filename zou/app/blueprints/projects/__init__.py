@@ -24,6 +24,8 @@ from zou.app.blueprints.projects.resources import (
     ProductionEpisodesScheduleItemsResource,
     ProductionSequencesScheduleItemsResource,
     ProductionTimeSpentsResource,
+    ProductionApiTokensTeamResource,
+    ProductionApiTokensTeamRemoveResource,
 )
 
 routes = [
@@ -31,12 +33,20 @@ routes = [
     ("/data/projects/all", AllProjectsResource),
     ("/data/projects/<project_id>/team", ProductionTeamResource),
     (
+        "/data/projects/<project_id>/api-tokens-team",
+        ProductionApiTokensTeamResource,
+    ),
+    (
         "/data/projects/<project_id>/task-types",
         ProductionTaskTypesResource,
     ),
     (
         "/data/projects/<project_id>/team/<person_id>",
         ProductionTeamRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/api-tokens-team/<api_token_id>",
+        ProductionApiTokensTeamRemoveResource,
     ),
     (
         "/data/projects/<project_id>/settings/asset-types",

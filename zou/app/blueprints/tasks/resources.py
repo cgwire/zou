@@ -24,6 +24,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     user_service,
+    identities_service,
 )
 from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
@@ -80,7 +81,7 @@ class AddPreviewResource(Resource, ArgsMixin):
 
         comment = tasks_service.get_comment(comment_id)
         tasks_service.get_task_status(comment["task_status_id"])
-        person = persons_service.get_current_user()
+        person = identities_service.get_current_identity()
         preview_file = tasks_service.add_preview_file_to_comment(
             comment_id, person["id"], task_id, args["revision"]
         )
@@ -131,7 +132,7 @@ class AddExtraPreviewResource(Resource):
         user_service.check_entity_access(task["entity_id"])
         tasks_service.get_comment(comment_id)
 
-        person = persons_service.get_current_user()
+        person = identities_service.get_current_identity()
         related_preview_file = files_service.get_preview_file(preview_file_id)
 
         preview_file = tasks_service.add_preview_file_to_comment(
@@ -397,7 +398,7 @@ class PersonRelatedTasksResource(Resource):
             200:
                 description: All Tasks for given task type
         """
-        user = persons_service.get_current_user()
+        user = identities_service.get_current_identity()
         if person_id != user["id"]:
             permissions.check_admin_permissions()
         return tasks_service.get_person_related_tasks(person_id, task_type_id)
@@ -705,7 +706,7 @@ class ToReviewResource(Resource, ArgsMixin):
             if person_id is not None:
                 person = persons_service.get_person(person_id)
             else:
-                person = persons_service.get_current_user()
+                person = identities_service.get_current_identity()
 
             preview_path = self.get_preview_path(task, name, revision)
 
@@ -865,7 +866,7 @@ class TasksAssignResource(Resource, ArgsMixin):
         )
 
         tasks = []
-        current_user = persons_service.get_current_user()
+        current_user = identities_service.get_current_identity()
         for task_id in args["task_ids"]:
             try:
                 user_service.check_task_departement_access(task_id, person_id)
@@ -981,7 +982,7 @@ class TaskFullResource(Resource):
                 description: Task with many information
         """
         task = tasks_service.get_full_task(
-            task_id, persons_service.get_current_user()["id"]
+            task_id, identities_service.get_current_identity()["id"]
         )
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
@@ -1303,7 +1304,7 @@ class ProjectSubscriptionsResource(Resource):
     """
 
     @jwt_required()
-    @permissions.require_admin
+    @permissions.admin_permission.require(403)
     def get(self, project_id):
         """
         Retrieve all subcriptions to tasks related to given project.
@@ -1333,7 +1334,7 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
-    @permissions.require_admin
+    @permissions.admin_permission.require(403)
     def get(self, project_id):
         """
         Retrieve all notifications to tasks related to given project.
@@ -1366,7 +1367,7 @@ class ProjectTasksResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
-    @permissions.require_admin
+    @permissions.admin_permission.require(403)
     def get(self, project_id):
         """
         Retrieve all tasks related to given project.
@@ -1397,7 +1398,7 @@ class ProjectCommentsResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
-    @permissions.require_admin
+    @permissions.admin_permission.require(403)
     def get(self, project_id):
         """
         Retrieve all comments to tasks related to given project.
@@ -1427,7 +1428,7 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
-    @permissions.require_admin
+    @permissions.admin_permission.require(403)
     def get(self, project_id):
         """
         Preview files related to a given project.
@@ -1492,7 +1493,7 @@ class SetTaskMainPreviewResource(Resource):
 
 class PersonsTasksDatesResource(Resource):
     @jwt_required()
-    @permissions.require_admin
+    @permissions.admin_permission.require(403)
     def get(self):
         """
         For schedule usages, for each active person, it returns the first start

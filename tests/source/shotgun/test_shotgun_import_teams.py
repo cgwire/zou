@@ -47,6 +47,6 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
 
         projects = self.get("data/projects")
         project = projects_service.get_project_with_relations(
-            projects[1]["id"]
+            projects[0]["id"]
         )
         self.assertEqual(len(project["team"]), 1)

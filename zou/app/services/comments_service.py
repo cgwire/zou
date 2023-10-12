@@ -25,11 +25,16 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
+    identities_service,
+    api_tokens_service,
 )
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
     WrongParameterException,
     AssetNotFoundException,
+    PersonNotFoundException,
+    ApiTokenNotFoundException,
+    IdentityNotFoundException,
 )
 
 from zou.app.utils import cache, date_helpers, events, fs, fields
@@ -68,20 +73,27 @@ def get_attachment_file_path(attachment_file):
 
 
 def create_comment(
-    person_id, task_id, task_status_id, text, checklist, files, created_at
+    author_id, task_id, task_status_id, text, checklist, files, created_at
 ):
     """
-    Create a new comment and related: news, notifications and events.
+    Create a new comment and related news, notifications and events.
     """
     task = tasks_service.get_task_with_relations(task_id)
     task_status = tasks_service.get_task_status(task_status_id)
-    author = _get_comment_author(person_id)
+    author = _get_comment_author(author_id)
     _check_retake_capping(task_status, task)
+    person_id = None
+    api_token_id = None
+    if author.__tablename__ == "person":
+        person_id == author.id
+    elif author.__tablename__ == "api_token":
+        api_token_id == author.id
     comment = new_comment(
         task_id=task_id,
         object_type="Task",
         files=files,
-        person_id=author["id"],
+        person_id=person_id,
+        api_token_id=api_token_id,
         task_status_id=task_status_id,
         text=text,
         checklist=checklist,
@@ -96,7 +108,7 @@ def create_comment(
         task["project_id"]
     )
     for automation in status_automations:
-        _run_status_automation(automation, task, person_id)
+        _run_status_automation(automation, task, author_id)
     return comment
 
 
@@ -117,12 +129,12 @@ def _check_retake_capping(task_status, task):
     return True
 
 
-def _get_comment_author(person_id):
-    if person_id is not None and person_id != "":
-        person = persons_service.get_person(person_id)
+def _get_comment_author(author_id):
+    if author_id is not None and author_id != "":
+        author = identities_service.get_identity_raw(author_id)
     else:
-        person = persons_service.get_current_user()
-    return person
+        author = identities_service.get_current_identity_raw()
+    return author
 
 
 def _manage_status_change(task_status, task, comment):
@@ -233,8 +245,9 @@ def _run_status_automation(automation, task, person_id):
 def new_comment(
     task_id,
     task_status_id,
-    person_id,
     text,
+    person_id=None,
+    api_token_id=None,
     object_type="Task",
     files={},
     checklist=[],
@@ -264,6 +277,7 @@ def new_comment(
         object_type=object_type,
         task_status_id=task_status_id,
         person_id=person_id,
+        api_token_id=api_token_id,
         mentions=get_comment_mentions(task["project_id"], text),
         department_mentions=get_comment_department_mentions(task_id, text),
         checklist=checklist,
@@ -378,7 +392,7 @@ def acknowledge_comment(comment_id):
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(str(comment.object_id))
     project_id = task["project_id"]
-    current_user = persons_service.get_current_user_raw()
+    current_user = identities_service.get_current_identity_raw()
     current_user_id = str(current_user.id)
 
     acknowledgements = fields.serialize_orm_arrays(comment.acknowledgements)
@@ -424,7 +438,7 @@ def reply_comment(comment_id, text, person_id=None):
     """
     person = None
     if person_id is None:
-        person = persons_service.get_current_user()
+        person = identities_service.get_current_identity()
     else:
         person = persons_service.get_person(person_id)
     comment = tasks_service.get_comment_raw(comment_id)
