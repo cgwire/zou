@@ -127,6 +127,7 @@ event_name_model_path_map = {
     "shot": "shots",
     "schedule-item": "schedule-items",
     "search-filter": "search-filters",
+    "search-filter-group": "search-filter-groups",
     "subscription": "subscriptions",
     "task": "tasks",
     "task-status": "task-status",
@@ -269,9 +270,9 @@ def run_other_sync(project=None, with_events=False):
     """
     Retrieve and import all search filters and events from target instance.
     """
-    sync_entries("search-filters", SearchFilter, project=project)
     sync_entries("search-filter-groups", SearchFilterGroup, project=project)
-    sync_entries("day-offs", SearchFilter, project=project)
+    sync_entries("search-filters", SearchFilter, project=project)
+    sync_entries("day-offs", DayOff, project=project)
     if with_events:
         sync_entries("events", ApiEvent, project=project)
 
@@ -363,7 +364,7 @@ def sync_entries(model_name, model, project=None):
         project = gazu.project.get_project_by_name(project)
         if model_name == "projects":
             instances = [gazu.client.fetch_one(model_name, project.get("id"))]
-        elif model_name in "search-filters":
+        elif model_name in ["search-filters", "search-filter-groups"]:
             instances = gazu.client.fetch_all(
                 model_name, params=dict(project_id=project.get("id"))
             )
