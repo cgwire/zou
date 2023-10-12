@@ -6,7 +6,7 @@ Zou, the Kitsu API is the memory of your animation production
 
 The Kitsu API allows to store and manage the data of your animation/VFX
 production. Through it you can link all the tools of your pipeline and make
-sure they are all synchronized. 
+sure they are all synchronized.
 
 A dedicated Python client, `Gazu <https://gazu.cg-wire.com>`_, allows users to
 integrate Zou into the tools. 
@@ -34,7 +34,9 @@ instance, so it is recommended to the follow the documentation:
 
 `https://zou.cg-wire.com/ <https://zou.cg-wire.com>`__
 
-Specification: `https://kitsu-api.cg-wire.com/ <https://kitsu-api.cg-wire.com>`__
+Specification:
+- `https://api-docs.kitsu.cloud/ <https://api-docs.kitsu.cloud>`__
+- `https://kitsu-api.cg-wire.com/ <https://kitsu-api.cg-wire.com>`__
 
 Contributing
 ------------
