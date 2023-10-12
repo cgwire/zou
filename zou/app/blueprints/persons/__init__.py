@@ -29,6 +29,7 @@ from zou.app.blueprints.persons.resources import (
     RemoveFromDepartmentResource,
     ChangePasswordForPersonResource,
     DisableTwoFactorAuthenticationPersonResource,
+    ClearAvatarPersonResource,
 )
 
 routes = [
@@ -103,6 +104,10 @@ routes = [
     (
         "/actions/persons/<person_id>/disable-two-factor-authentication",
         DisableTwoFactorAuthenticationPersonResource,
+    ),
+    (
+        "/actions/persons/<person_id>/clear-avatar",
+        ClearAvatarPersonResource,
     ),
 ]
 

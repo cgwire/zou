@@ -5,32 +5,17 @@ from sqlalchemy_utils import (
     TimezoneType,
     ChoiceType,
 )
+from sqlalchemy import Index
 from sqlalchemy.dialects.postgresql import JSONB
 
 from pytz import timezone as pytz_timezone
 from babel import Locale
 
-from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from zou.app import config
+from zou.app.models.department import Department
+from zou.app import config, db
 
-
-department_link = db.Table(
-    "department_link",
-    db.Column(
-        "person_id",
-        UUIDType(binary=False),
-        db.ForeignKey("person.id"),
-        primary_key=True,
-    ),
-    db.Column(
-        "department_id",
-        UUIDType(binary=False),
-        db.ForeignKey("department.id"),
-        primary_key=True,
-    ),
-)
 
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
@@ -56,6 +41,20 @@ ROLE_TYPES = [
 ]
 
 
+class DepartmentLink(db.Model):
+    __tablename__ = "department_link"
+    person_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        primary_key=True,
+    )
+    department_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("department.id"),
+        primary_key=True,
+    )
+
+
 class Person(db.Model, BaseMixin, SerializerMixin):
     """
     Describe a member of the studio (and an API user).
@@ -63,7 +62,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
-    email = db.Column(EmailType, unique=True)
+    email = db.Column(EmailType)
     phone = db.Column(db.String(30))
     contract_type = db.Column(ChoiceType(CONTRACT_TYPES), default="permanent")
 
@@ -104,18 +103,35 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_discord_enabled = db.Column(db.Boolean(), default=False)
     notifications_discord_userid = db.Column(db.String(60), default="")
 
+    is_bot = db.Column(db.Boolean(), default=False, nullable=False)
+    jti = db.Column(db.String(60), nullable=True, unique=True)
+    expiration_date = db.Column(db.Date(), nullable=True)
+
     departments = db.relationship(
-        "Department", secondary=department_link, lazy="joined"
+        "Department", secondary="department_link", lazy="joined"
     )
 
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
     ldap_uid = db.Column(db.String(60), unique=True, default=None)
 
+    __table_args__ = (
+        Index(
+            "only_one_email_by_person",
+            email,
+            is_bot,
+            unique=True,
+            postgresql_where=is_bot.isnot(True),
+        ),
+    )
+
     def __repr__(self):
         return f"<Person {self.full_name()}>"
 
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        else:
+            return f"{self.first_name}{self.last_name}"
 
     def fido_devices(self):
         if self.fido_credentials is None:
@@ -130,7 +146,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         self, obj_type="Person", relations=False, milliseconds=False
     ):
         data = SerializerMixin.serialize(
-            self, "Person", relations=relations, milliseconds=milliseconds
+            self, obj_type, relations=relations, milliseconds=milliseconds
         )
         data["full_name"] = self.full_name()
         data["contract_type"] = str(self.contract_type or "permanent")
@@ -144,6 +160,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         del data["email_otp_secret"]
         del data["otp_recovery_codes"]
         del data["fido_credentials"]
+        del data["jti"]
         return data
 
     def present_minimal(self, relations=False, milliseconds=False):
@@ -163,8 +180,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         }
 
     def set_departments(self, department_ids):
-        from zou.app.models.department import Department
-
         self.departments = []
         for department_id in department_ids:
             department = Department.get(department_id)

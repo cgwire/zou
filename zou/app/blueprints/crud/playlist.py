@@ -16,6 +16,7 @@ class PlaylistsResource(BaseModelsResource):
         user_service.check_supervisor_project_access(playlist["project_id"])
 
     def update_data(self, data):
+        data = super().update_data(data)
         if "episode_id" in data and data["episode_id"] in ["all", "main"]:
             data["episode_id"] = None
         if "task_type_id" in data and not fields.is_valid_id(

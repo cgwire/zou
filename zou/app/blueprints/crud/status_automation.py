@@ -26,7 +26,7 @@ class StatusAutomationResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, StatusAutomation)
 
-    def post_update(self, status_automation):
+    def post_update(self, status_automation, data):
         status_automations_service.clear_status_automation_cache()
         return status_automation
 

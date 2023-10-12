@@ -31,6 +31,7 @@ class ScheduleItemResource(BaseModelResource):
         )
 
     def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
         if isinstance(data.get("man_days", None), str):
             data.pop("man_days", None)
 

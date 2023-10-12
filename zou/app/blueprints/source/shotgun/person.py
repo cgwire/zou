@@ -2,7 +2,7 @@ from flask import current_app
 
 from zou.app import db
 from zou.app.models.department import Department
-from zou.app.models.person import Person, department_link as DepartmentLink
+from zou.app.models.person import Person, DepartmentLink
 from zou.app.blueprints.source.shotgun.exception import (
     ShotgunEntryImportFailed,
 )

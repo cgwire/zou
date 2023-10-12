@@ -1,4 +1,3 @@
-import orjson as json
 import datetime
 
 from tests.base import ApiDBTestCase
@@ -20,67 +19,16 @@ class CommandsTestCase(ApiDBTestCase):
     def setUp(self):
         super(CommandsTestCase, self).setUp()
         self.store = auth_tokens_store
-        for key in self.store.keys():
-            self.store.delete(key)
+        self.store.clear()
 
     def test_clean_auth_tokens_revoked(self):
-        now = datetime.datetime.now()
-        self.store.add(
-            "testkey",
-            json.dumps(
-                {
-                    "token": {
-                        "exp": totimestamp(now + datetime.timedelta(days=8))
-                    },
-                    "revoked": False,
-                }
-            ),
-        )
-        self.store.add(
-            "testkey2",
-            json.dumps(
-                {
-                    "token": {
-                        "exp": totimestamp(now + datetime.timedelta(days=8))
-                    },
-                    "revoked": True,
-                }
-            ),
-        )
+        self.store.add("testkey", "false")
+        self.store.add("testkey2", "false")
         self.assertEqual(len(self.store.keys()), 2)
+        self.store.add("testkey2", "true")
         commands.clean_auth_tokens()
         self.assertEqual(len(self.store.keys()), 1)
         self.assertEqual(self.store.keys()[0], "testkey")
-
-    def test_clean_auth_tokens_expired(self):
-        now = datetime.datetime.now()
-        self.store.add(
-            "testkey",
-            json.dumps(
-                {
-                    "token": {
-                        "exp": totimestamp(now - datetime.timedelta(days=8))
-                    },
-                    "revoked": False,
-                }
-            ),
-        )
-        self.store.add(
-            "testkey2",
-            json.dumps(
-                {
-                    "token": {
-                        "exp": totimestamp(now + datetime.timedelta(days=8))
-                    },
-                    "revoked": False,
-                }
-            ),
-        )
-
-        self.assertEqual(len(self.store.keys()), 2)
-        commands.clean_auth_tokens()
-        self.assertEqual(len(self.store.keys()), 1)
-        self.assertEqual(self.store.keys()[0], "testkey2")
 
     def test_init_data(self):
         commands.init_data()

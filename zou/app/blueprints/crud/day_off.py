@@ -15,6 +15,7 @@ class DayOffsResource(BaseModelsResource):
         return user_service.check_day_off_access(data)
 
     def update_data(self, data):
+        data = super().update_data(data)
         data["date"] = date_helpers.get_date_from_string(data["date"])
         return data
 

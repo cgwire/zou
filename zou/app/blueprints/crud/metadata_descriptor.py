@@ -43,7 +43,7 @@ class MetadataDescriptorResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, MetadataDescriptor)
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         instance_dict["departments"] = [
             str(department.id) for department in self.instance.departments
         ]
@@ -54,6 +54,7 @@ class MetadataDescriptorResource(BaseModelResource):
         Check if the data descriptor has a valid data_type and valid
         departments.
         """
+        data = super().update_data(data, instance_id)
         if "data_type" in data:
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:

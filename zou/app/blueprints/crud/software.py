@@ -58,7 +58,7 @@ class SoftwareResource(BaseModelResource):
         except ValueError:
             abort(404)
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         files_service.clear_software_cache(instance_dict["id"])
         return instance_dict
 

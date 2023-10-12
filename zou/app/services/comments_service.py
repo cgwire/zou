@@ -72,7 +72,7 @@ def create_comment(
     person_id, task_id, task_status_id, text, checklist, files, created_at
 ):
     """
-    Create a new comment and related: news, notifications and events.
+    Create a new comment and related: news, notifications and events.
     """
     task = tasks_service.get_task_with_relations(task_id)
     task_status = tasks_service.get_task_status(task_status_id)

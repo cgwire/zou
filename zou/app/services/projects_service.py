@@ -4,7 +4,7 @@ from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
-from zou.app.models.person import Person, department_link
+from zou.app.models.person import Person, DepartmentLink
 from zou.app.models.project import (
     Project,
     ProjectPersonLink,
@@ -27,7 +27,6 @@ from zou.app.services.exception import (
     MetadataDescriptorNotFoundException,
     DepartmentNotFoundException,
     WrongParameterException,
-    PreviewBackgroundFileNotFoundException,
 )
 
 from zou.app.utils import fields, events, cache
@@ -711,8 +710,8 @@ def get_department_team(project_id, department_id):
         Person.query.join(
             ProjectPersonLink, ProjectPersonLink.person_id == Person.id
         )
-        .join(department_link, department_link.columns.person_id == Person.id)
+        .join(DepartmentLink, DepartmentLink.person_id == Person.id)
         .filter(ProjectPersonLink.project_id == project_id)
-        .filter(department_link.columns.department_id == department_id)
+        .filter(DepartmentLink.department_id == department_id)
     ).all()
     return persons

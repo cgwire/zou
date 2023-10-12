@@ -36,7 +36,7 @@ class TaskStatusResource(BaseModelResource):
                 status.update({"is_default": False})
         return instance_dict
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         tasks_service.clear_task_status_cache(instance_dict["id"])
         return instance_dict
 

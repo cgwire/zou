@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Python: Flask",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "flask",
       "env": {
@@ -18,7 +18,7 @@
     },
     {
       "name": "Python: Current File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
@@ -30,7 +30,7 @@
     },
     {
       "name": "Python: Test current File",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "pytest",
       "args": ["${file}"],
@@ -40,7 +40,7 @@
     },
     {
       "name": "Python: Real Time",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/zou/event_stream.py",
       "console": "integratedTerminal",

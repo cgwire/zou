@@ -703,6 +703,16 @@ def check_task_departement_access(task_id, person_id):
     return is_allowed
 
 
+def check_person_is_not_bot(person_id):
+    """
+    Return true if person is not a bot else raise PermissionDenied
+    """
+    if persons_service.get_person(person_id)["is_bot"]:
+        raise permissions.PermissionDenied
+    else:
+        return True
+
+
 def check_task_departement_access_for_unassign(task_id, person_id=None):
     """
     Return true if current user is an admin or is a manager and is in team

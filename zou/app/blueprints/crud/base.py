@@ -20,6 +20,7 @@ class BaseModelsResource(Resource, ArgsMixin):
     def __init__(self, model):
         Resource.__init__(self)
         self.model = model
+        self.protected_fields = ["id", "created_at", "updated_at"]
 
     def all_entries(self, query=None, relations=False):
         if query is None:
@@ -129,6 +130,9 @@ class BaseModelsResource(Resource, ArgsMixin):
         return data
 
     def update_data(self, data):
+        for field in self.protected_fields:
+            if (data is not None) and field in data:
+                data.pop(field, None)
         return data
 
     def post_creation(self, instance):
@@ -338,7 +342,7 @@ class BaseModelResource(Resource):
     def pre_update(self, instance_dict, data):
         return data
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         return instance_dict
 
     def post_delete(self, instance_dict):
@@ -401,8 +405,8 @@ class BaseModelResource(Resource):
             data = self.update_data(data, instance_id)
             self.instance.update(data)
             instance_dict = self.instance.serialize()
+            self.post_update(instance_dict, data)
             self.emit_update_event(instance_dict)
-            self.post_update(instance_dict)
             return instance_dict, 200
 
         except TypeError as exception:

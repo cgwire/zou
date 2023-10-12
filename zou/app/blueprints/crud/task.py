@@ -101,7 +101,7 @@ class TaskResource(BaseModelResource, ArgsMixin):
     def check_delete_permissions(self, task):
         user_service.check_manager_project_access(task["project_id"])
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         tasks_service.clear_task_cache(instance_dict["id"])
         return instance_dict
 
