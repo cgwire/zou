@@ -7,43 +7,44 @@ on:
 
 jobs:
   build:
+    if: github.repository_owner == 'cgwire'
     name: Build
     runs-on: ubuntu-latest
     steps:
-    - name: Update Zou on staging server
-      uses: appleboy/ssh-action@v0.1.4
-      with:
-       host: ${{ secrets.HOST }}
-       username: ${{ secrets.USERNAME }}
-       key: ${{ secrets.KEY }}
-       port: ${{ secrets.PORT }}
-       script_stop: true
-       script: |
-         cd /opt/zou
-         source /etc/zou/zou.env
-         sudo /opt/zou/zouenv/bin/pip uninstall -y zou
-         sudo /opt/zou/zouenv/bin/pip install --upgrade git+https://github.com/cgwire/zou.git
-         sudo -E -u zou /opt/zou/zouenv/bin/zou upgrade-db
-         sudo systemctl restart zou zou-events zou-jobs
-    - uses: actions/checkout@v4
-      with:
-        ref: apidocs 
-    - name: Update openapi.json
-      run: |
-        cd docs
-        curl --output openapi.json https://kitsu-staging.cg-wire.com/api/openapi.json
-        git config --global user.email "no-reply@cg-wire.com"
-        git config --global user.name "CGWire bot"
-        git add openapi.json || false
-        git commit -m "Update openapi.json" || true
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: apidocs
-    - name: Push on bump.sh
-      uses: bump-sh/github-action@v1
-      with:
-        doc: kitsu-api
-        token: ${{secrets.BUMP_TOKEN}}
-        file: docs/openapi.json
+      - name: Update Zou on staging server
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          port: ${{ secrets.PORT }}
+          script_stop: true
+          script: |
+            cd /opt/zou
+            source /etc/zou/zou.env
+            sudo /opt/zou/zouenv/bin/pip uninstall -y zou
+            sudo /opt/zou/zouenv/bin/pip install --upgrade git+https://github.com/cgwire/zou.git
+            sudo -E -u zou /opt/zou/zouenv/bin/zou upgrade-db
+            sudo systemctl restart zou zou-events zou-jobs
+      - uses: actions/checkout@v4
+        with:
+          ref: apidocs
+      - name: Update openapi.json
+        run: |
+          cd docs
+          curl --output openapi.json https://kitsu-staging.cg-wire.com/api/openapi.json
+          git config --global user.email "no-reply@cg-wire.com"
+          git config --global user.name "CGWire bot"
+          git add openapi.json || false
+          git commit -m "Update openapi.json" || true
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: apidocs
+      - name: Push on bump.sh
+        uses: bump-sh/github-action@v1
+        with:
+          doc: kitsu-api
+          token: ${{secrets.BUMP_TOKEN}}
+          file: docs/openapi.json
