@@ -41,6 +41,8 @@ class ProjectsResource(BaseModelsResource):
         Check if the data descriptor has a valid production_style.
         """
         if "production_style" in data:
+            if data["production_style"] is None:
+                data["production_style"] = "2d3d"
             types = [type_name for type_name, _ in PROJECT_STYLES]
             if data["production_style"] not in types:
                 raise ArgumentsException("Invalid production_style")
@@ -158,6 +160,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         """
 
         if "production_style" in data:
+            if data["production_style"] is None:
+                data["production_style"] = "2d3d"
             types = [type_name for type_name, _ in PROJECT_STYLES]
             if data["production_style"] not in types:
                 raise ArgumentsException("Invalid production_style")
