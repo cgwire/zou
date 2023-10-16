@@ -243,8 +243,10 @@ def sync_with_ldap_server():
             if (
                 clean_value(entry.sAMAccountName if is_ad else entry.uid)
                 not in excluded_accounts
-                and group_members is None
-                or entry.entry_dn in group_members
+                and (
+                    group_members is None
+                    or entry.entry_dn in group_members
+                )
             ):
                 if is_ad:
                     ldap_uid = clean_value(entry.objectGUID)
