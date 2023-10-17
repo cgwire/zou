@@ -31,7 +31,10 @@ from zou.app.services.exception import (
     TaskNotFoundException,
 )
 
-ALLOWED_FIELDS = ["short_name", "name", "number"]
+ALLOWED_FIELDS = {"short_name", "name", "number", "id"}
+UUID_PATTERN = re.compile(
+    r"[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}"
+)
 
 
 def get_working_file_path(
@@ -376,10 +379,12 @@ def get_file_name_root(
         asset=asset,
         revision=revision,
     )
-    file_name = slugify(file_name, separator="_")
-    file_name = apply_style(
-        file_name, tree[mode]["file_name"].get("style", "")
-    )
+    style = tree[mode]["file_name"].get("style", "")
+    uuids = UUID_PATTERN.findall(file_name)
+    file_name = apply_style(slugify(file_name, separator="_"), style)
+    for uuid in uuids:
+        uuid_formatted = apply_style(slugify(uuid, separator="_"), style)
+        file_name = file_name.replace(uuid_formatted, uuid)
     return file_name
 
 
@@ -455,10 +460,9 @@ def update_variable(
         )
 
         if data is not None:
-            render = render.replace(
-                "<%s>" % variable,
-                apply_style(slugify(data, separator="_"), style),
-            )
+            if field != "id":
+                data = apply_style(slugify(data, separator="_"), style)
+            render = render.replace(f"<{variable}>", data)
     return render
 
 
@@ -477,39 +481,39 @@ def get_folder_from_datatype(
     field="name",
 ):
     if datatype == "Project":
-        folder = get_folder_from_project(entity)
+        folder = get_folder_from_project(entity, field)
     elif datatype == "Task":
-        folder = get_folder_from_task(task)
+        folder = get_folder_from_task(task, field)
     elif datatype == "TaskType":
         folder = get_folder_from_task_type(task, task_type, field)
     elif datatype == "Department":
         folder = get_folder_from_department(task, task_type, field)
     elif datatype == "Shot":
-        folder = get_folder_from_shot(entity)
+        folder = get_folder_from_shot(entity, field)
     elif datatype == "TemporalEntity":
-        folder = get_folder_from_temporal_entity(entity)
+        folder = get_folder_from_temporal_entity(entity, field)
     elif datatype == "TemporalEntityType":
-        folder = get_folder_from_temporal_entity_type(entity)
+        folder = get_folder_from_temporal_entity_type(entity, field)
     elif datatype == "AssetType":
         if asset is None:
-            folder = get_folder_from_asset_type(entity)
+            folder = get_folder_from_asset_type(entity, field)
         else:
-            folder = get_folder_from_asset_type(asset)
+            folder = get_folder_from_asset_type(asset, field)
     elif datatype == "Sequence":
-        folder = get_folder_from_sequence(entity)
+        folder = get_folder_from_sequence(entity, field)
     elif datatype == "Episode":
-        folder = get_folder_from_episode(entity)
+        folder = get_folder_from_episode(entity, field)
     elif datatype == "Asset":
         if asset is None:
-            folder = get_folder_from_asset(entity)
+            folder = get_folder_from_asset(entity, field)
         else:
-            folder = get_folder_from_asset(asset)
+            folder = get_folder_from_asset(asset, field)
     elif datatype == "Software":
         folder = get_folder_from_software(software, field)
     elif datatype == "OutputType":
         folder = get_folder_from_output_type(output_type, field)
     elif datatype == "Scene":
-        folder = get_folder_from_scene(entity)
+        folder = get_folder_from_scene(entity, field)
     elif datatype == "Instance":
         folder = get_folder_from_asset_instance(asset_instance, field)
     elif datatype == "Representation":
@@ -524,17 +528,17 @@ def get_folder_from_datatype(
     return folder
 
 
-def get_folder_from_project(entity):
+def get_folder_from_project(entity, field="name"):
     project = get_project(entity)
-    return project["name"]
+    return project[field]
 
 
-def get_folder_from_task(task):
-    return task["name"]
+def get_folder_from_task(task, field="name"):
+    return task[field]
 
 
-def get_folder_from_shot(shot):
-    return shot["name"]
+def get_folder_from_shot(shot, field="name"):
+    return shot[field]
 
 
 def get_folder_from_output_type(output_type, field="name"):
@@ -568,19 +572,19 @@ def get_folder_from_task_type(task, task_type, field="name"):
     return folder
 
 
-def get_folder_from_asset(asset):
+def get_folder_from_asset(asset, field="name"):
     folder = ""
     if asset is not None:
-        folder = asset["name"]
+        folder = asset[field]
     return folder
 
 
-def get_folder_from_sequence(entity):
+def get_folder_from_sequence(entity, field="name"):
     if shots_service.is_shot(entity) or shots_service.is_scene(entity):
         sequence = shots_service.get_sequence_from_shot(entity)
-        sequence_name = sequence["name"]
+        sequence_name = sequence[field]
     elif shots_service.is_sequence(entity):
-        sequence_name = entity["name"]
+        sequence_name = entity[field]
     else:
         sequence_name = ""
 
@@ -590,7 +594,7 @@ def get_folder_from_sequence(entity):
     return sequence_name
 
 
-def get_folder_from_episode(entity):
+def get_folder_from_episode(entity, field="name"):
     if shots_service.is_shot(entity) or shots_service.is_scene(entity):
         sequence = shots_service.get_sequence_from_shot(entity)
     elif shots_service.is_sequence(entity):
@@ -598,37 +602,37 @@ def get_folder_from_episode(entity):
 
     try:
         episode = shots_service.get_episode_from_sequence(sequence)
-        episode_name = episode["name"]
+        episode_name = episode[field]
     except BaseException:
         episode_name = "e001"
 
     return episode_name
 
 
-def get_folder_from_temporal_entity(entity):
+def get_folder_from_temporal_entity(entity, field="name"):
     if entity is not None:
         entity = entities_service.get_entity(entity["id"])
-        folder = entity["name"]
+        folder = entity[field]
     else:
         raise MalformedFileTreeException("Given temporal entity is null.")
     return folder
 
 
-def get_folder_from_temporal_entity_type(entity):
+def get_folder_from_temporal_entity_type(entity, field="name"):
     if entity is not None:
         entity_type = entities_service.get_entity_type(
             entity["entity_type_id"]
         )
-        folder = entity_type["name"].lower()
+        folder = entity_type[field].lower()
     else:
         raise MalformedFileTreeException("Given temporal entity type is null.")
     return folder
 
 
-def get_folder_from_asset_type(asset):
+def get_folder_from_asset_type(asset, field="name"):
     if asset is not None:
         asset_type = assets_service.get_asset_type(asset["entity_type_id"])
-        folder = asset_type["name"]
+        folder = asset_type[field]
     else:
         raise MalformedFileTreeException("Given asset is null.")
     return folder
@@ -642,10 +646,10 @@ def get_folder_from_software(software, field="name"):
     return software[field]
 
 
-def get_folder_from_scene(scene):
+def get_folder_from_scene(scene, field="name"):
     folder = ""
     if scene is not None:
-        folder = scene["name"]
+        folder = scene[field]
     return folder
 
 
