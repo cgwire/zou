@@ -210,8 +210,11 @@ def sync_with_ldap_server():
         is_ad = LDAP_IS_AD or LDAP_IS_AD_SIMPLE
         attributes = ["givenName", "sn", "mail", "cn"]
         if is_ad:
+            if LDAP_IS_AD_SIMPLE:
+                attributes += ["cn"]
+            else:
+                attributes += ["sAMAccountName"]
             attributes += [
-                "sAMAccountName",
                 "thumbnailPhoto",
                 "userAccountControl",
                 "objectGUID",
@@ -240,13 +243,16 @@ def sync_with_ldap_server():
         conn.search(LDAP_BASE_DN, query, attributes=attributes)
         ldap_users = []
         for entry in conn.entries:
-            if (
-                clean_value(entry.sAMAccountName if is_ad else entry.uid)
-                not in excluded_accounts
-                and (
-                    group_members is None
-                    or entry.entry_dn in group_members
-                )
+            if LDAP_IS_AD_SIMPLE:
+                desktop_login = entry.cn
+            elif LDAP_IS_AD:
+                desktop_login = entry.sAMAccountName
+            else:
+                desktop_login = entry.uid
+            desktop_login = clean_value(desktop_login)
+
+            if desktop_login not in excluded_accounts and (
+                group_members is None or entry.entry_dn in group_members
             ):
                 if is_ad:
                     ldap_uid = clean_value(entry.objectGUID)
@@ -261,10 +267,6 @@ def sync_with_ldap_server():
                     thumbnail = thumbnails[0]
                 else:
                     thumbnail = None
-
-                desktop_login = clean_value(
-                    entry.sAMAccountName if is_ad else entry.uid
-                )
 
                 emails = entry.mail.values
                 if len(emails) == 0:
