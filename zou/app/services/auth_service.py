@@ -180,7 +180,7 @@ def ldap_auth_strategy(person, password, app):
         try:
             SSL = app.config["LDAP_SSL"]
             if app.config["LDAP_IS_AD_SIMPLE"]:
-                user = f"sAMAccountName={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
+                user = f"cn={person['desktop_login']},{app.config['LDAP_BASE_DN']}"
                 authentication = SIMPLE
             elif app.config["LDAP_IS_AD"]:
                 user = (
