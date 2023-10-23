@@ -3,7 +3,9 @@ import flask_fs as fs
 
 from flask_fs.backends.local import LocalBackend
 
-from zou.app import app
+pictures = None
+movies = None
+files = None
 
 
 def path(self, filename):
@@ -43,20 +45,11 @@ def make_read_generator(bucket, key):
     return read_generator(read_stream)
 
 
-def make_storage(bucket):
+def make_storage(app, bucket):
     return fs.Storage(
         "%s%s" % (app.config.get("FS_BUCKET_PREFIX", ""), bucket),
         overwrite=True,
     )
-
-
-pictures = make_storage("pictures")
-movies = make_storage("movies")
-files = make_storage("files")
-
-pictures.configure(app)
-movies.configure(app)
-files.configure(app)
 
 
 def clear():

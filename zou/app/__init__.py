@@ -51,7 +51,6 @@ app.secret_key = app.config["SECRET_KEY"]
 jwt = JWTManager(app)  # JWT auth tokens
 Principal(app)  # Permissions
 cache.cache.init_app(app)  # Function caching
-flask_fs.init_app(app)  # To save files in object storage
 mail = Mail()
 mail.init_app(app)  # To send emails
 swagger = Swagger(
@@ -160,7 +159,19 @@ def configure_auth():
             return None
 
 
-def load_api():
+def configure_storages(app):
+    from zou.app.stores import file_store
+
+    file_store.pictures = file_store.make_storage(app, "pictures")
+    file_store.movies = file_store.make_storage(app, "movies")
+    file_store.files = file_store.make_storage(app, "files")
+
+    flask_fs.init_app(
+        app, *[file_store.pictures, file_store.movies, file_store.files]
+    )
+
+
+def load_api(app):
     from zou.app import api
     from zou.app.utils import permissions
     from zou import __version__ as zou_version
@@ -192,4 +203,5 @@ def load_api():
     configure_auth()
 
 
-load_api()
+configure_storages(app)
+load_api(app)
