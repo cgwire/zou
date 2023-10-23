@@ -18,7 +18,7 @@ from meilisearch.errors import (
 )
 
 from zou.app import config, swagger
-from zou.app.stores import auth_tokens_store
+from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
@@ -159,18 +159,6 @@ def configure_auth():
             return None
 
 
-def configure_storages(app):
-    from zou.app.stores import file_store
-
-    file_store.pictures = file_store.make_storage(app, "pictures")
-    file_store.movies = file_store.make_storage(app, "movies")
-    file_store.files = file_store.make_storage(app, "files")
-
-    flask_fs.init_app(
-        app, *[file_store.pictures, file_store.movies, file_store.files]
-    )
-
-
 def load_api(app):
     from zou.app import api
     from zou.app.utils import permissions
@@ -203,5 +191,5 @@ def load_api(app):
     configure_auth()
 
 
-configure_storages(app)
+file_store.configure_storages(app)
 load_api(app)
