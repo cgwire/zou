@@ -297,7 +297,7 @@ def get_tree_from_project(project):
 def get_tree_from_file(tree_name):
     try:
         tree_path = os.path.join(
-            app.config["FILE_TREE_FOLDER"], "%s.json" % tree_name
+            os.path.join(app.root_path, "file_trees"), "%s.json" % tree_name
         )
         tree_string = open(tree_path).read()
     except IOError:

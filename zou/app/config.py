@@ -135,7 +135,8 @@ LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
 LOGS_PORT = os.getenv("LOGS_PORT", 2202)
 LOGS_TOKEN = os.getenv("LOGS_TOKEN")
 
-SENTRY_DSN = os.getenv("SENTRY_DSN", False)
+SENTRY_ENABLED = envtobool("SENTRY_ENABLED", False)
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
 SENTRY_SR = float(os.getenv("SENTRY_SR", 1.0))
 SENTRY_DEBUG_URL = os.getenv("SENTRY_DEBUG_URL", False)
 
@@ -153,4 +154,3 @@ PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 TO_REVIEW_TASK_STATUS = "To review"
 DEFAULT_FILE_STATUS = "To review"
 DEFAULT_FILE_TREE = os.getenv("DEFAULT_FILE_TREE", "default")
-FILE_TREE_FOLDER = os.getenv("FILE_TREE_FOLDER")
