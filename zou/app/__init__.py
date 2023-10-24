@@ -1,5 +1,3 @@
-import os
-import flask_fs
 import traceback
 
 from flask import Flask, jsonify, current_app
@@ -18,7 +16,7 @@ from meilisearch.errors import (
 )
 
 from zou.app import config, swagger
-from zou.app.stores import auth_tokens_store
+from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
@@ -27,21 +25,18 @@ from zou.app.services.exception import (
     WrongTaskTypeForEntityException,
 )
 
-from zou.app.utils import cache, fs, logs
-from zou.app.utils.sentry import init_sentry
+from zou.app.utils import cache, fs, logs, monitoring
 from zou.app.utils.flask import ParsedUserAgent, ORJSONProvider
 
-init_sentry()
 app = Flask(__name__)
 app.json = ORJSONProvider(app)
 app.request_class.user_agent_class = ParsedUserAgent
 app.config.from_object(config)
 
-logs.configure_logs(app)
+monitoring.init_monitoring(app)
 
-if not app.config["FILE_TREE_FOLDER"]:
-    # Default file_trees are included in Python package: use root_path
-    app.config["FILE_TREE_FOLDER"] = os.path.join(app.root_path, "file_trees")
+if config.LOGS_MODE == "ovh":
+    logs.configure_logs_ovh(app)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
@@ -51,19 +46,11 @@ app.secret_key = app.config["SECRET_KEY"]
 jwt = JWTManager(app)  # JWT auth tokens
 Principal(app)  # Permissions
 cache.cache.init_app(app)  # Function caching
-flask_fs.init_app(app)  # To save files in object storage
 mail = Mail()
 mail.init_app(app)  # To send emails
 swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
-
-
-if config.SENTRY_DEBUG_URL:
-
-    @app.route(config.SENTRY_DEBUG_URL)
-    def trigger_error():
-        division_by_zero = 1 / 0
 
 
 @app.teardown_appcontext
@@ -160,36 +147,14 @@ def configure_auth():
             return None
 
 
-def load_api():
+def load_api(app):
     from zou.app import api
-    from zou.app.utils import permissions
-    from zou import __version__ as zou_version
 
     api.configure(app)
-
-    if config.PROMETHEUS_METRICS_ENABLED:
-        try:
-            from prometheus_flask_exporter.multiprocess import (
-                GunicornPrometheusMetrics,
-            )
-
-            metrics = GunicornPrometheusMetrics(
-                app, defaults_prefix="zou", group_by="url_rule"
-            )
-        except ValueError:
-            from prometheus_flask_exporter import RESTfulPrometheusMetrics
-
-            metrics = RESTfulPrometheusMetrics(
-                app,
-                api,
-                defaults_prefix="zou",
-                group_by="url_rule",
-                metrics_decorator=permissions.require_admin,
-            )
-        metrics.info("zou_info", "Application info", version=zou_version)
 
     fs.mkdir_p(app.config["TMP_DIR"])
     configure_auth()
 
 
-load_api()
+file_store.configure_storages(app)
+load_api(app)
