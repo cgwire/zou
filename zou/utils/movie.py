@@ -170,10 +170,8 @@ def get_movie_display_aspect_ratio(movie_path=None, video_track=None):
     """
     Returns movie display aspect ratio (width / height).
     """
-    ratio = 1
-    if video_track is not None:
-        width, height = get_movie_size(movie_path=movie_path, video_track=video_track)
-        ratio = width / height
+    width, height = get_movie_size(movie_path=movie_path, video_track=video_track)
+    ratio = width / height
     return ratio
 
 
