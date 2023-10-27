@@ -65,6 +65,8 @@ email notifications.
 * `DOMAIN_PROTOCOL` (default: "https"): To build URLs (for password reset
   for instance).
 
+You can find more information here:
+https://flask-mail.readthedocs.io/en/latest/
 
 ## Indexes
 
