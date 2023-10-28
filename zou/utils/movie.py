@@ -168,7 +168,8 @@ def get_movie_fps(movie_path=None, video_track=None):
 
 def get_movie_display_aspect_ratio(movie_path=None, video_track=None):
     """
-    Returns movie display aspect ratio (width / height).
+    Returns movie display aspect ratio, if display aspect ratio
+    is not set, fallback on width / height.
     """
     if video_track is None:
         video_track = get_video_track(
@@ -176,7 +177,10 @@ def get_movie_display_aspect_ratio(movie_path=None, video_track=None):
         )
     ratio = 1
     if video_track is not None:
-        width, height = video_track["display_aspect_ratio"].split(":")
+        try:
+            width, height = video_track["display_aspect_ratio"].split(":")
+        except KeyError:
+            width, height = video_track["width"], video_track["height"]
         ratio = float(width) / float(height)
     return ratio
 
