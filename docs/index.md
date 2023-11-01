@@ -6,13 +6,13 @@ The Kitsu API allows you to store and manage the data of your animation/VFX prod
 Through it, you can link all the tools of your pipeline and make sure they are
 all synchronized. 
 
-To integrate it into your tools you can rely on the dedicated Python
+To integrate it into your tools, you can rely on the dedicated Python
 client named [Gazu](https://gazu.cg-wire.com). 
 
 # Who is it for?
 
-The Kitsu API is made for Technical Directors, ITs and
-Software Engineers from animation and VFX studios. With this API they can enhance
+The Kitsu API is made for Technical Directors, ITs, and
+Software Engineers from animation and VFX studios. With this API, they can enhance
 the tools they provide to the studio departments.
 
 On top of the API, you can deploy the Kitsu frontend, which brings you the full
@@ -22,18 +22,18 @@ bundle of the collaboration platform developed by CGWire.
 
 The Kitsu API can:
 
-* Store production data: projects, shots, assets, tasks, files
+* Store production data: projects, shots, assets, tasks, files,
   metadata, and validations.
 * Store preview files of any kind.
 * Publish an event stream of changes.
 * Provide folder and file paths for any task.
 * Export main data to CSV files.
 
-For more details, you can check [the full specification](https://kitsu-api.cg-wire.com).
+For more details, you can check [the full specification](https://kitsu-api.kitsu.cloud).
 
 # Quickstart (Docker Image)
 
-To try Kitsu on your local machine you can use Docker to run a local
+To try Kitsu on your local machine, you can use Docker to run a local
 instance via this command:
 
 *Warning: This image is not aimed at production usage.*
@@ -68,7 +68,7 @@ That's the recommended minimum. But it depends on the activity of the production
 * The frequency with which files/videos are sent
 * The network speed available between the workstations and the instance.
 
-In terms of disk space, you need to allow for a factor of x2.5 x3 of all the files sent (large estimation).
+Regarding disk space, you need to allow for a factor of x2.5 x3 of all the files sent (large estimation).
 
 It is advisable to separate:
 
@@ -93,7 +93,7 @@ The installation requires:
 
 ### Dependencies
 
-First, let's install third parties software:
+First, let's install third-party software:
 
 ```bash
 sudo apt-get install postgresql postgresql-client postgresql-server-dev-all
@@ -104,7 +104,7 @@ sudo apt-get install nginx
 sudo apt-get install ffmpeg
 ```
 
-*NB: We recommend to install postgres in a separate machine.*
+*NB: We recommend installing Postgres on a separate machine.*
 
 
 ### Get sources
@@ -142,7 +142,7 @@ sudo chown -R zou:www-data /opt/zou/tmp
 
 ### Prepare database
 
-Create Zou database in postgres:
+Create Zou database in Postgres:
 
 ```
 sudo -u postgres psql -c 'create database zoudb;' -U postgres
@@ -165,9 +165,9 @@ Enter new password:
 Enter it again: 
 ```
 
-Then exit from the Postgres client console.
+Then, exit from the Postgres client console.
 
-Alternatively, if you want to set the password to avoid interactive prompts use : 
+Alternatively, if you want to set the password to avoid interactive prompts, use: 
 ```bash
 sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
 ```
@@ -377,7 +377,7 @@ server {
 
 *NB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.*
 
-Finally, make sure that default configuration is removed: 
+Finally, make sure that the default configuration is removed: 
 
 ```bash
 sudo rm /etc/nginx/sites-enabled/default
