@@ -259,7 +259,7 @@ def update_casting(entity_id, casting):
                 events.emit(
                     "asset:update",
                     {"asset_id": cast["asset_id"]},
-                    project_id=entity.project_id,
+                    project_id=str(entity.project_id),
                 )
 
     entity_id = str(entity.id)

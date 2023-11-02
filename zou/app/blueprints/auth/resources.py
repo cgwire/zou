@@ -59,6 +59,7 @@ def is_from_browser(user_agent):
         "Chrome",
         "Edge",
         "Firefox",
+        "Mobile Safari",
         "Opera",
         "Safari",
         "Vivaldi",
