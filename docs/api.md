@@ -26,10 +26,10 @@ Here is a complete authentication process as an example (again using `curl`):
 
 The full specification of the API is available at the OpenAPI format here:
 
-[https://kitsu-api.cg-wire.com](https://kitsu-api.cg-wire.com)
+[https://api-docs.kitsu.cloud](https://api-docs.kitsu.cloud)
 
 
 ## Available data
 
 Data you can store and retrieve are listed in the specification:
-[Models specification](https://kitsu-api.cg-wire.com/#model- Common fields for all model instances)
+[Models specification](https://api-docs.kitsu.cloud/#model- Common fields for all model instances)

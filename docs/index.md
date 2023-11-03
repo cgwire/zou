@@ -29,7 +29,7 @@ The Kitsu API can:
 * Provide folder and file paths for any task.
 * Export main data to CSV files.
 
-For more details, you can check [the full specification](https://kitsu-api.kitsu.cloud).
+For more details, you can check [the full specification](https://api-docs.kitsu.cloud).
 
 # Quickstart (Docker Image)
 
