@@ -57,6 +57,7 @@ def is_from_browser(user_agent):
     return user_agent.browser in [
         "Brave",
         "Chrome",
+        "Chrome Mobile",
         "Edge",
         "Firefox",
         "Mobile Safari",
