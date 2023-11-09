@@ -1,5 +1,6 @@
 import slugify
 
+from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -25,6 +26,7 @@ from zou.app.services.exception import (
     MetadataDescriptorNotFoundException,
     DepartmentNotFoundException,
     WrongParameterException,
+    PreviewBackgroundFileNotFoundException,
 )
 
 from zou.app.utils import fields, events, cache
@@ -385,6 +387,34 @@ def remove_status_automation_setting(project_id, status_automation_id):
     )
 
 
+def add_preview_background_file_setting(
+    project_id, preview_background_file_id
+):
+    """
+    Add a preview background file listed in database to the project backgrounds.
+    """
+    return _add_to_list_attr(
+        project_id,
+        PreviewBackgroundFile,
+        preview_background_file_id,
+        "preview_background_files",
+    )
+
+
+def remove_preview_background_file_setting(
+    project_id, preview_background_file_id
+):
+    """
+    Remove a preview background file listed in database from the project backgrounds.
+    """
+    return _remove_from_list_attr(
+        project_id,
+        PreviewBackgroundFile,
+        preview_background_file_id,
+        "preview_background_files",
+    )
+
+
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
@@ -608,6 +638,11 @@ def get_project_task_statuses(project_id):
 def get_project_status_automations(project_id):
     project = get_project_raw(project_id)
     return Project.serialize_list(project.status_automations)
+
+
+def get_project_preview_background_files(project_id):
+    project = get_project_raw(project_id)
+    return Project.serialize_list(project.preview_background_files)
 
 
 def get_project_fps(project_id):

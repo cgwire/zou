@@ -24,6 +24,7 @@ from zou.app.models.news import News
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
+from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
@@ -36,7 +37,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.services import deletion_service, tasks_service
+from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
 from flask_fs.backends.local import LocalBackend
 from zou.app.utils import events
@@ -84,6 +85,7 @@ event_name_model_map = {
     "notification": Notification,
     "person": Person,
     "playlist": Playlist,
+    "preview-background-file": PreviewBackgroundFile,
     "preview-file": PreviewFile,
     "project": Project,
     "project-status": ProjectStatus,
@@ -120,6 +122,7 @@ event_name_model_path_map = {
     "organisation": "organisations",
     "person": "persons",
     "playlist": "playlists",
+    "preview-background-file": "preview-background-files",
     "preview-file": "preview-files",
     "project": "projects",
     "project-status": "project-status",
@@ -175,6 +178,7 @@ thumbnail_events = [
 ]
 
 file_events = [
+    "preview-background-file:add-file",
     "preview-file:add-file",
     "organisation:set-thumbnail",
     "person:set-thumbnail",
@@ -320,6 +324,14 @@ def run_last_events_files(minutes=0, page_size=50):
             preview_file = PreviewFile.get(event["data"]["preview_file_id"])
             if preview_file is not None:
                 download_preview_from_another_instance(preview_file)
+        elif event_name in ["preview-background-file"]:
+            preview_background_file = PreviewBackgroundFile.get(
+                event["data"]["preview_background_file_id"]
+            )
+            if preview_background_file is not None:
+                download_preview_background_from_another_instance(
+                    preview_background_file
+                )
         else:
             download_thumbnail_from_another_instance(
                 event_name, event["data"]["%s_id" % event_name]
@@ -603,7 +615,12 @@ def add_file_listeners(event_client):
     Add new preview event listener.
     """
     gazu.events.add_listener(
-        event_client, "preview-file:add-file", retrieve_file
+        event_client, "preview-file:add-file", retrieve_preview_file
+    )
+    gazu.events.add_listener(
+        event_client,
+        "preview-background-file:add-file",
+        retrieve_preview_background_file,
     )
     for model_name in thumbnail_events:
         gazu.events.add_listener(
@@ -613,7 +630,7 @@ def add_file_listeners(event_client):
         )
 
 
-def retrieve_file(data):
+def retrieve_preview_file(data):
     if data.get("sync", False):
         return
     try:
@@ -627,6 +644,32 @@ def retrieve_file(data):
     except gazu.exception.RouteNotFoundException as e:
         logger.error("Route not found: %s" % e)
         logger.error("Fail to dowonload preview file: %s" % (preview_file_id))
+
+
+def retrieve_preview_background_file(data):
+    if data.get("sync", False):
+        return
+    try:
+        preview_background_file_id = data["preview_background_file_id"]
+        preview_background_file = PreviewBackgroundFile.get(
+            preview_background_file_id
+        )
+        download_preview_background_from_another_instance(
+            preview_background_file
+        )
+        forward_event(
+            {"name": "preview-background-file:add-file", "data": data}
+        )
+        logger.info(
+            "Preview background file and related downloaded: %s"
+            % preview_background_file_id
+        )
+    except gazu.exception.RouteNotFoundException as e:
+        logger.error("Route not found: %s" % e)
+        logger.error(
+            "Fail to dowonload preview background file: %s"
+            % (preview_background_file_id)
+        )
 
 
 def get_retrieve_thumbnail(model_name):
@@ -766,6 +809,9 @@ def download_files_from_another_instance(
     download_preview_files_from_another_instance(
         project=project, pool=pool, number_attemps=number_attemps
     )
+    download_preview_background_files_from_another_instance(
+        project=project, pool=pool, number_attemps=number_attemps
+    )
     download_attachment_files_from_another_instance(
         project=project, pool=pool, number_attemps=number_attemps
     )
@@ -866,6 +912,31 @@ def download_preview_files_from_another_instance(
             )
 
 
+def download_preview_background_files_from_another_instance(
+    project=None, pool=None, number_attemps=3
+):
+    """
+    Download all preview background files and related.
+    """
+    if project:
+        project_dict = gazu.project.get_project_by_name(project)
+        project = projects_service.get_project_raw(project_dict["id"])
+        preview_background_files = project.preview_background_files
+    else:
+        preview_background_files = PreviewBackgroundFile.query.all()
+
+    for preview_background_file in preview_background_files:
+        if pool is None:
+            download_preview_background_from_another_instance(
+                preview_background_file, number_attemps
+            )
+        else:
+            pool.apply_async(
+                download_preview_background_from_another_instance,
+                (preview_background_file, number_attemps),
+            )
+
+
 def download_preview_from_another_instance(preview_file, number_attemps=3):
     """
     Download all files link to preview file entry: orginal file and variants.
@@ -884,7 +955,7 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
                 "previews",
             ]:
                 if not file_store.exists_picture(prefix, preview_file_id):
-                    download_file_from_another_instance(
+                    download_preview_file_from_another_instance(
                         file_store.add_picture,
                         prefix,
                         preview_file_id,
@@ -895,7 +966,7 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
         if is_movie:
             for prefix in ["low", "previews"]:
                 if not file_store.exists_movie(prefix, preview_file_id):
-                    download_file_from_another_instance(
+                    download_preview_file_from_another_instance(
                         file_store.add_movie,
                         prefix,
                         preview_file_id,
@@ -905,7 +976,7 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
 
         elif is_file:
             if not file_store.exists_file("previews", preview_file_id):
-                download_file_from_another_instance(
+                download_preview_file_from_another_instance(
                     file_store.add_file,
                     "previews",
                     preview_file_id,
@@ -914,7 +985,33 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
                 )
 
 
-def download_file_from_another_instance(
+def download_preview_background_from_another_instance(
+    preview_background, number_attemps=3
+):
+    """
+    Download all files link to preview background file entry.
+    """
+    extension = preview_background.extension
+
+    preview_background_file_id = str(preview_background.id)
+    with app.app_context():
+        for prefix in [
+            "thumbnails",
+            "preview-backgrounds",
+        ]:
+            if not file_store.exists_picture(
+                prefix, preview_background_file_id
+            ):
+                download_preview_background_file_from_another_instance(
+                    file_store.add_picture,
+                    prefix,
+                    preview_background_file_id,
+                    extension,
+                    number_attemps=number_attemps,
+                )
+
+
+def download_preview_file_from_another_instance(
     save_func, prefix, preview_file_id, extension, number_attemps=3
 ):
     """
@@ -947,6 +1044,46 @@ def download_file_from_another_instance(
         if os.path.exists(file_path):
             try:
                 save_func(prefix, preview_file_id, file_path)
+                logger.info(f"Downloaded and uploaded ({path}).")
+                break
+            except Exception:
+                if attemps_count + 1 == number_attemps:
+                    logger.error(f"Upload failed ({path}):")
+                    logger.error(traceback.format_exc())
+            finally:
+                os.remove(file_path)
+    return path
+
+
+def download_preview_background_file_from_another_instance(
+    save_func, prefix, preview_background_file_id, extension, number_attemps=3
+):
+    """
+    Download the preview background file for the given preview from object
+    storage and store it locally.
+    """
+    if prefix == "preview-backgrounds":
+        path = f"/pictures/preview-background-files/{preview_background_file_id}.{extension}"
+    elif prefix == "thumbnails":
+        path = f"/pictures/thumbnails/preview-background-files/{preview_background_file_id}.png"
+
+    file_path = "/tmp/%s.%s" % (preview_background_file_id, extension)
+    for attemps_count in range(0, number_attemps):
+        if attemps_count > 0:
+            time.sleep(0.5)
+        try:
+            response = gazu.client.download(path, file_path)
+            if response.status_code == 404:
+                logger.error(f"Not found ({path}).")
+            elif response.status_code == 500:
+                logger.error(f"Error while downloading ({path}).")
+        except Exception:
+            if attemps_count + 1 == number_attemps:
+                logger.error(f"Download failed ({path}):")
+                logger.error(traceback.format_exc())
+        if os.path.exists(file_path):
+            try:
+                save_func(prefix, preview_background_file_id, file_path)
                 logger.info(f"Downloaded and uploaded ({path}).")
                 break
             except Exception:

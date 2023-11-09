@@ -15,6 +15,7 @@ from zou.app.services import (
     assets_service,
     tasks_service,
     status_automations_service,
+    files_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -79,6 +80,31 @@ class ProjectsResource(BaseModelsResource):
                 )
                 for task_type_id in data["status_automations"]
             ]
+
+        if "preview_background_files" in data:
+            data["preview_background_files"] = [
+                files_service.get_preview_background_file_raw(
+                    preview_background_file_id
+                )
+                for preview_background_file_id in data[
+                    "preview_background_files"
+                ]
+            ]
+
+        if data.get("preview_background_file_id") is not None:
+            preview_background_files_ids = []
+            if "preview_background_files" in data:
+                preview_background_files_ids = [
+                    str(preview_background_file.id)
+                    for preview_background_file in data[
+                        "preview_background_files"
+                    ]
+                ]
+            if (
+                data["preview_background_file_id"]
+                not in preview_background_files_ids
+            ):
+                raise ArgumentsException("Invalid preview_background_file_id")
         return data
 
     def post_creation(self, project):
@@ -132,6 +158,37 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                 )
                 for task_type_id in data["status_automations"]
             ]
+        if "preview_background_files" in data:
+            data["preview_background_files"] = [
+                files_service.get_preview_background_file_raw(
+                    preview_background_file_id
+                )
+                for preview_background_file_id in data[
+                    "preview_background_files"
+                ]
+            ]
+
+        if data.get("preview_background_file_id") is not None:
+            if "preview_background_files" in data:
+                preview_background_files_ids = [
+                    str(preview_background_file.id)
+                    for preview_background_file in data[
+                        "preview_background_files"
+                    ]
+                ]
+            else:
+                preview_background_files_ids = [
+                    preview_background_file_id
+                    for preview_background_file_id in project_dict[
+                        "preview_background_files"
+                    ]
+                ]
+            if (
+                data["preview_background_file_id"]
+                not in preview_background_files_ids
+            ):
+                raise ArgumentsException("Invalid preview_background_file_id")
+
         return data
 
     def post_update(self, project_dict):

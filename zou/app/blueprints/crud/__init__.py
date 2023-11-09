@@ -118,7 +118,10 @@ from zou.app.blueprints.crud.working_file import (
     WorkingFilesResource,
     WorkingFileResource,
 )
-
+from zou.app.blueprints.crud.preview_background_file import (
+    PreviewBackgroundFileResource,
+    PreviewBackgroundFilesResource,
+)
 
 routes = [
     ("/data/persons", PersonsResource),
@@ -190,6 +193,11 @@ routes = [
     ("/data/subscriptions/<instance_id>", SubscriptionResource),
     ("/data/entity-links/", EntityLinksResource),
     ("/data/entity-links/<instance_id>", EntityLinkResource),
+    ("/data/preview-background-files", PreviewBackgroundFilesResource),
+    (
+        "/data/preview-background-files/<instance_id>",
+        PreviewBackgroundFileResource,
+    ),
 ]
 
 blueprint = Blueprint("/data", "data")

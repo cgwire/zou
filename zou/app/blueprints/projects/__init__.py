@@ -8,6 +8,8 @@ from zou.app.blueprints.projects.resources import (
     ProductionTeamRemoveResource,
     ProductionAssetTypeResource,
     ProductionAssetTypeRemoveResource,
+    ProductionPreviewBackgroundFileResource,
+    ProductionPreviewBackgroundFileRemoveResource,
     ProductionTaskTypeResource,
     ProductionTaskTypeRemoveResource,
     ProductionTaskTypesResource,
@@ -69,6 +71,14 @@ routes = [
     (
         "/data/projects/<project_id>/settings/status-automations/<status_automation_id>",
         ProductionStatusAutomationRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/preview-background-files/<preview_background_file_id>",
+        ProductionPreviewBackgroundFileRemoveResource,
+    ),
+    (
+        "/data/projects/<project_id>/settings/preview-background-files",
+        ProductionPreviewBackgroundFileResource,
     ),
     (
         "/data/projects/<project_id>/metadata-descriptors",

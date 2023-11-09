@@ -37,6 +37,10 @@ class TaskNotFoundException(NotFound):
     pass
 
 
+class PreviewBackgroundFileNotFoundException(NotFound):
+    pass
+
+
 class DepartmentNotFoundException(NotFound):
     pass
 

@@ -26,6 +26,9 @@ from zou.app.blueprints.previews.resources import (
     UpdatePreviewPositionResource,
     ExtractFrameFromPreview,
     ExtractTileFromPreview,
+    CreatePreviewBackgroundFileResource,
+    PreviewBackgroundFileThumbnailResource,
+    PreviewBackgroundFileResource,
 )
 
 routes = [
@@ -97,6 +100,18 @@ routes = [
     (
         "/pictures/thumbnails/projects/<instance_id>.png",
         ProjectThumbnailResource,
+    ),
+    (
+        "/pictures/preview-background-files/<instance_id>",
+        CreatePreviewBackgroundFileResource,
+    ),
+    (
+        "/pictures/thumbnails/preview-background-files/<instance_id>.png",
+        PreviewBackgroundFileThumbnailResource,
+    ),
+    (
+        "/pictures/preview-background-files/<instance_id>.<extension>",
+        PreviewBackgroundFileResource,
     ),
     (
         "/actions/entities/<entity_id>/set-main-preview/<preview_file_id>",

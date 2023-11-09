@@ -313,14 +313,14 @@ def save_variants(preview_file_id, original_picture_path):
     return variants
 
 
-def clear_variant_from_cache(preview_file_id, prefix):
+def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
     """
     Clear a variant from the cache to force to redownload from object storage.
     """
     if config.FS_BACKEND != "local":
         file_path = os.path.join(
             config.TMP_DIR,
-            "cache-%s-%s.%s" % (prefix, preview_file_id, "png"),
+            "cache-%s-%s.%s" % (prefix, preview_file_id, extension),
         )
         if os.path.exists(file_path):
             os.remove(file_path)

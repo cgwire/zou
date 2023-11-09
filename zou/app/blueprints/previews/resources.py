@@ -5,6 +5,7 @@ from flask import send_file as flask_send_file
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 from flask_fs.errors import FileNotFound
+from werkzeug.exceptions import NotFound
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
@@ -33,46 +34,48 @@ from zou.app.utils import (
 from zou.app.services.exception import (
     ArgumentsException,
     PreviewFileNotFoundException,
+    PreviewBackgroundFileNotFoundException,
 )
 
 
-ALLOWED_PICTURE_EXTENSION = [".jpe", ".jpeg", ".jpg", ".png"]
+ALLOWED_PICTURE_EXTENSION = ["jpe", "jpeg", "jpg", "png"]
 ALLOWED_MOVIE_EXTENSION = [
-    ".avi",
-    ".m4v",
-    ".mkv",
-    ".mov",
-    ".mp4",
-    ".webm",
-    ".wmv",
+    "avi",
+    "m4v",
+    "mkv",
+    "mov",
+    "mp4",
+    "webm",
+    "wmv",
 ]
 ALLOWED_FILE_EXTENSION = [
-    ".ae",
-    ".ai",
-    ".blend",
-    ".clip",
-    ".comp",
-    ".exr",
-    ".fbx",
-    ".fla",
-    ".flv",
-    ".gif",
-    ".glb",
-    ".gltf",
-    ".hip",
-    ".ma",
-    ".mb",
-    ".mp3",
-    ".obj",
-    ".pdf",
-    ".psd",
-    ".rar",
-    ".sbbkp",
-    ".svg",
-    ".swf",
-    ".wav",
-    ".zip",
+    "ae",
+    "ai",
+    "blend",
+    "clip",
+    "comp",
+    "exr",
+    "fbx",
+    "fla",
+    "flv",
+    "gif",
+    "glb",
+    "gltf",
+    "hip",
+    "ma",
+    "mb",
+    "mp3",
+    "obj",
+    "pdf",
+    "psd",
+    "rar",
+    "sbbkp",
+    "svg",
+    "swf",
+    "wav",
+    "zip",
 ]
+ALLOWED_PREVIEW_BACKGROUND_EXTENSION = ["hdr"]
 
 
 def send_standard_file(
@@ -107,15 +110,26 @@ def send_movie_file(preview_file_id, as_attachment=False, lowdef=False):
     )
 
 
-def send_picture_file(prefix, preview_file_id, as_attachment=False):
+def send_picture_file(
+    prefix,
+    preview_file_id,
+    as_attachment=False,
+    extension="png",
+    download_name="",
+):
+    if extension == "png":
+        mimetype = "image/png"
+    elif extension == "hdr":
+        mimetype = "image/vnd.radiance"
     return send_storage_file(
         file_store.get_local_picture_path,
         file_store.open_picture,
         prefix,
         preview_file_id,
-        "png",
-        mimetype="image/png",
+        extension,
+        mimetype=mimetype,
         as_attachment=as_attachment,
+        download_name=download_name,
     )
 
 
@@ -128,6 +142,7 @@ def send_storage_file(
     mimetype="application/octet-stream",
     as_attachment=False,
     max_age=config.CLIENT_CACHE_MAX_AGE,
+    download_name="",
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
@@ -135,15 +150,20 @@ def send_storage_file(
     """
     file_size = None
     try:
-        if prefix in ["movies", "original"]:
-            preview_file = files_service.get_preview_file(preview_file_id)
+        if prefix in ["movies", "original", "preview-backgrounds"]:
+            if prefix == "preview-backgrounds":
+                preview_file = files_service.get_preview_background_file(
+                    preview_file_id
+                )
+            else:
+                preview_file = files_service.get_preview_file(preview_file_id)
             if (
                 preview_file.get("file_size") is not None
                 and preview_file["file_size"] > 0
                 and preview_file["extension"] == extension
             ):
                 file_size = preview_file["file_size"]
-    except PreviewFileNotFoundException:
+    except NotFound:
         pass
     file_path = fs.get_file_path_and_file(
         config,
@@ -155,7 +175,6 @@ def send_storage_file(
         file_size=file_size,
     )
 
-    download_name = ""
     if as_attachment:
         download_name = names_service.get_preview_file_name(preview_file_id)
 
@@ -216,7 +235,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         uploaded_file = request.files["file"]
 
         file_name_parts = uploaded_file.filename.split(".")
-        extension = ".%s" % file_name_parts.pop().lower()
+        extension = file_name_parts.pop().lower()
         original_file_name = ".".join(file_name_parts)
 
         if extension in ALLOWED_PICTURE_EXTENSION:
@@ -256,7 +275,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {
-                    "extension": extension[1:],
+                    "extension": extension,
                     "original_name": original_file_name,
                     "status": "ready",
                 },
@@ -276,7 +295,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         Get uploaded picture, build thumbnails then save everything in the file
         storage.
         """
-        tmp_folder = current_app.config["TMP_DIR"]
+        tmp_folder = config.TMP_DIR
         original_tmp_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
         )
@@ -299,7 +318,7 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         everything in the file storage.
         """
         no_job = self.get_no_job()
-        tmp_folder = current_app.config["TMP_DIR"]
+        tmp_folder = config.TMP_DIR
         uploaded_movie_path = movie.save_file(
             tmp_folder, preview_file_id, uploaded_file
         )
@@ -319,8 +338,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         """
         Get uploaded file then save it in the file storage.
         """
-        tmp_folder = current_app.config["TMP_DIR"]
-        file_name = instance_id + extension
+        tmp_folder = config.TMP_DIR
+        file_name = f"{instance_id}.{extension}"
         file_path = os.path.join(tmp_folder, file_name)
         uploaded_file.save(file_path)
         file_store.add_file("previews", instance_id, file_path)
@@ -577,6 +596,7 @@ class PreviewFileResource(Resource):
             abort(403)
 
         try:
+            extension = extension.lower()
             if extension == "png":
                 return send_picture_file("original", instance_id)
             elif extension == "pdf":
@@ -797,7 +817,7 @@ class BaseCreatePictureResource(Resource):
         self.check_permissions(instance_id)
         self.prepare_creation(instance_id)
 
-        tmp_folder = current_app.config["TMP_DIR"]
+        tmp_folder = config.TMP_DIR
         uploaded_file = request.files["file"]
         thumbnail_path = thumbnail_utils.save_file(
             tmp_folder, instance_id, uploaded_file
@@ -823,9 +843,8 @@ class BasePictureResource(Resource):
     Base resource to download a thumbnail.
     """
 
-    def __init__(self, subfolder):
-        Resource.__init__(self)
-        self.subfolder = subfolder
+    def is_exist(self, instance_id):
+        return False
 
     def is_allowed(self, instance_id):
         return True
@@ -893,9 +912,6 @@ class CreatePersonThumbnailResource(BaseCreatePictureResource):
 
 
 class PersonThumbnailResource(BasePictureResource):
-    def __init__(self):
-        BasePictureResource.__init__(self, "persons")
-
     def is_exist(self, person_id):
         return persons_service.get_person(person_id) is not None
 
@@ -920,9 +936,6 @@ class CreateOrganisationThumbnailResource(BaseCreatePictureResource):
 
 
 class OrganisationThumbnailResource(BasePictureResource):
-    def __init__(self):
-        BasePictureResource.__init__(self, "organisations")
-
     def is_exist(self, organisation_id):
         return True
 
@@ -943,9 +956,6 @@ class CreateProjectThumbnailResource(BaseCreatePictureResource):
 
 
 class ProjectThumbnailResource(BasePictureResource):
-    def __init__(self):
-        BasePictureResource.__init__(self, "projects")
-
     def is_exist(self, project_id):
         return projects_service.get_project(project_id) is not None
 
@@ -1233,3 +1243,209 @@ class ExtractTileFromPreview(Resource):
             )
         finally:
             os.remove(extracted_tile_path)
+
+
+class CreatePreviewBackgroundFileResource(Resource):
+    """
+    Main resource to add a preview background file. It stores the preview background
+    file and generates a rectangle thumbnail.
+    """
+
+    @jwt_required()
+    def post(self, instance_id):
+        """
+        Main resource to add a preview background file.
+        ---
+        tags:
+          - Preview background file
+        consumes:
+          - multipart/form-data
+          - image/vnd.radiance
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            required: True
+            type: file
+        responses:
+            200:
+                description: Preview background file added
+        """
+        self.check_permissions(instance_id)
+
+        preview_background_file = files_service.get_preview_background_file(
+            instance_id
+        )
+
+        uploaded_file = request.files["file"]
+
+        file_name_parts = uploaded_file.filename.split(".")
+        extension = file_name_parts.pop().lower()
+        original_file_name = ".".join(file_name_parts)
+
+        if extension in ALLOWED_PREVIEW_BACKGROUND_EXTENSION:
+            metadada = self.save_preview_background_file(
+                instance_id, uploaded_file, extension
+            )
+            preview_background_file = (
+                files_service.update_preview_background_file(
+                    instance_id,
+                    {
+                        "extension": extension,
+                        "original_name": original_file_name,
+                        "file_size": metadada["file_size"],
+                    },
+                )
+            )
+            files_service.clear_preview_background_file_cache(instance_id)
+            self.emit_preview_background_file_event(preview_background_file)
+            return preview_background_file, 201
+
+        else:
+            current_app.logger.info(
+                f"Wrong file format, extension: {extension}"
+            )
+            deletion_service.remove_preview_background_file_by_id(instance_id)
+            abort(400, f"Wrong file format, extension: {extension}")
+
+    def check_permissions(self, instance_id):
+        """
+        Check if user has permissions to add a preview background file.
+        """
+        return permissions.check_admin_permissions()
+
+    def save_preview_background_file(
+        self, instance_id, uploaded_file, extension
+    ):
+        """
+        Get uploaded preview background file, build thumbnail then save
+        everything in the file storage.
+        """
+        try:
+            tmp_folder = config.TMP_DIR
+            file_name = f"{instance_id}.{extension}"
+            preview_background_path = os.path.join(tmp_folder, file_name)
+            uploaded_file.save(preview_background_path)
+            file_size = fs.get_file_size(preview_background_path)
+            file_store.add_picture(
+                "preview-backgrounds", instance_id, preview_background_path
+            )
+            preview_files_service.clear_variant_from_cache(
+                instance_id, "preview-backgrounds", extension
+            )
+            if extension == "hdr":
+                thumbnail_path = thumbnail_utils.turn_hdr_into_thumbnail(
+                    preview_background_path
+                )
+                file_store.add_picture(
+                    "thumbnails", instance_id, thumbnail_path
+                )
+                preview_files_service.clear_variant_from_cache(
+                    instance_id, "thumbnails"
+                )
+
+            return {
+                "preview_file_id": instance_id,
+                "file_size": file_size,
+            }
+        except:
+            current_app.logger.error(
+                f"Error while saving preview background file and thumbnail: {instance_id}"
+            )
+            deletion_service.remove_preview_background_file_by_id(instance_id)
+            abort(
+                400,
+                f"Error while saving preview background file and thumbnail: {instance_id}",
+            )
+        finally:
+            try:
+                if os.path.exists(preview_background_path):
+                    os.remove(preview_background_path)
+                if os.path.exists(thumbnail_path):
+                    os.remove(thumbnail_path)
+            except:
+                pass
+
+    def emit_preview_background_file_event(self, preview_background_file):
+        """
+        Emit an event, each time a preview background file is added.
+        """
+        events.emit(
+            "preview-background-file:update",
+            {"preview_background_file_id": preview_background_file["id"]},
+        )
+        events.emit(
+            "preview-background-file:add-file",
+            {
+                "preview_background_file_id": preview_background_file["id"],
+                "extension": preview_background_file["extension"],
+            },
+        )
+
+
+class PreviewBackgroundFileResource(Resource):
+    """
+    Main resource to download a preview background file.
+    """
+
+    @jwt_required()
+    def get(self, instance_id, extension):
+        """
+        Download a preview background file.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: extension
+            required: True
+            type: string
+            format: extension
+            x-example: hdr
+        responses:
+            200:
+                description: Preview background file downloaded
+            404:
+                description: Preview background file not found
+        """
+        preview_background_file = files_service.get_preview_background_file(
+            instance_id
+        )
+
+        extension = extension.lower()
+        if preview_background_file["extension"] != extension:
+            raise PreviewBackgroundFileNotFoundException
+
+        try:
+            return send_picture_file(
+                "preview-backgrounds",
+                instance_id,
+                extension=extension,
+                download_name=f"{preview_background_file['original_name']}.{extension}",
+            )
+        except FileNotFound:
+            current_app.logger.error(
+                "Preview background file was not found for: %s" % instance_id
+            )
+            raise PreviewBackgroundFileNotFoundException
+
+
+class PreviewBackgroundFileThumbnailResource(BasePictureResource):
+    def is_exist(self, preview_background_file_id):
+        return (
+            files_service.get_preview_background_file(
+                preview_background_file_id
+            )
+            is not None
+        )
