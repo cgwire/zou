@@ -36,7 +36,6 @@ instance, so it is recommended to the follow the documentation:
 
 Specification:
 - `https://api-docs.kitsu.cloud/ <https://api-docs.kitsu.cloud>`__
-- `https://kitsu-api.cg-wire.com/ <https://kitsu-api.cg-wire.com>`__
 
 Contributing
 ------------
