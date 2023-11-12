@@ -35,3 +35,4 @@ class StatusAutomation(db.Model, BaseMixin, SerializerMixin):
         index=True,
         nullable=True,
     )
+    archived = db.Column(db.Boolean(), default=False)
