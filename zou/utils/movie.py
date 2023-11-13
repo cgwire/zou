@@ -300,6 +300,12 @@ def add_empty_soundtrack(file_path, try_count=1):
     with contextlib.suppress(FileNotFoundError):
         os.remove(tmp_file_path)
 
+    duration = None
+    try:
+        probe = ffmpeg.probe(tmp_file_path, select_streams="v")
+        duration = probe["format"]["duration"]
+    except:
+        pass
     args = [
         "ffmpeg",
         "-hide_banner",
@@ -330,8 +336,32 @@ def add_empty_soundtrack(file_path, try_count=1):
 
     logger.info(f"add_empty_soundtrack.sp.returncode: {sp.returncode}")
     if sp.returncode == 0:
-        shutil.copyfile(tmp_file_path, file_path)
-        os.remove(tmp_file_path)
+        probe = ffmpeg.probe(tmp_file_path, select_streams="v")
+        new_duration = probe["format"]["duration"]
+
+        # Hack needed to fix duration after adding empty soundtrack due to a
+        # bug in ffmpeg which adds duplicated frames at the end of the movie.
+        if duration is not None and duration != new_duration:
+            tmp_file_path_trim = file_path + "_empty_audio_trim." + extension
+            stream = ffmpeg.input(tmp_file_path)
+            stream = ffmpeg.output(
+                stream.video,
+                stream.audio,
+                tmp_file_path_trim,
+                ss="00:00:00",
+                t=duration,
+                vcodec="copy",
+                acodec="copy",
+            )
+            stream.run(quiet=False, capture_stderr=True, overwrite_output=True)
+
+            shutil.copyfile(tmp_file_path_trim, file_path)
+            os.remove(tmp_file_path)
+            os.remove(tmp_file_path_trim)
+
+        else:
+            shutil.copyfile(tmp_file_path, file_path)
+            os.remove(tmp_file_path)
     else:
         logger.error(f"Err in soundtrack: {err}")
         logger.error(f"Err code: {sp.returncode}")
