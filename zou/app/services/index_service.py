@@ -102,7 +102,7 @@ def reset_shot_index():
     )
 
 
-def search_assets(query, project_ids=[], limit=3):
+def search_assets(query, project_ids=[], limit=3, offset=0):
     """
     Perform a search on the index. The query is a simple string. The result is
     a list of assets with extra data like the project name and the asset type
@@ -111,7 +111,9 @@ def search_assets(query, project_ids=[], limit=3):
     index = get_asset_index()
     assets = []
 
-    results = indexing.search(index, query, project_ids, limit=limit)
+    results = indexing.search(
+        index, query, project_ids, limit=limit, offset=offset
+    )
     for asset_id, matched_terms in results:
         asset = assets_service.get_asset(asset_id)
         asset_type = assets_service.get_asset_type(asset["entity_type_id"])
@@ -130,7 +132,7 @@ def search_assets(query, project_ids=[], limit=3):
     return assets
 
 
-def search_shots(query, project_ids=[], limit=3):
+def search_shots(query, project_ids=[], limit=3, offset=0):
     """
     Perform a search on the index. The query is a simple string. The result is
     a list of shots with extra data like the project name and the asset type
@@ -139,7 +141,9 @@ def search_shots(query, project_ids=[], limit=3):
     index = get_shot_index()
     shots = []
 
-    results = indexing.search(index, query, project_ids, limit=limit)
+    results = indexing.search(
+        index, query, project_ids, limit=limit, offset=offset
+    )
 
     for shot_id, matched_terms in results:
         shot = shots_service.get_shot(shot_id)
@@ -165,14 +169,14 @@ def search_shots(query, project_ids=[], limit=3):
     return shots
 
 
-def search_persons(query, limit=3):
+def search_persons(query, limit=3, offset=0):
     """
     Perform a search on the index. The query is a simple string. The result is
     a list of persons (3 results maximum by default).
     """
     index = get_person_index()
     persons = []
-    results = indexing.search(index, query, limit=limit)
+    results = indexing.search(index, query, limit=limit, offset=offset)
     for person_id, matched_terms in results:
         person = persons_service.get_person(person_id)
         person["matched_terms"] = matched_terms

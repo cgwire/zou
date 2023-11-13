@@ -97,7 +97,7 @@ def index_documents(index, documents):
     return documents
 
 
-def search(ix, query, project_ids=[], limit=10):
+def search(ix, query, project_ids=[], limit=10, offset=0):
     """
     Perform a search on given index and filter result based on project IDs.
     The number of results can be specified.
@@ -105,6 +105,7 @@ def search(ix, query, project_ids=[], limit=10):
     project_ids = ",".join(project_ids)
     search_options = {
         "limit": limit,
+        "offset": offset,
         "sort": ["name:asc"],
         "showMatchesPosition": True,
     }
