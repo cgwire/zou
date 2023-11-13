@@ -1,6 +1,8 @@
 import meilisearch
 from meilisearch.errors import MeilisearchApiError
+
 from zou.app import config
+from zou.app.utils import cache
 
 client = None
 
@@ -50,18 +52,21 @@ def create_index(index_name, searchable_fields=[], filterable_fields=[]):
     return index
 
 
+@cache.memoize_function(120)
 def get_index(index_name):
     """
     Get index matching given name.
     """
     init()
-    return client.get_index(index_name)
+    index = client.get_index(index_name)
+    return index
 
 
 def clear_index(index_name):
     """
     Clear all data into the index matching given name.
     """
+    cache.cache.delete_memoized(get_index)
     index = get_index(index_name)
     task = index.delete_all_documents()
     client.wait_for_task(
