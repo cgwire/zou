@@ -8,8 +8,10 @@ from zou.app.models.working_file import WorkingFile
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.software import Software
 from zou.app.models.task import Task
+
 
 from zou.app.services import entities_service
 from zou.app.services.base_service import (
@@ -25,6 +27,7 @@ from zou.app.services.exception import (
     SoftwareNotFoundException,
     NoOutputFileException,
     EntryAlreadyExistsException,
+    PreviewBackgroundFileNotFoundException,
 )
 
 from zou.app.utils import cache, fields, events, query as query_utils
@@ -839,3 +842,65 @@ def get_preview_files_for_project(project_id, page=-1):
         .order_by(desc(PreviewFile.updated_at))
     )
     return query_utils.get_paginated_results(query, page)
+
+
+def clear_preview_background_file_cache(preview_background_file_id):
+    cache.cache.delete_memoized(
+        get_preview_background_file, preview_background_file_id
+    )
+    cache.cache.delete_memoized(get_preview_background_files)
+
+
+def get_preview_background_file_raw(preview_background_file_id):
+    """
+    Get preview background file matching given id as an active record.
+    """
+    try:
+        preview_background = PreviewBackgroundFile.get(
+            preview_background_file_id
+        )
+    except StatementError:
+        raise PreviewBackgroundFileNotFoundException
+
+    if preview_background is None:
+        raise PreviewBackgroundFileNotFoundException
+
+    return preview_background
+
+
+@cache.memoize_function(1200)
+def get_preview_background_file(preview_background_file_id):
+    """
+    Get preview background file matching given id as a dictionary.
+    """
+    return get_preview_background_file_raw(
+        preview_background_file_id
+    ).serialize()
+
+
+@cache.memoize_function(120)
+def get_preview_background_files():
+    """
+    Get all preview backgrounds files.
+    """
+    return fields.serialize_models(PreviewBackgroundFile.get_all())
+
+
+def reset_default_preview_background_files(preview_background_file_id):
+    """
+    Set all preview background files as is_default=False except the one matching given id.
+    """
+    PreviewBackgroundFile.query.filter(
+        PreviewBackgroundFile.id != preview_background_file_id,
+        PreviewBackgroundFile.is_default == True,
+    ).update({"is_default": False})
+    PreviewBackgroundFile.commit()
+
+
+def update_preview_background_file(preview_background_file_id, data):
+    preview_background_file = get_preview_background_file_raw(
+        preview_background_file_id
+    )
+    preview_background_file.update(data)
+    clear_preview_background_file_cache(preview_background_file_id)
+    return preview_background_file.serialize()

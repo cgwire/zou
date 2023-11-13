@@ -88,6 +88,18 @@ class ProjectStatusAutomationLink(db.Model):
     )
 
 
+class ProjectPreviewBackgroundFileLink(db.Model):
+    __tablename__ = "project_preview_background_file_link"
+    project_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+    )
+    preview_background_file_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("preview_background_file.id"),
+        primary_key=True,
+    )
+
+
 class Project(db.Model, BaseMixin, SerializerMixin):
     """
     Describes a production the studio works on.
@@ -113,6 +125,12 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     max_retakes = db.Column(db.Integer, default=0)
     is_clients_isolated = db.Column(db.Boolean(), default=False)
     is_preview_download_allowed = db.Column(db.Boolean(), default=False)
+    default_preview_background_file_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("preview_background_file.id"),
+        default=None,
+        index=True,
+    )
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True
@@ -130,6 +148,10 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     )
     status_automations = db.relationship(
         "StatusAutomation", secondary="project_status_automation_link"
+    )
+    preview_background_files = db.relationship(
+        "PreviewBackgroundFile",
+        secondary="project_preview_background_file_link",
     )
 
     def set_team(self, person_ids):
@@ -170,6 +192,14 @@ class Project(db.Model, BaseMixin, SerializerMixin):
             "status_automation_id",
         )
 
+    def set_preview_background_files(self, preview_background_files_ids):
+        return self.set_links(
+            preview_background_files_ids,
+            ProjectPreviewBackgroundFileLink,
+            "project_id",
+            "preview_background_file_id",
+        )
+
     @classmethod
     def create_from_import(cls, data):
         is_update = False
@@ -182,6 +212,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         task_status_ids = data.pop("task_statuses", None)
         asset_type_ids = data.pop("asset_types", None)
         status_automation_ids = data.pop("status_automations", None)
+        preview_background_files_ids = data.pop(
+            "preview_background_files", None
+        )
 
         if previous_project is None:
             previous_project = cls.create(**data)
@@ -205,5 +238,10 @@ class Project(db.Model, BaseMixin, SerializerMixin):
 
         if status_automation_ids is not None:
             previous_project.set_status_automations(status_automation_ids)
+
+        if preview_background_files_ids is not None:
+            previous_project.set_preview_background_files(
+                preview_background_files_ids
+            )
 
         return (previous_project, is_update)

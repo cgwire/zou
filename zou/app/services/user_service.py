@@ -26,6 +26,7 @@ from zou.app.services import (
     shots_service,
     status_automations_service,
     tasks_service,
+    files_service,
 )
 from zou.app.services.exception import (
     SearchFilterNotFoundException,
@@ -1274,6 +1275,7 @@ def get_context():
     task_status_list = tasks_service.get_task_statuses()
     search_filters = get_filters()
     search_filter_groups = get_filter_groups()
+    preview_background_files = files_service.get_preview_background_files()
 
     return {
         "asset_types": asset_types,
@@ -1288,4 +1290,5 @@ def get_context():
         "task_status": task_status_list,
         "search_filters": search_filters,
         "search_filter_groups": search_filter_groups,
+        "preview_background_files": preview_background_files,
     }

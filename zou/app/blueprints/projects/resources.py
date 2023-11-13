@@ -278,7 +278,7 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add an task type linked to a production.
+        Add a task type linked to a production.
         ---
         tags:
           - Projects
@@ -410,7 +410,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
 
 class ProductionTaskStatusRemoveResource(Resource):
     """
-    Allow to remove an task status linked to a production.
+    Allow to remove a task status linked to a production.
     """
 
     @jwt_required()
@@ -533,6 +533,103 @@ class ProductionStatusAutomationRemoveResource(Resource):
         user_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
             project_id, status_automation_id
+        )
+        return "", 204
+
+
+class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
+    """
+    Allow to add a preview background file linked to a production.
+    """
+
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Return preview background files linked to a production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: Preview background files linked to production
+        """
+        user_service.check_project_access(project_id)
+        return projects_service.get_project_preview_background_files(
+            project_id
+        )
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Add a preview background file linked to a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: preview_background_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+              description: Preview background file added to production
+        """
+        args = self.get_args([("preview_background_file_id", "", True)])
+
+        user_service.check_manager_project_access(project_id)
+        project = projects_service.add_preview_background_file_setting(
+            project_id, args["preview_background_file_id"]
+        )
+        return project, 201
+
+
+class ProductionPreviewBackgroundFileRemoveResource(Resource):
+    """
+    Allow to remove a preview background file linked to a production.
+    """
+
+    @jwt_required()
+    def delete(self, project_id, preview_background_file_id):
+        """
+        Remove a preview background file from a production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: preview_background_file_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+              description: Preview background file removed from production
+        """
+        user_service.check_manager_project_access(project_id)
+        projects_service.remove_preview_background_file_setting(
+            project_id, preview_background_file_id
         )
         return "", 204
 

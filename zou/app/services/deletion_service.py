@@ -15,6 +15,7 @@ from zou.app.models.news import News
 from zou.app.models.output_file import OutputFile
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
+from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
@@ -176,6 +177,28 @@ def remove_preview_file(preview_file):
     return preview_file.serialize()
 
 
+def remove_preview_background_file_by_id(preview_background_file_id):
+    """
+    Remove all files related to given preview background file, then remove the
+    preview background file entry from the database.
+    """
+    preview_background_file = PreviewBackgroundFile.get(
+        preview_background_file_id
+    )
+    return remove_preview_background_file(preview_background_file)
+
+
+def remove_preview_background_file(preview_background_file):
+    """
+    Remove all files related to given preview background file, then remove the
+    preview background file entry from the database.
+    """
+
+    clear_preview_background_files(preview_background_file.id)
+    preview_background_file.delete()
+    return preview_background_file.serialize()
+
+
 def remove_attachment_file_by_id(attachment_file_id):
     """
     Remove all files related to given attachment file, then remove the
@@ -196,6 +219,20 @@ def remove_attachment_file(attachment_file):
     attachment_dict = attachment_file.serialize()
     attachment_file.delete()
     return attachment_dict
+
+
+def clear_preview_background_files(preview_background_id):
+    """
+    Remove all files related to given preview background file.
+    """
+    for image_type in [
+        "thumbnails",
+        "preview-backgrounds",
+    ]:
+        try:
+            file_store.remove_picture(image_type, preview_background_id)
+        except BaseException:
+            pass
 
 
 def clear_picture_files(preview_file_id):
