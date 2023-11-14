@@ -41,6 +41,7 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     annotations = db.Column(JSONB)
     width = db.Column(db.Integer(), default=0)
     height = db.Column(db.Integer(), default=0)
+    duration = db.Column(db.Float, default=0)
 
     task_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task.id"), index=True

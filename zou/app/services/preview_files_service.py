@@ -254,6 +254,7 @@ def prepare_and_store_movie(
         thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
         save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)
+        duration = movie.get_movie_duration(normalized_movie_path)
         current_app.logger.info("thumbnail created %s" % original_picture_path)
 
         # Build tiles
@@ -279,6 +280,7 @@ def prepare_and_store_movie(
                 "file_size": file_size,
                 "width": width,
                 "height": height,
+                "duration": duration,
             },
         )
         return preview_file
@@ -683,12 +685,14 @@ def reset_movie_files_metadata():
             )
             file_size = os.path.getsize(preview_file_path)
             width, height = movie.get_movie_size(preview_file_path)
+            duration = float(movie.get_movie_duration(preview_file_path))
             update_preview_file_raw(
                 preview_file,
                 {
                     "width": width,
                     "height": height,
                     "file_size": file_size,
+                    "duration": duration,
                 },
             )
             print(
@@ -807,12 +811,18 @@ def generate_tiles_and_reset_preview_files_metadata():
                         preview_file_path
                     )
                 file_size = os.path.getsize(preview_file_path)
+                duration = (
+                    float(movie.get_movie_duration(preview_file_path))
+                    if preview_file.extension == "mp4"
+                    else None
+                )
                 update_preview_file_raw(
                     preview_file,
                     {
                         "width": width,
                         "height": height,
                         "file_size": file_size,
+                        "duration": duration,
                     },
                 )
                 print(
