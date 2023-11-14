@@ -1,4 +1,5 @@
 from flask_restful import Resource
+
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -41,6 +42,7 @@ class SearchResource(Resource, ArgsMixin):
                 ("query", "", True),
                 ("project_id", None, False),
                 ("limit", 3, False, int),
+                ("offset", 0, False, int),
                 (
                     "index_names",
                     ["assets", "shots", "persons"],
@@ -52,6 +54,7 @@ class SearchResource(Resource, ArgsMixin):
         )
         query = args["query"]
         limit = args["limit"]
+        offset = args["offset"]
         project_id = args["project_id"]
         index_names = args["index_names"]
         results = {}
@@ -72,15 +75,15 @@ class SearchResource(Resource, ArgsMixin):
 
         if "persons" in index_names:
             results["persons"] = index_service.search_persons(
-                query, limit=limit
+                query, limit=limit, offset=offset
             )
         if "assets" in index_names:
             results["assets"] = index_service.search_assets(
-                query, project_ids, limit=limit
+                query, project_ids, limit=limit, offset=offset
             )
         if "shots" in index_names:
             results["shots"] = index_service.search_shots(
-                query, project_ids, limit=limit
+                query, project_ids, limit=limit, offset=offset
             )
 
         return results

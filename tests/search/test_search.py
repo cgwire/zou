@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+
 from zou.app.services import index_service
 
 
@@ -130,3 +131,37 @@ class AssetSearchTestCase(ApiDBTestCase):
         shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
         shots = self.post("data/search", {"query": "pl004"}, 200)["shots"]
         self.assertEqual(len(shots), 0)
+
+    def test_search_offset(self):
+        for i in range(1, 11):
+            self.generate_fixture_asset_character("Offset%s" % i)
+        index_service.reset_index()
+        assets = self.post(
+            "data/search",
+            {
+                "query": "Offset",
+                "limit": 4,
+            },
+            200,
+        )["assets"]
+        self.assertEqual(len(assets), 4)
+        assets = self.post(
+            "data/search",
+            {
+                "query": "Offset",
+                "limit": 4,
+                "offset": 4,
+            },
+            200,
+        )["assets"]
+        self.assertEqual(len(assets), 4)
+        assets = self.post(
+            "data/search",
+            {
+                "query": "Offset",
+                "limit": 4,
+                "offset": 8,
+            },
+            200,
+        )["assets"]
+        self.assertEqual(len(assets), 2)

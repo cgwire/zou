@@ -30,6 +30,7 @@ class EntityType(db.Model, BaseMixin, SerializerMixin):
     task_types = db.relationship(
         "TaskType", secondary=task_type_link, lazy="joined"
     )
+    archived = db.Column(db.Boolean(), default=False)
 
     @classmethod
     def create_from_import(cls, data):

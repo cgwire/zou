@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+
 from zou.app.services import files_service, preview_files_service
 from zou.app.services.preview_files_service import (
     _is_valid_resolution,
@@ -229,7 +230,7 @@ class PlaylistTestCase(ApiDBTestCase):
         project = self.project.serialize()
         entity = self.asset.serialize()
         dimensions = get_preview_file_dimensions(project, entity)
-        self.assertEqual(dimensions, (None, 1080))
+        self.assertEqual(dimensions, (1920, 1080))
         project["resolution"] = "x2160"
         dimensions = get_preview_file_dimensions(project, entity)
         self.assertEqual(dimensions, (None, 2160))
