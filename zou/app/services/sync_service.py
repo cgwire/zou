@@ -838,7 +838,9 @@ def download_thumbnails_from_another_instance(
         instances = model.query.filter_by(id=project.get("id"))
 
     for instance in instances:
-        if instance.has_avatar:
+        if instance.has_avatar and not file_store.exists_picture(
+            "thumbnails", str(instance.id)
+        ):
             if pool is None:
                 download_thumbnail_from_another_instance(
                     model_name, instance.id, number_attemps
@@ -1054,17 +1056,20 @@ def download_attachment_files_from_another_instance(
         )
     else:
         attachment_files = AttachmentFile.query.all()
-    for attachment_file in attachment_files:
-        with app.app_context():
-            if pool is None:
-                download_attachment_file_from_another_instance(
-                    attachment_file.present(), number_attemps
-                )
-            else:
-                pool.apply_async(
-                    download_attachment_file_from_another_instance,
-                    (attachment_file.present(), number_attemps),
-                )
+    with app.app_context():
+        for attachment_file in attachment_files:
+            if not file_store.exists_file(
+                "attachments", str(attachment_file.id)
+            ):
+                if pool is None:
+                    download_attachment_file_from_another_instance(
+                        attachment_file.present(), number_attemps
+                    )
+                else:
+                    pool.apply_async(
+                        download_attachment_file_from_another_instance,
+                        (attachment_file.present(), number_attemps),
+                    )
 
 
 def download_attachment_file_from_another_instance(
