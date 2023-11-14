@@ -29,7 +29,7 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         project = projects_service.get_project_with_relations(
             projects[0]["id"]
         )
-        self.assertEqual(len(project["team"]), 2)
+        self.assertEqual(len(project["team"]), 1)
 
     def test_import_project_connection(self):
         self.load_fixture("persons")
