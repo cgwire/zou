@@ -32,6 +32,7 @@ from zou.app.models.output_type import OutputType
 from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
+from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
@@ -904,6 +905,13 @@ class ApiDBTestCase(ApiTestCase):
             status=status,
         )
         return self.preview_file
+
+    def generate_fixture_preview_background_file(
+        self,
+        name="test",
+    ):
+        self.preview_background_file = PreviewBackgroundFile.create(name=name)
+        return self.preview_background_file
 
     def get_fixture_file_path(self, relative_path):
         current_path = os.getcwd()

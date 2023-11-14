@@ -134,3 +134,14 @@ class ThumbnailTestCase(unittest.TestCase):
         )
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.SQUARE_SIZE)
+
+    def test_turn_hdr_into_thumbnail(self):
+        file_path_fixture = self.get_fixture_file_path("thumbnails/sample.hdr")
+        full_path = os.path.join(TEST_FOLDER, "sample.hdr")
+        fs.copyfile(file_path_fixture, full_path)
+
+        thumbnail_path = thumbnail.turn_hdr_into_thumbnail(full_path)
+        im = Image.open(thumbnail_path)
+        (width, height) = im.size
+        self.assertEqual(width, 300)
+        self.assertEqual(height, 200)
