@@ -98,3 +98,6 @@ Vagrantfile
 
 tmp
 restore.sh
+
+# Meilisearch folder
+data.ms
