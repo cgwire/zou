@@ -177,6 +177,7 @@ def get_playlist_with_preview_file_revisions(playlist_id):
                 shot["preview_file_revision"] = preview_file["revision"]
                 shot["preview_file_width"] = preview_file["width"]
                 shot["preview_file_height"] = preview_file["height"]
+                shot["preview_file_duration"] = preview_file["duration"]
                 shot["preview_file_status"] = preview_file["status"]
                 shot["preview_file_annotations"] = preview_file["annotations"]
                 shot["preview_file_task_id"] = preview_file["task_id"]
@@ -248,6 +249,7 @@ def set_preview_files_for_entities(playlist_dict):
             "extension": preview_file.extension,
             "width": preview_file.width,
             "height": preview_file.height,
+            "duration": float(preview_file.duration or 0),
             "status": str(preview_file.status),
             "annotations": preview_file.annotations,
             "created_at": fields.serialize_value(preview_file.created_at),
@@ -287,6 +289,7 @@ def get_preview_files_for_entity(entity_id):
             PreviewFile.extension,
             PreviewFile.width,
             PreviewFile.height,
+            PreviewFile.duration,
             PreviewFile.status,
             PreviewFile.annotations,
             PreviewFile.created_at,
@@ -310,6 +313,7 @@ def get_preview_files_for_entity(entity_id):
         preview_file_extension,
         preview_file_width,
         preview_file_height,
+        preview_file_duration,
         preview_file_status,
         preview_file_annotations,
         preview_file_created_at,
@@ -328,6 +332,7 @@ def get_preview_files_for_entity(entity_id):
                     "extension": preview_file_extension,
                     "width": preview_file_width,
                     "height": preview_file_height,
+                    "duration": float(preview_file_duration or 0),
                     "status": preview_file_status,
                     "annotations": preview_file_annotations,
                     "created_at": preview_file_created_at,
@@ -351,6 +356,7 @@ def get_preview_files_for_entity(entity_id):
                     "extension": preview_file["extension"],
                     "width": preview_file["width"],
                     "height": preview_file["height"],
+                    "duration": preview_file["duration"],
                     "status": preview_file["status"],
                     "annotations": preview_file["annotations"],
                     "previews": preview_file["previews"],
@@ -862,6 +868,7 @@ def generate_playlisted_entity_from_task(task_id):
                 "preview_file_extension": preview_file["extension"],
                 "preview_file_width": preview_file["width"],
                 "preview_file_height": preview_file["height"],
+                "preview_file_duration": preview_file["duration"],
                 "preview_file_revision": preview_file["revision"],
                 "preview_file_status": preview_file["status"],
                 "preview_file_annotations": preview_file["annotations"],
@@ -965,6 +972,7 @@ def _get_playlist_preview_file_list(preview_files):
             "extension": preview_file.extension,
             "width": preview_file.width,
             "height": preview_file.height,
+            "duration": float(preview_file.duration or 0),
             "status": str(preview_file.status),
             "annotations": preview_file.annotations,
             "created_at": fields.serialize_value(preview_file.created_at),
