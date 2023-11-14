@@ -1,4 +1,5 @@
 import os
+import hashlib
 
 from tests.base import ApiDBTestCase
 
@@ -9,6 +10,13 @@ from zou.app.models.entity import Entity
 from PIL import Image
 
 TEST_FOLDER = os.path.join("tests", "tmp")
+
+
+def get_file_md5hash(file_path):
+    with open(file_path, "rb") as f:
+        file_hash = hashlib.md5()
+        while chunk := f.read(8192):
+            file_hash.update(chunk)
 
 
 class RouteThumbnailTestCase(ApiDBTestCase):
@@ -128,3 +136,30 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         entity = Entity.get(self.asset_id)
         entity.preview_file_id = None
         entity.save()
+
+    def test_add_preview_background(self):
+        self.generate_fixture_preview_background_file()
+        path = f"/pictures/preview-background-files/{self.preview_background_file.id}"
+
+        file_path_fixture = self.get_fixture_file_path(
+            os.path.join("thumbnails", "sample.hdr")
+        )
+        self.upload_file(path, file_path_fixture)
+        original_md5hash = get_file_md5hash(file_path_fixture)
+
+        current_path = os.path.dirname(__file__)
+        result_file_path = os.path.join(TEST_FOLDER, "sample.hdr")
+        result_file_path = os.path.join(
+            current_path, "..", "..", result_file_path
+        )
+        os.mkdir(TEST_FOLDER)
+
+        path = f"/pictures/preview-background-files/{self.preview_background_file.id}.hdr"
+        self.download_file(path, result_file_path)
+        result_md5hash = get_file_md5hash(result_file_path)
+        self.assertEqual(result_md5hash, original_md5hash)
+
+        path = f"/pictures/thumbnails/preview-background-files/{self.preview_background_file.id}.png"
+        self.download_file(path, result_file_path)
+        result_image = Image.open(result_file_path)
+        self.assertEqual(result_image.size, (300, 200))

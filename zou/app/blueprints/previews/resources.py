@@ -33,7 +33,6 @@ from zou.app.utils import (
 )
 from zou.app.services.exception import (
     ArgumentsException,
-    PreviewFileNotFoundException,
     PreviewBackgroundFileNotFoundException,
 )
 
