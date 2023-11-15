@@ -467,7 +467,9 @@ def import_data_from_another_instance(
             sync_service.run_main_data_sync(project=project)
         if not no_projects:
             sync_service.run_project_data_sync(project=project)
-            sync_service.run_other_sync(project=project)
+            sync_service.run_other_sync(
+                project=project, with_events=with_events
+            )
 
 
 def run_sync_change_daemon(event_source, source, login, password, logs_dir):
