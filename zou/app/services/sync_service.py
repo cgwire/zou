@@ -195,20 +195,20 @@ special_events = [
 ]
 
 
-def init(target, login, password):
+def init(source, login, password):
     """
-    Set parameters for the client that will retrieve data from the target.
+    Set parameters for the client that will retrieve data from the source.
     """
-    gazu.set_host(target)
+    gazu.set_host(source)
     gazu.log_in(login, password)
 
 
-def init_events_listener(target, event_target, login, password, logs_dir=None):
+def init_events_listener(source, event_source, login, password, logs_dir=None):
     """
-    Set parameters for the client that will listen to events from the target.
+    Set parameters for the client that will listen to events from the source.
     """
-    gazu.set_event_host(event_target)
-    gazu.set_host(target)
+    gazu.set_event_host(event_source)
+    gazu.set_host(source)
     gazu.log_in(login, password)
     if logs_dir is not None:
         set_logger(logs_dir)
@@ -244,7 +244,7 @@ def run_listeners(event_client):
 
 def run_main_data_sync(project=None):
     """
-    Retrieve and import all cross-projects data from target instance.
+    Retrieve and import all cross-projects data from source instance.
     """
     for event in main_events:
         path = event_name_model_path_map[event]
@@ -254,7 +254,7 @@ def run_main_data_sync(project=None):
 
 def run_project_data_sync(project=None):
     """
-    Retrieve and import all data related to projects from target instance.
+    Retrieve and import all data related to projects from source instance.
     """
     if project:
         projects = [gazu.project.get_project_by_name(project)]
@@ -274,7 +274,7 @@ def run_project_data_sync(project=None):
 
 def run_other_sync(project=None, with_events=False):
     """
-    Retrieve and import all search filters and events from target instance.
+    Retrieve and import all search filters and events from source instance.
     """
     sync_entries("search-filter-groups", SearchFilterGroup, project=project)
     sync_entries("search-filters", SearchFilter, project=project)
@@ -285,7 +285,7 @@ def run_other_sync(project=None, with_events=False):
 
 def run_last_events_sync(minutes=0, page_size=300):
     """
-    Retrieve last events from target instance and import related data and
+    Retrieve last events from source instance and import related data and
     action.
     """
     path = "events/last?page_size=%s" % page_size
@@ -308,7 +308,7 @@ def run_last_events_sync(minutes=0, page_size=300):
 
 def run_last_events_files(minutes=0, page_size=50):
     """
-    Retrieve last events from target instance and import related data and
+    Retrieve last events from source instance and import related data and
     action.
     """
     path = "events/last?only_files=true&page_size=%s" % page_size
@@ -364,7 +364,7 @@ def sync_event(event):
 
 def sync_entries(model_name, model, project=None):
     """
-    Retrieve cross-projects data from target instance.
+    Retrieve cross-projects data from source instance.
     """
     instances = []
 
@@ -403,7 +403,7 @@ def sync_entries(model_name, model, project=None):
 
 def sync_project_entries(project, model_name, model):
     """
-    Retrieve all project data from target instance.
+    Retrieve all project data from source instance.
     """
     instances = []
     page = 1
@@ -793,7 +793,7 @@ def download_files_from_another_instance(
     project=None, multithreaded=False, number_workers=30, number_attemps=3
 ):
     """
-    Download all files from target instance.
+    Download all files from source instance.
     """
     pool = None
     if multithreaded:
@@ -827,7 +827,7 @@ def download_thumbnails_from_another_instance(
     model_name, project=None, pool=None, number_attemps=3
 ):
     """
-    Download all thumbnails from target instance for given model.
+    Download all thumbnails from source instance for given model.
     """
     model = event_name_model_map[model_name]
 

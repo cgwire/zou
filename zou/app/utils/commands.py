@@ -449,7 +449,7 @@ def sync_with_ldap_server():
 
 
 def import_data_from_another_instance(
-    target,
+    source,
     login,
     password,
     project=None,
@@ -462,7 +462,7 @@ def import_data_from_another_instance(
     change the IDs.
     """
     with app.app_context():
-        sync_service.init(target, login, password)
+        sync_service.init(source, login, password)
         if not only_projects:
             sync_service.run_main_data_sync(project=project)
         if not no_projects:
@@ -470,14 +470,14 @@ def import_data_from_another_instance(
             sync_service.run_other_sync(project=project)
 
 
-def run_sync_change_daemon(event_target, target, login, password, logs_dir):
+def run_sync_change_daemon(event_source, source, login, password, logs_dir):
     """
     Listen to event websocket. Each time a change occurs, it retrieves the
     related data and save it in the current instance.
     """
     with app.app_context():
         event_client = sync_service.init_events_listener(
-            target, event_target, login, password, logs_dir
+            source, event_source, login, password, logs_dir
         )
         sync_service.add_main_sync_listeners(event_client)
         sync_service.add_project_sync_listeners(event_client)
@@ -487,7 +487,7 @@ def run_sync_change_daemon(event_target, target, login, password, logs_dir):
 
 
 def run_sync_file_change_daemon(
-    event_target, target, login, password, logs_dir
+    event_source, source, login, password, logs_dir
 ):
     """
     Listen to event websocket. Each time a change occurs, it retrieves the
@@ -495,7 +495,7 @@ def run_sync_file_change_daemon(
     """
     with app.app_context():
         event_client = sync_service.init_events_listener(
-            target, event_target, login, password, logs_dir
+            source, event_source, login, password, logs_dir
         )
         sync_service.add_file_listeners(event_client)
         print("Start listening.")
@@ -503,21 +503,21 @@ def run_sync_file_change_daemon(
 
 
 def import_last_changes_from_another_instance(
-    target, login, password, minutes=0, page_size=300
+    source, login, password, minutes=0, page_size=300
 ):
     """
     Retrieve and save all the data related to most recent events from another
     API instance. It doesn't change the IDs.
     """
     with app.app_context():
-        sync_service.init(target, login, password)
+        sync_service.init(source, login, password)
         print("Last events syncing started.")
         sync_service.run_last_events_sync(minutes=minutes, page_size=300)
         print("Last events syncing ended.")
 
 
 def import_last_file_changes_from_another_instance(
-    target, login, password, minutes=20, page_size=50, force=False
+    source, login, password, minutes=20, page_size=50, force=False
 ):
     """
     Retrieve and save all the data related most to recent file events
@@ -525,7 +525,7 @@ def import_last_file_changes_from_another_instance(
     It doesn't change the IDs.
     """
     with app.app_context():
-        sync_service.init(target, login, password)
+        sync_service.init(source, login, password)
         print("Last files syncing started.")
         sync_service.run_last_events_files(minutes=minutes, page_size=50)
         print("Last files syncing ended.")

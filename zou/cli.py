@@ -258,28 +258,28 @@ def sync_with_ldap_server():
 
 
 @cli.command()
-@click.option("--target", default="http://localhost:5000")
+@click.option("--source", default="http://localhost:5000")
 @click.option("--project")
 @click.option("--no-projects", is_flag=True)
 @click.option("--with-events", is_flag=True)
 @click.option("--only-projects", is_flag=True)
 def sync_full(
-    target,
+    source,
     project=None,
     with_events=False,
     no_projects=False,
     only_projects=False,
 ):
     """
-    Retrieve all data from target instance. It expects that credentials to
-    connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
+    Retrieve all data from source instance. It expects that credentials to
+    connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_data_from_another_instance(
-        target,
+        source,
         login,
         password,
         project=project,
@@ -322,70 +322,70 @@ def sync_full_files(
 
 
 @cli.command()
-@click.option("--event-target", default="http://localhost:8080")
-@click.option("--target", default="http://localhost:8080/api")
+@click.option("--event-source", default="http://localhost:8080")
+@click.option("--source", default="http://localhost:8080/api")
 @click.option("--logs-directory", default=None)
-def sync_changes(event_target, target, logs_directory):
+def sync_changes(event_source, source, logs_directory):
     """
-    Run a daemon that import data related to any change happening on target
-    instance. It expects that credentials to connect to target instance are
+    Run a daemon that import data related to any change happening on source
+    instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.run_sync_change_daemon(
-        event_target, target, login, password, logs_directory
+        event_source, source, login, password, logs_directory
     )
 
 
 @cli.command()
-@click.option("--event-target", default="http://localhost:8080")
-@click.option("--target", default="http://localhost:8080/api")
+@click.option("--event-source", default="http://localhost:8080")
+@click.option("--source", default="http://localhost:8080/api")
 @click.option("--logs-directory", default=None)
-def sync_file_changes(event_target, target, logs_directory):
+def sync_file_changes(event_source, source, logs_directory):
     """
-    Run a daemon that download files related to any change happening on target
-    instance. It expects that credentials to connect to target instance are
+    Run a daemon that download files related to any change happening on source
+    instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.run_sync_file_change_daemon(
-        event_target, target, login, password, logs_directory
+        event_source, source, login, password, logs_directory
     )
 
 
 @cli.command()
-@click.option("--target", default="http://localhost:8080/api")
+@click.option("--source", default="http://localhost:8080/api")
 @click.option("--minutes", default=0)
 @click.option("--page-size", default=300)
-def sync_last_events(target, minutes, page_size):
+def sync_last_events(source, minutes, page_size):
     """
-    Retrieve last events that occured on target instance and import data related
-    to them. It expects that credentials to connect to target instance are
+    Retrieve last events that occured on source instance and import data related
+    to them. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_last_changes_from_another_instance(
-        target, login, password, minutes=minutes, page_size=page_size
+        source, login, password, minutes=minutes, page_size=page_size
     )
 
 
 @cli.command()
-@click.option("--target", default="http://localhost:8080/api")
+@click.option("--source", default="http://localhost:8080/api")
 @click.option("--minutes", default=20)
 @click.option("--page-size", default=50)
-def sync_last_files(target, minutes, page_size):
+def sync_last_files(source, minutes, page_size):
     """
-    Retrieve last preview files and thumbnails updloaded on target instance.
-    It expects that credentials to connect to target instance are
+    Retrieve last preview files and thumbnails updloaded on source instance.
+    It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_last_file_changes_from_another_instance(
-        target, login, password, minutes=minutes, page_size=page_size
+        source, login, password, minutes=minutes, page_size=page_size
     )
 
 
