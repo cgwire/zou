@@ -532,7 +532,7 @@ def import_last_file_changes_from_another_instance(
 
 
 def import_files_from_another_instance(
-    target,
+    source,
     login,
     password,
     project=None,
@@ -550,7 +550,7 @@ def import_files_from_another_instance(
             from requests import adapters
 
             adapters.DEFAULT_POOLSIZE = number_workers
-        sync_service.init(target, login, password)
+        sync_service.init(source, login, password)
         sync_service.download_files_from_another_instance(
             project=project,
             multithreaded=multithreaded,
