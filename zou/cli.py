@@ -291,7 +291,7 @@ def sync_full(
 
 
 @cli.command()
-@click.option("--target", default="http://localhost:5000", show_default=True)
+@click.option("--source", default="http://localhost:5000", show_default=True)
 @click.option(
     "--multithreaded", is_flag=True, show_default=True, default=False
 )
@@ -299,18 +299,18 @@ def sync_full(
 @click.option("--number_attemps", default=3, show_default=True, type=int)
 @click.option("--project")
 def sync_full_files(
-    target, multithreaded, number_workers, number_attemps, project=None
+    source, multithreaded, number_workers, number_attemps, project=None
 ):
     """
-    Retrieve all files from target instance. It expects that credentials to
-    connect to target instance are given through SYNC_LOGIN and SYNC_PASSWORD
+    Retrieve all files from source instance. It expects that credentials to
+    connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_files_from_another_instance(
-        target,
+        source,
         login,
         password,
         project=project,
