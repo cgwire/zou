@@ -174,7 +174,7 @@ def init_data():
 
 
 @cli.command()
-@click.argument("email_or_desktop_login")
+@click.argument("email-or-desktop-login")
 def disable_two_factor_authentication(email_or_desktop_login):
     """
     Disable two factor authentication for given user.
@@ -295,9 +295,8 @@ def sync_full(
 @click.option(
     "--multithreaded", is_flag=True, show_default=True, default=False
 )
-@click.option("--number_workers", default=30, show_default=True, type=int)
-@click.option("--number_attemps", default=3, show_default=True, type=int)
-@click.option("--project")
+@click.option("--number-workers", default=30, show_default=True, type=int)
+@click.option("--number-attemps", default=3, show_default=True, type=int)
 def sync_full_files(
     source, multithreaded, number_workers, number_attemps, project=None
 ):
@@ -461,11 +460,22 @@ def search_asset(query):
 
 
 @cli.command()
-def generate_tiles():
+@click.option("--project", default=None, show_default=True)
+@click.option("--only-shots", is_flag=True, default=False, show_default=True)
+@click.option("--only-assets", is_flag=True, default=False, show_default=True)
+@click.option(
+    "--force-regenerate-tiles", is_flag=True, default=False, show_default=True
+)
+def generate_tiles(project, only_shots, only_assets, force_regenerate_tiles):
     """
     Generate tiles for all movie previews in the database.
     """
-    commands.generate_tiles()
+    commands.generate_tiles(
+        project=project,
+        only_shots=only_shots,
+        only_assets=only_assets,
+        force_regenerate_tiles=force_regenerate_tiles,
+    )
 
 
 @cli.command()

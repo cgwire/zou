@@ -632,9 +632,19 @@ def search_asset(query):
         return assets
 
 
-def generate_tiles():
+def generate_tiles(
+    project=None,
+    only_shots=False,
+    only_assets=False,
+    force_regenerate_tiles=False,
+):
     with app.app_context():
-        preview_files_service.generate_tiles_for_movie_previews()
+        preview_files_service.generate_tiles_for_movie_previews(
+            project=project,
+            only_shots=only_shots,
+            only_assets=only_assets,
+            force_regenerate_tiles=force_regenerate_tiles,
+        )
 
 
 def reset_movie_files_metadata():

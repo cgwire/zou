@@ -14,7 +14,13 @@ from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
-from zou.app.services import names_service, files_service
+from zou.app.services import (
+    names_service,
+    files_service,
+    projects_service,
+    assets_service,
+    shots_service,
+)
 from zou.utils import movie
 from zou.app.utils import (
     events,
@@ -617,8 +623,6 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
 
 
 def extract_tile_from_preview_file(preview_file):
-    project = get_project_from_preview_file(preview_file["id"])
-
     if preview_file["extension"] == "mp4":
         preview_file_path = fs.get_file_path_and_file(
             config,
@@ -634,26 +638,54 @@ def extract_tile_from_preview_file(preview_file):
         return ArgumentsException("Preview file is not a movie")
 
 
-def generate_tiles_for_movie_previews():
+def generate_tiles_for_movie_previews(
+    project=None,
+    only_shots=False,
+    only_assets=False,
+    force_regenerate_tiles=False,
+):
     """
     Generate tiles for all movie previews of open projects.
     """
     preview_files = (
         PreviewFile.query.join(Task)
+        .join(Entity)
         .join(Project)
         .join(ProjectStatus)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "processing")))
         .filter(PreviewFile.extension == "mp4")
     )
-    for preview_file in preview_files:
-        try:
-            path = extract_tile_from_preview_file(preview_file.serialize())
-            file_store.add_picture("tiles", str(preview_file.id), path)
-            os.remove(path)
-            print(
-                f"Tile generated for preview file {preview_file.id}",
+    if only_shots:
+        preview_files = preview_files.filter(
+            Entity.entity_type_id == shots_service.get_shot_type()["id"]
+        )
+    elif only_assets:
+        preview_files = preview_files.filter(
+            Entity.entity_type_id.not_in(
+                assets_service.get_temporal_type_ids()
             )
+        )
+
+    if project is not None:
+        preview_files = preview_files.filter(
+            Project.id == projects_service.get_project_by_name(project)["id"]
+        )
+
+    number_of_preview_files = preview_files.count()
+    for i, preview_file in enumerate(preview_files):
+        try:
+            print(f"Processing preview file {i+1}/{number_of_preview_files}")
+            if (
+                not file_store.exists_picture("tiles", str(preview_file.id))
+                or force_regenerate_tiles
+            ):
+                path = extract_tile_from_preview_file(preview_file.serialize())
+                file_store.add_picture("tiles", str(preview_file.id), path)
+                os.remove(path)
+                print(
+                    f"Tile generated for preview file {preview_file.id}",
+                )
         except Exception as e:
             print(
                 f"Failed to generate tile for preview file {preview_file.id}: {e}"
