@@ -258,7 +258,9 @@ def prepare_and_store_movie(
         width, height = size
         original_picture_path = movie.generate_thumbnail(normalized_movie_path)
         thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
-        save_variants(preview_file_id, original_picture_path)
+        save_variants(
+            preview_file_id, original_picture_path, with_original=False
+        )
         file_size = os.path.getsize(normalized_movie_path)
         duration = movie.get_movie_duration(normalized_movie_path)
         current_app.logger.info("thumbnail created %s" % original_picture_path)
@@ -305,14 +307,15 @@ def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
     return result
 
 
-def save_variants(preview_file_id, original_picture_path):
+def save_variants(preview_file_id, original_picture_path, with_original=True):
     """
     Build variants of a picture file and save them in the main storage.
     """
     variants = thumbnail_utils.generate_preview_variants(
         original_picture_path, preview_file_id
     )
-    variants.append(("original", original_picture_path))
+    if with_original:
+        variants.append(("original", original_picture_path))
     for prefix, path in variants:
         file_store.add_picture(prefix, preview_file_id, path)
         os.remove(path)
@@ -777,12 +780,17 @@ def reset_picture_files_metadata():
             )
 
 
-def generate_tiles_and_reset_preview_files_metadata():
+def generate_tiles_and_reset_preview_files_metadata(
+    with_tiles=True,
+    with_metadata=True,
+    with_thumbnails=False,
+    entity_id=None,
+):
     """
     Generate tiles for all movie previews and reset previews file size
     informations of open projects.
     """
-    preview_files = (
+    query = (
         PreviewFile.query.join(Task)
         .join(Project)
         .join(ProjectStatus)
@@ -790,6 +798,10 @@ def generate_tiles_and_reset_preview_files_metadata():
         .filter(PreviewFile.status.not_in(("broken", "processing")))
         .filter(PreviewFile.extension.in_(("mp4", "png")))
     )
+    if entity_id is not None:
+        query = query.filter(Task.entity_id == entity_id)
+    preview_files = query.all()
+
     preview_file_already_in_cache = False
     for preview_file in preview_files:
         preview_file_id = str(preview_file.id)
@@ -819,51 +831,13 @@ def generate_tiles_and_reset_preview_files_metadata():
             except Exception as e:
                 print(f"Failed to get preview file {preview_file_id}: {e}")
                 continue
-            try:
-                if preview_file.extension == "mp4":
-                    extracted_tile_path = movie.generate_tile(
-                        preview_file_path
-                    )
-                    file_store.add_picture(
-                        "tiles", preview_file_id, extracted_tile_path
-                    )
-                    os.remove(extracted_tile_path)
-                    print(
-                        f"Tile generated for preview file {preview_file_id}",
-                    )
-            except Exception as e:
-                print(
-                    f"Failed to generate tile for preview file {preview_file_id}: {e}"
-                )
-            try:
-                if preview_file.extension == "mp4":
-                    width, height = movie.get_movie_size(preview_file_path)
-                else:
-                    width, height = thumbnail_utils.get_dimensions(
-                        preview_file_path
-                    )
-                file_size = os.path.getsize(preview_file_path)
-                duration = (
-                    float(movie.get_movie_duration(preview_file_path))
-                    if preview_file.extension == "mp4"
-                    else None
-                )
-                update_preview_file_raw(
-                    preview_file,
-                    {
-                        "width": width,
-                        "height": height,
-                        "file_size": file_size,
-                        "duration": duration,
-                    },
-                )
-                print(
-                    f"Size information stored for preview file {preview_file_id}",
-                )
-            except Exception as e:
-                print(
-                    f"Failed to store information for preview file {preview_file_id}: {e}",
-                )
+
+            if with_tiles:
+                _generate_tiles(preview_file, preview_file_path)
+            if with_metadata:
+                _reset_preview_file_metadata(preview_file, preview_file_path)
+            if with_thumbnails:
+                _generate_thumbnails(preview_file, preview_file_path)
         finally:
             if (
                 config.FS_BACKEND != "local"
@@ -871,7 +845,67 @@ def generate_tiles_and_reset_preview_files_metadata():
             ):
                 try:
                     os.remove(preview_file_path)
-                except:
+                except Exception:
                     pass
 
     return preview_files
+
+
+def _generate_thumbnails(preview_file, preview_file_path):
+    try:
+        original_picture_path = preview_file_path
+        if preview_file.extension == "mp4":
+            original_picture_path = movie.generate_thumbnail(preview_file_path)
+        save_variants(preview_file.id, original_picture_path)
+        print(
+            f"Thumbnails generated for preview file {preview_file.id}",
+        )
+    except Exception as e:
+        print(f"Failed to generate thumbnails for {preview_file.id}: {e}")
+
+
+def _generate_tiles(preview_file, preview_file_path):
+    try:
+        if preview_file.extension == "mp4":
+            extracted_tile_path = movie.generate_tile(preview_file_path)
+            file_store.add_picture(
+                "tiles", preview_file.id, extracted_tile_path
+            )
+            os.remove(extracted_tile_path)
+            print(
+                f"Tile generated for preview file {preview_file.id}",
+            )
+    except Exception as e:
+        print(
+            f"Failed to generate tile for preview file {preview_file.id}: {e}"
+        )
+
+
+def _reset_preview_file_metadata(preview_file, preview_file_path):
+    try:
+        if preview_file.extension == "mp4":
+            width, height = movie.get_movie_size(preview_file_path)
+        else:
+            width, height = thumbnail_utils.get_dimensions(preview_file_path)
+        file_size = os.path.getsize(preview_file_path)
+        duration = (
+            float(movie.get_movie_duration(preview_file_path))
+            if preview_file.extension == "mp4"
+            else None
+        )
+        update_preview_file_raw(
+            preview_file,
+            {
+                "width": width,
+                "height": height,
+                "file_size": file_size,
+                "duration": duration,
+            },
+        )
+        print(
+            f"Size information stored for preview file {preview_file.id}",
+        )
+    except Exception as e:
+        print(
+            f"Failed to store information for preview file {preview_file.id}: {e}",
+        )
