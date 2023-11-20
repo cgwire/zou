@@ -281,6 +281,7 @@ class ConfigResource(Resource):
                 description: Crisp token
         """
         return {
+            "is_self_hosted": app.config["IS_SELF_HOSTED"],
             "crisp_token": app.config["CRISP_TOKEN"],
             "indexer_configured": (
                 len(app.config["INDEXER"]["key"]) > 0
