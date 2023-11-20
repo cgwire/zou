@@ -635,6 +635,7 @@ def search_asset(query):
 def generate_preview_extra(
     project_id=None,
     entity_id=None,
+    episode_id=None,
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
@@ -646,6 +647,7 @@ def generate_preview_extra(
         preview_files_service.generate_preview_extra(
             project_id=project_id,
             entity_id=entity_id,
+            episode_id=episode_id,
             only_shots=only_shots,
             only_assets=only_assets,
             force_regenerate_tiles=force_regenerate_tiles,

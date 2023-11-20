@@ -5,6 +5,8 @@ import time
 
 import ffmpeg
 
+from sqlalchemy.orm import aliased
+
 from zou.app import config
 from zou.app.stores import file_store
 
@@ -726,6 +728,7 @@ def reset_picture_files_metadata():
 def generate_preview_extra(
     project_id=None,
     entity_id=None,
+    episode_id=None,
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
@@ -751,6 +754,11 @@ def generate_preview_extra(
         query = query.filter(Project.id == project_id)
     if entity_id is not None:
         query = query.filter(Task.entity_id == entity_id)
+    if episode_id is not None:
+        Sequence = aliased(Entity)
+        query = query.join(Sequence.id == Entity.parent_id).filter(
+            Sequence.parent_id == episode_id
+        )
     if only_shots:
         query = query.filter(
             Entity.entity_type_id == shots_service.get_shot_type()["id"]
