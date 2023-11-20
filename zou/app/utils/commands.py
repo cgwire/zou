@@ -632,18 +632,26 @@ def search_asset(query):
         return assets
 
 
-def generate_tiles(
-    project=None,
+def generate_preview_extra(
+    project_id=None,
+    entity_id=None,
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
+    with_tiles=True,
+    with_metadata=True,
+    with_thumbnails=False,
 ):
     with app.app_context():
-        preview_files_service.generate_tiles_for_movie_previews(
-            project=project,
+        preview_files_service.generate_preview_extra(
+            project_id=project_id,
+            entity_id=entity_id,
             only_shots=only_shots,
             only_assets=only_assets,
             force_regenerate_tiles=force_regenerate_tiles,
+            with_thumbnails=with_thumbnails,
+            with_metadata=with_metadata,
+            with_tiles=with_tiles,
         )
 
 
@@ -655,8 +663,3 @@ def reset_movie_files_metadata():
 def reset_picture_files_metadata():
     with app.app_context():
         preview_files_service.reset_picture_files_metadata()
-
-
-def generate_tiles_and_reset_preview_files_metadata():
-    with app.app_context():
-        preview_files_service.generate_tiles_and_reset_preview_files_metadata()

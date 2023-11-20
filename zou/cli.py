@@ -460,21 +460,42 @@ def search_asset(query):
 
 
 @cli.command()
-@click.option("--project", default=None, show_default=True)
+@click.option("--project-id", default=None, show_default=True)
+@click.option("--entity-id", default=None, show_default=True)
 @click.option("--only-shots", is_flag=True, default=False, show_default=True)
 @click.option("--only-assets", is_flag=True, default=False, show_default=True)
+@click.option("--with-tiles", is_flag=True, default=False, show_default=True)
+@click.option(
+    "--with-metadata", is_flag=True, default=False, show_default=True
+)
+@click.option(
+    "--with-thumbnails", is_flag=True, default=False, show_default=True
+)
 @click.option(
     "--force-regenerate-tiles", is_flag=True, default=False, show_default=True
 )
-def generate_tiles(project, only_shots, only_assets, force_regenerate_tiles):
+def generate_preview_extra(
+    project_id,
+    entity_id,
+    only_shots,
+    only_assets,
+    with_tiles,
+    with_metadata,
+    with_thumbnails,
+    force_regenerate_tiles,
+):
     """
-    Generate tiles for all movie previews in the database.
+    Generate tiles, thumbnails and metadata for all previews.
     """
-    commands.generate_tiles(
-        project=project,
+    commands.generate_preview_extra(
+        project_id=project_id,
+        entity_id=entity_id,
         only_shots=only_shots,
         only_assets=only_assets,
         force_regenerate_tiles=force_regenerate_tiles,
+        with_tiles=with_tiles,
+        with_metadata=with_metadata,
+        with_thumbnails=with_thumbnails,
     )
 
 
@@ -492,15 +513,6 @@ def reset_picture_files_metadata():
     Store height and width metadata for all picture previews in the database.
     """
     commands.reset_picture_files_metadata()
-
-
-@cli.command()
-def generate_tiles_and_reset_preview_files_metadata():
-    """
-    Generate tiles and store height and width metadata for all pictures/movies
-    previews in the database.
-    """
-    commands.generate_tiles_and_reset_preview_files_metadata()
 
 
 if __name__ == "__main__":

@@ -62,10 +62,13 @@ def generate_thumbnail(movie_path):
     try:
         ffmpeg.input(movie_path, ss="00:00:00").output(
             file_target_path, vframes=1
-        ).run(quiet=True)
+        ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
-        log_ffmpeg_error(e, "generate_thumbnail")
+        log_ffmpeg_error(e, "an error occured during generate_thumbnail")
         raise (e)
+    except:
+        print("Error while generating thumbnail")
+        raise
     return file_target_path
 
 
