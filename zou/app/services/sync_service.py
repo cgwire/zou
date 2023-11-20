@@ -1006,15 +1006,14 @@ def download_preview_file_from_another_instance(
     locally.
     """
     if prefix == "previews" and extension == "mp4":
-        path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+        path = f"/movies/originals/preview-files/{preview_file_id}.mp4"
     elif prefix == "low":
-        path = "/movies/low/preview-files/%s.mp4" % preview_file_id
+        path = f"/movies/low/preview-files/{preview_file_id}.mp4"
     else:
-        path = "/pictures/originals/preview-files/%s.%s" % (
-            preview_file_id,
-            extension,
+        path = (
+            f"/pictures/originals/preview-files/{preview_file_id}.{extension}"
         )
-    file_path = "/tmp/%s.%s" % (preview_file_id, extension)
+    file_path = f"/tmp/{prefix}-{preview_file_id}.{extension}"
     return download_file_from_another_instance(
         path, file_path, save_func, prefix, preview_file_id, number_attemps
     )
@@ -1032,7 +1031,7 @@ def download_preview_background_file_from_another_instance(
     elif prefix == "thumbnails":
         path = f"/pictures/thumbnails/preview-background-files/{preview_background_file_id}.png"
 
-    file_path = "/tmp/%s.%s" % (preview_background_file_id, extension)
+    file_path = f"/tmp/{prefix}-{preview_background_file_id}.{extension}"
     return download_file_from_another_instance(
         path,
         file_path,
