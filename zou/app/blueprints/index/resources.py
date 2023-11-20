@@ -281,9 +281,27 @@ class ConfigResource(Resource):
                 description: Crisp token
         """
         return {
+            "is_self_hosted": app.config["IS_SELF_HOSTED"],
             "crisp_token": app.config["CRISP_TOKEN"],
             "indexer_configured": (
                 len(app.config["INDEXER"]["key"]) > 0
                 and app.config["INDEXER"]["key"] != "masterkey"
             ),
         }
+
+
+class TestEventsResource(Resource):
+    def get(self):
+        """
+        Generate a main:test event.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: Success flage
+        """
+        from zou.app.utils import events
+
+        events.emit("main:test", data={}, persist=False, project_id=None)
+        return {"success": True}
