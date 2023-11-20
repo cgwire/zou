@@ -195,20 +195,20 @@ special_events = [
 ]
 
 
-def init(target, login, password):
+def init(source, login, password):
     """
-    Set parameters for the client that will retrieve data from the target.
+    Set parameters for the client that will retrieve data from the source.
     """
-    gazu.set_host(target)
+    gazu.set_host(source)
     gazu.log_in(login, password)
 
 
-def init_events_listener(target, event_target, login, password, logs_dir=None):
+def init_events_listener(source, event_source, login, password, logs_dir=None):
     """
-    Set parameters for the client that will listen to events from the target.
+    Set parameters for the client that will listen to events from the source.
     """
-    gazu.set_event_host(event_target)
-    gazu.set_host(target)
+    gazu.set_event_host(event_source)
+    gazu.set_host(source)
     gazu.log_in(login, password)
     if logs_dir is not None:
         set_logger(logs_dir)
@@ -244,7 +244,7 @@ def run_listeners(event_client):
 
 def run_main_data_sync(project=None):
     """
-    Retrieve and import all cross-projects data from target instance.
+    Retrieve and import all cross-projects data from source instance.
     """
     for event in main_events:
         path = event_name_model_path_map[event]
@@ -254,7 +254,7 @@ def run_main_data_sync(project=None):
 
 def run_project_data_sync(project=None):
     """
-    Retrieve and import all data related to projects from target instance.
+    Retrieve and import all data related to projects from source instance.
     """
     if project:
         projects = [gazu.project.get_project_by_name(project)]
@@ -274,7 +274,7 @@ def run_project_data_sync(project=None):
 
 def run_other_sync(project=None, with_events=False):
     """
-    Retrieve and import all search filters and events from target instance.
+    Retrieve and import all search filters and events from source instance.
     """
     sync_entries("search-filter-groups", SearchFilterGroup, project=project)
     sync_entries("search-filters", SearchFilter, project=project)
@@ -285,7 +285,7 @@ def run_other_sync(project=None, with_events=False):
 
 def run_last_events_sync(minutes=0, page_size=300):
     """
-    Retrieve last events from target instance and import related data and
+    Retrieve last events from source instance and import related data and
     action.
     """
     path = "events/last?page_size=%s" % page_size
@@ -308,7 +308,7 @@ def run_last_events_sync(minutes=0, page_size=300):
 
 def run_last_events_files(minutes=0, page_size=50):
     """
-    Retrieve last events from target instance and import related data and
+    Retrieve last events from source instance and import related data and
     action.
     """
     path = "events/last?only_files=true&page_size=%s" % page_size
@@ -364,7 +364,7 @@ def sync_event(event):
 
 def sync_entries(model_name, model, project=None):
     """
-    Retrieve cross-projects data from target instance.
+    Retrieve cross-projects data from source instance.
     """
     instances = []
 
@@ -403,7 +403,7 @@ def sync_entries(model_name, model, project=None):
 
 def sync_project_entries(project, model_name, model):
     """
-    Retrieve all project data from target instance.
+    Retrieve all project data from source instance.
     """
     instances = []
     page = 1
@@ -793,7 +793,7 @@ def download_files_from_another_instance(
     project=None, multithreaded=False, number_workers=30, number_attemps=3
 ):
     """
-    Download all files from target instance.
+    Download all files from source instance.
     """
     pool = None
     if multithreaded:
@@ -827,7 +827,7 @@ def download_thumbnails_from_another_instance(
     model_name, project=None, pool=None, number_attemps=3
 ):
     """
-    Download all thumbnails from target instance for given model.
+    Download all thumbnails from source instance for given model.
     """
     model = event_name_model_map[model_name]
 
@@ -838,7 +838,9 @@ def download_thumbnails_from_another_instance(
         instances = model.query.filter_by(id=project.get("id"))
 
     for instance in instances:
-        if instance.has_avatar:
+        if instance.has_avatar and not file_store.exists_picture(
+            "thumbnails", str(instance.id)
+        ):
             if pool is None:
                 download_thumbnail_from_another_instance(
                     model_name, instance.id, number_attemps
@@ -1004,15 +1006,14 @@ def download_preview_file_from_another_instance(
     locally.
     """
     if prefix == "previews" and extension == "mp4":
-        path = "/movies/originals/preview-files/%s.mp4" % preview_file_id
+        path = f"/movies/originals/preview-files/{preview_file_id}.mp4"
     elif prefix == "low":
-        path = "/movies/low/preview-files/%s.mp4" % preview_file_id
+        path = f"/movies/low/preview-files/{preview_file_id}.mp4"
     else:
-        path = "/pictures/originals/preview-files/%s.%s" % (
-            preview_file_id,
-            extension,
+        path = (
+            f"/pictures/originals/preview-files/{preview_file_id}.{extension}"
         )
-    file_path = "/tmp/%s.%s" % (preview_file_id, extension)
+    file_path = f"/tmp/{prefix}-{preview_file_id}.{extension}"
     return download_file_from_another_instance(
         path, file_path, save_func, prefix, preview_file_id, number_attemps
     )
@@ -1030,7 +1031,7 @@ def download_preview_background_file_from_another_instance(
     elif prefix == "thumbnails":
         path = f"/pictures/thumbnails/preview-background-files/{preview_background_file_id}.png"
 
-    file_path = "/tmp/%s.%s" % (preview_background_file_id, extension)
+    file_path = f"/tmp/{prefix}-{preview_background_file_id}.{extension}"
     return download_file_from_another_instance(
         path,
         file_path,
@@ -1054,17 +1055,20 @@ def download_attachment_files_from_another_instance(
         )
     else:
         attachment_files = AttachmentFile.query.all()
-    for attachment_file in attachment_files:
-        with app.app_context():
-            if pool is None:
-                download_attachment_file_from_another_instance(
-                    attachment_file.present(), number_attemps
-                )
-            else:
-                pool.apply_async(
-                    download_attachment_file_from_another_instance,
-                    (attachment_file.present(), number_attemps),
-                )
+    with app.app_context():
+        for attachment_file in attachment_files:
+            if not file_store.exists_file(
+                "attachments", str(attachment_file.id)
+            ):
+                if pool is None:
+                    download_attachment_file_from_another_instance(
+                        attachment_file.present(), number_attemps
+                    )
+                else:
+                    pool.apply_async(
+                        download_attachment_file_from_another_instance,
+                        (attachment_file.present(), number_attemps),
+                    )
 
 
 def download_attachment_file_from_another_instance(

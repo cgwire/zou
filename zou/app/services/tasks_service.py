@@ -376,8 +376,6 @@ def get_task_types_for_sequence(sequence_id):
     )
     return fields.serialize_models(task_types)
 
-    return get_task_types_for_entity(sequence_id)
-
 
 def get_task_types_for_asset(asset_id):
     """
