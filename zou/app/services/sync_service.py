@@ -790,7 +790,11 @@ def download_preview(preview_file):
 
 
 def download_files_from_another_instance(
-    project=None, multithreaded=False, number_workers=30, number_attemps=3
+    project=None,
+    multithreaded=False,
+    number_workers=30,
+    number_attemps=3,
+    force_resync=False,
 ):
     """
     Download all files from source instance.
@@ -800,22 +804,41 @@ def download_files_from_another_instance(
         pool = Pool(number_workers)
 
     download_thumbnails_from_another_instance(
-        "person", pool=pool, number_attemps=number_attemps
+        "person",
+        pool=pool,
+        number_attemps=number_attemps,
+        force_resync=force_resync,
     )
     download_thumbnails_from_another_instance(
-        "organisation", pool=pool, number_attemps=number_attemps
+        "organisation",
+        pool=pool,
+        number_attemps=number_attemps,
+        force_resync=force_resync,
     )
     download_thumbnails_from_another_instance(
-        "project", project=project, pool=pool, number_attemps=number_attemps
+        "project",
+        project=project,
+        pool=pool,
+        number_attemps=number_attemps,
+        force_resync=force_resync,
     )
     download_preview_files_from_another_instance(
-        project=project, pool=pool, number_attemps=number_attemps
+        project=project,
+        pool=pool,
+        number_attemps=number_attemps,
+        force_resync=force_resync,
     )
     download_preview_background_files_from_another_instance(
-        project=project, pool=pool, number_attemps=number_attemps
+        project=project,
+        pool=pool,
+        number_attemps=number_attemps,
+        force_resync=force_resync,
     )
     download_attachment_files_from_another_instance(
-        project=project, pool=pool, number_attemps=number_attemps
+        project=project,
+        pool=pool,
+        number_attemps=number_attemps,
+        force_resync=force_resync,
     )
 
     if pool is not None:
@@ -824,7 +847,7 @@ def download_files_from_another_instance(
 
 
 def download_thumbnails_from_another_instance(
-    model_name, project=None, pool=None, number_attemps=3
+    model_name, project=None, pool=None, number_attemps=3, force_resync=False
 ):
     """
     Download all thumbnails from source instance for given model.
@@ -838,8 +861,9 @@ def download_thumbnails_from_another_instance(
         instances = model.query.filter_by(id=project.get("id"))
 
     for instance in instances:
-        if instance.has_avatar and not file_store.exists_picture(
-            "thumbnails", str(instance.id)
+        if instance.has_avatar and (
+            force_resync
+            or not file_store.exists_picture("thumbnails", str(instance.id))
         ):
             if pool is None:
                 download_thumbnail_from_another_instance(
@@ -872,7 +896,7 @@ def download_thumbnail_from_another_instance(
 
 
 def download_preview_files_from_another_instance(
-    project=None, pool=None, number_attemps=3
+    project=None, pool=None, number_attemps=3, force_resync=False
 ):
     """
     Download all preview files and related (thumbnails and low def included).
@@ -890,12 +914,12 @@ def download_preview_files_from_another_instance(
     for preview_file in preview_files:
         if pool is None:
             download_preview_from_another_instance(
-                preview_file, number_attemps
+                preview_file, number_attemps, force_resync
             )
         else:
             pool.apply_async(
                 download_preview_from_another_instance,
-                (preview_file, number_attemps),
+                (preview_file, number_attemps, force_resync),
             )
 
 
@@ -924,7 +948,9 @@ def download_preview_background_files_from_another_instance(
             )
 
 
-def download_preview_from_another_instance(preview_file, number_attemps=3):
+def download_preview_from_another_instance(
+    preview_file, number_attemps=3, force_resync=False
+):
     """
     Download all files link to preview file entry: orginal file and variants.
     """
@@ -941,7 +967,9 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
                 "original",
                 "previews",
             ]:
-                if not file_store.exists_picture(prefix, preview_file_id):
+                if force_resync or not file_store.exists_picture(
+                    prefix, preview_file_id
+                ):
                     download_preview_file_from_another_instance(
                         file_store.add_picture,
                         prefix,
@@ -952,7 +980,9 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
 
         if is_movie:
             for prefix in ["low", "previews"]:
-                if not file_store.exists_movie(prefix, preview_file_id):
+                if force_resync or not file_store.exists_movie(
+                    prefix, preview_file_id
+                ):
                     download_preview_file_from_another_instance(
                         file_store.add_movie,
                         prefix,
@@ -962,7 +992,9 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
                     )
 
         elif is_file:
-            if not file_store.exists_file("previews", preview_file_id):
+            if force_resync or not file_store.exists_file(
+                "previews", preview_file_id
+            ):
                 download_preview_file_from_another_instance(
                     file_store.add_file,
                     "previews",
@@ -973,7 +1005,7 @@ def download_preview_from_another_instance(preview_file, number_attemps=3):
 
 
 def download_preview_background_from_another_instance(
-    preview_background, number_attemps=3
+    preview_background, number_attemps=3, force_resync=False
 ):
     """
     Download all files link to preview background file entry.
@@ -986,7 +1018,7 @@ def download_preview_background_from_another_instance(
             "thumbnails",
             "preview-backgrounds",
         ]:
-            if not file_store.exists_picture(
+            if force_resync or not file_store.exists_picture(
                 prefix, preview_background_file_id
             ):
                 download_preview_background_file_from_another_instance(
@@ -1043,7 +1075,7 @@ def download_preview_background_file_from_another_instance(
 
 
 def download_attachment_files_from_another_instance(
-    project=None, pool=None, number_attemps=3
+    project=None, pool=None, number_attemps=3, force_resync=False
 ):
     if project:
         project_dict = gazu.project.get_project_by_name(project)
@@ -1057,7 +1089,7 @@ def download_attachment_files_from_another_instance(
         attachment_files = AttachmentFile.query.all()
     with app.app_context():
         for attachment_file in attachment_files:
-            if not file_store.exists_file(
+            if force_resync or not file_store.exists_file(
                 "attachments", str(attachment_file.id)
             ):
                 if pool is None:
