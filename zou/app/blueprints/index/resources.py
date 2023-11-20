@@ -288,3 +288,20 @@ class ConfigResource(Resource):
                 and app.config["INDEXER"]["key"] != "masterkey"
             ),
         }
+
+
+class TestEventsResource(Resource):
+    def get(self):
+        """
+        Generate a main:test event.
+        ---
+        tags:
+          - Index
+        responses:
+            200:
+                description: Success flage
+        """
+        from zou.app.utils import events
+
+        events.emit("main:test", data={}, persist=False, project_id=None)
+        return {"success": True}

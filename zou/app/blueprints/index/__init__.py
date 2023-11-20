@@ -12,6 +12,7 @@ from zou.app.blueprints.index.resources import (
     StatusResource,
     StatusResourcesResource,
     StatsResource,
+    TestEventsResource,
     TxtStatusResource,
 )
 
@@ -21,6 +22,7 @@ routes = [
     ("/status/influx", InfluxStatusResource),
     ("/status/resources", StatusResourcesResource),
     ("/status.txt", TxtStatusResource),
+    ("/status/test-event", TestEventsResource),
     ("/stats", StatsResource),
     ("/config", ConfigResource),
 ]
