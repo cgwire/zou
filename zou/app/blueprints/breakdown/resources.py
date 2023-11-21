@@ -377,6 +377,10 @@ class ProjectEntityLinksResource(Resource, ArgsMixin):
     def get(self, project_id):
         """
         Retrieve all entity links related to given project.
+
+        Results can be paginated using page and limit query parameters. If you
+        prefer a more accurate pagination, you can use and
+        cursor_created_at to get the next page.
         ---
         tags:
           - Breakdown
@@ -388,6 +392,24 @@ class ProjectEntityLinksResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: page
+            required: False
+            type: string
+            format: Number
+            x-example: 2
+          - in: limit
+            name: page
+            required: False
+            type: string
+            format: Number
+            x-example: 100
+          - in: cursor_created_at
+            name: page
+            required: False
+            type: string
+            format: Datetime
+            x-example: 2020-01-01T00:00:00
         responses:
             200:
                 description: All entity links related to given project
@@ -396,8 +418,12 @@ class ProjectEntityLinksResource(Resource, ArgsMixin):
         projects_service.get_project(project_id)
         page = self.get_page()
         limit = self.get_limit()
+        cursor_created_at = self.get_text_parameter("cursor_created_at")
         return entities_service.get_entity_links_for_project(
-            project_id, page, limit
+            project_id,
+            page=page,
+            limit=limit,
+            cursor_created_at=cursor_created_at,
         )
 
 

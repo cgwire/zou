@@ -864,9 +864,10 @@ def _generate_tiles(
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
             os.remove(tile_path)
-        print(
-            f"{index:0{len(str(total))}}/{total} Tile generated for {preview_file.id}.",
-        )
+            print(
+                f"{index:0{len(str(total))}}/{total} Tile "
+                + "generated for {preview_file.id}.",
+            )
     except Exception as e:
         print(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."

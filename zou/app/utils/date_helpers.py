@@ -18,6 +18,13 @@ def get_date_diff(date_a, date_b):
     return abs((date_b - date_a).total_seconds())
 
 
+def get_date_string(date_obj, milliseconds=False):
+    if milliseconds:
+        return date_obj.strftime("%Y-%m-%dT%H:%M:%S.%f")
+    else:
+        return date_obj.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def get_date_string_with_timezone(date_string, timezone):
     """
     Apply given timezone to given date and return it as a string.
@@ -54,11 +61,14 @@ def get_date_from_string(date_str):
     return datetime.strptime(date_str, "%Y-%m-%d")
 
 
-def get_datetime_from_string(date_str):
+def get_datetime_from_string(date_str, milliseconds=False):
     """
     Parse a datetime string and returns a datetime object.
     """
-    return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S")
+    if milliseconds:
+        return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S.%f")
+    else:
+        return datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%S")
 
 
 def get_year_interval(year):
