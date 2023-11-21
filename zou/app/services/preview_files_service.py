@@ -732,8 +732,8 @@ def generate_preview_extra(
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
-    with_tiles=True,
-    with_metadata=True,
+    with_tiles=False,
+    with_metadata=False,
     with_thumbnails=False,
 ):
     """
@@ -771,7 +771,7 @@ def generate_preview_extra(
         )
 
     total = query.count()
-    print(f"{total} previews found")
+    print(f"{total} previews found.")
     for index, preview_file in enumerate(query.all()):
         preview_file_id = str(preview_file.id)
         prefix = "previews" if preview_file.extension == "mp4" else "original"
@@ -810,11 +810,8 @@ def generate_preview_extra(
                 and not preview_file_already_in_cache
             ):
                 try:
-                    print(
-                        f"Removing preview file from cache: {preview_file_path}"
-                    )
                     os.remove(preview_file_path)
-                except Exception:
+                except OSError:
                     pass
 
     print("Extra information generated.")
@@ -836,7 +833,7 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
             preview_file.extension,
         )
     except Exception as e:
-        print(f"Failed to get preview file {preview_file.id}: {e}")
+        print(f"Failed to get preview file {preview_file.id}: {e}.")
         return None
     return preview_file_path
 
@@ -850,10 +847,10 @@ def _generate_thumbnails(preview_file, preview_file_path, total, index):
             preview_file.id, original_picture_path, with_original=False
         )
         print(
-            f"{total}/{index} Thumbnails generated for {preview_file.id}",
+            f"{index:0{len(str(total))}}/{total} Thumbnails generated for {preview_file.id}.",
         )
     except Exception as e:
-        print(f"Failed to generate thumbnails for {preview_file.id}: {e}")
+        print(f"Failed to generate thumbnails for {preview_file.id}: {e}.")
 
 
 def _generate_tiles(
@@ -861,18 +858,18 @@ def _generate_tiles(
 ):
     try:
         if preview_file.extension == "mp4" and (
-            not file_store.exists_picture("tiles", str(preview_file.id))
-            or force
+            force
+            or not file_store.exists_picture("tiles", str(preview_file.id))
         ):
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
             os.remove(tile_path)
         print(
-            f"{total}/{index} Tile generated for {preview_file.id}",
+            f"{index:0{len(str(total))}}/{total} Tile generated for {preview_file.id}.",
         )
     except Exception as e:
         print(
-            f"Failed to generate tile for preview file {preview_file.id}: {e}"
+            f"Failed to generate tile for preview file {preview_file.id}: {e}."
         )
 
 
@@ -900,9 +897,9 @@ def _reset_preview_file_metadata(
             },
         )
         print(
-            f"{total}/{index} Size information stored for {preview_file.id}",
+            f"{index:0{len(str(total))}}/{total} Size information stored for {preview_file.id}.",
         )
     except Exception as e:
         print(
-            f"Failed to store information for preview file {preview_file.id}: {e}",
+            f"Failed to store information for preview file {preview_file.id}: {e}.",
         )

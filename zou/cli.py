@@ -292,13 +292,20 @@ def sync_full(
 
 @cli.command()
 @click.option("--source", default="http://localhost:5000", show_default=True)
+@click.option("--project", default=None, show_default=True)
 @click.option(
     "--multithreaded", is_flag=True, show_default=True, default=False
 )
 @click.option("--number-workers", default=30, show_default=True, type=int)
 @click.option("--number-attemps", default=3, show_default=True, type=int)
+@click.option("--force-resync", is_flag=True, show_default=True, default=False)
 def sync_full_files(
-    source, multithreaded, number_workers, number_attemps, project=None
+    source,
+    project,
+    multithreaded,
+    number_workers,
+    number_attemps,
+    force_resync,
 ):
     """
     Retrieve all files from source instance. It expects that credentials to
@@ -316,6 +323,7 @@ def sync_full_files(
         multithreaded=multithreaded,
         number_workers=number_workers,
         number_attemps=number_attemps,
+        force_resync=force_resync,
     )
     print("Syncing ended.")
 
@@ -465,9 +473,9 @@ def search_asset(query):
 @click.option("--episode-id", default=None, show_default=True)
 @click.option("--only-shots", is_flag=True, default=False, show_default=True)
 @click.option("--only-assets", is_flag=True, default=False, show_default=True)
-@click.option("--with-tiles", is_flag=True, default=False, show_default=True)
+@click.option("--with-tiles", is_flag=False, default=True, show_default=True)
 @click.option(
-    "--with-metadata", is_flag=True, default=False, show_default=True
+    "--with-metadata", is_flag=False, default=True, show_default=True
 )
 @click.option(
     "--with-thumbnails", is_flag=True, default=False, show_default=True
