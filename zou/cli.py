@@ -27,6 +27,16 @@ def cli():
 
 
 @cli.command()
+def version():
+    """
+    Returns current installation version.
+    """
+    from zou import __version__
+
+    print(f"Zou version: {__version__}")
+
+
+@cli.command()
 def init_db():
     "Creates datababase table (database must be created through PG client)."
 
