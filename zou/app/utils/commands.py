@@ -638,8 +638,8 @@ def generate_preview_extra(
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
-    with_tiles=True,
-    with_metadata=True,
+    with_tiles=False,
+    with_metadata=False,
     with_thumbnails=False,
 ):
     with app.app_context():
