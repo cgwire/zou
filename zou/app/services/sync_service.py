@@ -927,7 +927,7 @@ def download_thumbnail_from_another_instance(
         force,
     )
     logger.info(
-        f"{index}/{total} Thumbnail {model_name} file {model_id} processed."
+        f"{index:0{len(str(total))}}/{total} Thumbnail {model_name} file {model_id} processed."
     )
 
 
@@ -1076,7 +1076,9 @@ def download_preview_from_another_instance(
             force,
         )
 
-    logger.info(f"{index}/{total} Preview file {preview_file_id} processed.")
+    logger.info(
+        f"{index:0{len(str(total))}}/{total} Preview file {preview_file_id} processed."
+    )
 
 
 def download_preview_background_from_another_instance(
@@ -1110,7 +1112,7 @@ def download_preview_background_from_another_instance(
             force,
         )
         logger.info(
-            f"{index}/{total} Preview background file {preview_background_file_id} processed."
+            f"{index:0{len(str(total))}}/{total} Preview background file {preview_background_file_id} processed."
         )
 
 
@@ -1174,7 +1176,7 @@ def download_attachment_file_from_another_instance(
         force,
     )
     logger.info(
-        f"{index}/{total} Attachment file {attachment_file_id} processed."
+        f"{index:0{len(str(total))}}/{total} Attachment file {attachment_file_id} processed."
     )
 
 

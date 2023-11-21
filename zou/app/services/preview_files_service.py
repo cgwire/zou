@@ -847,7 +847,7 @@ def _generate_thumbnails(preview_file, preview_file_path, total, index):
             preview_file.id, original_picture_path, with_original=False
         )
         print(
-            f"{index}/{total} Thumbnails generated for {preview_file.id}.",
+            f"{index:0{len(str(total))}}/{total} Thumbnails generated for {preview_file.id}.",
         )
     except Exception as e:
         print(f"Failed to generate thumbnails for {preview_file.id}: {e}.")
@@ -865,7 +865,7 @@ def _generate_tiles(
             file_store.add_picture("tiles", preview_file.id, tile_path)
             os.remove(tile_path)
         print(
-            f"{index}/{total} Tile generated for {preview_file.id}.",
+            f"{index:0{len(str(total))}}/{total} Tile generated for {preview_file.id}.",
         )
     except Exception as e:
         print(
@@ -897,7 +897,7 @@ def _reset_preview_file_metadata(
             },
         )
         print(
-            f"{index}/{total} Size information stored for {preview_file.id}.",
+            f"{index:0{len(str(total))}}/{total} Size information stored for {preview_file.id}.",
         )
     except Exception as e:
         print(
