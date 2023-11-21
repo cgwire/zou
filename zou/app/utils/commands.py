@@ -548,7 +548,9 @@ def import_files_from_another_instance(
     instance. It doesn't change the IDs.
     """
     with app.app_context():
-        sync_service.init(source, login, password)
+        sync_service.init(
+            source, login, password, multithreaded, number_workers
+        )
         sync_service.download_files_from_another_instance(
             project=project,
             multithreaded=multithreaded,
