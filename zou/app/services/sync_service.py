@@ -832,38 +832,38 @@ def download_files_from_another_instance(
         "person",
         pool=pool,
         number_attemps=number_attemps,
-        force_resync=force_resync,
+        force=force_resync,
     )
     download_thumbnails_from_another_instance(
         "organisation",
         pool=pool,
         number_attemps=number_attemps,
-        force_resync=force_resync,
+        force=force_resync,
     )
     download_thumbnails_from_another_instance(
         "project",
         project=project,
         pool=pool,
         number_attemps=number_attemps,
-        force_resync=force_resync,
+        force=force_resync,
     )
     download_preview_files_from_another_instance(
         project=project,
         pool=pool,
         number_attemps=number_attemps,
-        force_resync=force_resync,
+        force=force_resync,
     )
     download_preview_background_files_from_another_instance(
         project=project,
         pool=pool,
         number_attemps=number_attemps,
-        force_resync=force_resync,
+        force=force_resync,
     )
     download_attachment_files_from_another_instance(
         project=project,
         pool=pool,
         number_attemps=number_attemps,
-        force_resync=force_resync,
+        force=force_resync,
     )
 
     if pool is not None:
@@ -872,7 +872,7 @@ def download_files_from_another_instance(
 
 
 def download_thumbnails_from_another_instance(
-    model_name, project=None, pool=None, number_attemps=3, force_resync=False
+    model_name, project=None, pool=None, number_attemps=3, force=False
 ):
     """
     Download all thumbnails from source instance for given model.
@@ -890,33 +890,26 @@ def download_thumbnails_from_another_instance(
         f"Downloading {model_name} thumbnails ({number_of_thumbnails})..."
     )
     for i, instance in enumerate(instances):
-        if instance.has_avatar and (
-            force_resync
-            or not file_store.exists_picture("thumbnails", str(instance.id))
-        ):
+        if instance.has_avatar:
+            args = (
+                model_name,
+                instance.id,
+                number_attemps,
+                i + 1,
+                number_of_thumbnails,
+                force,
+            )
             if pool is None:
-                download_thumbnail_from_another_instance(
-                    model_name,
-                    instance.id,
-                    number_attemps,
-                    i + 1,
-                    number_of_thumbnails,
-                )
+                download_thumbnail_from_another_instance(*args)
             else:
                 pool.apply_async(
                     download_thumbnail_from_another_instance,
-                    (
-                        model_name,
-                        instance.id,
-                        number_attemps,
-                        i + 1,
-                        number_of_thumbnails,
-                    ),
+                    args,
                 )
 
 
 def download_thumbnail_from_another_instance(
-    model_name, model_id, number_attemps=3, index=0, total=0
+    model_name, model_id, number_attemps=3, index=0, total=0, force=False
 ):
     """
     Download into the local storage the thumbnail for a given model instance.
@@ -926,10 +919,12 @@ def download_thumbnail_from_another_instance(
     download_file_from_another_instance(
         path,
         file_path,
+        file_store.exists_picture,
         file_store.add_picture,
         "thumbnails",
         model_id,
         number_attemps,
+        force,
     )
     logger.info(
         f"Thumbnail {model_name} file {model_id} processed ({index}/{total})."
@@ -937,7 +932,7 @@ def download_thumbnail_from_another_instance(
 
 
 def download_preview_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force_resync=False
+    project=None, pool=None, number_attemps=3, force=False
 ):
     """
     Download all preview files and related (thumbnails and low def included).
@@ -953,29 +948,24 @@ def download_preview_files_from_another_instance(
     number_of_preview_files = preview_files.count()
     logger.info(f"Downloading preview files ({number_of_preview_files})...")
     for i, preview_file in enumerate(preview_files):
+        args = (
+            preview_file,
+            number_attemps,
+            force,
+            i + 1,
+            number_of_preview_files,
+        )
         if pool is None:
-            download_preview_from_another_instance(
-                preview_file,
-                number_attemps,
-                force_resync,
-                i + 1,
-                number_of_preview_files,
-            )
+            download_preview_from_another_instance(*args)
         else:
             pool.apply_async(
                 download_preview_from_another_instance,
-                (
-                    preview_file,
-                    number_attemps,
-                    force_resync,
-                    i + 1,
-                    number_of_preview_files,
-                ),
+                args,
             )
 
 
 def download_preview_background_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force_resync=False
+    project=None, pool=None, number_attemps=3, force=False
 ):
     """
     Download all preview background files and related.
@@ -992,29 +982,23 @@ def download_preview_background_files_from_another_instance(
         f"Downloading preview background files ({number_of_preview_background_files})..."
     )
     for i, preview_background_file in enumerate(preview_background_files):
+        args = (
+            preview_background_file,
+            number_attemps,
+            force,
+            i + 1,
+            number_of_preview_background_files,
+        )
         if pool is None:
-            download_preview_background_from_another_instance(
-                preview_background_file,
-                number_attemps,
-                force_resync,
-                i + 1,
-                number_of_preview_background_files,
-            )
+            download_preview_background_from_another_instance(*args)
         else:
             pool.apply_async(
-                download_preview_background_from_another_instance,
-                (
-                    preview_background_file,
-                    number_attemps,
-                    force_resync,
-                    i + 1,
-                    number_of_preview_background_files,
-                ),
+                download_preview_background_from_another_instance, args
             )
 
 
 def download_preview_from_another_instance(
-    preview_file, number_attemps=3, force_resync=False, index=0, total=0
+    preview_file, number_attemps=3, force=False, index=0, total=0
 ):
     """
     Download all files link to preview file entry: orginal file and variants.
@@ -1022,56 +1006,81 @@ def download_preview_from_another_instance(
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"
     is_file = not is_movie and not is_picture
-
     preview_file_id = str(preview_file.id)
-    if is_movie or is_picture:
-        for prefix in [
-            "thumbnails",
-            "thumbnails-square",
-            "original",
-            "previews",
-        ]:
-            if force_resync or not file_store.exists_picture(
-                prefix, preview_file_id
-            ):
-                download_preview_file_from_another_instance(
-                    file_store.add_picture,
-                    prefix,
-                    preview_file_id,
-                    "png",
-                    number_attemps,
-                )
 
+    file_tree = {}
     if is_movie:
-        for prefix in ["low", "previews"]:
-            if force_resync or not file_store.exists_movie(
-                prefix, preview_file_id
-            ):
-                download_preview_file_from_another_instance(
-                    file_store.add_movie,
-                    prefix,
-                    preview_file_id,
-                    preview_file.extension,
-                    number_attemps,
-                )
+        file_tree[f"/movies/originals/preview-files/{preview_file_id}.mp4"] = {
+            "prefix": "previews",
+            "exist_func": file_store.exists_movie,
+            "save_func": file_store.add_movie,
+        }
+        file_tree[f"/movies/low/preview-files/{preview_file_id}.mp4"] = {
+            "prefix": "lowdef",
+            "exist_func": file_store.exists_movie,
+            "save_func": file_store.add_movie,
+        }
+        file_tree[f"/movies/tiles/preview-files/{preview_file_id}.png"] = {
+            "prefix": "tiles",
+            "exist_func": file_store.exists_picture,
+            "save_func": file_store.add_picture,
+        }
+    if not is_file:
+        file_tree[
+            f"/pictures/thumbnails/preview-files/{preview_file_id}.png"
+        ] = {
+            "prefix": "thumbnails",
+            "exist_func": file_store.exists_picture,
+            "save_func": file_store.add_picture,
+        }
+        file_tree[
+            f"/pictures/thumbnails-square/preview-files/{preview_file_id}.png"
+        ] = {
+            "prefix": "thumbnails-square",
+            "exist_func": file_store.exists_picture,
+            "save_func": file_store.add_picture,
+        }
+        file_tree[
+            f"/pictures/previews/preview-files/{preview_file_id}.png"
+        ] = {
+            "prefix": "previews",
+            "exist_func": file_store.exists_picture,
+            "save_func": file_store.add_picture,
+        }
+        file_tree[
+            f"/pictures/originals/preview-files/{preview_file_id}.png"
+        ] = {
+            "prefix": "original",
+            "exist_func": file_store.exists_picture,
+            "save_func": file_store.add_picture,
+        }
+    else:
+        file_tree[
+            f"/pictures/originals/preview-files/{preview_file_id}.{preview_file.extension}"
+        ] = {
+            "prefix": "previews",
+            "exist_func": file_store.exists_file,
+            "save_func": file_store.add_file,
+        }
 
-    elif is_file:
-        if force_resync or not file_store.exists_file(
-            "previews", preview_file_id
-        ):
-            download_preview_file_from_another_instance(
-                file_store.add_file,
-                "previews",
-                preview_file_id,
-                preview_file.extension,
-                number_attemps,
-            )
+    for path, prefix_func in file_tree.items():
+        file_path = f"/tmp/{prefix_func['prefix']}-{preview_file_id}.{preview_file.extension}"
+        download_file_from_another_instance(
+            path,
+            file_path,
+            prefix_func["exist_func"],
+            prefix_func["save_func"],
+            prefix_func["prefix"],
+            preview_file_id,
+            number_attemps,
+            force,
+        )
 
     logger.info(f"Preview file {preview_file_id} processed ({index}/{total}).")
 
 
 def download_preview_background_from_another_instance(
-    preview_background, number_attemps=3, force_resync=False, index=0, total=0
+    preview_background, number_attemps=3, force=False, index=0, total=0
 ):
     """
     Download all files link to preview background file entry.
@@ -1083,83 +1092,33 @@ def download_preview_background_from_another_instance(
         "thumbnails",
         "preview-backgrounds",
     ]:
-        if force_resync or not file_store.exists_picture(
-            prefix, preview_background_file_id
-        ):
-            download_preview_background_file_from_another_instance(
-                file_store.add_picture,
-                prefix,
-                preview_background_file_id,
-                extension,
-                number_attemps,
-            )
-            logger.info(
-                f"Preview background file {preview_background_file_id} processed ({index}/{total})."
-            )
+        if prefix == "preview-backgrounds":
+            path = f"/pictures/preview-background-files/{preview_background_file_id}.{extension}"
+        elif prefix == "thumbnails":
+            path = f"/pictures/thumbnails/preview-background-files/{preview_background_file_id}.png"
 
-
-def download_preview_file_from_another_instance(
-    save_func,
-    prefix,
-    preview_file_id,
-    extension,
-    number_attemps=3,
-):
-    """
-    Download the preview file for the given preview from object storage and store it
-    locally.
-    """
-    if prefix == "previews" and extension == "mp4":
-        path = f"/movies/originals/preview-files/{preview_file_id}.mp4"
-    elif prefix == "low":
-        path = f"/movies/low/preview-files/{preview_file_id}.mp4"
-    else:
-        path = (
-            f"/pictures/originals/preview-files/{preview_file_id}.{extension}"
+        extension = "png" if prefix == "thumbnails" else extension
+        file_path = f"/tmp/{prefix}-{preview_background_file_id}.{extension}"
+        download_file_from_another_instance(
+            path,
+            file_path,
+            file_store.exists_picture,
+            file_store.add_picture,
+            prefix,
+            preview_background_file_id,
+            number_attemps,
+            force,
         )
-    file_path = f"/tmp/{prefix}-{preview_file_id}.{extension}"
-    return download_file_from_another_instance(
-        path,
-        file_path,
-        save_func,
-        prefix,
-        preview_file_id,
-        number_attemps,
-    )
-
-
-def download_preview_background_file_from_another_instance(
-    save_func,
-    prefix,
-    preview_background_file_id,
-    extension,
-    number_attemps=3,
-):
-    """
-    Download the preview background file for the given preview from object
-    storage and store it locally.
-    """
-    if prefix == "preview-backgrounds":
-        path = f"/pictures/preview-background-files/{preview_background_file_id}.{extension}"
-    elif prefix == "thumbnails":
-        path = f"/pictures/thumbnails/preview-background-files/{preview_background_file_id}.png"
-
-    file_path = f"/tmp/{prefix}-{preview_background_file_id}.{extension}"
-    return download_file_from_another_instance(
-        path,
-        file_path,
-        save_func,
-        prefix,
-        preview_background_file_id,
-        number_attemps,
-    )
+        logger.info(
+            f"Preview background file {preview_background_file_id} processed ({index}/{total})."
+        )
 
 
 def download_attachment_files_from_another_instance(
     project=None,
     pool=None,
     number_attemps=3,
-    force_resync=False,
+    force=False,
 ):
     if project:
         project_dict = gazu.project.get_project_by_name(project)
@@ -1176,30 +1135,26 @@ def download_attachment_files_from_another_instance(
         f"Downloading attachment files ({number_of_attachment_files})..."
     )
     for i, attachment_file in enumerate(attachment_files):
-        if force_resync or not file_store.exists_file(
-            "attachments", str(attachment_file.id)
-        ):
-            if pool is None:
-                download_attachment_file_from_another_instance(
-                    attachment_file.present(),
-                    number_attemps,
-                    i + 1,
-                    number_of_attachment_files,
-                )
-            else:
-                pool.apply_async(
-                    download_attachment_file_from_another_instance,
-                    (
-                        attachment_file.present(),
-                        number_attemps,
-                        i + 1,
-                        number_of_attachment_files,
-                    ),
-                )
+        args = (
+            (
+                attachment_file.present(),
+                number_attemps,
+                i + 1,
+                number_of_attachment_files,
+                force,
+            ),
+        )
+        if pool is None:
+            download_attachment_file_from_another_instance(*args)
+        else:
+            pool.apply_async(
+                download_attachment_file_from_another_instance,
+                args,
+            )
 
 
 def download_attachment_file_from_another_instance(
-    attachment_file, number_attemps=3, index=0, total=0
+    attachment_file, number_attemps=3, index=0, total=0, force=False
 ):
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
@@ -1211,10 +1166,12 @@ def download_attachment_file_from_another_instance(
     download_file_from_another_instance(
         path,
         file_path,
+        file_store.exists_file,
         file_store.add_file,
         "attachments",
         attachment_file_id,
         number_attemps,
+        force,
     )
     logger.info(
         f"Attachment file {attachment_file_id} processed ({index}/{total})."
@@ -1222,35 +1179,43 @@ def download_attachment_file_from_another_instance(
 
 
 def download_file_from_another_instance(
-    path, file_path, save_func, prefix, id, number_attemps=3
+    path,
+    file_path,
+    exist_func,
+    save_func,
+    prefix,
+    id,
+    number_attemps=3,
+    force=False,
 ):
     with app.app_context():
-        for attemps_count in range(0, number_attemps):
-            if attemps_count > 0:
-                time.sleep(0.5)
-            try:
-                response = gazu.client.download(path, file_path)
-                if response.status_code != 200:
-                    raise gazu.exception.DownloadFileException(
-                        f"{response.status_code} {http_responses[response.status_code]}."
-                    )
-            except Exception as e:
-                if attemps_count + 1 == number_attemps:
-                    if isinstance(e, gazu.exception.DownloadFileException):
-                        logger.error(f"Download failed ({path}): {e}")
-                    else:
-                        logger.error(f"Download failed ({path}):")
+        if force or not exist_func(prefix, id):
+            for attemps_count in range(0, number_attemps):
+                if attemps_count > 0:
+                    time.sleep(0.5)
+                try:
+                    response = gazu.client.download(path, file_path)
+                    if response.status_code != 200:
+                        raise gazu.exception.DownloadFileException(
+                            f"{response.status_code} {http_responses[response.status_code]}."
+                        )
+                except Exception as e:
+                    if attemps_count + 1 == number_attemps:
+                        if isinstance(e, gazu.exception.DownloadFileException):
+                            logger.error(f"Download failed ({path}): {e}")
+                        else:
+                            logger.error(f"Download failed ({path}):")
+                            logger.error(traceback.format_exc())
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    continue
+                try:
+                    save_func(prefix, id, file_path)
+                    break
+                except Exception:
+                    if attemps_count + 1 == number_attemps:
+                        logger.error(f"Upload failed ({path}):")
                         logger.error(traceback.format_exc())
-                if os.path.exists(file_path):
+                finally:
                     os.remove(file_path)
-                continue
-            try:
-                save_func(prefix, id, file_path)
-                break
-            except Exception:
-                if attemps_count + 1 == number_attemps:
-                    logger.error(f"Upload failed ({path}):")
-                    logger.error(traceback.format_exc())
-            finally:
-                os.remove(file_path)
     return path, file_path
