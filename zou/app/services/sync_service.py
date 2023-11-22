@@ -217,6 +217,10 @@ def init(source, login, password, multithreaded=False, number_workers=30):
                 file_store.pictures,
                 file_store.files,
             ]:
+                try:
+                    fs.backend.conn.head_container(fs.backend.name)
+                except:
+                    pass
                 http_con = fs.backend.conn.http_conn[1]
                 url = http_con.parsed_url
                 http_con.request_session.mount(
