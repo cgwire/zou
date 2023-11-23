@@ -147,7 +147,9 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         self.check_project_permissions(project_id)
         self.prepare_import(project_id, **kwargs)
         with open(file_path) as csvfile:
-            reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
+            dialect = self.get_dialect(csvfile)
+            dialect.doublequote = True
+            reader = csv.DictReader(csvfile, dialect=dialect)
             line_number = 1
             for row in reader:
                 try:
