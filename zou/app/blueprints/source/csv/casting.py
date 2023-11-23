@@ -105,7 +105,9 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
         asset_id = self.asset_map.get(asset_key, None)
         target_id = self.shot_map.get(target_key, None)
         if target_id is None:
-            target_id = self.asset_map.get(target_key, None)
+            target_id = self.asset_map.get(
+                slugify(f"{row['Parent']}{row['Name']}"), None
+            )
             if target_id is None:
                 target_id = self.episode_name_map.get(target_key, None)
 
