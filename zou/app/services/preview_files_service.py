@@ -100,6 +100,7 @@ def get_project_from_preview_file(preview_file_id):
     Get project dict of related preview file.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
+
     task = Task.get(preview_file.task_id)
     project = Project.get(task.project_id)
     return project.serialize()
