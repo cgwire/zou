@@ -661,6 +661,7 @@ def _build_preview_map_for_comments(comment_ids, is_client=False):
                     "extension": preview.extension,
                     "width": preview.width,
                     "height": preview.height,
+                    "duration": preview.duration,
                     "status": status,
                     "validation_status": validation_status,
                     "original_name": preview.original_name,
