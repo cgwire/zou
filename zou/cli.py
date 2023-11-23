@@ -473,9 +473,9 @@ def search_asset(query):
 @click.option("--episode-id", default=None, show_default=True)
 @click.option("--only-shots", is_flag=True, default=False, show_default=True)
 @click.option("--only-assets", is_flag=True, default=False, show_default=True)
-@click.option("--with-tiles", is_flag=False, default=True, show_default=True)
+@click.option("--with-tiles", is_flag=True, default=False, show_default=True)
 @click.option(
-    "--with-metadata", is_flag=False, default=True, show_default=True
+    "--with-metadata", is_flag=True, default=False, show_default=True
 )
 @click.option(
     "--with-thumbnails", is_flag=True, default=False, show_default=True
