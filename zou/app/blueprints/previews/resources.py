@@ -34,6 +34,7 @@ from zou.app.utils import (
 from zou.app.services.exception import (
     ArgumentsException,
     PreviewBackgroundFileNotFoundException,
+    PreviewFileReuploadNotAllowedException,
 )
 
 
@@ -382,6 +383,12 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         Return true if user is allowed to add a preview.
         """
         preview_file = files_service.get_preview_file(preview_file_id)
+        if preview_file["original_name"]:
+            current_app.logger.info(
+                f"Reupload of an existing preview file ({preview_file_id} not allowed."
+            )
+            raise PreviewFileReuploadNotAllowedException
+
         task = tasks_service.get_task(preview_file["task_id"])
         try:
             user_service.check_project_access(task["project_id"])

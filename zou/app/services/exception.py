@@ -1,4 +1,4 @@
-from werkzeug.exceptions import NotFound, Forbidden
+from werkzeug.exceptions import NotFound, Forbidden, BadRequest
 
 
 class EpisodeNotFoundException(NotFound):
@@ -82,6 +82,10 @@ class OutputTypeNotFoundException(NotFound):
 
 
 class PreviewFileNotFoundException(NotFound):
+    pass
+
+
+class PreviewFileReuploadNotAllowedException(BadRequest):
     pass
 
 
