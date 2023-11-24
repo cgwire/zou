@@ -812,7 +812,7 @@ def generate_preview_extra(
             ):
                 try:
                     os.remove(preview_file_path)
-                except OSError:
+                except:
                     pass
 
     print("Extra information generated.")
