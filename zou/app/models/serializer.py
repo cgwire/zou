@@ -14,15 +14,20 @@ class SerializerMixin(object):
             orm.attributes.CollectionAttributeImpl,
         )
 
-    def serialize(self, obj_type=None, relations=False):
+    def serialize(self, obj_type=None, relations=False, milliseconds=False):
         attrs = inspect(self).attrs.keys()
         if relations:
             obj_dict = {
-                attr: serialize_value(getattr(self, attr)) for attr in attrs
+                attr: serialize_value(
+                    getattr(self, attr), milliseconds=milliseconds
+                )
+                for attr in attrs
             }
         else:
             obj_dict = {
-                attr: serialize_value(getattr(self, attr))
+                attr: serialize_value(
+                    getattr(self, attr), milliseconds=milliseconds
+                )
                 for attr in attrs
                 if not self.is_join(attr)
             }
@@ -30,8 +35,14 @@ class SerializerMixin(object):
         return obj_dict
 
     @staticmethod
-    def serialize_list(models, obj_type=None, relations=False):
+    def serialize_list(
+        models, obj_type=None, relations=False, milliseconds=False
+    ):
         return [
-            model.serialize(obj_type=obj_type, relations=relations)
+            model.serialize(
+                obj_type=obj_type,
+                relations=relations,
+                milliseconds=milliseconds,
+            )
             for model in models
         ]

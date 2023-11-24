@@ -67,6 +67,32 @@ def get_paginated_results(query, page, limit=None, relations=False):
         return result
 
 
+def get_cursor_results(
+    model,
+    query,
+    cursor_created_at,
+    limit=None,
+    relations=False,
+):
+    """ """
+    limit = limit or app.config["NB_RECORDS_PER_PAGE"]
+    total = query.count()
+    query = (
+        query.filter(model.created_at > cursor_created_at)
+        .order_by(model.created_at)
+        .limit(limit)
+    )
+    models = fields.serialize_models(
+        query.all(), relations=relations, milliseconds=True
+    )
+    result = {
+        "data": models,
+        "total": total,
+        "limit": limit,
+    }
+    return result
+
+
 def apply_sort_by(model, query, sort_by):
     """
     Apply an order by clause to a sqlalchemy query from a string parameter.

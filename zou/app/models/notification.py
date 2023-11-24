@@ -1,4 +1,5 @@
 from sqlalchemy_utils import UUIDType, ChoiceType
+
 from sqlalchemy.inspection import inspect
 
 from zou.app import db
@@ -60,10 +61,13 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
         ),
     )
 
-    def serialize(self, obj_type=None, relations=False):
+    def serialize(self, obj_type=None, relations=False, milliseconds=False):
         attrs = inspect(self).attrs.keys()
         obj_dict = {
-            attr: serialize_value(getattr(self, attr)) for attr in attrs
+            attr: serialize_value(
+                getattr(self, attr), milliseconds=milliseconds
+            )
+            for attr in attrs
         }
         obj_dict["notification_type"] = obj_dict["type"]
         obj_dict["type"] = obj_type or type(self).__name__

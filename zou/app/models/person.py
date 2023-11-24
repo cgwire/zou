@@ -108,14 +108,20 @@ class Person(db.Model, BaseMixin, SerializerMixin):
                 for credential in self.fido_credentials
             ]
 
-    def serialize(self, obj_type="Person", relations=False):
-        data = SerializerMixin.serialize(self, "Person", relations=relations)
+    def serialize(
+        self, obj_type="Person", relations=False, milliseconds=False
+    ):
+        data = SerializerMixin.serialize(
+            self, "Person", relations=relations, milliseconds=milliseconds
+        )
         data["full_name"] = self.full_name()
         data["fido_devices"] = self.fido_devices()
         return data
 
-    def serialize_safe(self, relations=False):
-        data = SerializerMixin.serialize(self, "Person", relations=relations)
+    def serialize_safe(self, relations=False, milliseconds=False):
+        data = SerializerMixin.serialize(
+            self, "Person", relations=relations, milliseconds=milliseconds
+        )
         data["full_name"] = self.full_name()
         data["fido_devices"] = self.fido_devices()
         del data["password"]
@@ -125,8 +131,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         del data["fido_credentials"]
         return data
 
-    def present_minimal(self, relations=False):
-        data = SerializerMixin.serialize(self, "Person", relations=relations)
+    def present_minimal(self, relations=False, milliseconds=False):
+        data = SerializerMixin.serialize(
+            self, "Person", relations=relations, milliseconds=milliseconds
+        )
         return {
             "id": data["id"],
             "first_name": data["first_name"],

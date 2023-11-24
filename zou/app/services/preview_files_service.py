@@ -100,6 +100,7 @@ def get_project_from_preview_file(preview_file_id):
     Get project dict of related preview file.
     """
     preview_file = files_service.get_preview_file_raw(preview_file_id)
+
     task = Task.get(preview_file.task_id)
     project = Project.get(task.project_id)
     return project.serialize()
@@ -864,9 +865,10 @@ def _generate_tiles(
             tile_path = movie.generate_tile(preview_file_path)
             file_store.add_picture("tiles", preview_file.id, tile_path)
             os.remove(tile_path)
-        print(
-            f"{index:0{len(str(total))}}/{total} Tile generated for {preview_file.id}.",
-        )
+            print(
+                f"{index:0{len(str(total))}}/{total} Tile "
+                + "generated for {preview_file.id}.",
+            )
     except Exception as e:
         print(
             f"Failed to generate tile for preview file {preview_file.id}: {e}."

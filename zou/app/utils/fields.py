@@ -8,14 +8,19 @@ from babel import Locale
 from ipaddress import IPv4Address
 from sqlalchemy_utils.types.choice import Choice
 
+from zou.app.utils import date_helpers
 
-def serialize_value(value):
+
+def serialize_value(value, milliseconds=False):
     """
     Utility function to handle the normalizing of specific fields.
     The aim is to make the result JSON serializable
     """
     if isinstance(value, datetime.datetime):
-        return value.replace(microsecond=0).isoformat()
+        if milliseconds:
+            return value.isoformat()
+        else:
+            return value.replace(microsecond=0).isoformat()
     if isinstance(value, datetime.date):
         return value.isoformat()
     elif isinstance(value, uuid.UUID):
@@ -74,12 +79,12 @@ def serialize_orm_arrays(array_value):
     return [serialize_value(val.id) for val in array_value]
 
 
-def serialize_models(models, relations=False):
+def serialize_models(models, relations=False, milliseconds=False):
     """
     Serialize a list of models (useful for json dumping)
     """
     return [
-        model.serialize(relations=relations)
+        model.serialize(relations=relations, milliseconds=milliseconds)
         for model in models
         if model is not None
     ]

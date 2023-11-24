@@ -3,7 +3,13 @@ from zou.app.services import (
     projects_service,
     notifications_service,
 )
-from zou.app.utils import cache, events, fields, query as query_utils
+from zou.app.utils import (
+    date_helpers,
+    cache,
+    events,
+    fields,
+    query as query_utils,
+)
 
 from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
@@ -152,20 +158,38 @@ def get_entities_for_project(
     return Entity.serialize_list(result, obj_type=obj_type)
 
 
-def get_entity_links_for_project(project_id, page=None, limit=None):
+def get_entity_links_for_project(
+    project_id,
+    page=None,
+    limit=None,
+    cursor_created_at=None,
+):
     """
-    Retrieve entity links for
+    Retrieve entity links for given project.
     """
-    query = EntityLink.query.join(
+    query = EntityLink.query.filter(Entity.project_id == project_id).join(
         Entity, EntityLink.entity_in_id == Entity.id
-    ).filter(Entity.project_id == project_id)
+    )
 
     results = []
     if page is not None and page > 0:
         if limit < 1:
             limit = None
+        query = query.order_by(EntityLink.created_at, EntityLink.id)
         results = query_utils.get_paginated_results(query, page, limit=limit)
+    elif cursor_created_at is not None:
+        if limit < 1:
+            limit = None
+        created_at = date_helpers.get_datetime_from_string(
+            cursor_created_at, milliseconds=True
+        )
+        results = query_utils.get_cursor_results(
+            EntityLink, query, created_at, limit=limit
+        )
     else:
+        query = query.order_by(EntityLink.created_at, EntityLink.id)
+        if limit is not None and limit > 0:
+            query = query.limit(limit)
         for entity_link in query.all():
             results.append(
                 {
@@ -175,6 +199,9 @@ def get_entity_links_for_project(project_id, page=None, limit=None):
                     "nb_occurences": entity_link.nb_occurences,
                     "label": entity_link.label,
                     "data": entity_link.data,
+                    "created_at": date_helpers.get_date_string(
+                        entity_link.created_at, milliseconds=True
+                    ),
                     "type": "EntityLink",
                 }
             )
