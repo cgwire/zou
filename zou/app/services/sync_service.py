@@ -1142,13 +1142,11 @@ def download_attachment_files_from_another_instance(
     )
     for i, attachment_file in enumerate(attachment_files):
         args = (
-            (
-                attachment_file.present(),
-                number_attemps,
-                i + 1,
-                number_of_attachment_files,
-                force,
-            ),
+            attachment_file.present(),
+            number_attemps,
+            i + 1,
+            number_of_attachment_files,
+            force,
         )
         if pool is None:
             download_attachment_file_from_another_instance(*args)
