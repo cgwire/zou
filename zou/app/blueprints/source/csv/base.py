@@ -96,6 +96,7 @@ class BaseCsvImportResource(Resource, ArgsMixin):
     def get_dialect(self, csvfile):
         sniffer = csv.Sniffer()
         dialect = sniffer.sniff(csvfile.read())
+        dialect.doublequote = True
         csvfile.seek(0)
         return dialect
 
@@ -147,9 +148,7 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         self.check_project_permissions(project_id)
         self.prepare_import(project_id, **kwargs)
         with open(file_path) as csvfile:
-            dialect = self.get_dialect(csvfile)
-            dialect.doublequote = True
-            reader = csv.DictReader(csvfile, dialect=dialect)
+            reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
             line_number = 1
             for row in reader:
                 try:
