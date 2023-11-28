@@ -1,6 +1,6 @@
 import orjson as json
 
-from flask import abort, request, send_file as flask_send_file
+from flask import abort, request, send_file as flask_send_file, current_app
 from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
@@ -57,8 +57,10 @@ class DownloadAttachmentResource(Resource):
         task = tasks_service.get_task(comment["object_id"])
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
-        file_path = comments_service.get_attachment_file_path(attachment_file)
         try:
+            file_path = comments_service.get_attachment_file_path(
+                attachment_file
+            )
             return flask_send_file(
                 file_path,
                 conditional=True,
@@ -68,6 +70,9 @@ class DownloadAttachmentResource(Resource):
                 max_age=config.CLIENT_CACHE_MAX_AGE,
             )
         except Exception:
+            current_app.logger.error(
+                f"Attachment file was not found for: {attachment_file_id}"
+            )
             abort(404)
 
 
