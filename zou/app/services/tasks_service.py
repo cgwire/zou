@@ -18,7 +18,7 @@ from zou.app.models.comment import (
     preview_link_table,
 )
 from zou.app.models.department import Department
-from zou.app.models.entity import Entity
+from zou.app.models.entity import Entity, EntityLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.news import News
 from zou.app.models.person import Person
@@ -33,6 +33,7 @@ from zou.app.utils import cache, fields, query as query_utils
 
 from zou.app.services.exception import (
     CommentNotFoundException,
+    EpisodeNotFoundException,
     PersonNotFoundException,
     TaskNotFoundException,
     TaskStatusNotFoundException,
@@ -832,10 +833,10 @@ def get_person_tasks(person_id, projects, is_done=None):
             Entity.description,
             Entity.data,
             Entity.preview_file_id,
-            Entity.source_id,
             EntityType.name,
             Entity.canceled,
             Entity.parent_id,
+            Entity.source_id,
             Sequence.name,
             Episode.id,
             Episode.name,
@@ -855,6 +856,32 @@ def get_person_tasks(person_id, projects, is_done=None):
     else:
         query = query.filter(TaskStatus.is_done == False)
 
+    # Add episodes linked to assets
+    asset_ids = []
+    for task in query.all():
+        asset_ids.append(str(task[0].entity_id))
+
+    cast_in_episode_ids = {}
+    cast_in_episode_names = {}
+    episode_links_query = (
+        EntityLink.query.join(Episode, EntityLink.entity_in_id == Episode.id)
+        .join(EntityType, EntityType.id == Episode.entity_type_id)
+        .filter(EntityType.name == "Episode")
+        .filter(EntityLink.entity_out_id.in_(asset_ids))
+        .add_columns(Episode.id, Episode.name)
+        .order_by(Episode.name)
+    )
+    for link, episode_id, episode_name in episode_links_query.all():
+        asset_id = str(link.entity_out_id)
+        if asset_id not in cast_in_episode_ids:
+            cast_in_episode_ids[asset_id] = []
+            cast_in_episode_names[asset_id] = []
+        cast_in_episode_ids[asset_id].append(episode_id)
+        cast_in_episode_names[asset_id].append(episode_name)
+    print(cast_in_episode_names)
+
+    # Build the result
+
     tasks = []
     for (
         task,
@@ -865,10 +892,10 @@ def get_person_tasks(person_id, projects, is_done=None):
         entity_description,
         entity_data,
         entity_preview_file_id,
-        entity_source_id,
         entity_type_name,
         entity_canceled,
         entity_parent_id,
+        entity_source_id,
         sequence_name,
         episode_id,
         episode_name,
@@ -887,6 +914,12 @@ def get_person_tasks(person_id, projects, is_done=None):
 
         if episode_id is None:
             episode_id = entity_source_id
+            if episode_id is not None and episode_id != "":
+                try:
+                    episode = shots_service.get_episode(episode_id)
+                    episode_name = episode["name"]
+                except EpisodeNotFoundException:
+                    episode_name = "MP"
 
         task_dict = get_task_with_relations(str(task.id))
         if entity_type_name == "Sequence" and entity_parent_id is not None:
@@ -922,6 +955,12 @@ def get_person_tasks(person_id, projects, is_done=None):
                 "task_status_short_name": task_status_short_name,
             }
         )
+
+        if str(task.entity_id) in cast_in_episode_ids:
+            task_dict["episode_ids"] = cast_in_episode_ids[str(task.entity_id)]
+            task_dict["episode_names"] = cast_in_episode_names[
+                str(task.entity_id)
+            ]
         tasks.append(task_dict)
 
     task_ids = [task["id"] for task in tasks]
