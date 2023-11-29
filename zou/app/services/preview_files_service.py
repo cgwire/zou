@@ -757,7 +757,7 @@ def generate_preview_extra(
         query = query.filter(Task.entity_id == entity_id)
     if episode_id is not None:
         Sequence = aliased(Entity)
-        query = query.join(Sequence.id == Entity.parent_id).filter(
+        query = query.join(Sequence, Sequence.id == Entity.parent_id).filter(
             Sequence.parent_id == episode_id
         )
     if only_shots:
@@ -870,7 +870,7 @@ def _generate_tiles(
             os.remove(tile_path)
             print(
                 f"{index:0{len(str(total))}}/{total} Tile "
-                + "generated for {preview_file.id}.",
+                + f"generated for {preview_file.id}.",
             )
     except Exception as e:
         print(
