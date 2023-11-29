@@ -54,6 +54,7 @@ def clear_sequence_cache(sequence_id):
 
 def clear_episode_cache(episode_id):
     cache.cache.delete_memoized(get_episode, episode_id)
+    cache.cache.delete_memoized(get_episode_by_name)
 
 
 @cache.memoize_function(1200)
@@ -540,6 +541,26 @@ def get_episode(episode_id):
     Return given episode as a dictionary.
     """
     return get_episode_raw(episode_id).serialize(obj_type="Episode")
+
+
+@cache.memoize_function(120)
+def get_episode_by_name(project_id, episode_name):
+    """
+    Get episode matching given name project_id. Raises an exception if episode
+    is not found.
+    """
+    episode_type_id = get_episode_type()["id"]
+    episode = (
+        Entity.query.filter(Entity.entity_type_id == episode_type_id)
+        .filter(Entity.project_id == project_id)
+        .filter(Entity.name.ilike(episode_name))
+        .first()
+    )
+
+    if episode is None:
+        raise EpisodeNotFoundException()
+
+    return episode.serialize(obj_type="Episode")
 
 
 def get_full_episode(episode_id):

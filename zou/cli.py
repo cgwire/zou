@@ -478,9 +478,9 @@ def search_asset(query):
 
 
 @cli.command()
-@click.option("--project-id", default=None, show_default=True)
+@click.option("--project", default=None, show_default=True)
 @click.option("--entity-id", default=None, show_default=True)
-@click.option("--episode-id", default=None, show_default=True)
+@click.option("--episode", default=None, show_default=True, multiple=True)
 @click.option("--only-shots", is_flag=True, default=False, show_default=True)
 @click.option("--only-assets", is_flag=True, default=False, show_default=True)
 @click.option("--with-tiles", is_flag=True, default=False, show_default=True)
@@ -494,9 +494,9 @@ def search_asset(query):
     "--force-regenerate-tiles", is_flag=True, default=False, show_default=True
 )
 def generate_preview_extra(
-    project_id,
+    project,
     entity_id,
-    episode_id,
+    episode,
     only_shots,
     only_assets,
     with_tiles,
@@ -508,9 +508,9 @@ def generate_preview_extra(
     Generate tiles, thumbnails and metadata for all previews.
     """
     commands.generate_preview_extra(
-        project_id=project_id,
+        project=project,
         entity_id=entity_id,
-        episode_id=episode_id,
+        episodes=episode,
         only_shots=only_shots,
         only_assets=only_assets,
         force_regenerate_tiles=force_regenerate_tiles,
