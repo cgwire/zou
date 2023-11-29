@@ -6,6 +6,7 @@ import time
 import ffmpeg
 
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 from zou.app import config
 from zou.app.stores import file_store
@@ -19,7 +20,6 @@ from zou.app.models.task_type import TaskType
 from zou.app.services import (
     names_service,
     files_service,
-    projects_service,
     assets_service,
     shots_service,
 )
@@ -774,7 +774,10 @@ def generate_preview_extra(
     total = query.count()
     print(f"{total} previews found.")
     for index, preview_file in enumerate(query.all()):
-        preview_file_id = str(preview_file.id)
+        try:
+            preview_file_id = str(preview_file.id)
+        except ObjectDeletedError:
+            continue
         prefix = "previews" if preview_file.extension == "mp4" else "original"
         if config.FS_BACKEND != "local":
             preview_file_already_in_cache = os.path.isfile(
