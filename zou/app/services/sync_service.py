@@ -9,7 +9,10 @@ import requests
 import gazu
 import sqlalchemy
 
+from flask_fs.backends.local import LocalBackend
 from http.client import responses as http_responses
+from threading import RLock
+from multiprocessing.pool import ThreadPool as Pool
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.build_job import BuildJob
@@ -42,10 +45,9 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
-from flask_fs.backends.local import LocalBackend
 from zou.app.utils import events
 from zou.app import app, config
-from multiprocessing.pool import ThreadPool as Pool
+
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
@@ -53,6 +55,7 @@ console_handler = logging.StreamHandler(sys.stdout)
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(formatter)
 logger.addHandler(console_handler)
+lock = RLock()
 
 
 preview_folder = app.config["PREVIEW_FOLDER"]
@@ -818,6 +821,16 @@ def download_preview(preview_file):
     download_file(file_path, "previews", dl_func, preview_file_id)
 
 
+def write_multithread_dict_errors(dict_errors, prefix, id, error):
+    """
+    Write a value in a dictionnary in a thread safe way.
+    """
+    with lock:
+        if prefix not in dict_errors:
+            dict_errors[prefix] = {}
+        dict_errors[prefix][id] = error
+
+
 def download_files_from_another_instance(
     project=None,
     multithreaded=False,
@@ -832,17 +845,21 @@ def download_files_from_another_instance(
     if multithreaded:
         pool = Pool(number_workers)
 
+    dict_errors = {}
+
     download_thumbnails_from_another_instance(
         "person",
         pool=pool,
         number_attemps=number_attemps,
         force=force_resync,
+        dict_errors=dict_errors,
     )
     download_thumbnails_from_another_instance(
         "organisation",
         pool=pool,
         number_attemps=number_attemps,
         force=force_resync,
+        dict_errors=dict_errors,
     )
     download_thumbnails_from_another_instance(
         "project",
@@ -850,33 +867,44 @@ def download_files_from_another_instance(
         pool=pool,
         number_attemps=number_attemps,
         force=force_resync,
+        dict_errors=dict_errors,
     )
     download_preview_files_from_another_instance(
         project=project,
         pool=pool,
         number_attemps=number_attemps,
         force=force_resync,
+        dict_errors=dict_errors,
     )
     download_preview_background_files_from_another_instance(
         project=project,
         pool=pool,
         number_attemps=number_attemps,
         force=force_resync,
+        dict_errors=dict_errors,
     )
     download_attachment_files_from_another_instance(
         project=project,
         pool=pool,
         number_attemps=number_attemps,
         force=force_resync,
+        dict_errors=dict_errors,
     )
 
     if pool is not None:
         pool.close()
         pool.join()
 
+    return dict_errors
+
 
 def download_thumbnails_from_another_instance(
-    model_name, project=None, pool=None, number_attemps=3, force=False
+    model_name,
+    project=None,
+    pool=None,
+    number_attemps=3,
+    force=False,
+    dict_errors={},
 ):
     """
     Download all thumbnails from source instance for given model.
@@ -902,6 +930,7 @@ def download_thumbnails_from_another_instance(
                 i + 1,
                 number_of_thumbnails,
                 force,
+                dict_errors,
             )
             if pool is None:
                 download_thumbnail_from_another_instance(*args)
@@ -913,7 +942,13 @@ def download_thumbnails_from_another_instance(
 
 
 def download_thumbnail_from_another_instance(
-    model_name, model_id, number_attemps=3, index=0, total=0, force=False
+    model_name,
+    model_id,
+    number_attemps=3,
+    index=0,
+    total=0,
+    force=False,
+    dict_errors={},
 ):
     """
     Download into the local storage the thumbnail for a given model instance.
@@ -929,6 +964,7 @@ def download_thumbnail_from_another_instance(
         model_id,
         number_attemps,
         force,
+        dict_errors,
     )
     logger.info(
         f"{index:0{len(str(total))}}/{total} Thumbnail {model_name} file {model_id} processed."
@@ -936,7 +972,7 @@ def download_thumbnail_from_another_instance(
 
 
 def download_preview_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force=False
+    project=None, pool=None, number_attemps=3, force=False, dict_errors={}
 ):
     """
     Download all preview files and related (thumbnails and low def included).
@@ -958,6 +994,7 @@ def download_preview_files_from_another_instance(
             force,
             i + 1,
             number_of_preview_files,
+            dict_errors,
         )
         if pool is None:
             download_preview_from_another_instance(*args)
@@ -969,7 +1006,7 @@ def download_preview_files_from_another_instance(
 
 
 def download_preview_background_files_from_another_instance(
-    project=None, pool=None, number_attemps=3, force=False
+    project=None, pool=None, number_attemps=3, force=False, dict_errors={}
 ):
     """
     Download all preview background files and related.
@@ -992,6 +1029,7 @@ def download_preview_background_files_from_another_instance(
             force,
             i + 1,
             number_of_preview_background_files,
+            dict_errors,
         )
         if pool is None:
             download_preview_background_from_another_instance(*args)
@@ -1002,7 +1040,12 @@ def download_preview_background_files_from_another_instance(
 
 
 def download_preview_from_another_instance(
-    preview_file, number_attemps=3, force=False, index=0, total=0
+    preview_file,
+    number_attemps=3,
+    force=False,
+    index=0,
+    total=0,
+    dict_errors={},
 ):
     """
     Download all files link to preview file entry: orginal file and variants.
@@ -1078,6 +1121,7 @@ def download_preview_from_another_instance(
             preview_file_id,
             number_attemps,
             force,
+            dict_errors,
         )
 
     logger.info(
@@ -1086,7 +1130,12 @@ def download_preview_from_another_instance(
 
 
 def download_preview_background_from_another_instance(
-    preview_background, number_attemps=3, force=False, index=0, total=0
+    preview_background,
+    number_attemps=3,
+    force=False,
+    index=0,
+    total=0,
+    dict_errors={},
 ):
     """
     Download all files link to preview background file entry.
@@ -1114,6 +1163,7 @@ def download_preview_background_from_another_instance(
             preview_background_file_id,
             number_attemps,
             force,
+            dict_errors,
         )
         logger.info(
             f"{index:0{len(str(total))}}/{total} Preview background file {preview_background_file_id} processed."
@@ -1121,10 +1171,7 @@ def download_preview_background_from_another_instance(
 
 
 def download_attachment_files_from_another_instance(
-    project=None,
-    pool=None,
-    number_attemps=3,
-    force=False,
+    project=None, pool=None, number_attemps=3, force=False, dict_errors={}
 ):
     if project:
         project_dict = gazu.project.get_project_by_name(project)
@@ -1147,6 +1194,7 @@ def download_attachment_files_from_another_instance(
             i + 1,
             number_of_attachment_files,
             force,
+            dict_errors,
         )
         if pool is None:
             download_attachment_file_from_another_instance(*args)
@@ -1158,7 +1206,12 @@ def download_attachment_files_from_another_instance(
 
 
 def download_attachment_file_from_another_instance(
-    attachment_file, number_attemps=3, index=0, total=0, force=False
+    attachment_file,
+    number_attemps=3,
+    index=0,
+    total=0,
+    force=False,
+    dict_errors={},
 ):
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
@@ -1176,6 +1229,7 @@ def download_attachment_file_from_another_instance(
         attachment_file_id,
         number_attemps,
         force,
+        dict_errors,
     )
     logger.info(
         f"{index:0{len(str(total))}}/{total} Attachment file {attachment_file_id} processed."
@@ -1191,6 +1245,7 @@ def download_file_from_another_instance(
     id,
     number_attemps=3,
     force=False,
+    dict_errors={},
 ):
     with app.app_context():
         if force or not exist_func(prefix, id):
@@ -1200,16 +1255,31 @@ def download_file_from_another_instance(
                 try:
                     response = gazu.client.download(path, file_path)
                     if response.status_code != 200:
-                        raise gazu.exception.DownloadFileException(
+                        e = gazu.exception.DownloadFileException(
                             f"{response.status_code} {http_responses[response.status_code]}."
                         )
+                        e.status_code = response.status_code
+                        raise e
                 except Exception as e:
                     if attemps_count + 1 == number_attemps:
                         if isinstance(e, gazu.exception.DownloadFileException):
-                            logger.error(f"Download failed ({path}): {e}")
+                            error = f"Download failed ({path}):\n{e}"
                         else:
-                            logger.error(f"Download failed ({path}):")
-                            logger.error(traceback.format_exc())
+                            error = f"Download failed ({path}):\n{traceback.format_exc()}"
+                        logger.error(error)
+
+                        if (
+                            not isinstance(
+                                e, gazu.exception.DownloadFileException
+                            )
+                            or e.status_code != 404
+                        ):
+                            write_multithread_dict_errors(
+                                dict_errors,
+                                prefix,
+                                id,
+                                error,
+                            )
                     if os.path.exists(file_path):
                         os.remove(file_path)
                     continue
@@ -1218,8 +1288,13 @@ def download_file_from_another_instance(
                     break
                 except Exception:
                     if attemps_count + 1 == number_attemps:
-                        logger.error(f"Upload failed ({path}):")
-                        logger.error(traceback.format_exc())
+                        error = f"Upload failed ({path}):\n{traceback.format_exc()}"
+                        write_multithread_dict_errors(
+                            dict_errors,
+                            prefix,
+                            id,
+                            error,
+                        )
                 finally:
                     os.remove(file_path)
     return path, file_path

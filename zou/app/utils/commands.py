@@ -551,7 +551,7 @@ def import_files_from_another_instance(
         sync_service.init(
             source, login, password, multithreaded, number_workers
         )
-        sync_service.download_files_from_another_instance(
+        return sync_service.download_files_from_another_instance(
             project=project,
             multithreaded=multithreaded,
             number_workers=number_workers,

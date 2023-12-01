@@ -325,7 +325,7 @@ def sync_full_files(
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
-    commands.import_files_from_another_instance(
+    dict_errors = commands.import_files_from_another_instance(
         source,
         login,
         password,
@@ -336,6 +336,14 @@ def sync_full_files(
         force_resync=force_resync,
     )
     print("Syncing ended.")
+    if dict_errors:
+        print("Errors summary:")
+        for prefix, value in dict_errors.items():
+            print(f"{prefix}:")
+            for id, error in value.items():
+                print(f"{id}:\n{error}")
+            print()
+        sys.exit(1)
 
 
 @cli.command()
