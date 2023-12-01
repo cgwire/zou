@@ -56,6 +56,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
         return instance_dict
 
     def post_delete(self, instance_dict):
-        deletion_service.clear_preview_background_files(instance_dict["id"])
+        # stop removing files for now
+        # deletion_service.clear_preview_background_files(instance_dict["id"])
         files_service.clear_preview_background_file_cache(instance_dict["id"])
         return instance_dict

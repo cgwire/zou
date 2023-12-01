@@ -164,12 +164,13 @@ def remove_preview_file(preview_file):
     if news is not None:
         news.update({"preview_file_id": None})
 
-    if preview_file.extension == "png":
-        clear_picture_files(preview_file.id)
-    elif preview_file.extension == "mp4":
-        clear_movie_files(preview_file.id)
-    else:
-        clear_generic_files(preview_file.id)
+    # stop removing files for now
+    # if preview_file.extension == "png":
+    #     clear_picture_files(preview_file.id)
+    # elif preview_file.extension == "mp4":
+    #     clear_movie_files(preview_file.id)
+    # else:
+    #     clear_generic_files(preview_file.id)
 
     preview_file.comments = []
     preview_file.save()
@@ -193,8 +194,8 @@ def remove_preview_background_file(preview_background_file):
     Remove all files related to given preview background file, then remove the
     preview background file entry from the database.
     """
-
-    clear_preview_background_files(preview_background_file.id)
+    # stop removing files for now
+    # clear_preview_background_files(preview_background_file.id)
     preview_background_file.delete()
     return preview_background_file.serialize()
 
@@ -215,7 +216,8 @@ def remove_attachment_file(attachment_file):
     Remove all files related to given attachment file, then remove the
     attachment file entry from the database.
     """
-    file_store.remove_file("attachments", str(attachment_file.id))
+    # stop removing files for now
+    # file_store.remove_file("attachments", str(attachment_file.id))
     attachment_dict = attachment_file.serialize()
     attachment_file.delete()
     return attachment_dict
