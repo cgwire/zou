@@ -22,6 +22,7 @@ from zou.app.services import (
     files_service,
     assets_service,
     shots_service,
+    projects_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -33,6 +34,8 @@ from zou.app.utils import (
 from zou.app.services.exception import (
     ArgumentsException,
     PreviewFileNotFoundException,
+    ProjectNotFoundException,
+    EpisodeNotFoundException,
 )
 from zou.app.utils import fs
 
@@ -727,9 +730,9 @@ def reset_picture_files_metadata():
 
 
 def generate_preview_extra(
-    project_id=None,
+    project=None,
     entity_id=None,
-    episode_id=None,
+    episodes=[],
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
@@ -751,14 +754,36 @@ def generate_preview_extra(
         .filter(PreviewFile.status.not_in(("broken", "processing")))
         .filter(PreviewFile.extension.in_(("mp4", "png")))
     )
-    if project_id is not None:
+    if project is not None:
+        try:
+            project_id = projects_service.get_project_by_name(project)["id"]
+        except ProjectNotFoundException:
+            project_id = projects_service.get_project(project)["id"]
         query = query.filter(Project.id == project_id)
+
     if entity_id is not None:
         query = query.filter(Task.entity_id == entity_id)
-    if episode_id is not None:
+
+    if episodes:
+        get_episode_by_name = False
+        if project is not None:
+            get_episode_by_name = True
+        episode_ids = []
+        for episode in episodes:
+            episode_id = None
+            try:
+                episode_id = shots_service.get_episode(episode)["id"]
+            except EpisodeNotFoundException as e:
+                if get_episode_by_name:
+                    episode_id = shots_service.get_episode_by_name(
+                        project_id, episode
+                    )["id"]
+                else:
+                    raise e
+            episode_ids.append(episode_id)
         Sequence = aliased(Entity)
         query = query.join(Sequence, Sequence.id == Entity.parent_id).filter(
-            Sequence.parent_id == episode_id
+            Sequence.parent_id.in_(episode_ids)
         )
     if only_shots:
         query = query.filter(

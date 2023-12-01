@@ -551,7 +551,7 @@ def import_files_from_another_instance(
         sync_service.init(
             source, login, password, multithreaded, number_workers
         )
-        sync_service.download_files_from_another_instance(
+        return sync_service.download_files_from_another_instance(
             project=project,
             multithreaded=multithreaded,
             number_workers=number_workers,
@@ -632,9 +632,9 @@ def search_asset(query):
 
 
 def generate_preview_extra(
-    project_id=None,
+    project=None,
     entity_id=None,
-    episode_id=None,
+    episodes=[],
     only_shots=False,
     only_assets=False,
     force_regenerate_tiles=False,
@@ -644,9 +644,9 @@ def generate_preview_extra(
 ):
     with app.app_context():
         preview_files_service.generate_preview_extra(
-            project_id=project_id,
+            project=project,
             entity_id=entity_id,
-            episode_id=episode_id,
+            episodes=episodes,
             only_shots=only_shots,
             only_assets=only_assets,
             force_regenerate_tiles=force_regenerate_tiles,

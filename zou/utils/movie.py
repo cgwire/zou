@@ -29,13 +29,9 @@ EncodingParameters = namedtuple(
 def log_ffmpeg_error(e, action):
     logger.info(f"Error (in action {action}):")
     if e.stdout:
-        logger.info("stdout:")
-        logger.info(e.stdout.decode())
-        logger.info("======")
+        logger.info(f"stdout:\n{e.stdout.decode(errors='replace')}\n======")
     if e.stderr:
-        logger.error("stderr:")
-        logger.error(e.stderr.decode())
-        logger.error("======")
+        logger.error(f"stderr:\n{e.stderr.decode(errors='replace')}\n======")
 
 
 def save_file(tmp_folder, instance_id, file_to_save):

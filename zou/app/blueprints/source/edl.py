@@ -117,6 +117,11 @@ class EDLBaseResource(Resource, ArgsMixin):
     def run_import(self, project_id, file_path):
         result = {"updated_shots": [], "created_shots": []}
         try:
+            with open(file_path, "r+", errors="replace") as edl_file:
+                contents = edl_file.read()
+                edl_file.seek(0)
+                edl_file.write(contents)
+
             timeline = otio.adapters.read_from_file(
                 file_path,
                 rate=projects_service.get_project_fps(project_id),
@@ -210,9 +215,6 @@ class EDLBaseResource(Resource, ArgsMixin):
                             shot_id, future_shot_values
                         )
                         result["updated_shots"].append(shot)
-
-                if isinstance(track, otio.schema.Transition):
-                    pass
 
         for task_type in self.task_types_in_project_for_shots:
             create_tasks(task_type.serialize(), result["created_shots"])
