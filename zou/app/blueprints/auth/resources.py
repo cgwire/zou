@@ -752,11 +752,11 @@ class ResetPasswordResource(Resource, ArgsMixin):
             token_from_store = auth_tokens_store.get(
                 "reset-token-%s" % args["email"]
             )
-            auth_tokens_store.delete("reset-token-%s" % args["email"])
             if token_from_store == args["token"]:
                 auth.validate_password(args["password"], args["password2"])
                 password = auth.encrypt_password(args["password"])
                 persons_service.update_password(args["email"], password)
+                auth_tokens_store.delete("reset-token-%s" % args["email"])
                 current_app.logger.info(
                     "User %s has reset his password" % args["email"]
                 )
