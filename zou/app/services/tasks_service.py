@@ -52,6 +52,7 @@ from zou.app.services import (
     shots_service,
     entities_service,
     edits_service,
+    concepts_service,
 )
 
 
@@ -101,8 +102,17 @@ def get_to_review_status():
 
 
 @cache.memoize_function(120)
-def get_default_status():
-    return get_or_create_status("Todo", "todo", "#f5f5f5", is_default=True)
+def get_default_status(for_concept=False):
+    if for_concept:
+        return get_or_create_status(
+            "Neutral",
+            "neutral",
+            "#CCCCCC",
+            is_default=True,
+            for_concept=True,
+        )
+    else:
+        return get_or_create_status("Todo", "todo", "#f5f5f5", is_default=True)
 
 
 def get_task_status_raw(task_status_id):
@@ -266,6 +276,14 @@ def get_tasks_for_edit(edit_id, relations=False):
     return get_task_dicts_for_entity(edit["id"], relations=relations)
 
 
+def get_tasks_for_concept(concept_id, relations=False):
+    """
+    Get all tasks for given concept.
+    """
+    concept = shots_service.get_shot(concept_id)
+    return get_task_dicts_for_entity(concept["id"], relations=relations)
+
+
 def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
     Get all shot tasks for given sequence.
@@ -401,6 +419,13 @@ def get_task_types_for_episode(episode_id):
         .all()
     )
     return fields.serialize_models(task_types)
+
+
+def get_task_types_for_concept(concept_id):
+    """
+    Return all task types for which there is a task related to given concept.
+    """
+    return get_task_types_for_entity(concept_id)
 
 
 def get_task_types_for_entity(entity_id):
@@ -1117,7 +1142,6 @@ def create_tasks(task_type, entities):
     """
     Create a new task for given task type and for each entity.
     """
-    task_status = get_default_status()
     current_user_id = None
     try:
         current_user_id = persons_service.get_current_user()["id"]
@@ -1130,6 +1154,10 @@ def create_tasks(task_type, entities):
             entity_id=entity["id"], task_type_id=task_type["id"]
         ).scalar()
         if existing_task is None:
+            task_status = get_default_status(
+                for_concept=entity["entity_type_id"]
+                == concepts_service.get_concept_type()["id"]
+            )
             task = Task.create_no_commit(
                 name="main",
                 duration=0,
@@ -1161,7 +1189,10 @@ def create_task(task_type, entity, name="main"):
     """
     Create a new task for given task type and entity.
     """
-    task_status = get_default_status()
+    task_status = get_default_status(
+        for_concept=entity["entity_type_id"]
+        == concepts_service.get_concept_type()["id"]
+    )
     try:
         try:
             current_user_id = persons_service.get_current_user()["id"]
@@ -1235,7 +1266,10 @@ def get_or_create_status(
     is_done=False,
     is_retake=False,
     is_feedback_request=False,
-    is_default=None,
+    is_default=False,
+    for_concept=False,
+    is_artist_allowed=True,
+    is_client_allowed=True,
 ):
     """
     Create a new task status if it doesn't exist. If it exists, it returns the
@@ -1243,12 +1277,14 @@ def get_or_create_status(
     """
     if is_default:
         task_status = TaskStatus.get_by(
-            is_default=is_default,
+            is_default=is_default, for_concept=for_concept
         )
     else:
-        task_status = TaskStatus.get_by(name=name)
+        task_status = TaskStatus.get_by(name=name, for_concept=for_concept)
     if task_status is None and len(short_name) > 0:
-        task_status = TaskStatus.get_by(short_name=short_name)
+        task_status = TaskStatus.get_by(
+            short_name=short_name, for_concept=for_concept
+        )
 
     if task_status is None:
         task_status = TaskStatus.create(
@@ -1259,6 +1295,9 @@ def get_or_create_status(
             is_retake=is_retake,
             is_feedback_request=is_feedback_request,
             is_default=is_default,
+            for_concept=for_concept,
+            is_artist_allowed=is_artist_allowed,
+            is_client_allowed=is_client_allowed,
         )
         events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
@@ -1314,6 +1353,7 @@ def get_or_create_task_type(
             shotgun_id=shotgun_id,
         )
         events.emit("task-type:new", {"task_type_id": task_type.id})
+        clear_task_type_cache(str(task_type.id))
     return task_type.serialize()
 
 
@@ -1616,7 +1656,11 @@ def reset_task_data(task_id):
     real_start_date = None
     last_comment_date = None
     end_date = None
-    task_status_id = get_default_status()["id"]
+    entity = entities_service.get_entity(task.entity_id)
+    task_status_id = get_default_status(
+        for_concept=entity["entity_type_id"]
+        == concepts_service.get_concept_type()["id"]
+    )["id"]
     comments = (
         Comment.query.join(TaskStatus)
         .filter(Comment.object_id == task_id)

@@ -46,7 +46,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(len(shots), 4)
 
         entity_types = EntityType.query.all()
-        self.assertEqual(len(entity_types), 3)
+        self.assertEqual(len(entity_types), 4)
 
         tasks = Task.query.all()
         self.assertEqual(
@@ -71,7 +71,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         self.assertEqual(len(shots), 4)
 
         entity_types = EntityType.query.all()
-        self.assertEqual(len(entity_types), 3)
+        self.assertEqual(len(entity_types), 4)
 
         shot = shots[0]
         self.assertEqual(shot["data"].get("contractor", None), "contractor 1")

@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
-from zou.app.models.entity import Entity, EntityLink, EntityVersion
+from zou.app.models.entity import (
+    Entity,
+    EntityLink,
+    EntityVersion,
+    EntityLinks,
+)
 from zou.app.models.event import ApiEvent
 from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.login_log import LoginLog
@@ -458,6 +463,12 @@ def remove_episode(episode_id, force=False):
             tasks_service.clear_task_cache(str(task.id))
         Playlist.delete_all_by(episode_id=episode_id)
         ScheduleItem.delete_all_by(object_id=episode_id)
+        EntityVersion.delete_all_by(entity_id=episode_id)
+        Subscription.delete_all_by(entity_id=episode_id)
+        EntityLink.delete_all_by(entity_in_id=episode_id)
+        EntityLink.delete_all_by(entity_out_id=episode_id)
+        EntityLinks.delete_all_by(entity_in_id=episode_id)
+        EntityLinks.delete_all_by(entity_out_id=episode_id)
     try:
         episode.delete()
         events.emit(

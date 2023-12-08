@@ -395,10 +395,7 @@ def check_belong_to_project(project_id):
 
     project = projects_service.get_project_with_relations(str(project_id))
     current_user = persons_service.get_current_user()
-    if current_user["id"] in project["team"]:
-        return True
-    else:
-        return False
+    return current_user["id"] in project["team"]
 
 
 def check_project_access(project_id):

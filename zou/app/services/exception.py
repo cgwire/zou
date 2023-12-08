@@ -13,6 +13,10 @@ class ShotNotFoundException(NotFound):
     pass
 
 
+class ConceptNotFoundException(NotFound):
+    pass
+
+
 class SceneNotFoundException(NotFound):
     pass
 

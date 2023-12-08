@@ -5,8 +5,14 @@ from sqlalchemy.orm import aliased
 from zou.app.utils import events, fields, cache
 from zou.app.utils import query as query_utils
 
-from zou.app.models.entity import Entity, EntityLink
+from zou.app.models.entity import (
+    Entity,
+    EntityLink,
+    EntityLinks,
+    EntityVersion,
+)
 from zou.app.models.entity_type import EntityType
+from zou.app.models.subscription import Subscription
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -23,6 +29,7 @@ from zou.app.services import (
     shots_service,
     user_service,
     entities_service,
+    concepts_service,
 )
 
 from zou.app.services.exception import (
@@ -45,40 +52,20 @@ def clear_asset_type_cache():
 
 def get_temporal_type_ids():
     shot_type = shots_service.get_shot_type()
-    if shot_type is None:
-        cache.cache.delete_memoized(shots_service.get_shot_type)
-        shot_type = shots_service.get_shot_type()
-
     scene_type = shots_service.get_scene_type()
-    if scene_type is None:
-        cache.cache.delete_memoized(shots_service.get_scene_type)
-        scene_type = shots_service.get_scene_type()
-
     sequence_type = shots_service.get_sequence_type()
-    if sequence_type is None:
-        cache.cache.delete_memoized(shots_service.get_sequence_type)
-        sequence_type = shots_service.get_sequence_type()
-
     episode_type = shots_service.get_episode_type()
-    if episode_type is None:
-        cache.cache.delete_memoized(shots_service.get_episode_type)
-        episode_type = shots_service.get_episode_type()
-
     edit_type = edits_service.get_edit_type()
-    if edit_type is None:
-        cache.cache.delete_memoized(edits_service.get_edit_type)
-        edit_type = edits_service.get_edit_type()
+    concept_type = concepts_service.get_concept_type()
 
-    ids_to_exclude = [
+    return [
         shot_type["id"],
         sequence_type["id"],
         episode_type["id"],
         edit_type["id"],
+        scene_type["id"],
+        concept_type["id"],
     ]
-    if scene_type is not None:
-        ids_to_exclude.append(scene_type["id"])
-
-    return ids_to_exclude
 
 
 def build_asset_type_filter():
@@ -567,19 +554,7 @@ def is_asset(entity):
     """
     Returns true if given entity is an asset, not a shot.
     """
-    shot_type = shots_service.get_shot_type()
-    sequence_type = shots_service.get_sequence_type()
-    scene_type = shots_service.get_scene_type()
-    episode_type = shots_service.get_episode_type()
-    edit_type = edits_service.get_edit_type()
-
-    return str(entity.entity_type_id) not in [
-        shot_type["id"],
-        scene_type["id"],
-        sequence_type["id"],
-        episode_type["id"],
-        edit_type["id"],
-    ]
+    return str(entity.entity_type_id) not in get_temporal_type_ids()
 
 
 def is_asset_dict(entity):
@@ -587,36 +562,14 @@ def is_asset_dict(entity):
     Returns true if given entity is an asset, not a shot.
     It supposes that the entity is represented as a dict.
     """
-    shot_type = shots_service.get_shot_type()
-    sequence_type = shots_service.get_sequence_type()
-    scene_type = shots_service.get_scene_type()
-    episode_type = shots_service.get_episode_type()
-    edit_type = edits_service.get_edit_type()
-
-    return entity["entity_type_id"] not in [
-        shot_type["id"],
-        scene_type["id"],
-        sequence_type["id"],
-        episode_type["id"],
-        edit_type["id"],
-    ]
+    return entity["entity_type_id"] not in get_temporal_type_ids()
 
 
 def is_asset_type(entity_type):
     """
     Returns true if given entity type is an asset, not a shot.
     """
-    shot_type = shots_service.get_shot_type()
-    sequence_type = shots_service.get_sequence_type()
-    scene_type = shots_service.get_scene_type()
-    episode_type = shots_service.get_episode_type()
-
-    return str(entity_type.id) not in [
-        shot_type["id"],
-        sequence_type["id"],
-        scene_type["id"],
-        episode_type["id"],
-    ]
+    return str(entity_type.id) not in get_temporal_type_ids()
 
 
 def create_asset_types(asset_type_names):
@@ -703,6 +656,12 @@ def remove_asset(asset_id, force=False):
             {"asset_id": asset_id},
             project_id=str(asset.project_id),
         )
+        EntityVersion.delete_all_by(entity_id=asset_id)
+        Subscription.delete_all_by(entity_id=asset_id)
+        EntityLink.delete_all_by(entity_in_id=asset_id)
+        EntityLink.delete_all_by(entity_out_id=asset_id)
+        EntityLinks.delete_all_by(entity_in_id=asset_id)
+        EntityLinks.delete_all_by(entity_out_id=asset_id)
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
 

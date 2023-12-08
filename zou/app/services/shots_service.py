@@ -12,7 +12,12 @@ from zou.app.utils import (
     query as query_utils,
 )
 
-from zou.app.models.entity import Entity, EntityLink, EntityVersion
+from zou.app.models.entity import (
+    Entity,
+    EntityLink,
+    EntityVersion,
+    EntityLinks,
+)
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
@@ -30,6 +35,7 @@ from zou.app.services import (
     names_service,
     user_service,
     index_service,
+    concepts_service,
 )
 from zou.app.services.exception import (
     EpisodeNotFoundException,
@@ -380,7 +386,7 @@ def get_shot_raw(shot_id):
     try:
         shot = Entity.get_by(entity_type_id=shot_type["id"], id=shot_id)
     except StatementError:
-        raise SequenceNotFoundException
+        raise ShotNotFoundException
 
     if shot is None:
         raise ShotNotFoundException
@@ -888,6 +894,10 @@ def remove_shot(shot_id, force=False):
         EntityVersion.delete_all_by(entity_id=shot_id)
         Subscription.delete_all_by(entity_id=shot_id)
         EntityLink.delete_all_by(entity_in_id=shot_id)
+        EntityLink.delete_all_by(entity_out_id=shot_id)
+        EntityLinks.delete_all_by(entity_in_id=shot_id)
+        EntityLinks.delete_all_by(entity_out_id=shot_id)
+
         shot.delete()
         events.emit(
             "shot:delete",
@@ -1124,6 +1134,8 @@ def get_base_entity_type_name(entity_dict):
         type_name = "Episode"
     elif is_scene(entity_dict):
         type_name = "Scene"
+    elif concepts_service.is_concept(entity_dict):
+        type_name = "Concept"
 
     return type_name
 

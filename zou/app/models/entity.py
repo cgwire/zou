@@ -69,6 +69,20 @@ class EntityLink(db.Model, BaseMixin, SerializerMixin):
             return entity_link, True
 
 
+class EntityLinks(db.Model, BaseMixin, SerializerMixin):
+    __tablename__ = "entity_links"
+    entity_in_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("entity.id"),
+        primary_key=True,
+    )
+    entity_out_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("entity.id"),
+        primary_key=True,
+    )
+
+
 class Entity(db.Model, BaseMixin, SerializerMixin):
     """
     Base model to represent assets, shots, sequences, episodes and scenes.
@@ -133,6 +147,14 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         primaryjoin=(id == EntityLink.entity_in_id),
         secondaryjoin=(id == EntityLink.entity_out_id),
         backref="entities_in",
+    )
+
+    entity_links = db.relationship(
+        "Entity",
+        secondary="entity_links",
+        primaryjoin=(id == EntityLinks.entity_in_id),
+        secondaryjoin=(id == EntityLinks.entity_out_id),
+        lazy="joined",
     )
 
     instance_casting = db.relationship(
@@ -237,6 +259,18 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             data["entity_type_id"] = entity_type.id
 
         return (data, entity_ids)
+
+    def serialize(self, obj_type=None, relations=False, milliseconds=False):
+        serialized_instance = super(Entity, self).serialize(
+            obj_type=obj_type,
+            relations=relations,
+            milliseconds=milliseconds,
+        )
+        if obj_type == "Concept" and not relations:
+            serialized_instance["entity_links"] = [
+                str(entity_link.id) for entity_link in self.entity_links
+            ]
+        return serialized_instance
 
 
 class EntityVersion(db.Model, BaseMixin, SerializerMixin):

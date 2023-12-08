@@ -33,6 +33,7 @@ from zou.app.blueprints.tasks.resources import (
     AddTimeSpentResource,
     SetTaskMainPreviewResource,
     PersonsTasksDatesResource,
+    CreateConceptTasksResource,
 )
 
 
@@ -105,6 +106,10 @@ routes = [
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/edits/create-tasks",
         CreateEditTasksResource,
+    ),
+    (
+        "/actions/projects/<project_id>/task-types/<task_type_id>/concepts/create-tasks",
+        CreateConceptTasksResource,
     ),
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/create-tasks/<entity_type>/",

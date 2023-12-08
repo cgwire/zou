@@ -3,9 +3,14 @@ import copy
 from flask import current_app
 from flask_jwt_extended import jwt_required
 
-from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.exc import StatementError
 
-from zou.app.models.entity import Entity, EntityVersion
+from zou.app.models.entity import (
+    Entity,
+    EntityVersion,
+    EntityLink,
+    EntityLinks,
+)
 from zou.app.models.subscription import Subscription
 from zou.app.services import (
     assets_service,
@@ -16,12 +21,15 @@ from zou.app.services import (
     persons_service,
     shots_service,
     user_service,
+    concepts_service,
 )
 from zou.app.utils import events, fields, date_helpers
 
 from werkzeug.exceptions import NotFound
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+
+from zou.app.services.exception import EntityNotFoundException
 
 
 class EntityEventMixin(object):
@@ -49,6 +57,19 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
 
     def emit_create_event(self, entity_dict):
         self.emit_event("new", entity_dict)
+
+    def update_data(self, data):
+        if "entity_links" in data:
+            try:
+                entity_links = [
+                    entity_link
+                    for entity_link_id in data["entity_links"]
+                    if (entity_link := Entity.get(entity_link_id)) is not None
+                ]
+            except StatementError:
+                raise EntityNotFoundException()
+            data["entity_links"] = entity_links
+        return data
 
     def all_entries(self, query=None, relations=False):
         entities = BaseModelsResource.all_entries(
@@ -89,6 +110,10 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     def pre_delete(self, entity):
         if shots_service.is_sequence(entity):
             Subscription.delete_all_by(entity_id=entity["id"])
+        EntityLink.delete_all_by(entity_in_id=entity["id"])
+        EntityLink.delete_all_by(entity_out_id=entity["id"])
+        EntityLinks.delete_all_by(entity_in_id=entity["id"])
+        EntityLinks.delete_all_by(entity_out_id=entity["id"])
         return entity
 
     @jwt_required()
@@ -117,6 +142,19 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             is_ready_for_changed = str(entity.ready_for) != data.get(
                 "ready_for", ""
             )
+
+            if "entity_links" in data:
+                try:
+                    entity_links = [
+                        entity_link
+                        for entity_link_id in data["entity_links"]
+                        if (entity_link := Entity.get(entity_link_id))
+                        is not None
+                    ]
+                except StatementError:
+                    raise EntityNotFoundException()
+                data["entity_links"] = entity_links
+
             entity.update(data)
             entity_dict = self.serialize_instance(entity)
 
@@ -125,18 +163,20 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 index_service.index_shot(entity)
                 shots_service.clear_shot_cache(entity_dict["id"])
                 self.save_version_if_needed(entity_dict, previous_version)
-            elif assets_service.is_asset(entity):
-                index_service.remove_asset_index(entity_dict["id"])
-                index_service.index_asset(entity)
-                if is_ready_for_changed:
-                    breakdown_service.refresh_casting_stats(entity_dict)
-                assets_service.clear_asset_cache(entity_dict["id"])
             elif shots_service.is_sequence(entity_dict):
                 shots_service.clear_sequence_cache(entity_dict["id"])
             elif shots_service.is_edit(entity_dict):
                 edits_service.clear_edit_cache(entity_dict["id"])
             elif shots_service.is_episode(entity_dict):
                 shots_service.clear_episode_cache(entity_dict["id"])
+            elif concepts_service.is_concept(entity_dict):
+                concepts_service.clear_concept_cache(entity_dict["id"])
+            elif assets_service.is_asset(entity):
+                index_service.remove_asset_index(entity_dict["id"])
+                index_service.index_asset(entity)
+                if is_ready_for_changed:
+                    breakdown_service.refresh_casting_stats(entity_dict)
+                assets_service.clear_asset_cache(entity_dict["id"])
             entities_service.clear_entity_cache(entity_dict["id"])
 
             self.emit_update_event(entity_dict)
@@ -146,12 +186,6 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             current_app.logger.error(str(exception), exc_info=1)
             return {"error": True, "message": str(exception)}, 400
         except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"error": True, "message": str(exception)}, 400
-        except IntegrityError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"error": True, "message": str(exception)}, 400
-        except StatementError as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"error": True, "message": str(exception)}, 400
         except NotFound as exception:
