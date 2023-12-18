@@ -12,7 +12,7 @@ from zou.app.models.entity import (
     Entity,
     EntityLink,
     EntityVersion,
-    EntityLinks,
+    EntityConceptLink,
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
@@ -326,8 +326,8 @@ def remove_edit(edit_id, force=False):
         Subscription.delete_all_by(entity_id=edit_id)
         EntityLink.delete_all_by(entity_in_id=edit_id)
         EntityLink.delete_all_by(entity_out_id=edit_id)
-        EntityLinks.delete_all_by(entity_in_id=edit_id)
-        EntityLinks.delete_all_by(entity_out_id=edit_id)
+        EntityConceptLink.delete_all_by(entity_in_id=edit_id)
+        EntityConceptLink.delete_all_by(entity_out_id=edit_id)
 
         edit.delete()
         clear_edit_cache(edit_id)

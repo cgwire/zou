@@ -9,7 +9,7 @@ from zou.app.models.entity import (
     Entity,
     EntityVersion,
     EntityLink,
-    EntityLinks,
+    EntityConceptLink,
 )
 from zou.app.models.subscription import Subscription
 from zou.app.services import (
@@ -59,16 +59,21 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         self.emit_event("new", entity_dict)
 
     def update_data(self, data):
-        if "entity_links" in data:
+        if "entity_concept_links" in data:
             try:
-                entity_links = [
-                    entity_link
-                    for entity_link_id in data["entity_links"]
-                    if (entity_link := Entity.get(entity_link_id)) is not None
+                entity_concept_links = [
+                    entity_concept_link
+                    for entity_concept_link_id in data["entity_concept_links"]
+                    if (
+                        entity_concept_link := Entity.get(
+                            entity_concept_link_id
+                        )
+                    )
+                    is not None
                 ]
             except StatementError:
                 raise EntityNotFoundException()
-            data["entity_links"] = entity_links
+            data["entity_concept_links"] = entity_concept_links
         data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
@@ -116,8 +121,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             Subscription.delete_all_by(entity_id=entity["id"])
         EntityLink.delete_all_by(entity_in_id=entity["id"])
         EntityLink.delete_all_by(entity_out_id=entity["id"])
-        EntityLinks.delete_all_by(entity_in_id=entity["id"])
-        EntityLinks.delete_all_by(entity_out_id=entity["id"])
+        EntityConceptLink.delete_all_by(entity_in_id=entity["id"])
+        EntityConceptLink.delete_all_by(entity_out_id=entity["id"])
         return entity
 
     @jwt_required()
@@ -147,17 +152,23 @@ class EntityResource(BaseModelResource, EntityEventMixin):
                 "ready_for", ""
             )
 
-            if "entity_links" in data:
+            if "entity_concept_links" in data:
                 try:
-                    entity_links = [
-                        entity_link
-                        for entity_link_id in data["entity_links"]
-                        if (entity_link := Entity.get(entity_link_id))
+                    entity_concept_links = [
+                        entity_concept_link
+                        for entity_concept_link_id in data[
+                            "entity_concept_links"
+                        ]
+                        if (
+                            entity_concept_link := Entity.get(
+                                entity_concept_link_id
+                            )
+                        )
                         is not None
                     ]
                 except StatementError:
                     raise EntityNotFoundException()
-                data["entity_links"] = entity_links
+                data["entity_concept_links"] = entity_concept_links
 
             entity.update(data)
             entity_dict = self.serialize_instance(entity)

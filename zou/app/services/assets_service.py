@@ -8,7 +8,7 @@ from zou.app.utils import query as query_utils
 from zou.app.models.entity import (
     Entity,
     EntityLink,
-    EntityLinks,
+    EntityConceptLink,
     EntityVersion,
 )
 from zou.app.models.entity_type import EntityType
@@ -667,8 +667,8 @@ def remove_asset(asset_id, force=False):
         Subscription.delete_all_by(entity_id=asset_id)
         EntityLink.delete_all_by(entity_in_id=asset_id)
         EntityLink.delete_all_by(entity_out_id=asset_id)
-        EntityLinks.delete_all_by(entity_in_id=asset_id)
-        EntityLinks.delete_all_by(entity_out_id=asset_id)
+        EntityConceptLink.delete_all_by(entity_in_id=asset_id)
+        EntityConceptLink.delete_all_by(entity_out_id=asset_id)
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
 

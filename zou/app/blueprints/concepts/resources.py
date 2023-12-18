@@ -277,14 +277,14 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             type: string
             x-example: Description of concept
           - in: formData
-            name: entity_links
+            name: entity_concept_links
             type: list of UUIDs
             x-example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         responses:
             201:
                 description: Concept created for given project
         """
-        (name, data, description, entity_links) = self.get_arguments()
+        (name, data, description, entity_concept_links) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         if (
@@ -298,7 +298,7 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             name,
             data=data,
             description=description,
-            entity_links=entity_links,
+            entity_concept_links=entity_concept_links,
             created_by=persons_service.get_current_user()["id"],
         )
         return concept, 201
@@ -310,7 +310,7 @@ class ProjectConceptsResource(Resource, ArgsMixin):
                 {"name": "data", "type": dict},
                 "description",
                 (
-                    "entity_links",
+                    "entity_concept_links",
                     [],
                     False,
                     str,
@@ -323,5 +323,5 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             args["name"],
             args["data"],
             args["description"],
-            args["entity_links"],
+            args["entity_concept_links"],
         )

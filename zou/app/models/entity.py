@@ -69,8 +69,8 @@ class EntityLink(db.Model, BaseMixin, SerializerMixin):
             return entity_link, True
 
 
-class EntityLinks(db.Model, BaseMixin, SerializerMixin):
-    __tablename__ = "entity_links"
+class EntityConceptLink(db.Model, BaseMixin, SerializerMixin):
+    __tablename__ = "entity_concept_link"
     entity_in_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("entity.id"),
@@ -155,11 +155,11 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         backref="entities_in",
     )
 
-    entity_links = db.relationship(
+    entity_concept_links = db.relationship(
         "Entity",
-        secondary="entity_links",
-        primaryjoin=(id == EntityLinks.entity_in_id),
-        secondaryjoin=(id == EntityLinks.entity_out_id),
+        secondary="entity_concept_link",
+        primaryjoin=(id == EntityConceptLink.entity_in_id),
+        secondaryjoin=(id == EntityConceptLink.entity_out_id),
         lazy="joined",
     )
 
@@ -273,8 +273,9 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             milliseconds=milliseconds,
         )
         if obj_type == "Concept" and not relations:
-            serialized_instance["entity_links"] = [
-                str(entity_link.id) for entity_link in self.entity_links
+            serialized_instance["entity_concept_links"] = [
+                str(entity_concept_link.id)
+                for entity_concept_link in self.entity_concept_links
             ]
         return serialized_instance
 

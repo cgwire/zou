@@ -11,7 +11,7 @@ from zou.app.utils import (
     query as query_utils,
 )
 
-from zou.app.models.entity import Entity, EntityLink, EntityLinks
+from zou.app.models.entity import Entity, EntityLink, EntityConceptLink
 from zou.app.models.entity_type import EntityType
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
@@ -368,8 +368,8 @@ def get_linked_entities_with_tasks(entity_id):
     Return all entities and their tasks linked to given entity.
     """
     entities_in = (
-        db.session.query(EntityLinks.entity_in_id)
-        .filter(EntityLinks.entity_out_id == entity_id)
+        db.session.query(EntityConceptLink.entity_in_id)
+        .filter(EntityConceptLink.entity_out_id == entity_id)
         .distinct()
     )
 
@@ -451,7 +451,7 @@ def get_linked_entities_with_tasks(entity_id):
                     "nb_entities_out": entity.nb_entities_out,
                     "is_casting_standby": entity.is_casting_standby,
                     "tasks": [],
-                    "entity_links": entity.entity_links,
+                    "entity_concept_links": entity.entity_concept_links,
                     "type": entity_type_name
                     if entity_type_name
                     in [

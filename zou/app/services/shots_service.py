@@ -16,7 +16,7 @@ from zou.app.models.entity import (
     Entity,
     EntityLink,
     EntityVersion,
-    EntityLinks,
+    EntityConceptLink,
 )
 from zou.app.models.person import Person
 from zou.app.models.project import Project
@@ -850,8 +850,8 @@ def remove_shot(shot_id, force=False):
         Subscription.delete_all_by(entity_id=shot_id)
         EntityLink.delete_all_by(entity_in_id=shot_id)
         EntityLink.delete_all_by(entity_out_id=shot_id)
-        EntityLinks.delete_all_by(entity_in_id=shot_id)
-        EntityLinks.delete_all_by(entity_out_id=shot_id)
+        EntityConceptLink.delete_all_by(entity_in_id=shot_id)
+        EntityConceptLink.delete_all_by(entity_out_id=shot_id)
 
         shot.delete()
         events.emit(

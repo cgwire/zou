@@ -9,7 +9,7 @@ from zou.app.models.entity import (
     Entity,
     EntityLink,
     EntityVersion,
-    EntityLinks,
+    EntityConceptLink,
 )
 from zou.app.models.event import ApiEvent
 from zou.app.models.metadata_descriptor import MetadataDescriptor
@@ -467,8 +467,8 @@ def remove_episode(episode_id, force=False):
         Subscription.delete_all_by(entity_id=episode_id)
         EntityLink.delete_all_by(entity_in_id=episode_id)
         EntityLink.delete_all_by(entity_out_id=episode_id)
-        EntityLinks.delete_all_by(entity_in_id=episode_id)
-        EntityLinks.delete_all_by(entity_out_id=episode_id)
+        EntityConceptLink.delete_all_by(entity_in_id=episode_id)
+        EntityConceptLink.delete_all_by(entity_out_id=episode_id)
     try:
         episode.delete()
         events.emit(

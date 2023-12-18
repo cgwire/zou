@@ -11,7 +11,7 @@ from zou.app.models.entity import (
     Entity,
     EntityLink,
     EntityVersion,
-    EntityLinks,
+    EntityConceptLink,
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
@@ -120,8 +120,8 @@ def remove_concept(concept_id, force=False):
         Subscription.delete_all_by(entity_id=concept_id)
         EntityLink.delete_all_by(entity_in_id=concept_id)
         EntityLink.delete_all_by(entity_out_id=concept_id)
-        EntityLinks.delete_all_by(entity_in_id=concept_id)
-        EntityLinks.delete_all_by(entity_out_id=concept_id)
+        EntityConceptLink.delete_all_by(entity_in_id=concept_id)
+        EntityConceptLink.delete_all_by(entity_out_id=concept_id)
 
         concept.delete()
         events.emit(
@@ -262,7 +262,7 @@ def get_concepts_and_tasks(criterions={}):
                     "nb_entities_out": concept.nb_entities_out,
                     "is_casting_standby": concept.is_casting_standby,
                     "tasks": [],
-                    "entity_links": concept.entity_links,
+                    "entity_concept_links": concept.entity_concept_links,
                     "type": "Concept",
                     "updated_at": concept.updated_at,
                     "created_at": concept.created_at,
@@ -320,7 +320,7 @@ def create_concept(
     name,
     data={},
     description=None,
-    entity_links=[],
+    entity_concept_links=[],
     created_by=None,
 ):
     """
@@ -336,10 +336,11 @@ def create_concept(
 
     if concept is None:
         try:
-            entity_links = [
-                entity_link
-                for entity_link_id in entity_links
-                if (entity_link := Entity.get(entity_link_id)) is not None
+            entity_concept_links = [
+                entity_concept_link
+                for entity_concept_link_id in entity_concept_links
+                if (entity_concept_link := Entity.get(entity_concept_link_id))
+                is not None
             ]
         except StatementError:
             raise EntityNotFoundException()
@@ -349,7 +350,7 @@ def create_concept(
             name=name,
             data=data,
             description=description,
-            entity_links=entity_links,
+            entity_concept_links=entity_concept_links,
             created_by=created_by,
         )
 
