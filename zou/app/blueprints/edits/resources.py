@@ -62,7 +62,10 @@ class EditResource(Resource, ArgsMixin):
         """
         force = self.get_force()
         edit = edits_service.get_edit(edit_id)
-        user_service.check_manager_project_access(edit["project_id"])
+        if edit["created_by"] == persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(edit["project_id"])
+        else:
+            user_service.check_manager_project_access(edit["project_id"])
         edits_service.remove_edit(edit_id, force=force)
         return "", 204
 
@@ -389,6 +392,7 @@ class ProjectEditsResource(Resource, ArgsMixin):
             data=data,
             description=description,
             parent_id=parent_id,
+            created_by=persons_service.get_current_user()["id"],
         )
         return edit, 201
 

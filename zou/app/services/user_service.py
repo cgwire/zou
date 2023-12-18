@@ -586,7 +586,10 @@ def check_metadata_department_access(entity, new_data={}):
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
+        (
+            permissions.has_manager_permissions()
+            or entity["created_by"] == persons_service.get_current_user()["id"]
+        )
         and check_belong_to_project(entity["project_id"])
     ):
         is_allowed = True

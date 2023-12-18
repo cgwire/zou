@@ -200,7 +200,6 @@ def get_concepts_and_tasks(criterions={}):
             Task.due_date,
             Task.last_comment_date,
             Task.nb_assets_ready,
-            Task.assigner_id,
             assignees_table.columns.person,
             Project.id,
             Project.name,
@@ -234,7 +233,6 @@ def get_concepts_and_tasks(criterions={}):
         task_due_date,
         task_last_comment_date,
         task_nb_assets_ready,
-        task_assigner_id,
         person_id,
         project_id,
         project_name,
@@ -268,6 +266,7 @@ def get_concepts_and_tasks(criterions={}):
                     "type": "Concept",
                     "updated_at": concept.updated_at,
                     "created_at": concept.created_at,
+                    "created_by": concept.created_by,
                 }
             )
 
@@ -291,7 +290,6 @@ def get_concepts_and_tasks(criterions={}):
                         "start_date": task_start_date,
                         "task_status_id": task_status_id,
                         "task_type_id": task_type_id,
-                        "assigner_id": task_assigner_id,
                         "assignees": [],
                     }
                 )
@@ -318,7 +316,12 @@ def get_concepts_for_project(project_id, only_assigned=False):
 
 
 def create_concept(
-    project_id, name, data={}, description=None, entity_links=[]
+    project_id,
+    name,
+    data={},
+    description=None,
+    entity_links=[],
+    created_by=None,
 ):
     """
     Create concept for given project.
@@ -347,6 +350,7 @@ def create_concept(
             data=data,
             description=description,
             entity_links=entity_links,
+            created_by=created_by,
         )
 
         events.emit(

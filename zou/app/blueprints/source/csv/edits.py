@@ -5,7 +5,12 @@ from zou.app.blueprints.source.csv.base import (
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import edits_service, projects_service, shots_service
+from zou.app.services import (
+    edits_service,
+    projects_service,
+    shots_service,
+    persons_service,
+)
 from zou.app.models.entity import Entity
 from zou.app.services.tasks_service import (
     create_task,
@@ -157,13 +162,9 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             if episode_name is not None and episode_name not in list(
                 self.episodes.keys()
             ):
-                self.episodes[
-                    episode_name
-                ] = shots_service.get_or_create_episode(
-                    project_id, episode_name
-                )[
-                    "id"
-                ]
+                self.episodes[episode_name] = shots_service.create_episode(
+                    project_id, episode_name, created_by=self.current_user_id
+                )["id"]
             episode_id = self.episodes.get(episode_name, None)
         elif episode_name is not None:
             raise RowException(
@@ -199,7 +200,10 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(**{**edit_values, **edit_new_values})
+            entity = Entity.create(
+                **{**edit_values, **edit_new_values},
+                created_by=self.current_user_id
+            )
             events.emit(
                 "edit:new",
                 {"edit_id": str(entity.id), "episode_id": episode_id},

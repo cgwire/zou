@@ -141,6 +141,12 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
         db.ForeignKey("task_type.id", name="fk_ready_for"),
     )
 
+    created_by = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        nullable=True,
+    )
+
     entities_out = db.relationship(
         "Entity",
         secondary="entity_link",

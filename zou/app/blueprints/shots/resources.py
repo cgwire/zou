@@ -67,7 +67,10 @@ class ShotResource(Resource, ArgsMixin):
         """
         force = self.get_force()
         shot = shots_service.get_shot(shot_id)
-        user_service.check_manager_project_access(shot["project_id"])
+        if shot["created_by"] == persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(shot["project_id"])
+        else:
+            user_service.check_manager_project_access(shot["project_id"])
         shots_service.remove_shot(shot_id, force=force)
         return "", 204
 
@@ -115,7 +118,10 @@ class SceneResource(Resource):
                 description: Given scene deleted
         """
         scene = shots_service.get_scene(scene_id)
-        user_service.check_manager_project_access(scene["project_id"])
+        if scene["created_by"] == persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(scene["project_id"])
+        else:
+            user_service.check_manager_project_access(scene["project_id"])
         shots_service.remove_scene(scene_id)
         return "", 204
 
@@ -693,6 +699,7 @@ class ProjectShotsResource(Resource, ArgsMixin):
             data=data,
             nb_frames=nb_frames,
             description=description,
+            created_by=persons_service.get_current_user()["id"],
         )
         return shot, 201
 
@@ -778,6 +785,7 @@ class ProjectSequencesResource(Resource, ArgsMixin):
             name,
             description=description,
             data=data,
+            created_by=persons_service.get_current_user()["id"],
         )
         return sequence, 201
 
@@ -857,7 +865,12 @@ class ProjectEpisodesResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(project_id)
         return (
             shots_service.create_episode(
-                project_id, name, status, description, data
+                project_id,
+                name,
+                status,
+                description,
+                data,
+                created_by=persons_service.get_current_user()["id"],
             ),
             201,
         )
@@ -970,7 +983,10 @@ class EpisodeResource(Resource, ArgsMixin):
         """
         force = self.get_force()
         episode = shots_service.get_episode(episode_id)
-        user_service.check_manager_project_access(episode["project_id"])
+        if episode["created_by"] == persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(episode["project_id"])
+        else:
+            user_service.check_manager_project_access(episode["project_id"])
         deletion_service.remove_episode(episode_id, force=force)
         return "", 204
 
@@ -1131,7 +1147,10 @@ class SequenceResource(Resource, ArgsMixin):
         """
         force = self.get_force()
         sequence = shots_service.get_sequence(sequence_id)
-        user_service.check_manager_project_access(sequence["project_id"])
+        if sequence["created_by"] != persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(sequence["project_id"])
+        else:
+            user_service.check_manager_project_access(sequence["project_id"])
         shots_service.remove_sequence(sequence_id, force=force)
         return "", 204
 
@@ -1258,7 +1277,12 @@ class ProjectScenesResource(Resource, ArgsMixin):
         (sequence_id, name) = self.get_arguments()
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
-        scene = shots_service.create_scene(project_id, sequence_id, name)
+        scene = shots_service.create_scene(
+            project_id,
+            sequence_id,
+            name,
+            created_by=persons_service.get_current_user()["id"],
+        )
         return scene, 201
 
     def get_arguments(self):

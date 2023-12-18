@@ -3,12 +3,12 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.services import (
-    persons_service,
     projects_service,
     playlists_service,
     concepts_service,
     tasks_service,
     user_service,
+    persons_service,
 )
 
 from zou.app.mixin import ArgsMixin
@@ -64,7 +64,10 @@ class ConceptResource(Resource, ArgsMixin):
         """
         force = self.get_force()
         concept = concepts_service.get_concept(concept_id)
-        user_service.check_manager_project_access(concept["project_id"])
+        if concept["created_by"] == persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(concept["project_id"])
+        else:
+            user_service.check_manager_project_access(concept["project_id"])
         concepts_service.remove_concept(concept_id, force=force)
         return "", 204
 
@@ -296,6 +299,7 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             data=data,
             description=description,
             entity_links=entity_links,
+            created_by=persons_service.get_current_user()["id"],
         )
         return concept, 201
 

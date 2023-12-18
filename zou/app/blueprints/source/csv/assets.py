@@ -5,7 +5,12 @@ from zou.app.blueprints.source.csv.base import (
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import assets_service, projects_service, shots_service
+from zou.app.services import (
+    assets_service,
+    projects_service,
+    shots_service,
+    persons_service,
+)
 from zou.app.models.entity import Entity
 from zou.app.services import comments_service, index_service, tasks_service
 from zou.app.services.persons_service import get_current_user
@@ -160,13 +165,9 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
 
         if self.is_tv_show:
             if episode_name not in [None, "MP"] + list(self.episodes.keys()):
-                self.episodes[
-                    episode_name
-                ] = shots_service.get_or_create_episode(
-                    project_id, episode_name
-                )[
-                    "id"
-                ]
+                self.episodes[episode_name] = shots_service.create_episode(
+                    project_id, episode_name, created_by=self.current_user_id
+                )["id"]
             episode_id = self.episodes.get(episode_name, None)
         elif episode_name is not None:
             raise RowException(
@@ -228,7 +229,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(**{**asset_values, **asset_new_values})
+            entity = Entity.create(
+                **{**asset_values, **asset_new_values},
+                created_by=self.current_user_id,
+            )
 
             index_service.index_asset(entity)
             events.emit(

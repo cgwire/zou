@@ -69,6 +69,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
             except StatementError:
                 raise EntityNotFoundException()
             data["entity_links"] = entity_links
+        data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
     def all_entries(self, query=None, relations=False):
@@ -90,6 +91,7 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             "entities_out",
             "type",
             "shotgun_id",
+            "created_by",
         ]
 
     def serialize_instance(self, entity):
@@ -105,7 +107,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         return user_service.check_metadata_department_access(entity, data)
 
     def check_delete_permissions(self, entity):
-        return user_service.check_manager_project_access(entity["project_id"])
+        return entity["created_by"] == persons_service.get_current_user()[
+            "id"
+        ] or user_service.check_manager_project_access(entity["project_id"])
 
     def pre_delete(self, entity):
         if shots_service.is_sequence(entity):

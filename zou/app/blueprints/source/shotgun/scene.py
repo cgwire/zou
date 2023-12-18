@@ -3,7 +3,7 @@ from flask import current_app
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
 
-from zou.app.services import shots_service
+from zou.app.services import shots_service, persons_service
 
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
@@ -18,6 +18,7 @@ class ImportShotgunScenesResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.scene_type = shots_service.get_shot_type()
         self.project_map = Project.get_id_map(field="name")
+        self.current_user_id = persons_service.get_current_user()["id"]
 
     def extract_data(self, sg_scene):
         project_id = self.get_project(sg_scene, self.project_map)
@@ -57,8 +58,7 @@ class ImportShotgunScenesResource(BaseImportShotgunResource):
         )
 
         if scene is None:
-            scene = Entity(**data)
-            scene.save()
+            scene = Entity.create(**data, created_by=self.current_user_id)
             current_app.logger.info("Scene created: %s" % scene)
 
         else:

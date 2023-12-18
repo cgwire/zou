@@ -73,7 +73,10 @@ class AssetResource(Resource, ArgsMixin):
         force = self.get_force()
 
         asset = assets_service.get_full_asset(asset_id)
-        user_service.check_manager_project_access(asset["project_id"])
+        if asset["created_by"] == persons_service.get_current_user()["id"]:
+            user_service.check_belong_to_project(asset["project_id"])
+        else:
+            user_service.check_manager_project_access(asset["project_id"])
 
         assets_service.remove_asset(asset_id, force=force)
         return "", 204
@@ -448,7 +451,13 @@ class NewAssetResource(Resource, ArgsMixin):
 
         user_service.check_manager_project_access(project_id)
         asset = assets_service.create_asset(
-            project_id, asset_type_id, name, description, data, source_id
+            project_id,
+            asset_type_id,
+            name,
+            description,
+            data,
+            source_id,
+            created_by=persons_service.get_current_user()["id"],
         )
         return asset, 201
 

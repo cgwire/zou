@@ -684,29 +684,7 @@ def is_episode(entity):
     return str(entity["entity_type_id"]) == episode_type["id"]
 
 
-def get_or_create_episode(project_id, name, status="running", description=""):
-    """
-    Retrieve episode matching given project and name or create it.
-    """
-    episode_type = get_episode_type()
-    episode = Entity.get_by(
-        entity_type_id=episode_type["id"], project_id=project_id, name=name
-    )
-    if status not in ["running", "complete", "standby", "canceled"]:
-        status = "running"
-    if episode is None:
-        episode = Entity(
-            entity_type_id=episode_type["id"],
-            project_id=project_id,
-            name=name,
-            status=status,
-            description=description,
-        )
-        episode.save()
-    return episode.serialize()
-
-
-def get_or_create_first_episode(project_id):
+def get_or_create_first_episode(project_id, created_by=None):
     """
     Get the first episode of the production.
     """
@@ -718,32 +696,9 @@ def get_or_create_first_episode(project_id):
     if episode is not None:
         return episode.serialize()
     else:
-        return get_or_create_episode(project_id, "running", "E01")
-
-
-def get_or_create_sequence(
-    project_id, episode_id, name, description="", data={}
-):
-    """
-    Retrieve sequence matching given project, episode and name or create it.
-    """
-    sequence_type = get_sequence_type()
-    sequence = Entity.get_by(
-        entity_type_id=sequence_type["id"],
-        parent_id=episode_id,
-        project_id=project_id,
-        name=name,
-    )
-    if sequence is None:
-        sequence = Entity.create(
-            entity_type_id=sequence_type["id"],
-            parent_id=episode_id,
-            project_id=project_id,
-            name=name,
-            description=description,
-            data=data,
+        return create_episode(
+            project_id, "running", "E01", created_by=created_by
         )
-    return sequence.serialize()
 
 
 def get_episodes_for_project(project_id, only_assigned=False):
@@ -964,7 +919,12 @@ def remove_sequence(sequence_id, force=False):
 
 
 def create_episode(
-    project_id, name, status="running", description="", data={}
+    project_id,
+    name,
+    status="running",
+    description="",
+    data={},
+    created_by=None,
 ):
     """
     Create episode for given project.
@@ -983,14 +943,17 @@ def create_episode(
             status=status,
             description=description,
             data=data,
+            created_by=created_by,
         )
-    events.emit(
-        "episode:new", {"episode_id": episode.id}, project_id=project_id
-    )
+        events.emit(
+            "episode:new", {"episode_id": episode.id}, project_id=project_id
+        )
     return episode.serialize(obj_type="Episode")
 
 
-def create_sequence(project_id, episode_id, name, description="", data={}):
+def create_sequence(
+    project_id, episode_id, name, description="", data={}, created_by=None
+):
     """
     Create sequence for given project and episode.
     """
@@ -1013,15 +976,22 @@ def create_sequence(project_id, episode_id, name, description="", data={}):
             name=name,
             description=description,
             data=data,
+            created_by=created_by,
         )
-    events.emit(
-        "sequence:new", {"sequence_id": sequence.id}, project_id=project_id
-    )
+        events.emit(
+            "sequence:new", {"sequence_id": sequence.id}, project_id=project_id
+        )
     return sequence.serialize(obj_type="Sequence")
 
 
 def create_shot(
-    project_id, sequence_id, name, data={}, nb_frames=0, description=None
+    project_id,
+    sequence_id,
+    name,
+    data={},
+    nb_frames=0,
+    description=None,
+    created_by=None,
 ):
     """
     Create shot for given project and sequence.
@@ -1047,6 +1017,7 @@ def create_shot(
             data=data,
             nb_frames=nb_frames,
             description=description,
+            created_by=created_by,
         )
 
         index_service.index_shot(shot)
@@ -1062,7 +1033,7 @@ def create_shot(
     return shot.serialize(obj_type="Shot")
 
 
-def create_scene(project_id, sequence_id, name):
+def create_scene(project_id, sequence_id, name, created_by=None):
     """
     Create scene for given project and sequence.
     """
@@ -1087,8 +1058,9 @@ def create_scene(project_id, sequence_id, name):
             parent_id=sequence_id,
             name=name,
             data={},
+            created_by=created_by,
         )
-    events.emit("scene:new", {"scene_id": scene.id}, project_id=project_id)
+        events.emit("scene:new", {"scene_id": scene.id}, project_id=project_id)
     return scene.serialize(obj_type="Scene")
 
 

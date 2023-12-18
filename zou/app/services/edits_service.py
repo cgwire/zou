@@ -341,7 +341,9 @@ def remove_edit(edit_id, force=False):
     return deleted_edit
 
 
-def create_edit(project_id, name, data={}, description="", parent_id=None):
+def create_edit(
+    project_id, name, data={}, description="", parent_id=None, created_by=None
+):
     """
     Create edit for given project and episode.
     """
@@ -364,6 +366,7 @@ def create_edit(project_id, name, data={}, description="", parent_id=None):
             name=name,
             data=data,
             description=description,
+            created_by=created_by,
         )
     events.emit(
         "edit:new",

@@ -585,7 +585,13 @@ def create_asset_types(asset_type_names):
 
 
 def create_asset(
-    project_id, asset_type_id, name, description, data, source_id=None
+    project_id,
+    asset_type_id,
+    name,
+    description,
+    data,
+    source_id=None,
+    created_by=None,
 ):
     """
     Create a new asset from given parameters.
@@ -601,6 +607,7 @@ def create_asset(
         description=description,
         data=data,
         source_id=source_id,
+        created_by=created_by,
     )
 
     index_service.index_asset(asset)
