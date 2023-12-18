@@ -395,10 +395,7 @@ def check_belong_to_project(project_id):
 
     project = projects_service.get_project_with_relations(str(project_id))
     current_user = persons_service.get_current_user()
-    if current_user["id"] in project["team"]:
-        return True
-    else:
-        return False
+    return current_user["id"] in project["team"]
 
 
 def check_project_access(project_id):
@@ -589,7 +586,10 @@ def check_metadata_department_access(entity, new_data={}):
     """
     is_allowed = False
     if permissions.has_admin_permissions() or (
-        permissions.has_manager_permissions()
+        (
+            permissions.has_manager_permissions()
+            or entity["created_by"] == persons_service.get_current_user()["id"]
+        )
         and check_belong_to_project(entity["project_id"])
     ):
         is_allowed = True

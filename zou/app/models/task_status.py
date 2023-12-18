@@ -1,6 +1,7 @@
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from sqlalchemy.sql import expression
 
 
 class TaskStatus(db.Model, BaseMixin, SerializerMixin):
@@ -23,3 +24,7 @@ class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     is_feedback_request = db.Column(db.Boolean(), default=False, index=True)
     is_default = db.Column(db.Boolean(), default=False, index=True)
     shotgun_id = db.Column(db.Integer)
+
+    for_concept = db.Column(
+        db.Boolean(), server_default=expression.false(), default=False
+    )

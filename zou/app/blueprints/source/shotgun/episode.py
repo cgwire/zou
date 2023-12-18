@@ -2,7 +2,7 @@ from flask import current_app
 
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
-from zou.app.services import shots_service
+from zou.app.services import shots_service, persons_service
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
@@ -16,6 +16,7 @@ class ImportShotgunEpisodesResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.episode_type = shots_service.get_episode_type()
         self.project_map = Project.get_id_map(field="name")
+        self.current_user_id = persons_service.get_current_user()["id"]
 
     def extract_data(self, sg_episode):
         project_id = self.get_project(sg_episode)
@@ -44,8 +45,7 @@ class ImportShotgunEpisodesResource(BaseImportShotgunResource):
         )
 
         if episode is None:
-            episode = Entity(**data)
-            episode.save()
+            episode = Entity.create(**data, created_by=self.current_user_id)
             current_app.logger.info("Episode created: %s" % episode)
 
         else:

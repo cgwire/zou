@@ -77,6 +77,7 @@ event_name_model_map = {
     "build-job": BuildJob,
     "custom-action": CustomAction,
     "comment": Comment,
+    "concept": Entity,
     "department": Department,
     "day-off": DayOff,
     "entity": Entity,
@@ -113,6 +114,7 @@ event_name_model_path_map = {
     "asset-type": "entity-types",
     "build-job": "build-jobs",
     "comment": "comments",
+    "concept": "concepts",
     "custom-action": "custom-actions",
     "day-off": "day-offs",
     "department": "departments",
@@ -155,6 +157,7 @@ project_events = [
     "playlist",
     "build-job",
     "comment",
+    "concept",
     "attachment-file",
     "metadata-descriptor",
     "schedule-item",
@@ -301,6 +304,7 @@ def run_project_data_sync(project=None):
             sync_project_entries(project, path, model)
         sync_entity_thumbnails(project, "assets")
         sync_entity_thumbnails(project, "shots")
+        sync_entity_thumbnails(project, "concepts")
         logger.info("Sync of %s complete." % project["name"])
 
 

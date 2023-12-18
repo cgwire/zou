@@ -1,3 +1,4 @@
+from flask import request
 from flask_restful import Resource
 
 from flask_jwt_extended import jwt_required
@@ -8,7 +9,10 @@ from zou.app.services import (
     preview_files_service,
     time_spents_service,
     user_service,
+    persons_service,
 )
+
+from zou.app.utils import query, permissions
 
 
 class EntityNewsResource(Resource):
@@ -81,3 +85,28 @@ class EntityTimeSpentsResource(Resource):
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
         return time_spents_service.get_time_spents_for_entity(entity_id)
+
+
+class EntitiesLinkedWithTasksResource(Resource):
+    @jwt_required()
+    def get(self, entity_id):
+        """
+        Resource to retrieve the entities linked on a given entity.
+        ---
+        tags:
+            - Entity
+        parameters:
+          - in: path
+            name: entity_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Entities linked on given entity
+        """
+        entity = entities_service.get_entity(entity_id)
+        user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
+        return entities_service.get_linked_entities_with_tasks(entity_id)

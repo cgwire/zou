@@ -25,6 +25,7 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     user_service,
+    concepts_service,
 )
 from zou.app.utils import events, query, permissions
 from zou.app.mixin import ArgsMixin
@@ -488,6 +489,63 @@ class CreateShotTasksResource(Resource):
 
         task_type = tasks_service.get_task_type(task_type_id)
         tasks = tasks_service.create_tasks(task_type, shots)
+        return tasks, 201
+
+
+class CreateConceptTasksResource(Resource):
+    """
+    Create a new task for given concept and task type.
+    """
+
+    @jwt_required()
+    def post(self, project_id, task_type_id):
+        """
+        Create a new task for given concept and task type.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: New task for given concept and task type created
+        """
+        user_service.check_project_access(project_id)
+        if (
+            permissions.has_vendor_permissions()
+            or permissions.has_client_permissions()
+        ):
+            raise permissions.PermissionDenied
+        task_type = tasks_service.get_task_type(task_type_id)
+
+        concept_ids = request.json
+        concepts = []
+        if isinstance(concept_ids, list) and len(concept_ids) > 0:
+            for concept_id in concept_ids:
+                concept = concepts_service.get_concept(concept_id)
+                if concept["project_id"] == project_id:
+                    concepts.append(concept)
+        else:
+            criterions = query.get_query_criterions_from_request(request)
+            criterions["project_id"] = project_id
+            concepts = concepts_service.get_concepts(criterions)
+
+        for concept in concepts:
+            user_service.check_entity_access(concept["id"])
+
+        task_type = tasks_service.get_task_type(task_type_id)
+        tasks = tasks_service.create_tasks(task_type, concepts)
         return tasks, 201
 
 

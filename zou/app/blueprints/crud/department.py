@@ -4,6 +4,8 @@ from zou.app.models.department import Department
 
 from zou.app.services import tasks_service
 
+from zou.app.services.exception import ArgumentsException
+
 
 class DepartmentsResource(BaseModelsResource):
     def __init__(self):

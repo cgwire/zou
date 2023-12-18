@@ -8,7 +8,12 @@ from zou.app.utils import (
     query as query_utils,
 )
 
-from zou.app.models.entity import Entity, EntityLink, EntityVersion
+from zou.app.models.entity import (
+    Entity,
+    EntityLink,
+    EntityVersion,
+    EntityConceptLink,
+)
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
@@ -320,6 +325,10 @@ def remove_edit(edit_id, force=False):
         EntityVersion.delete_all_by(entity_id=edit_id)
         Subscription.delete_all_by(entity_id=edit_id)
         EntityLink.delete_all_by(entity_in_id=edit_id)
+        EntityLink.delete_all_by(entity_out_id=edit_id)
+        EntityConceptLink.delete_all_by(entity_in_id=edit_id)
+        EntityConceptLink.delete_all_by(entity_out_id=edit_id)
+
         edit.delete()
         clear_edit_cache(edit_id)
         events.emit(
@@ -332,7 +341,9 @@ def remove_edit(edit_id, force=False):
     return deleted_edit
 
 
-def create_edit(project_id, name, data={}, description="", parent_id=None):
+def create_edit(
+    project_id, name, data={}, description="", parent_id=None, created_by=None
+):
     """
     Create edit for given project and episode.
     """
@@ -355,6 +366,7 @@ def create_edit(project_id, name, data={}, description="", parent_id=None):
             name=name,
             data=data,
             description=description,
+            created_by=created_by,
         )
     events.emit(
         "edit:new",

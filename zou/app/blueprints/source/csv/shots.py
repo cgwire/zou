@@ -6,7 +6,12 @@ from zou.app.blueprints.source.csv.base import (
 from zou.app.models.entity import Entity
 from zou.app.models.project import ProjectTaskTypeLink
 from zou.app.models.task_type import TaskType
-from zou.app.services import shots_service, projects_service, index_service
+from zou.app.services import (
+    shots_service,
+    projects_service,
+    index_service,
+    persons_service,
+)
 from zou.app.services.tasks_service import (
     create_task,
     create_tasks,
@@ -152,10 +157,11 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if self.is_tv_show:
             episode_key = "%s-%s" % (project_id, episode_name)
             if episode_key not in self.episodes:
-                self.episodes[
-                    episode_key
-                ] = shots_service.get_or_create_episode(
-                    project_id, episode_name, "running"
+                self.episodes[episode_key] = shots_service.create_episode(
+                    project_id,
+                    episode_name,
+                    "running",
+                    created_by=self.current_user_id,
                 )
 
             sequence_key = "%s-%s-%s" % (
@@ -169,16 +175,18 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if sequence_key not in self.sequences:
             if self.is_tv_show:
                 episode = self.episodes[episode_key]
-                self.sequences[
-                    sequence_key
-                ] = shots_service.get_or_create_sequence(
-                    project_id, episode["id"], sequence_name
+                self.sequences[sequence_key] = shots_service.create_sequence(
+                    project_id,
+                    episode["id"],
+                    sequence_name,
+                    created_by=self.current_user_id,
                 )
             else:
-                self.sequences[
-                    sequence_key
-                ] = shots_service.get_or_create_sequence(
-                    project_id, None, sequence_name
+                self.sequences[sequence_key] = shots_service.create_sequence(
+                    project_id,
+                    None,
+                    sequence_name,
+                    created_by=self.current_user_id,
                 )
         sequence_id = self.get_id_from_cache(self.sequences, sequence_key)
 
@@ -229,7 +237,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         tasks_update = self.get_tasks_update(row)
 
         if entity is None:
-            entity = Entity.create(**{**shot_values, **shot_new_values})
+            entity = Entity.create(
+                **{**shot_values, **shot_new_values},
+                created_by=self.current_user_id
+            )
 
             index_service.index_shot(entity)
             events.emit(

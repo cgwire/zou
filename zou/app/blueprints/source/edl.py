@@ -12,7 +12,12 @@ from flask_jwt_extended import jwt_required
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
-from zou.app.services import shots_service, projects_service, user_service
+from zou.app.services import (
+    shots_service,
+    projects_service,
+    user_service,
+    persons_service,
+)
 
 from zou.app.models.task_type import TaskType
 from zou.app.models.project import ProjectTaskTypeLink
@@ -80,6 +85,7 @@ class EDLBaseResource(Resource, ArgsMixin):
             .filter(ProjectTaskTypeLink.project_id == project_id)
             .filter(TaskType.for_entity == "Shot")
         )
+        self.current_user_id = persons_service.get_current_user()["id"]
 
         self.naming_convention = naming_convention
         regex_naming_convention = naming_convention
@@ -162,6 +168,7 @@ class EDLBaseResource(Resource, ArgsMixin):
                                 self.project_id,
                                 self.episode_id,
                                 shot_infos_extracted["sequence_name"],
+                                created_by=self.current_user_id,
                             )["id"]
                             self.sequence_map[
                                 shot_infos_extracted["sequence_name"]
@@ -208,7 +215,10 @@ class EDLBaseResource(Resource, ArgsMixin):
                         )
 
                     if shot_id is None:
-                        shot = shots_service.create_shot(**future_shot_values)
+                        shot = shots_service.create_shot(
+                            **future_shot_values,
+                            created_by=self.current_user_id,
+                        )
                         result["created_shots"].append(shot)
                     else:
                         shot = shots_service.update_shot(

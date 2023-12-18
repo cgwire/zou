@@ -110,7 +110,11 @@ class ProjectsResource(BaseModelsResource):
     def post_creation(self, project):
         project_dict = project.serialize()
         if project.production_type == "tvshow":
-            episode = shots_service.create_episode(project.id, "E01")
+            episode = shots_service.create_episode(
+                project.id,
+                "E01",
+                created_by=persons_service.get_current_user()["id"],
+            )
             project_dict["first_episode_id"] = fields.serialize_value(
                 episode["id"]
             )
@@ -194,7 +198,8 @@ class ProjectResource(BaseModelResource, ArgsMixin):
     def post_update(self, project_dict):
         if project_dict["production_type"] == "tvshow":
             episode = shots_service.get_or_create_first_episode(
-                project_dict["id"]
+                project_dict["id"],
+                created_by=persons_service.get_current_user()["id"],
             )
             project_dict["first_episode_id"] = fields.serialize_value(
                 episode["id"]

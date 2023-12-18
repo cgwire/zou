@@ -16,6 +16,7 @@ from zou.app.services import (
     deletion_service,
     tasks_service,
     files_service,
+    persons_service,
 )
 
 from zou.app.services.exception import AssetNotFoundException
@@ -31,6 +32,7 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
         self.project_ids = Project.get_id_map()
         self.entity_type_ids = EntityType.get_id_map(field="name")
         self.parent_map = {}
+        self.current_user_id = persons_service.get_current_user()["id"]
 
     def extract_entity_type_names(self, sg_assets):
         return {
@@ -90,7 +92,7 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
             current_app.logger.info("Entity updated: %s" % entity)
         except AssetNotFoundException:
             if data.get("entity_type_id", None) is not None:
-                entity = Entity(**data)
+                entity = Entity.create(**data, created_by=self.current_user_id)
                 entity.save()
                 current_app.logger.info("Entity created: %s" % entity)
             else:

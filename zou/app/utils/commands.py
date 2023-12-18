@@ -161,6 +161,11 @@ def init_data():
             priority=8,
             for_entity="Edit",
         )
+
+        tasks_service.get_or_create_task_type(
+            concept, "Concept", "#8D6E63", 1, for_entity="Concept"
+        )
+
         print("Task types initialized.")
 
         tasks_service.get_default_status()
@@ -178,6 +183,34 @@ def init_data():
         )
         tasks_service.get_or_create_status(
             "Ready To Start", "ready", "#fbc02d"
+        )
+
+        tasks_service.get_or_create_status(
+            "Neutral",
+            "neutral",
+            "#CCCCCC",
+            is_default=True,
+            for_concept=True,
+            is_artist_allowed=True,
+            is_client_allowed=True,
+        )
+
+        tasks_service.get_or_create_status(
+            "Approved",
+            "approved",
+            "#66BB6A",
+            for_concept=True,
+            is_artist_allowed=True,
+            is_client_allowed=True,
+        )
+
+        tasks_service.get_or_create_status(
+            "Rejected",
+            "rejected",
+            "#E81123",
+            for_concept=True,
+            is_artist_allowed=True,
+            is_client_allowed=True,
         )
 
         print("Task status initialized.")

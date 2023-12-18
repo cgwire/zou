@@ -2,7 +2,7 @@ from flask import current_app
 
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
-from zou.app.services import shots_service
+from zou.app.services import shots_service, persons_service
 from zou.app.blueprints.source.shotgun.base import (
     BaseImportShotgunResource,
     ImportRemoveShotgunBaseResource,
@@ -16,6 +16,7 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
     def prepare_import(self):
         self.sequence_type = shots_service.get_sequence_type()
         self.project_map = Project.get_id_map(field="name")
+        self.current_user_id = persons_service.get_current_user()["id"]
 
     def get_episode(self, sg_sequence):
         sg_episode = sg_sequence.get("episode", {"id": None})
@@ -60,8 +61,7 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
         )
 
         if sequence is None and similar_sequence is None:
-            sequence = Entity(**data)
-            sequence.save()
+            sequence = Entity.create(**data, created_by=self.current_user_id)
             current_app.logger.info("Sequence created: %s" % sequence)
 
         elif sequence is not None:

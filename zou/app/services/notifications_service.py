@@ -471,7 +471,7 @@ def get_notifications_for_project(project_id, page=0):
     return query_utils.get_paginated_results(query, page)
 
 
-def get_subscriptions_for_user(project_id, entity_type_id):
+def get_subscriptions_for_user(project_id, entity_type_id=None):
     subscription_map = {}
     if project_id is not None:
         user_id = persons_service.get_current_user()["id"]
