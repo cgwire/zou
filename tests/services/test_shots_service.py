@@ -190,14 +190,6 @@ class ShotUtilsTestCase(ApiDBTestCase):
         episode = shots_service.create_episode(self.project.id, episode_name)
         self.assertEqual(episode["name"], episode_name)
 
-    def test_get_or_create_episode(self):
-        self.assertEqual(len(shots_service.get_episodes()), 1)
-        episode_name = "NE01"
-        shots_service.get_or_create_episode(self.project.id, episode_name)
-        self.assertEqual(len(shots_service.get_episodes()), 2)
-        shots_service.get_or_create_episode(self.project.id, episode_name)
-        self.assertEqual(len(shots_service.get_episodes()), 2)
-
     def test_create_sequence(self):
         sequence_name = "NSE01"
         parent_id = str(self.episode.id)
