@@ -56,12 +56,12 @@ class ArgsMixin(object):
 
         return parser.parse_args()
 
-    def clear_empty_fields(self, data):
+    def clear_empty_fields(self, data, ignored_fields=[]):
         """
         Remove fields set to None from data dict.
         """
         for key in list(data.keys()):
-            if data[key] is None:
+            if key not in ignored_fields and data[key] is None:
                 del data[key]
         return data
 
