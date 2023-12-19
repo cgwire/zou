@@ -615,7 +615,6 @@ class FilterResource(Resource, ArgsMixin):
                 ("search_filter_group_id", None, False),
             ]
         )
-        data = self.clear_empty_fields(data)
         user_filter = user_service.update_filter(filter_id, data)
         return user_filter, 200
 
