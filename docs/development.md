@@ -29,6 +29,21 @@ sudo docker run \
     -d redis
 ```
 
+## Indexer
+
+To run Meilisearch we recommend to use Docker again:
+
+```bash
+sudo docker pull getmeili/meilisearch:v1.5
+sudo docker run -it --rm \      
+    --name meilisearch \               
+    -p 7700:7700 \
+    -e MEILI_ENV='development' \
+    -e MEILI_MASTER_KEY='meilimasterkey' \
+    -v $(pwd)/meili_data:/meili_data \
+    -d getmeili/meilisearch:v1.5
+```
+
 ## FFMPEG
 
 For video operations, it is required to have FFMPEG installed. For that, simply install it through your OS package manager:
@@ -93,7 +108,7 @@ python zou/cli.py create-admin super.user@mycgstudio.com --password=mysecretpass
 Run server:
 
 ```bash
-PREVIEW_FOLDER=$PWD/previews DEBUG=1 MAIL_DEBUG=1 FLASK_DEBUG=1 FLASK_APP=zou.app python zou/debug.py
+PREVIEW_FOLDER=$PWD/previews DEBUG=1 MAIL_DEBUG=1 FLASK_DEBUG=1 FLASK_APP=zou.app INDEXER_KEY=meilimasterkey python zou/debug.py
 ```
 
 You can now use the API by requesting `http://localhost:5000`.
