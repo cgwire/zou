@@ -232,7 +232,7 @@ After=network.target
 User=meilisearch
 Group=meilisearch
 WorkingDirectory=/opt/meilisearch
-ExecStart=/usr/bin/meilisearch --master-key="yourmasterkey"
+ExecStart=/usr/bin/meilisearch --master-key="masterkey"
 
 [Install]
 WantedBy=multi-user.target
