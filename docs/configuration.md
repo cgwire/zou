@@ -1,6 +1,6 @@
 # Configuration
 
-Zou requires several configuration parameters. In the following you will find
+Zou requires several configuration parameters. In the following, you will find
 the list of all expected parameters.
 
 ## Database
@@ -10,14 +10,14 @@ the list of all expected parameters.
 * `DB_USERNAME` (default: postgres): The username used to access the database.
 * `DB_PASSWORD` (default: mysecretpassword): The password used to access the
   database.
-* `DB_DATABASE` (default: zoudb): The name of the database to use.
+* `DB_DATABASE` (default: zoudb): The database name to use.
 * `DB_POOL_SIZE` (default: 30): The number of connections opened simultaneously 
   to access the database.
-* `DB_MAX_OVERFLOW` (default: 60): The number of additional connections availabe 
+* `DB_MAX_OVERFLOW` (default: 60): The number of additional connections available 
   once the pool is full. They are disconnected when the request is finished. They
   are not reused.
 
-## Key Value store
+## Key-Value store
 
 * `KV_HOST` (default: localhost): The Redis server host.
 * `KV_PORT` (default: 6379): The Redis server port.
@@ -32,7 +32,7 @@ Kitsu uses the Meilisearch service for its indexation.
 
 ## Authentication
 
-* `AUTH_STRATEGY` (default: auth\_local\_classic): Allow to chose between
+* `AUTH_STRATEGY` (default: auth\_local\_classic): Allow to choose between
 traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 * `SECRET_KEY` (default: mysecretkey) complex key used for auth token encryption.
 
@@ -45,7 +45,7 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 
 ## Emails
 
-The emails configuration is required for email sent after a password reset and,
+The email configuration is required for emails sent after a password reset and,
 email notifications.
 
 * `MAIL_SERVER` (default: "localhost"): the host of your email server
@@ -60,9 +60,9 @@ email notifications.
   server.
 * `MAIL_DEFAULT_SENDER` (default: "no-reply@cg-wire.com"): to set the sender
   email.
-* `DOMAIN_NAME` (default: "localhost:8080"): To build URLs (for password reset
+* `DOMAIN_NAME` (default: "localhost:8080"): To build URLs (for a password reset
   for instance).
-* `DOMAIN_PROTOCOL` (default: "https"): To build URLs (for password reset
+* `DOMAIN_PROTOCOL` (default: "https"): To build URLs (for a password reset
   for instance).
 
 You can find more information here:
@@ -76,12 +76,12 @@ https://flask-mail.readthedocs.io/en/latest/
 
 ## S3 Storage
 
-If you want to store you previews in a S3 backend, add the following
+If you want to store your previews in an S3 backend, add the following
 variables (we assume that you created a programmatic user that can access
 to S3).
 
 * `FS_BACKEND`: Set this variable with "s3"
-* `FS_BUCKET_PREFIX`: A prefix for your bucket names, it's mandatory to 
+* `FS_BUCKET_PREFIX`: A prefix for your bucket names. It's mandatory to 
    set it to properly use S3.
 * `FS_S3_REGION`: Example: *eu-west-3*
 * `FS_S3_ENDPOINT`: The url of your region. 
@@ -101,8 +101,8 @@ When you restart Zou, it should use S3 to store and retrieve files.
 
 ## Swift Storage
 
-If you want to store you previews in a Swift backend, add the following
-variables (Only Auth 2.0 and 3.0 is supported).
+If you want to store your previews in a Swift backend, add the following
+variables (Only Auth 2.0 and 3.0 are supported).
 
 * `FS_BACKEND`: Set this variable with "swift"
 * `FS_BUCKET_PREFIX`: A prefix for your bucket/container names.
@@ -124,7 +124,7 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
   authentication (NTLM).
 * `LDAP_FALLBACK` (default: "False"): Set to True if you want to allow admins
   to fallback on default auth strategy when the LDAP server is down.
-* `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with active directory.
+* `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with an active directory.
 
 
 ## Job queue
@@ -139,5 +139,5 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
 ## Misc
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
-* `DEBUG` (default: False): Activate the debug mode for development purpose.
-* `CRISP TOKEN` (default: ): Activate the Crisp support chatbox on bottom right.
+* `DEBUG` (default: False): Activate the debug mode for development purposes.
+* `CRISP TOKEN` (default: ): Activate the Crisp support chatbox on the bottom right.
