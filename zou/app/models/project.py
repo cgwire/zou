@@ -52,7 +52,7 @@ class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
     )
 
 
-class ProjectTaskStatusLink(db.Model):
+class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
     __tablename__ = "project_task_status_link"
     project_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
@@ -61,6 +61,13 @@ class ProjectTaskStatusLink(db.Model):
         UUIDType(binary=False),
         db.ForeignKey("task_status.id"),
         primary_key=True,
+    )
+    priority = db.Column(db.Integer, default=None)
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "project_id", "task_status_id", name="project_taskstatus_uc"
+        ),
     )
 
 

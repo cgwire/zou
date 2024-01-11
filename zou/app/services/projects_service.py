@@ -9,6 +9,7 @@ from zou.app.models.project import (
     Project,
     ProjectPersonLink,
     ProjectTaskTypeLink,
+    ProjectTaskStatusLink,
 )
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.status_automation import StatusAutomation
@@ -115,6 +116,13 @@ def get_projects_with_extra_data(
         project_dict["task_types_priority"] = {
             str(task_type_link.task_type_id): task_type_link.priority
             for task_type_link in ProjectTaskTypeLink.query.filter_by(
+                project_id=project.id
+            )
+        }
+
+        project_dict["task_statuses_priority"] = {
+            str(task_status_link.task_status_id): task_status_link.priority
+            for task_status_link in ProjectTaskStatusLink.query.filter_by(
                 project_id=project.id
             )
         }
@@ -623,6 +631,26 @@ def create_project_task_type_link(project_id, task_type_id, priority):
         task_type_link.update({"priority": priority})
 
     return task_type_link.serialize()
+
+
+def create_project_task_status_link(project_id, task_status_id, priority):
+    task_status_link = ProjectTaskStatusLink.get_by(
+        project_id=project_id, task_status_id=task_status_id
+    )
+
+    if priority is not None:
+        priority = int(priority)
+
+    if task_status_link is None:
+        task_status_link = ProjectTaskStatusLink.create(
+            project_id=project_id,
+            task_status_id=task_status_id,
+            priority=priority,
+        )
+    else:
+        task_status_link.update({"priority": priority})
+
+    return task_status_link.serialize()
 
 
 def get_project_task_types(project_id):

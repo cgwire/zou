@@ -16,6 +16,7 @@ class TaskStatus(db.Model, BaseMixin, SerializerMixin):
         db.String(10), unique=True, nullable=False, index=True
     )
     color = db.Column(db.String(7), nullable=False)
+    priority = db.Column(db.Integer, default=1)
 
     is_done = db.Column(db.Boolean(), default=False, index=True)
     is_artist_allowed = db.Column(db.Boolean(), default=True)
