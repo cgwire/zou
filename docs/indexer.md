@@ -29,7 +29,7 @@ After=network.target
 [Service]
 User=meilisearch
 Group=meilisearch
-ExecStart=/usr/bin/meilisearch --master-key="yourmasterkey"
+ExecStart=/usr/bin/meilisearch --master-key="masterkey"
 
 [Install]
 WantedBy=multi-user.target
@@ -50,7 +50,7 @@ To connect to the indexer Kitsu relies on three environment variables.
 The first one is the master key you set when you started Meilisearch.
 
 ```
-INDEXER_KEY="yourkey"
+INDEXER_KEY="masterkey"
 ```
 
 The two other variables are the indexer API location (host and port): 
@@ -68,7 +68,7 @@ full-text search.
 
 If for any reason, the indexer was not running during changes in the Kitsu
 database, you can reset it at any time. Simply use this command (assuming all
-environment variables are properly set).
+environment variables are correctly set).
 
 ```
 zou reset-search-index
