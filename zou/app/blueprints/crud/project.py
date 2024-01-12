@@ -267,3 +267,21 @@ class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
         )
         projects_service.clear_project_cache(task_type_link["project_id"])
         return task_type_link, 201
+
+
+class ProjectTaskStatusLinksResource(Resource, ArgsMixin):
+    @jwt_required()
+    def post(self):
+        args = self.get_args(
+            [
+                ("project_id", "", True),
+                ("task_status_id", "", True),
+                ("priority", 1, False, int),
+            ]
+        )
+
+        task_status_link = projects_service.create_project_task_status_link(
+            args["project_id"], args["task_status_id"], args["priority"]
+        )
+        projects_service.clear_project_cache(task_status_link["project_id"])
+        return task_status_link, 201

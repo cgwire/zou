@@ -76,6 +76,7 @@ from zou.app.blueprints.crud.project import (
     ProjectResource,
     ProjectsResource,
     ProjectTaskTypeLinksResource,
+    ProjectTaskStatusLinksResource,
 )
 from zou.app.blueprints.crud.project_status import (
     ProjectStatusResource,
@@ -139,6 +140,7 @@ routes = [
     ("/data/task-type-links", ProjectTaskTypeLinksResource),
     ("/data/task-status", TaskStatusesResource),
     ("/data/task-status/<instance_id>", TaskStatusResource),
+    ("/data/task-status-links", ProjectTaskStatusLinksResource),
     ("/data/tasks", TasksResource),
     ("/data/tasks/<instance_id>", TaskResource),
     ("/data/departments", DepartmentsResource),
