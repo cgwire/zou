@@ -120,8 +120,13 @@ def get_projects_with_extra_data(
             )
         }
 
-        project_dict["task_statuses_priority"] = {
-            str(task_status_link.task_status_id): task_status_link.priority
+        project_dict["task_statuses_link"] = {
+            str(task_status_link.task_status_id): {
+                "priority": task_status_link.priority,
+                "roles_for_board": fields.serialize_list(
+                    task_status_link.roles_for_board
+                ),
+            }
             for task_status_link in ProjectTaskStatusLink.query.filter_by(
                 project_id=project.id
             )
@@ -633,7 +638,9 @@ def create_project_task_type_link(project_id, task_type_id, priority):
     return task_type_link.serialize()
 
 
-def create_project_task_status_link(project_id, task_status_id, priority):
+def create_project_task_status_link(
+    project_id, task_status_id, priority, roles_for_board=[]
+):
     task_status_link = ProjectTaskStatusLink.get_by(
         project_id=project_id, task_status_id=task_status_id
     )
@@ -646,9 +653,12 @@ def create_project_task_status_link(project_id, task_status_id, priority):
             project_id=project_id,
             task_status_id=task_status_id,
             priority=priority,
+            roles_for_board=roles_for_board,
         )
     else:
-        task_status_link.update({"priority": priority})
+        task_status_link.update(
+            {"priority": priority, "roles_for_board": roles_for_board}
+        )
 
     return task_status_link.serialize()
 

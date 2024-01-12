@@ -23,6 +23,6 @@ class PersonsCsvExport(BaseCsvExport):
             person.first_name,
             person.email,
             person.phone,
-            person.role,
+            person.role.code,
             active,
         ]

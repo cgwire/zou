@@ -6,6 +6,8 @@ from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
+from zou.app.models.person import ROLE_TYPES
+
 PROJECT_STYLES = [
     ("2d", "2D Animation"),
     ("3d", "3D Animation"),
@@ -63,6 +65,7 @@ class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         primary_key=True,
     )
     priority = db.Column(db.Integer, default=None)
+    roles_for_board = db.Column(db.ARRAY(ChoiceType(ROLE_TYPES)))
 
     __table_args__ = (
         db.UniqueConstraint(

@@ -9,10 +9,7 @@ from zou.app.services import (
     preview_files_service,
     time_spents_service,
     user_service,
-    persons_service,
 )
-
-from zou.app.utils import query, permissions
 
 
 class EntityNewsResource(Resource):
