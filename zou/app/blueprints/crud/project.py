@@ -263,7 +263,9 @@ class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
         )
 
         task_type_link = projects_service.create_project_task_type_link(
-            args["project_id"], args["task_type_id"], args["priority"]
+            args["project_id"],
+            args["task_type_id"],
+            args["priority"],
         )
         projects_service.clear_project_cache(task_type_link["project_id"])
         return task_type_link, 201
@@ -277,11 +279,21 @@ class ProjectTaskStatusLinksResource(Resource, ArgsMixin):
                 ("project_id", "", True),
                 ("task_status_id", "", True),
                 ("priority", 1, False, int),
+                (
+                    "roles_for_board",
+                    [],
+                    False,
+                    str,
+                    "append",
+                ),
             ]
         )
 
         task_status_link = projects_service.create_project_task_status_link(
-            args["project_id"], args["task_status_id"], args["priority"]
+            args["project_id"],
+            args["task_status_id"],
+            args["priority"],
+            args["roles_for_board"],
         )
         projects_service.clear_project_cache(task_status_link["project_id"])
         return task_status_link, 201

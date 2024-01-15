@@ -57,7 +57,11 @@ def serialize_list(list_value):
     Serialize a list of any kind of objects into data structures
     that are JSON serializable.
     """
-    return [serialize_value(value) for value in list_value]
+    return (
+        list_value
+        if list_value is None
+        else [serialize_value(value) for value in list_value]
+    )
 
 
 def serialize_dict(dict_value):
