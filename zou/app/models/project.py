@@ -65,7 +65,10 @@ class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
         primary_key=True,
     )
     priority = db.Column(db.Integer, default=None)
-    roles_for_board = db.Column(db.ARRAY(ChoiceType(ROLE_TYPES)))
+    roles_for_board = db.Column(
+        db.ARRAY(ChoiceType(ROLE_TYPES)),
+        default=["user", "admin", "supervisor", "manager", "vendor"],
+    )
 
     __table_args__ = (
         db.UniqueConstraint(
