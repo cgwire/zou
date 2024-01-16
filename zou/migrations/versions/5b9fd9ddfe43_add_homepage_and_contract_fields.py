@@ -7,7 +7,6 @@ Create Date: 2023-12-11 00:46:36.971286
 
 """
 from alembic import op
-from zou.app.models.person import CONTRACT_TYPES
 import sqlalchemy as sa
 import sqlalchemy_utils
 
@@ -17,6 +16,14 @@ revision = "5b9fd9ddfe43"
 down_revision = "a7c43f3fbc76"
 branch_labels = None
 depends_on = None
+
+CONTRACT_TYPES = [
+    ("permanent", "Permanent"),
+    ("freelancer", "Freelancer"),
+    ("intermittent", "Intermitent"),
+    ("apprentice", "Apprentice"),
+    ("internship", "Internship"),
+]
 
 
 def upgrade():

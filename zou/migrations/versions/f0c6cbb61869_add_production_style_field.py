@@ -6,7 +6,6 @@ Create Date: 2022-08-15 17:26:36.567656
 
 """
 from alembic import op
-from zou.app.models.project import PROJECT_STYLES
 import sqlalchemy as sa
 import sqlalchemy_utils
 
@@ -16,6 +15,23 @@ revision = "f0c6cbb61869"
 down_revision = "b97a71306fc8"
 branch_labels = None
 depends_on = None
+
+PROJECT_STYLES = [
+    ("2d", "2D Animation"),
+    ("3d", "3D Animation"),
+    ("2d3d", "2D/3D Animation"),
+    ("ar", "Augmented Reality"),
+    ("vfx", "VFX"),
+    ("stop-motion", "Stop Motion"),
+    ("motion-design", "Motion Design"),
+    ("archviz", "Archviz"),
+    ("commercial", "Commercial"),
+    ("catalog", "Catalog"),
+    ("immersive", "Immersive Experience"),
+    ("nft", "NFT Collection"),
+    ("video-game", "Video Game"),
+    ("vr", "Virtual Reality"),
+]
 
 
 def upgrade():

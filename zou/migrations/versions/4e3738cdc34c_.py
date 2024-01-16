@@ -5,19 +5,40 @@ Revises: 6c597e842afa
 Create Date: 2021-07-30 15:22:32.641313
 
 """
-from zou.app.models.project import ProjectTaskTypeLink
-from zou.app.utils import fields
 from sqlalchemy.orm.session import Session
 from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
 import uuid
+from sqlalchemy.ext.declarative import declarative_base
+from zou.migrations.utils.base import BaseMixin
 
 # revision identifiers, used by Alembic.
 revision = "4e3738cdc34c"
 down_revision = "6c597e842afa"
 branch_labels = None
 depends_on = None
+
+base = declarative_base()
+
+
+class ProjectTaskTypeLink(base, BaseMixin):
+    __tablename__ = "project_task_type_link"
+    project_id = sa.Column(
+        sqlalchemy_utils.UUIDType(binary=False),
+        primary_key=True,
+    )
+    task_type_id = sa.Column(
+        sqlalchemy_utils.UUIDType(binary=False),
+        primary_key=True,
+    )
+    priority = sa.Column(sa.Integer, default=None)
+
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "project_id", "task_type_id", name="project_tasktype_uc"
+        ),
+    )
 
 
 def upgrade():
@@ -35,9 +56,7 @@ def upgrade():
             nullable=True,
         ),
     )
-    op.execute(
-        "UPDATE project_task_type_link SET id = '%s'" % fields.gen_uuid()
-    )
+    op.execute(f"UPDATE project_task_type_link SET id = '{uuid.uuid4()}'")
     op.add_column(
         "project_task_type_link",
         sa.Column("updated_at", sa.DateTime(), nullable=True),
@@ -48,7 +67,7 @@ def upgrade():
     )
     session = Session(bind=op.get_bind())
     for link in session.query(ProjectTaskTypeLink).all():
-        link.id = fields.gen_uuid()
+        link.id = uuid.uuid4()
         session.add(link)
         session.commit()
     op.alter_column("project_task_type_link", "id", nullable=False)

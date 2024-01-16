@@ -10,13 +10,13 @@ import sqlalchemy as sa
 import sqlalchemy_utils
 import uuid
 
-from zou.app.models.status_automation import CHANGE_TYPES
-
 # revision identifiers, used by Alembic.
 revision = "29fe01a6c9eb"
 down_revision = "e3f6db74cc1e"
 branch_labels = None
 depends_on = None
+
+CHANGE_TYPES = [("status", "Status"), ("ready_for", "Ready for")]
 
 
 def upgrade():

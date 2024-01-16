@@ -9,9 +9,9 @@ from alembic import op
 import sqlalchemy as sa
 import sqlalchemy_utils
 import uuid
-from zou.app.models.project import ProjectTaskStatusLink
-from zou.app.utils import fields
 from sqlalchemy.orm.session import Session
+from sqlalchemy.ext.declarative import declarative_base
+from zou.migrations.utils.base import BaseMixin
 
 
 # revision identifiers, used by Alembic.
@@ -19,6 +19,27 @@ revision = "693cc511d28d"
 down_revision = "328fd44c6347"
 branch_labels = None
 depends_on = None
+
+base = declarative_base()
+
+
+class ProjectTaskStatusLink(base, BaseMixin):
+    __tablename__ = "project_task_status_link"
+    project_id = sa.Column(
+        sqlalchemy_utils.types.UUIDType(binary=False),
+        primary_key=True,
+    )
+    task_status_id = sa.Column(
+        sqlalchemy_utils.types.UUIDType(binary=False),
+        primary_key=True,
+    )
+    priority = sa.Column(sa.Integer, default=None)
+
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "project_id", "task_status_id", name="project_taskstatus_uc"
+        ),
+    )
 
 
 def upgrade():
@@ -47,12 +68,12 @@ def upgrade():
         "project_task_status_link", schema=None
     ) as batch_op:
         batch_op.execute(
-            "UPDATE project_task_status_link SET id = '%s'" % fields.gen_uuid()
+            f"UPDATE project_task_status_link SET id = '{uuid.uuid4()}'"
         )
 
         session = Session(bind=op.get_bind())
         for link in session.query(ProjectTaskStatusLink).all():
-            link.id = fields.gen_uuid()
+            link.id = uuid.uuid4()
             session.add(link)
             session.commit()
         op.alter_column("project_task_status_link", "id", nullable=False)
