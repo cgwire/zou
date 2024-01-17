@@ -68,6 +68,12 @@ class TaskType(base, BaseMixin):
         UUIDType(binary=False), sa.ForeignKey("department.id"), index=True
     )
 
+    __table_args__ = (
+        sa.UniqueConstraint(
+            "name", "for_entity", "department_id", name="task_type_uc"
+        ),
+    )
+
 
 class Department(base, BaseMixin):
     """
@@ -119,9 +125,9 @@ def upgrade():
         is_artist_allowed=False,
         is_client_allowed=False,
     )
-    session.add(neutral_status)
-    session.add(approved_status)
-    session.add(rejected_status)
+    session.merge(neutral_status)
+    session.merge(approved_status)
+    session.merge(rejected_status)
 
     concept_department = (
         session.query(Department).filter_by(name="Concept").one_or_none()
@@ -136,7 +142,7 @@ def upgrade():
         else None,
         for_entity="Concept",
     )
-    session.add(task_type_concept)
+    session.merge(task_type_concept)
     session.commit()
 
     # ### end Alembic commands ###
