@@ -104,7 +104,10 @@ class CommentResource(BaseModelResource):
         else:
             comment = self.get_model_or_404(instance["id"])
             current_user = persons_service.get_current_user()
-            return current_user["id"] == str(comment.person_id)
+            if current_user["id"] != str(comment.person_id):
+                raise permissions.PermissionDenied
+            user_service.check_task_status_access(data["task_status_id"])
+            return True
 
     def pre_delete(self, comment):
         task = tasks_service.get_task(comment["object_id"])

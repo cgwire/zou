@@ -175,7 +175,8 @@ def _manage_subscriptions(task, comment, status_changed):
 
 def _run_status_automation(automation, task, person_id):
     is_automation_to_run = (
-        task["task_type_id"] == automation["in_task_type_id"]
+        not automation["archived"]
+        and task["task_type_id"] == automation["in_task_type_id"]
         and task["task_status_id"] == automation["in_task_status_id"]
     )
     if not is_automation_to_run:

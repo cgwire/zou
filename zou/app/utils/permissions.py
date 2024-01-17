@@ -7,6 +7,7 @@ manager_permission = Permission(RoleNeed("manager"))
 supervisor_permission = Permission(RoleNeed("supervisor"))
 client_permission = Permission(RoleNeed("client"))
 vendor_permission = Permission(RoleNeed("vendor"))
+artist_permission = Permission(RoleNeed("user"))
 
 
 class PermissionDenied(Forbidden):
@@ -18,6 +19,13 @@ def has_manager_permissions():
     Return True if user is an admin or a manager.
     """
     return admin_permission.can() or manager_permission.can()
+
+
+def has_artist_permissions():
+    """
+    Return True if user is an artist.
+    """
+    return artist_permission.can()
 
 
 def has_admin_permissions():
