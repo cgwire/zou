@@ -439,6 +439,21 @@ def check_entity_access(entity_id):
     return is_allowed
 
 
+def check_task_status_access(task_status_id):
+    """
+    Return true if current user can use this task status.
+    """
+    is_artist = permissions.has_artist_permissions()
+    is_client = permissions.has_client_permissions()
+    if is_artist or is_client:
+        task_status = tasks_service.get_task_status(task_status_id)
+        if is_artist and not task_status["is_artist_allowed"]:
+            raise permissions.PermissionDenied
+        if is_client and not task_status["is_client_allowed"]:
+            raise permissions.PermissionDenied
+    return True
+
+
 def check_comment_access(comment_id):
     """
     Return true if current user can have access to a comment.

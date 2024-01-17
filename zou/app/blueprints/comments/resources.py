@@ -180,6 +180,7 @@ class CommentTaskResource(Resource):
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_status_access(task_status_id)
         files = request.files
 
         if not permissions.has_manager_permissions():
@@ -384,6 +385,9 @@ class CommentManyTasksResource(Resource):
         result = []
         for comment in comments:
             try:
+                user_service.check_task_status_access(
+                    comment["task_status_id"]
+                )
                 comment = comments_service.create_comment(
                     person["id"],
                     comment["object_id"],
