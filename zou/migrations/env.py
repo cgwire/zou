@@ -2,7 +2,7 @@ from __future__ import with_statement
 
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import create_engine, pool
 from logging.config import fileConfig
 from flask import current_app
 
@@ -21,9 +21,6 @@ logger = logging.getLogger("alembic.env")
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-config.set_main_option(
-    "sqlalchemy.url", current_app.config.get("SQLALCHEMY_DATABASE_URI")
-)
 target_metadata = current_app.extensions["migrate"].db.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -44,7 +41,7 @@ def run_migrations_offline():
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = current_app.config.get("SQLALCHEMY_DATABASE_URI")
     context.configure(url=url, compare_type=True)
 
     with context.begin_transaction():
@@ -69,9 +66,8 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info("No changes in schema detected.")
 
-    engine = engine_from_config(
-        config.get_section(config.config_ini_section),
-        prefix="sqlalchemy.",
+    engine = create_engine(
+        current_app.config.get("SQLALCHEMY_DATABASE_URI"),
         poolclass=pool.NullPool,
     )
 
