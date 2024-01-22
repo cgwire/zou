@@ -25,6 +25,7 @@ from zou.app.services import (
     persons_service,
     projects_service,
     tasks_service,
+    concepts_service,
 )
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
@@ -168,9 +169,16 @@ def _manage_subscriptions(task, comment, status_changed):
     notifications_service.create_notifications_for_task_and_comment(
         task, comment, change=status_changed
     )
-    news_service.create_news_for_task_and_comment(
-        task, comment, created_at=comment["created_at"], change=status_changed
-    )
+    if (
+        entities_service.get_entity(task["entity_id"])["entity_type_id"]
+        != concepts_service.get_concept_type()["id"]
+    ):
+        news_service.create_news_for_task_and_comment(
+            task,
+            comment,
+            created_at=comment["created_at"],
+            change=status_changed,
+        )
 
 
 def _run_status_automation(automation, task, person_id):
