@@ -33,9 +33,4 @@ def send_main_infos():
         "python_version": platform.python_version(),
     }
 
-    if config.DEBUG:
-        url = "http://localhost:8000/api/selfhosted/telemetry/new/"
-    else:
-        url = "https://account.cg-wire.com/api/selfhosted/telemetry/new/"
-
-    requests.post(url, json=data)
+    requests.post(config.TELEMETRY_URL, json=data)
