@@ -92,10 +92,24 @@ def reset_db():
 
 
 @cli.command()
-def upgrade_db():
-    "Upgrade database schema."
+@click.option("--no-telemetry", is_flag=True, default=False)
+def upgrade_db(no_telemetry=False):
+    """
+    Upgrade database schema. Send anonymized statistics to our telemery
+    services (user and preview amounts). It allows us to size the Kitsu
+    community.
+    """
     with app.app_context():
         flask_migrate.upgrade(directory=migrations_path)
+        if not no_telemetry:
+            from zou.app.services import telemetry_services
+
+            try:
+                telemetry_services.send_main_infos()
+            except Exception:
+                import traceback
+
+                traceback.print_exc()
 
 
 @cli.command()
