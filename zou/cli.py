@@ -101,7 +101,7 @@ def upgrade_db(no_telemetry=False):
     """
     with app.app_context():
         flask_migrate.upgrade(directory=migrations_path)
-        if not no_telemetry:
+        if not no_telemetry and config.IS_SELF_HOSTED:
             from zou.app.services import telemetry_services
 
             try:
