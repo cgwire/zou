@@ -280,7 +280,7 @@ class ConfigResource(Resource):
             200:
                 description: Crisp token
         """
-        return {
+        config = {
             "is_self_hosted": app.config["IS_SELF_HOSTED"],
             "crisp_token": app.config["CRISP_TOKEN"],
             "indexer_configured": (
@@ -288,7 +288,12 @@ class ConfigResource(Resource):
                 and app.config["INDEXER"]["key"] != "masterkey"
             ),
         }
-
+        if app.config["SENTRY_KITSU_ENABLED"]:
+            config["sentry"] = {
+                "dsn": app.config["SENTRY_KITSU_DSN"],
+                "sampleRate": app.config["SENTRY_KITSU_SR"],
+            }
+        return config
 
 class TestEventsResource(Resource):
     def get(self):
