@@ -37,6 +37,10 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_persons)
 
 
+def clear_oranisation_cache():
+    cache.cache.delete_memoized(get_organisation)
+
+
 @cache.memoize_function(120)
 def get_persons(minimal=False):
     """
@@ -419,6 +423,7 @@ Thank you and see you soon on Kitsu,
     emails.send_email(subject, html, person["email"])
 
 
+@cache.memoize_function(120)
 def get_organisation():
     """
     Return organisation set up on this instance. It creates it if none exists.
@@ -436,6 +441,7 @@ def update_organisation(organisation_id, data):
     organisation = Organisation.get(organisation_id)
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
+    clear_oranisation_cache()
     return organisation.present()
 
 
