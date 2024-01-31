@@ -3,9 +3,13 @@ from zou.app.blueprints.source.csv.base import (
     BaseCsvProjectImportResource,
     RowException,
 )
-from zou.app.models.organisation import Organisation
 
-from zou.app.services import assets_service, shots_service, tasks_service
+from zou.app.services import (
+    assets_service,
+    shots_service,
+    tasks_service,
+    persons_service,
+)
 
 from zou.app.utils import date_helpers
 
@@ -45,7 +49,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
         return super().post(project_id, **kwargs)
 
     def prepare_import(self, project_id, task_type_id, episode_id=None):
-        self.organisation = Organisation.query.first()
+        self.organisation = persons_service.get_organisation()
         self.assets_map = {}
         self.shots_map = {}
         self.tasks_map = {}
@@ -100,7 +104,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
         if row.get("Estimation") not in [None, ""]:
             new_data["estimation"] = round(
-                float(row["Estimation"]) * self.organisation.hours_by_day * 60
+                float(row["Estimation"])
+                * self.organisation["hours_by_day"]
+                * 60
             )
 
         if row.get("Start date") not in [None, ""]:
