@@ -16,6 +16,7 @@ from zou.app.utils import fields, events
 from zou.app.services import (
     assets_service,
     entities_service,
+    projects_service,
     shots_service,
 )
 
@@ -769,6 +770,17 @@ def refresh_shot_casting_stats(shot, priority_map=None):
             persist=False,
             project_id=shot["project_id"],
         )
+
+
+def refresh_all_shot_casting_stats():
+    """
+    For all shots in all open projects, it computes how many assets are
+    available. It saves the result on the task level.
+    """
+    for project in projects_service.open_projects():
+        for shot in shots_service.get_shots_for_project(project["id"]):
+            priority_map = _get_task_type_priority_map(project["id"])
+            refresh_shot_casting_stats(shot, priority_map)
 
 
 def _get_task_type_priority_map(project_id):

@@ -557,5 +557,13 @@ def reset_picture_files_metadata():
     commands.reset_picture_files_metadata()
 
 
+@cli.command()
+def reset_breakdown_data():
+    """
+    Reset breakdown statistics for all open projects.
+    """
+    commands.reset_breakdown_data()
+
+
 if __name__ == "__main__":
     cli()
