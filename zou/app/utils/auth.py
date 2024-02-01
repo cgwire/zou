@@ -25,7 +25,7 @@ def encrypt_password(password):
 
 def validate_email(email):
     try:
-        return email_validator.validate_email(email).email
+        return email_validator.validate_email(email).normalized
     except email_validator.EmailNotValidError as e:
         raise EmailNotValidException(str(e))
 

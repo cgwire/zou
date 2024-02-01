@@ -152,6 +152,11 @@ USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
 PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 
+TELEMETRY_URL = os.getenv(
+    "TELEMETRY_URL",
+    f"{'http://localhost:8000' if DEBUG else 'https://account.cg-wire.com'}/api/selfhosted/telemetry/new/",
+)
+
 # Deprecated
 TO_REVIEW_TASK_STATUS = "To review"
 DEFAULT_FILE_STATUS = "To review"
