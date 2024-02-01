@@ -12,6 +12,7 @@ from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
     backup_service,
+    breakdown_service,
     deletion_service,
     edits_service,
     index_service,
@@ -697,3 +698,10 @@ def reset_movie_files_metadata():
 def reset_picture_files_metadata():
     with app.app_context():
         preview_files_service.reset_picture_files_metadata()
+
+
+def reset_breakdown_data():
+    with app.app_context():
+        print("Resetting breakdown data for all open projects.")
+        breakdown_service.refresh_all_shot_casting_stats()
+        print("Resetting done.")
