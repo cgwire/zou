@@ -141,6 +141,10 @@ SENTRY_DSN = os.getenv("SENTRY_DSN", "")
 SENTRY_SR = float(os.getenv("SENTRY_SR", 1.0))
 SENTRY_DEBUG_URL = os.getenv("SENTRY_DEBUG_URL", False)
 
+SENTRY_KITSU_ENABLED = envtobool("SENTRY_KITSU_ENABLED", False)
+SENTRY_KITSU_DSN = os.getenv("SENTRY_KITSU_DSN", "")
+SENTRY_KITSU_SR = float(os.getenv("SENTRY_KITSU_SR", 0.1))
+
 PROMETHEUS_METRICS_ENABLED = envtobool("PROMETHEUS_METRICS_ENABLED", False)
 
 CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
