@@ -4,13 +4,14 @@ from operator import itemgetter
 from zou.app.models.file_status import FileStatus
 from zou.app import app
 
-from zou.app.models.working_file import WorkingFile
+from zou.app.models.entity import Entity
 from zou.app.models.output_file import OutputFile
 from zou.app.models.output_type import OutputType
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.software import Software
 from zou.app.models.task import Task
+from zou.app.models.working_file import WorkingFile
 
 
 from zou.app.services import entities_service
@@ -456,6 +457,42 @@ def get_last_output_revision(
         raise NoOutputFileException()
 
     return output_files[0].serialize()
+
+
+def get_output_files_for_project(
+    project_id,
+    task_type_id=None,
+    output_type_id=None,
+    name=None,
+    representation=None,
+    file_status_id=None,
+):
+    """
+    Return output files for given project ordered by creation date.
+    """
+    query = OutputFile.query
+
+    if task_type_id:
+        query = query.filter(OutputFile.task_type_id == task_type_id)
+    if output_type_id:
+        query = query.filter(OutputFile.output_type_id == output_type_id)
+    if name:
+        query = query.filter(OutputFile.name == name)
+    if representation:
+        query = query.filter(OutputFile.representation == representation)
+    if file_status_id:
+        query = query.filter(OutputFile.file_status_id == file_status_id)
+
+    output_files = (
+        query.filter(OutputFile.asset_instance_id == None)
+        .filter(OutputFile.temporal_entity_id == None)
+        .filter(OutputFile.revision >= 0)
+        .filter(Entity.project_id == project_id)
+        .join(Entity, OutputFile.entity_id == Entity.id)
+        .order_by(desc(OutputFile.created_at))
+        .all()
+    )
+    return fields.serialize_models(output_files)
 
 
 def get_output_files_for_entity(

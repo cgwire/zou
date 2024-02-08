@@ -22,6 +22,7 @@ from zou.app.blueprints.files.resources import (
     InstanceOutputTypesResource,
     InstanceOutputTypeOutputFilesResource,
     EntityOutputFilesResource,
+    ProjectOutputFilesResource,
     InstanceOutputFilesResource,
     SetTreeResource,
     FileResource,
@@ -88,6 +89,7 @@ routes = [
         EntityOutputTypeOutputFilesResource,
     ),
     ("/data/entities/<entity_id>/output-files", EntityOutputFilesResource),
+    ("/data/projects/<project_id>/output-files", ProjectOutputFilesResource),
     (
         "/data/asset-instances/<asset_instance_id>/output-files",
         InstanceOutputFilesResource,

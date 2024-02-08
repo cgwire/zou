@@ -1511,9 +1511,34 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: output_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: file_status_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: representation
+            required: true
+            type: string
+            format: UUID
+            x-example: cache
         responses:
             200:
-                description: Last revisions of output files for given instance grouped by output type and file name
+                description: Last revisions of output files for given instance
+                             grouped by output type and file name
         """
         args = self.get_args(
             [
@@ -1596,6 +1621,7 @@ class InstanceOutputTypesResource(Resource):
         responses:
             200:
                 description: All types of output generated for given instance
+                             and temporal_entity
         """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
@@ -1700,6 +1726,70 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
         )
 
 
+class ProjectOutputFilesResource(Resource, ArgsMixin):
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Get all output files for given poject.
+        ---
+        tags:
+        - Files
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: output_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: file_status_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: representation
+            required: true
+            type: string
+            format: UUID
+            x-example: cache
+        responses:
+            200:
+                description:  All output files for given project.
+        """
+        args = self.get_args(
+            [
+                "output_type_id",
+                "task_type_id",
+                "representation",
+                "file_status_id",
+                "name",
+            ],
+        )
+        user_service.check_manager_project_access(project_id)
+
+        return files_service.get_output_files_for_project(
+            project_id,
+            task_type_id=args["task_type_id"],
+            output_type_id=args["output_type_id"],
+            name=args["name"],
+            representation=args["representation"],
+            file_status_id=args["file_status_id"],
+        )
+
+
 class EntityOutputFilesResource(Resource, ArgsMixin):
     """
     Get all output files for given asset instance and given output type.
@@ -1708,7 +1798,7 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, entity_id):
         """
-        Get all output files for given asset instance and given output type.
+        Get all output files for given entity.
         ---
         tags:
         - Files
@@ -1719,9 +1809,33 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: output_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: file_status_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: representation
+            required: true
+            type: string
+            format: UUID
+            x-example: cache
         responses:
             200:
-                description:  All output files for given asset instance and given output type
+                description:  All output files for given entity
         """
         args = self.get_args(
             [
@@ -1765,9 +1879,40 @@ class InstanceOutputFilesResource(Resource):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: temporal_entity_id
+            required: true
+            type: string
+            format: UUID
+            x-example: cache
+          - in: query
+            name: output_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: file_status_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: representation
+            required: true
+            type: string
+            format: UUID
+            x-example: cache
         responses:
             200:
-                description: All output files for given asset instance and given output type
+                description: All output files for given asset instance and
+                             given temporal entity (shot, sequence, etc.)
         """
         args = self.get_args(
             [
@@ -1796,15 +1941,11 @@ class InstanceOutputFilesResource(Resource):
 
 
 class FileResource(Resource):
-    """
-    Get information about a file that could be a working file as much as an
-    output file.
-    """
-
     @jwt_required()
     def get(self, file_id):
         """
-        Get information about a file that could be a working file as much as an output file.
+        Get information about a file that could be a working file as much as an
+        output file.
         ---
         tags:
         - Files
