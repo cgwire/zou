@@ -41,6 +41,30 @@ def clear_preview_file_cache(preview_file_id):
     cache.cache.delete_memoized(get_preview_file, preview_file_id)
 
 
+def clear_output_file_cache(output_file_id):
+    cache.cache.delete_memoized(get_output_file, output_file_id)
+
+
+def clear_working_file_cache(working_file_id):
+    cache.cache.delete_memoized(get_working_file, working_file_id)
+
+
+def clear_output_type_cache(output_type_id):
+    cache.cache.delete_memoized(get_output_type, output_type_id)
+
+
+def clear_software_cache(software_id):
+    cache.cache.delete_memoized(get_software, software_id)
+
+
+def clear_preview_background_file_cache(preview_background_file_id):
+    cache.cache.delete_memoized(
+        get_preview_background_file, preview_background_file_id
+    )
+    cache.cache.delete_memoized(get_preview_background_files)
+
+
+@cache.memoize_function(240)
 def get_default_status():
     """
     Return default file status to set on a file when it is created.
@@ -63,11 +87,12 @@ def get_working_file_raw(working_file_id):
     )
 
 
+@cache.memoize_function(240)
 def get_working_file(working_file_id):
     """
     Return given working file as dict.
     """
-    return get_working_file_raw(working_file_id).serialize()
+    return get_working_file_raw(working_file_id).serialize(relations=True)
 
 
 def get_output_file_raw(output_file_id):
@@ -79,6 +104,7 @@ def get_output_file_raw(output_file_id):
     )
 
 
+@cache.memoize_function(240)
 def get_output_file(output_file_id):
     """
     Return given output file as a dict.
@@ -93,6 +119,7 @@ def get_software_raw(software_id):
     return get_instance(Software, software_id, SoftwareNotFoundException)
 
 
+@cache.memoize_function(240)
 def get_software(software_id):
     """
     Return given software as dict.
@@ -109,6 +136,7 @@ def get_output_type_raw(output_type_id):
     )
 
 
+@cache.memoize_function(240)
 def get_output_type(output_type_id):
     """
     Return given output type as dict.
@@ -743,12 +771,14 @@ def create_preview_file(
 def update_working_file(working_file_id, data):
     working_file = get_working_file_raw(working_file_id)
     working_file.update(data)
+    clear_working_file_cache(working_file_id)
     return working_file.serialize()
 
 
 def update_output_file(output_file_id, data):
     output_file = get_output_file_raw(output_file_id)
     output_file.update(data)
+    clear_output_file_cache(output_file_id)
     return output_file.serialize()
 
 
@@ -842,13 +872,6 @@ def get_preview_files_for_project(project_id, page=-1):
         .order_by(desc(PreviewFile.updated_at))
     )
     return query_utils.get_paginated_results(query, page)
-
-
-def clear_preview_background_file_cache(preview_background_file_id):
-    cache.cache.delete_memoized(
-        get_preview_background_file, preview_background_file_id
-    )
-    cache.cache.delete_memoized(get_preview_background_files)
 
 
 def get_preview_background_file_raw(preview_background_file_id):
