@@ -295,7 +295,7 @@ def get_preview_files_for_entity(entity_id):
             PreviewFile.created_at,
             PreviewFile.task_id,
         )
-        .join(PreviewFile)
+        .join(PreviewFile, Task.id == PreviewFile.task_id)
         .join(TaskType)
         .order_by(TaskType.priority.desc())
         .order_by(TaskType.name)

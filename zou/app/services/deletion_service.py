@@ -180,6 +180,25 @@ def remove_preview_file(preview_file):
     preview_file.comments = []
     preview_file.save()
     preview_file.delete()
+
+    # Update last preview file uploaded on task
+    if task.last_preview_file_id == preview_file.id:
+        new_last_preview_file = (
+            PreviewFile.query.filter(
+                PreviewFile.task_id == preview_file.task_id
+            )
+            .order_by(PreviewFile.created_at.desc())
+            .first()
+        )
+        if new_last_preview_file is not None:
+            from zou.app.services import tasks_service
+
+            tasks_service.update_preview_file_info(
+                new_last_preview_file.serialize()
+            )
+        else:
+            task.update({"last_preview_file_id": None})
+
     return preview_file.serialize()
 
 

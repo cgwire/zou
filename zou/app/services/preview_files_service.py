@@ -23,6 +23,7 @@ from zou.app.services import (
     assets_service,
     shots_service,
     projects_service,
+    tasks_service,
 )
 from zou.utils import movie
 from zou.app.utils import (
@@ -275,7 +276,7 @@ def prepare_and_store_movie(
             file_store.add_picture("tiles", preview_file_id, tile_path)
             os.remove(tile_path)
             current_app.logger.info("tile created %s" % tile_path)
-        except Exception as exc:
+        except Exception:
             current_app.logger.error("Failed to create tile", exc_info=1)
 
         # Remove files and update status
@@ -285,6 +286,7 @@ def prepare_and_store_movie(
             if normalized_movie_low_path:
                 os.remove(normalized_movie_low_path)
 
+        # Save metadata, save preview file id in the related task and entity
         preview_file = update_preview_file_raw(
             preview_file_raw,
             {
@@ -295,6 +297,7 @@ def prepare_and_store_movie(
                 "duration": duration,
             },
         )
+        tasks_service.update_preview_file_info(preview_file)
         return preview_file
 
 

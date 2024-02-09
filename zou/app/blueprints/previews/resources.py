@@ -251,6 +251,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                     "status": "ready",
                 },
             )
+            tasks_service.update_preview_file_info(preview_file)
+            task = tasks_service.get_task(preview_file["task_id"])
             self.emit_app_preview_event(instance_id)
             return preview_file, 201
 
@@ -332,6 +334,8 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             preview_files_service.prepare_and_store_movie(
                 preview_file_id, uploaded_movie_path, normalize=normalize
             )
+            preview_file = files_service.get_preview_file(preview_file_id)
+            tasks_service.update_preview_file_info(preview_file)
         return preview_file_id
 
     def save_file_preview(self, instance_id, uploaded_file, extension):
