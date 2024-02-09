@@ -591,6 +591,30 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
         self.assertEqual(result[0]["id"], self.cache_type_id)
 
+    def test_get_output_files_for_project(self):
+        self.generate_fixture_output_type()
+        geometry = self.output_type
+
+        self.generate_fixture_output_file(geometry, 1, representation="obj")
+        self.generate_fixture_output_file(geometry, 2, representation="obj")
+        self.generate_fixture_output_file(geometry, 3, representation="obj")
+        self.generate_fixture_output_file(geometry, 4, representation="obj")
+        output_files = self.get(
+            "data/projects/%s/output-files" % self.project.id
+        )
+        self.assertEqual(len(output_files), 4)
+
+        self.generate_fixture_project("Sprite Fright")
+        self.generate_fixture_asset("Rabbit")
+        self.generate_fixture_output_file(geometry, 1, representation="max")
+        self.generate_fixture_output_file(geometry, 2, representation="max")
+        self.generate_fixture_output_file(geometry, 3, representation="max")
+
+        output_files = self.get(
+            "data/projects/%s/output-files" % self.project.id
+        )
+        self.assertEqual(len(output_files), 3)
+
     def test_get_output_files_for_output_type_and_entity(self):
         self.generate_fixture_output_type()
         geometry = self.output_type
