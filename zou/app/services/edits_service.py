@@ -333,7 +333,10 @@ def remove_edit(edit_id, force=False):
         clear_edit_cache(edit_id)
         events.emit(
             "edit:delete",
-            {"edit_id": edit_id},
+            {
+                "edit_id": edit_id,
+                "edit_name": edit.name,
+            },
             project_id=str(edit.project_id),
         )
 

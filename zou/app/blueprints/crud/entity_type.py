@@ -51,7 +51,11 @@ class EntityTypeResource(BaseModelResource):
 
     def emit_delete_event(self, instance_dict):
         events.emit(
-            "asset-type:delete", {"asset_type_id": instance_dict["id"]}
+            "asset-type:delete",
+            {
+                "asset_type_id": instance_dict["id"],
+                "asset_type_name": instance_dict["name"],
+            },
         )
 
     def update_data(self, data, instance_id):

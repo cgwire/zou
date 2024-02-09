@@ -856,7 +856,10 @@ def remove_shot(shot_id, force=False):
         shot.delete()
         events.emit(
             "shot:delete",
-            {"shot_id": shot_id},
+            {
+                "shot_id": shot_id,
+                "shot_name": shot.name,
+            },
             project_id=str(shot.project_id),
         )
         index_service.remove_shot_index(shot_id)
@@ -879,7 +882,10 @@ def remove_scene(scene_id):
     deleted_scene = scene.serialize(obj_type="Scene")
     events.emit(
         "scene:delete",
-        {"scene_id": scene_id},
+        {
+            "scene_id": scene_id,
+            "scene_name": scene.name,
+        },
         project_id=str(scene.project_id),
     )
     return deleted_scene
@@ -907,7 +913,10 @@ def remove_sequence(sequence_id, force=False):
         sequence.delete()
         events.emit(
             "sequence:delete",
-            {"sequence_id": sequence_id},
+            {
+                "sequence_id": sequence_id,
+                "sequence_name": sequence.name,
+            },
             project_id=str(sequence.project_id),
         )
     except IntegrityError:

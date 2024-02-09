@@ -54,7 +54,10 @@ class SyncServiceTestCase(ApiDBTestCase):
         sync_service.sync_event(
             {
                 "name": "project:delete",
-                "data": {"project_id": self.new_project_id},
+                "data": {
+                    "project_id": self.new_project_id,
+                    "project_name": "test_delete_project",
+                },
             }
         )
         self.assertIsNone(Project.get(self.new_project_id))

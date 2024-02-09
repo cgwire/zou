@@ -246,7 +246,13 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                 deletion_service.remove_project(instance_id)
             else:
                 project.delete()
-                events.emit("project:delete", {"project_id": project.id})
+                events.emit(
+                    "project:delete",
+                    {
+                        "project_id": project.id,
+                        "project_name": project.name,
+                    },
+                )
             self.post_delete(project_dict)
             return "", 204
 

@@ -660,7 +660,10 @@ def remove_asset(asset_id, force=False):
         index_service.remove_asset_index(str(asset_id))
         events.emit(
             "asset:delete",
-            {"asset_id": asset_id},
+            {
+                "asset_id": asset_id,
+                "asset_name": asset.name,
+            },
             project_id=str(asset.project_id),
         )
         EntityVersion.delete_all_by(entity_id=asset_id)
@@ -721,7 +724,10 @@ def cancel_asset(asset_id, force=True):
     asset_dict = asset.serialize(obj_type="Asset")
     events.emit(
         "asset:delete",
-        {"asset_id": asset_id},
+        {
+            "asset_id": asset_id,
+            "asset_name": asset.name,
+        },
         project_id=str(asset.project_id),
     )
     return asset_dict

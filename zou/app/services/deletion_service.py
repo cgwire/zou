@@ -141,6 +141,7 @@ def remove_task(task_id, force=False):
         "task:delete",
         {
             "task_id": task_id,
+            "task_name": task.name,
             "entity_id": task_serialized["entity_id"],
             "task_type_id": task_serialized["task_type_id"],
         },
@@ -352,7 +353,13 @@ def remove_project(project_id):
     News.commit()
     project = Project.get(project_id)
     project.delete()
-    events.emit("project:delete", {"project_id": project.id})
+    events.emit(
+        "project:delete",
+        {
+            "project_id": project.id,
+            "project_name": project.name,
+        },
+    )
     return project_id
 
 
@@ -409,7 +416,13 @@ def remove_person(person_id, force=True):
 
     try:
         person.delete()
-        events.emit("person:delete", {"person_id": person.id})
+        events.emit(
+            "person:delete",
+            {
+                "person_id": person.id,
+                "person_name": person.name,
+            },
+        )
     except IntegrityError:
         raise ModelWithRelationsDeletionException(
             "Some data are still linked to given person."
@@ -473,7 +486,10 @@ def remove_episode(episode_id, force=False):
         episode.delete()
         events.emit(
             "episode:delete",
-            {"episode_id": episode_id},
+            {
+                "episode_id": episode_id,
+                "episode_name": episode.name,
+            },
             project_id=str(episode.project_id),
         )
     except IntegrityError:

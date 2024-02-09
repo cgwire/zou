@@ -285,7 +285,13 @@ def delete_person(person_id):
     person_dict = person.serialize()
     person.delete()
     index_service.remove_person_index(person_id)
-    events.emit("person:delete", {"person_id": person_id})
+    events.emit(
+        "person:delete",
+        {
+            "person_id": person_id,
+            "person_name": person.name,
+        },
+    )
     clear_person_cache()
     return person_dict
 

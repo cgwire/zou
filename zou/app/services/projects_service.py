@@ -604,7 +604,10 @@ def remove_metadata_descriptor(metadata_descriptor_id):
         pass
     events.emit(
         "metadata-descriptor:delete",
-        {"metadata_descriptor_id": str(descriptor.id)},
+        {
+            "metadata_descriptor_id": str(descriptor.id),
+            "metadata_descriptor_name": descriptor.name,
+        },
         project_id=descriptor.project_id,
     )
     clear_project_cache(str(descriptor.project_id))
