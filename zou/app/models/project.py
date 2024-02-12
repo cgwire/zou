@@ -138,6 +138,7 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     max_retakes = db.Column(db.Integer, default=0)
     is_clients_isolated = db.Column(db.Boolean(), default=False)
     is_preview_download_allowed = db.Column(db.Boolean(), default=False)
+    is_set_preview_automated = db.Column(db.Boolean(), default=False)
     homepage = db.Column(db.String(80), default="assets")
 
     project_status_id = db.Column(

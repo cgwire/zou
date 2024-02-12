@@ -44,6 +44,7 @@ from zou.app.services.exception import (
 
 from zou.app.services import (
     assets_service,
+    edits_service,
     base_service,
     files_service,
     notifications_service,
@@ -1559,6 +1560,28 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
         "comment:update", {"comment_id": comment.id}, project_id=project_id
     )
     return preview_file.serialize()
+
+
+def update_preview_file_info(preview_file):
+    entity = None
+    task = get_task_raw(preview_file["task_id"])
+    if preview_file["position"] == 1:
+        task.update({"last_preview_file_id": preview_file["id"]})
+        clear_task_cache(str(task.id))
+        project = projects_service.get_project(task.project_id)
+
+        if project["is_set_preview_automated"]:
+            entity_id = str(task.entity_id)
+            entity = entities_service.update_entity_preview(
+                entity_id,
+                preview_file["id"],
+            )
+            assets_service.clear_asset_cache(entity_id)
+            edits_service.clear_edit_cache(entity_id)
+            shots_service.clear_shot_cache(entity_id)
+            shots_service.clear_episode_cache(entity_id)
+            shots_service.clear_sequence_cache(entity_id)
+    return entity
 
 
 def get_comments_for_project(project_id, page=0):
