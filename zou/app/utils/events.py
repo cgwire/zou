@@ -91,7 +91,9 @@ def save_event(event, data, project_id=None):
     Store event information in the database.
     """
     try:
-        from zou.app.services.persons_service import get_current_user_raw
+        from zou.app.services.persons_service import (
+            get_current_user_raw,
+        )
 
         person = get_current_user_raw()
         person_id = person.id

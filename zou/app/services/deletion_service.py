@@ -377,6 +377,10 @@ def remove_project(project_id):
 
 def remove_person(person_id, force=True):
     person = Person.get(person_id)
+    if person.email in config.PROTECTED_ACCOUNTS:
+        raise PersonInProtectedAccounts(
+            "Can't delete this person it's a protected account."
+        )
     if force:
         for comment in Comment.get_all_by(person_id=person_id):
             remove_comment(comment.id)
@@ -418,14 +422,9 @@ def remove_person(person_id, force=True):
         for output_file in OutputFile.get_all_by(person_id=person_id):
             output_file.update({"person_id": None})
         for working_file in WorkingFile.get_all_by(person_id=person_id):
-            output_file.update({"person_id": None})
-        for task in WorkingFile.get_all_by(person_id=person_id):
-            output_file.update({"person_id": None})
-    elif person.email in config.PROTECTED_ACCOUNTS:
-        raise PersonInProtectedAccounts(
-            "Can't delete this person it's a protected account."
-        )
-
+            working_file.update({"person_id": None})
+        for preview_file in PreviewFile.get_all_by(person_id=person_id):
+            preview_file.update({"person_id": None})
     try:
         person.delete()
         events.emit("person:delete", {"person_id": person.id})

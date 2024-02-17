@@ -1,13 +1,13 @@
 # coding: utf-8
 
 import os
-import orjson as json
+import sys
 import datetime
 import tempfile
 
 
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
-from zou.app.utils import thumbnail as thumbnail_utils
+from zou.app.utils import thumbnail as thumbnail_utils, auth
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.services import (
     assets_service,
@@ -25,6 +25,7 @@ from zou.app.services import (
 )
 from zou.app.models.person import Person
 from sqlalchemy.sql.expression import not_
+from sqlalchemy.exc import IntegrityError
 
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -38,21 +39,12 @@ from zou.app import app
 
 def clean_auth_tokens():
     """
-    Remove all revoked tokens (most of the time outdated) from the key value
+    Remove all revoked tokens from the key value
     store.
     """
     for key in auth_tokens_store.keys():
-        value = json.loads(auth_tokens_store.get(key))
-
-        if isinstance(value, bool):
+        if auth_tokens_store.is_revoked(key):
             auth_tokens_store.delete(key)
-        else:
-            is_revoked = value["revoked"] == True
-            expiration = datetime.datetime.fromtimestamp(value["token"]["exp"])
-            is_expired = expiration < datetime.datetime.utcnow()
-
-            if is_revoked or is_expired:
-                auth_tokens_store.delete(key)
 
 
 def clear_all_auth_tokens():
@@ -705,3 +697,29 @@ def reset_breakdown_data():
         print("Resetting breakdown data for all open projects.")
         breakdown_service.refresh_all_shot_casting_stats()
         print("Resetting done.")
+
+
+def create_bot(
+    email,
+    name,
+    expiration_date,
+    role,
+):
+    with app.app_context():
+        try:
+            # Allow "admin@example.com" to be invalid.
+            if email != "admin@example.com":
+                auth.validate_email(email)
+            bot = persons_service.create_person(
+                email=email,
+                password=None,
+                first_name=name,
+                last_name="",
+                expiration_date=expiration_date,
+                role=role,
+                is_bot=True,
+            )
+            print(bot["access_token"])
+        except IntegrityError:
+            print("Bot already exists for this name.")
+            sys.exit(1)

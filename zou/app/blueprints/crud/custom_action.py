@@ -22,7 +22,7 @@ class CustomActionResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, CustomAction)
 
-    def post_update(self, custom_action):
+    def post_update(self, custom_action, data):
         custom_actions_service.clear_custom_action_cache()
         return custom_action
 

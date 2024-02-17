@@ -59,6 +59,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         self.emit_event("new", entity_dict)
 
     def update_data(self, data):
+        data = super().update_data(data)
         if "entity_concept_links" in data:
             try:
                 entity_concept_links = [

@@ -59,7 +59,7 @@ def init_monitoring(app):
         except ValueError:
             prometheus_kwargs["api"] = None
             prometheus_kwargs["metrics_decorator"] = (
-                permissions.admin_permission.require(403),
+                permissions.require_admin,
             )
             metrics = prometheus_flask_exporter.RESTfulPrometheusMetrics(
                 **prometheus_kwargs

@@ -34,6 +34,7 @@ class NewPersonResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
+    @permissions.require_admin
     def post(self):
         """
         Create a new user in the database.
@@ -71,10 +72,9 @@ class NewPersonResource(Resource, ArgsMixin):
             201:
                 description: User created
         """
-        permissions.check_admin_permissions()
         data = self.get_arguments()
 
-        if persons_service.is_user_limit_reached():
+        if not data["is_bot"] and persons_service.is_user_limit_reached():
             return {
                 "error": True,
                 "message": "User limit reached.",
@@ -92,6 +92,8 @@ class NewPersonResource(Resource, ArgsMixin):
                 role=data["role"],
                 desktop_login=data["desktop_login"],
                 departments=data["departments"],
+                is_bot=data["is_bot"],
+                expiration_date=data["expiration_date"],
             )
         return person, 201
 
@@ -114,6 +116,8 @@ class NewPersonResource(Resource, ArgsMixin):
                 ("desktop_login", ""),
                 {"name": "departments", "action": "append"},
                 "password",
+                {"name": "is_bot", "default": False, "type": bool},
+                {"name": "expiration_date", "default": None, "type": str},
             ]
         )
 
@@ -235,6 +239,7 @@ class TimeSpentsResource(Resource, ArgsMixin):
 
     @jwt_required()
     def get(self, person_id):
+        user_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
@@ -292,6 +297,7 @@ class DateTimeSpentsResource(Resource):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         department_ids = None
         project_ids = None
         if not permissions.has_admin_permissions():
@@ -352,6 +358,7 @@ class DayOffResource(Resource):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
         if current_user["id"] != person_id:
             try:
@@ -429,6 +436,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_year_time_spents(
                 person_id,
@@ -476,6 +484,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_month_time_spents(
                 person_id,
@@ -494,6 +503,7 @@ class PersonMonthAllTimeSpentsResource(Resource):
 
     @jwt_required()
     def get(self, person_id, year, month):
+        user_service.check_person_is_not_bot(person_id)
         user_service.check_person_access(person_id)
         try:
             timespents = time_spents_service.get_time_spents_for_month(
@@ -541,6 +551,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_week_time_spents(
                 person_id,
@@ -596,6 +607,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         try:
             return time_spents_service.get_day_time_spents(
                 person_id,
@@ -645,6 +657,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
@@ -699,6 +712,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
@@ -760,6 +774,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
@@ -947,6 +962,7 @@ class InvitePersonResource(Resource):
             200:
                 description: Email sent
         """
+        user_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         persons_service.invite_person(person_id)
         return {"success": True, "message": "Email sent"}
@@ -1025,6 +1041,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
             200:
                 description: All day off recorded for given week and person
         """
+        user_service.check_person_is_not_bot(person_id)
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
@@ -1068,6 +1085,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
             200:
                 description: All day off recorded for given month and person
         """
+        user_service.check_person_is_not_bot(person_id)
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
@@ -1104,6 +1122,7 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
             200:
                 description: All day off recorded for given year and person
         """
+        user_service.check_person_is_not_bot(person_id)
         user_id = persons_service.get_current_user()["id"]
         if person_id != user_id:
             permissions.check_admin_permissions()
@@ -1232,10 +1251,10 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
           400:
             description: Invalid password or inactive user
         """
+        user_service.check_person_is_not_bot(person_id)
         (password, password_2) = self.get_arguments()
-
+        permissions.check_admin_permissions()
         try:
-            permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
             current_user = persons_service.get_current_user()
             auth.validate_password(password, password_2)
@@ -1329,8 +1348,9 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
           400:
             description: Inactive user
         """
+        user_service.check_person_is_not_bot(person_id)
+        permissions.check_admin_permissions()
         try:
-            permissions.check_admin_permissions()
             person = persons_service.get_person(person_id)
             current_user = persons_service.get_current_user()
             disable_two_factor_authentication_for_person(person["id"])
@@ -1368,3 +1388,21 @@ Thank you and see you soon on Kitsu,
                 "error": True,
                 "message": "Two factor authentication not enabled for this user.",
             }, 400
+
+
+class ClearAvatarPersonResource(Resource):
+    @jwt_required()
+    def delete(self, person_id):
+        """
+        Set `has_avatar` flag to False for current user and remove its avatar
+        file.
+        ---
+        tags:
+          - User
+        responses:
+            204:
+                description: Avatar file deleted
+        """
+        permissions.check_admin_permissions()
+        persons_service.clear_avatar(person_id)
+        return "", 204

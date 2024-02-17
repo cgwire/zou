@@ -914,7 +914,7 @@ class CreatePersonThumbnailResource(BaseCreatePictureResource):
         is_current_user = (
             persons_service.get_current_user()["id"] != instance_id
         )
-        if is_current_user and not permissions.has_manager_permissions():
+        if is_current_user and not permissions.has_admin_permissions():
             raise permissions.PermissionDenied
 
     def prepare_creation(self, instance_id):
@@ -923,7 +923,8 @@ class CreatePersonThumbnailResource(BaseCreatePictureResource):
 
 class PersonThumbnailResource(BasePictureResource):
     def is_exist(self, person_id):
-        return persons_service.get_person(person_id) is not None
+        person = persons_service.get_person(person_id)
+        return person is not None and person["has_avatar"]
 
 
 class CreateOrganisationThumbnailResource(BaseCreatePictureResource):

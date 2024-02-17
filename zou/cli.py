@@ -140,7 +140,7 @@ def reset_migrations():
 
 @cli.command()
 @click.argument("email")
-@click.option("--password", required=True, default=None)
+@click.option("--password", required=True)
 def create_admin(email, password):
     """
     Create an admin user to allow usage of the API when database is empty.
@@ -204,7 +204,7 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     with app.app_context():
         try:
-            person_id = persons_service.get_person_by_email_dekstop_login(
+            person_id = persons_service.get_person_by_email_desktop_login(
                 email_or_desktop_login
             )
             auth_service.disable_two_factor_authentication_for_person(
@@ -225,7 +225,7 @@ def disable_two_factor_authentication(email_or_desktop_login):
 
 @cli.command()
 @click.argument("email")
-@click.option("--password", required=True, default=None)
+@click.option("--password", required=True)
 def change_password(email, password):
     """
     Change the password of given user.
@@ -563,6 +563,34 @@ def reset_breakdown_data():
     Reset breakdown statistics for all open projects.
     """
     commands.reset_breakdown_data()
+
+
+@cli.command()
+@click.option("--email", required=True)
+@click.option("--name", required=True)
+@click.option(
+    "--expiration_date",
+    required=False,
+    default=None,
+    show_default=True,
+    help="Format: YYYY-MM-DD",
+)
+@click.option("--role", required=False, default="user", show_default=True)
+def create_bot(
+    email,
+    name,
+    expiration_date,
+    role,
+):
+    """
+    Create a bot.
+    """
+    commands.create_bot(
+        email,
+        name,
+        expiration_date,
+        role,
+    )
 
 
 if __name__ == "__main__":

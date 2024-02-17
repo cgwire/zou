@@ -50,6 +50,7 @@ class ProjectsResource(BaseModelsResource):
         return True
 
     def update_data(self, data):
+        data = super().update_data(data)
         open_status = projects_service.get_or_create_open_status()
         if "project_status_id" not in data:
             data["project_status_id"] = open_status["id"]
@@ -195,7 +196,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
         return data
 
-    def post_update(self, project_dict):
+    def post_update(self, project_dict, data):
         if project_dict["production_type"] == "tvshow":
             episode = shots_service.get_or_create_first_episode(
                 project_dict["id"],
@@ -220,7 +221,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         """
         Check if the data descriptor has a valid production_style.
         """
-
+        data = super().update_data(data, instance_id)
         if "production_style" in data:
             if data["production_style"] is None:
                 data["production_style"] = "2d3d"

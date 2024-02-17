@@ -13,6 +13,7 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
         return True
 
     def update_data(self, data):
+        data = super().update_data(data)
         name = data.get("name", None)
         preview_background_file = PreviewBackgroundFile.get_by(name=name)
         if preview_background_file is not None:
@@ -36,6 +37,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
         return True
 
     def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
         name = data.get("name", None)
         if name is not None:
             preview_background_file = PreviewBackgroundFile.get_by(name=name)
@@ -47,7 +49,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
                 )
         return data
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         if instance_dict["is_default"]:
             files_service.reset_default_preview_background_files(
                 instance_dict["id"]

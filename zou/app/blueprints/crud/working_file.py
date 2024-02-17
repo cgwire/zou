@@ -93,7 +93,7 @@ class WorkingFileResource(BaseModelResource):
         except ValueError:
             abort(404)
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         files_service.clear_working_file_cache(instance_dict["id"])
         return instance_dict
 

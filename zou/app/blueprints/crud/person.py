@@ -4,7 +4,11 @@ from flask_restful import current_app
 from sqlalchemy.exc import StatementError
 
 from zou.app.models.person import Person
-from zou.app.services import deletion_service, index_service, persons_service
+from zou.app.services import (
+    deletion_service,
+    index_service,
+    persons_service,
+)
 from zou.app.utils import permissions
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
@@ -21,7 +25,7 @@ from zou.app.models.department import Department
 from zou.app import config
 
 
-class PersonsResource(BaseModelsResource, ArgsMixin):
+class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
 
@@ -29,7 +33,7 @@ class PersonsResource(BaseModelsResource, ArgsMixin):
         if query is None:
             query = self.model.query
 
-        if permissions.has_manager_permissions():
+        if permissions.has_admin_permissions():
             if self.get_bool_parameter("with_pass_hash"):
                 return [
                     person.serialize(relations=relations)
@@ -56,29 +60,38 @@ class PersonsResource(BaseModelsResource, ArgsMixin):
 class PersonResource(BaseModelResource, ArgsMixin):
     def __init__(self):
         BaseModelResource.__init__(self, Person)
-        self.protected_fields += ["password"]
+        self.protected_fields += ["password", "jti"]
 
     def check_read_permissions(self, instance):
         return True
 
     def check_update_permissions(self, instance_dict, data):
         if instance_dict["id"] != persons_service.get_current_user()["id"]:
-            self.check_escalation_permissions(instance_dict, data)
-        else:
-            data.pop("role", None)
+            permissions.check_admin_permissions()
         return instance_dict
+
+    def update_data(self, data, instance_id):
+        data = super().update_data(data, instance_id)
+        if not permissions.has_admin_permissions():
+            if not permissions.has_person_permissions():
+                data.pop("expiration_date", None)
+            data.pop("role", None)
+            data.pop("departments", None)
+            data.pop("active", None)
+            data.pop("is_bot", None)
+            data.pop("archived", None)
+            data.pop("login_failed_attemps", None)
+            data.pop("last_login_failed", None)
+            data.pop("is_generated_from_ldap", None)
+            data.pop("ldap_uid", None)
+            data.pop("last_presence", None)
+        return data
 
     def check_delete_permissions(self, instance_dict):
         if instance_dict["id"] == persons_service.get_current_user()["id"]:
             raise permissions.PermissionDenied
-        self.check_escalation_permissions(instance_dict)
+        permissions.check_admin_permissions()
         return instance_dict
-
-    def check_escalation_permissions(self, instance_dict, data=None):
-        if permissions.admin_permission.can():
-            return True
-        else:
-            raise permissions.PermissionDenied
 
     @jwt_required()
     def get(self, instance_id):
@@ -110,8 +123,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
 
     def pre_update(self, instance_dict, data):
         if (
-            data.get("active", False)
-            and not instance_dict.get("active", False)
+            not instance_dict.get("active", False)
+            and data.get("active", False)
+            and not instance_dict.get("is_bot", False)
+            and not data.get("is_bot", False)
             and persons_service.is_user_limit_reached()
         ):
             raise WrongParameterException("User limit reached.")
@@ -124,7 +139,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             )
         return data
 
-    def post_update(self, instance_dict):
+    def post_update(self, instance_dict, data):
         persons_service.clear_person_cache()
         index_service.remove_person_index(instance_dict["id"])
         person = persons_service.get_person_raw(instance_dict["id"])
@@ -133,6 +148,12 @@ class PersonResource(BaseModelResource, ArgsMixin):
         instance_dict["departments"] = [
             str(department.id) for department in self.instance.departments
         ]
+        if "expiration_date" in data:
+            instance_dict[
+                "access_token"
+            ] = persons_service.create_access_token_for_raw_person(
+                self.instance
+            )
         return instance_dict
 
     def post_delete(self, instance_dict):
@@ -140,8 +161,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         return instance_dict
 
     def update_data(self, data, instance_id):
-        if "password" in data:
-            del data["password"]
+        data = super().update_data(data, instance_id)
         if "departments" in data:
             try:
                 departments = []

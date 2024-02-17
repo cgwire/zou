@@ -1,4 +1,4 @@
-from werkzeug.exceptions import NotFound, Forbidden, BadRequest
+from werkzeug.exceptions import NotFound, Forbidden, BadRequest, Unauthorized
 
 
 class EpisodeNotFoundException(NotFound):
@@ -57,11 +57,11 @@ class TaskTypeNotFoundException(NotFound):
     pass
 
 
-class PersonNotFoundException(NotFound):
+class PersonInProtectedAccounts(Forbidden):
     pass
 
 
-class PersonInProtectedAccounts(Forbidden):
+class PersonNotFoundException(NotFound):
     pass
 
 
@@ -231,7 +231,7 @@ class UserCantConnectDueToNoFallback(Exception):
     pass
 
 
-class UnactiveUserException(Exception):
+class UnactiveUserException(Unauthorized):
     pass
 
 

@@ -74,7 +74,7 @@ class AuthTestCase(ApiDBTestCase):
     def test_unactive_login(self):
         self.person.update({"active": False})
         self.person.save()
-        tokens = self.post("auth/login", self.credentials, 400)
+        tokens = self.post("auth/login", self.credentials, 401)
         self.assertIsNotAuthenticated(tokens, 422)
         self.logout(tokens)
 
@@ -253,7 +253,7 @@ class AuthTestCase(ApiDBTestCase):
 
     def test_unactive(self):
         self.person.update({"active": False})
-        self.post("auth/login", self.credentials, 400)
+        self.post("auth/login", self.credentials, 401)
 
         self.person.update({"active": True})
         self.person.save()

@@ -349,6 +349,7 @@ class PersonTasksResource(Resource):
             200:
                 description: Tasks assigned to user that are not done
         """
+        user_service.check_person_is_not_bot(person_id)
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -392,6 +393,7 @@ class PersonRelatedTasksResource(Resource):
             200:
                 description: All Tasks for given task type
         """
+        user_service.check_person_is_not_bot(person_id)
         user = persons_service.get_current_user()
         if person_id != user["id"]:
             permissions.check_admin_permissions()
@@ -423,6 +425,7 @@ class PersonDoneTasksResource(Resource):
             200:
                 description: Tasks assigned to user that are done
         """
+        user_service.check_person_is_not_bot(person_id)
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -905,6 +908,7 @@ class TasksAssignResource(Resource, ArgsMixin):
             200:
                 description: Given tasks lists assigned to given person
         """
+        user_service.check_person_is_not_bot(person_id)
         args = self.get_args(
             [
                 {
@@ -988,11 +992,10 @@ class TaskAssignResource(Resource, ArgsMixin):
             ]
         )
         person_id = args["person_id"]
-
         try:
+            user_service.check_person_is_not_bot(person_id)
             task = tasks_service.get_task(task_id)
             user_service.check_task_departement_access(task_id, person_id)
-
             self.assign_task(task_id, person_id)
             notifications_service.create_assignation_notification(
                 task_id, person_id
@@ -1121,8 +1124,8 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         args = self.get_args([("duration", 0, False, int)])
-
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
@@ -1185,8 +1188,8 @@ class AddTimeSpentResource(Resource, ArgsMixin):
             404:
                 description: Wrong date format
         """
+        user_service.check_person_is_not_bot(person_id)
         args = self.get_args([("duration", 0, False, int)])
-
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])

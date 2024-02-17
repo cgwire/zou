@@ -1,9 +1,17 @@
 import traceback
+import uuid
 
 from flask import Flask, jsonify, current_app
 from flasgger import Swagger
 from flask_jwt_extended import JWTManager
-from flask_principal import Principal, identity_changed, Identity
+from flask_principal import (
+    Principal,
+    Identity,
+    identity_changed,
+    RoleNeed,
+    UserNeed,
+    identity_loaded,
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_mail import Mail
@@ -23,10 +31,15 @@ from zou.app.services.exception import (
     WrongIdFormatException,
     WrongParameterException,
     WrongTaskTypeForEntityException,
+    UnactiveUserException,
 )
 
 from zou.app.utils import cache, fs, logs, monitoring
-from zou.app.utils.flask import ParsedUserAgent, ORJSONProvider
+from zou.app.utils.flask import (
+    ParsedUserAgent,
+    ORJSONProvider,
+    wrong_auth_handler,
+)
 
 app = Flask(__name__)
 app.json = ORJSONProvider(app)
@@ -35,8 +48,7 @@ app.config.from_object(config)
 
 monitoring.init_monitoring(app)
 
-if config.LOGS_MODE == "ovh":
-    logs.configure_logs_ovh(app)
+logs.configure_logs_ovh(app)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)  # DB schema migration features
@@ -128,23 +140,80 @@ if not config.DEBUG:
 
 def configure_auth():
     from zou.app.services import persons_service
+    from zou.app.services.auth_service import logout
+
+    def check_active_identity(identity, identity_type, jti):
+        if not identity.active:
+            if identity_type == "person":
+                logout(jti=jti)
+            current_app.logger.error(
+                f"Identity {identity.id} is not active anymore"
+            )
+            raise UnactiveUserException
 
     @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(_, payload):
-        return auth_tokens_store.is_revoked(payload)
+        identity_type = payload.get("identity_type")
+        if identity_type == "person":
+            return auth_tokens_store.is_revoked(payload["jti"])
+        elif identity_type in ["bot", "person_api"]:
+            return persons_service.is_jti_revoked(payload["jti"])
+        else:
+            return True
 
     @jwt.user_lookup_loader
-    def add_permissions(_, payload):
+    def user_lookup_callback(_, payload):
+        identity_type = payload.get("identity_type")
         try:
-            user = persons_service.get_person(payload["user_id"])
-            if user is not None:
-                identity_changed.send(
-                    current_app._get_current_object(),
-                    identity=Identity(user["id"]),
-                )
-            return user
+            identity = persons_service.get_person_raw(payload["sub"])
         except PersonNotFoundException:
-            return None
+            return wrong_auth_handler()
+        check_active_identity(identity, identity_type, jti=payload["jti"])
+        identity_changed.send(
+            current_app._get_current_object(),
+            identity=Identity(identity.id, identity_type),
+        )
+        return identity
+
+    @identity_loaded.connect_via(app)
+    def on_identity_loaded(_, identity):
+        try:
+            if isinstance(identity.id, (str, uuid.UUID)):
+                identity.user = persons_service.get_person_raw(identity.id)
+
+                if hasattr(identity.user, "id"):
+                    identity.provides.add(UserNeed(identity.user.id))
+
+                if identity.user.role == "admin":
+                    identity.provides.add(RoleNeed("admin"))
+                    identity.provides.add(RoleNeed("manager"))
+
+                if identity.user.role == "manager":
+                    identity.provides.add(RoleNeed("manager"))
+
+                if identity.user.role == "supervisor":
+                    identity.provides.add(RoleNeed("supervisor"))
+
+                if identity.user.role == "client":
+                    identity.provides.add(RoleNeed("client"))
+
+                if identity.user.role == "vendor":
+                    identity.provides.add(RoleNeed("vendor"))
+
+                identity.provides.add(RoleNeed(identity.auth_type))
+
+            return identity
+
+        except Exception as e:
+            if isinstance(e, TimeoutError):
+                current_app.logger.error("Identity loading timed out")
+            if isinstance(e, (PersonNotFoundException, UnactiveUserException)):
+                pass
+            else:
+                current_app.logger.error(e, exc_info=1)
+                if hasattr(e, "message"):
+                    current_app.logger.error(e.message)
+            return wrong_auth_handler()
 
 
 def load_api(app):
