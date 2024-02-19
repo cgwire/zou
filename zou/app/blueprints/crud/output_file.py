@@ -33,9 +33,7 @@ class OutputFilesResource(BaseModelsResource):
             return query
 
     def emit_create_event(self, instance_dict):
-        print("otk")
         entity = entities_service.get_entity(instance_dict["entity_id"])
-        print("otk2")
         return events.emit(
             "output-file:new",
             {"output_file_id": instance_dict["id"]},
