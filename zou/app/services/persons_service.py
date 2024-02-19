@@ -575,7 +575,6 @@ def create_access_token_for_raw_person(person):
     access_token = create_access_token(
         identity=person.id,
         additional_claims={
-            "email": person.email,
             "identity_type": "bot" if person.is_bot else "person_api",
         },
         expires_delta=expires_delta,

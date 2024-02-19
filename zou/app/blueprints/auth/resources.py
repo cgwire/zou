@@ -209,14 +209,12 @@ class LoginResource(Resource, ArgsMixin):
             access_token = create_access_token(
                 identity=user["id"],
                 additional_claims={
-                    "email": user["email"],
                     "identity_type": "person",
                 },
             )
             refresh_token = create_refresh_token(
                 identity=user["id"],
                 additional_claims={
-                    "email": user["email"],
                     "identity_type": "person",
                 },
             )
@@ -383,7 +381,6 @@ class RefreshTokenResource(Resource):
         access_token = create_access_token(
             identity=user["id"],
             additional_claims={
-                "email": user["email"],
                 "identity_type": "person",
             },
         )
