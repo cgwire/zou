@@ -465,6 +465,7 @@ def get_linked_entities_with_tasks(entity_id):
                     else "Asset",
                     "updated_at": entity.updated_at,
                     "created_at": entity.created_at,
+                    "created_by": entity.created_by,
                 }
             )
 
