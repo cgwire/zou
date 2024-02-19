@@ -54,7 +54,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         if phone is not None and phone != "":
             data["phone"] = phone
 
-        person = Person.get_by(email=email)
+        person = Person.get_by(email=email, is_bot=False)
         if person is None:
             data["email"] = email
             data["password"] = None

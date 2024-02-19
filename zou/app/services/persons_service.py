@@ -109,7 +109,7 @@ def get_person_by_email_raw(email):
     """
     Return person that matches given email as an active record.
     """
-    person = Person.get_by(email=email)
+    person = Person.get_by(email=email, is_bot=False)
 
     if person is None:
         raise PersonNotFoundException()
@@ -135,7 +135,7 @@ def get_person_by_desktop_login(desktop_login):
     to authenticate user from their desktop session login.
     """
     try:
-        person = Person.get_by(desktop_login=desktop_login)
+        person = Person.get_by(desktop_login=desktop_login, is_bot=False)
     except StatementError:
         raise PersonNotFoundException()
 
@@ -170,7 +170,7 @@ def get_person_by_ldap_uid(ldap_uid):
     if ldap_uid is None:
         raise PersonNotFoundException()
     try:
-        person = Person.get_by(ldap_uid=ldap_uid)
+        person = Person.get_by(ldap_uid=ldap_uid, is_bot=False)
     except StatementError:
         raise PersonNotFoundException()
 
