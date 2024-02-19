@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import request, session, current_app
 from babel.dates import format_datetime
 
-from flask_jwt_extended import get_jti, get_jwt
+from flask_jwt_extended import get_jti
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from ldap3.core.exceptions import (
     LDAPSocketOpenError,
@@ -37,7 +37,6 @@ from zou.app.services.exception import (
 )
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import date_helpers, emails
-from zou.app.models.person import Person
 from zou.app import config
 
 from fido2.webauthn import (
@@ -222,23 +221,6 @@ def ldap_auth_strategy(person, password, app):
         return local_auth_strategy(person, password, app)
     else:
         raise UserCantConnectDueToNoFallback()
-
-
-def check_login_failed_attemps(person):
-    """
-    Checks that the person has not reached the failed login limit.
-    """
-    login_failed_attemps = person["login_failed_attemps"]
-    if login_failed_attemps is None:
-        login_failed_attemps = 0
-    if (
-        login_failed_attemps >= 5
-        and date_helpers.get_datetime_from_string(person["last_login_failed"])
-        + timedelta(minutes=1)
-        > datetime.utcnow()
-    ):
-        raise TooMuchLoginFailedAttemps()
-    return login_failed_attemps
 
 
 def update_login_failed_attemps(

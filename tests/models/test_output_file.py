@@ -2,6 +2,8 @@ from tests.base import ApiDBTestCase
 
 from zou.app.models.output_file import OutputFile
 
+from zou.app.utils import events
+
 from zou.app.utils import fields
 from zou.app.services import projects_service
 
@@ -31,6 +33,14 @@ class OutputFileTestCase(ApiDBTestCase):
             file_status_id=self.file_status.id,
         )
 
+        self.project_id = str(self.project.id)
+        events.register("output-file:new", "handle_event", self)
+        events.register("output-file:update", "handle_event", self)
+        events.register("output-file:delete", "handle_event", self)
+
+    def handle_event(self, data={}):
+        self.last_event_data = data
+
     def test_get_output_files(self):
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 3)
@@ -51,6 +61,7 @@ class OutputFileTestCase(ApiDBTestCase):
             "size": 1024,
             "person_id": self.person.id,
             "file_status_id": self.file_status.id,
+            "entity_id": self.asset.id,
         }
         self.file_status_id = self.file_status.id
         self.output_file = self.post("data/output-files", data)
@@ -58,6 +69,10 @@ class OutputFileTestCase(ApiDBTestCase):
 
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 4)
+        self.assertEqual(
+            self.last_event_data["output_file_id"], self.output_file["id"]
+        )
+        self.assertEqual(self.last_event_data["project_id"], self.project_id)
 
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
@@ -67,6 +82,11 @@ class OutputFileTestCase(ApiDBTestCase):
             "data/output-files/%s" % output_file["id"]
         )
         self.assertEqual(data["name"], output_file_again["name"])
+        self.assertEqual(
+            self.last_event_data["output_file_id"], output_file["id"]
+        )
+        self.assertEqual(self.last_event_data["project_id"], self.project_id)
+
         self.put_404("data/output-files/%s" % fields.gen_uuid(), data)
 
     def test_delete_output_file(self):
@@ -76,6 +96,11 @@ class OutputFileTestCase(ApiDBTestCase):
         self.delete("data/output-files/%s" % output_file["id"])
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 2)
+        self.assertEqual(
+            self.last_event_data["output_file_id"], output_file["id"]
+        )
+        self.assertEqual(self.last_event_data["project_id"], self.project_id)
+
         self.delete_404("data/output-files/%s" % fields.gen_uuid())
 
     def test_get_output_file_permission(self):
