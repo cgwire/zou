@@ -3,6 +3,7 @@ from flask import abort, current_app
 from sqlalchemy.exc import StatementError
 from flask_jwt_extended import jwt_required
 
+from zou.app.utils import events
 from zou.app.models.output_file import OutputFile
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
@@ -30,6 +31,16 @@ class OutputFilesResource(BaseModelsResource):
                 .filter(user_service.build_related_projects_filter())
             )
             return query
+
+    def emit_create_event(self, instance_dict):
+        print("otk")
+        entity = entities_service.get_entity(instance_dict["entity_id"])
+        print("otk2")
+        return events.emit(
+            "output-file:new",
+            {"output_file_id": instance_dict["id"]},
+            project_id=entity["project_id"],
+        )
 
 
 class OutputFileResource(BaseModelResource):
@@ -92,3 +103,19 @@ class OutputFileResource(BaseModelResource):
     def post_delete(self, instance_dict):
         files_service.clear_output_file_cache(instance_dict["id"])
         return instance_dict
+
+    def emit_update_event(self, instance_dict):
+        entity = entities_service.get_entity(instance_dict["entity_id"])
+        return events.emit(
+            "output-file:update",
+            {"output_file_id": instance_dict["id"]},
+            project_id=entity["project_id"],
+        )
+
+    def emit_delete_event(self, instance_dict):
+        entity = entities_service.get_entity(instance_dict["entity_id"])
+        return events.emit(
+            "output-file:delete",
+            {"output_file_id": instance_dict["id"]},
+            project_id=entity["project_id"],
+        )

@@ -2,7 +2,6 @@ import os
 
 from tests.base import ApiDBTestCase
 
-from zou.app.utils import events
 from zou.app.services import (
     assets_service,
     persons_service,
@@ -36,13 +35,6 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         self.wip_status_id = str(self.task_status_wip.id)
         self.retake_status_id = str(self.task_status_retake.id)
         self.done_status_id = str(self.task_status_done.id)
-
-        self.is_event_fired = False
-        events.unregister_all()
-
-    def handle_event(self, data):
-        self.is_event_fired = True
-        self.assertEqual(data["previous_task_status_id"], self.open_status_id)
 
     def generate_team(self):
         self.generate_fixture_user_manager()
