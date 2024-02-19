@@ -73,7 +73,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                     person.departments.append(department)
                     current_app.logger.info(
                         "Department Person Link created: %s-%s"
-                        % (department.name, person.full_name())
+                        % (department.name, person.full_name)
                     )
                 elif person.departments != [
                     department,
@@ -83,7 +83,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                     ]
                     current_app.logger.info(
                         "Department Person Link updated: %s-%s"
-                        % (department.name, person.full_name())
+                        % (department.name, person.full_name)
                     )
 
                 person.save()

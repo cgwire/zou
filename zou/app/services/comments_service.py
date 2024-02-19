@@ -507,7 +507,7 @@ def get_comment_mentions(project_id, text):
     project = Project.get(project_id)
     mentions = []
     for person in project.team:
-        if re.search("@%s( |$)" % person.full_name(), text) is not None:
+        if re.search("@%s( |$)" % person.full_name, text) is not None:
             mentions.append(person)
     return mentions
 
