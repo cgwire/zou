@@ -5,6 +5,7 @@ Revises: a7c43f3fbc76
 Create Date: 2023-12-08 12:33:32.190952
 
 """
+
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import orm
@@ -137,9 +138,9 @@ def upgrade():
         name="Concept",
         color="#8D6E63",
         short_name="",
-        department_id=concept_department.id
-        if concept_department is not None
-        else None,
+        department_id=(
+            concept_department.id if concept_department is not None else None
+        ),
         for_entity="Concept",
     )
     session.merge(task_type_concept)

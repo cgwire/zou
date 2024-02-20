@@ -854,12 +854,16 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
     try:
         preview_file_path = fs.get_file_path_and_file(
             config,
-            file_store.get_local_movie_path
-            if preview_file.extension == "mp4"
-            else file_store.get_local_picture_path,
-            file_store.open_movie
-            if preview_file.extension == "mp4"
-            else file_store.open_picture,
+            (
+                file_store.get_local_movie_path
+                if preview_file.extension == "mp4"
+                else file_store.get_local_picture_path
+            ),
+            (
+                file_store.open_movie
+                if preview_file.extension == "mp4"
+                else file_store.open_picture
+            ),
             prefix,
             str(preview_file.id),
             preview_file.extension,

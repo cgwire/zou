@@ -295,6 +295,7 @@ class ConfigResource(Resource):
             }
         return config
 
+
 class TestEventsResource(Resource):
     def get(self):
         """

@@ -226,9 +226,11 @@ class CommentTaskResource(Resource):
             args["comment"],
             args["person_id"],
             args["created_at"],
-            args["checklist"]
-            if request.is_json
-            else json.loads(args["checklist"]),
+            (
+                args["checklist"]
+                if request.is_json
+                else json.loads(args["checklist"])
+            ),
         )
 
 
