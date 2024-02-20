@@ -121,7 +121,7 @@ def update_entity_preview(entity_id, preview_file_id):
     )
     entity_type = EntityType.get(entity.entity_type_id)
     entity_type_name = "asset"
-    if entity_type.name in ["Shot", "Scene", "Sequence", "Episode"]:
+    if entity_type.name in ["Shot", "Scene", "Sequence", "Episode", "Concept"]:
         entity_type_name = entity_type.name.lower()
     events.emit(
         "%s:update" % entity_type_name,
@@ -452,17 +452,19 @@ def get_linked_entities_with_tasks(entity_id):
                     "is_casting_standby": entity.is_casting_standby,
                     "tasks": [],
                     "entity_concept_links": entity.entity_concept_links,
-                    "type": entity_type_name
-                    if entity_type_name
-                    in [
-                        "Shot",
-                        "Sequence",
-                        "Scene",
-                        "Edit",
-                        "Concept",
-                        "Episode",
-                    ]
-                    else "Asset",
+                    "type": (
+                        entity_type_name
+                        if entity_type_name
+                        in [
+                            "Shot",
+                            "Sequence",
+                            "Scene",
+                            "Edit",
+                            "Concept",
+                            "Episode",
+                        ]
+                        else "Asset"
+                    ),
                     "updated_at": entity.updated_at,
                     "created_at": entity.created_at,
                     "created_by": entity.created_by,
