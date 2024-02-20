@@ -999,7 +999,7 @@ def get_person_tasks(person_id, projects, is_done=None):
     return tasks
 
 
-def get_person_tasks_to_check(department_ids, project_ids):
+def get_person_tasks_to_check(project_ids=None, department_ids=None):
     """
     Retrieve all tasks requiring a feedback for given departments and projects.
     """
@@ -1013,9 +1013,7 @@ def get_person_tasks_to_check(department_ids, project_ids):
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .outerjoin(Sequence, Sequence.id == Entity.parent_id)
         .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        .filter(Project.id.in_(project_ids))
         .filter(TaskStatus.is_feedback_request)
-        .filter(TaskType.department_id.in_(department_ids))
         .add_columns(
             Project.name,
             Project.has_avatar,
@@ -1039,6 +1037,12 @@ def get_person_tasks_to_check(department_ids, project_ids):
             TaskStatus.short_name,
         )
     )
+
+    if project_ids is not None:
+        query = query.filter(Project.id.in_(project_ids))
+
+    if department_ids is not None:
+        query = query.filter(TaskType.department_id.in_(department_ids))
     tasks = []
     for (
         task,

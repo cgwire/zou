@@ -127,11 +127,20 @@ def get_tasks_to_check():
     """
     Get all tasks waiting for feedback in the user department.
     """
-    current_user = persons_service.get_current_user(relations=True)
-    projects = related_projects()
-    project_ids = [project["id"] for project in projects]
+    departments_ids = None
+    if permissions.has_admin_permissions():
+        project_ids = None
+    elif permissions.has_manager_permissions():
+        project_ids = [project["id"] for project in related_projects()]
+    elif permissions.has_supervisor_permissions():
+        current_user = persons_service.get_current_user(relations=True)
+        departments_ids = current_user["departments"]
+        project_ids = [project["id"] for project in related_projects()]
+    else:
+        return []
+
     return tasks_service.get_person_tasks_to_check(
-        current_user["departments"], project_ids
+        project_ids, departments_ids
     )
 
 

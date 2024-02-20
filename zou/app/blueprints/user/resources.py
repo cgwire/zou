@@ -459,10 +459,7 @@ class ToChecksResource(Resource):
                 description: Tasks requiring feedback in current user
                     departments.
         """
-        if permissions.has_supervisor_permissions():
-            return user_service.get_tasks_to_check()
-        else:
-            return []
+        return user_service.get_tasks_to_check()
 
 
 class DoneResource(Resource):
