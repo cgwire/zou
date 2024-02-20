@@ -211,6 +211,7 @@ def create_person(
     ldap_uid=None,
     is_bot=False,
     expiration_date=None,
+    active=True,
     serialize=True,
 ):
     """
@@ -256,6 +257,7 @@ def create_person(
         ldap_uid=ldap_uid,
         is_bot=is_bot,
         expiration_date=expiration_date,
+        active=active,
     )
     if is_bot:
         access_token = create_access_token_for_raw_person(person)

@@ -94,6 +94,7 @@ class NewPersonResource(Resource, ArgsMixin):
                 departments=data["departments"],
                 is_bot=data["is_bot"],
                 expiration_date=data["expiration_date"],
+                active=data["active"],
             )
         return person, 201
 
@@ -118,6 +119,7 @@ class NewPersonResource(Resource, ArgsMixin):
                 "password",
                 {"name": "is_bot", "default": False, "type": bool},
                 {"name": "expiration_date", "default": None, "type": str},
+                {"name": "active", "default": True, "type": bool},
             ]
         )
 
