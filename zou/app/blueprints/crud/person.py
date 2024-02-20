@@ -149,10 +149,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
             str(department.id) for department in self.instance.departments
         ]
         if "expiration_date" in data:
-            instance_dict[
-                "access_token"
-            ] = persons_service.create_access_token_for_raw_person(
-                self.instance
+            instance_dict["access_token"] = (
+                persons_service.create_access_token_for_raw_person(
+                    self.instance
+                )
             )
         return instance_dict
 

@@ -480,9 +480,9 @@ def _apply_annotation_updates(annotations, updates):
             previous_objects = annotation.get("drawing", {}).get("objects", [])
             for previous_object in previous_objects:
                 if "id" in previous_object:
-                    previous_object_map[
-                        previous_object["id"]
-                    ] = previous_object
+                    previous_object_map[previous_object["id"]] = (
+                        previous_object
+                    )
 
             updated_objects = update.get("drawing", {}).get("objects", [])
             for updated_object in updated_objects:
