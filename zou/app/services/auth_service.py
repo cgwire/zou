@@ -551,7 +551,7 @@ def pre_register_fido(person_id):
         PublicKeyCredentialUserEntity(
             id=str(person.id).encode(),
             name=person.email,
-            display_name=person.full_name(),
+            display_name=person.full_name,
         ),
         credentials=get_fido_attested_credential_data_from_person(
             person.fido_credentials

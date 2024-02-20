@@ -183,9 +183,7 @@ class EDLBaseResource(Resource, ArgsMixin):
 
                     data = future_shot_values["data"] or {}
                     try:
-                        data[
-                            "frame_in"
-                        ] = (
+                        data["frame_in"] = (
                             track.trimmed_range_in_parent().start_time.to_frames()
                         )
                     except Exception as e:
@@ -206,9 +204,9 @@ class EDLBaseResource(Resource, ArgsMixin):
                     future_shot_values["data"] = data
 
                     try:
-                        future_shot_values[
-                            "nb_frames"
-                        ] = track.source_range.duration.to_frames()
+                        future_shot_values["nb_frames"] = (
+                            track.source_range.duration.to_frames()
+                        )
                     except Exception as e:
                         current_app.logger.error(
                             f"Parsing nb_frames failed: {type(e).__name__}: {str(e)}"

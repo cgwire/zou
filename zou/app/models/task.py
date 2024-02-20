@@ -72,7 +72,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     )
 
     def assignees_as_string(self):
-        return ", ".join([x.full_name() for x in self.assignees])
+        return ", ".join([x.full_name for x in self.assignees])
 
     def set_assignees(self, person_ids):
         from zou.app.models.person import Person

@@ -480,9 +480,9 @@ def _apply_annotation_updates(annotations, updates):
             previous_objects = annotation.get("drawing", {}).get("objects", [])
             for previous_object in previous_objects:
                 if "id" in previous_object:
-                    previous_object_map[
-                        previous_object["id"]
-                    ] = previous_object
+                    previous_object_map[previous_object["id"]] = (
+                        previous_object
+                    )
 
             updated_objects = update.get("drawing", {}).get("objects", [])
             for updated_object in updated_objects:
@@ -854,12 +854,16 @@ def _retrieve_preview_file(config, file_store, prefix, preview_file):
     try:
         preview_file_path = fs.get_file_path_and_file(
             config,
-            file_store.get_local_movie_path
-            if preview_file.extension == "mp4"
-            else file_store.get_local_picture_path,
-            file_store.open_movie
-            if preview_file.extension == "mp4"
-            else file_store.open_picture,
+            (
+                file_store.get_local_movie_path
+                if preview_file.extension == "mp4"
+                else file_store.get_local_picture_path
+            ),
+            (
+                file_store.open_movie
+                if preview_file.extension == "mp4"
+                else file_store.open_picture
+            ),
             prefix,
             str(preview_file.id),
             preview_file.extension,

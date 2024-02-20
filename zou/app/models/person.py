@@ -6,6 +6,7 @@ from sqlalchemy_utils import (
     ChoiceType,
 )
 from sqlalchemy import Index
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import JSONB
 
 from pytz import timezone as pytz_timezone
@@ -125,13 +126,21 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return f"<Person {self.full_name()}>"
+        return f"<Person {self.full_name}>"
 
+    @hybrid_property
     def full_name(self):
         if self.first_name and self.last_name:
             return f"{self.first_name} {self.last_name}"
         else:
             return f"{self.first_name}{self.last_name}"
+
+    @full_name.expression
+    def full_name(cls):
+        if cls.first_name and cls.last_name:
+            return cls.first_name + " " + cls.last_name
+        else:
+            return cls.first_name + cls.last_name
 
     def fido_devices(self):
         if self.fido_credentials is None:
@@ -148,7 +157,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         data = SerializerMixin.serialize(
             self, obj_type, relations=relations, milliseconds=milliseconds
         )
-        data["full_name"] = self.full_name()
         data["contract_type"] = str(self.contract_type or "permanent")
         data["fido_devices"] = self.fido_devices()
         return data
@@ -171,7 +179,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "id": data["id"],
             "first_name": data["first_name"],
             "last_name": data["last_name"],
-            "full_name": self.full_name(),
+            "full_name": self.full_name,
             "has_avatar": data["has_avatar"],
             "active": data["active"],
             "departments": data.get("departments", []),

@@ -7,6 +7,7 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.inspection import inspect
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions, query
@@ -64,14 +65,15 @@ class BaseModelsResource(Resource, ArgsMixin):
         name_filter = []
         filters = {}
 
-        column_names = [column.name for column in self.model.__table__.columns]
+        column_names = inspect(self.model).all_orm_descriptors.keys()
         for key, value in options.items():
             if key not in ["page", "relations"] and key in column_names:
                 field_key = getattr(self.model, key)
-                expr = field_key.property
 
-                is_many_to_many_field = isinstance(
-                    expr, orm.properties.RelationshipProperty
+                is_many_to_many_field = hasattr(
+                    field_key, "property"
+                ) and isinstance(
+                    field_key.property, orm.properties.RelationshipProperty
                 )
                 value_is_list = len(value) > 0 and value[0] == "["
 
