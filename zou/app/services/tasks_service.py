@@ -54,6 +54,7 @@ from zou.app.services import (
     entities_service,
     edits_service,
     concepts_service,
+    user_service,
 )
 
 
@@ -1040,6 +1041,8 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
 
     if project_ids is not None:
         query = query.filter(Project.id.in_(project_ids))
+    else:
+        query = query.filter(user_service.build_open_project_filter())
 
     if department_ids is not None:
         query = query.filter(TaskType.department_id.in_(department_ids))
