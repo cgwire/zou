@@ -24,6 +24,7 @@ from zou.app.models.news import News
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
@@ -1008,6 +1009,7 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
     Episode = aliased(Entity, name="episode")
     query = (
         Task.query.join(Project, Project.id == Task.project_id)
+        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
         .join(TaskType, TaskType.id == Task.task_type_id)
         .join(TaskStatus, TaskStatus.id == Task.task_status_id)
         .join(Entity, Entity.id == Task.entity_id)
