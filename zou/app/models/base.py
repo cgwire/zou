@@ -110,15 +110,16 @@ class BaseMixin(object):
                     ):
                         class_ = field_key.property.entity.class_
                         values = []
-                        for id in value:
-                            if isinstance(id, str):
-                                v = class_.get(id)
-                            elif isinstance(id, dict):
-                                v = class_.get(id["id"])
-                            else:
-                                v = id
-                            if v is not None:
-                                values.append(v)
+                        if value is not None:
+                            for id in value:
+                                if isinstance(id, str):
+                                    v = class_.get(id)
+                                elif isinstance(id, dict):
+                                    v = class_.get(id["id"])
+                                else:
+                                    v = id
+                                if v is not None:
+                                    values.append(v)
                         kw[key] = values
         instance = cls(**kw)
         db.session.add(instance)
@@ -250,15 +251,16 @@ class BaseMixin(object):
                     ):
                         class_ = field_key.property.entity.class_
                         values = []
-                        for id in value:
-                            if isinstance(id, str):
-                                v = class_.get(id)
-                            elif isinstance(id, dict):
-                                v = class_.get(id["id"])
-                            else:
-                                v = id
-                            if v is not None:
-                                values.append(v)
+                        if value is not None:
+                            for id in value:
+                                if isinstance(id, str):
+                                    v = class_.get(id)
+                                elif isinstance(id, dict):
+                                    v = class_.get(id["id"])
+                                else:
+                                    v = id
+                                if v is not None:
+                                    values.append(v)
                         setattr(self, key, values)
                     else:
                         setattr(self, key, value)
