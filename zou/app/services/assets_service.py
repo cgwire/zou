@@ -420,26 +420,6 @@ def get_asset_with_relations(entity_id):
     return get_asset_raw(entity_id).serialize(obj_type="Asset", relations=True)
 
 
-def get_task_types_from_asset_type(data):
-    """
-    Return a list of task types objects from ids `task_types` list of data dict.
-
-    Args:
-        data (dict): Data from Resource POST
-    """
-    task_types = []
-    if "task_types" in data:
-        try:
-            for task_type_id in data["task_types"]:
-                task_type = TaskType.get(task_type_id)
-                if task_type is not None:
-                    task_types.append(task_type)
-        except StatementError:
-            raise TaskTypeNotFoundException()
-
-    return task_types
-
-
 def get_asset_by_shotgun_id(shotgun_id):
     """
     Return asset matching given shotgun ID as a dict.

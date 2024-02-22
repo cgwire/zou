@@ -162,16 +162,6 @@ class PersonResource(BaseModelResource, ArgsMixin):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        if "departments" in data:
-            try:
-                departments = []
-                for department_id in data["departments"]:
-                    department = Department.get(department_id)
-                    if department is not None:
-                        departments.append(department)
-            except StatementError:
-                raise DepartmentNotFoundException()
-            data["departments"] = departments
         return data
 
     @jwt_required()
