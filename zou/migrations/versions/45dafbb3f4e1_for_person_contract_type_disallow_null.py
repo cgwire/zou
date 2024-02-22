@@ -32,9 +32,10 @@ TWO_FACTOR_AUTHENTICATION_TYPES = [
 ]
 
 CONTRACT_TYPES = [
-    ("permanent", "Permanent"),
-    ("freelancer", "Freelancer"),
-    ("intermittent", "Intermittent"),
+    ("open-ended", "Open-ended"),
+    ("fixed-term", "Fixed-term"),
+    ("short-term", "Short-term"),
+    ("freelance", "Freelance"),
     ("apprentice", "Apprentice"),
     ("internship", "Internship"),
 ]
