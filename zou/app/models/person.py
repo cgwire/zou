@@ -67,7 +67,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     email = db.Column(EmailType)
     phone = db.Column(db.String(30))
     contract_type = db.Column(
-        ChoiceType(CONTRACT_TYPES), default="permanent", nullable=False
+        ChoiceType(CONTRACT_TYPES), default="open-ended", nullable=False
     )
 
     active = db.Column(db.Boolean(), default=True)

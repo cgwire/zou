@@ -36,7 +36,7 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def create_person_alicia(self):
         return self.post(
-            "data/persons/new",
+            "data/persons",
             {
                 "email": "alicia@cg-wire.com",
                 "first_name": "Alicia",

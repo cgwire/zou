@@ -60,7 +60,7 @@ class Person(base, BaseMixin):
     last_name = sa.Column(sa.String(80), nullable=False)
     email = sa.Column(EmailType, unique=True)
     phone = sa.Column(sa.String(30))
-    contract_type = sa.Column(ChoiceType(CONTRACT_TYPES), default="permanent")
+    contract_type = sa.Column(ChoiceType(CONTRACT_TYPES), default="open-ended")
 
     active = sa.Column(sa.Boolean(), default=True)
     archived = sa.Column(sa.Boolean(), default=False)
@@ -110,14 +110,14 @@ def upgrade():
         session = Session(bind=op.get_bind())
         session.query(Person).update(
             {
-                Person.contract_type: "permanent",
+                Person.contract_type: "open-ended",
             }
         )
         session.commit()
         batch_op.alter_column(
             "contract_type",
             existing_type=sa.VARCHAR(length=255),
-            server_default="permanent",
+            server_default="open-ended",
             nullable=False,
         )
 
