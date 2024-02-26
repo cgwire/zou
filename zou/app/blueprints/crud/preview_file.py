@@ -64,6 +64,11 @@ class PreviewFileResource(BaseModelResource):
             user_service.check_working_on_task(task["entity_id"])
         return True
 
+    def check_delete_permissions(self, preview_file):
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        return True
+
     @jwt_required()
     def delete(self, instance_id):
         """

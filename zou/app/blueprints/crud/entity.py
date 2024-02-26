@@ -60,21 +60,6 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
 
     def update_data(self, data):
         data = super().update_data(data)
-        if "entity_concept_links" in data:
-            try:
-                entity_concept_links = [
-                    entity_concept_link
-                    for entity_concept_link_id in data["entity_concept_links"]
-                    if (
-                        entity_concept_link := Entity.get(
-                            entity_concept_link_id
-                        )
-                    )
-                    is not None
-                ]
-            except StatementError:
-                raise EntityNotFoundException()
-            data["entity_concept_links"] = entity_concept_links
         data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
@@ -152,24 +137,6 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             is_ready_for_changed = str(entity.ready_for) != data.get(
                 "ready_for", ""
             )
-
-            if "entity_concept_links" in data:
-                try:
-                    entity_concept_links = [
-                        entity_concept_link
-                        for entity_concept_link_id in data[
-                            "entity_concept_links"
-                        ]
-                        if (
-                            entity_concept_link := Entity.get(
-                                entity_concept_link_id
-                            )
-                        )
-                        is not None
-                    ]
-                except StatementError:
-                    raise EntityNotFoundException()
-                data["entity_concept_links"] = entity_concept_links
 
             entity.update(data)
             entity_dict = self.serialize_instance(entity)

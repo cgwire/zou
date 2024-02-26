@@ -59,15 +59,4 @@ class MetadataDescriptorResource(BaseModelResource):
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
                 raise ArgumentsException("Invalid data_type")
-
-        if "departments" in data:
-            try:
-                departments = []
-                for department_id in data["departments"]:
-                    department = Department.get(department_id)
-                    if department is not None:
-                        departments.append(department)
-            except StatementError:
-                raise DepartmentNotFoundException()
-            data["departments"] = departments
         return data

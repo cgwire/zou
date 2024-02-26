@@ -244,7 +244,9 @@ class EntryAlreadyExistsException(Exception):
 
 
 class ArgumentsException(Exception):
-    pass
+    def __init__(self, message, dict=None):
+        super().__init__(message)
+        self.dict = dict
 
 
 class WrongIdFormatException(Exception):

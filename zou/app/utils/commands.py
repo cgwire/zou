@@ -706,20 +706,16 @@ def create_bot(
     role,
 ):
     with app.app_context():
-        try:
-            # Allow "admin@example.com" to be invalid.
-            if email != "admin@example.com":
-                auth.validate_email(email)
-            bot = persons_service.create_person(
-                email=email,
-                password=None,
-                first_name=name,
-                last_name="",
-                expiration_date=expiration_date,
-                role=role,
-                is_bot=True,
-            )
-            print(bot["access_token"])
-        except IntegrityError:
-            print("Bot already exists for this name.")
-            sys.exit(1)
+        # Allow "admin@example.com" to be invalid.
+        if email != "admin@example.com":
+            auth.validate_email(email)
+        bot = persons_service.create_person(
+            email=email,
+            password=None,
+            first_name=name,
+            last_name="",
+            expiration_date=expiration_date,
+            role=role,
+            is_bot=True,
+        )
+        print(bot["access_token"])

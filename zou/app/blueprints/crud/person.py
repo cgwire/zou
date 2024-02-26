@@ -1,3 +1,5 @@
+import datetime
+
 from flask import abort
 from flask_jwt_extended import jwt_required
 from flask_restful import current_app
@@ -9,18 +11,16 @@ from zou.app.services import (
     index_service,
     persons_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import permissions, auth
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.mixin import ArgsMixin
 
 from zou.app.services.exception import (
-    DepartmentNotFoundException,
-    WrongParameterException,
+    ArgumentsException,
     PersonInProtectedAccounts,
 )
-from zou.app.models.department import Department
 
 from zou.app import config
 
@@ -50,11 +50,57 @@ class PersonsResource(BaseModelsResource):
                 for person in query.all()
             ]
 
-    def post(self):
-        abort(405)
-
     def check_read_permissions(self):
         return True
+
+    def check_create_permissions(self, data):
+        if (
+            not data.get("is_bot", False)
+            and data.get("active", True)
+            and persons_service.is_user_limit_reached()
+        ):
+            raise ArgumentsException(
+                "User limit reached.",
+                {
+                    "error": True,
+                    "message": "User limit reached.",
+                    "limit": config.USER_LIMIT,
+                },
+            )
+        return permissions.check_admin_permissions()
+
+    def update_data(self, data):
+        data = super().update_data(data)
+        if "password" in data:
+            data["password"] = auth.encrypt_password(data["password"])
+        if "email" in data:
+            data["email"] = data["email"].strip()
+
+        if "expiration_date" in data:
+            try:
+                if (
+                    datetime.datetime.strptime(
+                        data["expiration_date"], "%Y-%m-%d"
+                    ).date()
+                    < datetime.date.today()
+                ):
+                    raise ArgumentsException(
+                        "Expiration date can't be in the past."
+                    )
+            except:
+                raise ArgumentsException("Expiration date is not valid.")
+        return data
+
+    def post_creation(self, instance):
+        instance_dict = instance.serialize(relations=True)
+        if instance.is_bot:
+            instance_dict["access_token"] = (
+                persons_service.create_access_token_for_raw_person(instance)
+            )
+        if instance.active:
+            index_service.index_person(instance)
+        persons_service.clear_person_cache()
+        return instance_dict
 
 
 class PersonResource(BaseModelResource, ArgsMixin):
@@ -129,7 +175,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and not data.get("is_bot", False)
             and persons_service.is_user_limit_reached()
         ):
-            raise WrongParameterException("User limit reached.")
+            raise ArgumentsException("User limit reached.")
         if (
             data.get("active") is False
             and instance_dict["email"] in config.PROTECTED_ACCOUNTS
@@ -162,16 +208,6 @@ class PersonResource(BaseModelResource, ArgsMixin):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        if "departments" in data:
-            try:
-                departments = []
-                for department_id in data["departments"]:
-                    department = Department.get(department_id)
-                    if department is not None:
-                        departments.append(department)
-            except StatementError:
-                raise DepartmentNotFoundException()
-            data["departments"] = departments
         return data
 
     @jwt_required()

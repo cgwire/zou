@@ -255,7 +255,11 @@ class BaseModelsResource(Resource, ArgsMixin):
 
         except ArgumentsException as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return (
+                exception.dict
+                if exception.dict is not None
+                else {"message": str(exception)}
+            ), 400
 
     def emit_create_event(self, instance_dict):
         return events.emit(
@@ -425,7 +429,11 @@ class BaseModelResource(Resource):
 
         except ArgumentsException as exception:
             current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
+            return (
+                exception.dict
+                if exception.dict is not None
+                else {"message": str(exception)}
+            ), 400
 
     @jwt_required()
     def delete(self, instance_id):

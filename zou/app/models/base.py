@@ -2,6 +2,7 @@ import datetime
 
 from sqlalchemy_utils import UUIDType
 from sqlalchemy import func
+from sqlalchemy import orm
 from zou.app import db
 from zou.app.utils import fields
 
@@ -82,9 +83,9 @@ class BaseMixin(object):
         """
         Shorthand to create an entry via the database session.
         """
-        instance = cls(**kw)
+
         try:
-            db.session.add(instance)
+            instance = cls.create_no_commit(**kw)
             db.session.commit()
         except BaseException:
             db.session.rollback()
@@ -98,6 +99,28 @@ class BaseMixin(object):
         Shorthand to create an entry via the database session without commiting
         the request.
         """
+        for key, value in kw.items():
+            if hasattr(cls, key):
+                field_key = getattr(cls, key)
+
+                if hasattr(field_key, "property"):
+                    if isinstance(
+                        field_key.property,
+                        orm.properties.RelationshipProperty,
+                    ):
+                        class_ = field_key.property.entity.class_
+                        values = []
+                        if value is not None:
+                            for id in value:
+                                if isinstance(id, str):
+                                    v = class_.get(id)
+                                elif isinstance(id, dict):
+                                    v = class_.get(id["id"])
+                                else:
+                                    v = id
+                                if v is not None:
+                                    values.append(v)
+                        kw[key] = values
         instance = cls(**kw)
         db.session.add(instance)
         return instance
@@ -183,7 +206,7 @@ class BaseMixin(object):
         instance id.
         """
         try:
-            db.session.delete(self)
+            self.delete_no_commit()
             db.session.commit()
         except BaseException:
             db.session.rollback()
@@ -204,10 +227,7 @@ class BaseMixin(object):
         instance fields.
         """
         try:
-            self.updated_at = datetime.datetime.utcnow()
-            for key, value in data.items():
-                setattr(self, key, value)
-            db.session.add(self)
+            self.update_no_commit(data)
             db.session.commit()
         except BaseException:
             db.session.rollback()
@@ -221,7 +241,29 @@ class BaseMixin(object):
         """
         self.updated_at = datetime.datetime.utcnow()
         for key, value in data.items():
-            setattr(self, key, value)
+            if hasattr(self.__class__, key):
+                field_key = getattr(self.__class__, key)
+
+                if hasattr(field_key, "property"):
+                    if isinstance(
+                        field_key.property,
+                        orm.properties.RelationshipProperty,
+                    ):
+                        class_ = field_key.property.entity.class_
+                        values = []
+                        if value is not None:
+                            for id in value:
+                                if isinstance(id, str):
+                                    v = class_.get(id)
+                                elif isinstance(id, dict):
+                                    v = class_.get(id["id"])
+                                else:
+                                    v = id
+                                if v is not None:
+                                    values.append(v)
+                        setattr(self, key, values)
+                    else:
+                        setattr(self, key, value)
         db.session.add(self)
 
     def set_links(self, ids, LinkTable, field_left, field_right):
