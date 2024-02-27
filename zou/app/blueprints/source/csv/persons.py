@@ -1,6 +1,6 @@
 from zou.app.blueprints.source.csv.base import BaseCsvImportResource
 
-from zou.app.models.person import Person
+from zou.app.models.person import Person, ROLE_TYPES, CONTRACT_TYPES
 from zou.app.services import index_service
 from zou.app.utils import permissions
 
@@ -30,28 +30,30 @@ class PersonsCsvImportResource(BaseCsvImportResource):
     def check_permissions(self):
         return permissions.check_admin_permissions()
 
+    def prepare_import(self):
+        self.role_map = {role[1]: role[0] for role in ROLE_TYPES}
+        self.contract_types_map = {
+            contract[1]: contract[0] for contract in CONTRACT_TYPES
+        }
+
     def import_row(self, row):
         first_name = row["First Name"]
         last_name = row["Last Name"]
         email = row["Email"]
         phone = row.get("Phone", None)
         role = row.get("Role", None)
-
-        role_map = {
-            "Studio Manager": "admin",
-            "Production Manager": "manager",
-            "Supervisor": "supervisor",
-            "Artist": "user",
-            "Client": "client",
-            "Vendor": "vendor",
-        }
+        contract_type = row.get("Contract Type", None)
 
         data = {"first_name": first_name, "last_name": last_name}
-        if role is not None and role != "":
-            if role in role_map.keys():
-                role = role_map[role]
+        if role:
+            if role in self.role_map.keys():
+                role = self.role_map[role]
             data["role"] = role
-        if phone is not None and phone != "":
+        if contract_type:
+            if contract_type in self.contract_types_map.keys():
+                contract_type = self.contract_types_map[contract_type]
+            data["contract_type"] = contract_type
+        if phone:
             data["phone"] = phone
 
         person = Person.get_by(email=email, is_bot=False)
