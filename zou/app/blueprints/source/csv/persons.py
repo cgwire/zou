@@ -4,6 +4,8 @@ from zou.app.models.person import Person, ROLE_TYPES, CONTRACT_TYPES
 from zou.app.services import index_service
 from zou.app.utils import permissions
 
+from zou.app.utils.string import strtobool
+
 
 class PersonsCsvImportResource(BaseCsvImportResource):
     def post(self, **kwargs):
@@ -31,7 +33,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         return permissions.check_admin_permissions()
 
     def prepare_import(self):
-        self.role_map = {role[1]: role[0] for role in ROLE_TYPES}
+        self.role_types_map = {role[1]: role[0] for role in ROLE_TYPES}
         self.contract_types_map = {
             contract[1]: contract[0] for contract in CONTRACT_TYPES
         }
@@ -43,18 +45,25 @@ class PersonsCsvImportResource(BaseCsvImportResource):
         phone = row.get("Phone", None)
         role = row.get("Role", None)
         contract_type = row.get("Contract Type", None)
+        active = row.get("Active", None)
 
         data = {"first_name": first_name, "last_name": last_name}
         if role:
-            if role in self.role_map.keys():
-                role = self.role_map[role]
+            if role in self.role_types_map.keys():
+                role = self.role_types_map[role]
+            elif role not in self.role_types_map.values():
+                raise ValueError("Invalid role")
             data["role"] = role
         if contract_type:
             if contract_type in self.contract_types_map.keys():
                 contract_type = self.contract_types_map[contract_type]
+            elif contract_type not in self.contract_types_map.values():
+                raise ValueError("Invalid contract type")
             data["contract_type"] = contract_type
         if phone:
             data["phone"] = phone
+        if active:
+            data["active"] = strtobool(active)
 
         person = Person.get_by(email=email, is_bot=False)
         if person is None:
