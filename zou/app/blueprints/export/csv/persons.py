@@ -20,7 +20,9 @@ class PersonsCsvExport(BaseCsvExport):
         ]
 
     def build_query(self):
-        return Person.query.order_by(Person.last_name, Person.first_name)
+        return Person.query.filter(Person.is_bot == False).order_by(
+            Person.last_name, Person.first_name
+        )
 
     def build_row(self, person):
         active = "yes"
