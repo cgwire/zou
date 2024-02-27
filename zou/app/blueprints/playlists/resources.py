@@ -93,6 +93,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
+        page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
         if episode_id not in ["main", "all"]:
@@ -100,7 +101,8 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         return playlists_service.all_playlists_for_episode(
             project_id,
             episode_id,
-            permissions.has_client_permissions(),
+            for_client=permissions.has_client_permissions(),
+            page=page,
             sort_by=sort_by,
             task_type_id=task_type_id,
         )
