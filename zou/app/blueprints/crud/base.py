@@ -241,15 +241,11 @@ class BaseModelsResource(Resource, ArgsMixin):
             self.emit_create_event(instance_dict)
             return instance_dict, 201
 
-        except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except IntegrityError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
+        except (
+            TypeError,
+            IntegrityError,
+            StatementError,
+        ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
@@ -416,15 +412,11 @@ class BaseModelResource(Resource, ArgsMixin):
             self.emit_update_event(instance_dict)
             return instance_dict, 200
 
-        except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except IntegrityError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
+        except (
+            TypeError,
+            IntegrityError,
+            StatementError,
+        ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 

@@ -23,7 +23,7 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
 
     read = db.Column(db.Boolean, nullable=False, default=False)
     change = db.Column(db.Boolean, nullable=False, default=False)
-    type = db.Column(ChoiceType(TYPES))
+    type = db.Column(ChoiceType(TYPES), nullable=False)
     person_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("person.id"),

@@ -104,7 +104,9 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     nb_entities_out = db.Column(db.Integer, default=0)
     is_casting_standby = db.Column(db.Boolean, default=False)
 
-    status = db.Column(ChoiceType(ENTITY_STATUSES), default="running")
+    status = db.Column(
+        ChoiceType(ENTITY_STATUSES), default="running", nullable=False
+    )
 
     project_id = db.Column(
         UUIDType(binary=False),

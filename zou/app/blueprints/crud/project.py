@@ -44,16 +44,19 @@ class ProjectsResource(BaseModelsResource):
         if "production_style" in data:
             if data["production_style"] is None:
                 data["production_style"] = "2d3d"
-            types = [type_name for type_name, _ in PROJECT_STYLES]
-            if data["production_style"] not in types:
+            if data["production_style"] not in [
+                type_name for type_name, _ in PROJECT_STYLES
+            ]:
                 raise ArgumentsException("Invalid production_style")
         return True
 
     def update_data(self, data):
         data = super().update_data(data)
-        open_status = projects_service.get_or_create_open_status()
+
         if "project_status_id" not in data:
-            data["project_status_id"] = open_status["id"]
+            data["project_status_id"] = (
+                projects_service.get_or_create_open_status()["id"]
+            )
 
         if "preview_background_files" in data:
             data["preview_background_files"] = [
@@ -102,33 +105,6 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return user_service.check_manager_project_access(project["id"])
 
     def pre_update(self, project_dict, data):
-        if "team" in data:
-            data["team"] = [
-                persons_service.get_person_raw(person_id)
-                for person_id in data["team"]
-            ]
-        if "asset_types" in data:
-            data["asset_types"] = [
-                assets_service.get_asset_type_raw(asset_type_id)
-                for asset_type_id in data["asset_types"]
-            ]
-        if "task_statuses" in data:
-            data["task_statuses"] = [
-                tasks_service.get_task_status_raw(task_status_id)
-                for task_status_id in data["task_statuses"]
-            ]
-        if "task_types" in data:
-            data["task_types"] = [
-                tasks_service.get_task_type_raw(task_type_id)
-                for task_type_id in data["task_types"]
-            ]
-        if "status_automations" in data:
-            data["status_automations"] = [
-                status_automations_service.get_status_automation_raw(
-                    task_type_id
-                )
-                for task_type_id in data["status_automations"]
-            ]
         if "preview_background_files" in data:
             data["preview_background_files"] = [
                 files_service.get_preview_background_file_raw(
@@ -191,8 +167,9 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         if "production_style" in data:
             if data["production_style"] is None:
                 data["production_style"] = "2d3d"
-            types = [type_name for type_name, _ in PROJECT_STYLES]
-            if data["production_style"] not in types:
+            if data["production_style"] not in [
+                type_name for type_name, _ in PROJECT_STYLES
+            ]:
                 raise ArgumentsException("Invalid production_style")
         return data
 

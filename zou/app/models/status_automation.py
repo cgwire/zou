@@ -25,7 +25,9 @@ class StatusAutomation(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False), db.ForeignKey("task_status.id"), index=True
     )
 
-    out_field_type = db.Column(ChoiceType(CHANGE_TYPES), default="status")
+    out_field_type = db.Column(
+        ChoiceType(CHANGE_TYPES), default="status", nullable=False
+    )
     out_task_type_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_type.id"), index=True
     )
