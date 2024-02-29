@@ -71,12 +71,12 @@ class PersonsResource(BaseModelsResource):
 
     def update_data(self, data):
         data = super().update_data(data)
-        if "password" in data:
+        if "password" in data and data["password"] is not None:
             data["password"] = auth.encrypt_password(data["password"])
         if "email" in data:
             data["email"] = data["email"].strip()
 
-        if "expiration_date" in data:
+        if "expiration_date" in data and data["expiration_date"] is not None:
             try:
                 if (
                     datetime.datetime.strptime(
@@ -139,29 +139,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         permissions.check_admin_permissions()
         return instance_dict
 
-    @jwt_required()
-    def get(self, instance_id):
-        """
-        Retrieves the given person.
-        """
-        relations = self.get_bool_parameter("relations")
-
-        try:
-            instance = self.get_model_or_404(instance_id)
-            result = self.serialize_instance(instance, relations=relations)
-            self.check_read_permissions(result)
-            result = self.clean_get_result(result)
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except ValueError:
-            abort(404)
-
-        return result, 200
-
-    def serialize_instance(self, instance, relations=False):
+    def serialize_instance(self, instance, relations=True):
         if permissions.has_manager_permissions():
             return instance.serialize_safe(relations=relations)
         else:

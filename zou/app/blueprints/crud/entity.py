@@ -85,8 +85,8 @@ class EntityResource(BaseModelResource, EntityEventMixin):
             "created_by",
         ]
 
-    def serialize_instance(self, entity):
-        entity = entity.serialize(relations=True)
+    def serialize_instance(self, entity, relations=True):
+        entity = entity.serialize(relations=relations)
         entity["type"] = shots_service.get_base_entity_type_name(entity)
         return entity
 
