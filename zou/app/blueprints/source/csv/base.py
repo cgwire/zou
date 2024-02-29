@@ -34,25 +34,7 @@ class RowException(Exception):
 
 class BaseCsvImportResource(Resource, ArgsMixin):
     @jwt_required()
-    def post(self):
-        """
-        Import persons as csv.
-        ---
-        tags:
-          - Import
-        consumes:
-          - multipart/form-data
-        properties:
-          - in: formData
-            name: file
-            type: file
-            required: true
-        responses:
-            201:
-                description: Persons imported
-            400:
-                description: Format error
-        """
+    def post(self, *args):
         uploaded_file = request.files["file"]
         file_name = "%s.csv" % uuid.uuid4()
 
@@ -61,7 +43,7 @@ class BaseCsvImportResource(Resource, ArgsMixin):
         self.is_update = self.get_bool_parameter("update")
 
         try:
-            result = self.run_import(file_path)
+            result = self.run_import(file_path, *args)
             return result, 201
         except ImportRowException as e:
             current_app.logger.error(
@@ -82,15 +64,32 @@ class BaseCsvImportResource(Resource, ArgsMixin):
     def format_error(self, exception):
         return {"error": True, "message": str(exception)}
 
-    def run_import(self, file_path):
+    def run_import(self, file_path, *args):
         result = []
-        self.check_permissions()
-        self.prepare_import()
+        self.check_permissions(*args)
+        self.prepare_import(*args)
         with open(file_path) as csvfile:
             reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
+            line_number = 1
             for row in reader:
-                row = self.import_row(row)
-                result.append(row)
+                try:
+                    row = self.import_row(row, *args)
+                    result.append(row)
+                except IntegrityError as e:
+                    raise ImportRowException(e._message(), line_number)
+                except RowException as e:
+                    raise ImportRowException(e.message, line_number)
+                except KeyError as e:
+                    raise ImportRowException(
+                        f"A columns is missing: {str(e)}", line_number
+                    )
+                except ValueError as e:
+                    raise ImportRowException(
+                        f"A value is invalid: {str(e)}", line_number
+                    )
+                except Exception as e:
+                    raise ImportRowException(str(e), line_number)
+                line_number += 1
         return result
 
     def get_dialect(self, csvfile):
@@ -100,13 +99,13 @@ class BaseCsvImportResource(Resource, ArgsMixin):
         csvfile.seek(0)
         return dialect
 
-    def prepare_import(self):
+    def prepare_import(self, *args):
         pass
 
-    def check_permissions(self):
+    def check_permissions(self, *args):
         return permissions.check_manager_permissions()
 
-    def import_row(self):
+    def import_row(self, *args):
         pass
 
     def add_to_cache_if_absent(self, cache, retrieve_function, name):
@@ -124,54 +123,8 @@ class BaseCsvImportResource(Resource, ArgsMixin):
 
 class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
     @jwt_required()
-    def post(self, project_id, **kwargs):
-        uploaded_file = request.files["file"]
-        file_name = "%s.csv" % uuid.uuid4()
-        file_path = os.path.join(app.config["TMP_DIR"], file_name)
-        uploaded_file.save(file_path)
-        self.is_update = self.get_bool_parameter("update")
-
-        try:
-            result = self.run_import(project_id, file_path, **kwargs)
-            return result, 201
-        except ImportRowException as e:
-            current_app.logger.error(
-                "Import row %s failed: %s" % (e.line_number, e.message)
-            )
-            return self.format_row_error(e), 400
-        except csv.Error as e:
-            current_app.logger.error("Import failed: %s" % e)
-            return self.format_error(e), 400
-
-    def run_import(self, project_id, file_path, **kwargs):
-        result = []
-        self.check_project_permissions(project_id)
-        self.prepare_import(project_id, **kwargs)
-        with open(file_path) as csvfile:
-            reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
-            line_number = 1
-            for row in reader:
-                try:
-                    row = self.import_row(row, project_id, **kwargs)
-                    result.append(row)
-                except IntegrityError as e:
-                    raise ImportRowException(e._message(), line_number)
-                except RowException as e:
-                    raise ImportRowException(e.message, line_number)
-                except KeyError as e:
-                    raise ImportRowException(
-                        "A columns is missing: %s" % e.args, line_number
-                    )
-                except Exception as e:
-                    raise ImportRowException(str(e), line_number)
-                line_number += 1
-        return result
-
     def check_project_permissions(self, project_id):
         return user_service.check_manager_project_access(project_id)
-
-    def import_row(self, project_id, **kwargs):
-        pass
 
     def get_descriptor_field_map(self, project_id, entity_type):
         descriptor_map = {}

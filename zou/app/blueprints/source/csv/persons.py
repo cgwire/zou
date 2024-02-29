@@ -8,7 +8,7 @@ from zou.app.utils.string import strtobool
 
 
 class PersonsCsvImportResource(BaseCsvImportResource):
-    def post(self, **kwargs):
+    def post(self):
         """
         Import persons via a .csv file.
         ---
@@ -27,7 +27,7 @@ class PersonsCsvImportResource(BaseCsvImportResource):
             400:
                 description: The .csv file is not properly formatted.
         """
-        return super().post(**kwargs)
+        return super().post()
 
     def check_permissions(self):
         return permissions.check_admin_permissions()
@@ -52,13 +52,13 @@ class PersonsCsvImportResource(BaseCsvImportResource):
             if role in self.role_types_map.keys():
                 role = self.role_types_map[role]
             elif role not in self.role_types_map.values():
-                raise ValueError("Invalid role")
+                raise ValueError(f"Role: {role}")
             data["role"] = role
         if contract_type:
             if contract_type in self.contract_types_map.keys():
                 contract_type = self.contract_types_map[contract_type]
             elif contract_type not in self.contract_types_map.values():
-                raise ValueError("Invalid contract type")
+                raise ValueError(f"Contract Type: {contract_type}")
             data["contract_type"] = contract_type
         if phone:
             data["phone"] = phone
