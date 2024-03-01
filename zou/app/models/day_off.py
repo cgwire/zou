@@ -10,9 +10,14 @@ class DayOff(db.Model, BaseMixin, SerializerMixin):
     """
 
     date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date)
+    description = db.Column(db.String)
     person_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
     )
     __table_args__ = (
         db.UniqueConstraint("person_id", "date", name="day_off_uc"),
+        db.CheckConstraint(
+            "end_date IS NULL OR date < end_date", name="day_off_date_check"
+        ),
     )

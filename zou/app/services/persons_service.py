@@ -17,7 +17,7 @@ from zou.app.models.person import Person
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config
-from zou.app.utils import fields, events, cache, emails
+from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.services import index_service, auth_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
@@ -223,7 +223,7 @@ def create_person(
     if expiration_date is not None:
         try:
             if (
-                datetime.datetime.strptime(expiration_date, "%Y-%m-%d").date()
+                date_helpers.get_date_from_string(expiration_date).date()
                 < datetime.date.today()
             ):
                 raise WrongParameterException(
