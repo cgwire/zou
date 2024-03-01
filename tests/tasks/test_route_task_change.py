@@ -82,7 +82,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
             400,
         )
         self.put("/data/entities/%s" % asset_id, {"data": {"max_retakes": 2}})
-        entity = self.get("/data/entities/%s" % asset_id)
+        self.get("/data/entities/%s" % asset_id)
         self.post(
             "/actions/tasks/%s/comment" % task_id,
             {"task_status_id": self.retake_status_id, "comment": "retake 2"},

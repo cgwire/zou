@@ -330,7 +330,7 @@ class FileServiceTestCase(ApiDBTestCase):
         self.generate_fixture_asset()
         self.generate_fixture_scene()
 
-        scene_id = str(self.scene.id)
+        str(self.scene.id)
         shot_id = str(self.shot.id)
         asset_instance = self.generate_fixture_scene_asset_instance()
         self.generate_fixture_shot_asset_instance(
