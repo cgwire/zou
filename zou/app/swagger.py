@@ -345,6 +345,10 @@ swagger_template = {
                     "type": "string",
                     "description": "Color of department",
                 },
+                "archived": {
+                    "type": "boolean",
+                    "description": "True if the department is archived else False",
+                },
             },
         },
         "DesktopLoginLog": {
@@ -1186,6 +1190,23 @@ swagger_template = {
                     "type": "string",
                     "format": "UUID",
                     "description": "Task type ID",
+                },
+            },
+        },
+        "Studio": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of studio",
+                },
+                "color": {
+                    "type": "string",
+                    "description": "Color of studio",
+                },
+                "archived": {
+                    "type": "boolean",
+                    "description": "True if the studio is archived else False",
                 },
             },
         },

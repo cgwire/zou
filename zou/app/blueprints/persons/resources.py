@@ -104,6 +104,7 @@ class NewPersonResource(Resource, ArgsMixin):
                 departments=data["departments"],
                 is_bot=data["is_bot"],
                 expiration_date=data["expiration_date"],
+                studio_id=None,
                 active=data["active"],
             )
         return person, 201

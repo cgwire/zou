@@ -151,6 +151,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data.pop("is_generated_from_ldap", None)
             data.pop("ldap_uid", None)
             data.pop("last_presence", None)
+            data.pop("studio_id", None)
 
         if "role" in data and data["role"] not in [
             role for role, _ in ROLE_TYPES

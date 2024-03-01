@@ -128,6 +128,7 @@ from zou.app.blueprints.crud.chat_message import (
     ChatMessageResource,
     ChatMessagesResource,
 )
+from zou.app.blueprints.crud.studio import StudioResource, StudiosResource
 
 routes = [
     ("/data/persons", PersonsResource),
@@ -209,6 +210,8 @@ routes = [
         "/data/preview-background-files/<instance_id>",
         PreviewBackgroundFileResource,
     ),
+    ("/data/studios", StudiosResource),
+    ("/data/studios/<instance_id>", StudioResource),
 ]
 
 blueprint = Blueprint("/data", "data")

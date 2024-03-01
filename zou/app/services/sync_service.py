@@ -42,6 +42,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
+from zou.app.models.studio import Studio
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
@@ -102,6 +103,7 @@ event_name_model_map = {
     "subscription": Subscription,
     "search-filter": SearchFilter,
     "search-filter-group": SearchFilterGroup,
+    "studio": Studio,
     "task": Task,
     "task-status": TaskStatus,
     "task-type": TaskType,
@@ -140,6 +142,7 @@ event_name_model_path_map = {
     "search-filter": "search-filters",
     "search-filter-group": "search-filter-groups",
     "subscription": "subscriptions",
+    "studio": "studios",
     "task": "tasks",
     "task-status": "task-status",
     "task-type": "task-types",
@@ -173,6 +176,7 @@ main_events = [
     "organisation",
     "project-status",
     "department",
+    "studio",
     "task-type",
     "task-status",
     "custom-action",
