@@ -1,6 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.comment import Comment
 from zou.app.services import (
     comments_service,
     entities_service,

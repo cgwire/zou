@@ -45,7 +45,9 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_get_person(self):
         person = self.get_first("data/persons")
-        person_again = self.get("data/persons/%s" % person["id"])
+        person_again = self.get(
+            "data/persons/%s?relations=false" % person["id"]
+        )
         self.assertEqual(person, person_again)
         person_with_relations = self.get(
             "data/persons/%s?relations=true" % person["id"]

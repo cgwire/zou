@@ -96,7 +96,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     )
     locale = db.Column(LocaleType, default=Locale("en", "US"))
     data = db.Column(JSONB)
-    role = db.Column(ChoiceType(ROLE_TYPES), default="user")
+    role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
     has_avatar = db.Column(db.Boolean(), default=False)
 
     notifications_enabled = db.Column(db.Boolean(), default=False)

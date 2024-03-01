@@ -13,7 +13,7 @@ from zou.app.utils import events
 
 
 class CastingCsvImportResource(BaseCsvProjectImportResource):
-    def post(self, project_id, **kwargs):
+    def post(self, project_id):
         """
         Import project casting links via a .csv file.
         ---
@@ -38,7 +38,7 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: The .csv file is not properly formatted.
         """
-        return super().post(project_id, **kwargs)
+        return super().post(project_id)
 
     def prepare_import(self, project_id):
         self.asset_type_map = {}

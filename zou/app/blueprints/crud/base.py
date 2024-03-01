@@ -241,15 +241,11 @@ class BaseModelsResource(Resource, ArgsMixin):
             self.emit_create_event(instance_dict)
             return instance_dict, 201
 
-        except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except IntegrityError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
+        except (
+            TypeError,
+            IntegrityError,
+            StatementError,
+        ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
@@ -269,7 +265,7 @@ class BaseModelsResource(Resource, ArgsMixin):
         )
 
 
-class BaseModelResource(Resource):
+class BaseModelResource(Resource, ArgsMixin):
     def __init__(self, model):
         Resource.__init__(self)
         self.protected_fields = ["id", "created_at", "updated_at"]
@@ -302,8 +298,8 @@ class BaseModelResource(Resource):
                 data.pop(field, None)
         return data
 
-    def serialize_instance(self, data):
-        return data.serialize(relations=True)
+    def serialize_instance(self, data, relations=True):
+        return data.serialize(relations=relations)
 
     def clean_get_result(self, data):
         return data
@@ -330,9 +326,10 @@ class BaseModelResource(Resource):
             404:
                 description: Value error
         """
+        relations = self.get_bool_parameter("relations", "true")
         try:
             instance = self.get_model_or_404(instance_id)
-            result = self.serialize_instance(instance)
+            result = self.serialize_instance(instance, relations=relations)
             self.check_read_permissions(result)
             result = self.clean_get_result(result)
 
@@ -415,15 +412,11 @@ class BaseModelResource(Resource):
             self.emit_update_event(instance_dict)
             return instance_dict, 200
 
-        except TypeError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except IntegrityError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except StatementError as exception:
+        except (
+            TypeError,
+            IntegrityError,
+            StatementError,
+        ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 

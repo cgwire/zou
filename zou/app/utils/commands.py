@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import os
-import sys
 import datetime
 import tempfile
 
@@ -25,7 +24,6 @@ from zou.app.services import (
 )
 from zou.app.models.person import Person
 from sqlalchemy.sql.expression import not_
-from sqlalchemy.exc import IntegrityError
 
 from zou.app.services.exception import (
     PersonNotFoundException,

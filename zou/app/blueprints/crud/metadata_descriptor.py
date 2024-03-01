@@ -3,15 +3,10 @@ from zou.app.models.metadata_descriptor import (
     METADATA_DESCRIPTOR_TYPES,
 )
 
-from zou.app.models.department import Department
-
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-
-from sqlalchemy.exc import StatementError
 
 from zou.app.services.exception import (
     ArgumentsException,
-    DepartmentNotFoundException,
 )
 
 
@@ -42,12 +37,6 @@ class MetadataDescriptorsResource(BaseModelsResource):
 class MetadataDescriptorResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, MetadataDescriptor)
-
-    def post_update(self, instance_dict, data):
-        instance_dict["departments"] = [
-            str(department.id) for department in self.instance.departments
-        ]
-        return instance_dict
 
     def update_data(self, data, instance_id):
         """

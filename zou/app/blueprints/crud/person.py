@@ -1,11 +1,13 @@
 import datetime
 
-from flask import abort
 from flask_jwt_extended import jwt_required
-from flask_restful import current_app
-from sqlalchemy.exc import StatementError
 
-from zou.app.models.person import Person
+from zou.app.models.person import (
+    Person,
+    ROLE_TYPES,
+    CONTRACT_TYPES,
+    TWO_FACTOR_AUTHENTICATION_TYPES,
+)
 from zou.app.services import (
     deletion_service,
     index_service,
@@ -69,14 +71,24 @@ class PersonsResource(BaseModelsResource):
             )
         return permissions.check_admin_permissions()
 
-    def update_data(self, data):
-        data = super().update_data(data)
-        if "password" in data:
-            data["password"] = auth.encrypt_password(data["password"])
-        if "email" in data:
-            data["email"] = data["email"].strip()
+    def check_creation_integrity(self, data):
+        if "role" in data and data["role"] not in [
+            role for role, _ in ROLE_TYPES
+        ]:
+            raise ArgumentsException("Invalid role")
+        if "contract_type" in data and data["contract_type"] not in [
+            contract_type for contract_type, _ in CONTRACT_TYPES
+        ]:
+            raise ArgumentsException("Invalid contract_type")
+        if "two_factor_authentication" in data and data[
+            "two_factor_authentication"
+        ] not in [
+            two_factor_authentication
+            for two_factor_authentication, _ in TWO_FACTOR_AUTHENTICATION_TYPES
+        ]:
+            raise ArgumentsException("Invalid two_factor_authentication")
 
-        if "expiration_date" in data:
+        if "expiration_date" in data and data["expiration_date"] is not None:
             try:
                 if (
                     datetime.datetime.strptime(
@@ -89,6 +101,14 @@ class PersonsResource(BaseModelsResource):
                     )
             except:
                 raise ArgumentsException("Expiration date is not valid.")
+        return data
+
+    def update_data(self, data):
+        data = super().update_data(data)
+        if "password" in data and data["password"] is not None:
+            data["password"] = auth.encrypt_password(data["password"])
+        if "email" in data:
+            data["email"] = data["email"].strip()
         return data
 
     def post_creation(self, instance):
@@ -131,6 +151,36 @@ class PersonResource(BaseModelResource, ArgsMixin):
             data.pop("is_generated_from_ldap", None)
             data.pop("ldap_uid", None)
             data.pop("last_presence", None)
+
+        if "role" in data and data["role"] not in [
+            role for role, _ in ROLE_TYPES
+        ]:
+            raise ArgumentsException("Invalid role")
+        if "contract_type" in data and data["contract_type"] not in [
+            contract_type for contract_type, _ in CONTRACT_TYPES
+        ]:
+            raise ArgumentsException("Invalid contract_type")
+        if "two_factor_authentication" in data and data[
+            "two_factor_authentication"
+        ] not in [
+            two_factor_authentication
+            for two_factor_authentication, _ in TWO_FACTOR_AUTHENTICATION_TYPES
+        ]:
+            raise ArgumentsException("Invalid two_factor_authentication")
+
+        if "expiration_date" in data and data["expiration_date"] is not None:
+            try:
+                if (
+                    datetime.datetime.strptime(
+                        data["expiration_date"], "%Y-%m-%d"
+                    ).date()
+                    < datetime.date.today()
+                ):
+                    raise ArgumentsException(
+                        "Expiration date can't be in the past."
+                    )
+            except:
+                raise ArgumentsException("Expiration date is not valid.")
         return data
 
     def check_delete_permissions(self, instance_dict):
@@ -139,29 +189,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         permissions.check_admin_permissions()
         return instance_dict
 
-    @jwt_required()
-    def get(self, instance_id):
-        """
-        Retrieves the given person.
-        """
-        relations = self.get_bool_parameter("relations")
-
-        try:
-            instance = self.get_model_or_404(instance_id)
-            result = self.serialize_instance(instance, relations=relations)
-            self.check_read_permissions(result)
-            result = self.clean_get_result(result)
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except ValueError:
-            abort(404)
-
-        return result, 200
-
-    def serialize_instance(self, instance, relations=False):
+    def serialize_instance(self, instance, relations=True):
         if permissions.has_manager_permissions():
             return instance.serialize_safe(relations=relations)
         else:
@@ -205,10 +233,6 @@ class PersonResource(BaseModelResource, ArgsMixin):
     def post_delete(self, instance_dict):
         persons_service.clear_person_cache()
         return instance_dict
-
-    def update_data(self, data, instance_id):
-        data = super().update_data(data, instance_id)
-        return data
 
     @jwt_required()
     def delete(self, instance_id):
