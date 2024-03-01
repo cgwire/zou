@@ -29,8 +29,6 @@ from werkzeug.exceptions import NotFound
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
-from zou.app.services.exception import EntityNotFoundException
-
 
 class EntityEventMixin(object):
     def emit_event(self, event_name, entity_dict):

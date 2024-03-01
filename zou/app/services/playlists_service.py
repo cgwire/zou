@@ -9,7 +9,6 @@ from pathlib import Path
 from shutil import copyfile
 from zipfile import ZipFile
 
-from flask import current_app
 from flask_fs.errors import FileNotFound
 from slugify import slugify
 from sqlalchemy import or_

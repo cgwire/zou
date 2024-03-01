@@ -11,7 +11,6 @@ from zou.app.services import (
     user_service,
     tasks_service,
     deletion_service,
-    persons_service,
     entities_service,
     assets_service,
 )

@@ -12,9 +12,6 @@ from zou.app.services import (
     shots_service,
     user_service,
     persons_service,
-    assets_service,
-    tasks_service,
-    status_automations_service,
     files_service,
 )
 from zou.app.utils import events, permissions, fields
