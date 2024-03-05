@@ -83,6 +83,64 @@ ENTITY_STATUSES = [
 ]
 
 
+STATUSES = [
+    ("processing", "Processing"),
+    ("ready", "Ready"),
+    ("broken", "Broken"),
+]
+
+VALIDATION_STATUSES = [
+    ("validated", "Validated"),
+    ("rejected", "Rejected"),
+    ("neutral", "Neutral"),
+]
+
+
+class PreviewFile(base, BaseMixin):
+    """
+    Describes a file which is aimed at being reviewed. It is not a publication
+    neither a working file.
+    """
+
+    __tablename__ = "preview_file"
+    name = sa.Column(sa.String(250))
+    original_name = sa.Column(sa.String(250))
+    revision = sa.Column(sa.Integer(), default=1)
+    position = sa.Column(sa.Integer(), default=1)
+    extension = sa.Column(sa.String(6))
+    description = sa.Column(sa.Text())
+    path = sa.Column(sa.String(400))
+    source = sa.Column(sa.String(40))
+    file_size = sa.Column(sa.BigInteger(), default=0)
+    status = sa.Column(ChoiceType(STATUSES), default="processing")
+    validation_status = sa.Column(
+        ChoiceType(VALIDATION_STATUSES), default="neutral", nullable=False
+    )
+    annotations = sa.Column(JSONB)
+    width = sa.Column(sa.Integer(), default=0)
+    height = sa.Column(sa.Integer(), default=0)
+    duration = sa.Column(sa.Float, default=0)
+
+    task_id = sa.Column(
+        UUIDType(binary=False), sa.ForeignKey("task.id"), index=True
+    )
+    person_id = sa.Column(UUIDType(binary=False), sa.ForeignKey("person.id"))
+    source_file_id = sa.Column(
+        UUIDType(binary=False), sa.ForeignKey("output_file.id")
+    )
+
+    __table_args__ = (
+        sa.UniqueConstraint("name", "task_id", "revision", name="preview_uc"),
+    )
+
+    shotgun_id = sa.Column(sa.Integer, unique=True)
+
+    is_movie = sa.Column(sa.Boolean, default=False)  # deprecated
+    url = sa.Column(sa.String(600))  # deprecated
+    uploaded_movie_url = sa.Column(sa.String(600))  # deprecated
+    uploaded_movie_name = sa.Column(sa.String(150))  # deprecated
+
+
 class Entity(base, BaseMixin):
     """
     Base model to represent assets, shots, sequences, episodes and scenes.
@@ -161,6 +219,18 @@ def upgrade():
         )
 
     with op.batch_alter_table("preview_file", schema=None) as batch_op:
+        session = Session(bind=op.get_bind())
+        session.query(PreviewFile).where(
+            PreviewFile.validation_status == None
+        ).update(
+            {
+                PreviewFile.validation_status: "neutral",
+            }
+        )
+        session.commit()
+        batch_op.alter_column(
+            "status", existing_type=sa.VARCHAR(length=255), nullable=False
+        )
         batch_op.alter_column(
             "validation_status",
             existing_type=sa.VARCHAR(length=255),
