@@ -8,6 +8,11 @@ Create Date: 2024-03-01 00:18:48.971796
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.orm.session import Session
+from zou.migrations.utils.base import BaseMixin
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_utils import ChoiceType
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 # revision identifiers, used by Alembic.
@@ -15,6 +20,58 @@ revision = "17ef8f7be758"
 down_revision = "45dafbb3f4e1"
 branch_labels = None
 depends_on = None
+
+base = declarative_base()
+
+PROJECT_STYLES = [
+    ("2d", "2D Animation"),
+    ("3d", "3D Animation"),
+    ("2d3d", "2D/3D Animation"),
+    ("ar", "Augmented Reality"),
+    ("vfx", "VFX"),
+    ("stop-motion", "Stop Motion"),
+    ("motion-design", "Motion Design"),
+    ("archviz", "Archviz"),
+    ("commercial", "Commercial"),
+    ("catalog", "Catalog"),
+    ("immersive", "Immersive Experience"),
+    ("nft", "NFT Collection"),
+    ("video-game", "Video Game"),
+    ("vr", "Virtual Reality"),
+]
+
+
+class Project(base, BaseMixin):
+    """
+    Describes a production the studio works on.
+    """
+
+    __tablename__ = "project"
+
+    name = sa.Column(sa.String(80), nullable=False, unique=True, index=True)
+    code = sa.Column(sa.String(80))
+    description = sa.Column(sa.Text())
+    shotgun_id = sa.Column(sa.Integer)
+    file_tree = sa.Column(JSONB)
+    data = sa.Column(JSONB)
+    has_avatar = sa.Column(sa.Boolean(), default=False)
+    fps = sa.Column(sa.String(10), default=25)
+    ratio = sa.Column(sa.String(10), default="16:9")
+    resolution = sa.Column(sa.String(12), default="1920x1080")
+    production_type = sa.Column(sa.String(20), default="short")
+    production_style = sa.Column(
+        ChoiceType(PROJECT_STYLES), default="2d3d", nullable=False
+    )
+    start_date = sa.Column(sa.Date())
+    end_date = sa.Column(sa.Date())
+    man_days = sa.Column(sa.Integer)
+    nb_episodes = sa.Column(sa.Integer, default=0)
+    episode_span = sa.Column(sa.Integer, default=0)
+    max_retakes = sa.Column(sa.Integer, default=0)
+    is_clients_isolated = sa.Column(sa.Boolean(), default=False)
+    is_preview_download_allowed = sa.Column(sa.Boolean(), default=False)
+    is_set_preview_automated = sa.Column(sa.Boolean(), default=False)
+    homepage = sa.Column(sa.String(80), default="assets")
 
 
 def upgrade():
@@ -45,6 +102,13 @@ def upgrade():
         )
 
     with op.batch_alter_table("project", schema=None) as batch_op:
+        session = Session(bind=op.get_bind())
+        session.query(Project).where(Project.production_style == None).update(
+            {
+                Project.production_style: "2d3d",
+            }
+        )
+        session.commit()
         batch_op.alter_column(
             "production_style",
             existing_type=sa.VARCHAR(length=255),
