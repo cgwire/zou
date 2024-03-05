@@ -1568,3 +1568,99 @@ class PersonsTasksDatesResource(Resource):
         """
         permissions.check_admin_permissions()
         return tasks_service.get_persons_tasks_dates()
+
+
+class OpenTasksResource(Resource, ArgsMixin):
+    """
+    Return all tasks related to open projects.
+    """
+
+    @jwt_required()
+    def get(self):
+        """
+        Return all tasks related to open projects.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: query
+            name: project_id
+            description: Filter tasks on given project ID
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_status_id
+            description: Filter tasks on given task status ID
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            description: Filter tasks on given task type ID ID
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: person_id
+            description: Filter tasks on given person ID
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: start_date
+            description: Filter tasks posterior to given start date
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: query
+            name: due_date
+            description: Filter tasks anterior to given due date
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: query
+            name: priority
+            description: Filter tasks on given priority
+            type: integer
+            x-example: "3"
+          - in: query
+            name: page
+            description: Page number
+            type: integer
+            x-example: 1
+            default: 1
+          - in: query
+            name: limit
+            description: Number of tasks per page
+            type: integer
+            x-example: 100
+            default: 100
+
+        responses:
+            200:
+                description: All tasks related to open projects
+        """
+        args = self.get_args([
+            ("task_type_id", None, False, str),
+            ("project_id", None, False, str),
+            ("person_id", None, False, str),
+            ("task_status_id", None, False, str),
+            ("start_date", None, False, str),
+            ("due_date", None, False, str),
+            ("priority", None, False, str),
+            ("group_by", None, False, str),
+            ("page", None, False, int),
+            ("limit", 100, False, int),
+        ])
+        return tasks_service.get_open_tasks(
+            task_type_id=args["task_type_id"],
+            project_id=args["project_id"],
+            person_id=args["person_id"],
+            task_status_id=args["task_status_id"],
+            start_date=args["start_date"],
+            due_date=args["due_date"],
+            priority=args["priority"],
+            page=args["page"],
+            limit=args["limit"]
+        )
