@@ -11,9 +11,11 @@ import sqlalchemy as sa
 from sqlalchemy.orm.session import Session
 from zou.migrations.utils.base import BaseMixin
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy_utils import ChoiceType
+from sqlalchemy_utils import ChoiceType, EmailType, LocaleType, TimezoneType
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy_utils import UUIDType
+from babel import Locale
+from pytz import timezone as pytz_timezone
 
 
 # revision identifiers, used by Alembic.
@@ -239,6 +241,84 @@ STATUSES = [
 
 TYPES = [("archive", "Archive"), ("movie", "Movie")]
 
+TWO_FACTOR_AUTHENTICATION_TYPES = [
+    ("totp", "TOTP"),
+    ("email_otp", "Email OTP"),
+    ("fido", "FIDO"),
+]
+
+CONTRACT_TYPES = [
+    ("open-ended", "Open-ended"),
+    ("fixed-term", "Fixed-term"),
+    ("short-term", "Short-term"),
+    ("freelance", "Freelance"),
+    ("apprentice", "Apprentice"),
+    ("internship", "Internship"),
+]
+
+ROLE_TYPES = [
+    ("user", "Artist"),
+    ("admin", "Studio Manager"),
+    ("supervisor", "Supervisor"),
+    ("manager", "Production Manager"),
+    ("client", "Client"),
+    ("vendor", "Vendor"),
+]
+
+
+class Person(base, BaseMixin):
+    """
+    Describe a member of the studio (and an API user).
+    """
+
+    __tablename__ = "person"
+    first_name = sa.Column(sa.String(80), nullable=False)
+    last_name = sa.Column(sa.String(80), nullable=False)
+    email = sa.Column(EmailType, unique=True)
+    phone = sa.Column(sa.String(30))
+    contract_type = sa.Column(ChoiceType(CONTRACT_TYPES), default="open-ended")
+
+    active = sa.Column(sa.Boolean(), default=True)
+    archived = sa.Column(sa.Boolean(), default=False)
+    last_presence = sa.Column(sa.Date())
+
+    password = sa.Column(sa.LargeBinary(60))
+    desktop_login = sa.Column(sa.String(80))
+    login_failed_attemps = sa.Column(sa.Integer, default=0)
+    last_login_failed = sa.Column(sa.DateTime())
+    totp_enabled = sa.Column(sa.Boolean(), default=False)
+    totp_secret = sa.Column(sa.String(32), default=None)
+    email_otp_enabled = sa.Column(sa.Boolean(), default=False)
+    email_otp_secret = sa.Column(sa.String(32), default=None)
+    fido_enabled = sa.Column(sa.Boolean(), default=False)
+    fido_credentials = sa.Column(sa.ARRAY(JSONB))
+    otp_recovery_codes = sa.Column(sa.ARRAY(sa.LargeBinary(60)))
+    preferred_two_factor_authentication = sa.Column(
+        ChoiceType(TWO_FACTOR_AUTHENTICATION_TYPES)
+    )
+
+    shotgun_id = sa.Column(sa.Integer, unique=True)
+    timezone = sa.Column(
+        TimezoneType(backend="pytz"),
+        default=pytz_timezone("Europe/Paris"),
+    )
+    locale = sa.Column(LocaleType, default=Locale("en", "US"))
+    data = sa.Column(JSONB)
+    role = sa.Column(ChoiceType(ROLE_TYPES), default="user")
+    has_avatar = sa.Column(sa.Boolean(), default=False)
+
+    notifications_enabled = sa.Column(sa.Boolean(), default=False)
+    notifications_slack_enabled = sa.Column(sa.Boolean(), default=False)
+    notifications_slack_userid = sa.Column(sa.String(60), default="")
+    notifications_mattermost_enabled = sa.Column(sa.Boolean(), default=False)
+    notifications_mattermost_userid = sa.Column(sa.String(60), default="")
+    notifications_discord_enabled = sa.Column(sa.Boolean(), default=False)
+    notifications_discord_userid = sa.Column(sa.String(60), default="")
+
+    is_bot = sa.Column(sa.Boolean(), default=False, nullable=False)
+    jti = sa.Column(sa.String(60), nullable=True, unique=True)
+    expiration_date = sa.Column(sa.Date(), nullable=True)
+
 
 class BuildJob(
     base,
@@ -298,6 +378,13 @@ def upgrade():
         )
 
     with op.batch_alter_table("person", schema=None) as batch_op:
+        session = Session(bind=op.get_bind())
+        session.query(Person).where(Person.role == None).update(
+            {
+                Person.role: "user",
+            }
+        )
+        session.commit()
         batch_op.alter_column(
             "role", existing_type=sa.VARCHAR(length=255), nullable=False
         )
@@ -309,6 +396,11 @@ def upgrade():
         ).update(
             {
                 PreviewFile.validation_status: "neutral",
+            }
+        )
+        session.query(PreviewFile).where(PreviewFile.status == None).update(
+            {
+                PreviewFile.status: "processing",
             }
         )
         session.commit()
