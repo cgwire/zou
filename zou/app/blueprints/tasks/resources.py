@@ -1639,7 +1639,36 @@ class OpenTasksResource(Resource, ArgsMixin):
 
         responses:
             200:
-                description: All tasks related to open projects
+                schema:
+                    type: object
+                    properties:
+                        data:
+                            type: array
+                            description: List of tasks
+                        stats:
+                            type: object
+                            properties:
+                                total:
+                                    type: integer
+                                    description: Total number of tasks
+                                total_duration:
+                                    type: integer
+                                    description: Total duration of tasks in minutes
+                                total_estimation:
+                                    type: integer
+                                    description: Total estimation of tasks in minutes
+                                status:
+                                    type: object
+                                    description: Number of tasks per status
+                        limit:
+                            type: integer
+                            description: Number of tasks per page
+                        page:
+                            type: integer
+                            description: Page number
+                        is_more:
+                            type: boolean
+                            description: True if there are more tasks to retrieve
         """
         args = self.get_args([
             ("task_type_id", None, False, str),

@@ -1990,7 +1990,6 @@ def get_open_tasks(
 
         result = {
             "data": tasks,
-            "total": count,
             "stats": {
                 "total_duration": stats.total_duration,
                 "total_estimation": stats.total_estimation,
