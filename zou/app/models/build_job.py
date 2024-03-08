@@ -22,8 +22,8 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
     of a given playlist.
     """
 
-    status = db.Column(ChoiceType(STATUSES), nullable=False)
-    job_type = db.Column(ChoiceType(TYPES), nullable=False)
+    status = db.Column(ChoiceType(STATUSES), default="running", nullable=False)
+    job_type = db.Column(ChoiceType(TYPES), default="movie", nullable=False)
     ended_at = db.Column(db.DateTime)
 
     playlist_id = db.Column(

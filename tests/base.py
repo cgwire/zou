@@ -290,15 +290,21 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_asset(
-        self, name="Tree", description="Description Tree", asset_type_id=None
+        self, name="Tree",
+        description="Description Tree",
+        asset_type_id=None,
+        project_id=None,
     ):
         if asset_type_id is None:
             asset_type_id = self.asset_type.id
 
+        if project_id is None:
+            project_id = self.project_id
+
         self.asset = Entity.create(
             name=name,
             description=description,
-            project_id=self.project.id,
+            project_id=project_id,
             entity_type_id=asset_type_id,
         )
         return self.asset
@@ -500,7 +506,7 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_person(
         self,
         first_name="John",
-        last_name="Doe",
+            last_name="Doe",
         desktop_login="john.doe",
         email="john.doe@gmail.com",
     ):
@@ -655,7 +661,7 @@ class ApiDBTestCase(ApiTestCase):
         return self.assigner
 
     def generate_fixture_task(
-        self, name="Master", entity_id=None, task_type_id=None
+        self, name="Master", entity_id=None, task_type_id=None, project_id=None
     ):
         if entity_id is None:
             entity_id = self.asset.id
@@ -663,12 +669,15 @@ class ApiDBTestCase(ApiTestCase):
         if task_type_id is None:
             task_type_id = self.task_type.id
 
+        if project_id is None:
+            project_id = self.project.id
+
         start_date = fields.get_date_object("2017-02-20")
         due_date = fields.get_date_object("2017-02-28")
         real_start_date = fields.get_date_object("2017-02-22")
         self.task = Task.create(
             name=name,
-            project_id=self.project.id,
+            project_id=project_id,
             task_type_id=task_type_id,
             task_status_id=self.task_status.id,
             entity_id=entity_id,

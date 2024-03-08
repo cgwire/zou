@@ -335,7 +335,7 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
     ):
-        task_status = tasks_service.get_task_status(task["task_status_id"])
+        tasks_service.get_task_status(task["task_status_id"])
         project = projects_service.get_project(task["project_id"])
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
         subject = "[Kitsu] %s replied on %s" % (

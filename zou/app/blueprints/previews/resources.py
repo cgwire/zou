@@ -498,7 +498,7 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
 
         try:
             return send_movie_file(instance_id, lowdef=True)
-        except Exception as e:
+        except Exception:
             try:
                 return send_movie_file(instance_id)
             except FileNotFound:
