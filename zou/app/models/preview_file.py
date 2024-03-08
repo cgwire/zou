@@ -34,7 +34,9 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     path = db.Column(db.String(400))
     source = db.Column(db.String(40))
     file_size = db.Column(db.BigInteger(), default=0)
-    status = db.Column(ChoiceType(STATUSES), default="processing")
+    status = db.Column(
+        ChoiceType(STATUSES), default="processing", nullable=False
+    )
     validation_status = db.Column(
         ChoiceType(VALIDATION_STATUSES), default="neutral", nullable=False
     )

@@ -7,8 +7,6 @@ from zou.app.services.exception import (
     ArgumentsException,
 )
 
-from zou.app.services.exception import ArgumentsException
-
 
 class DepartmentsResource(BaseModelsResource):
     def __init__(self):

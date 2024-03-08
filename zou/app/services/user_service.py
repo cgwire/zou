@@ -515,6 +515,28 @@ def check_manager_project_access(project_id):
     return is_allowed
 
 
+def check_time_spent_access(task_id, person_id):
+    """
+    Return true if current user is an admin or is a manager or is assigned to
+    the task.
+    """
+    task = tasks_service.get_task(task_id, relations=True)
+    is_allowed = person_id in task["assignees"] and (
+        persons_service.get_current_user()["id"] == person_id
+        or (
+            permissions.has_admin_permissions()
+            or (
+                permissions.has_manager_permissions()
+                and check_belong_to_project(task["project_id"])
+            )
+        )
+    )
+
+    if not is_allowed:
+        raise permissions.PermissionDenied
+    return is_allowed
+
+
 def check_supervisor_project_access(project_id):
     """
     Return true if current user is a manager or a supervisor and has a task

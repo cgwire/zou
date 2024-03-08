@@ -3,6 +3,7 @@ from zou.app.models.time_spent import TimeSpent
 from sqlalchemy import func
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
+from zou.app.services import user_service
 
 
 class TimeSpentsResource(BaseModelsResource):
@@ -34,3 +35,8 @@ class TimeSpentsResource(BaseModelsResource):
 class TimeSpentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, TimeSpent)
+
+    def check_delete_permissions(self, instance):
+        return user_service.check_time_spent_access(
+            instance.task_id, str(instance.person_id)
+        )

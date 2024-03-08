@@ -1383,9 +1383,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     task = Task.get(task_id)
     project_id = str(task.project_id)
     if time_spent is not None:
-        if duration == 0:
-            time_spent.delete()
-        elif add:
+        if add:
             time_spent.update({"duration": time_spent.duration + duration})
         else:
             time_spent.update({"duration": duration})

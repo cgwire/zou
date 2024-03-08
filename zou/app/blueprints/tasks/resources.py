@@ -10,6 +10,7 @@ from zou.app.services.exception import (
     PersonNotFoundException,
     MalformedFileTreeException,
     WrongDateFormatException,
+    WrongParameterException,
 )
 from zou.app.services import (
     assets_service,
@@ -1125,12 +1126,11 @@ class SetTimeSpentResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        args = self.get_args([("duration", 0, False, int)])
+        args = self.get_args([("duration", 0, True, int)])
         try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-            persons_service.get_person(person_id)
+            if args["duration"] <= 0:
+                raise WrongParameterException("Duration must be positive")
+            user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
@@ -1189,13 +1189,11 @@ class AddTimeSpentResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        args = self.get_args([("duration", 0, False, int)])
+        args = self.get_args([("duration", 0, True, int)])
         try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-
-            persons_service.get_person(person_id)
+            if args["duration"] <= 0:
+                raise WrongParameterException("Duration must be positive")
+            user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id, person_id, date, args["duration"], add=True
             )
