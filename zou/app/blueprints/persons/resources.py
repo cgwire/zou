@@ -33,11 +33,14 @@ class NewPersonResource(Resource, ArgsMixin):
     Create a new user in the database.
     """
 
+    # TODO: Remove this route in the future.
     @jwt_required()
     @permissions.require_admin
     def post(self):
         """
         Create a new user in the database.
+        This route will be removed in the future.
+        Please use POST /data/persons instead.
         ---
         tags:
         - Persons
@@ -1205,7 +1208,7 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
         """
         permissions.check_admin_permissions()
         try:
-            department = tasks_service.get_department(department_id)
+            tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"

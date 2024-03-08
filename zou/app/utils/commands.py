@@ -1,7 +1,6 @@
 # coding: utf-8
 
 import os
-import sys
 import datetime
 import tempfile
 
@@ -25,7 +24,6 @@ from zou.app.services import (
 )
 from zou.app.models.person import Person
 from sqlalchemy.sql.expression import not_
-from sqlalchemy.exc import IntegrityError
 
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -706,20 +704,16 @@ def create_bot(
     role,
 ):
     with app.app_context():
-        try:
-            # Allow "admin@example.com" to be invalid.
-            if email != "admin@example.com":
-                auth.validate_email(email)
-            bot = persons_service.create_person(
-                email=email,
-                password=None,
-                first_name=name,
-                last_name="",
-                expiration_date=expiration_date,
-                role=role,
-                is_bot=True,
-            )
-            print(bot["access_token"])
-        except IntegrityError:
-            print("Bot already exists for this name.")
-            sys.exit(1)
+        # Allow "admin@example.com" to be invalid.
+        if email != "admin@example.com":
+            auth.validate_email(email)
+        bot = persons_service.create_person(
+            email=email,
+            password=None,
+            first_name=name,
+            last_name="",
+            expiration_date=expiration_date,
+            role=role,
+            is_bot=True,
+        )
+        print(bot["access_token"])

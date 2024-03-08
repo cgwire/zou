@@ -45,7 +45,9 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_get_person(self):
         person = self.get_first("data/persons")
-        person_again = self.get("data/persons/%s" % person["id"])
+        person_again = self.get(
+            "data/persons/%s?relations=false" % person["id"]
+        )
         self.assertEqual(person, person_again)
         person_with_relations = self.get(
             "data/persons/%s?relations=true" % person["id"]
@@ -65,6 +67,17 @@ class PersonTestCase(ApiDBTestCase):
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 5)
 
+        data = {
+            "first_name": "John2",
+            "last_name": "Doe",
+            "email": "john3.doe@gmail.com",
+        }
+        self.person = self.post("data/persons", data)
+        self.assertIsNotNone(self.person["id"])
+
+        persons = self.get("data/persons")
+        self.assertEqual(len(persons), 6)
+
     def test_create_too_much_person(self):
         from zou.app import config
 
@@ -76,11 +89,14 @@ class PersonTestCase(ApiDBTestCase):
         }
         resp = self.post("data/persons/new", data, 400)
         self.assertEqual(resp["limit"], 4)
+        resp = self.post("data/persons", data, 400)
+        self.assertEqual(resp["limit"], 4)
         config.USER_LIMIT = 100
 
     def test_create_person_with_no_data(self):
         data = {}
         self.person = self.post("data/persons/new", data, 400)
+        self.person = self.post("data/persons", data, 400)
 
     def test_create_person_with_wrong_data(self):
         data = {
@@ -89,6 +105,7 @@ class PersonTestCase(ApiDBTestCase):
             "last_name": "Doe",
         }
         self.person = self.post("data/persons/new", data, 400)
+        self.person = self.post("data/persons", data, 400)
 
     def test_create_person_with_departments(self):
         self.generate_fixture_department()
@@ -102,6 +119,22 @@ class PersonTestCase(ApiDBTestCase):
             "departments": departments,
         }
         person = self.post("data/persons/new", data)
+        self.assertIsNotNone(person["id"])
+        self.assertEqual(
+            set(person["departments"]),
+            set(departments),
+        )
+
+        created_person = Person.get(person["id"])
+        self.assertEqual(
+            set(
+                str(department.id) for department in created_person.departments
+            ),
+            set(departments),
+        )
+
+        data["email"] = "john3.doe@gmail.com"
+        person = self.post("data/persons", data)
         self.assertIsNotNone(person["id"])
         self.assertEqual(
             set(person["departments"]),

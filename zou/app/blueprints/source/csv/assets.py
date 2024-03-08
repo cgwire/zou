@@ -20,7 +20,7 @@ from zou.app.utils import events, cache
 
 
 class AssetsCsvImportResource(BaseCsvProjectImportResource):
-    def post(self, project_id, **kwargs):
+    def post(self, project_id):
         """
         Import project assets via a .csv file.
         ---
@@ -45,7 +45,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: The .csv file is not properly formatted.
         """
-        return super().post(project_id, **kwargs)
+        return super().post(project_id)
 
     def prepare_import(self, project_id):
         self.episodes = {}
@@ -281,8 +281,11 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
             ]
         return task_type_ids
 
-    def run_import(self, project_id, file_path):
-        entities = super().run_import(project_id, file_path)
+    def run_import(self, file_path, project_id):
+        entities = super().run_import(
+            file_path,
+            project_id,
+        )
         for asset in entities:
             task_type_ids = self.get_task_types_for_asset_type(
                 asset["entity_type_id"]

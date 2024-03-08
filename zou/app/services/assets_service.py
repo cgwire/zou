@@ -15,7 +15,6 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.subscription import Subscription
 from zou.app.models.project import Project
 from zou.app.models.task import Task
-from zou.app.models.task_type import TaskType
 from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.task import assignees_table
 
@@ -36,7 +35,6 @@ from zou.app.services.exception import (
     AssetNotFoundException,
     AssetInstanceNotFoundException,
     AssetTypeNotFoundException,
-    TaskTypeNotFoundException,
 )
 
 
@@ -418,26 +416,6 @@ def get_asset_with_relations(entity_id):
     Return a given asset as a dict.
     """
     return get_asset_raw(entity_id).serialize(obj_type="Asset", relations=True)
-
-
-def get_task_types_from_asset_type(data):
-    """
-    Return a list of task types objects from ids `task_types` list of data dict.
-
-    Args:
-        data (dict): Data from Resource POST
-    """
-    task_types = []
-    if "task_types" in data:
-        try:
-            for task_type_id in data["task_types"]:
-                task_type = TaskType.get(task_type_id)
-                if task_type is not None:
-                    task_types.append(task_type)
-        except StatementError:
-            raise TaskTypeNotFoundException()
-
-    return task_types
 
 
 def get_asset_by_shotgun_id(shotgun_id):

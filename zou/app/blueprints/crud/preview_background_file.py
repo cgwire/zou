@@ -1,6 +1,6 @@
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.services.exception import ArgumentsException
-from zou.app.services import files_service, deletion_service
+from zou.app.services import files_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 

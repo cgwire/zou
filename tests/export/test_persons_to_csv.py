@@ -9,7 +9,7 @@ class PersonsCsvExportTestCase(ApiDBTestCase):
 
     def test_export(self):
         csv_persons = self.get_raw("/export/csv/persons.csv")
-        expected_result = """Last Name;First Name;Email;Phone;Role;Active\r
-Did;John;john.did@gmail.com;;admin;yes\r
-Doe;John;john.doe@gmail.com;;user;yes\r\n"""
+        expected_result = """Last Name;First Name;Email;Phone;Role;Contract Type;Active\r
+Did;John;john.did@gmail.com;;admin;open-ended;yes\r
+Doe;John;john.doe@gmail.com;;user;open-ended;yes\r\n"""
         self.assertEqual(csv_persons, expected_result)

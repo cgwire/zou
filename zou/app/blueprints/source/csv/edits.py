@@ -25,7 +25,7 @@ from zou.app.utils import events
 
 
 class EditsCsvImportResource(BaseCsvProjectImportResource):
-    def post(self, project_id, **kwargs):
+    def post(self, project_id):
         """
         Import project edits.
         ---
@@ -50,7 +50,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
             400:
                 description: Format error
         """
-        return super().post(project_id, **kwargs)
+        return super().post(project_id)
 
     def prepare_import(self, project_id):
         self.episodes = {}
@@ -227,8 +227,8 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
 
         return entity.serialize()
 
-    def run_import(self, project_id, file_path):
-        entities = super().run_import(project_id, file_path)
+    def run_import(self, file_path, project_id):
+        entities = super().run_import(file_path, project_id)
         for task_type in self.task_types_in_project_for_edits:
             create_tasks(task_type.serialize(), self.created_edits)
         return entities

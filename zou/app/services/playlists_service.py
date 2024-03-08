@@ -9,7 +9,6 @@ from pathlib import Path
 from shutil import copyfile
 from zipfile import ZipFile
 
-from flask import current_app
 from flask_fs.errors import FileNotFound
 from slugify import slugify
 from sqlalchemy import or_
@@ -82,6 +81,7 @@ def all_playlists_for_episode(
     project_id,
     episode_id,
     for_client=False,
+    page=1,
     sort_by="updated_at",
     task_type_id=None,
 ):
@@ -114,6 +114,12 @@ def all_playlists_for_episode(
         query = query.filter(Playlist.episode_id == episode_id)
 
     query = query_utils.apply_sort_by(Playlist, query, sort_by)
+    if page < 1:
+        page = 1
+    limit = 20
+    offset = (page - 1) * limit
+    query = query.limit(limit)
+    query = query.offset(offset)
     playlists = query.all()
     for playlist in playlists:
         playlist_dict = build_playlist_dict(playlist)

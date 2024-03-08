@@ -8,8 +8,6 @@ from babel import Locale
 from ipaddress import IPv4Address
 from sqlalchemy_utils.types.choice import Choice
 
-from zou.app.utils import date_helpers
-
 
 def serialize_value(value, milliseconds=False):
     """

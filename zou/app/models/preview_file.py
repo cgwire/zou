@@ -36,7 +36,7 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     file_size = db.Column(db.BigInteger(), default=0)
     status = db.Column(ChoiceType(STATUSES), default="processing")
     validation_status = db.Column(
-        ChoiceType(VALIDATION_STATUSES), default="neutral"
+        ChoiceType(VALIDATION_STATUSES), default="neutral", nullable=False
     )
     annotations = db.Column(JSONB)
     width = db.Column(db.Integer(), default=0)

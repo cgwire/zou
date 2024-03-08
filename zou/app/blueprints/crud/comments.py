@@ -18,7 +18,9 @@ from zou.app.utils import events, permissions
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
-from zou.app.services.exception import CommentNotFoundException
+from zou.app.services.exception import (
+    CommentNotFoundException,
+)
 
 
 class CommentsResource(BaseModelsResource):
@@ -29,6 +31,7 @@ class CommentsResource(BaseModelsResource):
 class CommentResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, Comment)
+        self.protected_fields += ["mentions", "department_mentions"]
 
     @jwt_required()
     def get(self, instance_id):

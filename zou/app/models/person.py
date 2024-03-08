@@ -25,9 +25,10 @@ TWO_FACTOR_AUTHENTICATION_TYPES = [
 ]
 
 CONTRACT_TYPES = [
-    ("permanent", "Permanent"),
-    ("freelancer", "Freelancer"),
-    ("intermittent", "Intermitent"),
+    ("open-ended", "Open-ended"),
+    ("fixed-term", "Fixed-term"),
+    ("short-term", "Short-term"),
+    ("freelance", "Freelance"),
     ("apprentice", "Apprentice"),
     ("internship", "Internship"),
 ]
@@ -65,7 +66,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     last_name = db.Column(db.String(80), nullable=False)
     email = db.Column(EmailType)
     phone = db.Column(db.String(30))
-    contract_type = db.Column(ChoiceType(CONTRACT_TYPES), default="permanent")
+    contract_type = db.Column(
+        ChoiceType(CONTRACT_TYPES), default="open-ended", nullable=False
+    )
 
     active = db.Column(db.Boolean(), default=True)
     archived = db.Column(db.Boolean(), default=False)
@@ -93,7 +96,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     )
     locale = db.Column(LocaleType, default=Locale("en", "US"))
     data = db.Column(JSONB)
-    role = db.Column(ChoiceType(ROLE_TYPES), default="user")
+    role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
     has_avatar = db.Column(db.Boolean(), default=False)
 
     notifications_enabled = db.Column(db.Boolean(), default=False)
@@ -157,7 +160,6 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         data = SerializerMixin.serialize(
             self, obj_type, relations=relations, milliseconds=milliseconds
         )
-        data["contract_type"] = str(self.contract_type or "permanent")
         data["fido_devices"] = self.fido_devices()
         return data
 

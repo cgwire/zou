@@ -74,6 +74,7 @@ class PermissionTestCase(ApiDBTestCase):
             "email": "john.doe@gmail.com",
         }
         self.post("data/persons/new", data, 403)
+        self.post("data/persons", data, 403)
 
     def test_admin_can_create_person(self):
         self.log_in_admin()
@@ -83,6 +84,13 @@ class PermissionTestCase(ApiDBTestCase):
             "email": "john.doe@gmail.com",
         }
         self.post("data/persons/new", data, 201)
+
+        data = {
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe1@gmail.com",
+        }
+        self.post("data/persons", data, 201)
 
     def test_manager_cannot_update_admin(self):
         self.log_in_manager()

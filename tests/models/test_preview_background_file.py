@@ -1,5 +1,4 @@
 from tests.base import ApiDBTestCase
-from zou.app.models.preview_background_file import PreviewBackgroundFile
 
 from zou.app.utils import fields
 

@@ -129,7 +129,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     ratio = db.Column(db.String(10), default="16:9")
     resolution = db.Column(db.String(12), default="1920x1080")
     production_type = db.Column(db.String(20), default="short")
-    production_style = db.Column(ChoiceType(PROJECT_STYLES), default="2d3d")
+    production_style = db.Column(
+        ChoiceType(PROJECT_STYLES), default="2d3d", nullable=False
+    )
     start_date = db.Column(db.Date())
     end_date = db.Column(db.Date())
     man_days = db.Column(db.Integer)

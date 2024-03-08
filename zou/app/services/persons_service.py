@@ -21,7 +21,6 @@ from zou.app.utils import fields, events, cache, emails
 from zou.app.services import index_service, auth_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
-    DepartmentNotFoundException,
     PersonNotFoundException,
     PersonInProtectedAccounts,
     WrongParameterException,
@@ -220,17 +219,6 @@ def create_person(
     """
     if email is not None:
         email = email.strip()
-    if not departments:
-        departments = []
-
-    try:
-        departments_objects = [
-            Department.get(department_id)
-            for department_id in departments
-            if department_id is not None
-        ]
-    except StatementError:
-        raise DepartmentNotFoundException()
 
     if expiration_date is not None:
         try:
@@ -252,7 +240,7 @@ def create_person(
         phone=phone,
         role=role,
         desktop_login=desktop_login,
-        departments=departments_objects,
+        departments=departments,
         is_generated_from_ldap=is_generated_from_ldap,
         ldap_uid=ldap_uid,
         is_bot=is_bot,

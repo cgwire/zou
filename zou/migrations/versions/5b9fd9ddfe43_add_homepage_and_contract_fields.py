@@ -19,9 +19,10 @@ branch_labels = None
 depends_on = None
 
 CONTRACT_TYPES = [
-    ("permanent", "Permanent"),
-    ("freelancer", "Freelancer"),
-    ("intermittent", "Intermitent"),
+    ("open-ended", "Open-ended"),
+    ("fixed-term", "Fixed-term"),
+    ("short-term", "Short-term"),
+    ("freelance", "Freelance"),
     ("apprentice", "Apprentice"),
     ("internship", "Internship"),
 ]

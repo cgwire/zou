@@ -9,10 +9,20 @@ class PersonsCsvExport(BaseCsvExport):
         self.file_name = "people_export"
 
     def build_headers(self):
-        return ["Last Name", "First Name", "Email", "Phone", "Role", "Active"]
+        return [
+            "Last Name",
+            "First Name",
+            "Email",
+            "Phone",
+            "Role",
+            "Contract Type",
+            "Active",
+        ]
 
     def build_query(self):
-        return Person.query.order_by(Person.last_name, Person.first_name)
+        return Person.query.filter(Person.is_bot == False).order_by(
+            Person.last_name, Person.first_name
+        )
 
     def build_row(self, person):
         active = "yes"
@@ -24,5 +34,6 @@ class PersonsCsvExport(BaseCsvExport):
             person.email,
             person.phone,
             person.role.code,
+            person.contract_type.code,
             active,
         ]

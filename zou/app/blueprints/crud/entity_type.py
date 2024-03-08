@@ -24,15 +24,6 @@ class EntityTypesResource(BaseModelsResource):
     def emit_create_event(self, instance_dict):
         events.emit("asset-type:new", {"asset_type_id": instance_dict["id"]})
 
-    def update_data(self, data):
-        data = super().update_data(data)
-        # Handle asset types the task type is dedicated to
-        data["task_types"] = assets_service.get_task_types_from_asset_type(
-            data
-        )
-
-        return data
-
     def post_creation(self, instance):
         assets_service.clear_asset_type_cache()
         return instance.serialize(relations=True)
@@ -54,15 +45,6 @@ class EntityTypeResource(BaseModelResource):
         events.emit(
             "asset-type:delete", {"asset_type_id": instance_dict["id"]}
         )
-
-    def update_data(self, data, instance_id):
-        data = super().update_data(data, instance_id)
-        # Handle task types dedicated task type is dedicated to
-        data["task_types"] = assets_service.get_task_types_from_asset_type(
-            data
-        )
-
-        return data
 
     def post_update(self, instance_dict, data):
         entities_service.clear_entity_type_cache(instance_dict["id"])

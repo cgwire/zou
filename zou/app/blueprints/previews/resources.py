@@ -252,7 +252,6 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 },
             )
             tasks_service.update_preview_file_info(preview_file)
-            task = tasks_service.get_task(preview_file["task_id"])
             self.emit_app_preview_event(instance_id)
             return preview_file, 201
 
@@ -499,7 +498,7 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
 
         try:
             return send_movie_file(instance_id, lowdef=True)
-        except Exception as e:
+        except Exception:
             try:
                 return send_movie_file(instance_id)
             except FileNotFound:

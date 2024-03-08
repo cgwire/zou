@@ -486,7 +486,7 @@ def add_metadata_descriptor(
             departments=departments_objects,
             field_name=slugify.slugify(name, separator="_"),
         )
-    except Exception as e:
+    except Exception:
         raise WrongParameterException
     events.emit(
         "metadata-descriptor:new",

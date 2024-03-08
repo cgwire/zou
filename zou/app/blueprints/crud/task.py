@@ -11,7 +11,6 @@ from zou.app.services import (
     user_service,
     tasks_service,
     deletion_service,
-    persons_service,
     entities_service,
     assets_service,
 )
@@ -104,14 +103,6 @@ class TaskResource(BaseModelResource, ArgsMixin):
     def post_update(self, instance_dict, data):
         tasks_service.clear_task_cache(instance_dict["id"])
         return instance_dict
-
-    def pre_update(self, instance_dict, data):
-        if "assignees" in data:
-            data["assignees"] = [
-                persons_service.get_person_raw(assignee)
-                for assignee in data["assignees"]
-            ]
-        return data
 
     @jwt_required()
     def delete(self, instance_id):
