@@ -535,3 +535,63 @@ class TaskRoutesTestCase(ApiDBTestCase):
         )
         entity = self.get("/data/entities/%s" % task["entity_id"])
         self.assertEqual(entity["preview_file_id"], preview_file["id"])
+
+    def test_open_tasks(self):
+        self.generate_fixture_task()
+        task_id = str(self.task.id)
+        self.task.update({"task_status_id": self.wip_status_id})
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        self.generate_fixture_task(
+            entity_id=self.asset_character.id
+        )
+
+        animation_id = str(self.task_type_animation.id)
+        self.generate_fixture_shot_task()
+        self.generate_fixture_shot("SHOT_002")
+        self.generate_fixture_shot_task()
+        self.generate_fixture_shot("SHOT_003")
+        self.generate_fixture_shot_task()
+
+        tasks = self.get("/data/tasks/open-tasks")
+        self.assertEqual(len(tasks["data"]), 5)
+
+        self.generate_fixture_project_closed_status()
+        self.generate_fixture_project_closed()
+        asset = self.generate_fixture_asset(
+            project_id=self.project_closed.id
+        )
+        self.generate_fixture_task(
+            entity_id=asset.id,
+            project_id=self.project_closed.id
+        )
+        tasks = self.get("/data/tasks/open-tasks")
+        self.assertEqual(len(tasks["data"]), 5)
+
+        self.generate_fixture_project_standard()
+        self.generate_fixture_asset_standard()
+        self.generate_fixture_task_standard()
+        tasks = self.get("/data/tasks/open-tasks")
+        self.assertEqual(len(tasks["data"]), 6)
+
+        tasks = self.get("/data/tasks/open-tasks?project_id=%s" % self.project.id)
+        self.assertEqual(len(tasks["data"]), 5)
+
+        tasks = self.get("/data/tasks/open-tasks?project_id=%s&limit=3" % self.project.id)
+        self.assertEqual(len(tasks["data"]), 3)
+
+        tasks = self.get("/data/tasks/open-tasks?project_id=%s&limit=3&page=2" % self.project.id)
+        self.assertEqual(len(tasks["data"]), 2)
+
+        tasks = self.get("/data/tasks/open-tasks?task_type_id=%s" % animation_id)
+        self.assertEqual(len(tasks["data"]), 3)
+
+        tasks = self.get("/data/tasks/open-tasks?task_status_id=%s" % self.wip_status_id)
+        self.assertEqual(len(tasks["data"]), 1)
+
+        jane = self.generate_fixture_person("Jane", "Doe", "jane.doe", "jane.doe@gmail.com")
+        data = {"person_id": jane.id}
+        self.put("/actions/tasks/%s/assign" % task_id, data, 200)
+        self.put("/actions/tasks/%s/assign" % self.shot_task.id, data, 200)
+        tasks = self.get("/data/tasks/open-tasks?person_id=%s" % jane.id)
+        self.assertEqual(len(tasks["data"]), 2)
