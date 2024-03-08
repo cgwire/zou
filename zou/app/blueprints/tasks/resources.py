@@ -1668,18 +1668,20 @@ class OpenTasksResource(Resource, ArgsMixin):
                             type: boolean
                             description: True if there are more tasks to retrieve
         """
-        args = self.get_args([
-            ("task_type_id", None, False, str),
-            ("project_id", None, False, str),
-            ("person_id", None, False, str),
-            ("task_status_id", None, False, str),
-            ("start_date", None, False, str),
-            ("due_date", None, False, str),
-            ("priority", None, False, str),
-            ("group_by", None, False, str),
-            ("page", None, False, int),
-            ("limit", 100, False, int),
-        ])
+        args = self.get_args(
+            [
+                ("task_type_id", None, False, str),
+                ("project_id", None, False, str),
+                ("person_id", None, False, str),
+                ("task_status_id", None, False, str),
+                ("start_date", None, False, str),
+                ("due_date", None, False, str),
+                ("priority", None, False, str),
+                ("group_by", None, False, str),
+                ("page", None, False, int),
+                ("limit", 100, False, int),
+            ]
+        )
         return tasks_service.get_open_tasks(
             task_type_id=args["task_type_id"],
             project_id=args["project_id"],
@@ -1689,5 +1691,5 @@ class OpenTasksResource(Resource, ArgsMixin):
             due_date=args["due_date"],
             priority=args["priority"],
             page=args["page"],
-            limit=args["limit"]
+            limit=args["limit"],
         )
