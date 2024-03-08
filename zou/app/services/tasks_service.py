@@ -75,6 +75,7 @@ def clear_department_cache(department_id):
 
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
+    cache.cache.delete_memoized(get_task, task_id, True)
     cache.cache.delete_memoized(get_task_with_relations, task_id)
 
 
@@ -1403,10 +1404,10 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
             project_id=project_id,
         )
 
-    task.duration = 0
-    time_spents = TimeSpent.get_all_by(task_id=task_id)
-    for task_time_spent in time_spents:
-        task.duration += task_time_spent.duration
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
     task.save()
     clear_task_cache(task_id)
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
@@ -1467,17 +1468,16 @@ def assign_task(task_id, person_id, assigner_id=None):
     project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
     task.assignees.append(person)
-    task.save()
     if assigner_id is not None:
-        task.update({"assigner_id": assigner_id})
-    task_dict = task.serialize()
+        task.assigner_id = assigner_id
+    task.save()
+    task_dict = task.serialize(relations=True)
     clear_task_cache(task_id)
     events.emit(
         "task:assign",
         {"task_id": task.id, "person_id": person.id},
         project_id=project_id,
     )
-    clear_task_cache(task_id)
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
     return task_dict
 

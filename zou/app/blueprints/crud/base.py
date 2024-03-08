@@ -286,7 +286,7 @@ class BaseModelResource(Resource, ArgsMixin):
     def check_update_permissions(self, instance, data):
         return permissions.check_admin_permissions()
 
-    def check_delete_permissions(self, instance):
+    def check_delete_permissions(self, instance_dict):
         return permissions.check_admin_permissions()
 
     def get_arguments(self):
