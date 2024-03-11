@@ -41,6 +41,7 @@ from zou.app.services.exception import (
     TaskTypeNotFoundException,
     DepartmentNotFoundException,
     WrongDateFormatException,
+    TimeSpentNotFoundException,
 )
 
 from zou.app.services import (
@@ -1370,7 +1371,7 @@ def get_or_create_task_type(
 def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
     Create a new time spent if it doesn't exist. If it exists, it update it
-    with the new duratin and returns it from the database.
+    with the new duration and returns it from the database.
     """
     try:
         time_spent = TimeSpent.get_by(
@@ -1403,6 +1404,43 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
             {"time_spent_id": str(time_spent.id)},
             project_id=project_id,
         )
+
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
+    task.save()
+    clear_task_cache(task_id)
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+
+    return time_spent.serialize()
+
+
+def delete_time_spent(task_id, person_id, date):
+    """
+    Delete time spent for given task, person and date.
+    """
+    try:
+        time_spent = TimeSpent.get_by(
+            task_id=task_id,
+            person_id=person_id,
+            date=func.cast(date, TimeSpent.date.type),
+        )
+    except DataError:
+        raise WrongDateFormatException
+
+    if time_spent is None:
+        raise TimeSpentNotFoundException
+
+    task = Task.get(task_id)
+    project_id = str(task.project_id)
+    time_spent.duration = 0
+    time_spent.delete()
+    events.emit(
+        "time-spent:delete",
+        {"time_spent_id": str(time_spent.id)},
+        project_id=project_id,
+    )
 
     task.duration = sum(
         time_spent.duration

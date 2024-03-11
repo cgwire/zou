@@ -1143,6 +1143,52 @@ class SetTimeSpentResource(Resource, ArgsMixin):
         except WrongDateFormatException:
             abort(404)
 
+    @jwt_required()
+    def delete(self, task_id, date, person_id):
+        """
+        Delete time spent by a person on a task for a given day.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: path
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Time spent by given person on given task for given day is removed
+            404:
+                description: Wrong date format
+        """
+        user_service.check_person_is_not_bot(person_id)
+        try:
+            user_service.check_time_spent_access(task_id, person_id)
+            time_spent = tasks_service.delete_time_spent(
+                task_id,
+                person_id,
+                datetime.datetime.strptime(date, "%Y-%m-%d"),
+            )
+            return time_spent, 201
+        except ValueError:
+            abort(404)
+        except WrongDateFormatException:
+            abort(404)
+
 
 class AddTimeSpentResource(Resource, ArgsMixin):
     """
