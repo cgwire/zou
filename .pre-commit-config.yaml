@@ -8,3 +8,9 @@ repos:
     rev: 24.2.0
     hooks:
       - id: black
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.3.0
+    hooks:
+      - id: autoflake
+        args:
+          [--remove-all-unused-imports, --remove-unused-variables, --in-place]

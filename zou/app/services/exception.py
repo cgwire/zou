@@ -65,6 +65,10 @@ class PersonNotFoundException(NotFound):
     pass
 
 
+class TimeSpentNotFoundException(NotFound):
+    pass
+
+
 class ProjectNotFoundException(NotFound):
     pass
 

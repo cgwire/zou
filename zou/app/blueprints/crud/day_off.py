@@ -30,8 +30,8 @@ class DayOffResource(BaseModelResource):
     def __init__(self):
         BaseModelResource.__init__(self, DayOff)
 
-    def check_delete_permissions(self, instance):
-        return user_service.check_day_off_access(instance)
+    def check_delete_permissions(self, instance_dict):
+        return user_service.check_day_off_access(instance_dict)
 
     def check_read_permissions(self, instance):
         return user_service.check_day_off_access(instance)

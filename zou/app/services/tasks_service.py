@@ -41,6 +41,7 @@ from zou.app.services.exception import (
     TaskTypeNotFoundException,
     DepartmentNotFoundException,
     WrongDateFormatException,
+    TimeSpentNotFoundException,
 )
 
 from zou.app.services import (
@@ -75,6 +76,7 @@ def clear_department_cache(department_id):
 
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
+    cache.cache.delete_memoized(get_task, task_id, True)
     cache.cache.delete_memoized(get_task_with_relations, task_id)
 
 
@@ -1369,7 +1371,7 @@ def get_or_create_task_type(
 def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     """
     Create a new time spent if it doesn't exist. If it exists, it update it
-    with the new duratin and returns it from the database.
+    with the new duration and returns it from the database.
     """
     try:
         time_spent = TimeSpent.get_by(
@@ -1383,9 +1385,7 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
     task = Task.get(task_id)
     project_id = str(task.project_id)
     if time_spent is not None:
-        if duration == 0:
-            time_spent.delete()
-        elif add:
+        if add:
             time_spent.update({"duration": time_spent.duration + duration})
         else:
             time_spent.update({"duration": duration})
@@ -1405,10 +1405,47 @@ def create_or_update_time_spent(task_id, person_id, date, duration, add=False):
             project_id=project_id,
         )
 
-    task.duration = 0
-    time_spents = TimeSpent.get_all_by(task_id=task_id)
-    for task_time_spent in time_spents:
-        task.duration += task_time_spent.duration
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
+    task.save()
+    clear_task_cache(task_id)
+    events.emit("task:update", {"task_id": task_id}, project_id=project_id)
+
+    return time_spent.serialize()
+
+
+def delete_time_spent(task_id, person_id, date):
+    """
+    Delete time spent for given task, person and date.
+    """
+    try:
+        time_spent = TimeSpent.get_by(
+            task_id=task_id,
+            person_id=person_id,
+            date=func.cast(date, TimeSpent.date.type),
+        )
+    except DataError:
+        raise WrongDateFormatException
+
+    if time_spent is None:
+        raise TimeSpentNotFoundException
+
+    task = Task.get(task_id)
+    project_id = str(task.project_id)
+    time_spent.duration = 0
+    time_spent.delete()
+    events.emit(
+        "time-spent:delete",
+        {"time_spent_id": str(time_spent.id)},
+        project_id=project_id,
+    )
+
+    task.duration = sum(
+        time_spent.duration
+        for time_spent in TimeSpent.get_all_by(task_id=task_id)
+    )
     task.save()
     clear_task_cache(task_id)
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
@@ -1469,17 +1506,16 @@ def assign_task(task_id, person_id, assigner_id=None):
     project_id = str(task.project_id)
     person = persons_service.get_person_raw(person_id)
     task.assignees.append(person)
-    task.save()
     if assigner_id is not None:
-        task.update({"assigner_id": assigner_id})
-    task_dict = task.serialize()
+        task.assigner_id = assigner_id
+    task.save()
+    task_dict = task.serialize(relations=True)
     clear_task_cache(task_id)
     events.emit(
         "task:assign",
         {"task_id": task.id, "person_id": person.id},
         project_id=project_id,
     )
-    clear_task_cache(task_id)
     events.emit("task:update", {"task_id": task_id}, project_id=project_id)
     return task_dict
 
@@ -1779,7 +1815,7 @@ def get_open_tasks(
     priority=None,
     order_by=None,
     limit=200,
-    page=None
+    page=None,
 ):
     """
     Return all tasks matching given filters from open projects.
@@ -1788,6 +1824,7 @@ def get_open_tasks(
     Episode = aliased(Entity, name="episode")
 
     from zou.app import db
+
     query_stats = (
         db.session.query(
             func.count().label("amount"),
@@ -1804,8 +1841,7 @@ def get_open_tasks(
         .outerjoin(Episode, Episode.id == Sequence.parent_id)
     )
     query = (
-        Task.query
-        .join(TaskType, Task.task_type_id == TaskType.id)
+        Task.query.join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, Task.task_status_id == TaskStatus.id)
         .join(Entity, Entity.id == Task.entity_id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
@@ -1844,17 +1880,22 @@ def get_open_tasks(
         TaskType.name,
     )
 
-    if project_id is not None and user_service.check_project_access(project_id):
+    if project_id is not None and user_service.check_project_access(
+        project_id
+    ):
         query = query.filter(Project.id == project_id)
         query_stats = query_stats.filter(Project.id == project_id)
     else:
         from zou.app.utils import permissions
+
         if permissions.has_admin_permissions():
             query = query.filter(ProjectStatus.name == "Open")
             query_stats = query_stats.filter(ProjectStatus.name == "Open")
         else:
             query = query.filter(user_service.build_related_projects_filter())
-            query_stats = query_stats.filter(user_service.build_related_projects_filter())
+            query_stats = query_stats.filter(
+                user_service.build_related_projects_filter()
+            )
 
     if task_type_id is not None:
         query = query.filter(TaskType.id == task_type_id)
@@ -1886,10 +1927,8 @@ def get_open_tasks(
     if order_by is not None:
         query = query.order_by(order_by)
 
-    query_stats_status = (
-        query_stats
-            .group_by(TaskStatus.id)
-            .add_columns(TaskStatus.id)
+    query_stats_status = query_stats.group_by(TaskStatus.id).add_columns(
+        TaskStatus.id
     )
 
     tasks = []
@@ -1938,32 +1977,34 @@ def get_open_tasks(
             episode = shots_service.get_episode(episode_id)
             episode_name = episode["name"]
 
-        task_dict.update({
-            "project_name": project_name,
-            "project_id": str(task.project_id),
-            "project_has_avatar": project_has_avatar,
-            "entity_id": str(entity_id),
-            "entity_name": entity_name,
-            "entity_description": entity_description,
-            "entity_data": entity_data,
-            "entity_preview_file_id": str(entity_preview_file_id),
-            "entity_source_id": str(entity_source_id),
-            "entity_type_name": entity_type_name,
-            "entity_canceled": entity_canceled,
-            "sequence_name": sequence_name,
-            "episode_id": str(episode_id),
-            "episode_name": episode_name,
-            "estimation": task.estimation,
-            "duration": task.duration,
-            "start_date": fields.serialize_value(task.start_date),
-            "due_date": fields.serialize_value(task.due_date),
-            "type_name": task_type_name,
-            "task_type_for_entity": task_type_for_entity,
-            "status_name": task_status_name,
-            "type_color": task_type_color,
-            "status_color": task_status_color,
-            "status_short_name": task_status_short_name,
-        })
+        task_dict.update(
+            {
+                "project_name": project_name,
+                "project_id": str(task.project_id),
+                "project_has_avatar": project_has_avatar,
+                "entity_id": str(entity_id),
+                "entity_name": entity_name,
+                "entity_description": entity_description,
+                "entity_data": entity_data,
+                "entity_preview_file_id": str(entity_preview_file_id),
+                "entity_source_id": str(entity_source_id),
+                "entity_type_name": entity_type_name,
+                "entity_canceled": entity_canceled,
+                "sequence_name": sequence_name,
+                "episode_id": str(episode_id),
+                "episode_name": episode_name,
+                "estimation": task.estimation,
+                "duration": task.duration,
+                "start_date": fields.serialize_value(task.start_date),
+                "due_date": fields.serialize_value(task.due_date),
+                "type_name": task_type_name,
+                "task_type_for_entity": task_type_for_entity,
+                "status_name": task_status_name,
+                "type_color": task_type_color,
+                "status_color": task_status_color,
+                "status_short_name": task_status_short_name,
+            }
+        )
         tasks.append(task_dict)
 
     result = {
@@ -1972,11 +2013,11 @@ def get_open_tasks(
             "total_duration": 0,
             "total_estimation": 0,
             "total": 0,
-            "status": []
+            "status": [],
         },
         "limit": limit,
         "is_more": False,
-        "page": page or 1
+        "page": page or 1,
     }
 
     if len(tasks) > 0:
@@ -1984,7 +2025,7 @@ def get_open_tasks(
         stats = query_stats.one()
         stats_status = query_stats_status.all()
         statuses_stats = [
-            { "task_status_id": stat.id, "amount": stat.amount }
+            {"task_status_id": stat.id, "amount": stat.amount}
             for stat in stats_status
         ]
 
@@ -1994,10 +2035,10 @@ def get_open_tasks(
                 "total_duration": stats.total_duration,
                 "total_estimation": stats.total_estimation,
                 "total": count,
-                "status": statuses_stats
+                "status": statuses_stats,
             },
             "limit": limit,
             "is_more": len(tasks) == limit,
-            "page": page or 1
+            "page": page or 1,
         }
     return result

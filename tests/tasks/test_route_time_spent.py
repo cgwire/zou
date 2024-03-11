@@ -71,26 +71,32 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
             404,
         )
 
-    def test_get_time_spent(self):
-        person_id = str(self.person.id)
+    def test_permissions(self):
         user_id = str(self.user["id"])
         task_id = str(self.task.id)
-        data = {"duration": 3600}
-        path = "/actions/tasks/%s/time-spents/2017-09-27/persons/%s" % (
-            task_id,
-            person_id,
-        )
-        self.post(path, data)
 
         data = {"duration": 7200}
         path = "/actions/tasks/%s/time-spents/2017-09-27/persons/%s" % (
             task_id,
             user_id,
         )
+        self.post(path, data, 403)
+
+    def test_get_time_spent(self):
+        person_id = str(self.person.id)
+        user_id = str(self.user["id"])
+        task_id = str(self.task.id)
+        data = {"duration": 3600}
+        path = f"/actions/tasks/{task_id}/time-spents/2017-09-27/persons/{person_id}"
+        self.post(path, data)
+
+        self.assign_task(task_id, user_id)
+        data = {"duration": 7200}
+        path = f"/actions/tasks/{task_id}/time-spents/2017-09-27/persons/{user_id}"
         self.post(path, data)
 
         time_spents = self.get(
-            "/actions/tasks/%s/time-spents/2017-09-27/" % task_id
+            f"/actions/tasks/{task_id}/time-spents/2017-09-27/"
         )
         self.assertEqual(time_spents["total"], 10800)
         self.assertEqual(time_spents[user_id][0]["duration"], 7200)

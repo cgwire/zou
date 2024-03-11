@@ -10,6 +10,7 @@ from zou.app.services.exception import (
     PersonNotFoundException,
     MalformedFileTreeException,
     WrongDateFormatException,
+    WrongParameterException,
 )
 from zou.app.services import (
     assets_service,
@@ -1125,17 +1126,62 @@ class SetTimeSpentResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        args = self.get_args([("duration", 0, False, int)])
+        args = self.get_args([("duration", 0, True, int)])
         try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-            persons_service.get_person(person_id)
+            if args["duration"] <= 0:
+                raise WrongParameterException("Duration must be positive")
+            user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 datetime.datetime.strptime(date, "%Y-%m-%d"),
                 args["duration"],
+            )
+            return time_spent, 201
+        except ValueError:
+            abort(404)
+        except WrongDateFormatException:
+            abort(404)
+
+    @jwt_required()
+    def delete(self, task_id, date, person_id):
+        """
+        Delete time spent by a person on a task for a given day.
+        ---
+        tags:
+        - Tasks
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: date
+            required: True
+            type: string
+            format: date
+            x-example: "2022-07-12"
+          - in: path
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Time spent by given person on given task for given day is removed
+            404:
+                description: Wrong date format
+        """
+        user_service.check_person_is_not_bot(person_id)
+        try:
+            user_service.check_time_spent_access(task_id, person_id)
+            time_spent = tasks_service.delete_time_spent(
+                task_id,
+                person_id,
+                datetime.datetime.strptime(date, "%Y-%m-%d"),
             )
             return time_spent, 201
         except ValueError:
@@ -1189,13 +1235,11 @@ class AddTimeSpentResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        args = self.get_args([("duration", 0, False, int)])
+        args = self.get_args([("duration", 0, True, int)])
         try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-
-            persons_service.get_person(person_id)
+            if args["duration"] <= 0:
+                raise WrongParameterException("Duration must be positive")
+            user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id, person_id, date, args["duration"], add=True
             )
@@ -1670,18 +1714,20 @@ class OpenTasksResource(Resource, ArgsMixin):
                             type: boolean
                             description: True if there are more tasks to retrieve
         """
-        args = self.get_args([
-            ("task_type_id", None, False, str),
-            ("project_id", None, False, str),
-            ("person_id", None, False, str),
-            ("task_status_id", None, False, str),
-            ("start_date", None, False, str),
-            ("due_date", None, False, str),
-            ("priority", None, False, str),
-            ("group_by", None, False, str),
-            ("page", None, False, int),
-            ("limit", 100, False, int),
-        ])
+        args = self.get_args(
+            [
+                ("task_type_id", None, False, str),
+                ("project_id", None, False, str),
+                ("person_id", None, False, str),
+                ("task_status_id", None, False, str),
+                ("start_date", None, False, str),
+                ("due_date", None, False, str),
+                ("priority", None, False, str),
+                ("group_by", None, False, str),
+                ("page", None, False, int),
+                ("limit", 100, False, int),
+            ]
+        )
         return tasks_service.get_open_tasks(
             task_type_id=args["task_type_id"],
             project_id=args["project_id"],
@@ -1691,5 +1737,5 @@ class OpenTasksResource(Resource, ArgsMixin):
             due_date=args["due_date"],
             priority=args["priority"],
             page=args["page"],
-            limit=args["limit"]
+            limit=args["limit"],
         )

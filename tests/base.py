@@ -290,7 +290,8 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_asset(
-        self, name="Tree",
+        self,
+        name="Tree",
         description="Description Tree",
         asset_type_id=None,
         project_id=None,
@@ -506,7 +507,7 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_person(
         self,
         first_name="John",
-            last_name="Doe",
+        last_name="Doe",
         desktop_login="john.doe",
         email="john.doe@gmail.com",
     ):

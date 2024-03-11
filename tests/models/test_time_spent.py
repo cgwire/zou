@@ -1,3 +1,5 @@
+import random
+
 from tests.base import ApiDBTestCase
 
 from zou.app.models.time_spent import TimeSpent
@@ -20,7 +22,11 @@ class TimeSpentTestCase(ApiDBTestCase):
         self.generate_fixture_assigner()
         self.generate_fixture_task()
         self.tasks = self.generate_data(
-            TimeSpent, 3, task_id=self.task.id, person_id=self.person.id
+            TimeSpent,
+            3,
+            task_id=self.task.id,
+            person_id=self.person.id,
+            duration=lambda: random.uniform(0.1, 10000),
         )
 
     def test_get_time_spents(self):
