@@ -30,7 +30,8 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.utils import cache, fields, query as query_utils
+from zou.app.utils import cache, fields, query as query_utils, permissions
+
 
 from zou.app.services.exception import (
     CommentNotFoundException,
@@ -1886,8 +1887,6 @@ def get_open_tasks(
         query = query.filter(Project.id == project_id)
         query_stats = query_stats.filter(Project.id == project_id)
     else:
-        from zou.app.utils import permissions
-
         if permissions.has_admin_permissions():
             query = query.filter(ProjectStatus.name == "Open")
             query_stats = query_stats.filter(ProjectStatus.name == "Open")
@@ -1900,6 +1899,8 @@ def get_open_tasks(
     if task_type_id is not None:
         query = query.filter(TaskType.id == task_type_id)
         query_stats = query_stats.filter(TaskType.id == task_type_id)
+    else:
+        query = query.filter(TaskType.for_entity != "Concept")
 
     if task_status_id is not None:
         query = query.filter(TaskStatus.id == task_status_id)
