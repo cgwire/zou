@@ -57,6 +57,7 @@ def is_from_browser(user_agent):
         "Brave",
         "Chrome",
         "Chrome Mobile",
+        "Chrome Mobile iOS",
         "Edge",
         "Firefox",
         "Mobile Safari",
