@@ -245,6 +245,7 @@ class BaseModelsResource(Resource, ArgsMixin):
             TypeError,
             IntegrityError,
             StatementError,
+            KeyError,
         ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400

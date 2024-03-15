@@ -41,12 +41,12 @@ class BaseMixin(object):
         return db.session.get(cls, id)
 
     @classmethod
-    def get_by(cls, **kw):
+    def get_by(cls, *criterions, **kw):
         """
         Shorthand to retrieve data by using filters. It returns the first
         element of the returned data.
         """
-        return cls.query.filter_by(**kw).first()
+        return cls.query.filter(*criterions).filter_by(**kw).first()
 
     @classmethod
     def get_by_case_insensitive(cls, **kw):
