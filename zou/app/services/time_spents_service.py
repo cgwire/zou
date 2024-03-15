@@ -5,7 +5,6 @@ from dateutil import relativedelta
 from sqlalchemy import func
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm import aliased
-from sqlalchemy.types import Date
 
 from zou.app.models.day_off import DayOff
 from zou.app.models.project import Project
@@ -269,7 +268,9 @@ def get_day_off(person_id, date):
     """
     try:
         day_off = DayOff.get_by(
-            func.cast(date, Date).between(DayOff.date, DayOff.end_date),
+            func.cast(date, DayOff.date.type).between(
+                DayOff.date, DayOff.end_date
+            ),
             person_id=person_id,
         )
     except DataError:
@@ -478,10 +479,9 @@ def get_day_offs_between(start, end, person_id=None):
         query = query.filter(DayOff.person_id == person_id)
 
     return DayOff.serialize_list(
-        query.filter(
-            func.cast(start, Date) <= DayOff.end_date
-            and func.cast(end, Date) >= DayOff.date
-        ).all()
+        query.filter(func.cast(start, DayOff.end_date.type) <= DayOff.end_date)
+        .filter(func.cast(end, DayOff.date.type) >= DayOff.date)
+        .all()
     )
 
 

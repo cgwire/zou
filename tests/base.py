@@ -1025,10 +1025,12 @@ class ApiDBTestCase(ApiTestCase):
         )
         return self.schedule_item.serialize()
 
-    def generate_fixture_day_off(self, date, person_id=None):
+    def generate_fixture_day_off(self, date, end_date=None, person_id=None):
         if person_id is None:
             person_id = self.person.id
-        self.day_off = DayOff.create(date=date, person_id=person_id)
+        self.day_off = DayOff.create(
+            date=date, end_date=end_date or date, person_id=person_id
+        )
         return self.day_off.serialize()
 
     def generate_fixture_edit(self, name="Edit", parent_id=None):
