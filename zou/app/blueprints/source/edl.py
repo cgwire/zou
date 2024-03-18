@@ -41,6 +41,7 @@ mapping_substitutions_to_regex = {
 
 
 class EDLBaseResource(Resource, ArgsMixin):
+    @jwt_required()
     def post(self, project_id, episode_id=None):
         args = self.post_args()
         user_service.check_manager_project_access(project_id)
@@ -274,6 +275,7 @@ class EDLImportResource(EDLBaseResource):
 
 
 class EDLImportEpisodeResource(EDLBaseResource):
+    @jwt_required()
     def post(self, **kwargs):
         """
         Import an EDL file to enter frame_in / frame_out / nb_frames.
