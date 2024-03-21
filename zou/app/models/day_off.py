@@ -11,7 +11,7 @@ class DayOff(db.Model, BaseMixin, SerializerMixin):
 
     date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=False)
-    description = db.Column(db.String)
+    description = db.Column(db.Text)
     person_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
     )
