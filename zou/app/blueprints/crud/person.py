@@ -13,7 +13,7 @@ from zou.app.services import (
     index_service,
     persons_service,
 )
-from zou.app.utils import permissions, auth
+from zou.app.utils import permissions, auth, date_helpers
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
@@ -91,8 +91,8 @@ class PersonsResource(BaseModelsResource):
         if "expiration_date" in data and data["expiration_date"] is not None:
             try:
                 if (
-                    datetime.datetime.strptime(
-                        data["expiration_date"], "%Y-%m-%d"
+                    date_helpers.get_date_from_string(
+                        data["expiration_date"]
                     ).date()
                     < datetime.date.today()
                 ):

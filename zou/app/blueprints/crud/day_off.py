@@ -3,8 +3,9 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
-from zou.app.services import user_service
-from zou.app.utils import date_helpers
+from zou.app.services import user_service, time_spents_service
+
+from zou.app.services.exception import ArgumentsException
 
 
 class DayOffsResource(BaseModelsResource):
@@ -14,14 +15,18 @@ class DayOffsResource(BaseModelsResource):
     def check_create_permissions(self, data):
         return user_service.check_day_off_access(data)
 
-    def update_data(self, data):
-        data = super().update_data(data)
-        data["date"] = date_helpers.get_date_from_string(data["date"])
+    def check_creation_integrity(self, data):
+        if time_spents_service.get_day_offs_between(
+            data["date"], data["end_date"], data["person_id"]
+        ):
+            raise ArgumentsException("Day off already exists for this period")
         return data
 
     def post_creation(self, instance):
-        time_spents = TimeSpent.delete_all_by(
-            person_id=instance.person_id, date=instance.date
+        TimeSpent.delete_all_by(
+            instance.date >= TimeSpent.date,
+            instance.end_date <= TimeSpent.date,
+            person_id=instance.person_id,
         )
         return instance.serialize()
 
@@ -35,3 +40,20 @@ class DayOffResource(BaseModelResource):
 
     def check_read_permissions(self, instance):
         return user_service.check_day_off_access(instance)
+
+    def post_update(self, instance_dict, data):
+        TimeSpent.delete_all_by(
+            instance_dict["date"] >= TimeSpent.date,
+            instance_dict["end_date"] <= TimeSpent.date,
+            person_id=instance_dict["person_id"],
+        )
+        return instance_dict
+
+    def pre_update(self, instance_dict, data):
+        if time_spents_service.get_day_offs_between(
+            data.get("date", instance_dict["data"]),
+            data.get("end_date", instance_dict["end_date"]),
+            data.get("person_id", instance_dict["person_id"]),
+        ):
+            raise ArgumentsException("Day off already exists for this period")
+        return data

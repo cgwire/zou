@@ -28,7 +28,7 @@ from zou.app.services import (
     user_service,
     concepts_service,
 )
-from zou.app.utils import events, query, permissions
+from zou.app.utils import events, query, permissions, date_helpers
 from zou.app.mixin import ArgsMixin
 
 
@@ -1134,7 +1134,7 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
-                datetime.datetime.strptime(date, "%Y-%m-%d"),
+                date_helpers.get_date_from_string(date),
                 args["duration"],
             )
             return time_spent, 201

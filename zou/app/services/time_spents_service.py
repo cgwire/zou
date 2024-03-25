@@ -268,7 +268,10 @@ def get_day_off(person_id, date):
     """
     try:
         day_off = DayOff.get_by(
-            person_id=person_id, date=func.cast(date, TimeSpent.date.type)
+            func.cast(date, DayOff.date.type).between(
+                DayOff.date, DayOff.end_date
+            ),
+            person_id=person_id,
         )
     except DataError:
         raise WrongDateFormatException
@@ -476,8 +479,8 @@ def get_day_offs_between(start, end, person_id=None):
         query = query.filter(DayOff.person_id == person_id)
 
     return DayOff.serialize_list(
-        query.filter(DayOff.date >= func.cast(start, TimeSpent.date.type))
-        .filter(DayOff.date < func.cast(end, TimeSpent.date.type))
+        query.filter(func.cast(start, DayOff.end_date.type) <= DayOff.end_date)
+        .filter(func.cast(end, DayOff.date.type) >= DayOff.date)
         .all()
     )
 
