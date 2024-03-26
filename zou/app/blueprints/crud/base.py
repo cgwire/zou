@@ -281,10 +281,10 @@ class BaseModelResource(Resource, ArgsMixin):
             abort(404)
         return instance
 
-    def check_read_permissions(self, instance):
+    def check_read_permissions(self, instance_dict):
         return permissions.check_admin_permissions()
 
-    def check_update_permissions(self, instance, data):
+    def check_update_permissions(self, instance_dict, data):
         return permissions.check_admin_permissions()
 
     def check_delete_permissions(self, instance_dict):

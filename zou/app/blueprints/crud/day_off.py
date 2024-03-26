@@ -7,6 +7,8 @@ from zou.app.services import user_service, time_spents_service
 
 from zou.app.services.exception import ArgumentsException
 
+from zou.app.utils import permissions
+
 
 class DayOffsResource(BaseModelsResource):
     def __init__(self):
@@ -38,8 +40,17 @@ class DayOffResource(BaseModelResource):
     def check_delete_permissions(self, instance_dict):
         return user_service.check_day_off_access(instance_dict)
 
-    def check_read_permissions(self, instance):
-        return user_service.check_day_off_access(instance)
+    def check_read_permissions(self, instance_dict):
+        return user_service.check_day_off_access(instance_dict)
+
+    def check_update_permissions(self, instance_dict, data):
+        if (
+            "person_id" in data.keys()
+            and instance_dict["person_id"] != data["person_id"]
+            and not permissions.has_admin_permissions()
+        ):
+            raise permissions.PermissionDenied()
+        return user_service.check_day_off_access(instance_dict)
 
     def post_update(self, instance_dict, data):
         TimeSpent.delete_all_by(
