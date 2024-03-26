@@ -149,7 +149,22 @@ class OTIOBaseResource(Resource, ArgsMixin):
         for video_track in timeline.video_tracks():
             for track in video_track:
                 if isinstance(track, otio.schema.Clip):
-                    name, _ = os.path.splitext(track.name)
+                    name = os.path.splitext(track.name)[0]
+                    if not name:
+                        if getattr(track.media_reference, "name_prefix", None):
+                            name = track.media_reference.name_prefix
+                        elif getattr(track.media_reference, "name", None):
+                            name, _ = os.path.splitext(
+                                track.media_reference.name
+                            )[0]
+                        elif getattr(
+                            track.media_reference, "target_url", None
+                        ):
+                            name, _ = os.path.splitext(
+                                os.path.basename(
+                                    track.media_reference.target_url
+                                )
+                            )[0]
                     name_to_search = name if self.match_case else name.lower()
                     if name_to_search in self.shot_map:
                         shot_id = self.shot_map[name_to_search]
