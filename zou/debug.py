@@ -13,6 +13,8 @@ socketio = SocketIO(app, cors_allowed_origins=[], cors_credentials=False)
 
 if __name__ == "__main__":
     print(
-        "The Kitsu API server is listening on port %s..." % config.DEBUG_PORT
+        f"The Kitsu API server is listening on http://{config.DEBUG_HOST}:{config.DEBUG_PORT}"
     )
-    socketio.run(app, port=config.DEBUG_PORT, debug=True)
+    socketio.run(
+        app, host=config.DEBUG_HOST, port=config.DEBUG_PORT, debug=True
+    )

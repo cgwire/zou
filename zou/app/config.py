@@ -7,6 +7,7 @@ from zou.app.utils.env import envtobool, env_with_semicolon_to_list
 
 PROPAGATE_EXCEPTIONS = True
 DEBUG = envtobool("DEBUG", False)
+DEBUG_HOST = os.getenv("DEBUG_HOST", "127.0.0.1")
 DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 
 APP_NAME = "Zou"
