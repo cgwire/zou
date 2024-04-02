@@ -12,6 +12,8 @@ from zou.app.mixin import ArgsMixin
 from zou.app.stores import file_store
 from zou.app.services import (
     assets_service,
+    comments_service,
+    chats_service,
     deletion_service,
     entities_service,
     files_service,
@@ -674,6 +676,67 @@ class PreviewFileDownloadResource(PreviewFileResource):
         except FileNotFound:
             current_app.logger.error(
                 "Standard file was not found for: %s" % instance_id
+            )
+            abort(404)
+
+
+class AttachmentThumbnailResource(Resource):
+
+    def is_exist(self, attachment_id):
+        return comments_service.get_attachment_file(attachment_id) is not None
+
+    def is_allowed(self, attachment_id):
+        attachment_file = comments_service.get_attachment_file(attachment_id)
+        if attachment_file["comment_id"] is not None:
+            comment = tasks_service.get_comment(attachment_file["comment_id"])
+            task = tasks_service.get_task(comment["object_id"])
+            user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
+        else:
+            message = chats_service.get_chat_message(
+                attachment_file["chat_message_id"]
+            )
+            chat = chats_service.get_chat_by_id(message["chat_id"])
+            entity = entities_service.get_entity(chat["object_id"])
+            user_service.check_project_access(entity["project_id"])
+            user_service.check_entity_access(chat["object_id"])
+        return True
+
+    @jwt_required()
+    def get(self, attachment_file_id):
+        """
+        Download the thumbnail representing given attachment file.
+        ---
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: attachment_file_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Thumbnail downloaded
+            403:
+                description: Instance not allowed
+            404:
+                description: Picture file not found
+        """
+        if not self.is_exist(attachment_file_id):
+            abort(404)
+
+        if not self.is_allowed(attachment_file_id):
+            abort(403)
+
+        try:
+            return send_picture_file("thumbnails", attachment_file_id)
+        except FileNotFound:
+            current_app.logger.error(
+                "Picture file was not found for attachment: %s" % (
+                    attachment_file_id
+                )
             )
             abort(404)
 

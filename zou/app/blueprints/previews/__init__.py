@@ -2,6 +2,7 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.previews.resources import (
+    AttachmentThumbnailResource,
     CreatePreviewFilePictureResource,
     PreviewFileLowMovieResource,
     PreviewFileMovieResource,
@@ -52,6 +53,10 @@ routes = [
     (
         "/pictures/thumbnails/preview-files/<instance_id>.png",
         PreviewFileThumbnailResource,
+    ),
+    (
+        "/pictures/thumbnails/attachment-files/<attachment_file_id>.png",
+        AttachmentThumbnailResource,
     ),
     (
         "/pictures/thumbnails-square/preview-files/<instance_id>.png",

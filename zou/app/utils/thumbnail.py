@@ -76,7 +76,7 @@ def make_im_bigger_if_needed(im, size):
     return im
 
 
-def fit_to_target_size(im, size):
+def fit_to_target_size(im, size, crop=False):
     """
     Make sure that the image is contained in the size given in parameter
     (shorten width and/or height proporitionnally to expected ratio).
@@ -131,11 +131,13 @@ def turn_into_thumbnail(file_path, size=None):
     return file_path
 
 
-def resize(file_path, size):
+def resize(file_path, size, crop=False):
     """
     Resize given picture
     """
     im = Image.open(file_path)
+    if crop:
+        im = prepare_image_for_thumbnail(im, size)
     im = im.resize(size, Image.Resampling.LANCZOS)
     if im.mode == "CMYK":
         im = im.convert("RGB")

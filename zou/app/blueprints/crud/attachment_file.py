@@ -2,7 +2,7 @@ from zou.app.models.attachment_file import AttachmentFile
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
-from zou.app.services import tasks_service, user_service
+from zou.app.services import chats_service, tasks_service, user_service
 
 
 class AttachmentFilesResource(BaseModelsResource):
@@ -16,8 +16,17 @@ class AttachmentFileResource(BaseModelResource):
 
     def check_read_permissions(self, instance):
         attachment_file = instance
-        comment = tasks_service.get_comment(attachment_file["comment_id"])
-        task = tasks_service.get_task(comment["object_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        if attachment_file["comment_id"]:
+            comment = tasks_service.get_comment(attachment_file["comment_id"])
+            task = tasks_service.get_task(comment["object_id"])
+            user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
+        else:
+            message = chats_service.get_chat_message(
+                attachment_file["chat_message_id"]
+            )
+            chat = chats_service.get_chat(message["chat_id"])
+            print(chat)
+            user_service.check_entity_access(chat["object_id"])
+
         return True

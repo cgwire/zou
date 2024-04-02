@@ -123,6 +123,14 @@ from zou.app.blueprints.crud.preview_background_file import (
     PreviewBackgroundFileResource,
     PreviewBackgroundFilesResource,
 )
+from zou.app.blueprints.crud.chat import (
+    ChatResource,
+    ChatsResource
+)
+from zou.app.blueprints.crud.chat_message import (
+    ChatMessageResource,
+    ChatMessagesResource
+)
 
 routes = [
     ("/data/persons", PersonsResource),
@@ -195,6 +203,10 @@ routes = [
     ("/data/subscriptions/<instance_id>", SubscriptionResource),
     ("/data/entity-links/", EntityLinksResource),
     ("/data/entity-links/<instance_id>", EntityLinkResource),
+    ("/data/chats/", ChatsResource),
+    ("/data/chats/<instance_id>", ChatResource),
+    ("/data/chat-messages/", ChatMessagesResource),
+    ("/data/chat-messages/<instance_id>", ChatMessageResource),
     ("/data/preview-background-files", PreviewBackgroundFilesResource),
     (
         "/data/preview-background-files/<instance_id>",

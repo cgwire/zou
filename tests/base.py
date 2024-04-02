@@ -204,7 +204,7 @@ class ApiTestCase(unittest.TestCase):
             data.update(extra_fields)
         response = self.app.post(path, data=data, headers=self.base_headers)
         self.assertEqual(response.status_code, code)
-        return response.data
+        return response.json
 
     def download_file(self, path, target_file_path, code=200):
         """
