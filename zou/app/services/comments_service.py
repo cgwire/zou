@@ -518,3 +518,21 @@ def get_comment_department_mention_ids(project_id, text):
         str(mention.id)
         for mention in get_comment_department_mentions(project_id, text)
     ]
+
+
+def add_attachments_to_comment(comment, files):
+    """
+    Create an attachment entry and for each given uploaded files and tie it
+    to given comment.
+    """
+    comment["attachment_files"] = []
+    for uploaded_file in files.values():
+        try:
+            attachment_file = create_attachment(comment, uploaded_file)
+            comment["attachment_files"].append(attachment_file)
+        except IntegrityError:
+            attachment_file = create_attachment(
+                comment, uploaded_file, randomize=True
+            )
+            comment["attachment_files"].append(attachment_file)
+    return comment
