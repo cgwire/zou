@@ -1,5 +1,7 @@
 import slugify
 
+from zou.app.utils import cache
+
 from zou.app.services import (
     entities_service,
     files_service,
@@ -10,6 +12,7 @@ from zou.app.services import (
 )
 
 
+cache.memoize_function(1200)
 def get_full_entity_name(entity_id):
     """
     Get full entity name whether it's an asset or a shot. If it's a shot

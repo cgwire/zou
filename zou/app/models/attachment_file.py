@@ -15,11 +15,16 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
     extension = db.Column(db.String(6))
     mimetype = db.Column(db.String(255))
     comment_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("comment.id"), index=True
+        UUIDType(binary=False),
+        db.ForeignKey("comment.id"),
+        index=True,
+        nullable=True
     )
-
-    __table_args__ = (
-        db.UniqueConstraint("name", "comment_id", name="attachment_uc"),
+    chat_message_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("chat_message.id"),
+        index=True,
+        nullable=True
     )
 
     def __repr__(self):

@@ -7,6 +7,8 @@ from zou.app.mixin import ArgsMixin
 
 from zou.app.services import (
     assets_service,
+    chats_service,
+    entities_service,
     persons_service,
     projects_service,
     shots_service,
@@ -1258,4 +1260,70 @@ class ClearAvatarResource(Resource):
         """
         user = persons_service.get_current_user()
         persons_service.clear_avatar(user["id"])
+        return "", 204
+
+
+class ChatsResource(Resource):
+
+    def get(self):
+        """
+        Return chats where user is participant.
+        ---
+        tags:
+            - User
+        responses:
+            200:
+                description: Chats where user is participant
+        """
+        user = persons_service.get_current_user()
+        return chats_service.get_chats_for_person(user["id"])
+
+
+class JoinChatResource(Resource):
+
+    def post(self, entity_id):
+        """
+        Join chat for given entity (be listed as participant).
+        ---
+        tags:
+          - User
+        parameters:
+          - in: path
+            name: entity_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+                description: Chat joined
+        """
+        entity = entities_service.get_entity(entity_id)
+        user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity["id"])
+        person = persons_service.get_current_user()
+        return chats_service.join_chat(entity_id, person["id"])
+
+    def delete(self, entity_id):
+        """
+        Leave chat for given entity (be removed from participants).
+        ---
+        tags:
+         - User
+        parameters:
+          - in: path
+            name: entity_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+                description: empty response
+        """
+        entity = entities_service.get_entity(entity_id)
+        user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity["id"])
+        person = persons_service.get_current_user()
+        chats_service.leave_chat(entity_id, person["id"])
         return "", 204

@@ -8,8 +8,10 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import permissions
 
 from zou.app.services import (
+    chats_service,
     comments_service,
     deletion_service,
+    entities_service,
     persons_service,
     tasks_service,
     user_service,
@@ -53,10 +55,18 @@ class DownloadAttachmentResource(Resource):
         attachment_file = comments_service.get_attachment_file(
             attachment_file_id
         )
-        comment = tasks_service.get_comment(attachment_file["comment_id"])
-        task = tasks_service.get_task(comment["object_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        if attachment_file["comment_id"] is not None:
+            comment = tasks_service.get_comment(attachment_file["comment_id"])
+            task = tasks_service.get_task(comment["object_id"])
+            user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
+        else:
+            message = chats_service.get_chat_message(
+                attachment_file["chat_message_id"]
+            )
+            chat = chats_service.get_chat_by_id(message["chat_id"])
+            entity = entities_service.get_entity(chat["object_id"])
+            user_service.check_project_access(entity["project_id"])
         try:
             file_path = comments_service.get_attachment_file_path(
                 attachment_file
