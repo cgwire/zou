@@ -42,7 +42,7 @@ def upgrade():
     sa.Column('id', sqlalchemy_utils.types.uuid.UUIDType(binary=False), default=uuid.uuid4, nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('text', sa.Text(), nullable=True)
+    sa.Column('text', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['chat_id'], ['chat.id'], ),
     sa.ForeignKeyConstraint(['person_id'], ['person.id'], ),
     sa.PrimaryKeyConstraint('id')
