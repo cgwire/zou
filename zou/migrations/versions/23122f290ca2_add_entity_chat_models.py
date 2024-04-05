@@ -1,7 +1,7 @@
 """add entity chat models
 
 Revision ID: 23122f290ca2
-Revises: 16328eae4b5f
+Revises: 9b85c14fa8a7
 Create Date: 2024-03-08 01:33:18.212645
 
 """
@@ -13,7 +13,7 @@ import uuid
 
 # revision identifiers, used by Alembic.
 revision = '23122f290ca2'
-down_revision = '16328eae4b5f'
+down_revision = '9b85c14fa8a7'
 branch_labels = None
 depends_on = None
 
