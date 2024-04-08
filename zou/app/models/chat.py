@@ -1,4 +1,3 @@
-
 from sqlalchemy_utils import UUIDType
 
 from zou.app import db
@@ -24,6 +23,7 @@ class Chat(db.Model, BaseMixin, SerializerMixin):
     """
     Message shared in the entity chat feeds.
     """
+
     object_id = db.Column(UUIDType(binary=False), nullable=False, index=True)
     object_type = db.Column(
         db.String(80), nullable=False, index=True, default="entity"
@@ -40,5 +40,5 @@ class Chat(db.Model, BaseMixin, SerializerMixin):
         return {
             "id": str(self.id),
             "object_id": str(self.object_id),
-            "last_message": self.last_message
+            "last_message": self.last_message,
         }

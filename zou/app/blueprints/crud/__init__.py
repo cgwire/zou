@@ -123,13 +123,10 @@ from zou.app.blueprints.crud.preview_background_file import (
     PreviewBackgroundFileResource,
     PreviewBackgroundFilesResource,
 )
-from zou.app.blueprints.crud.chat import (
-    ChatResource,
-    ChatsResource
-)
+from zou.app.blueprints.crud.chat import ChatResource, ChatsResource
 from zou.app.blueprints.crud.chat_message import (
     ChatMessageResource,
-    ChatMessagesResource
+    ChatMessagesResource,
 )
 
 routes = [

@@ -9,6 +9,7 @@ class ChatMessage(db.Model, BaseMixin, SerializerMixin):
     """
     Message shared in the entity chat feeds.
     """
+
     chat_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("chat.id"),
