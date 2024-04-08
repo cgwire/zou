@@ -33,7 +33,7 @@ from zou.app.services.exception import (
     AssetNotFoundException,
 )
 
-from zou.app.utils import cache, date_helpers, events, fs, fields
+from zou.app.utils import cache, date_helpers, events, fs, fields, date_helpers
 from zou.app.stores import file_store
 from zou.app import config
 
@@ -140,13 +140,15 @@ def _manage_status_change(task_status, task, comment):
             new_data["retake_count"] = retake_count + 1
 
         if task_status["is_feedback_request"]:
-            new_data["end_date"] = datetime.datetime.utcnow()
+            new_data["end_date"] = date_helpers.get_utc_now_datetime()
 
         if (
             task_status["short_name"] == "wip"
             and task["real_start_date"] is None
         ):
-            new_data["real_start_date"] = datetime.datetime.utcnow()
+            new_data["real_start_date"] = datetime.datetime.now(
+                datetime.timezone.utc
+            )
 
     tasks_service.update_task(task["id"], new_data)
 

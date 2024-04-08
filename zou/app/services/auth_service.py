@@ -3,7 +3,8 @@ import random
 import string
 import flask_bcrypt
 import fido2.features
-from datetime import datetime, timedelta
+
+from datetime import timedelta
 
 from flask import request, session, current_app
 from babel.dates import format_datetime
@@ -103,7 +104,9 @@ def check_auth(
             raise NoAuthStrategyConfigured()
     except WrongPasswordException:
         update_login_failed_attemps(
-            person["id"], login_failed_attemps + 1, datetime.utcnow()
+            person["id"],
+            login_failed_attemps + 1,
+            date_helpers.get_utc_now_datetime(),
         )
         raise WrongPasswordException()
 
@@ -116,7 +119,9 @@ def check_auth(
             recovery_code,
         ):
             update_login_failed_attemps(
-                person["id"], login_failed_attemps + 1, datetime.utcnow()
+                person["id"],
+                login_failed_attemps + 1,
+                date_helpers.get_utc_now_datetime(),
             )
             raise WrongOTPException()
 
@@ -488,7 +493,7 @@ def send_email_otp(person):
     )
     organisation = persons_service.get_organisation()
     time_string = format_datetime(
-        datetime.utcnow(),
+        date_helpers.get_utc_now_datetime(),
         tzinfo=person["timezone"],
         locale=person["locale"],
     )
@@ -754,7 +759,7 @@ def check_login_failed_attemps(person):
         login_failed_attemps >= 5
         and date_helpers.get_datetime_from_string(person["last_login_failed"])
         + timedelta(minutes=1)
-        > datetime.utcnow()
+        > date_helpers.get_utc_now_datetime()
     ):
         raise TooMuchLoginFailedAttemps()
     return login_failed_attemps

@@ -1,10 +1,7 @@
-import datetime
-
 from flask import abort
 from flask_restful import Resource
 
 from zou.app.mixin import ArgsMixin
-
 from zou.app.services import (
     assets_service,
     chats_service,
@@ -15,8 +12,7 @@ from zou.app.services import (
     time_spents_service,
     user_service,
 )
-
-
+from zou.app.utils import date_helpers
 from zou.app.services.exception import WrongDateFormatException
 
 
@@ -801,7 +797,9 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
             201:
                 description: Desktop login log created
         """
-        arguments = self.get_args(["date", datetime.datetime.utcnow()])
+        arguments = self.get_args(
+            ["date", date_helpers.get_utc_now_datetime()]
+        )
         current_user = persons_service.get_current_user()
         desktop_login_log = persons_service.create_desktop_login_logs(
             current_user["id"], arguments["date"]

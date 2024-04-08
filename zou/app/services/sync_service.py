@@ -45,7 +45,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
-from zou.app.utils import events
+from zou.app.utils import events, date_helpers
 from zou.app import app, config
 
 
@@ -326,7 +326,7 @@ def run_last_events_sync(minutes=0, page_size=300):
     """
     path = "events/last?page_size=%s" % page_size
     if minutes > 0:
-        now = datetime.datetime.utcnow()
+        now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
         after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
         path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
@@ -349,7 +349,7 @@ def run_last_events_files(minutes=0, page_size=50):
     """
     path = "events/last?only_files=true&page_size=%s" % page_size
     if minutes > 0:
-        now = datetime.datetime.utcnow()
+        now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
         after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
         path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")

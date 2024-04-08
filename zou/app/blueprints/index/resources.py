@@ -1,15 +1,14 @@
 import psutil
 import redis
 import requests
-
-from datetime import datetime
+import datetime
 
 from flask import Response, abort
 from flask_restful import Resource
 from zou import __version__
 
 from zou.app import app, config
-from zou.app.utils import permissions, shell
+from zou.app.utils import permissions, shell, date_helpers
 from zou.app.services import projects_service, stats_service
 
 from flask_jwt_extended import jwt_required
@@ -231,8 +230,8 @@ class InfluxStatusResource(BaseStatusResource):
                 description: Status of database, key value, event stream, job queue and time
         """
         (
-            api_name,
-            version,
+            _,
+            _,
             is_db_up,
             is_kv_up,
             is_es_up,
@@ -246,7 +245,9 @@ class InfluxStatusResource(BaseStatusResource):
             "event-stream-up": int(is_es_up),
             "job-queue-up": int(is_jq_up),
             "indexer-up": int(is_indexer_up),
-            "time": datetime.timestamp(datetime.utcnow()),
+            "time": datetime.datetime.timestamp(
+                date_helpers.get_utc_now_datetime()
+            ),
         }
 
 

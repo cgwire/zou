@@ -15,7 +15,14 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.utils import permissions, csv_utils, auth, emails, fields
+from zou.app.utils import (
+    permissions,
+    csv_utils,
+    auth,
+    emails,
+    fields,
+    date_helpers,
+)
 from zou.app.services.exception import (
     DepartmentNotFoundException,
     WrongDateFormatException,
@@ -189,7 +196,7 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             201:
                 description: Desktop login log entry created.
         """
-        args = self.get_args([("date", datetime.datetime.utcnow())])
+        args = self.get_args([("date", date_helpers.get_utc_now_datetime())])
 
         current_user = persons_service.get_current_user()
         if (
@@ -1271,7 +1278,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             )
             organisation = persons_service.get_organisation()
             time_string = format_datetime(
-                datetime.datetime.utcnow(),
+                date_helpers.get_utc_now_datetime(),
                 tzinfo=person["timezone"],
                 locale=person["locale"],
             )
@@ -1365,7 +1372,7 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
             )
             organisation = persons_service.get_organisation()
             time_string = format_datetime(
-                datetime.datetime.utcnow(),
+                date_helpers.get_utc_now_datetime(),
                 tzinfo=person["timezone"],
                 locale=person["locale"],
             )

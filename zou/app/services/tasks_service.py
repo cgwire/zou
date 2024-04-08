@@ -1,5 +1,4 @@
 import collections
-import datetime
 import uuid
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
@@ -30,7 +29,13 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app.utils import cache, fields, query as query_utils, permissions
+from zou.app.utils import (
+    cache,
+    fields,
+    query as query_utils,
+    permissions,
+    date_helpers,
+)
 
 
 from zou.app.services.exception import (
@@ -1261,7 +1266,7 @@ def update_task(task_id, data):
     task = get_task_raw(task_id)
 
     if is_finished(task, data):
-        data["end_date"] = datetime.datetime.utcnow()
+        data["end_date"] = date_helpers.get_utc_now_datetime()
 
     task.update(data)
     clear_task_cache(task_id)

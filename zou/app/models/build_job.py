@@ -1,11 +1,9 @@
-import datetime
-
 from sqlalchemy_utils import UUIDType, ChoiceType
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from zou.app.utils import fields
+from zou.app.utils import fields, date_helpers
 
 STATUSES = [
     ("running", "Running"),
@@ -34,7 +32,12 @@ class BuildJob(db.Model, BaseMixin, SerializerMixin):
     )
 
     def end(self, status):
-        self.update({"status": status, "ended_at": datetime.datetime.utcnow()})
+        self.update(
+            {
+                "status": status,
+                "ended_at": date_helpers.get_utc_now_datetime(),
+            }
+        )
 
     def present(self):
         return fields.serialize_dict(

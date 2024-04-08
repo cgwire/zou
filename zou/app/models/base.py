@@ -1,10 +1,8 @@
-import datetime
-
 from sqlalchemy_utils import UUIDType
 from sqlalchemy import func
 from sqlalchemy import orm
 from zou.app import db
-from zou.app.utils import fields
+from zou.app.utils import fields, date_helpers
 
 
 class BaseMixin(object):
@@ -13,11 +11,13 @@ class BaseMixin(object):
     )
 
     # Audit fields
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    created_at = db.Column(
+        db.DateTime, default=date_helpers.get_utc_now_datetime
+    )
     updated_at = db.Column(
         db.DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
+        default=date_helpers.get_utc_now_datetime,
+        onupdate=date_helpers.get_utc_now_datetime,
     )
 
     def __repr__(self):
@@ -192,7 +192,7 @@ class BaseMixin(object):
         instance fields.
         """
         try:
-            self.updated_at = datetime.datetime.utcnow()
+            self.updated_at = date_helpers.get_utc_now_datetime()
             db.session.add(self)
             db.session.commit()
         except BaseException:
@@ -239,7 +239,7 @@ class BaseMixin(object):
         Shorthand to update an entry via the database session based on current
         instance fields. It doesn't generate a commit.
         """
-        self.updated_at = datetime.datetime.utcnow()
+        self.updated_at = date_helpers.get_utc_now_datetime()
         for key, value in data.items():
             if hasattr(self.__class__, key):
                 field_key = getattr(self.__class__, key)

@@ -1,4 +1,3 @@
-import datetime
 import urllib.parse
 
 from flask import request, jsonify, current_app
@@ -23,7 +22,7 @@ from babel.dates import format_datetime
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import auth, emails, permissions
+from zou.app.utils import auth, emails, permissions, date_helpers
 from zou.app.services import (
     persons_service,
     auth_service,
@@ -561,7 +560,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
             )
             organisation = persons_service.get_organisation()
             time_string = format_datetime(
-                datetime.datetime.utcnow(),
+                date_helpers.get_utc_now_datetime(),
                 tzinfo=user["timezone"],
                 locale=user["locale"],
             )
@@ -752,7 +751,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
             query,
         )
         time_string = format_datetime(
-            datetime.datetime.utcnow(),
+            date_helpers.get_utc_now_datetime(),
             tzinfo=user["timezone"],
             locale=user["locale"],
         )
