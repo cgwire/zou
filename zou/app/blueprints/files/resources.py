@@ -1,4 +1,3 @@
-import datetime
 import os
 
 from flask import request, abort, current_app
@@ -9,7 +8,7 @@ from flask_fs.errors import FileNotFound
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import fs
+from zou.app.utils import fs, date_helpers
 from zou.app.stores import file_store
 from zou.app.services import (
     file_tree_service,
@@ -770,7 +769,8 @@ class ModifiedFileResource(Resource):
         user_service.check_project_access(task["project_id"])
         user_service.check_entity_access(task["entity_id"])
         working_file = files_service.update_working_file(
-            working_file_id, {"updated_at": datetime.datetime.utcnow()}
+            working_file_id,
+            {"updated_at": date_helpers.get_utc_now_datetime()},
         )
         return working_file
 

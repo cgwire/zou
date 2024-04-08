@@ -734,9 +734,8 @@ class AttachmentThumbnailResource(Resource):
             return send_picture_file("thumbnails", attachment_file_id)
         except FileNotFound:
             current_app.logger.error(
-                "Picture file was not found for attachment: %s" % (
-                    attachment_file_id
-                )
+                "Picture file was not found for attachment: %s"
+                % (attachment_file_id)
             )
             abort(404)
 

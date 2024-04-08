@@ -440,7 +440,9 @@ def remove_old_events(days_old=90):
     """
     Remove events older than *days_old*.
     """
-    limit_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_old)
+    limit_date = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(days=days_old)
     ApiEvent.query.filter(ApiEvent.created_at < limit_date).delete()
     ApiEvent.commit()
 
@@ -449,7 +451,9 @@ def remove_old_login_logs(days_old=90):
     """
     Remove login logs older than *days_old*.
     """
-    limit_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_old)
+    limit_date = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(days=days_old)
     LoginLog.query.filter(LoginLog.created_at < limit_date).delete()
     LoginLog.commit()
 
@@ -458,7 +462,9 @@ def remove_old_notifications(days_old=90):
     """
     Remove notifications older than *days_old*.
     """
-    limit_date = datetime.datetime.utcnow() - datetime.timedelta(days=days_old)
+    limit_date = datetime.datetime.now(
+        datetime.timezone.utc
+    ) - datetime.timedelta(days=days_old)
     Notification.query.filter(Notification.created_at < limit_date).delete()
     Notification.commit()
 

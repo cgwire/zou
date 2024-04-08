@@ -18,13 +18,13 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("comment.id"),
         index=True,
-        nullable=True
+        nullable=True,
     )
     chat_message_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("chat_message.id"),
         index=True,
-        nullable=True
+        nullable=True,
     )
 
     def __repr__(self):

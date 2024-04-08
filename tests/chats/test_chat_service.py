@@ -1,8 +1,6 @@
-import os
-
 from tests.base import ApiDBTestCase
 from zou.app.models.chat import Chat
-from zou.app.services import chats_service, assets_service
+from zou.app.services import chats_service
 
 
 class ChatsServiceTestCase(ApiDBTestCase):
@@ -22,7 +20,10 @@ class ChatsServiceTestCase(ApiDBTestCase):
         )
 
     def test_get_chat_raw(self):
-        chats_service.join_chat(self.asset.id, self.person.id,)
+        chats_service.join_chat(
+            self.asset.id,
+            self.person.id,
+        )
         chat = chats_service.get_chat_raw(self.asset.id)
         self.assertIsInstance(chat, Chat)
         self.assertEqual(chat.object_id, self.asset.id)
@@ -42,8 +43,9 @@ class ChatsServiceTestCase(ApiDBTestCase):
 
     def test_get_chat_message_raw(self):
         chat_message = self.generate_fixture_chat_message()
-        new_chat_message = \
-            chats_service.get_chat_message_raw(chat_message["id"])
+        new_chat_message = chats_service.get_chat_message_raw(
+            chat_message["id"]
+        )
         self.assertEqual(str(new_chat_message.id), chat_message["id"])
 
     def test_get_chat_message(self):

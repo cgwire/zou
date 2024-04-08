@@ -1,7 +1,5 @@
-import datetime
-
 from sqlalchemy_utils import UUIDType
-from zou.app.utils import fields
+from zou.app.utils import fields, date_helpers
 import sqlalchemy as sa
 
 
@@ -11,9 +9,11 @@ class BaseMixin(object):
     )
 
     # Audit fields
-    created_at = sa.Column(sa.DateTime, default=datetime.datetime.utcnow)
+    created_at = sa.Column(
+        sa.DateTime, default=date_helpers.get_utc_now_datetime
+    )
     updated_at = sa.Column(
         sa.DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
+        default=date_helpers.get_utc_now_datetime,
+        onupdate=date_helpers.get_utc_now_datetime,
     )

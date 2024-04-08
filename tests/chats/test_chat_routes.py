@@ -49,7 +49,7 @@ class EventsRoutesTestCase(ApiDBTestCase):
 
     def test_get_chat_messages(self):
         self.generate_fixture_chat_message()
-        chat = self.get(f"/data/entities/{self.asset.id}/chat")
+        self.get(f"/data/entities/{self.asset.id}/chat")
         messages = self.get(f"/data/entities/{self.asset.id}/chat/messages")
         self.assertEqual(len(messages), 1)
 
@@ -85,7 +85,7 @@ class EventsRoutesTestCase(ApiDBTestCase):
         size = thumbnail.get_dimensions(
             file_store.get_local_picture_path("thumbnails", attachment_id)
         )
-        self.assertEquals(size, (150, 150))
+        self.assertEqual(size, (150, 150))
 
     def test_delete_chat_message(self):
         chat_message = self.generate_fixture_chat_message()

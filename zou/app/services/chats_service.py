@@ -1,4 +1,5 @@
-import os, random, string
+import random
+import string
 
 from flask import current_app
 from sqlalchemy.exc import IntegrityError
@@ -10,11 +11,11 @@ from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 
-from zou.app.utils import cache, events, fs, fields, thumbnail
+from zou.app.utils import cache, events, fs, thumbnail
 
 from zou.app.stores import file_store
 
-from zou.app.services import entities_service, names_service, persons_service
+from zou.app.services import names_service, persons_service
 
 
 def clear_chat_message_cache(chat_message_id):
@@ -63,11 +64,13 @@ def get_chat_message(chat_message_id):
     serialized_message = message.serialize()
     serialized_message["attachment_files"] = []
     for attachment_file in message.attachment_files:
-        serialized_message["attachment_files"].append({
-            "id": attachment_file.id,
-            "name": attachment_file.name,
-            "extension": attachment_file.extension,
-        })
+        serialized_message["attachment_files"].append(
+            {
+                "id": attachment_file.id,
+                "name": attachment_file.name,
+                "extension": attachment_file.extension,
+            }
+        )
     return serialized_message
 
 
@@ -81,11 +84,8 @@ def join_chat(entity_id, person_id):
     chat.save()
     events.emit(
         "chat:joined",
-        data={
-            "chat_id": chat.id,
-            "person_id": person.id
-        },
-        persist=False
+        data={"chat_id": chat.id, "person_id": person.id},
+        persist=False,
     )
     return chat.serialize()
 
@@ -100,11 +100,8 @@ def leave_chat(entity_id, person_id):
     chat.save()
     events.emit(
         "chat:left",
-        data={
-            "chat_id": chat.id,
-            "person_id": person.id
-        },
-        persist=False
+        data={"chat_id": chat.id, "person_id": person.id},
+        persist=False,
     )
     return chat.serialize()
 
@@ -115,8 +112,7 @@ def get_chat_messages(chat_id):
     """
     result = []
     messages = (
-        ChatMessage.query
-        .filter(ChatMessage.chat_id == chat_id)
+        ChatMessage.query.filter(ChatMessage.chat_id == chat_id)
         .order_by(ChatMessage.created_at)
         .all()
     )
@@ -124,11 +120,13 @@ def get_chat_messages(chat_id):
         serialized_message = message.serialize()
         serialized_message["attachment_files"] = []
         for attachment_file in message.attachment_files:
-            serialized_message["attachment_files"].append({
-                "id": attachment_file.id,
-                "name": attachment_file.name,
-                "extension": attachment_file.extension,
-            })
+            serialized_message["attachment_files"].append(
+                {
+                    "id": attachment_file.id,
+                    "name": attachment_file.name,
+                    "extension": attachment_file.extension,
+                }
+            )
         result.append(serialized_message)
     return result
 
@@ -147,13 +145,9 @@ def create_chat_message(chat_id, person_id, message, files=None):
     """
     chat = Chat.get(chat_id)
     message = ChatMessage.create(
-        chat_id=chat_id,
-        person_id=person_id,
-        text=message
+        chat_id=chat_id, person_id=person_id, text=message
     )
-    chat.update({
-        "last_message": message.created_at
-    })
+    chat.update({"last_message": message.created_at})
     serialized_message = message.serialize()
     if files:
         _add_attachments_to_message(serialized_message, files)
@@ -162,9 +156,9 @@ def create_chat_message(chat_id, person_id, message, files=None):
         data={
             "chat_id": chat_id,
             "chat_message_id": str(message.id),
-            "last_message": chat.last_message
+            "last_message": chat.last_message,
         },
-        persist=False
+        persist=False,
     )
     return serialized_message
 
@@ -188,7 +182,7 @@ def delete_chat_message(chat_message_id):
             "chat_id": str(message.chat_id),
             "chat_message_id": chat_message_id,
         },
-        persist=False
+        persist=False,
     )
     clear_chat_message_cache(chat_message_id)
     return message.serialize()
@@ -207,8 +201,7 @@ def get_chats_for_person(person_id):
     Return chats for current user.
     """
     chats = (
-        Chat.query
-        .join(Entity, Chat.object_id == Entity.id)
+        Chat.query.join(Entity, Chat.object_id == Entity.id)
         .join(Project, Entity.project_id == Project.id)
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
         .add_columns(Entity.project_id, Entity.preview_file_id)
@@ -220,13 +213,13 @@ def get_chats_for_person(person_id):
     result = []
     for chat_model, project_id, preview_file_id in chats:
         chat = chat_model.present()
-        chat["entity_name"], _ = \
-            names_service.get_full_entity_name(chat["object_id"])
+        chat["entity_name"], _ = names_service.get_full_entity_name(
+            chat["object_id"]
+        )
         chat["project_id"] = project_id
         chat["preview_file_id"] = preview_file_id
         result.append(chat)
     return result
-
 
 
 def _add_attachments_to_message(message, files):

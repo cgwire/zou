@@ -438,7 +438,7 @@ def invite_person(person_id):
     )
 
     time_string = format_datetime(
-        datetime.datetime.utcnow(),
+        date_helpers.get_utc_now_datetime(),
         tzinfo=person["timezone"],
         locale=person["locale"],
     )
@@ -560,7 +560,7 @@ def create_access_token_for_raw_person(person):
             datetime.datetime.combine(
                 person.expiration_date, datetime.datetime.max.time()
             )
-            - datetime.datetime.utcnow()
+            - date_helpers.get_utc_now_datetime()
         )
     access_token = create_access_token(
         identity=person.id,
