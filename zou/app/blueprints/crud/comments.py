@@ -132,18 +132,32 @@ class CommentResource(BaseModelResource):
                 current_user["id"] == instance["person_id"]
             )
 
-            if (
-                change_pinned
-                and not is_supervisor
-                or not is_supervisor_in_department
+            if change_pinned and (
+                not is_supervisor or not is_supervisor_in_department
             ):
                 raise permissions.PermissionDenied
 
             if change_checklist and (
                 not comment_from_current_user
                 and (
-                    not is_assigned
-                    or (is_supervisor and not is_supervisor_in_department)
+                    (
+                        is_supervisor
+                        and not (is_supervisor_in_department or is_assigned)
+                    )
+                    or (not is_supervisor and not is_assigned)
+                )
+                and (
+                    len(data["checklist"]) == len(instance["checklist"])
+                    and all(
+                        all(
+                            (
+                                k == "checked"
+                                or data["checklist"][i].get(k) == c[k]
+                            )
+                            for k in c.keys()
+                        )
+                        for i, c in enumerate(instance["checklist"])
+                    )
                 )
             ):
                 raise permissions.PermissionDenied
@@ -168,8 +182,6 @@ class CommentResource(BaseModelResource):
 
             if "task_status_id" in data.keys():
                 user_service.check_task_status_access(data["task_status_id"])
-            else:
-                raise permissions.PermissionDenied
 
             return True
 
