@@ -162,6 +162,8 @@ TELEMETRY_URL = os.getenv(
     f"{'http://localhost:8000' if DEBUG else 'https://account.cg-wire.com'}/api/selfhosted/telemetry/new/",
 )
 
+REMOVE_FILES = envtobool("REMOVE_FILES", False)
+
 # Deprecated
 TO_REVIEW_TASK_STATUS = "To review"
 DEFAULT_FILE_STATUS = "To review"

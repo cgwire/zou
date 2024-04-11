@@ -264,7 +264,9 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
             except Exception as e:
                 current_app.logger.error(e, exc_info=1)
                 current_app.logger.error("Normalization failed.")
-                deletion_service.remove_preview_file_by_id(instance_id)
+                deletion_service.remove_preview_file_by_id(
+                    instance_id, force=True
+                )
                 abort(400, "Normalization failed.")
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
@@ -1382,7 +1384,9 @@ class CreatePreviewBackgroundFileResource(Resource):
             current_app.logger.info(
                 f"Wrong file format, extension: {extension}"
             )
-            deletion_service.remove_preview_background_file_by_id(instance_id)
+            deletion_service.remove_preview_background_file_by_id(
+                instance_id, force=True
+            )
             abort(400, f"Wrong file format, extension: {extension}")
 
     def check_permissions(self, instance_id):
@@ -1429,7 +1433,9 @@ class CreatePreviewBackgroundFileResource(Resource):
             current_app.logger.error(
                 f"Error while saving preview background file and thumbnail: {instance_id}"
             )
-            deletion_service.remove_preview_background_file_by_id(instance_id)
+            deletion_service.remove_preview_background_file_by_id(
+                instance_id, force=True
+            )
             abort(
                 400,
                 f"Error while saving preview background file and thumbnail: {instance_id}",

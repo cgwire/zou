@@ -1143,6 +1143,38 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
         )
 
 
+class PersonDayOffResource(Resource, ArgsMixin):
+    """
+    Return all day offs recorded for given and person.
+    """
+
+    @jwt_required()
+    def get(self, person_id):
+        """
+        Return all day offs recorded for given and person.
+        ---
+        tags:
+        - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All day off recorded for given person.
+        """
+        user_service.check_person_is_not_bot(person_id)
+        user_id = persons_service.get_current_user()["id"]
+        if person_id != user_id:
+            permissions.check_admin_permissions()
+        return time_spents_service.get_day_offs_between(
+            person_id=person_id,
+        )
+
+
 class AddToDepartmentResource(Resource, ArgsMixin):
     """
     Add a user to given department.

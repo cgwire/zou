@@ -470,19 +470,22 @@ def get_person_day_offs_for_year(person_id, year):
     return get_day_offs_between(start, end, person_id=person_id)
 
 
-def get_day_offs_between(start, end, person_id=None):
+def get_day_offs_between(start=None, end=None, person_id=None):
     """
-    Get all day off entries for given person, year.
+    Get all day off entries for given person, start and end date.
     """
     query = DayOff.query
     if person_id is not None:
         query = query.filter(DayOff.person_id == person_id)
 
-    return DayOff.serialize_list(
-        query.filter(func.cast(start, DayOff.end_date.type) <= DayOff.end_date)
-        .filter(func.cast(end, DayOff.date.type) >= DayOff.date)
-        .all()
-    )
+    if start is not None:
+        query = query.filter(
+            func.cast(start, DayOff.end_date.type) <= DayOff.end_date
+        )
+    if end is not None:
+        query = query.filter(func.cast(end, DayOff.date.type) >= DayOff.date)
+
+    return DayOff.serialize_list(query.all())
 
 
 def get_timezoned_interval(start, end):

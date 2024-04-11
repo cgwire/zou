@@ -149,12 +149,12 @@ def remove_task(task_id, force=False):
     return task_serialized
 
 
-def remove_preview_file_by_id(preview_file_id):
+def remove_preview_file_by_id(preview_file_id, force=False):
     preview_file = PreviewFile.get(preview_file_id)
-    return remove_preview_file(preview_file)
+    return remove_preview_file(preview_file, force=force)
 
 
-def remove_preview_file(preview_file):
+def remove_preview_file(preview_file, force=False):
     """
     Remove all files related to given preview file, then remove the preview file
     entry from the database.
@@ -169,13 +169,13 @@ def remove_preview_file(preview_file):
     if news is not None:
         news.update({"preview_file_id": None})
 
-    # stop removing files for now
-    # if preview_file.extension == "png":
-    #     clear_picture_files(preview_file.id)
-    # elif preview_file.extension == "mp4":
-    #     clear_movie_files(preview_file.id)
-    # else:
-    #     clear_generic_files(preview_file.id)
+    if config.REMOVE_FILES or force:
+        if preview_file.extension == "png":
+            clear_picture_files(preview_file.id)
+        elif preview_file.extension == "mp4":
+            clear_movie_files(preview_file.id)
+        else:
+            clear_generic_files(preview_file.id)
 
     preview_file.comments = []
     preview_file.save()
@@ -202,7 +202,9 @@ def remove_preview_file(preview_file):
     return preview_file.serialize()
 
 
-def remove_preview_background_file_by_id(preview_background_file_id):
+def remove_preview_background_file_by_id(
+    preview_background_file_id, force=False
+):
     """
     Remove all files related to given preview background file, then remove the
     preview background file entry from the database.
@@ -210,16 +212,15 @@ def remove_preview_background_file_by_id(preview_background_file_id):
     preview_background_file = PreviewBackgroundFile.get(
         preview_background_file_id
     )
-    return remove_preview_background_file(preview_background_file)
+    return remove_preview_background_file(preview_background_file, force=force)
 
 
-def remove_preview_background_file(preview_background_file):
+def remove_preview_background_file(preview_background_file, force=False):
     """
     Remove all files related to given preview background file, then remove the
     preview background file entry from the database.
     """
-    # stop removing files for now
-    # clear_preview_background_files(preview_background_file.id)
+    clear_preview_background_files(preview_background_file.id, force=force)
     preview_background_file.delete()
     return preview_background_file.serialize()
 
@@ -240,25 +241,26 @@ def remove_attachment_file(attachment_file):
     Remove all files related to given attachment file, then remove the
     attachment file entry from the database.
     """
-    # stop removing files for now
-    # file_store.remove_file("attachments", str(attachment_file.id))
+    if config.REMOVE_FILES:
+        file_store.remove_file("attachments", str(attachment_file.id))
     attachment_dict = attachment_file.serialize()
     attachment_file.delete()
     return attachment_dict
 
 
-def clear_preview_background_files(preview_background_id):
+def clear_preview_background_files(preview_background_id, force=False):
     """
     Remove all files related to given preview background file.
     """
-    for image_type in [
-        "thumbnails",
-        "preview-backgrounds",
-    ]:
-        try:
-            file_store.remove_picture(image_type, preview_background_id)
-        except BaseException:
-            pass
+    if config.REMOVE_FILES or force:
+        for image_type in [
+            "thumbnails",
+            "preview-backgrounds",
+        ]:
+            try:
+                file_store.remove_picture(image_type, preview_background_id)
+            except BaseException:
+                pass
 
 
 def clear_picture_files(preview_file_id):
