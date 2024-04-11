@@ -16,7 +16,7 @@ from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app import config
+from zou.app import config, file_store
 from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.services import index_service, auth_service
 from zou.app.stores import auth_tokens_store
@@ -535,11 +535,11 @@ def clear_avatar(person_id):
     person = get_person_raw(person_id)
     person.update({"has_avatar": False})
     clear_person_cache()
-    # stop removing files for now
-    # try:
-    #     file_store.remove_picture("thumbnails", person_id)
-    # except BaseException:
-    #     pass
+    if config.REMOVE_FILES:
+        try:
+            file_store.remove_picture("thumbnails", person_id)
+        except BaseException:
+            pass
     return person.serialize()
 
 

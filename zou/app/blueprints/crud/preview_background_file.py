@@ -1,6 +1,6 @@
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.services.exception import ArgumentsException
-from zou.app.services import files_service
+from zou.app.services import files_service, deletion_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
@@ -58,7 +58,6 @@ class PreviewBackgroundFileResource(BaseModelResource):
         return instance_dict
 
     def post_delete(self, instance_dict):
-        # stop removing files for now
-        # deletion_service.clear_preview_background_files(instance_dict["id"])
+        deletion_service.clear_preview_background_files(instance_dict["id"])
         files_service.clear_preview_background_file_cache(instance_dict["id"])
         return instance_dict

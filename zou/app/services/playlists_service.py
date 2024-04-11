@@ -4,6 +4,7 @@ import orjson as json
 import os
 import zlib
 
+from flask import current_app
 from operator import itemgetter
 from pathlib import Path
 from shutil import copyfile
@@ -781,13 +782,13 @@ def remove_build_job(playlist, build_job_id):
     movie_file_path = get_playlist_movie_file_path(job.serialize())
     if os.path.exists(movie_file_path):
         os.remove(movie_file_path)
-    # stop removing files for now
-    # try:
-    #     file_store.remove_movie("playlists", build_job_id)
-    # except Exception:
-    #     current_app.logger.error(
-    #         "Playlist file can't be deleted: %s" % build_job_id
-    #     )
+    if config.REMOVE_FILES:
+        try:
+            file_store.remove_movie("playlists", build_job_id)
+        except Exception:
+            current_app.logger.error(
+                "Playlist file can't be deleted: %s" % build_job_id
+            )
     job.delete()
     events.emit(
         "build-job:delete",
