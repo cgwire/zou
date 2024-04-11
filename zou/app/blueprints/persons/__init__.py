@@ -17,6 +17,7 @@ from zou.app.blueprints.persons.resources import (
     PersonDayTimeSpentsResource,
     PersonWeekDayOffResource,
     PersonYearDayOffResource,
+    PersonDayOffResource,
     PersonMonthDayOffResource,
     PresenceLogsResource,
     TimeSpentsResource,
@@ -90,6 +91,10 @@ routes = [
     (
         "/data/persons/<person_id>/day-offs/year/<year>",
         PersonYearDayOffResource,
+    ),
+    (
+        "/data/persons/<person_id>/day-offs",
+        PersonDayOffResource,
     ),
     ("/actions/persons/<person_id>/invite", InvitePersonResource),
     ("/actions/persons/<person_id>/departments/add", AddToDepartmentResource),
