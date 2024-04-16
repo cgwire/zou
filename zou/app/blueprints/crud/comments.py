@@ -120,8 +120,14 @@ class CommentResource(BaseModelResource):
             if permissions.has_manager_permissions():
                 return True
 
-            change_pinned = "pinned" in data.keys()
-            change_checklist = "checklist" in data.keys()
+            change_pinned = (
+                "pinned" in data.keys()
+                and data["pinned"] != instance["pinned"]
+            )
+            change_checklist = (
+                "checklist" in data.keys()
+                and data["checklist"] != instance["checklist"]
+            )
             is_supervisor = permissions.has_supervisor_permissions()
             is_supervisor_in_department = (
                 current_user["departments"] == []
