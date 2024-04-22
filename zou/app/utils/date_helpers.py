@@ -11,7 +11,7 @@ def get_now():
 
 
 def get_utc_now_datetime():
-    return datetime.datetime.now(datetime.timezone.utc)
+    return datetime.datetime.now(tz=datetime.timezone.utc).replace(tzinfo=None)
 
 
 def get_date_from_now(nb_days):

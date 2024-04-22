@@ -12,9 +12,7 @@ class DateTestCase(ApiDBTestCase):
 
     def test_create_date(self):
         self.assertIsNotNone(self.person.created_at)
-        self.assertGreater(
-            self.person.created_at, self.now.replace(tzinfo=None)
-        )
+        self.assertGreater(self.person.created_at, self.now)
 
     def test_update_date(self):
         self.person.last_name = "Doe"
