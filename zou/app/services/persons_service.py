@@ -558,7 +558,9 @@ def create_access_token_for_raw_person(person):
     if person.expiration_date is not None:
         expires_delta = (
             datetime.datetime.combine(
-                person.expiration_date, datetime.datetime.max.time()
+                person.expiration_date,
+                datetime.datetime.max.time(),
+                tzinfo=datetime.timezone.utc,
             )
             - date_helpers.get_utc_now_datetime()
         )
