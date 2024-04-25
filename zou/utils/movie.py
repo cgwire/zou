@@ -107,10 +107,14 @@ def generate_tile(movie_path):
     ratio = get_movie_display_aspect_ratio(video_track=video_track)
     height = 100
     width = math.ceil(height * ratio)
-
+    if rows == 240:
+        select = f"select='not(mod(n\,{math.ceil(duration_in_frames/1920)}))',"
+    else:
+        select = ""
     try:
         ffmpeg.input(movie_path).output(
-            file_target_path, vf=f"scale={width}:{height},tile=8x{rows}"
+            file_target_path,
+            vf=f"{select}scale={width}:{height},tile=8x{rows}",
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "An error occured while generating the tile.")
