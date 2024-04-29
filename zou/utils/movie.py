@@ -103,14 +103,18 @@ def generate_tile(movie_path):
     duration = get_movie_duration(video_track=video_track)
     fps = get_movie_fps(video_track=video_track)
     duration_in_frames = int(duration * fps)
-    rows = min(math.ceil(duration_in_frames / 8), 240)
+    rows = min(math.ceil(duration_in_frames / 8), 480)
     ratio = get_movie_display_aspect_ratio(video_track=video_track)
     height = 100
     width = math.ceil(height * ratio)
-
+    if rows == 480:
+        select = f"select='not(mod(n\,{math.ceil(duration_in_frames/3840)}))',"
+    else:
+        select = ""
     try:
         ffmpeg.input(movie_path).output(
-            file_target_path, vf=f"scale={width}:{height},tile=8x{rows}"
+            file_target_path,
+            vf=f"{select}scale={width}:{height},tile=8x{rows}",
         ).overwrite_output().run(quiet=True)
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "An error occured while generating the tile.")

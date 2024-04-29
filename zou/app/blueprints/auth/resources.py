@@ -733,6 +733,11 @@ class ResetPasswordResource(Resource, ArgsMixin):
 
         try:
             user = persons_service.get_person_by_email(args["email"])
+            if not user["active"]:
+                return (
+                    {"error": True, "message": "This user is inactive."},
+                    400,
+                )
         except PersonNotFoundException:
             return (
                 {"error": True, "message": "Email not listed in database."},
