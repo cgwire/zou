@@ -982,7 +982,6 @@ class TaskAssignResource(Resource, ArgsMixin):
             400:
                 description: Assignee non-existent in database
         """
-        user_service.check_person_is_not_bot(person_id)
         args = self.get_args(
             [
                 {
@@ -993,6 +992,7 @@ class TaskAssignResource(Resource, ArgsMixin):
             ]
         )
         person_id = args["person_id"]
+        user_service.check_person_is_not_bot(person_id)
         user_service.check_task_departement_access(task_id, person_id)
         current_user = persons_service.get_current_user()
         try:
