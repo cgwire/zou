@@ -5,7 +5,12 @@ from sqlalchemy import func
 
 
 def get_last_events(
-    after=None, before=None, page_size=100, only_files=False, project_id=None
+    after=None,
+    before=None,
+    page_size=100,
+    only_files=False,
+    project_id=None,
+    name=None,
 ):
     """
     Return last 100 events published. If before parameter is set, it returns
@@ -37,6 +42,9 @@ def get_last_events(
 
     if project_id is not None:
         query = query.filter(ApiEvent.project_id == project_id)
+
+    if name is not None:
+        query = query.filter(ApiEvent.name == name)
 
     events = query.limit(page_size).all()
     return [
