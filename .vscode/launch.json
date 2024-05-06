@@ -33,7 +33,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "pytest",
-      "args": ["${file}"],
+      "args": ["${file}::TaskRoutesTestCase::test_task_assign_400"],
       "cwd": "${workspaceFolder}",
       "env": { "DB_DATABASE": "zoudbtest" },
       "justMyCode": false

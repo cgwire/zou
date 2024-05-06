@@ -909,7 +909,6 @@ class TasksAssignResource(Resource, ArgsMixin):
             200:
                 description: Given tasks lists assigned to given person
         """
-        user_service.check_person_is_not_bot(person_id)
         args = self.get_args(
             [
                 {
@@ -925,6 +924,7 @@ class TasksAssignResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         for task_id in args["task_ids"]:
             try:
+                user_service.check_person_is_not_bot(person_id)
                 user_service.check_task_departement_access(task_id, person_id)
                 task = tasks_service.assign_task(
                     task_id, person_id, current_user["id"]
@@ -992,10 +992,10 @@ class TaskAssignResource(Resource, ArgsMixin):
             ]
         )
         person_id = args["person_id"]
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_task_departement_access(task_id, person_id)
         current_user = persons_service.get_current_user()
         try:
+            user_service.check_person_is_not_bot(person_id)
+            user_service.check_task_departement_access(task_id, person_id)
             task = tasks_service.assign_task(
                 task_id, person_id, current_user["id"]
             )
