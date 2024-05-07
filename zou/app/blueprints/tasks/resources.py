@@ -909,7 +909,6 @@ class TasksAssignResource(Resource, ArgsMixin):
             200:
                 description: Given tasks lists assigned to given person
         """
-        user_service.check_person_is_not_bot(person_id)
         args = self.get_args(
             [
                 {
@@ -925,10 +924,13 @@ class TasksAssignResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         for task_id in args["task_ids"]:
             try:
+                user_service.check_person_is_not_bot(person_id)
                 user_service.check_task_departement_access(task_id, person_id)
-                task = self.assign_task(task_id, person_id, current_user["id"])
-                notifications_service.create_assignation_notification(
+                task = tasks_service.assign_task(
                     task_id, person_id, current_user["id"]
+                )
+                notifications_service.create_assignation_notification(
+                    task_id, person_id
                 )
                 tasks.append(task)
             except TaskNotFoundException:
@@ -941,9 +943,6 @@ class TasksAssignResource(Resource, ArgsMixin):
             projects_service.add_team_member(tasks[0]["project_id"], person_id)
 
         return tasks
-
-    def assign_task(self, task_id, person_id, assigner_id):
-        return tasks_service.assign_task(task_id, person_id, assigner_id)
 
 
 class TaskAssignResource(Resource, ArgsMixin):
@@ -993,11 +992,13 @@ class TaskAssignResource(Resource, ArgsMixin):
             ]
         )
         person_id = args["person_id"]
+        current_user = persons_service.get_current_user()
         try:
             user_service.check_person_is_not_bot(person_id)
-            task = tasks_service.get_task(task_id)
             user_service.check_task_departement_access(task_id, person_id)
-            self.assign_task(task_id, person_id)
+            task = tasks_service.assign_task(
+                task_id, person_id, current_user["id"]
+            )
             notifications_service.create_assignation_notification(
                 task_id, person_id
             )
@@ -1006,9 +1007,6 @@ class TaskAssignResource(Resource, ArgsMixin):
             return {"error": "Assignee doesn't exist in database."}, 400
 
         return task
-
-    def assign_task(self, task_id, person_id):
-        return tasks_service.assign_task(task_id, person_id)
 
 
 class TaskFullResource(Resource):

@@ -52,6 +52,7 @@ class EventsResource(Resource, ArgsMixin):
                 ("only_files", False, False),
                 ("page_size", 100, False),
                 ("project_id", None, False),
+                ("name", None, False),
             ],
         )
 
@@ -61,6 +62,7 @@ class EventsResource(Resource, ArgsMixin):
         page_size = args["page_size"]
         only_files = args["only_files"] == "true"
         project_id = args.get("project_id", None)
+        name = args["name"]
         if project_id is not None and not fields.is_valid_id(project_id):
             raise WrongParameterException(
                 "The project_id parameter is not a valid id"
@@ -72,6 +74,7 @@ class EventsResource(Resource, ArgsMixin):
                 page_size=page_size,
                 only_files=only_files,
                 project_id=project_id,
+                name=name,
             )
 
 

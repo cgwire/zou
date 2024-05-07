@@ -92,6 +92,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     replies = db.Column(JSONB, default=[])
     checklist = db.Column(JSONB)
     pinned = db.Column(db.Boolean)
+    links = db.Column(db.ARRAY(db.String()))
 
     task_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_status.id"), index=True

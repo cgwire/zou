@@ -26,6 +26,7 @@ from zou.app.services import (
     projects_service,
     tasks_service,
     concepts_service,
+    preview_files_service,
 )
 from zou.app.services.exception import (
     AttachmentFileNotFoundException,
@@ -69,7 +70,14 @@ def get_attachment_file_path(attachment_file):
 
 
 def create_comment(
-    person_id, task_id, task_status_id, text, checklist, files, created_at
+    person_id,
+    task_id,
+    task_status_id,
+    text,
+    checklist,
+    files,
+    created_at,
+    links=[],
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -87,6 +95,7 @@ def create_comment(
         text=text,
         checklist=checklist,
         created_at=created_at,
+        links=links,
     )
     task, status_changed = _manage_status_change(task_status, task, comment)
     _manage_subscriptions(task, comment, status_changed)
@@ -184,12 +193,11 @@ def _manage_subscriptions(task, comment, status_changed):
 
 
 def _run_status_automation(automation, task, person_id):
-    is_automation_to_run = (
-        not automation["archived"]
-        and task["task_type_id"] == automation["in_task_type_id"]
-        and task["task_status_id"] == automation["in_task_status_id"]
-    )
-    if not is_automation_to_run:
+    if (
+        automation["archived"]
+        or task["task_type_id"] != automation["in_task_type_id"]
+        or task["task_status_id"] != automation["in_task_status_id"]
+    ):
         return
 
     priorities = projects_service.get_task_type_priority_map(
@@ -217,7 +225,7 @@ def _run_status_automation(automation, task, person_id):
             task_status = tasks_service.get_task_status(
                 automation["in_task_status_id"]
             )
-            create_comment(
+            new_comment = create_comment(
                 person_id,
                 task_to_update["id"],
                 automation["out_task_status_id"],
@@ -230,6 +238,31 @@ def _run_status_automation(automation, task, person_id):
                 {},
                 None,
             )
+            if automation["import_last_revision"]:
+                preview_file = (
+                    preview_files_service.get_last_preview_file_for_task(
+                        task["id"]
+                    )
+                )
+                preview_files = (
+                    preview_files_service.get_preview_files_for_revision(
+                        preview_file["task_id"], preview_file["revision"]
+                    )
+                )
+
+                for preview_file in preview_files:
+                    new_preview_file = (
+                        tasks_service.add_preview_file_to_comment(
+                            new_comment["id"],
+                            new_comment["person_id"],
+                            task_to_update["id"],
+                        )
+                    )
+
+                    preview_files_service.copy_preview_file_in_another_one(
+                        preview_file["id"], new_preview_file["id"]
+                    )
+
     elif automation["out_field_type"] == "ready_for":
         try:
             asset = assets_service.update_asset(
@@ -250,6 +283,7 @@ def new_comment(
     files={},
     checklist=[],
     created_at="",
+    links=[],
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -280,6 +314,7 @@ def new_comment(
         checklist=checklist,
         text=text,
         created_at=created_at_date,
+        links=links,
     )
 
     comment = comment.serialize(relations=True)

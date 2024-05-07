@@ -4,6 +4,7 @@ import re
 import time
 
 import ffmpeg
+import shutil
 
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -940,3 +941,117 @@ def _reset_preview_file_metadata(
         print(
             f"Failed to store information for preview file {preview_file.id}: {e}.",
         )
+
+
+def copy_preview_file_on_storage(
+    get_path_func,
+    exists_func,
+    copy_func,
+    prefix,
+    original_preview_file_id,
+    preview_file_to_update_id,
+):
+    if config.FS_BACKEND == "local":
+        file_path = get_path_func(prefix, original_preview_file_id)
+        other_file_path = get_path_func(prefix, preview_file_to_update_id)
+        if os.path.exists(file_path):
+            os.makedirs(os.path.dirname(other_file_path), exist_ok=True)
+            shutil.copyfile(file_path, other_file_path)
+    elif exists_func(prefix, original_preview_file_id):
+        copy_func(
+            prefix, original_preview_file_id, prefix, preview_file_to_update_id
+        )
+
+
+def copy_preview_file_in_another_one(
+    original_preview_file_id, preview_file_to_update_id
+):
+    """
+    Copy preview file data/files from one preview file to another one.
+    """
+    original_preview_file = files_service.get_preview_file(
+        original_preview_file_id
+    )
+    is_movie = original_preview_file["extension"] == "mp4"
+    is_picture = original_preview_file["extension"] == "png"
+
+    if is_movie:
+        prefixes = ["previews", "lowdef"]
+        for prefix in prefixes:
+            copy_preview_file_on_storage(
+                file_store.get_local_movie_path,
+                file_store.exists_movie,
+                file_store.copy_movie,
+                prefix,
+                original_preview_file_id,
+                preview_file_to_update_id,
+            )
+
+    if is_movie or is_picture:
+        prefixes = [
+            "previews",
+            "original",
+            "thumbnails",
+            "thumbnails-square",
+        ]
+        if is_movie:
+            prefixes.append("tiles")
+
+        for prefix in prefixes:
+            copy_preview_file_on_storage(
+                file_store.get_local_picture_path,
+                file_store.exists_picture,
+                file_store.copy_picture,
+                prefix,
+                original_preview_file_id,
+                preview_file_to_update_id,
+            )
+    else:
+        copy_preview_file_on_storage(
+            file_store.get_local_file_path,
+            file_store.exists_file,
+            file_store.copy_file,
+            "previews",
+            original_preview_file_id,
+            preview_file_to_update_id,
+        )
+
+    preview_file_to_update = update_preview_file(
+        preview_file_to_update_id,
+        {
+            "extension": original_preview_file["extension"],
+            "original_name": original_preview_file["original_name"],
+            "status": original_preview_file["status"],
+            "file_size": original_preview_file["file_size"],
+            "width": original_preview_file["width"],
+            "height": original_preview_file["height"],
+            "duration": original_preview_file["duration"],
+        },
+    )
+    tasks_service.update_preview_file_info(preview_file_to_update)
+    comment = tasks_service.get_comment_by_preview_file_id(
+        preview_file_to_update_id
+    )
+    task = tasks_service.get_task(preview_file_to_update["task_id"])
+    comment_id = None
+    if comment is not None:
+        comment_id = comment["id"]
+        events.emit(
+            "comment:update",
+            {"comment_id": comment_id},
+            project_id=task["project_id"],
+        )
+        events.emit(
+            "preview-file:add-file",
+            {
+                "comment_id": comment_id,
+                "task_id": preview_file_to_update["task_id"],
+                "preview_file_id": preview_file_to_update["id"],
+                "revision": preview_file_to_update["revision"],
+                "extension": preview_file_to_update["extension"],
+                "status": preview_file_to_update["status"],
+            },
+            project_id=task["project_id"],
+        )
+
+    return preview_file_to_update

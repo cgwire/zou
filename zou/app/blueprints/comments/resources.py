@@ -185,6 +185,7 @@ class CommentTaskResource(Resource):
             person_id,
             created_at,
             checklist,
+            links,
         ) = self.get_arguments()
 
         task = tasks_service.get_task(task_id)
@@ -204,6 +205,7 @@ class CommentTaskResource(Resource):
             checklist,
             files,
             created_at,
+            links,
         )
         return comment, 201
 
@@ -218,9 +220,17 @@ class CommentTaskResource(Resource):
                 default=[],
                 location=location,
             )
+            parser.add_argument(
+                "links",
+                type=str,
+                action="append",
+                default=[],
+                location=location,
+            )
         else:
             location = "values"
             parser.add_argument("checklist", default="[]", location=location)
+            parser.add_argument("links", default="[]", location=location)
         parser.add_argument(
             "task_status_id",
             required=True,
@@ -241,6 +251,7 @@ class CommentTaskResource(Resource):
                 if request.is_json
                 else json.loads(args["checklist"])
             ),
+            (args["links"] if request.is_json else json.loads(args["links"])),
         )
 
 
@@ -408,6 +419,7 @@ class CommentManyTasksResource(Resource):
                     [],
                     {},
                     None,
+                    comment.get("links", []),
                 )
                 result.append(comment)
             except KeyError:
