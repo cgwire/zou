@@ -70,6 +70,7 @@ ALLOWED_FILE_EXTENSION = [
     "obj",
     "pdf",
     "psd",
+    "psb",
     "rar",
     "sbbkp",
     "svg",
