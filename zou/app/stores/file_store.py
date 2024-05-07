@@ -104,6 +104,12 @@ def get_local_picture_path(prefix, id):
     return path(pictures, make_key(prefix, id))
 
 
+def copy_picture(prefix, id, new_prefix, new_id):
+    key = make_key(prefix, id)
+    target = make_key(new_prefix, new_id)
+    return pictures.copy(key, target)
+
+
 def add_movie(prefix, id, path):
     key = make_key(prefix, id)
     with open(path, "rb") as fd:
@@ -139,6 +145,12 @@ def get_local_movie_path(prefix, id):
     return path(movies, make_key(prefix, id))
 
 
+def copy_movie(prefix, id, new_prefix, new_id):
+    key = make_key(prefix, id)
+    target = make_key(new_prefix, new_id)
+    return movies.copy(key, target)
+
+
 def add_file(prefix, id, path):
     key = make_key(prefix, id)
     with open(path, "rb") as fd:
@@ -172,3 +184,9 @@ def remove_file(prefix, id):
 
 def get_local_file_path(prefix, id):
     return path(files, make_key(prefix, id))
+
+
+def copy_file(prefix, id, new_prefix, new_id):
+    key = make_key(prefix, id)
+    target = make_key(new_prefix, new_id)
+    return files.copy(key, target)
