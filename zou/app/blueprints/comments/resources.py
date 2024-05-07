@@ -222,7 +222,7 @@ class CommentTaskResource(Resource):
             )
             parser.add_argument(
                 "links",
-                type=dict,
+                type=str,
                 action="append",
                 default=[],
                 location=location,
