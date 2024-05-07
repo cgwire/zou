@@ -70,7 +70,14 @@ def get_attachment_file_path(attachment_file):
 
 
 def create_comment(
-    person_id, task_id, task_status_id, text, checklist, files, created_at
+    person_id,
+    task_id,
+    task_status_id,
+    text,
+    checklist,
+    files,
+    created_at,
+    links=[],
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -88,6 +95,7 @@ def create_comment(
         text=text,
         checklist=checklist,
         created_at=created_at,
+        links=links,
     )
     task, status_changed = _manage_status_change(task_status, task, comment)
     _manage_subscriptions(task, comment, status_changed)

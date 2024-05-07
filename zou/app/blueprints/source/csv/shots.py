@@ -140,7 +140,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                             task_update["comment"] or "",
                             [],
                             {},
-                            "",
+                            None,
                         )
                     except WrongParameterException:
                         pass
