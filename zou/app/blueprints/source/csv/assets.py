@@ -151,7 +151,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                             task_update["comment"] or "",
                             [],
                             {},
-                            None,
+                            "",
                         )
                     except WrongParameterException:
                         pass

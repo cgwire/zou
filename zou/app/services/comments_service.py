@@ -283,6 +283,7 @@ def new_comment(
     files={},
     checklist=[],
     created_at="",
+    links=[],
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -313,6 +314,7 @@ def new_comment(
         checklist=checklist,
         text=text,
         created_at=created_at_date,
+        links=links,
     )
 
     comment = comment.serialize(relations=True)
