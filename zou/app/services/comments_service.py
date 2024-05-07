@@ -238,7 +238,7 @@ def _run_status_automation(automation, task, person_id):
                 {},
                 None,
             )
-            if automation["import_last_preview"]:
+            if automation["import_last_revision"]:
                 preview_file = (
                     preview_files_service.get_last_preview_file_for_task(
                         task["id"]

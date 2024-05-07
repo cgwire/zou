@@ -37,6 +37,6 @@ class StatusAutomation(db.Model, BaseMixin, SerializerMixin):
         index=True,
         nullable=True,
     )
-    import_last_preview = db.Column(db.Boolean(), default=False)
+    import_last_revision = db.Column(db.Boolean(), default=False)
 
     archived = db.Column(db.Boolean(), default=False)
