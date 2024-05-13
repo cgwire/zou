@@ -1739,3 +1739,23 @@ class OpenTasksResource(Resource, ArgsMixin):
             page=args["page"],
             limit=args["limit"],
         )
+
+
+
+class OpenTasksStatsResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def get(self):
+        """
+        Return task amount, task done amount, total estimation, total duration
+        by status by task type by project for open projects. It aggregates the
+        result at the project level.
+        ---
+        tags:
+        - Tasks
+        responses:
+            200:
+                description: A dict organized by project that contains
+                the results for each task type and status pairs.
+        """
+        return tasks_service.get_open_tasks_stats()
