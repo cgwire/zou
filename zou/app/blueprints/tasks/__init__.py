@@ -35,11 +35,13 @@ from zou.app.blueprints.tasks.resources import (
     SetTaskMainPreviewResource,
     PersonsTasksDatesResource,
     CreateConceptTasksResource,
+    OpenTasksStatsResource,
 )
 
 
 routes = [
     ("/data/tasks/open-tasks", OpenTasksResource),
+    ("/data/tasks/open-tasks/stats", OpenTasksStatsResource),
     ("/data/tasks/<task_id>/comments", TaskCommentsResource),
     ("/data/tasks/<task_id>/comments/<comment_id>", TaskCommentResource),
     ("/data/tasks/<task_id>/previews", TaskPreviewsResource),

@@ -3,6 +3,7 @@ import uuid
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
+from sqlalchemy.sql.expression import case, literal_column
 from sqlalchemy.orm import aliased
 
 from zou.app import app, db
@@ -2048,3 +2049,79 @@ def get_open_tasks(
             "page": page or 1,
         }
     return result
+
+
+
+def get_open_tasks_stats():
+    """
+    Return the amount of tasks, done tasks, estimation, and duration for each
+    status in open projects. Aggregate the amounts for each project.
+    """
+    Sequence = aliased(Entity, name="sequence")
+    Episode = aliased(Entity, name="episode")
+
+    from zou.app import db
+
+    query_stats = (
+        db.session.query(
+            func.count().label("amount"),
+            func.count(case({TaskStatus.is_done: Task.id})).label("amount_done"),
+            func.sum(Task.duration).label("total_duration"),
+            func.sum(Task.estimation).label("total_estimation"),
+        )
+        .join(TaskType, Task.task_type_id == TaskType.id)
+        .join(TaskStatus, Task.task_status_id == TaskStatus.id)
+        .join(Entity, Entity.id == Task.entity_id)
+        .join(EntityType, EntityType.id == Entity.entity_type_id)
+        .join(Project, Project.id == Task.project_id)
+        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
+        .filter(TaskType.for_entity != "Concept")
+        .group_by(Project.id, TaskType.id, TaskStatus.id)
+        .add_columns(
+            Project.id.label("project_id"),
+            TaskType.id.label("task_type_id"),
+            TaskStatus.id.label("task_status_id")
+        )
+    )
+
+    if permissions.has_admin_permissions():
+        query_stats = query_stats.filter(ProjectStatus.name == "Open")
+    else:
+        query_stats = query_stats.filter(
+            user_service.build_related_projects_filter()
+        )
+
+    stats_status = query_stats.all()
+
+    statuses_stats = [
+        {
+            "task_status_id": stat.task_status_id,
+            "task_type_id": stat.task_type_id,
+            "project_id": stat.project_id,
+            "amount": stat.amount,
+            "amount_done": stat.amount_done,
+            "total_duration": stat.total_duration,
+            "total_estimation": stat.total_estimation,
+        }
+        for stat in stats_status
+    ]
+
+    stats_map = {}
+    for stat in statuses_stats:
+        project_id = stat["project_id"]
+        if project_id not in stats_map:
+            stats_map[project_id] = {
+                "amount": 0,
+                "amount_done": 0,
+                "total_duration": 0,
+                "total_estimation": 0,
+                "task_types": []
+            }
+        project_stats = stats_map[project_id]
+        project_stats["amount"] += stat["amount"]
+        project_stats["amount_done"] += stat["amount_done"]
+        project_stats["total_duration"] += stat["total_duration"]
+        project_stats["total_estimation"] += stat["total_estimation"]
+        project_stats["task_types"].append(stat)
+
+    return stats_map
