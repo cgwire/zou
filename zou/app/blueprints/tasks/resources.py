@@ -1739,7 +1739,6 @@ class OpenTasksResource(Resource, ArgsMixin):
         )
 
 
-
 class OpenTasksStatsResource(Resource, ArgsMixin):
 
     @jwt_required()
@@ -1754,6 +1753,6 @@ class OpenTasksStatsResource(Resource, ArgsMixin):
         responses:
             200:
                 description: A dict organized by project that contains
-                the results for each task type and status pairs.
+                            the results for each task type and status pairs.
         """
         return tasks_service.get_open_tasks_stats()
