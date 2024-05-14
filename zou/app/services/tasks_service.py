@@ -3,7 +3,7 @@ import uuid
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
-from sqlalchemy.sql.expression import case, literal_column
+from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import aliased
 
 from zou.app import app, db
@@ -2051,7 +2051,6 @@ def get_open_tasks(
     return result
 
 
-
 def get_open_tasks_stats():
     """
     Return the amount of tasks, done tasks, estimation, and duration for each
@@ -2065,7 +2064,9 @@ def get_open_tasks_stats():
     query_stats = (
         db.session.query(
             func.count().label("amount"),
-            func.count(case({TaskStatus.is_done: Task.id})).label("amount_done"),
+            func.count(case({TaskStatus.is_done: Task.id})).label(
+                "amount_done"
+            ),
             func.sum(Task.duration).label("total_duration"),
             func.sum(Task.estimation).label("total_estimation"),
         )
@@ -2080,7 +2081,7 @@ def get_open_tasks_stats():
         .add_columns(
             Project.id.label("project_id"),
             TaskType.id.label("task_type_id"),
-            TaskStatus.id.label("task_status_id")
+            TaskStatus.id.label("task_status_id"),
         )
     )
 
@@ -2115,7 +2116,7 @@ def get_open_tasks_stats():
                 "amount_done": 0,
                 "total_duration": 0,
                 "total_estimation": 0,
-                "task_types": []
+                "task_types": [],
             }
         project_stats = stats_map[project_id]
         project_stats["amount"] += stat["amount"]
