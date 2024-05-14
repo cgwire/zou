@@ -54,17 +54,18 @@ class DayOffResource(BaseModelResource):
 
     def post_update(self, instance_dict, data):
         TimeSpent.delete_all_by(
-            instance_dict["date"] >= TimeSpent.date,
-            instance_dict["end_date"] <= TimeSpent.date,
-            person_id=instance_dict["person_id"],
+            self.instance.date >= TimeSpent.date,
+            self.instance.end_date <= TimeSpent.date,
+            person_id=self.instance.person_id,
         )
         return instance_dict
 
     def pre_update(self, instance_dict, data):
         if time_spents_service.get_day_offs_between(
-            data.get("date", instance_dict["data"]),
+            data.get("date", instance_dict["date"]),
             data.get("end_date", instance_dict["end_date"]),
             data.get("person_id", instance_dict["person_id"]),
+            exclude_id=instance_dict["id"],
         ):
             raise ArgumentsException("Day off already exists for this period")
         return data
