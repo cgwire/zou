@@ -1,5 +1,5 @@
 from sqlalchemy.orm import aliased
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from zou.app import config
 from zou.app.models.comment import Comment
@@ -407,15 +407,23 @@ def check_belong_to_project(project_id):
     return current_user["id"] in project["team"]
 
 
-def check_project_access(project_id):
+def has_project_access(project_id):
     """
     Return true if current user is a manager or has a task assigned for this
     project.
     """
-    is_allowed = (
+    return (
         permissions.has_admin_permissions()
         or check_belong_to_project(project_id)
     )
+
+
+def check_project_access(project_id):
+    """
+    Return true if current user is a manager or has a task assigned for this
+    project. Raise a PermissionDenied exception if not.
+    """
+    is_allowed = has_project_access(project_id)
     if not is_allowed:
         raise permissions.PermissionDenied
     return is_allowed
@@ -501,15 +509,23 @@ def check_comment_access(comment_id):
         return True
 
 
-def check_manager_project_access(project_id):
+def has_manager_project_access(project_id):
     """
     Return true if current user is a manager and has a task assigned for this
     project.
     """
-    is_allowed = permissions.has_admin_permissions() or (
+    return permissions.has_admin_permissions() or (
         permissions.has_manager_permissions()
         and check_belong_to_project(project_id)
     )
+
+
+def check_manager_project_access(project_id):
+    """
+    Return true if current user is a manager and has a task assigned for this
+    project. Raise a PermissionDenied exception if not.
+    """
+    is_allowed = has_manager_project_access(project_id)
     if not is_allowed:
         raise permissions.PermissionDenied
     return is_allowed
@@ -852,16 +868,23 @@ def get_user_filters(current_user_id):
     result = {}
 
     filters = (
-        SearchFilter.query.join(Project)
+        SearchFilter.query
+        .join(Project)
         .join(ProjectStatus)
-        .filter(SearchFilter.person_id == current_user_id)
+        .filter(
+            or_(
+                SearchFilter.person_id == current_user_id,
+                SearchFilter.is_shared == True,
+            )
+        )
         .filter(build_open_project_filter())
         .all()
     )
 
     filters = (
         filters
-        + SearchFilter.query.filter(SearchFilter.person_id == current_user_id)
+        + SearchFilter.query
+        .filter(SearchFilter.person_id == current_user_id)
         .filter(SearchFilter.project_id == None)
         .all()
     )
@@ -884,7 +907,14 @@ def get_user_filters(current_user_id):
     return result
 
 
-def create_filter(list_type, name, query, project_id=None, entity_type=None):
+def create_filter(
+    list_type,
+    name,
+    query,
+    project_id=None,
+    entity_type=None,
+    is_shared=False
+):
     """
     Add a new search filter to the database.
     """
@@ -896,6 +926,7 @@ def create_filter(list_type, name, query, project_id=None, entity_type=None):
         project_id=project_id,
         person_id=current_user["id"],
         entity_type=entity_type,
+        is_shared=is_shared,
     )
     search_filter.serialize()
     clear_filter_cache(current_user["id"])
