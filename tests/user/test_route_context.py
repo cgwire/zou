@@ -561,3 +561,71 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             context["projects"][0]["descriptors"][0]["name"], "test client"
         )
+
+    def test_shared_filters(self):
+        project_id = str(self.project.id)
+        self.generate_fixture_user_cg_artist()
+        path = "data/user/filters/"
+        filter_1 = {
+            "list_type": "asset",
+            "name": "props",
+            "query": "props",
+            "project_id": project_id,
+            "is_shared": True,
+        }
+        self.post(path, filter_1)
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 1)
+        self.assertEqual(
+            result["asset"][project_id][0]["search_query"], "props"
+        )
+        self.assertEqual(
+            result["asset"][project_id][0]["is_shared"], True
+        )
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        filter_2 = {
+            "list_type": "asset",
+            "name": "myfilter",
+            "query": "character",
+            "project_id": project_id,
+            "is_shared": True,
+        }
+        self.post(path, filter_2)
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 2)
+        self.assertEqual(
+            result["asset"][project_id][0]["search_query"], "props"
+        )
+        self.assertEqual(
+            result["asset"][project_id][0]["is_shared"], True
+        )
+        self.assertEqual(
+            result["asset"][project_id][1]["search_query"], "character"
+        )
+        self.assertEqual(
+            result["asset"][project_id][1]["is_shared"], False
+        )
+
+        self.put(
+            "data/user/filters/%s" % result["asset"][project_id][1]["id"],
+            {"name": "updated", "is_shared": True}
+        )
+        result = self.get(path)
+        self.assertEqual(
+            result["asset"][project_id][1]["is_shared"], False
+        )
+        self.assertEqual(
+            result["asset"][project_id][1]["is_shared"], False
+        )
+        self.put(
+            "data/user/filters/%s" % result["asset"][project_id][0]["id"],
+            {"name": "updated", "is_shared": True},
+            404
+        )
+
+    def create_test_folder(self):
+        return super().create_test_folder()
