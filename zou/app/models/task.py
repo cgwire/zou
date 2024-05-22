@@ -30,7 +30,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     """
 
     name = db.Column(db.String(80), nullable=False)
-    description = db.Column(db.String(200))
+    description = db.Column(db.Text())
 
     priority = db.Column(db.Integer, default=0)
     duration = db.Column(db.Float, default=0)

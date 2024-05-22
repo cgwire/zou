@@ -96,7 +96,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
 
     name = db.Column(db.String(160), nullable=False)
     code = db.Column(db.String(160))  # To store sanitized version of name
-    description = db.Column(db.String(1200))
+    description = db.Column(db.Text())
     shotgun_id = db.Column(db.Integer)
     canceled = db.Column(db.Boolean, default=False)
 
