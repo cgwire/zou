@@ -412,9 +412,8 @@ def has_project_access(project_id):
     Return true if current user is a manager or has a task assigned for this
     project.
     """
-    return (
-        permissions.has_admin_permissions()
-        or check_belong_to_project(project_id)
+    return permissions.has_admin_permissions() or check_belong_to_project(
+        project_id
     )
 
 
@@ -868,8 +867,7 @@ def get_user_filters(current_user_id):
     result = {}
 
     filters = (
-        SearchFilter.query
-        .join(Project)
+        SearchFilter.query.join(Project)
         .join(ProjectStatus)
         .filter(
             or_(
@@ -883,8 +881,7 @@ def get_user_filters(current_user_id):
 
     filters = (
         filters
-        + SearchFilter.query
-        .filter(SearchFilter.person_id == current_user_id)
+        + SearchFilter.query.filter(SearchFilter.person_id == current_user_id)
         .filter(SearchFilter.project_id == None)
         .all()
     )
@@ -908,12 +905,7 @@ def get_user_filters(current_user_id):
 
 
 def create_filter(
-    list_type,
-    name,
-    query,
-    project_id=None,
-    entity_type=None,
-    is_shared=False
+    list_type, name, query, project_id=None, entity_type=None, is_shared=False
 ):
     """
     Add a new search filter to the database.

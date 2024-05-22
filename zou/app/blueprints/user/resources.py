@@ -536,8 +536,10 @@ class FiltersResource(Resource, ArgsMixin):
         arguments = self.get_arguments()
 
         if arguments["project_id"] is None or (
-            arguments["project_id"] is not None and
-            not user_service.has_manager_project_access(arguments["project_id"])
+            arguments["project_id"] is not None
+            and not user_service.has_manager_project_access(
+                arguments["project_id"]
+            )
         ):
             arguments["is_shared"] = False
 
@@ -548,7 +550,7 @@ class FiltersResource(Resource, ArgsMixin):
                 arguments["query"],
                 arguments["project_id"],
                 arguments["entity_type"],
-                arguments["is_shared"]
+                arguments["is_shared"],
             ),
             201,
         )
@@ -561,7 +563,7 @@ class FiltersResource(Resource, ArgsMixin):
                 ("list_type", "todo", True),
                 ("project_id", None, False),
                 ("entity_type", None, False),
-                ("is_shared", False, False, bool)
+                ("is_shared", False, False, bool),
             ]
         )
 
@@ -599,8 +601,8 @@ class FilterResource(Resource, ArgsMixin):
         )
 
         if data.get("project_id", None) is None or (
-            data["project_id"] is not None and
-            not user_service.has_manager_project_access(data["project_id"])
+            data["project_id"] is not None
+            and not user_service.has_manager_project_access(data["project_id"])
         ):
             data["is_shared"] = False
 
