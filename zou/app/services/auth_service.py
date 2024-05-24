@@ -755,10 +755,11 @@ def check_login_failed_attemps(person):
     login_failed_attemps = person["login_failed_attemps"]
     if login_failed_attemps is None:
         login_failed_attemps = 0
-    if login_failed_attemps >= 5 and date_helpers.get_datetime_from_string(
-        person["last_login_failed"]
-    ) + timedelta(minutes=1) > date_helpers.get_utc_now_datetime().replace(
-        tzinfo=None
+    if (
+        login_failed_attemps >= 5
+        and date_helpers.get_datetime_from_string(person["last_login_failed"])
+        + timedelta(minutes=1)
+        > date_helpers.get_utc_now_datetime()
     ):
         raise TooMuchLoginFailedAttemps()
     return login_failed_attemps
