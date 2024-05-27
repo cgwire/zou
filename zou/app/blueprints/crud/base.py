@@ -35,7 +35,11 @@ class BaseModelsResource(Resource, ArgsMixin):
         offset = (page - 1) * limit
 
         nb_pages = int(math.ceil(total / float(limit)))
-        query = query.order_by(self.model.updated_at.desc())
+        query = query.order_by(
+            self.model.updated_at.desc(),
+            self.model.created_at.desc(),
+            self.model.id,
+        )
         query = query.limit(limit)
         query = query.offset(offset)
 

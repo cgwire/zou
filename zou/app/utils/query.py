@@ -79,7 +79,7 @@ def get_cursor_results(
     total = query.count()
     query = (
         query.filter(model.created_at > cursor_created_at)
-        .order_by(model.created_at)
+        .order_by(model.created_at, model.updated_at, model.id)
         .limit(limit)
     )
     models = fields.serialize_models(
