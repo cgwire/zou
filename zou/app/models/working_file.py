@@ -17,7 +17,7 @@ class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     shotgun_id = db.Column(db.Integer(), index=True)
 
     name = db.Column(db.String(250))
-    description = db.Column(db.String(200))
+    description = db.Column(db.Text())
     comment = db.Column(db.Text())
     revision = db.Column(db.Integer())
     size = db.Column(db.Integer())

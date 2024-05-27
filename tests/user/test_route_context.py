@@ -579,9 +579,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             result["asset"][project_id][0]["search_query"], "props"
         )
-        self.assertEqual(
-            result["asset"][project_id][0]["is_shared"], True
-        )
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
         )
@@ -600,31 +598,23 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(
             result["asset"][project_id][0]["search_query"], "props"
         )
-        self.assertEqual(
-            result["asset"][project_id][0]["is_shared"], True
-        )
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
         self.assertEqual(
             result["asset"][project_id][1]["search_query"], "character"
         )
-        self.assertEqual(
-            result["asset"][project_id][1]["is_shared"], False
-        )
+        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
 
         self.put(
             "data/user/filters/%s" % result["asset"][project_id][1]["id"],
-            {"name": "updated", "is_shared": True}
+            {"name": "updated", "is_shared": True},
         )
         result = self.get(path)
-        self.assertEqual(
-            result["asset"][project_id][1]["is_shared"], False
-        )
-        self.assertEqual(
-            result["asset"][project_id][1]["is_shared"], False
-        )
+        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
+        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
         self.put(
             "data/user/filters/%s" % result["asset"][project_id][0]["id"],
             {"name": "updated", "is_shared": True},
-            404
+            404,
         )
 
     def create_test_folder(self):
