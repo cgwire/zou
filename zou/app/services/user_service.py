@@ -36,12 +36,18 @@ from zou.app.services.exception import (
 from zou.app.utils import cache, fields, permissions
 
 
-def clear_filter_cache(user_id):
-    cache.cache.delete_memoized(get_user_filters, user_id)
+def clear_filter_cache(user_id=None):
+    if user_id is None:
+        cache.cache.delete_memoized(get_user_filters)
+    else:
+        cache.cache.delete_memoized(get_user_filters, user_id)
 
 
-def clear_filter_group_cache(user_id):
-    cache.cache.delete_memoized(get_user_filter_groups, user_id)
+def clear_filter_group_cache(user_id=None):
+    if user_id is None:
+        cache.cache.delete_memoized(get_user_filter_groups)
+    else:
+        cache.cache.delete_memoized(get_user_filter_groups, user_id)
 
 
 def clear_project_cache():
@@ -921,7 +927,10 @@ def create_filter(
         is_shared=is_shared,
     )
     search_filter.serialize()
-    clear_filter_cache(current_user["id"])
+    if search_filter.is_shared:
+        clear_filter_cache()
+    else:
+        clear_filter_cache(current_user["id"])
     return search_filter.serialize()
 
 
@@ -936,7 +945,10 @@ def update_filter(search_filter_id, data):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.update(data)
-    clear_filter_cache(current_user["id"])
+    if search_filter.is_shared:
+        clear_filter_cache()
+    else:
+        clear_filter_cache(current_user["id"])
     return search_filter.serialize()
 
 
@@ -951,7 +963,10 @@ def remove_filter(search_filter_id):
     if search_filter is None:
         raise SearchFilterNotFoundException
     search_filter.delete()
-    clear_filter_cache(current_user["id"])
+    if search_filter.is_shared:
+        clear_filter_cache()
+    else:
+        clear_filter_cache(current_user["id"])
     return search_filter.serialize()
 
 
