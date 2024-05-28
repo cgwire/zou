@@ -1913,8 +1913,12 @@ def get_open_tasks(
         query_stats = query_stats.filter(TaskStatus.id == task_status_id)
 
     if person_id is not None:
-        query = query.filter(Task.assignees.any(id=person_id))
-        query_stats = query_stats.filter(Task.assignees.any(id=person_id))
+        if person_id == "unassigned":
+            query = query.filter(Task.assignees == None)
+            query_stats = query_stats.filter(Task.assignees == None)
+        else:
+            query = query.filter(Task.assignees.any(id=person_id))
+            query_stats = query_stats.filter(Task.assignees.any(id=person_id))
 
     if start_date is not None:
         query = query.filter(Task.start_date >= start_date)
