@@ -617,5 +617,56 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             404,
         )
 
+    def test_shared_group_filters(self):
+        project_id = str(self.project.id)
+        self.generate_fixture_user_cg_artist()
+        path = "data/user/filter-groups/"
+        filter_group_1 = {
+            "list_type": "asset",
+            "name": "props",
+            "project_id": project_id,
+            "is_shared": True,
+            "color": "",
+        }
+        self.post(path, filter_group_1)
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 1)
+        self.assertEqual(result["asset"][project_id][0]["name"], "props")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+
+        filter_group_2 = {
+            "list_type": "asset",
+            "name": "myfilter",
+            "project_id": project_id,
+            "is_shared": True,
+            "color": "",
+        }
+        self.post(path, filter_group_2)
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 2)
+        self.assertEqual(result["asset"][project_id][0]["name"], "myfilter")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
+        self.assertEqual(result["asset"][project_id][1]["name"], "props")
+        self.assertEqual(result["asset"][project_id][1]["is_shared"], True)
+
+        self.put(
+            "data/user/filter-groups/%s"
+            % result["asset"][project_id][0]["id"],
+            {"name": "updated", "is_shared": True},
+        )
+        result = self.get(path)
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
+        self.put(
+            "data/user/filter-groups/%s"
+            % result["asset"][project_id][1]["id"],
+            {"name": "updated", "is_shared": True},
+            404,
+        )
+
     def create_test_folder(self):
         return super().create_test_folder()

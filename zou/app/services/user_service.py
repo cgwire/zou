@@ -947,7 +947,7 @@ def create_filter(
         search_filter_group_id=search_filter_group_id,
     )
     search_filter.serialize()
-    if is_shared:
+    if search_filter.is_shared:
         clear_filter_cache()
     else:
         clear_filter_cache(current_user["id"])
@@ -989,7 +989,7 @@ def update_filter(search_filter_id, data):
                 "A search filter should have the same value for is_shared than its search filter group."
             )
     search_filter.update(data)
-    if data.get("is_shared", search_filter.is_shared):
+    if search_filter.is_shared:
         clear_filter_cache()
     else:
         clear_filter_cache(current_user["id"])
@@ -1090,7 +1090,7 @@ def create_filter_group(
         is_shared=is_shared,
     )
     search_filter_group.serialize()
-    if is_shared:
+    if search_filter_group.is_shared:
         clear_filter_group_cache()
     else:
         clear_filter_group_cache(current_user["id"])
@@ -1137,7 +1137,7 @@ def update_filter_group(search_filter_group_id, data):
             SearchFilter.query.session.commit()
             clear_filter_cache()
 
-    if data.get("is_shared", search_filter_group.is_shared):
+    if search_filter_group.is_shared:
         clear_filter_group_cache()
     else:
         clear_filter_group_cache(current_user["id"])
