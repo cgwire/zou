@@ -535,14 +535,6 @@ class FiltersResource(Resource, ArgsMixin):
         """
         arguments = self.get_arguments()
 
-        if arguments["project_id"] is None or (
-            arguments["project_id"] is not None
-            and not user_service.has_manager_project_access(
-                arguments["project_id"]
-            )
-        ):
-            arguments["is_shared"] = False
-
         return (
             user_service.create_filter(
                 arguments["list_type"],
@@ -551,6 +543,7 @@ class FiltersResource(Resource, ArgsMixin):
                 arguments["project_id"],
                 arguments["entity_type"],
                 arguments["is_shared"],
+                arguments["search_filter_group_id"],
             ),
             201,
         )
@@ -564,6 +557,7 @@ class FiltersResource(Resource, ArgsMixin):
                 ("project_id", None, False),
                 ("entity_type", None, False),
                 ("is_shared", False, False, bool),
+                ("search_filter_group_id", None, False),
             ]
         )
 
@@ -599,12 +593,6 @@ class FilterResource(Resource, ArgsMixin):
                 ("project_id", None, None),
             ]
         )
-
-        if data.get("project_id", None) is None or (
-            data["project_id"] is not None
-            and not user_service.has_manager_project_access(data["project_id"])
-        ):
-            data["is_shared"] = False
 
         data = self.clear_empty_fields(
             data, ignored_fields=["search_filter_group_id"]
@@ -696,6 +684,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
                 arguments["color"],
                 arguments["project_id"],
                 arguments["entity_type"],
+                arguments["is_shared"],
             ),
             201,
         )
@@ -707,6 +696,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
                 ("color", "", True),
                 ("list_type", "todo", True),
                 ("project_id", None, False),
+                ("is_shared", False, False, bool),
                 ("entity_type", None, False),
             ]
         )
@@ -752,8 +742,11 @@ class FilterGroupResource(Resource, ArgsMixin):
             [
                 ("name", None, False),
                 ("color", None, False),
+                ("is_shared", None, False, bool),
+                ("project_id", None, None),
             ]
         )
+
         data = self.clear_empty_fields(data)
         user_filter = user_service.update_filter_group(filter_group_id, data)
         return user_filter, 200

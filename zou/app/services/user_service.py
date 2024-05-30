@@ -32,6 +32,7 @@ from zou.app.services.exception import (
     SearchFilterNotFoundException,
     SearchFilterGroupNotFoundException,
     NotificationNotFoundException,
+    WrongParameterException,
 )
 from zou.app.utils import cache, fields, permissions
 
@@ -873,22 +874,17 @@ def get_user_filters(current_user_id):
     result = {}
 
     filters = (
-        SearchFilter.query.join(Project)
-        .join(ProjectStatus)
+        SearchFilter.query.outerjoin(Project)
+        .outerjoin(ProjectStatus)
         .filter(
             or_(
                 SearchFilter.person_id == current_user_id,
                 SearchFilter.is_shared == True,
             )
         )
-        .filter(build_open_project_filter())
-        .all()
-    )
-
-    filters = (
-        filters
-        + SearchFilter.query.filter(SearchFilter.person_id == current_user_id)
-        .filter(SearchFilter.project_id == None)
+        .filter(
+            or_(build_open_project_filter(), SearchFilter.project_id == None)
+        )
         .all()
     )
 
@@ -911,12 +907,35 @@ def get_user_filters(current_user_id):
 
 
 def create_filter(
-    list_type, name, query, project_id=None, entity_type=None, is_shared=False
+    list_type,
+    name,
+    query,
+    project_id=None,
+    entity_type=None,
+    is_shared=False,
+    search_filter_group_id=None,
 ):
     """
     Add a new search filter to the database.
     """
     current_user = persons_service.get_current_user()
+
+    if project_id is None or (
+        project_id is not None and not has_manager_project_access(project_id)
+    ):
+        is_shared = False
+
+    if search_filter_group_id is not None:
+        search_filter_group = SearchFilterGroup.get_by(
+            id=search_filter_group_id
+        )
+        if search_filter_group is None:
+            raise SearchFilterGroupNotFoundException
+        if is_shared != search_filter_group.is_shared:
+            raise WrongParameterException(
+                "A search filter should have the same value for is_shared than its search filter group."
+            )
+
     search_filter = SearchFilter.create(
         list_type=list_type,
         name=name,
@@ -925,6 +944,7 @@ def create_filter(
         person_id=current_user["id"],
         entity_type=entity_type,
         is_shared=is_shared,
+        search_filter_group_id=search_filter_group_id,
     )
     search_filter.serialize()
     if search_filter.is_shared:
@@ -944,6 +964,30 @@ def update_filter(search_filter_id, data):
     )
     if search_filter is None:
         raise SearchFilterNotFoundException
+
+    if data.get("project_id", None) is None or (
+        data["project_id"] is not None
+        and not has_manager_project_access(data["project_id"])
+    ):
+        data["is_shared"] = False
+
+    if (
+        search_filter_group_id := data.get(
+            "search_filter_group_id", search_filter.search_filter_group_id
+        )
+    ) is not None:
+        search_filter_group = SearchFilterGroup.get_by(
+            id=search_filter_group_id
+        )
+        if search_filter_group is None:
+            raise SearchFilterGroupNotFoundException
+        if (
+            data.get("is_shared", search_filter.is_shared)
+            != search_filter_group.is_shared
+        ):
+            raise WrongParameterException(
+                "A search filter should have the same value for is_shared than its search filter group."
+            )
     search_filter.update(data)
     if search_filter.is_shared:
         clear_filter_cache()
@@ -991,21 +1035,19 @@ def get_user_filter_groups(current_user_id):
     result = {}
 
     filter_groups = (
-        SearchFilterGroup.query.join(
+        SearchFilterGroup.query.outerjoin(
             Project, Project.id == SearchFilterGroup.project_id
         )
-        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
-        .filter(SearchFilterGroup.person_id == current_user_id)
-        .filter(build_open_project_filter())
-        .all()
-    )
-
-    filter_groups = (
-        filter_groups
-        + SearchFilterGroup.query.filter(
-            SearchFilterGroup.person_id == current_user_id
+        .outerjoin(
+            ProjectStatus, ProjectStatus.id == Project.project_status_id
         )
-        .filter(SearchFilterGroup.project_id == None)
+        .filter(
+            or_(
+                SearchFilterGroup.person_id == current_user_id,
+                SearchFilterGroup.is_shared == True,
+            )
+        )
+        .filter(or_(build_open_project_filter(), Project.id == None))
         .all()
     )
 
@@ -1028,12 +1070,16 @@ def get_user_filter_groups(current_user_id):
 
 
 def create_filter_group(
-    list_type, name, color, project_id=None, entity_type=None
+    list_type, name, color, project_id=None, entity_type=None, is_shared=False
 ):
     """
     Add a new search filter group to the database.
     """
     current_user = persons_service.get_current_user()
+    if project_id is None or (
+        project_id is not None and not has_manager_project_access(project_id)
+    ):
+        is_shared = False
     search_filter_group = SearchFilterGroup.create(
         list_type=list_type,
         name=name,
@@ -1041,9 +1087,13 @@ def create_filter_group(
         project_id=project_id,
         person_id=current_user["id"],
         entity_type=entity_type,
+        is_shared=is_shared,
     )
     search_filter_group.serialize()
-    clear_filter_group_cache(current_user["id"])
+    if search_filter_group.is_shared:
+        clear_filter_group_cache()
+    else:
+        clear_filter_group_cache(current_user["id"])
     return search_filter_group.serialize()
 
 
@@ -1070,8 +1120,27 @@ def update_filter_group(search_filter_group_id, data):
     )
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
+    if data.get("project_id", None) is None or (
+        data["project_id"] is not None
+        and not has_manager_project_access(data["project_id"])
+    ):
+        data["is_shared"] = False
     search_filter_group.update(data)
-    clear_filter_group_cache(current_user["id"])
+
+    if data.get("is_shared", None) is not None:
+        if (
+            SearchFilter.query.filter_by(
+                search_filter_group_id=search_filter_group_id
+            ).update({"is_shared": data["is_shared"]})
+            > 0
+        ):
+            SearchFilter.query.session.commit()
+            clear_filter_cache()
+
+    if search_filter_group.is_shared:
+        clear_filter_group_cache()
+    else:
+        clear_filter_group_cache(current_user["id"])
     return search_filter_group.serialize()
 
 
@@ -1085,8 +1154,19 @@ def remove_filter_group(search_filter_group_id):
     )
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
+    if (
+        SearchFilter.query.filter_by(
+            search_filter_group_id=search_filter_group_id
+        ).delete()
+        > 0
+    ):
+        SearchFilter.query.session.commit()
+        clear_filter_cache()
     search_filter_group.delete()
-    clear_filter_group_cache(current_user["id"])
+    if search_filter_group.is_shared:
+        clear_filter_group_cache()
+    else:
+        clear_filter_group_cache(current_user["id"])
     return search_filter_group.serialize()
 
 
