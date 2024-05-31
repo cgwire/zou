@@ -73,18 +73,10 @@ class PermissionTestCase(ApiDBTestCase):
             "last_name": "Doe",
             "email": "john.doe@gmail.com",
         }
-        self.post("data/persons/new", data, 403)
         self.post("data/persons", data, 403)
 
     def test_admin_can_create_person(self):
         self.log_in_admin()
-        data = {
-            "first_name": "John",
-            "last_name": "Doe",
-            "email": "john.doe@gmail.com",
-        }
-        self.post("data/persons/new", data, 201)
-
         data = {
             "first_name": "John",
             "last_name": "Doe",
