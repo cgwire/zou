@@ -6,7 +6,6 @@ from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime
 
-from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
@@ -33,108 +32,6 @@ from zou.app.services.exception import (
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
 )
-
-
-class NewPersonResource(Resource, ArgsMixin):
-    """
-    Create a new user in the database.
-    """
-
-    # TODO: Remove this route in the future.
-    @jwt_required()
-    @permissions.require_admin
-    def post(self):
-        """
-        Create a new user in the database.
-        This route will be removed in the future.
-        Please use POST /data/persons instead.
-        ---
-        tags:
-        - Persons
-        description: Set password to None if not provided.
-                     User role can be set but only admins can create admin users.
-        parameters:
-          - in: formData
-            name: email
-            required: True
-            type: string
-            format: email
-            x-example: admin@example.com
-          - in: formData
-            name: phone
-            required: False
-            type: integer
-            x-example: 06 12 34 56 78
-          - in: formData
-            name: role
-            required: False
-            type: string
-            x-example: user
-          - in: formData
-            name: first_name
-            required: True
-            type: string
-          - in: formData
-            name: last_name
-            required: False
-            type: string
-        responses:
-            201:
-                description: User created
-        """
-        data = self.get_arguments()
-
-        if not data["is_bot"] and persons_service.is_user_limit_reached():
-            return {
-                "error": True,
-                "message": "User limit reached.",
-                "limit": config.USER_LIMIT,
-            }, 400
-        else:
-            if data["password"] is not None:
-                data["password"] = auth.encrypt_password(data["password"])
-            person = persons_service.create_person(
-                data["email"],
-                data["password"],
-                data["first_name"],
-                data["last_name"],
-                data["phone"],
-                role=data["role"],
-                desktop_login=data["desktop_login"],
-                departments=data["departments"],
-                is_bot=data["is_bot"],
-                expiration_date=data["expiration_date"],
-                studio_id=None,
-                active=data["active"],
-            )
-        return person, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "email",
-                    "help": "The email is required.",
-                    "required": True,
-                },
-                {
-                    "name": "first_name",
-                    "help": "The first name is required.",
-                    "required": True,
-                },
-                ("last_name", ""),
-                ("phone", ""),
-                ("role", "user"),
-                ("desktop_login", ""),
-                {"name": "departments", "action": "append"},
-                "password",
-                {"name": "is_bot", "default": False, "type": bool},
-                {"name": "expiration_date", "default": None, "type": str},
-                {"name": "active", "default": True, "type": bool},
-            ]
-        )
-
-        return args
 
 
 class DesktopLoginsResource(Resource, ArgsMixin):
