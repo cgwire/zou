@@ -60,10 +60,12 @@ def upgrade():
 
     bind = op.get_bind()
     session = orm.Session(bind=bind)
-    session.query(SearchFilter).update({SearchFilter.is_shared: False})
-    session.query(SearchFilterGroup).update(
-        {SearchFilterGroup.is_shared: False}
+    session.query(SearchFilter).where(SearchFilter.is_shared == None).update(
+        {SearchFilter.is_shared: False}
     )
+    session.query(SearchFilterGroup).where(
+        SearchFilterGroup.is_shared == None
+    ).update({SearchFilterGroup.is_shared: False})
     session.commit()
 
     with op.batch_alter_table("search_filter", schema=None) as batch_op:
