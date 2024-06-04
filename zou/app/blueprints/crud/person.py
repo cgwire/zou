@@ -205,13 +205,15 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and persons_service.is_user_limit_reached()
         ):
             raise ArgumentsException("User limit reached.")
-        if (
-            data.get("active") is False
-            and instance_dict["email"] in config.PROTECTED_ACCOUNTS
-        ):
-            raise PersonInProtectedAccounts(
-                "Can't set this person as inactive it's a protected account."
-            )
+        if instance_dict["email"] in config.PROTECTED_ACCOUNTS:
+            message = None
+            if data.get("active") is False:
+                message = "Can't set this person as inactive it's a protected account."
+            elif data.get("role") is not None:
+                message = "Can't change the role of this person it's a protected account."
+
+            if message is not None:
+                raise PersonInProtectedAccounts(message)
         return data
 
     def post_update(self, instance_dict, data):
