@@ -210,6 +210,7 @@ def create_person(
     ldap_uid=None,
     is_bot=False,
     expiration_date=None,
+    studio_id=None,
     active=True,
     serialize=True,
 ):
@@ -245,6 +246,7 @@ def create_person(
         ldap_uid=ldap_uid,
         is_bot=is_bot,
         expiration_date=expiration_date,
+        studio_id=studio_id,
         active=active,
     )
     if is_bot:

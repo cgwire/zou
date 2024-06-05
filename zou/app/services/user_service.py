@@ -714,7 +714,7 @@ def check_metadata_department_access(entity, new_data={}):
     return is_allowed
 
 
-def check_task_departement_access(task_id, person_id):
+def check_task_department_access(task_id, person_id):
     """
     Return true if current user is an admin or is a manager and is in team
     or is a supervisor in the department of the task or is an artist assigning
@@ -766,7 +766,7 @@ def check_person_is_not_bot(person_id):
         return True
 
 
-def check_task_departement_access_for_unassign(task_id, person_id=None):
+def check_task_department_access_for_unassign(task_id, person_id=None):
     """
     Return true if current user is an admin or is a manager and is in team
     or is a supervisor in the department of the task or is an artist assigning
@@ -1445,6 +1445,7 @@ def get_context():
     notification_count = get_unread_notifications_count()
     project_status_list = projects_service.get_project_statuses()
     departments = tasks_service.get_departments()
+    studios = tasks_service.get_studios()
     task_types = tasks_service.get_task_types()
     task_status_list = tasks_service.get_task_statuses()
     search_filters = get_filters()
@@ -1456,6 +1457,7 @@ def get_context():
         "custom_actions": custom_actions,
         "status_automations": status_automations,
         "departments": departments,
+        "studios": studios,
         "notification_count": notification_count,
         "persons": persons,
         "project_status": project_status_list,

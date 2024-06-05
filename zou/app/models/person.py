@@ -114,6 +114,9 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     departments = db.relationship(
         "Department", secondary="department_link", lazy="joined"
     )
+    studio_id = db.Column(
+        UUIDType(binary=False), db.ForeignKey("studio.id"), index=True
+    )
 
     is_generated_from_ldap = db.Column(db.Boolean(), default=False)
     ldap_uid = db.Column(db.String(60), unique=True, default=None)
@@ -185,6 +188,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
             "has_avatar": data["has_avatar"],
             "active": data["active"],
             "departments": data.get("departments", []),
+            "studio_id": data["studio_id"],
             "role": data["role"],
             "desktop_login": data["desktop_login"],
             "is_bot": data["is_bot"],

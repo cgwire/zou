@@ -7,7 +7,6 @@ from zou.app.blueprints.persons.resources import (
     DayOffForMonthResource,
     DesktopLoginsResource,
     InvitePersonResource,
-    NewPersonResource,
     PersonMonthQuotaShotsResource,
     PersonWeekQuotaShotsResource,
     PersonDayQuotaShotsResource,
@@ -34,7 +33,6 @@ from zou.app.blueprints.persons.resources import (
 )
 
 routes = [
-    ("/data/persons/new", NewPersonResource),
     ("/data/persons/<person_id>/desktop-login-logs", DesktopLoginsResource),
     ("/data/persons/presence-logs/<month_date>", PresenceLogsResource),
     ("/data/persons/<person_id>/time-spents", TimeSpentsResource),

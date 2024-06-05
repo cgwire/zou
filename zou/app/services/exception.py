@@ -49,6 +49,10 @@ class DepartmentNotFoundException(NotFound):
     pass
 
 
+class StudioNotFoundException(NotFound):
+    pass
+
+
 class TaskStatusNotFoundException(NotFound):
     pass
 

@@ -844,7 +844,7 @@ class ClearAssignationResource(Resource, ArgsMixin):
         tasks = []
         for task_id in task_ids:
             try:
-                user_service.check_task_departement_access_for_unassign(
+                user_service.check_task_department_access_for_unassign(
                     task_id, person_id
                 )
                 tasks_service.clear_assignation(task_id, person_id=person_id)
@@ -925,7 +925,7 @@ class TasksAssignResource(Resource, ArgsMixin):
         for task_id in args["task_ids"]:
             try:
                 user_service.check_person_is_not_bot(person_id)
-                user_service.check_task_departement_access(task_id, person_id)
+                user_service.check_task_department_access(task_id, person_id)
                 task = tasks_service.assign_task(
                     task_id, person_id, current_user["id"]
                 )
@@ -995,7 +995,7 @@ class TaskAssignResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         try:
             user_service.check_person_is_not_bot(person_id)
-            user_service.check_task_departement_access(task_id, person_id)
+            user_service.check_task_department_access(task_id, person_id)
             task = tasks_service.assign_task(
                 task_id, person_id, current_user["id"]
             )

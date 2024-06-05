@@ -29,6 +29,7 @@ from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
+from zou.app.models.studio import Studio
 
 from zou.app.utils import (
     cache,
@@ -47,6 +48,7 @@ from zou.app.services.exception import (
     TaskStatusNotFoundException,
     TaskTypeNotFoundException,
     DepartmentNotFoundException,
+    StudioNotFoundException,
     WrongDateFormatException,
     TimeSpentNotFoundException,
 )
@@ -81,6 +83,11 @@ def clear_department_cache(department_id):
     cache.cache.delete_memoized(get_departments)
 
 
+def clear_studio_cache(studio_id):
+    cache.cache.delete_memoized(get_studio, studio_id)
+    cache.cache.delete_memoized(get_studios)
+
+
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
     cache.cache.delete_memoized(get_task, task_id, True)
@@ -96,6 +103,11 @@ def clear_comment_cache(comment_id):
 @cache.memoize_function(120)
 def get_departments():
     return fields.serialize_models(Department.get_all())
+
+
+@cache.memoize_function(120)
+def get_studios():
+    return fields.serialize_models(Studio.get_all())
 
 
 @cache.memoize_function(120)
@@ -158,6 +170,22 @@ def get_department(department_id):
         raise DepartmentNotFoundException
 
     return department.serialize()
+
+
+@cache.memoize_function(120)
+def get_studio(studio_id):
+    """
+    Get studio matching given id as a dictionary.
+    """
+    try:
+        studio = Studio.get(studio_id)
+    except StatementError:
+        raise StudioNotFoundException
+
+    if studio is None:
+        raise StudioNotFoundException
+
+    return studio.serialize()
 
 
 def get_department_from_task_type(task_type_id):
