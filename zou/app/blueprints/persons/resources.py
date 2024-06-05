@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime
 
+from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
@@ -28,6 +29,7 @@ from zou.app.services.exception import (
     WrongParameterException,
     UnactiveUserException,
     TwoFactorAuthenticationNotEnabledException,
+    PersonInProtectedAccounts,
 )
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
@@ -1198,6 +1200,8 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         permissions.check_admin_permissions()
         try:
             person = persons_service.get_person(person_id)
+            if person["email"] in config.PROTECTED_ACCOUNTS:
+                raise PersonInProtectedAccounts()
             current_user = persons_service.get_current_user()
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
@@ -1241,6 +1245,14 @@ Thank you and see you soon on Kitsu,
             return {"error": True, "message": "Password is too short."}, 400
         except UnactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
+        except PersonInProtectedAccounts:
+            return (
+                {
+                    "error": True,
+                    "message": "This user is in protected accounts.",
+                },
+                400,
+            )
 
     def get_arguments(self):
         args = self.get_args(
