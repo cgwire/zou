@@ -121,12 +121,12 @@ class ArgsMixin(object):
         """
         return self.get_bool_parameter("no_job")
 
-    def get_text_parameter(self, field_name):
+    def get_text_parameter(self, field_name, default=None):
         """
         Returns text parameter value matching `field_name`.
         """
         options = request.args
-        return options.get(field_name, None)
+        return options.get(field_name, default)
 
     def get_bool_parameter(self, field_name, default="false"):
         """

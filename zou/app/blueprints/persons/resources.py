@@ -6,6 +6,7 @@ from flask_jwt_extended import jwt_required
 
 from babel.dates import format_datetime
 
+from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     persons_service,
@@ -28,6 +29,8 @@ from zou.app.services.exception import (
     WrongParameterException,
     UnactiveUserException,
     TwoFactorAuthenticationNotEnabledException,
+    PersonInProtectedAccounts,
+    ArgumentsException,
 )
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
@@ -711,7 +714,12 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
     def get_person_project_department_arguments(self):
         project_id = self.get_project_id()
         person_id = None
-        department_ids = None
+        department_id = self.get_text_parameter("deprtment_id")
+        if department_id is not None:
+            department_ids = [department_id]
+        else:
+            department_ids = None
+        studio_id = self.get_text_parameter("studio_id")
         if not permissions.has_admin_permissions():
             if (
                 permissions.has_manager_permissions()
@@ -725,9 +733,16 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
                 elif project_id not in project_ids:
                     raise permissions.PermissionDenied
                 if permissions.has_supervisor_permissions():
-                    department_ids = persons_service.get_current_user(
+                    persons_departments = persons_service.get_current_user(
                         relations=True
                     )["departments"]
+                    if department_id is not None:
+                        if department_id not in persons_departments:
+                            raise ArgumentsException(
+                                "Supervisor not allowed to access this department"
+                            )
+                    else:
+                        department_ids = persons_departments
             else:
                 person_id = persons_service.get_current_user()["id"]
 
@@ -735,6 +750,7 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
             "person_id": person_id,
             "project_id": project_id,
             "department_ids": department_ids,
+            "studio_id": studio_id,
         }
 
 
@@ -1198,6 +1214,8 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         permissions.check_admin_permissions()
         try:
             person = persons_service.get_person(person_id)
+            if person["email"] in config.PROTECTED_ACCOUNTS:
+                raise PersonInProtectedAccounts()
             current_user = persons_service.get_current_user()
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
@@ -1241,6 +1259,14 @@ Thank you and see you soon on Kitsu,
             return {"error": True, "message": "Password is too short."}, 400
         except UnactiveUserException:
             return {"error": True, "message": "User is unactive."}, 400
+        except PersonInProtectedAccounts:
+            return (
+                {
+                    "error": True,
+                    "message": "This user is in protected accounts.",
+                },
+                400,
+            )
 
     def get_arguments(self):
         args = self.get_args(
