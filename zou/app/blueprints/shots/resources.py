@@ -1512,13 +1512,17 @@ class ProjectQuotasResource(Resource, ArgsMixin):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        detail_level = self.get_text_parameter("detail")
-        weighted = self.get_bool_parameter("weighted", default="true")
-        if weighted:
+        args = self.get_args(
+            [
+                ("weighted", False, False, bool),
+                ("studio_id", None, False, str),
+            ]
+        )
+        if args["weighted"]:
             return shots_service.get_weighted_quotas(
-                project_id, task_type_id, detail_level
+                project_id, task_type_id, args["studio_id"]
             )
         else:
             return shots_service.get_raw_quotas(
-                project_id, task_type_id, detail_level
+                project_id, task_type_id, args["studio_id"]
             )

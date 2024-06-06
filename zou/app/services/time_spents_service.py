@@ -13,6 +13,7 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
+from zou.app.models.person import Person
 
 from zou.app.utils import fields, date_helpers
 
@@ -32,7 +33,9 @@ def get_time_spents_for_entity(entity_id):
     return TimeSpent.serialize_list(query.all())
 
 
-def get_year_table(person_id=None, project_id=None, department_ids=None):
+def get_year_table(
+    person_id=None, project_id=None, department_ids=None, studio_id=None
+):
     """
     Return a table giving time spent by user and by month for given year.
     """
@@ -42,11 +45,12 @@ def get_year_table(person_id=None, project_id=None, department_ids=None):
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        studio_id=studio_id,
     )
 
 
 def get_month_table(
-    year, person_id=None, project_id=None, department_ids=None
+    year, person_id=None, project_id=None, department_ids=None, studio_id=None
 ):
     """
     Return a table giving time spent by user and by month for given year.
@@ -56,10 +60,13 @@ def get_month_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        studio_id=studio_id,
     )
 
 
-def get_week_table(year, person_id=None, project_id=None, department_ids=None):
+def get_week_table(
+    year, person_id=None, project_id=None, department_ids=None, studio_id=None
+):
     """
     Return a table giving time spent by user and by week for given year.
     """
@@ -69,11 +76,17 @@ def get_week_table(year, person_id=None, project_id=None, department_ids=None):
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        studio_id=studio_id,
     )
 
 
 def get_day_table(
-    year, month, person_id=None, project_id=None, department_ids=None
+    year,
+    month,
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    studio_id=None,
 ):
     """
     Return a table giving time spent by user and by day for given year and
@@ -85,6 +98,7 @@ def get_day_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        studio_id=studio_id,
     )
     return get_table_from_time_spents(time_spents, "day")
 
@@ -95,6 +109,7 @@ def get_yearly_table(
     person_id=None,
     project_id=None,
     department_ids=None,
+    studio_id=None,
 ):
     """
     Return a table giving time spent by user and by week or month for given
@@ -106,12 +121,17 @@ def get_yearly_table(
         person_id=person_id,
         project_id=project_id,
         department_ids=department_ids,
+        studio_id=studio_id,
     )
     return get_table_from_time_spents(time_spents, detail_level)
 
 
 def get_time_spents_for_year(
-    year=None, person_id=None, project_id=None, department_ids=None
+    year=None,
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    studio_id=None,
 ):
     """
     Return all time spents for given year.
@@ -120,6 +140,9 @@ def get_time_spents_for_year(
 
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
+
+    if studio_id is not None:
+        query = query.join(Person).filter(Person.studio_id == studio_id)
 
     if year is not None:
         query = query.filter(
@@ -147,7 +170,12 @@ def get_time_spents_for_year(
 
 
 def get_time_spents_for_month(
-    year, month, person_id=None, project_id=None, department_ids=None
+    year,
+    month,
+    person_id=None,
+    project_id=None,
+    department_ids=None,
+    studio_id=None,
 ):
     """
     Return all time spents for given month.
@@ -160,6 +188,9 @@ def get_time_spents_for_month(
 
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
+
+    if studio_id is not None:
+        query = query.join(Person).filter(Person.studio_id == studio_id)
 
     if project_id is not None or department_ids is not None:
         query = query.join(Task)

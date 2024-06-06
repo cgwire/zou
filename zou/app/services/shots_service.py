@@ -2,7 +2,7 @@ from datetime import timedelta
 from operator import itemgetter
 from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError, StatementError
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from zou.app.utils import (
     cache,
@@ -1112,7 +1112,7 @@ def get_base_entity_type_name(entity_dict):
     return type_name
 
 
-def get_weighted_quotas(project_id, task_type_id, detail_level):
+def get_weighted_quotas(project_id, task_type_id, studio_id=None):
     """
     Build quota statistics. It counts the number of frames done for each day.
     A shot is considered done at the first feedback request. If time spent is
@@ -1140,6 +1140,14 @@ def get_weighted_quotas(project_id, task_type_id, detail_level):
             TimeSpent.person_id,
         )
     )
+
+    if studio_id is not None:
+        persons_from_studio = Person.query.filter(
+            Person.studio_id == studio_id
+        ).all()
+        query = query.filter(
+            or_(*[Task.assignees.contains(p) for p in persons_from_studio])
+        )
     result = query.all()
 
     for task, nb_frames, date, duration, person_id in result:
@@ -1161,6 +1169,11 @@ def get_weighted_quotas(project_id, task_type_id, detail_level):
         .join(Task.assignees)
         .add_columns(Entity.nb_frames, Person.id)
     )
+
+    if studio_id is not None:
+        query = query.filter(
+            or_(*[Task.assignees.contains(p) for p in persons_from_studio])
+        )
     result = query.all()
 
     for task, nb_frames, person_id in result:
@@ -1182,7 +1195,7 @@ def get_weighted_quotas(project_id, task_type_id, detail_level):
     return quotas
 
 
-def get_raw_quotas(project_id, task_type_id, detail_level):
+def get_raw_quotas(project_id, task_type_id, studio_id=None):
     """
     Build quota statistics in a raw way. It counts the number of frames done
     for each day. A shot is considered done at the first feedback request (end
@@ -1203,6 +1216,15 @@ def get_raw_quotas(project_id, task_type_id, detail_level):
         .join(Task.assignees)
         .add_columns(Entity.nb_frames, Person.id)
     )
+
+    if studio_id is not None:
+        persons_from_studio = Person.query.filter(
+            Person.studio_id == studio_id
+        ).all()
+        query = query.filter(
+            or_(*[Task.assignees.contains(p) for p in persons_from_studio])
+        )
+
     result = query.all()
 
     for task, nb_frames, person_id in result:
