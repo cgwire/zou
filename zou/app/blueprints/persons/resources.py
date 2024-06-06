@@ -714,7 +714,7 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
     def get_person_project_department_arguments(self):
         project_id = self.get_project_id()
         person_id = None
-        department_id = self.get_text_parameter("deprtment_id")
+        department_id = self.get_text_parameter("department_id")
         if department_id is not None:
             department_ids = [department_id]
         else:
