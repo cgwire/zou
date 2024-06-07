@@ -141,9 +141,6 @@ def get_time_spents_for_year(
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
 
-    if studio_id is not None:
-        query = query.join(Person).filter(Person.studio_id == studio_id)
-
     if year is not None:
         query = query.filter(
             TimeSpent.date.between(
@@ -164,6 +161,11 @@ def get_time_spents_for_year(
     if department_ids is not None:
         query = query.join(TaskType).filter(
             TaskType.department_id.in_(department_ids)
+        )
+
+    if studio_id is not None:
+        query = query.join(Person, Person.id == TimeSpent.person_id).filter(
+            Person.studio_id == studio_id
         )
 
     return query.all()
@@ -189,9 +191,6 @@ def get_time_spents_for_month(
     if person_id is not None:
         query = query.filter(TimeSpent.person_id == person_id)
 
-    if studio_id is not None:
-        query = query.join(Person).filter(Person.studio_id == studio_id)
-
     if project_id is not None or department_ids is not None:
         query = query.join(Task)
 
@@ -202,8 +201,14 @@ def get_time_spents_for_month(
             query = query.filter(Task.project_id == project_id)
 
     if department_ids is not None:
-        query = query.join(TaskType)
-        query = query.filter(TaskType.department_id.in_(department_ids))
+        query = query.join(TaskType).filter(
+            TaskType.department_id.in_(department_ids)
+        )
+
+    if studio_id is not None:
+        query = query.join(Person, Person.id == TimeSpent.person_id).filter(
+            Person.studio_id == studio_id
+        )
 
     return query.all()
 
