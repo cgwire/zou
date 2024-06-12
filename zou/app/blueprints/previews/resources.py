@@ -695,7 +695,7 @@ class AttachmentThumbnailResource(Resource):
             task = tasks_service.get_task(comment["object_id"])
             user_service.check_project_access(task["project_id"])
             user_service.check_entity_access(task["entity_id"])
-        else:
+        elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 attachment_file["chat_message_id"]
             )
@@ -703,6 +703,8 @@ class AttachmentThumbnailResource(Resource):
             entity = entities_service.get_entity(chat["object_id"])
             user_service.check_project_access(entity["project_id"])
             user_service.check_entity_access(chat["object_id"])
+        else:
+            return False
         return True
 
     @jwt_required()
