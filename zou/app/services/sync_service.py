@@ -1148,19 +1148,19 @@ def download_preview_background_from_another_instance(
     """
     Download all files link to preview background file entry.
     """
-    extension = preview_background.extension
-
     preview_background_file_id = str(preview_background.id)
     for prefix in [
         "thumbnails",
         "preview-backgrounds",
     ]:
+        extension = (
+            "png" if prefix == "thumbnails" else preview_background.extension
+        )
         if prefix == "preview-backgrounds":
             path = f"/pictures/preview-background-files/{preview_background_file_id}.{extension}"
         elif prefix == "thumbnails":
             path = f"/pictures/thumbnails/preview-background-files/{preview_background_file_id}.png"
 
-        extension = "png" if prefix == "thumbnails" else extension
         file_path = f"/tmp/{prefix}-{preview_background_file_id}.{extension}"
         download_file_from_another_instance(
             path,
@@ -1173,9 +1173,9 @@ def download_preview_background_from_another_instance(
             force,
             dict_errors,
         )
-        logger.info(
-            f"{index:0{len(str(total))}}/{total} Preview background file {preview_background_file_id} processed."
-        )
+    logger.info(
+        f"{index:0{len(str(total))}}/{total} Preview background file {preview_background_file_id} processed."
+    )
 
 
 def download_attachment_files_from_another_instance(
