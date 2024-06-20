@@ -27,6 +27,7 @@ class EntityType(db.Model, BaseMixin, SerializerMixin):
     """
 
     name = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    short_name = db.Column(db.String(20))
     task_types = db.relationship(
         "TaskType", secondary=task_type_link, lazy="joined"
     )
