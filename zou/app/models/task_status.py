@@ -15,6 +15,7 @@ class TaskStatus(db.Model, BaseMixin, SerializerMixin):
     short_name = db.Column(
         db.String(10), unique=True, nullable=False, index=True
     )
+    description = db.Column(db.Text())
     color = db.Column(db.String(7), nullable=False)
     priority = db.Column(db.Integer, default=1)
 
