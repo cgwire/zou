@@ -1812,7 +1812,7 @@ def reset_task_data(task_id):
     )
     project_id = str(task.project_id)
     events.emit("task:update", {"task_id": task.id}, project_id)
-    return task.serialize()
+    return task.serialize(relations=True)
 
 
 def get_persons_tasks_dates():
