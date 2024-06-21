@@ -136,43 +136,51 @@ def _get_comment_author(person_id):
 
 
 def _manage_status_change(task_status, task, comment):
-    status_changed = task_status["id"] != task["task_status_id"]
-    new_data = {
-        "task_status_id": task_status["id"],
-        "last_comment_date": comment["created_at"],
-    }
-    if status_changed:
-        if task_status["is_retake"]:
-            retake_count = task["retake_count"]
-            if retake_count is None or retake_count == "NoneType":
-                retake_count = 0
-            new_data["retake_count"] = retake_count + 1
+    is_last_comment = (
+        task["last_comment_date"] is None
+        or task["last_comment_date"] <= comment["created_at"]
+    )
+    if not is_last_comment:
+        status_changed = False
+        task = tasks_service.reset_task_data(task["id"])
+    else:
+        status_changed = task_status["id"] != task["task_status_id"]
+        new_data = {
+            "task_status_id": task_status["id"],
+            "last_comment_date": comment["created_at"],
+        }
+        if status_changed:
+            if task_status["is_retake"]:
+                retake_count = task["retake_count"]
+                if retake_count is None or retake_count == "NoneType":
+                    retake_count = 0
+                new_data["retake_count"] = retake_count + 1
 
-        if task_status["is_feedback_request"]:
-            new_data["end_date"] = date_helpers.get_utc_now_datetime()
+            if task_status["is_feedback_request"]:
+                new_data["end_date"] = date_helpers.get_utc_now_datetime()
 
-        if (
-            task_status["short_name"] == "wip"
-            and task["real_start_date"] is None
-        ):
-            new_data["real_start_date"] = datetime.datetime.now(
-                datetime.timezone.utc
+            if (
+                task_status["short_name"] == "wip"
+                and task["real_start_date"] is None
+            ):
+                new_data["real_start_date"] = datetime.datetime.now(
+                    datetime.timezone.utc
+                )
+
+        tasks_service.update_task(task["id"], new_data)
+
+        if status_changed:
+            events.emit(
+                "task:status-changed",
+                {
+                    "task_id": task["id"],
+                    "new_task_status_id": new_data["task_status_id"],
+                    "previous_task_status_id": task["task_status_id"],
+                    "person_id": comment["person_id"],
+                },
+                project_id=task["project_id"],
             )
-
-    tasks_service.update_task(task["id"], new_data)
-
-    if status_changed:
-        events.emit(
-            "task:status-changed",
-            {
-                "task_id": task["id"],
-                "new_task_status_id": new_data["task_status_id"],
-                "previous_task_status_id": task["task_status_id"],
-                "person_id": comment["person_id"],
-            },
-            project_id=task["project_id"],
-        )
-    task.update(new_data)
+        task.update(new_data)
     return task, status_changed
 
 
