@@ -138,7 +138,7 @@ def _get_comment_author(person_id):
 def _manage_status_change(task_status, task, comment):
     is_last_comment = (
         task["last_comment_date"] is None
-        or task["last_comment_date"] < comment["created_at"]
+        or task["last_comment_date"] <= comment["created_at"]
     )
     if not is_last_comment:
         status_changed = False

@@ -104,6 +104,21 @@ class CommentsServiceTestCase(ApiDBTestCase):
         )
         self.assertTrue(status_changed)
         self.assertEqual(task["retake_count"], 1)
+
+        old_comment = comments_service.new_comment(
+            self.task.id,
+            retake_status["id"],
+            self.user["id"],
+            "old comment",
+            created_at="1999-12-23 10:00:00",
+        )
+        (task, status_changed) = comments_service._manage_status_change(
+            retake_status, task, old_comment
+        )
+
+        self.assertFalse(status_changed)
+        self.assertEqual(task["retake_count"], 1)
+
         (task, status_changed) = comments_service._manage_status_change(
             self.wfa_status, task, comment
         )
