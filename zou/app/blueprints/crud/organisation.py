@@ -1,14 +1,10 @@
 from zou.app.models.organisation import Organisation
-from zou.app.utils import fields
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 
 class OrganisationsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Organisation)
-
-    def get(self):
-        return fields.serialize_list(Organisation.query.all())
 
     def check_read_permissions(self):
         return True

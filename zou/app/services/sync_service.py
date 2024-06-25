@@ -172,15 +172,15 @@ project_events = [
 ]
 
 main_events = [
-    "person",
-    "organisation",
-    "project-status",
-    "department",
     "studio",
+    "department",
     "task-type",
     "task-status",
     "custom-action",
+    "organisation",
+    "project-status",
     "asset-type",
+    "person",
     "project",
 ]
 
@@ -408,35 +408,35 @@ def sync_entries(model_name, model, project=None):
     """
     instances = []
 
-    if model_name in ["organisations", "persons"]:
-        path = model_name + "?relations=true"
-        if model_name == "persons":
-            path += "&with_pass_hash=true"
-        instances = gazu.client.fetch_all(path)
-        model.create_from_import_list(instances)
-    elif project:
+    page = 1
+    init = True
+    results = {"nb_pages": 2}
+    params = {
+        "relations": "true",
+    }
+    if model_name == "persons":
+        params["with_pass_hash"] = "true"
+    if project is not None and model_name in [
+        "projects",
+        "search-filters",
+        "search-filter-groups",
+    ]:
         project = gazu.project.get_project_by_name(project)
         if model_name == "projects":
-            instances = [gazu.client.fetch_one(model_name, project.get("id"))]
+            params = {"id": project["id"]}
         elif model_name in ["search-filters", "search-filter-groups"]:
-            instances = gazu.client.fetch_all(
-                model_name, params=dict(project_id=project.get("id"))
-            )
-        else:
-            instances = gazu.client.fetch_all(model_name)
-        model.create_from_import_list(instances)
-    else:
-        page = 1
-        init = True
-        results = {"nb_pages": 2}
-        while init or results["nb_pages"] >= page:
-            results = gazu.client.fetch_all(
-                "%s?relations=true&page=%d" % (model_name, page)
-            )
-            instances += results["data"]
-            page += 1
-            init = False
-            model.create_from_import_list(results["data"])
+            params = {"project_id": project["id"]}
+    while init or results["nb_pages"] >= page:
+        params["page"] = page
+        results = gazu.client.fetch_all(model_name, params=params)
+        if model_name == "task-status" and results["data"]:
+            results["data"] = [
+                r for r in results["data"] if not r["for_concept"]
+            ]
+        instances += results["data"]
+        page += 1
+        init = False
+        model.create_from_import_list(results["data"])
 
     logger.info("%s %s synced." % (len(instances), model_name))
 

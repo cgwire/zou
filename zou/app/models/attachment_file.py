@@ -42,6 +42,7 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
     def create_from_import(cls, data):
         data.pop("type", None)
         data.pop("comment", None)
+        data.pop("chat_message", None)
         previous_data = cls.get(data["id"])
         if previous_data is None:
             return cls.create(**data)
