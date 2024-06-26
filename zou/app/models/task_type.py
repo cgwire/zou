@@ -12,6 +12,7 @@ class TaskType(db.Model, BaseMixin, SerializerMixin):
 
     name = db.Column(db.String(40), nullable=False)
     short_name = db.Column(db.String(20))
+    description = db.Column(db.Text())
     color = db.Column(db.String(7), default="#FFFFFF")
     priority = db.Column(db.Integer, default=1)
     for_entity = db.Column(db.String(30), default="Asset")
