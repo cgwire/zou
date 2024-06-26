@@ -1,18 +1,18 @@
 """Add short_name for Asset Type entity_type
 
 Revision ID: 971dbf5a0faf
-Revises: 1bb55759146f
+Revises: a252a094e977
 Create Date: 2024-06-20 19:51:15.758780
 
 """
+
 from alembic import op
 import sqlalchemy as sa
-import sqlalchemy_utils
 
 
 # revision identifiers, used by Alembic.
-revision = '971dbf5a0faf'
-down_revision = '1bb55759146f'
+revision = "971dbf5a0faf"
+down_revision = "a252a094e977"
 branch_labels = None
 depends_on = None
 
