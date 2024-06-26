@@ -1,11 +1,11 @@
 # Development environment
 
-To start with developing on Zou you need Python 3 installed and a
+To start with developing on Zou, you need Python 3 installed and a
 Postgres database instance.
 
 ## Database
 
-To run Postgres we recommend to use Docker (it's simpler and it won't impact
+To run Postgres, we recommend using Docker (it's simpler, and it won't impact
 your local system):
 
 ```bash
@@ -19,7 +19,7 @@ sudo docker run \
 
 ## Key-value store
 
-To run Redis we recommend to use Docker again:
+To run Redis, we recommend using Docker again:
 
 ```bash
 sudo docker pull redis
@@ -31,12 +31,12 @@ sudo docker run \
 
 ## Indexer
 
-To run Meilisearch we recommend to use Docker again:
+To run Meilisearch, we recommend using Docker again:
 
 ```bash
-sudo docker pull getmeili/meilisearch:v1.5
-sudo docker run -it --rm \      
-    --name meilisearch \               
+sudo docker pull getmeili/meilisearch:v1.8.3
+sudo docker run -it --rm \
+    --name meilisearch \
     -p 7700:7700 \
     -e MEILI_ENV='development' \
     -e MEILI_MASTER_KEY='meilimasterkey' \
@@ -46,7 +46,7 @@ sudo docker run -it --rm \
 
 ## FFMPEG
 
-For video operations, it is required to have FFMPEG installed. For that, simply install it through your OS package manager:
+For video operations, FFMPEG is required. For that, install it through your OS package manager:
 
 ```
 sudo apt-get install ffmpeg
@@ -90,7 +90,7 @@ pip install -r requirements.txt
 
 ## Init data
 
-Create a database in postgres named `zoudb` with user `postgres` and password
+Create a database in Postgres named `zoudb` with user `postgres` and password
 `mysecretpassword`. Then init db:
 
 ```bash
@@ -132,11 +132,11 @@ gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -
 
 ## Tests
 
-To run unit tests we recommend to use another database. 
+To run unit tests, we recommend using another database. 
 
-### Create testing database
+### Create a testing database
 
-In the CLI of the hosting the PostgreSQL DB execute the following:
+In the CLI of the hosting, the PostgreSQL DB executes the following:
 *If Docker, connect with: `docker exec -it postgres bash`*
 
 ```
