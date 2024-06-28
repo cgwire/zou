@@ -3,11 +3,13 @@
 import os
 import datetime
 import tempfile
+import sys
+import shutil
 
 
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from zou.app.utils import thumbnail as thumbnail_utils, auth
-from zou.app.stores import auth_tokens_store, file_store
+from zou.app.stores import auth_tokens_store, file_store, queue_store
 from zou.app.services import (
     assets_service,
     backup_service,
@@ -23,6 +25,8 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.task import Task
 from sqlalchemy.sql.expression import not_
 
 from zou.app.services.exception import (
@@ -717,3 +721,88 @@ def create_bot(
             is_bot=True,
         )
         print(bot["access_token"])
+
+
+def renormalize_movie_preview_files(
+    preview_file_id=None, project_id=None, all_broken=None, all_processing=None
+):
+    with app.app_context():
+        if preview_file_id is None and not all_broken and not all_processing:
+            print("You must specify at least one option.")
+            sys.exit(1)
+        else:
+            query = PreviewFile.query.filter(
+                PreviewFile.extension == "mp4"
+            ).order_by(PreviewFile.created_at.asc())
+
+            if preview_file_id is not None:
+                query = query.filter(PreviewFile.id == preview_file_id)
+
+            if project_id is not None:
+                query = query.join(Task).filter(
+                    PreviewFile.project_id == project_id
+                )
+
+            if all_broken and all_processing:
+                query = query.filter(
+                    PreviewFile.status.in_(("broken", "processing"))
+                )
+            elif all_broken:
+                query = query.filter(PreviewFile.status == "broken")
+            elif all_processing:
+                query = query.filter(PreviewFile.status == "processing")
+
+            preview_files = query.all()
+            len_preview_files = len(preview_files)
+            if len_preview_files == 0:
+                print("No preview files found.")
+                sys.exit(1)
+            else:
+                for i, preview_file in enumerate(preview_files):
+                    try:
+                        preview_file_id = str(preview_file.id)
+                        print(
+                            f"Renormalizing preview file {preview_file_id} ({i+1}/{len_preview_files})."
+                        )
+                        extension = preview_file.extension
+                        uploaded_movie_path = os.path.join(
+                            config.TMP_DIR,
+                            f"{preview_file_id}.{extension}.tmp",
+                        )
+                        if config.FS_BACKEND == "local":
+                            shutil.copyfile(
+                                file_store.get_local_movie_path(
+                                    "source", preview_file_id
+                                ),
+                                uploaded_movie_path,
+                            )
+                        else:
+                            sync_service.download_file(
+                                uploaded_movie_path,
+                                "source",
+                                file_store.open_movie,
+                                str(preview_file_id),
+                            )
+                        if config.ENABLE_JOB_QUEUE:
+                            queue_store.job_queue.enqueue(
+                                preview_files_service.prepare_and_store_movie,
+                                args=(
+                                    preview_file_id,
+                                    uploaded_movie_path,
+                                    True,
+                                    False,
+                                ),
+                                job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+                            )
+                        else:
+                            preview_files_service.prepare_and_store_movie(
+                                preview_file_id,
+                                uploaded_movie_path,
+                                normalize=True,
+                                add_source_to_file_store=False,
+                            )
+                    except Exception as e:
+                        print(
+                            f"Renormalization of preview file {preview_file_id} failed: {e}"
+                        )
+                        continue
