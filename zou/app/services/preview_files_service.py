@@ -163,7 +163,10 @@ def set_preview_file_as_ready(preview_file_id):
 
 
 def prepare_and_store_movie(
-    preview_file_id, uploaded_movie_path, normalize=True
+    preview_file_id,
+    uploaded_movie_path,
+    normalize=True,
+    add_source_to_file_store=True,
 ):
     """
     Prepare movie preview, normalize the movie as a .mp4, build the thumbnails
@@ -196,13 +199,14 @@ def prepare_and_store_movie(
         if normalize:
             current_app.logger.info("start normalization")
             try:
+                if add_source_to_file_store:
+                    file_store.add_movie(
+                        "source", preview_file_id, uploaded_movie_path
+                    )
                 if (
                     config.ENABLE_JOB_QUEUE_REMOTE
                     and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
                 ):
-                    file_store.add_movie(
-                        "source", preview_file_id, uploaded_movie_path
-                    )
                     result = _run_remote_normalize_movie(
                         current_app, preview_file_id, fps, width, height
                     )

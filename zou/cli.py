@@ -456,13 +456,13 @@ def upload_files_to_cloud_storage(days):
 
 
 @cli.command()
-@click.option("--projectid")
-def clean_tasks_data(projectid):
+@click.option("--project-id")
+def clean_tasks_data(project_id):
     """
     Reset task models data (retake count, wip start date and end date)
     """
-    if projectid is not None:
-        commands.reset_tasks_data(projectid)
+    if project_id is not None:
+        commands.reset_tasks_data(project_id)
 
 
 @cli.command()
@@ -569,7 +569,7 @@ def reset_breakdown_data():
 @click.option("--email", required=True)
 @click.option("--name", required=True)
 @click.option(
-    "--expiration_date",
+    "--expiration-date",
     required=False,
     default=None,
     show_default=True,
@@ -590,6 +590,40 @@ def create_bot(
         name,
         expiration_date,
         role,
+    )
+
+
+@cli.command()
+@click.option(
+    "--preview-file-id",
+    required=False,
+    default=None,
+    show_default=True,
+)
+@click.option(
+    "--project-id",
+    required=False,
+    default=None,
+    show_default=True,
+)
+@click.option("--all-broken", is_flag=True, default=False, show_default=True)
+@click.option(
+    "--all-processing", is_flag=True, default=False, show_default=True
+)
+def renormalize_movie_preview_files(
+    preview_file_id,
+    project_id,
+    all_broken,
+    all_processing,
+):
+    """
+    Renormalize all preview files.
+    """
+    commands.renormalize_movie_preview_files(
+        preview_file_id,
+        project_id,
+        all_broken,
+        all_processing,
     )
 
 
