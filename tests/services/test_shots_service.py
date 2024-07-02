@@ -246,3 +246,63 @@ class ShotUtilsTestCase(ApiDBTestCase):
         )
         scenes = shots_service.get_scenes_for_sequence(self.sequence.id)
         self.assertEqual(len(scenes), 1)
+
+    def test_set_frames_from_task_type_previews(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        project_id = str(self.project.id)
+        task_type = self.task_type_animation
+        task_type_id = str(task_type.id)
+        print(task_type_id)
+        (
+            episode_01,
+            episode_02,
+            sequence_01,
+            sequence_02,
+            shot_01,
+            shot_02,
+            shot_03,
+            shot_e201,
+            task_shot_01,
+            task_shot_02,
+            task_shot_03,
+            task_shot_e201,
+            preview_01,
+            preview_02,
+            preview_03,
+            preview_e201,
+        ) = self.generate_fixture_shot_tasks_and_previews(
+            task_type_id
+        )
+
+        shots_service.set_frames_from_task_type_preview_files(
+            project_id,
+            task_type_id,
+            episode_id=episode_01.id
+        )
+
+        self.assertEqual(
+            3, len(shots_service.get_shots_for_episode(episode_01.id))
+        )
+        self.assertEqual(
+            1, len(shots_service.get_shots_for_episode(episode_02.id))
+        )
+
+        shot_01 = shots_service.get_shot(shot_01.id)
+        shot_02 = shots_service.get_shot(shot_02.id)
+        shot_03 = shots_service.get_shot(shot_03.id)
+        shot_e201 = shots_service.get_shot(shot_e201.id)
+        self.assertEqual(shot_01["nb_frames"], 750)
+        self.assertEqual(shot_02["nb_frames"], 500)
+        self.assertEqual(shot_03["nb_frames"], 250)
+        self.assertEqual(shot_e201["nb_frames"], 0)
+
+        shots_service.set_frames_from_task_type_preview_files(
+            project_id,
+            task_type_id
+        )
+        shot_e201 = shots_service.get_shot(shot_e201["id"])
+        self.assertEqual(shot_e201["nb_frames"], 1000)

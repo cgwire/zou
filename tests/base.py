@@ -371,14 +371,16 @@ class ApiDBTestCase(ApiTestCase):
         )
         return self.episode
 
-    def generate_fixture_shot(self, name="P01", nb_frames=0):
+    def generate_fixture_shot(self, name="P01", nb_frames=0, sequence_id=None):
+        if sequence_id is None:
+            sequence_id = self.sequence.id
         self.shot = Entity.create(
             name=name,
             description="Description Shot 01",
             data={"fps": 25, "frame_in": 0, "frame_out": 100},
             project_id=self.project.id,
             entity_type_id=self.shot_type.id,
-            parent_id=self.sequence.id,
+            parent_id=sequence_id,
             nb_frames=nb_frames,
         )
         return self.shot
@@ -717,16 +719,24 @@ class ApiDBTestCase(ApiTestCase):
         self.project.save()
         return self.task_standard
 
-    def generate_fixture_shot_task(self, name="Master", task_type_id=None):
+    def generate_fixture_shot_task(
+        self,
+        name="Master",
+        shot_id=None,
+        task_type_id=None
+    ):
         if task_type_id is None:
             task_type_id = self.task_type_animation.id
+
+        if shot_id is None:
+            shot_id = self.shot.id
 
         self.shot_task = Task.create(
             name=name,
             project_id=self.project.id,
             task_type_id=task_type_id,
             task_status_id=self.task_status.id,
-            entity_id=self.shot.id,
+            entity_id=shot_id,
             assignees=[self.person],
             assigner_id=self.assigner.id,
         )
@@ -907,18 +917,26 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_preview_file(
-        self, revision=1, name="main", position=1, status="ready"
+        self,
+        revision=1,
+        name="main",
+        position=1,
+        status="ready",
+        duration=10,
+        task_id=None,
     ):
+        task_id = task_id or self.task.id
         self.preview_file = PreviewFile.create(
             name=name,
             revision=revision,
             description="test description",
             source="pytest",
-            task_id=self.task.id,
+            task_id=task_id,
             extension="mp4",
             person_id=self.person.id,
             position=position,
             status=status,
+            duration=duration,
         )
         return self.preview_file
 
@@ -1068,6 +1086,89 @@ class ApiDBTestCase(ApiTestCase):
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
         self.generate_fixture_scene()
+
+    def generate_fixture_shot_tasks_and_previews(
+        self,
+        task_type_id
+    ):
+        episode_01 = self.episode
+        sequence_01 = self.sequence
+        shot_01 = self.shot
+        shot_02 = self.generate_fixture_shot("SH02")
+        shot_03 = self.generate_fixture_shot("SH03")
+
+        self.generate_fixture_episode("E02")
+        episode_02 = self.episode
+        self.generate_fixture_sequence("S02", episode_id=episode_02.id)
+        sequence_02 = self.sequence
+        shot_e201 = self.generate_fixture_shot(
+            "E2SH01", sequence_id=sequence_02.id
+        )
+
+        task_shot_01 = self.generate_fixture_shot_task(
+            shot_id=shot_01.id,
+            task_type_id=task_type_id
+        )
+        task_shot_02 = self.generate_fixture_shot_task(
+            shot_id=shot_02.id,
+            task_type_id=task_type_id
+        )
+        task_shot_03 = self.generate_fixture_shot_task(
+            shot_id=shot_03.id,
+            task_type_id=task_type_id
+        )
+        task_shot_e201 = self.generate_fixture_shot_task(
+            shot_id=shot_e201.id,
+            task_type_id=task_type_id
+        )
+        preview_01 = self.generate_fixture_preview_file(
+            task_id=task_shot_01.id,
+            revision=1,
+            duration=15
+        )
+        preview_01 = self.generate_fixture_preview_file(
+            task_id=task_shot_01.id,
+            revision=2,
+            duration=25
+        )
+        preview_01 = self.generate_fixture_preview_file(
+            task_id=task_shot_01.id,
+            revision=3,
+            duration=30
+        )
+        preview_02 = self.generate_fixture_preview_file(
+            task_id=task_shot_02.id,
+            revision=1,
+            duration=20
+        )
+        preview_03 = self.generate_fixture_preview_file(
+            task_id=task_shot_03.id,
+            revision=1,
+            duration=10
+        )
+        preview_e201 = self.generate_fixture_preview_file(
+            task_id=task_shot_e201.id,
+            revision=1,
+            duration=40
+        )
+        return (
+            episode_01,
+            episode_02,
+            sequence_01,
+            sequence_02,
+            shot_01,
+            shot_02,
+            shot_03,
+            shot_e201,
+            task_shot_01,
+            task_shot_02,
+            task_shot_03,
+            task_shot_e201,
+            preview_01,
+            preview_02,
+            preview_03,
+            preview_e201,
+        )
 
     def assign_task(self, task_id, user_id):
         return tasks_service.assign_task(task_id, user_id)

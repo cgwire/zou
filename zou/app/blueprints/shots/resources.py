@@ -18,6 +18,7 @@ from zou.app.services import (
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, query, permissions
+from zou.app.services.exception import WrongParameterException
 
 
 class ShotResource(Resource, ArgsMixin):
@@ -1526,3 +1527,51 @@ class ProjectQuotasResource(Resource, ArgsMixin):
             return shots_service.get_raw_quotas(
                 project_id, task_type_id, args["studio_id"]
             )
+
+
+
+class SetShotsFramesResource(Resource, ArgsMixin):
+    @jwt_required()
+    def post(self, project_id, task_type_id):
+        """
+        Set frames for given shots.
+        ---
+        tags:
+        - Shots
+        parameters:
+          - in: formData
+            name: shots
+            required: True
+            type: array
+            items:
+              type: object
+              properties:
+                shot_id:
+                  type: string
+                  format: UUID
+                  x-example: a24a6ea4-ce75-4665-a070-57453082c25
+                nb_frames:
+                  type: integer
+                  x-example: 24
+        responses:
+            200:
+                description: Frames set for given shots
+        """
+        user_service.check_manager_project_access(project_id)
+        if not fields.is_valid_id(task_type_id) or \
+           not fields.is_valid_id(project_id):
+            raise WrongParameterException("Invalid project or task type id")
+
+        episode_id = self.get_episode_id()
+        if not episode_id in ["", None] and \
+           not fields.is_valid_id(episode_id):
+            raise WrongParameterException("Invalid episode id")
+
+        if episode_id == "":
+            episode_id = None
+
+        return shots_service.set_frames_from_task_type_preview_files(
+            project_id,
+            task_type_id,
+            episode_id=episode_id,
+        )

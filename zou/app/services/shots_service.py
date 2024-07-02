@@ -20,6 +20,7 @@ from zou.app.models.entity import (
 )
 from zou.app.models.person import Person
 from zou.app.models.project import Project
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
@@ -1525,3 +1526,75 @@ def get_all_raw_shots():
     """
     query = Entity.query.filter(Entity.entity_type_id == get_shot_type()["id"])
     return query.all()
+
+
+def set_frames_from_task_type_preview_files(
+    project_id,
+    task_type_id,
+    episode_id=None,
+):
+    from zou.app import db
+
+    shot_type = get_shot_type()
+    Shot = aliased(Entity)
+    Sequence = aliased(Entity)
+
+    if episode_id is not None:
+        subquery = (
+            db.session.query(
+                Shot.id.label("entity_id"),
+                func.max(PreviewFile.created_at).label("max_created_at")
+            )
+            .join(Task, PreviewFile.task_id == Task.id)
+            .join(Shot, Task.entity_id == Shot.id)
+            .join(Sequence, Sequence.id == Shot.parent_id)
+            .filter(Shot.project_id == project_id)
+            .filter(Shot.entity_type_id == shot_type["id"])
+            .filter(Task.task_type_id == task_type_id)
+            .filter(Sequence.parent_id == episode_id)
+            .group_by(Shot.id)
+            .subquery()
+        )
+    else:
+        subquery = (
+            db.session.query(
+                Shot.id.label("entity_id"),
+                func.max(PreviewFile.created_at).label("max_created_at")
+            )
+            .join(Task, PreviewFile.task_id == Task.id)
+            .join(Shot, Task.entity_id == Shot.id)
+            .filter(Shot.project_id == project_id)
+            .filter(Shot.entity_type_id == shot_type["id"])
+            .filter(Task.task_type_id == task_type_id)
+            .group_by(Shot.id)
+            .subquery()
+        )
+
+    query = (
+        db.session.query(
+            Shot,
+            PreviewFile.duration
+        )
+        .join(Task, Task.entity_id == Shot.id)
+        .join(subquery, (Shot.id == subquery.c.entity_id))
+        .join(PreviewFile,
+              (PreviewFile.task_id == Task.id) &
+              (PreviewFile.created_at == subquery.c.max_created_at))
+        .filter(Task.task_type_id == task_type_id)
+        .filter(Shot.project_id == project_id)
+    )
+
+    results = query.all()
+    project = projects_service.get_project(project_id)
+    updates = []
+    for (shot, preview_duration) in results:
+        nb_frames = round(preview_duration * int(project["fps"]))
+        updates.append({
+            "id": shot.id,
+            "nb_frames": nb_frames,
+        })
+        clear_shot_cache(str(shot.id))
+
+    db.session.bulk_update_mappings(Shot, updates)
+    db.session.commit()
+    return updates
