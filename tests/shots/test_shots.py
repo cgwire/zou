@@ -18,13 +18,15 @@ class ShotTestCase(ApiDBTestCase):
         self.shot_dict["sequence_name"] = self.sequence.name
         self.serialized_shot = self.shot.serialize(obj_type="Shot")
         self.shot_id = str(self.shot.id)
+        self.shot_01 = self.shot
         self.serialized_sequence = self.sequence.serialize(obj_type="Sequence")
         self.serialized_episode = self.episode.serialize(obj_type="Episode")
         self.serialized_project = self.project.serialize()
 
         shot_02 = self.generate_fixture_shot("SH02")
+        self.shot_02 = shot_02
         self.shot_02_id = str(shot_02.id)
-        self.generate_fixture_shot("SH03")
+        self.shot_03 = self.generate_fixture_shot("SH03")
         self.generate_fixture_asset()
 
         self.generate_fixture_project_standard()
@@ -148,3 +150,83 @@ class ShotTestCase(ApiDBTestCase):
         shots = self.get(
             "data/shots/all?project_id=%s&name=SH01" % self.project_id, 403
         )
+
+    def test_set_frames_from_task_type_previews(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        project_id = str(self.project.id)
+        task_type = self.task_type_animation
+        task_type_id = str(task_type.id)
+        self.shot = self.shot_01
+        self.shot_02.delete()
+        self.shot_03.delete()
+
+        (
+            episode_01,
+            episode_02,
+            sequence_01,
+            sequence_02,
+            shot_01,
+            shot_02,
+            shot_03,
+            shot_e201,
+            task_shot_01,
+            task_shot_02,
+            task_shot_03,
+            task_shot_e201,
+            preview_01,
+            preview_02,
+            preview_03,
+            preview_e201,
+        ) = self.generate_fixture_shot_tasks_and_previews(task_type_id)
+
+
+        self.post(
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
+                "wrong-id",
+                task_type_id,
+                str(episode_01.id)
+            ), {}, 400
+        )
+        self.post(
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
+                project_id,
+                "wrong-id",
+                str(episode_01.id)
+            ), {}, 400
+        )
+
+        self.post(
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
+                project_id,
+                task_type_id,
+                "wrong-id"
+            ), {}, 400
+        )
+        self.post(
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
+                project_id,
+                task_type_id,
+                str(episode_01.id)
+            ), {}, 200
+        )
+        shot_01 = shots_service.get_shot(shot_01.id)
+        shot_02 = shots_service.get_shot(shot_02.id)
+        shot_03 = shots_service.get_shot(shot_03.id)
+        shot_e201 = shots_service.get_shot(shot_e201.id)
+        self.assertEqual(shot_01["nb_frames"], 750)
+        self.assertEqual(shot_02["nb_frames"], 500)
+        self.assertEqual(shot_03["nb_frames"], 250)
+        self.assertEqual(shot_e201["nb_frames"], 0)
+
+        self.post(
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=" % (
+                project_id,
+                task_type_id,
+            ), {}, 200
+        )
+        shot_e201 = shots_service.get_shot(shot_e201["id"])
+        self.assertEqual(shot_e201["nb_frames"], 1000)
