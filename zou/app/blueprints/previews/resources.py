@@ -670,6 +670,10 @@ class PreviewFileDownloadResource(PreviewFileResource):
                 return send_standard_file(
                     instance_id, extension, mimetype, as_attachment=True
                 )
+            if extension == "mp4":
+                return send_picture_file(
+                    "original", instance_id, as_attachment=True
+                )
             else:
                 return send_standard_file(
                     instance_id, extension, as_attachment=True
