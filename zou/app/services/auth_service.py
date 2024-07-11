@@ -9,7 +9,6 @@ from datetime import timedelta
 from flask import request, session, current_app
 from babel.dates import format_datetime
 
-from flask_jwt_extended import get_jti
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from ldap3.core.exceptions import (
     LDAPSocketOpenError,
@@ -676,24 +675,6 @@ def generate_new_recovery_codes(person_id):
     person.commit()
     persons_service.clear_person_cache()
     return otp_recovery_codes
-
-
-def register_tokens(app, access_token, refresh_token=None):
-    """
-    Register access and refresh tokens to auth token store. That way they
-    can be used like a session.
-    """
-    access_jti = get_jti(encoded_token=access_token)
-
-    auth_tokens_store.add(
-        access_jti, "false", app.config["JWT_ACCESS_TOKEN_EXPIRES"]
-    )
-
-    if refresh_token is not None:
-        refresh_jti = get_jti(encoded_token=refresh_token)
-        auth_tokens_store.add(
-            refresh_jti, "false", app.config["JWT_REFRESH_TOKEN_EXPIRES"]
-        )
 
 
 def revoke_tokens(app, jti):

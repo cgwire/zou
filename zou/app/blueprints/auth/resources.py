@@ -217,7 +217,6 @@ class LoginResource(Resource, ArgsMixin):
                     "identity_type": "person",
                 },
             )
-            auth_service.register_tokens(app, access_token, refresh_token)
             identity_changed.send(
                 current_app._get_current_object(),
                 identity=Identity(user["id"], "person"),
@@ -383,7 +382,6 @@ class RefreshTokenResource(Resource):
                 "identity_type": "person",
             },
         )
-        auth_service.register_tokens(app, access_token)
         if is_from_browser(request.user_agent):
             response = jsonify({"refresh": True})
             set_access_cookies(response, access_token)
