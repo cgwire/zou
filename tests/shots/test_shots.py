@@ -183,35 +183,30 @@ class ShotTestCase(ApiDBTestCase):
             preview_e201,
         ) = self.generate_fixture_shot_tasks_and_previews(task_type_id)
 
-
         self.post(
-            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
-                "wrong-id",
-                task_type_id,
-                str(episode_01.id)
-            ), {}, 400
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s"
+            % ("wrong-id", task_type_id, str(episode_01.id)),
+            {},
+            400,
         )
         self.post(
-            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
-                project_id,
-                "wrong-id",
-                str(episode_01.id)
-            ), {}, 400
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s"
+            % (project_id, "wrong-id", str(episode_01.id)),
+            {},
+            400,
         )
 
         self.post(
-            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
-                project_id,
-                task_type_id,
-                "wrong-id"
-            ), {}, 400
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s"
+            % (project_id, task_type_id, "wrong-id"),
+            {},
+            400,
         )
         self.post(
-            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s" % (
-                project_id,
-                task_type_id,
-                str(episode_01.id)
-            ), {}, 200
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=%s"
+            % (project_id, task_type_id, str(episode_01.id)),
+            {},
+            200,
         )
         shot_01 = shots_service.get_shot(shot_01.id)
         shot_02 = shots_service.get_shot(shot_02.id)
@@ -223,10 +218,13 @@ class ShotTestCase(ApiDBTestCase):
         self.assertEqual(shot_e201["nb_frames"], 0)
 
         self.post(
-            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id=" % (
+            "actions/projects/%s/task-types/%s/set-shot-nb-frames?episode_id="
+            % (
                 project_id,
                 task_type_id,
-            ), {}, 200
+            ),
+            {},
+            200,
         )
         shot_e201 = shots_service.get_shot(shot_e201["id"])
         self.assertEqual(shot_e201["nb_frames"], 1000)

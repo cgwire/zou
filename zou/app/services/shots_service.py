@@ -1543,7 +1543,7 @@ def set_frames_from_task_type_preview_files(
         subquery = (
             db.session.query(
                 Shot.id.label("entity_id"),
-                func.max(PreviewFile.created_at).label("max_created_at")
+                func.max(PreviewFile.created_at).label("max_created_at"),
             )
             .join(Task, PreviewFile.task_id == Task.id)
             .join(Shot, Task.entity_id == Shot.id)
@@ -1559,7 +1559,7 @@ def set_frames_from_task_type_preview_files(
         subquery = (
             db.session.query(
                 Shot.id.label("entity_id"),
-                func.max(PreviewFile.created_at).label("max_created_at")
+                func.max(PreviewFile.created_at).label("max_created_at"),
             )
             .join(Task, PreviewFile.task_id == Task.id)
             .join(Shot, Task.entity_id == Shot.id)
@@ -1571,15 +1571,14 @@ def set_frames_from_task_type_preview_files(
         )
 
     query = (
-        db.session.query(
-            Shot,
-            PreviewFile.duration
-        )
+        db.session.query(Shot, PreviewFile.duration)
         .join(Task, Task.entity_id == Shot.id)
         .join(subquery, (Shot.id == subquery.c.entity_id))
-        .join(PreviewFile,
-              (PreviewFile.task_id == Task.id) &
-              (PreviewFile.created_at == subquery.c.max_created_at))
+        .join(
+            PreviewFile,
+            (PreviewFile.task_id == Task.id)
+            & (PreviewFile.created_at == subquery.c.max_created_at),
+        )
         .filter(Task.task_type_id == task_type_id)
         .filter(Shot.project_id == project_id)
     )
@@ -1587,12 +1586,14 @@ def set_frames_from_task_type_preview_files(
     results = query.all()
     project = projects_service.get_project(project_id)
     updates = []
-    for (shot, preview_duration) in results:
+    for shot, preview_duration in results:
         nb_frames = round(preview_duration * int(project["fps"]))
-        updates.append({
-            "id": shot.id,
-            "nb_frames": nb_frames,
-        })
+        updates.append(
+            {
+                "id": shot.id,
+                "nb_frames": nb_frames,
+            }
+        )
         clear_shot_cache(str(shot.id))
 
     db.session.bulk_update_mappings(Shot, updates)
