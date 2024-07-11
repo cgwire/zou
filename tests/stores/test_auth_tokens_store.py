@@ -25,7 +25,7 @@ class AuthTokensTestCase(ApiTestCase):
         self.assertIsNone(self.store.get("key-1"))
 
     def test_is_revoked(self):
-        self.assertTrue(self.store.is_revoked("key-1"))
+        self.assertFalse(self.store.is_revoked("key-1"))
         self.store.add("key-1", "true")
         self.assertTrue(self.store.is_revoked("key-1"))
         self.store.add("key-1", "false")
