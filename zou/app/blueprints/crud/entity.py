@@ -23,7 +23,7 @@ from zou.app.services import (
     user_service,
     concepts_service,
 )
-from zou.app.utils import events, fields, date_helpers
+from zou.app.utils import events, date_helpers
 
 from werkzeug.exceptions import NotFound
 
@@ -187,11 +187,11 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         version = None
         if frame_in != pframe_in or frame_out != pframe_out or name != pname:
             current_user_id = persons_service.get_current_user()["id"]
-            previous_updated_at = fields.get_date_object(
-                previous_shot["updated_at"], date_format="%Y-%m-%dT%H:%M:%S"
+            previous_updated_at = date_helpers.get_datetime_from_string(
+                previous_shot["updated_at"]
             )
-            updated_at = fields.get_date_object(
-                shot["updated_at"], date_format="%Y-%m-%dT%H:%M:%S"
+            updated_at = date_helpers.get_datetime_from_string(
+                shot["updated_at"]
             )
             if (
                 date_helpers.get_date_diff(previous_updated_at, updated_at)

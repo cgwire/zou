@@ -32,6 +32,7 @@ from zou.app.utils import (
     events,
     permissions,
     thumbnail as thumbnail_utils,
+    date_helpers,
 )
 from zou.app.services.exception import (
     ArgumentsException,
@@ -86,6 +87,7 @@ def send_standard_file(
     extension,
     mimetype="application/octet-stream",
     as_attachment=False,
+    last_modified=None,
 ):
     return send_storage_file(
         file_store.get_local_file_path,
@@ -95,10 +97,13 @@ def send_standard_file(
         extension,
         mimetype=mimetype,
         as_attachment=as_attachment,
+        last_modified=last_modified,
     )
 
 
-def send_movie_file(preview_file_id, as_attachment=False, lowdef=False):
+def send_movie_file(
+    preview_file_id, as_attachment=False, lowdef=False, last_modified=None
+):
     folder = "previews"
     if lowdef:
         folder = "lowdef"
@@ -110,6 +115,7 @@ def send_movie_file(preview_file_id, as_attachment=False, lowdef=False):
         "mp4",
         mimetype="video/mp4",
         as_attachment=as_attachment,
+        last_modified=last_modified,
     )
 
 
@@ -119,6 +125,7 @@ def send_picture_file(
     as_attachment=False,
     extension="png",
     download_name="",
+    last_modified=None,
 ):
     if extension == "png":
         mimetype = "image/png"
@@ -133,6 +140,7 @@ def send_picture_file(
         mimetype=mimetype,
         as_attachment=as_attachment,
         download_name=download_name,
+        last_modified=last_modified,
     )
 
 
@@ -146,6 +154,7 @@ def send_storage_file(
     as_attachment=False,
     max_age=config.CLIENT_CACHE_MAX_AGE,
     download_name="",
+    last_modified=None,
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
@@ -189,6 +198,7 @@ def send_storage_file(
             as_attachment=as_attachment,
             download_name=download_name,
             max_age=max_age,
+            last_modified=last_modified,
         )
     except IOError as e:
         current_app.logger.error(e)
@@ -410,26 +420,30 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         return files_service.get_preview_file(preview_file_id) is not None
 
 
-class PreviewFileMovieResource(Resource):
+class BasePreviewFileResource(Resource):
     """
-    Allow to download a movie preview.
+    Base class to download a preview file.
     """
 
     def __init__(self):
         Resource.__init__(self)
-
-    def is_exist(self, preview_file_id):
-        return files_service.get_preview_file(preview_file_id) is not None
+        self.preview_file = None
+        self.last_modified = None
 
     def is_allowed(self, preview_file_id):
-        preview_file = files_service.get_preview_file(preview_file_id)
-        task = tasks_service.get_task(preview_file["task_id"])
-        try:
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
-            return True
-        except permissions.PermissionDenied:
-            return False
+        self.preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(self.preview_file["task_id"])
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+        self.last_modified = date_helpers.get_datetime_from_string(
+            self.preview_file["updated_at"]
+        )
+
+
+class PreviewFileMovieResource(BasePreviewFileResource):
+    """
+    Allow to download a movie preview.
+    """
 
     @jwt_required()
     def get(self, instance_id):
@@ -454,14 +468,12 @@ class PreviewFileMovieResource(Resource):
             404:
                 description: File not found
         """
-        if not self.is_exist(instance_id):
-            abort(404)
-
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_allowed(instance_id)
 
         try:
-            return send_movie_file(instance_id)
+            return send_movie_file(
+                instance_id, last_modified=self.last_modified
+            )
         except FileNotFound:
             current_app.logger.error(
                 "Movie file was not found for: %s" % instance_id
@@ -469,7 +481,7 @@ class PreviewFileMovieResource(Resource):
             abort(404)
 
 
-class PreviewFileLowMovieResource(PreviewFileMovieResource):
+class PreviewFileLowMovieResource(BasePreviewFileResource):
     """
     Allow to download a lowdef movie preview.
     """
@@ -496,14 +508,17 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
             404:
                 description: File not found
         """
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_allowed(instance_id)
 
         try:
-            return send_movie_file(instance_id, lowdef=True)
+            return send_movie_file(
+                instance_id, lowdef=True, last_modified=self.last_modified
+            )
         except Exception:
             try:
-                return send_movie_file(instance_id)
+                return send_movie_file(
+                    instance_id, last_modified=self.last_modified
+                )
             except FileNotFound:
                 current_app.logger.error(
                     "Movie file was not found for: %s" % instance_id
@@ -511,7 +526,7 @@ class PreviewFileLowMovieResource(PreviewFileMovieResource):
                 abort(404)
 
 
-class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
+class PreviewFileMovieDownloadResource(BasePreviewFileResource):
     """
     Allow to download a movie preview.
     """
@@ -538,11 +553,14 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
             404:
                 description: File not found
         """
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_allowed(instance_id)
 
         try:
-            return send_movie_file(instance_id, as_attachment=True)
+            return send_movie_file(
+                instance_id,
+                as_attachment=True,
+                last_modified=self.last_modified,
+            )
         except FileNotFound:
             current_app.logger.error(
                 "Movie file was not found for: %s" % instance_id
@@ -550,29 +568,10 @@ class PreviewFileMovieDownloadResource(PreviewFileMovieResource):
             abort(404)
 
 
-class PreviewFileResource(Resource):
+class PreviewFileResource(BasePreviewFileResource):
     """
     Allow to download a generic file preview.
     """
-
-    def __init__(self):
-        Resource.__init__(self)
-
-    def is_exist(self, preview_file_id):
-        return files_service.get_preview_file(preview_file_id) is not None
-
-    def is_allowed(self, preview_file_id):
-        if permissions.has_manager_permissions():
-            return True
-        else:
-            preview_file = files_service.get_preview_file(preview_file_id)
-            task = tasks_service.get_task(preview_file["task_id"])
-            try:
-                user_service.check_project_access(task["project_id"])
-                user_service.check_entity_access(task["entity_id"])
-                return True
-            except permissions.PermissionDenied:
-                return False
 
     @jwt_required()
     def get(self, instance_id, extension):
@@ -601,21 +600,26 @@ class PreviewFileResource(Resource):
             404:
                 description: Non-movie file not found
         """
-        if not self.is_exist(instance_id):
-            abort(404)
-
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_allowed(instance_id)
 
         try:
             extension = extension.lower()
             if extension == "png":
-                return send_picture_file("original", instance_id)
+                return send_picture_file(
+                    "original", instance_id, last_modified=self.last_modified
+                )
             elif extension == "pdf":
                 mimetype = "application/pdf"
-                return send_standard_file(instance_id, extension, mimetype)
+                return send_standard_file(
+                    instance_id,
+                    extension,
+                    mimetype,
+                    last_modified=self.last_modified,
+                )
             else:
-                return send_standard_file(instance_id, extension)
+                return send_standard_file(
+                    instance_id, extension, last_modified=self.last_modified
+                )
 
         except FileNotFound:
             current_app.logger.error(
@@ -624,13 +628,10 @@ class PreviewFileResource(Resource):
             abort(404)
 
 
-class PreviewFileDownloadResource(PreviewFileResource):
+class PreviewFileDownloadResource(BasePreviewFileResource):
     """
     Allow to download a generic file preview as attachment.
     """
-
-    def __init__(self):
-        PreviewFileResource.__init__(self)
 
     @jwt_required()
     def get(self, instance_id):
@@ -654,29 +655,40 @@ class PreviewFileDownloadResource(PreviewFileResource):
             404:
                 description: Standard file not found
         """
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_allowed(instance_id)
 
-        preview_file = files_service.get_preview_file(instance_id)
-        extension = preview_file["extension"]
+        extension = self.preview_file["extension"]
 
         try:
             if extension == "png":
                 return send_picture_file(
-                    "original", instance_id, as_attachment=True
+                    "original",
+                    instance_id,
+                    as_attachment=True,
+                    last_modified=self.last_modified,
                 )
             elif extension == "pdf":
                 mimetype = "application/pdf"
                 return send_standard_file(
-                    instance_id, extension, mimetype, as_attachment=True
+                    instance_id,
+                    extension,
+                    mimetype,
+                    as_attachment=True,
+                    last_modified=self.last_modified,
                 )
             if extension == "mp4":
                 return send_picture_file(
-                    "original", instance_id, as_attachment=True
+                    "original",
+                    instance_id,
+                    as_attachment=True,
+                    last_modified=self.last_modified,
                 )
             else:
                 return send_standard_file(
-                    instance_id, extension, as_attachment=True
+                    instance_id,
+                    extension,
+                    as_attachment=True,
+                    last_modified=self.last_modified,
                 )
         except FileNotFound:
             current_app.logger.error(
@@ -687,26 +699,31 @@ class PreviewFileDownloadResource(PreviewFileResource):
 
 class AttachmentThumbnailResource(Resource):
 
-    def is_exist(self, attachment_id):
-        return comments_service.get_attachment_file(attachment_id) is not None
+    def __init__(self):
+        Resource.__init__(self)
+        self.attachment_file = None
 
     def is_allowed(self, attachment_id):
-        attachment_file = comments_service.get_attachment_file(attachment_id)
-        if attachment_file["comment_id"] is not None:
-            comment = tasks_service.get_comment(attachment_file["comment_id"])
+        self.attachment_file = comments_service.get_attachment_file(
+            attachment_id
+        )
+        if self.attachment_file["comment_id"] is not None:
+            comment = tasks_service.get_comment(
+                self.attachment_file["comment_id"]
+            )
             task = tasks_service.get_task(comment["object_id"])
             user_service.check_project_access(task["project_id"])
             user_service.check_entity_access(task["entity_id"])
-        elif attachment_file["chat_message_id"] is not None:
+        elif self.attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
-                attachment_file["chat_message_id"]
+                self.attachment_file["chat_message_id"]
             )
             chat = chats_service.get_chat_by_id(message["chat_id"])
             entity = entities_service.get_entity(chat["object_id"])
             user_service.check_project_access(entity["project_id"])
             user_service.check_entity_access(chat["object_id"])
         else:
-            return False
+            raise permissions.PermissionDenied
         return True
 
     @jwt_required()
@@ -731,14 +748,16 @@ class AttachmentThumbnailResource(Resource):
             404:
                 description: Picture file not found
         """
-        if not self.is_exist(attachment_file_id):
-            abort(404)
-
-        if not self.is_allowed(attachment_file_id):
-            abort(403)
+        self.is_allowed(attachment_file_id)
 
         try:
-            return send_picture_file("thumbnails", attachment_file_id)
+            return send_picture_file(
+                "thumbnails",
+                attachment_file_id,
+                last_modified=date_helpers.get_datetime_from_string(
+                    self.attachment_file["updated_at"]
+                ),
+            )
         except FileNotFound:
             current_app.logger.error(
                 "Picture file was not found for attachment: %s"
@@ -747,30 +766,14 @@ class AttachmentThumbnailResource(Resource):
             abort(404)
 
 
-class BasePreviewPictureResource(Resource):
+class BasePreviewPictureResource(BasePreviewFileResource):
     """
     Base class to download a thumbnail.
     """
 
     def __init__(self, picture_type):
-        Resource.__init__(self)
+        BasePreviewFileResource.__init__(self)
         self.picture_type = picture_type
-
-    def is_exist(self, preview_file_id):
-        return files_service.get_preview_file(preview_file_id) is not None
-
-    def is_allowed(self, preview_file_id):
-        if permissions.has_manager_permissions():
-            return True
-        else:
-            preview_file = files_service.get_preview_file(preview_file_id)
-            task = tasks_service.get_task(preview_file["task_id"])
-            try:
-                user_service.check_project_access(task["project_id"])
-                user_service.check_entity_access(task["entity_id"])
-                return True
-            except permissions.PermissionDenied:
-                return False
 
     @jwt_required()
     def get(self, instance_id):
@@ -794,14 +797,14 @@ class BasePreviewPictureResource(Resource):
             404:
                 description: Picture file not found
         """
-        if not self.is_exist(instance_id):
-            abort(404)
-
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_allowed(instance_id)
 
         try:
-            return send_picture_file(self.picture_type, instance_id)
+            return send_picture_file(
+                self.picture_type,
+                instance_id,
+                last_modified=self.last_modified,
+            )
         except FileNotFound:
             current_app.logger.error(
                 "Picture file was not found for: %s" % instance_id
@@ -838,21 +841,38 @@ class PreviewFileOriginalResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "original")
 
 
-class BaseCreatePictureResource(Resource):
+class BaseThumbnailResource(Resource):
     """
-    Base class to create a thumbnail.
+    Base class to post and get a thumbnail.
     """
 
-    def __init__(self, data_type, size=thumbnail_utils.RECTANGLE_SIZE):
+    def __init__(
+        self,
+        data_type,
+        get_model_func,
+        update_model_func,
+        size=thumbnail_utils.RECTANGLE_SIZE,
+    ):
         Resource.__init__(self)
         self.data_type = data_type
+        self.get_model_func = get_model_func
+        self.update_model_func = update_model_func
         self.size = size
+        self.model = None
+        self.last_modified = None
 
-    def check_permissions(self, instance_id):
+    def is_exist(self, instance_id):
+        self.model = self.get_model_func(instance_id)
+
+    def check_allowed_to_post(self, instance_id):
         permissions.check_admin_permissions()
 
+    def check_allowed_to_get(self, instance_id):
+        if not self.model["has_avatar"]:
+            raise NotFound
+
     def prepare_creation(self, instance_id):
-        pass
+        self.model = self.update_model_func(instance_id, {"has_avatar": True})
 
     def emit_event(self, instance_id):
         model_name = self.data_type[:-1]
@@ -889,10 +909,9 @@ class BaseCreatePictureResource(Resource):
             404:
                 description: Cannot found related object.
         """
-        if not self.is_exist(instance_id):
-            abort(404)
+        self.is_exist(instance_id)
+        self.check_allowed_to_post(instance_id)
 
-        self.check_permissions(instance_id)
         self.prepare_creation(instance_id)
 
         tmp_folder = config.TMP_DIR
@@ -914,18 +933,6 @@ class BaseCreatePictureResource(Resource):
         )
         self.emit_event(instance_id)
         return {"thumbnail_path": thumbnail_url_path}, 201
-
-
-class BasePictureResource(Resource):
-    """
-    Base resource to download a thumbnail.
-    """
-
-    def is_exist(self, instance_id):
-        return False
-
-    def is_allowed(self, instance_id):
-        return True
 
     @jwt_required()
     def get(self, instance_id):
@@ -949,14 +956,17 @@ class BasePictureResource(Resource):
             404:
                 description: Object instance not found
         """
-        if not self.is_exist(instance_id):
-            abort(404)
-
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_exist(instance_id)
+        self.check_allowed_to_get(instance_id)
 
         try:
-            return send_picture_file("thumbnails", instance_id)
+            return send_picture_file(
+                "thumbnails",
+                instance_id,
+                last_modified=date_helpers.get_datetime_from_string(
+                    self.model["updated_at"]
+                ),
+            )
         except FileNotFound:
             current_app.logger.error(
                 "Thumbnail file was not found for: %s" % instance_id
@@ -969,114 +979,63 @@ class BasePictureResource(Resource):
             abort(404)
 
 
-class CreatePersonThumbnailResource(BaseCreatePictureResource):
+class PersonThumbnailResource(BaseThumbnailResource):
     def __init__(self):
-        BaseCreatePictureResource.__init__(
-            self, "persons", thumbnail_utils.BIG_SQUARE_SIZE
+        BaseThumbnailResource.__init__(
+            self,
+            "persons",
+            persons_service.get_person,
+            persons_service.update_person,
+            thumbnail_utils.BIG_SQUARE_SIZE,
         )
 
-    def is_exist(self, person_id):
-        return persons_service.get_person(person_id) is not None
-
-    def check_permissions(self, instance_id):
+    def check_allowed_to_post(self, instance_id):
         is_current_user = (
-            persons_service.get_current_user()["id"] != instance_id
+            persons_service.get_current_user()["id"] == instance_id
         )
-        if is_current_user and not permissions.has_admin_permissions():
+        if not is_current_user and not permissions.has_admin_permissions():
             raise permissions.PermissionDenied
 
-    def prepare_creation(self, instance_id):
-        return persons_service.update_person(instance_id, {"has_avatar": True})
+
+class CreatePersonThumbnailResource(PersonThumbnailResource):
+    pass
 
 
-class PersonThumbnailResource(BasePictureResource):
-    def is_exist(self, person_id):
-        person = persons_service.get_person(person_id)
-        return person is not None and person["has_avatar"]
+class OrganisationThumbnailResource(BaseThumbnailResource):
 
-
-class CreateOrganisationThumbnailResource(BaseCreatePictureResource):
     def __init__(self):
-        BaseCreatePictureResource.__init__(
-            self, "organisations", thumbnail_utils.BIG_SQUARE_SIZE
+        BaseThumbnailResource.__init__(
+            self,
+            "organisations",
+            persons_service.get_organisation,
+            persons_service.update_organisation,
+            thumbnail_utils.BIG_SQUARE_SIZE,
         )
 
     def is_exist(self, organisation_id):
-        return True
-
-    def check_permissions(self, organisation_id):
-        if not permissions.has_admin_permissions():
-            raise permissions.PermissionDenied
-
-    def prepare_creation(self, organisation_id):
-        return persons_service.update_organisation(
-            organisation_id, {"has_avatar": True}
-        )
+        self.model = persons_service.get_organisation(organisation_id)
 
 
-class OrganisationThumbnailResource(BasePictureResource):
-    def is_exist(self, organisation_id):
-        return True
+class CreateOrganisationThumbnailResource(OrganisationThumbnailResource):
+    pass
 
 
-class CreateProjectThumbnailResource(BaseCreatePictureResource):
+class ProjectThumbnailResource(BaseThumbnailResource):
     def __init__(self):
-        BaseCreatePictureResource.__init__(
-            self, "projects", thumbnail_utils.SQUARE_SIZE
+        BaseThumbnailResource.__init__(
+            self,
+            "projects",
+            projects_service.get_project,
+            projects_service.update_project,
         )
 
-    def is_exist(self, project_id):
-        return projects_service.get_project(project_id) is not None
-
-    def prepare_creation(self, instance_id):
-        return projects_service.update_project(
-            instance_id, {"has_avatar": True}
-        )
+    def check_allowed_to_get(self, instance_id):
+        super().check_allowed_to_get(instance_id)
+        user_service.check_project_access(instance_id)
 
 
-class ProjectThumbnailResource(BasePictureResource):
-    def is_exist(self, project_id):
-        return projects_service.get_project(project_id) is not None
-
-    def is_allowed(self, project_id):
-        try:
-            user_service.check_project_access(project_id)
-            return True
-        except permissions.PermissionDenied:
-            return False
-
-
-class LegacySetMainPreviewResource(Resource):
-    @jwt_required()
-    def put(self, entity_id, preview_file_id):
-        """
-        Set main preview to given file.
-        ---
-        tags:
-          - Previews
-        parameters:
-          - in: path
-            name: entity_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: preview_file_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-                description: Main preview set
-        """
-        preview_file = files_service.get_preview_file(preview_file_id)
-        task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        return entities_service.update_entity_preview(
-            entity_id, preview_file_id
-        )
+class CreateProjectThumbnailResource(ProjectThumbnailResource):
+    pass
 
 
 class SetMainPreviewResource(Resource, ArgsMixin):
@@ -1516,6 +1475,9 @@ class PreviewBackgroundFileResource(Resource):
                 instance_id,
                 extension=extension,
                 download_name=f"{preview_background_file['original_name']}.{extension}",
+                last_modified=date_helpers.get_datetime_from_string(
+                    preview_background_file["updated_at"]
+                ),
             )
         except FileNotFound:
             current_app.logger.error(
@@ -1524,11 +1486,17 @@ class PreviewBackgroundFileResource(Resource):
             raise PreviewBackgroundFileNotFoundException
 
 
-class PreviewBackgroundFileThumbnailResource(BasePictureResource):
-    def is_exist(self, preview_background_file_id):
-        return (
-            files_service.get_preview_background_file(
-                preview_background_file_id
-            )
-            is not None
+class PreviewBackgroundFileThumbnailResource(BaseThumbnailResource):
+    def __init__(self):
+        BaseThumbnailResource.__init__(
+            self,
+            "preview-backgrounds",
+            files_service.get_preview_background_file,
+            files_service.update_preview_background_file,
         )
+
+    def check_allowed_to_get(self, preview_background_file_id):
+        return True
+
+    def post(self, preview_background_file_id):
+        raise AttributeError("Method not allowed")

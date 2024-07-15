@@ -14,14 +14,13 @@ from zou.app.blueprints.previews.resources import (
     PreviewFilePreviewResource,
     PreviewFileOriginalResource,
     PreviewFileTileResource,
-    CreateOrganisationThumbnailResource,
     OrganisationThumbnailResource,
-    CreateProjectThumbnailResource,
+    CreateOrganisationThumbnailResource,
     ProjectThumbnailResource,
-    CreatePersonThumbnailResource,
+    CreateProjectThumbnailResource,
     PersonThumbnailResource,
+    CreatePersonThumbnailResource,
     RunningPreviewFiles,
-    LegacySetMainPreviewResource,
     SetMainPreviewResource,
     UpdateAnnotationsResource,
     UpdatePreviewPositionResource,
@@ -117,10 +116,6 @@ routes = [
     (
         "/pictures/preview-background-files/<instance_id>.<extension>",
         PreviewBackgroundFileResource,
-    ),
-    (
-        "/actions/entities/<entity_id>/set-main-preview/<preview_file_id>",
-        LegacySetMainPreviewResource,
     ),
     (
         "/actions/preview-files/<preview_file_id>/set-main-preview",
