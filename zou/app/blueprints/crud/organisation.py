@@ -1,6 +1,8 @@
 from zou.app.models.organisation import Organisation
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
+from zou.app.services import persons_service
+
 
 class OrganisationsResource(BaseModelsResource):
     def __init__(self):
@@ -21,3 +23,7 @@ class OrganisationResource(BaseModelResource):
         if "hours_by_day" in data:
             data["hours_by_day"] = float(data["hours_by_day"])
         return data
+
+    def post_update(self, instance_dict, data):
+        persons_service.clear_oranisation_cache()
+        return instance_dict
