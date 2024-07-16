@@ -32,5 +32,7 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
                 "hd_by_default": self.hd_by_default,
                 "use_original_file_name": self.use_original_file_name,
                 "timesheets_locked": self.timesheets_locked,
+                "updated_at": self.updated_at,
+                "created_at": self.created_at,
             }
         )
