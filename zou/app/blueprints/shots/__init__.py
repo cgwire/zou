@@ -98,7 +98,7 @@ routes = [
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/set-shot-nb-frames",
         SetShotsFramesResource,
-    )
+    ),
 ]
 
 

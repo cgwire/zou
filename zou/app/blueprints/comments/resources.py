@@ -5,7 +5,7 @@ from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions
+from zou.app.utils import permissions, date_helpers
 
 from zou.app.services import (
     chats_service,
@@ -80,6 +80,9 @@ class DownloadAttachmentResource(Resource):
                 as_attachment=False,
                 download_name=attachment_file["name"],
                 max_age=config.CLIENT_CACHE_MAX_AGE,
+                last_modified=date_helpers.get_datetime_from_string(
+                    attachment_file["updated_at"]
+                ),
             )
         except Exception:
             current_app.logger.error(

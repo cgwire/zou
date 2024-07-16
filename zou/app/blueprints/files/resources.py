@@ -32,7 +32,10 @@ from zou.app.services.exception import (
 
 
 def send_storage_file(
-    working_file_id, as_attachment=False, max_age=config.CLIENT_CACHE_MAX_AGE
+    working_file_id,
+    as_attachment=False,
+    max_age=config.CLIENT_CACHE_MAX_AGE,
+    last_modified=None,
 ):
     """
     Send file from storage. If it's not a local storage, cache the file in
@@ -60,6 +63,7 @@ def send_storage_file(
             as_attachment=as_attachment,
             download_name=download_name,
             max_age=max_age,
+            last_modified=last_modified,
         )
     except IOError as e:
         current_app.logger.error(e)
@@ -125,8 +129,13 @@ class WorkingFileFileResource(Resource):
               schema:
                 type: file
         """
-        self.check_access(working_file_id)
-        return send_storage_file(working_file_id)
+        working_file = self.check_access(working_file_id)
+        return send_storage_file(
+            working_file_id,
+            last_modified=date_helpers.get_datetime_from_string(
+                working_file["updated_at"]
+            ),
+        )
 
     @jwt_required()
     def post(self, working_file_id):

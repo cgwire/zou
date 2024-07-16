@@ -274,14 +274,10 @@ class ShotUtilsTestCase(ApiDBTestCase):
             preview_02,
             preview_03,
             preview_e201,
-        ) = self.generate_fixture_shot_tasks_and_previews(
-            task_type_id
-        )
+        ) = self.generate_fixture_shot_tasks_and_previews(task_type_id)
 
         shots_service.set_frames_from_task_type_preview_files(
-            project_id,
-            task_type_id,
-            episode_id=episode_01.id
+            project_id, task_type_id, episode_id=episode_01.id
         )
 
         self.assertEqual(
@@ -301,8 +297,7 @@ class ShotUtilsTestCase(ApiDBTestCase):
         self.assertEqual(shot_e201["nb_frames"], 0)
 
         shots_service.set_frames_from_task_type_preview_files(
-            project_id,
-            task_type_id
+            project_id, task_type_id
         )
         shot_e201 = shots_service.get_shot(shot_e201["id"])
         self.assertEqual(shot_e201["nb_frames"], 1000)

@@ -2,7 +2,7 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import fields, permissions
+from zou.app.utils import fields, permissions, date_helpers
 
 from zou.app.services import events_service
 from zou.app.services.exception import WrongParameterException
@@ -105,8 +105,6 @@ class LoginLogsResource(Resource, ArgsMixin):
         permissions.check_manager_permissions()
         before = None
         if args["before"] is not None:
-            before = fields.get_date_object(
-                args["before"], "%Y-%m-%dT%H:%M:%S"
-            )
+            before = date_helpers.get_datetime_from_string(args["before"])
         page_size = args["page_size"]
         return events_service.get_last_login_logs(before, page_size)

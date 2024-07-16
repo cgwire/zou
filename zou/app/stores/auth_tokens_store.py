@@ -58,4 +58,4 @@ def is_revoked(jti):
     """
     Tell if a stored auth token is revoked or not.
     """
-    return get(jti) in [None, "true"]
+    return get(jti) == "true"

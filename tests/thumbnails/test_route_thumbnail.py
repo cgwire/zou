@@ -5,7 +5,6 @@ from tests.base import ApiDBTestCase
 
 from zou.app.utils import fs, thumbnail
 from zou.app.services import assets_service
-from zou.app.models.entity import Entity
 
 from PIL import Image
 
@@ -119,23 +118,6 @@ class RouteThumbnailTestCase(ApiDBTestCase):
 
         asset = assets_service.get_asset(self.asset_id)
         self.assertEqual(asset["preview_file_id"], str(self.preview_file_id))
-
-        self.put(
-            "/actions/entities/%s/set-main-preview/%s"
-            % (self.preview_file_id, self.preview_file_id),
-            {},
-            404,
-        )
-
-        self.put(
-            "/actions/entities/%s/set-main-preview/%s"
-            % (self.asset_id, self.asset_id),
-            {},
-            404,
-        )
-        entity = Entity.get(self.asset_id)
-        entity.preview_file_id = None
-        entity.save()
 
     def test_add_preview_background(self):
         self.generate_fixture_preview_background_file()

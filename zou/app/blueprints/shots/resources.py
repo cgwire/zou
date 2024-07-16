@@ -1529,7 +1529,6 @@ class ProjectQuotasResource(Resource, ArgsMixin):
             )
 
 
-
 class SetShotsFramesResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id, task_type_id):
@@ -1558,13 +1557,13 @@ class SetShotsFramesResource(Resource, ArgsMixin):
                 description: Frames set for given shots
         """
         user_service.check_manager_project_access(project_id)
-        if not fields.is_valid_id(task_type_id) or \
-           not fields.is_valid_id(project_id):
+        if not fields.is_valid_id(task_type_id) or not fields.is_valid_id(
+            project_id
+        ):
             raise WrongParameterException("Invalid project or task type id")
 
         episode_id = self.get_episode_id()
-        if not episode_id in ["", None] and \
-           not fields.is_valid_id(episode_id):
+        if not episode_id in ["", None] and not fields.is_valid_id(episode_id):
             raise WrongParameterException("Invalid episode id")
 
         if episode_id == "":

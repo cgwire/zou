@@ -1,7 +1,7 @@
 from flask_restful import reqparse
 from flask import request
 
-from zou.app.utils import fields
+from zou.app.utils import date_helpers
 from zou.app.services.exception import WrongParameterException
 
 
@@ -146,10 +146,10 @@ class ArgsMixin(object):
         if param is None:
             return date
         try:
-            date = fields.get_date_object(param, "%Y-%m-%dT%H:%M:%S")
+            date = date_helpers.get_datetime_from_string(param)
         except Exception:
             try:
-                date = fields.get_date_object(param, "%Y-%m-%d")
+                date = date_helpers.get_date_from_string(param)
             except Exception:
                 raise WrongParameterException(
                     "Wrong date format for before argument."

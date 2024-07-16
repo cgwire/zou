@@ -720,10 +720,7 @@ class ApiDBTestCase(ApiTestCase):
         return self.task_standard
 
     def generate_fixture_shot_task(
-        self,
-        name="Master",
-        shot_id=None,
-        task_type_id=None
+        self, name="Master", shot_id=None, task_type_id=None
     ):
         if task_type_id is None:
             task_type_id = self.task_type_animation.id
@@ -1087,10 +1084,7 @@ class ApiDBTestCase(ApiTestCase):
         self.generate_fixture_shot()
         self.generate_fixture_scene()
 
-    def generate_fixture_shot_tasks_and_previews(
-        self,
-        task_type_id
-    ):
+    def generate_fixture_shot_tasks_and_previews(self, task_type_id):
         episode_01 = self.episode
         sequence_01 = self.sequence
         shot_01 = self.shot
@@ -1106,50 +1100,34 @@ class ApiDBTestCase(ApiTestCase):
         )
 
         task_shot_01 = self.generate_fixture_shot_task(
-            shot_id=shot_01.id,
-            task_type_id=task_type_id
+            shot_id=shot_01.id, task_type_id=task_type_id
         )
         task_shot_02 = self.generate_fixture_shot_task(
-            shot_id=shot_02.id,
-            task_type_id=task_type_id
+            shot_id=shot_02.id, task_type_id=task_type_id
         )
         task_shot_03 = self.generate_fixture_shot_task(
-            shot_id=shot_03.id,
-            task_type_id=task_type_id
+            shot_id=shot_03.id, task_type_id=task_type_id
         )
         task_shot_e201 = self.generate_fixture_shot_task(
-            shot_id=shot_e201.id,
-            task_type_id=task_type_id
+            shot_id=shot_e201.id, task_type_id=task_type_id
         )
         preview_01 = self.generate_fixture_preview_file(
-            task_id=task_shot_01.id,
-            revision=1,
-            duration=15
+            task_id=task_shot_01.id, revision=1, duration=15
         )
         preview_01 = self.generate_fixture_preview_file(
-            task_id=task_shot_01.id,
-            revision=2,
-            duration=25
+            task_id=task_shot_01.id, revision=2, duration=25
         )
         preview_01 = self.generate_fixture_preview_file(
-            task_id=task_shot_01.id,
-            revision=3,
-            duration=30
+            task_id=task_shot_01.id, revision=3, duration=30
         )
         preview_02 = self.generate_fixture_preview_file(
-            task_id=task_shot_02.id,
-            revision=1,
-            duration=20
+            task_id=task_shot_02.id, revision=1, duration=20
         )
         preview_03 = self.generate_fixture_preview_file(
-            task_id=task_shot_03.id,
-            revision=1,
-            duration=10
+            task_id=task_shot_03.id, revision=1, duration=10
         )
         preview_e201 = self.generate_fixture_preview_file(
-            task_id=task_shot_e201.id,
-            revision=1,
-            duration=40
+            task_id=task_shot_e201.id, revision=1, duration=40
         )
         return (
             episode_01,

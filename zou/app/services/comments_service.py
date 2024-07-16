@@ -306,8 +306,8 @@ def new_comment(
             )
         except ValueError:
             try:
-                created_at_date = fields.get_date_object(
-                    created_at, date_format="%Y-%m-%dT%H:%M:%S"
+                created_at_date = date_helpers.get_datetime_from_string(
+                    created_at
                 )
             except ValueError:
                 pass
