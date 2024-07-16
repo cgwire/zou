@@ -81,7 +81,7 @@ class DownloadAttachmentResource(Resource):
                 download_name=attachment_file["name"],
                 max_age=config.CLIENT_CACHE_MAX_AGE,
                 last_modified=date_helpers.get_datetime_from_string(
-                    self.preview_file["updated_at"]
+                    attachment_file["updated_at"]
                 ),
             )
         except Exception:
