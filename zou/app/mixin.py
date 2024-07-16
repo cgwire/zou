@@ -146,9 +146,7 @@ class ArgsMixin(object):
         if param is None:
             return date
         try:
-            date = date_helpers.get_datetime_from_string(
-                param, "%Y-%m-%dT%H:%M:%S", milliseconds=True
-            )
+            date = date_helpers.get_datetime_from_string(param)
         except Exception:
             try:
                 date = date_helpers.get_date_from_string(param)
