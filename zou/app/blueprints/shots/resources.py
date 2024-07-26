@@ -1507,6 +1507,18 @@ class ProjectQuotasResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: count_mode
+            required: True
+            type: string
+            format: "weighted", "weigtheddone", "feedback", "done"
+            x-example: weighted
+          - in: query
+            name: studio_id
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Quotas statistics for shots
@@ -1515,17 +1527,40 @@ class ProjectQuotasResource(Resource, ArgsMixin):
         user_service.check_project_access(project_id)
         args = self.get_args(
             [
-                ("weighted", False, False, bool),
+                ("count_mode", "weighted", False, str),
                 ("studio_id", None, False, str),
             ]
         )
-        if args["weighted"]:
+        count_mode = args["count_mode"]
+        studio_id = args["studio_id"]
+
+        if count_mode not in [
+            "weighted",
+            "weighteddone",
+            "feedback",
+            "done"
+        ]:
+            raise WrongParameterException(
+                "count_mode must be equal to weighted, weigtheddone, feedback"
+                ", or done"
+            )
+
+        feedback = "done" not in count_mode
+        weighted = "weighted" in count_mode
+
+        if weighted:
             return shots_service.get_weighted_quotas(
-                project_id, task_type_id, args["studio_id"]
+                project_id,
+                task_type_id,
+                feedback=feedback,
+                studio_id=studio_id
             )
         else:
             return shots_service.get_raw_quotas(
-                project_id, task_type_id, args["studio_id"]
+                project_id, 
+                task_type_id, 
+                feedback=feedback,
+                studio_id=studio_id
             )
 
 

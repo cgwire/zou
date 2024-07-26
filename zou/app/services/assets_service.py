@@ -194,6 +194,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         Task.end_date,
         Task.start_date,
         Task.due_date,
+        Task.done_date,
         Task.last_comment_date,
         assignees_table.columns.person,
     ).order_by(EntityType.name, Entity.name)
@@ -272,6 +273,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         task_end_date,
         task_start_date,
         task_due_date,
+        task_done_date,
         task_last_comment_date,
         person_id,
     ) in query_result:
@@ -314,6 +316,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
                 task_dict = {
                     "id": task_id,
                     "due_date": fields.serialize_value(task_due_date),
+                    "done_date": fields.serialize_value(task_done_date),
                     "duration": task_duration,
                     "entity_id": asset_id,
                     "estimation": task_estimation,

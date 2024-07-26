@@ -240,6 +240,7 @@ def get_entities_and_tasks(criterions={}):
             Task.end_date,
             Task.start_date,
             Task.due_date,
+            Task.done_date,
             Task.last_comment_date,
             assignees_table.columns.person,
         )
@@ -269,6 +270,7 @@ def get_entities_and_tasks(criterions={}):
         task_end_date,
         task_start_date,
         task_due_date,
+        task_done_date,
         task_last_comment_date,
         person_id,
     ) in query.all():
@@ -305,6 +307,7 @@ def get_entities_and_tasks(criterions={}):
                         "entity_id": entity_id,
                         "end_date": task_end_date,
                         "due_date": task_due_date,
+                        "done_date": task_done_date,
                         "duration": task_duration,
                         "is_subscribed": subscription_map.get(task_id, False),
                         "last_comment_date": task_last_comment_date,
