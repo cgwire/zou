@@ -308,7 +308,7 @@ class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
                         raise permissions.PermissionDenied
                     if permissions.has_supervisor_permissions():
                         department_ids = persons_service.get_current_user(
-                            True
+                            relations=True
                         )["departments"]
                 else:
                     raise permissions.PermissionDenied
