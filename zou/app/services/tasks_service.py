@@ -1513,10 +1513,7 @@ def is_done(task, data):
     if "task_status_id" in data:
         task_status = get_task_status_raw(task.task_status_id)
         new_task_status = get_task_status_raw(data["task_status_id"])
-        return (
-            new_task_status.id != task_status.id
-            and new_task_status.is_done
-        )
+        return new_task_status.id != task_status.id and new_task_status.is_done
     else:
         return False
 
@@ -1789,7 +1786,7 @@ def reset_task_data(task_id):
         .add_columns(
             TaskStatus.is_retake,
             TaskStatus.is_feedback_request,
-            TaskStatus.done,
+            TaskStatus.is_done,
             TaskStatus.short_name,
         )
         .all()
@@ -1826,15 +1823,17 @@ def reset_task_data(task_id):
     for time_spent in time_spents:
         duration += time_spent.duration
 
-    task.update({
-        "duration": duration,
-        "retake_count": retake_count,
-        "real_start_date": real_start_date,
-        "last_comment_date": last_comment_date,
-        "end_date": end_date,
-        "done_date": done_date,
-        "task_status_id": task_status_id,
-    })
+    task.update(
+        {
+            "duration": duration,
+            "retake_count": retake_count,
+            "real_start_date": real_start_date,
+            "last_comment_date": last_comment_date,
+            "end_date": end_date,
+            "done_date": done_date,
+            "task_status_id": task_status_id,
+        }
+    )
     project_id = str(task.project_id)
     events.emit("task:update", {"task_id": task.id}, project_id)
     return task.serialize(relations=True)
