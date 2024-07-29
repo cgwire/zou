@@ -533,18 +533,13 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             abort(404)
 
 
-class PersonQuotaMixin():
+class PersonQuotaMixin:
 
     def get_quota_arguments(self):
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
         count_mode = self.get_text_parameter("count_mode", default="weigthed")
-        if count_mode not in [
-            "weighted",
-            "weighteddone",
-            "feedback",
-            "done"
-        ]:
+        if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
             raise WrongParameterException(
                 "count_mode must be equal to weighted, weigtheddone, feedback"
                 ", or done"
@@ -552,13 +547,7 @@ class PersonQuotaMixin():
         feedback = "done" not in count_mode
         weighted = "weighted" in count_mode
 
-        return (
-          project_id,
-          task_type_id,
-          count_mode,
-          feedback,
-          weighted
-        )
+        return (project_id, task_type_id, count_mode, feedback, weighted)
 
 
 class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
@@ -596,7 +585,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
         responses:
             200:
@@ -606,13 +595,9 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
         """
         user_service.check_person_is_not_bot(person_id)
         user_service.check_person_access(person_id)
-        (
-          project_id,
-          task_type_id,
-          count_mode,
-          feedback,
-          weighted
-        ) = self.get_quota_arguments()
+        (project_id, task_type_id, count_mode, feedback, weighted) = (
+            self.get_quota_arguments()
+        )
 
         try:
             return shots_service.get_month_quota_shots(
@@ -663,7 +648,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
         responses:
             200:
@@ -673,13 +658,9 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
         """
         user_service.check_person_is_not_bot(person_id)
         user_service.check_person_access(person_id)
-        (
-          project_id,
-          task_type_id,
-          count_mode,
-          feedback,
-          weighted
-        ) = self.get_quota_arguments()
+        (project_id, task_type_id, count_mode, feedback, weighted) = (
+            self.get_quota_arguments()
+        )
 
         try:
             return shots_service.get_week_quota_shots(
@@ -737,7 +718,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
         responses:
             200:
@@ -747,13 +728,9 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
         """
         user_service.check_person_is_not_bot(person_id)
         user_service.check_person_access(person_id)
-        (
-          project_id,
-          task_type_id,
-          count_mode,
-          feedback,
-          weighted
-        ) = self.get_quota_arguments()
+        (project_id, task_type_id, count_mode, feedback, weighted) = (
+            self.get_quota_arguments()
+        )
 
         try:
             return shots_service.get_day_quota_shots(

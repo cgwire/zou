@@ -1511,7 +1511,7 @@ class ProjectQuotasResource(Resource, ArgsMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
           - in: query
             name: studio_id
@@ -1534,12 +1534,7 @@ class ProjectQuotasResource(Resource, ArgsMixin):
         count_mode = args["count_mode"]
         studio_id = args["studio_id"]
 
-        if count_mode not in [
-            "weighted",
-            "weighteddone",
-            "feedback",
-            "done"
-        ]:
+        if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
             raise WrongParameterException(
                 "count_mode must be equal to weighted, weigtheddone, feedback"
                 ", or done"
@@ -1553,14 +1548,14 @@ class ProjectQuotasResource(Resource, ArgsMixin):
                 project_id,
                 task_type_id,
                 feedback=feedback,
-                studio_id=studio_id
+                studio_id=studio_id,
             )
         else:
             return shots_service.get_raw_quotas(
-                project_id, 
-                task_type_id, 
+                project_id,
+                task_type_id,
                 feedback=feedback,
-                studio_id=studio_id
+                studio_id=studio_id,
             )
 
 
