@@ -585,7 +585,7 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
         responses:
             200:
@@ -648,7 +648,7 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
         responses:
             200:
@@ -718,7 +718,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
         responses:
             200:

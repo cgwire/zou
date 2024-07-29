@@ -1511,7 +1511,7 @@ class ProjectQuotasResource(Resource, ArgsMixin):
             name: count_mode
             required: True
             type: string
-            format: "weighted", "weigtheddone", "feedback", "done"
+            enum: [weighted, weigtheddone, feedback, done]
             x-example: weighted
           - in: query
             name: studio_id
