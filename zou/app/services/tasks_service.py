@@ -1297,6 +1297,9 @@ def update_task(task_id, data):
     if is_finished(task, data):
         data["end_date"] = date_helpers.get_utc_now_datetime()
 
+    if is_done(task, data):
+        data["done_date"] = date_helpers.get_utc_now_datetime()
+
     task.update(data)
     clear_task_cache(task_id)
     events.emit(
@@ -1490,7 +1493,7 @@ def delete_time_spent(task_id, person_id, date):
 
 def is_finished(task, data):
     """
-    Return True if task status is set to done.
+    Return True if task status is set to feedback request.
     """
     if "task_status_id" in data:
         task_status = get_task_status_raw(task.task_status_id)
@@ -1498,6 +1501,21 @@ def is_finished(task, data):
         return (
             new_task_status.id != task_status.id
             and new_task_status.is_feedback_request
+        )
+    else:
+        return False
+
+
+def is_done(task, data):
+    """
+    Return True if task status is set to done.
+    """
+    if "task_status_id" in data:
+        task_status = get_task_status_raw(task.task_status_id)
+        new_task_status = get_task_status_raw(data["task_status_id"])
+        return (
+            new_task_status.id != task_status.id
+            and new_task_status.is_done
         )
     else:
         return False
@@ -1758,6 +1776,7 @@ def reset_task_data(task_id):
     real_start_date = None
     last_comment_date = None
     end_date = None
+    done_date = None
     entity = entities_service.get_entity(task.entity_id)
     task_status_id = get_default_status(
         for_concept=entity["entity_type_id"]
@@ -1770,6 +1789,7 @@ def reset_task_data(task_id):
         .add_columns(
             TaskStatus.is_retake,
             TaskStatus.is_feedback_request,
+            TaskStatus.done,
             TaskStatus.short_name,
         )
         .all()
@@ -1780,6 +1800,7 @@ def reset_task_data(task_id):
         comment,
         task_status_is_retake,
         task_status_is_feedback_request,
+        task_status_is_done,
         task_status_short_name,
     ) in comments:
         if task_status_is_retake and not previous_is_retake:
@@ -1792,6 +1813,11 @@ def reset_task_data(task_id):
         if task_status_is_feedback_request:
             end_date = comment.created_at
 
+        print("ok", task_status_is_done)
+        if task_status_is_done:
+            done_date = comment.created_at
+            print(done_date)
+
         task_status_id = comment.task_status_id
         last_comment_date = comment.created_at
 
@@ -1800,16 +1826,15 @@ def reset_task_data(task_id):
     for time_spent in time_spents:
         duration += time_spent.duration
 
-    task.update(
-        {
-            "duration": duration,
-            "retake_count": retake_count,
-            "real_start_date": real_start_date,
-            "last_comment_date": last_comment_date,
-            "end_date": end_date,
-            "task_status_id": task_status_id,
-        }
-    )
+    task.update({
+        "duration": duration,
+        "retake_count": retake_count,
+        "real_start_date": real_start_date,
+        "last_comment_date": last_comment_date,
+        "end_date": end_date,
+        "done_date": done_date,
+        "task_status_id": task_status_id,
+    })
     project_id = str(task.project_id)
     events.emit("task:update", {"task_id": task.id}, project_id)
     return task.serialize(relations=True)
@@ -2036,6 +2061,7 @@ def get_open_tasks(
                 "duration": task.duration,
                 "start_date": fields.serialize_value(task.start_date),
                 "due_date": fields.serialize_value(task.due_date),
+                "done_date": fields.serialize_value(task.done_date),
                 "type_name": task_type_name,
                 "task_type_for_entity": task_type_for_entity,
                 "status_name": task_status_name,

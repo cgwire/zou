@@ -533,7 +533,35 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             abort(404)
 
 
-class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
+class PersonQuotaMixin():
+
+    def get_quota_arguments(self):
+        project_id = self.get_project_id()
+        task_type_id = self.get_task_type_id()
+        count_mode = self.get_text_parameter("count_mode", default="weigthed")
+        if count_mode not in [
+            "weighted",
+            "weighteddone",
+            "feedback",
+            "done"
+        ]:
+            raise WrongParameterException(
+                "count_mode must be equal to weighted, weigtheddone, feedback"
+                ", or done"
+            )
+        feedback = "done" not in count_mode
+        weighted = "weighted" in count_mode
+
+        return (
+          project_id,
+          task_type_id,
+          count_mode,
+          feedback,
+          weighted
+        )
+
+
+class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
     """
     Get ended shots used for quota calculation of this month.
     """
@@ -564,6 +592,12 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
             x-example: 07
             minimum: 1
             maximum: 12
+          - in: query
+            name: count_mode
+            required: True
+            type: string
+            format: "weighted", "weigtheddone", "feedback", "done"
+            x-example: weighted
         responses:
             200:
                 description: Ended shots used for quota calculation of this month
@@ -571,10 +605,15 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        project_id = self.get_project_id()
-        task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
-        weighted = self.get_bool_parameter("weighted", default="true")
+        (
+          project_id,
+          task_type_id,
+          count_mode,
+          feedback,
+          weighted
+        ) = self.get_quota_arguments()
+
         try:
             return shots_service.get_month_quota_shots(
                 person_id,
@@ -583,12 +622,13 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin):
                 project_id=project_id,
                 task_type_id=task_type_id,
                 weighted=weighted,
+                feedback=feedback,
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
+class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
     """
     Get ended shots used for quota calculation of this week.
     """
@@ -619,6 +659,12 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
             x-example: 35
             minimum: 1
             maximum: 52
+          - in: query
+            name: count_mode
+            required: True
+            type: string
+            format: "weighted", "weigtheddone", "feedback", "done"
+            x-example: weighted
         responses:
             200:
                 description: Ended shots used for quota calculation of this week
@@ -626,10 +672,15 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        project_id = self.get_project_id()
-        task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
-        weighted = self.get_bool_parameter("weighted", default="true")
+        (
+          project_id,
+          task_type_id,
+          count_mode,
+          feedback,
+          weighted
+        ) = self.get_quota_arguments()
+
         try:
             return shots_service.get_week_quota_shots(
                 person_id,
@@ -638,12 +689,13 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin):
                 project_id=project_id,
                 task_type_id=task_type_id,
                 weighted=weighted,
+                feedback=feedback,
             )
         except WrongDateFormatException:
             abort(404)
 
 
-class PersonDayQuotaShotsResource(Resource, ArgsMixin):
+class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
     """
     Get ended shots used for quota calculation of this day.
     """
@@ -681,6 +733,12 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
             x-example: 12
             minimum: 1
             maximum: 31
+          - in: query
+            name: count_mode
+            required: True
+            type: string
+            format: "weighted", "weigtheddone", "feedback", "done"
+            x-example: weighted
         responses:
             200:
                 description: Ended shots used for quota calculation of this day
@@ -688,10 +746,15 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        project_id = self.get_project_id()
-        task_type_id = self.get_task_type_id()
         user_service.check_person_access(person_id)
-        weighted = self.get_bool_parameter("weighted", default="true")
+        (
+          project_id,
+          task_type_id,
+          count_mode,
+          feedback,
+          weighted
+        ) = self.get_quota_arguments()
+
         try:
             return shots_service.get_day_quota_shots(
                 person_id,
@@ -701,6 +764,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin):
                 project_id=project_id,
                 task_type_id=task_type_id,
                 weighted=weighted,
+                feedback=feedback,
             )
         except WrongDateFormatException:
             abort(404)

@@ -251,6 +251,7 @@ def get_shots_and_tasks(criterions={}):
             Task.end_date,
             Task.start_date,
             Task.due_date,
+            Task.done_date,
             Task.last_comment_date,
             Task.nb_assets_ready,
             assignees_table.columns.person,
@@ -300,6 +301,7 @@ def get_shots_and_tasks(criterions={}):
         task_end_date,
         task_start_date,
         task_due_date,
+        task_done_date,
         task_last_comment_date,
         task_nb_assets_ready,
         person_id,
@@ -355,6 +357,7 @@ def get_shots_and_tasks(criterions={}):
                         "duration": task_duration,
                         "due_date": task_due_date,
                         "end_date": task_end_date,
+                        "done_date": task_done_date,
                         "entity_id": shot_id,
                         "estimation": task_estimation,
                         "is_subscribed": subscription_map.get(task_id, False),
@@ -1113,24 +1116,32 @@ def get_base_entity_type_name(entity_dict):
     return type_name
 
 
-def get_weighted_quotas(project_id, task_type_id, studio_id=None):
+def get_weighted_quotas(
+    project_id, task_type_id, studio_id=None, feedback=True
+):
     """
     Build quota statistics. It counts the number of frames done for each day.
-    A shot is considered done at the first feedback request. If time spent is
-    filled for it, it weights the result with the frame number with the time
-    spents. If there is no time spent, it considers that the work was done
-    from the wip date to the feedback date.
+    A shot is considered done at the first feedback request or at last 
+    approval. 
+
+    If time spent is  filled for it, it weights the result with the frame 
+    number with the time spents. If there is no time spent, it considers that 
+    the work was done from the wip date to the feedback date (or approval date).
     It computes the shot count and the number of seconds too.
+
+    If the `feedback` flag is set to True, it uses the feedback date
+    (real_end_date), if feedback is set to False, it uses the approval date
+    (done_date).
     """
     fps = projects_service.get_project_fps(project_id)
     timezone = user_service.get_timezone()
     shot_type = get_shot_type()
     quotas = {}
     query = (
-        Task.query.filter(Task.project_id == project_id)
+        Task.query
         .filter(Entity.entity_type_id == shot_type["id"])
+        .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
-        .filter(Task.end_date != None)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
@@ -1141,6 +1152,11 @@ def get_weighted_quotas(project_id, task_type_id, studio_id=None):
             TimeSpent.person_id,
         )
     )
+
+    if feedback:
+        query = query.filter(Task.end_date != None)
+    else:
+        query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
         persons_from_studio = Person.query.filter(
@@ -1162,7 +1178,6 @@ def get_weighted_quotas(project_id, task_type_id, studio_id=None):
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.task_type_id == task_type_id)
         .filter(Task.real_start_date != None)
-        .filter(Task.end_date != None)
         .filter(TimeSpent.id == None)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
@@ -1171,6 +1186,11 @@ def get_weighted_quotas(project_id, task_type_id, studio_id=None):
         .add_columns(Entity.nb_frames, Person.id)
     )
 
+    if feedback:
+        query = query.filter(Task.end_date != None)
+    else:
+        query = query.filter(Task.done_date != None)
+
     if studio_id is not None:
         query = query.filter(
             or_(*[Task.assignees.contains(p) for p in persons_from_studio])
@@ -1178,16 +1198,20 @@ def get_weighted_quotas(project_id, task_type_id, studio_id=None):
     result = query.all()
 
     for task, nb_frames, person_id in result:
+        date = task.done_date
+        if feedback:
+            date = task.end_date
+
         business_days = (
-            date_helpers.get_business_days(task.real_start_date, task.end_date)
+            date_helpers.get_business_days(task.real_start_date, date)
             + 1
         )
         if nb_frames is not None:
             nb_frames = round(nb_frames / business_days) or 0
         else:
             nb_frames = 0
-        date = task.real_start_date
-        for x in range((task.end_date - task.real_start_date).days + 1):
+
+        for x in range((date - task.real_start_date).days + 1):
             if date.weekday() < 5:
                 _add_quota_entry(
                     quotas, str(person_id), date, timezone, nb_frames, fps
@@ -1196,11 +1220,13 @@ def get_weighted_quotas(project_id, task_type_id, studio_id=None):
     return quotas
 
 
-def get_raw_quotas(project_id, task_type_id, studio_id=None):
+def get_raw_quotas(project_id, task_type_id, studio_id=None, feedback=True):
     """
     Build quota statistics in a raw way. It counts the number of frames done
     for each day. A shot is considered done at the first feedback request (end
-    date). It considers that all the work was done at the end date.
+    date) or approval date (done_date). 
+
+    It considers that all the work was done at the end date.
     It computes the shot count and the number of seconds too.
     """
     fps = projects_service.get_project_fps(project_id)
@@ -1211,12 +1237,16 @@ def get_raw_quotas(project_id, task_type_id, studio_id=None):
         Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.task_type_id == task_type_id)
-        .filter(Task.end_date != None)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(Task.assignees)
         .add_columns(Entity.nb_frames, Person.id)
     )
+
+    if feedback:
+        query = query.filter(Task.end_date != None)
+    else:
+        query = query.filter(Task.done_date != None)
 
     if studio_id is not None:
         persons_from_studio = Person.query.filter(
@@ -1229,7 +1259,10 @@ def get_raw_quotas(project_id, task_type_id, studio_id=None):
     result = query.all()
 
     for task, nb_frames, person_id in result:
-        date = task.end_date
+        date = task.done_date
+        if feedback:
+            date = task.end_date
+
         if nb_frames is None:
             nb_frames = 0
         _add_quota_entry(
@@ -1303,7 +1336,13 @@ def _init_quota_person(quotas, person_id):
 
 
 def get_month_quota_shots(
-    person_id, year, month, project_id=None, task_type_id=None, weighted=True
+    person_id, 
+    year, 
+    month, 
+    project_id=None, 
+    task_type_id=None, 
+    weighted=True,
+    feedback=True,
 ):
     """
     Return shots that are included in quota comptutation for given
@@ -1318,6 +1357,7 @@ def get_month_quota_shots(
             end,
             project_id=project_id,
             task_type_id=task_type_id,
+            feedback=feedback,
         )
     else:
         return get_raw_quota_shots_between(
@@ -1326,11 +1366,18 @@ def get_month_quota_shots(
             end,
             project_id=project_id,
             task_type_id=task_type_id,
+            feedback=feedback,
         )
 
 
 def get_week_quota_shots(
-    person_id, year, week, project_id=None, task_type_id=None, weighted=True
+    person_id, 
+    year, 
+    week, 
+    project_id=None, 
+    task_type_id=None, 
+    weighted=True,
+    feedback=True
 ):
     """
     Return shots that are included in quota comptutation for given
@@ -1345,6 +1392,7 @@ def get_week_quota_shots(
             end,
             project_id=project_id,
             task_type_id=task_type_id,
+            feedback=feedback,
         )
     else:
         return get_raw_quota_shots_between(
@@ -1353,6 +1401,7 @@ def get_week_quota_shots(
             end,
             project_id=project_id,
             task_type_id=task_type_id,
+            feedback=feedback,
         )
 
 
@@ -1364,13 +1413,14 @@ def get_day_quota_shots(
     project_id=None,
     task_type_id=None,
     weighted=True,
+    feedback=True,
 ):
     """
     Return shots that are included in quota comptutation for given
     person and day.
     """
     start, end = date_helpers.get_day_interval(year, month, day)
-    start, end = _get_timezoned_interval(start, end)
+    # start, end = _get_timezoned_interval(start, end)
     if weighted:
         return get_weighted_quota_shots_between(
             person_id,
@@ -1378,6 +1428,7 @@ def get_day_quota_shots(
             end,
             project_id=project_id,
             task_type_id=task_type_id,
+            feedback=feedback,
         )
     else:
         return get_raw_quota_shots_between(
@@ -1386,11 +1437,12 @@ def get_day_quota_shots(
             end,
             project_id=project_id,
             task_type_id=task_type_id,
+            feedback=feedback,
         )
 
 
 def get_weighted_quota_shots_between(
-    person_id, start, end, project_id=None, task_type_id=None
+    person_id, start, end, project_id=None, task_type_id=None, feedback=True
 ):
     """
     Get all shots leading to a quota computation during the given period.
@@ -1407,10 +1459,10 @@ def get_weighted_quota_shots_between(
     already_listed = {}
 
     query = (
-        Entity.query.filter(Entity.entity_type_id == shot_type["id"])
+        Entity.query
+        .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
-        .filter(Task.end_date != None)
         .filter(TimeSpent.person_id == person_id)
         .filter(TimeSpent.date >= func.cast(start, TimeSpent.date.type))
         .filter(TimeSpent.date < func.cast(end, TimeSpent.date.type))
@@ -1419,6 +1471,12 @@ def get_weighted_quota_shots_between(
         .join(TimeSpent, Task.id == TimeSpent.task_id)
         .add_columns(Task.duration, TimeSpent.duration)
     )
+
+    if feedback:
+        query = query.filter(Task.end_date != None)
+    else:
+        query = query.filter(Task.done_date != None)
+
     query_shots = query.all()
     for entity, task_duration, duration in query_shots:
         shot = entity.serialize()
@@ -1432,22 +1490,38 @@ def get_weighted_quota_shots_between(
             shot = already_listed[shot["id"]]
             shot["weight"] += round(duration / task_duration, 2)
 
-    start = date_helpers.get_datetime_from_string(start)
-    end = date_helpers.get_datetime_from_string(end)
+    print(start, end)
+    if type(start) is str:
+        start = date_helpers.get_datetime_from_string(start)
+    if type(end) is str:
+        end = date_helpers.get_datetime_from_string(end)
     query = (
         Entity.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
-        .filter(Task.end_date != None)
         .filter(Task.real_start_date != None)
         .filter(Task.assignees.contains(person))
-        .filter((Task.real_start_date <= end) & (Task.end_date >= start))
         .filter(TimeSpent.id == None)
         .join(Task, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .outerjoin(TimeSpent, TimeSpent.task_id == Task.id)
-        .add_columns(Task.real_start_date, Task.end_date)
     )
+
+    if feedback:
+        query = (
+            query
+            .filter(Task.end_date != None)
+            .filter((Task.real_start_date <= end) & (Task.end_date >= start))
+            .add_columns(Task.real_start_date, Task.end_date)
+        )
+    else:
+        query = (
+            query
+            .filter(Task.done_date != None)
+            .filter((Task.real_start_date <= end) & (Task.done_date >= start))
+            .add_columns(Task.real_start_date, Task.done_date)
+        )
+
     query_shots = query.all()
 
     for entity, task_start, task_end in query_shots:
@@ -1477,7 +1551,7 @@ def get_weighted_quota_shots_between(
 
 
 def get_raw_quota_shots_between(
-    person_id, start, end, project_id=None, task_type_id=None
+    person_id, start, end, project_id=None, task_type_id=None, feedback=True
 ):
     """
     Get all shots leading to a quota computation during the given period.
@@ -1487,19 +1561,30 @@ def get_raw_quota_shots_between(
     shots = []
 
     query = (
-        Entity.query.filter(Entity.entity_type_id == shot_type["id"])
+        Entity.query
+        .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
         .filter(Task.task_type_id == task_type_id)
-        .filter(
+        .filter(Task.assignees.contains(person))
+        .join(Task, Entity.id == Task.entity_id)
+        .join(Project, Project.id == Task.project_id)
+    )
+
+    if feedback: 
+        query = query.filter(
             Task.end_date.between(
                 func.cast(start, Task.end_date.type),
                 func.cast(end, Task.end_date.type),
             )
         )
-        .filter(Task.assignees.contains(person))
-        .join(Task, Entity.id == Task.entity_id)
-        .join(Project, Project.id == Task.project_id)
-    )
+    else:
+        query = query.filter(
+            Task.done_date.between(
+                func.cast(start, Task.done_date.type),
+                func.cast(end, Task.done_date.type),
+            )
+        )
+
     query_shots = query.all()
 
     for entity in query_shots:
