@@ -140,7 +140,7 @@ def reset_migrations():
 
 @cli.command()
 @click.argument("email")
-@click.option("--password", required=True)
+@click.option("--password", default=None)
 def create_admin(email, password):
     """
     Create an admin user to allow usage of the API when database is empty.
@@ -149,10 +149,18 @@ def create_admin(email, password):
         try:
             person = persons_service.get_person_by_email(email)
             if person["role"] != "admin":
-                persons_service.update_person(person["id"], {"role": "admin"})
+                persons_service.update_person(
+                    person["id"],
+                    {"role": "admin"},
+                    bypass_protected_accounts=True,
+                )
                 print("Existing user's role has been upgraded to 'admin'.")
         except PersonNotFoundException:
             try:
+                if password is None:
+                    raise click.MissingParameter(
+                        param_type="option", param_hint="--password"
+                    )
                 auth.validate_password(password)
                 # Allow "admin@example.com" to be invalid.
                 if email != "admin@example.com":
