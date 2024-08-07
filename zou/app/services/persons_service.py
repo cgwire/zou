@@ -276,12 +276,15 @@ def update_password(email, password):
     return person.serialize()
 
 
-def update_person(person_id, data):
+def update_person(person_id, data, bypass_protected_accounts=False):
     """
     Update person entry with data given in parameter.
     """
     person = Person.get(person_id)
-    if person.email in config.PROTECTED_ACCOUNTS:
+    if (
+        not bypass_protected_accounts
+        and person.email in config.PROTECTED_ACCOUNTS
+    ):
         message = None
         if data.get("active") is False:
             message = (
