@@ -1,5 +1,4 @@
 import os
-import orjson as json
 
 from tests.base import ApiDBTestCase
 from zou.app import db
