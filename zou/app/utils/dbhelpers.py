@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import close_all_sessions
@@ -39,3 +39,15 @@ def drop_all():
     db.session.flush()
     close_all_sessions()
     return db.drop_all()
+
+
+def is_init():
+    """
+    Check if database is initialized.
+    """
+    from zou.app import db
+    from zou.app.models.project_status import ProjectStatus
+    return (
+      inspect(db.engine).has_table("person")
+      and db.session.query(ProjectStatus).count() == 2
+    )
