@@ -1,8 +1,11 @@
 from flask import request, current_app
 from flask_jwt_extended import jwt_required
 
+from sqlalchemy.orm import aliased
 from sqlalchemy.exc import IntegrityError
+
 from zou.app.mixin import ArgsMixin
+from zou.app.models.entity import Entity
 from zou.app.models.person import Person
 from zou.app.models.project import Project
 from zou.app.models.task import Task
@@ -21,7 +24,7 @@ from zou.app.services.exception import WrongTaskTypeForEntityException
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 
-class TasksResource(BaseModelsResource):
+class TasksResource(BaseModelsResource, ArgsMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Task)
 
@@ -35,6 +38,46 @@ class TasksResource(BaseModelsResource):
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
+        return query
+
+    def build_filters(self, options):
+        (
+            many_join_filter,
+            in_filter,
+            name_filter,
+            criterions,
+        ) = super().build_filters(options)
+        if "project_id" in criterions:
+            del criterions["project_id"]
+        if "episode_id" in criterions:
+            del criterions["episode_id"]
+        return (
+            many_join_filter,
+            in_filter,
+            name_filter,
+            criterions,
+        )
+
+    def apply_filters(self, query, options):
+        query = super().apply_filters(query, options)
+
+        project_id = options.get("project_id", None)
+        episode_id = options.get("episode_id", None)
+        if episode_id is not None:
+            Sequence = aliased(Entity)
+            query = (
+                query
+                .join(Entity, Task.entity_id == Entity.id)
+                .join(Sequence, Entity.parent_id == Sequence.id)
+                .filter(Sequence.parent_id == episode_id)
+            )
+        elif project_id is not None:
+            query = (
+                query
+                .join(Entity, Task.entity_id == Entity.id)
+                .filter(Entity.project_id == project_id)
+            )
+
         return query
 
     def post(self):
