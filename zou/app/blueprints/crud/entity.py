@@ -11,6 +11,7 @@ from zou.app.models.entity import (
     EntityLink,
     EntityConceptLink,
 )
+from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
 from zou.app.services import (
     assets_service,
@@ -23,7 +24,7 @@ from zou.app.services import (
     user_service,
     concepts_service,
 )
-from zou.app.utils import events, date_helpers
+from zou.app.utils import date_helpers, events, permissions
 
 from werkzeug.exceptions import NotFound
 
@@ -55,6 +56,16 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
 
     def emit_create_event(self, entity_dict):
         self.emit_event("new", entity_dict)
+
+    def check_read_permissions(self):
+        return not permissions.has_vendor_permissions()
+
+    def add_project_permission_filter(self, query):
+        if not permissions.has_admin_permissions():
+            query = query.join(Project).filter(
+                user_service.build_related_projects_filter()
+            )
+        return query
 
     def update_data(self, data):
         data = super().update_data(data)
