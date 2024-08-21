@@ -1463,7 +1463,6 @@ class ProjectTasksResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
-    @permissions.require_admin
     def get(self, project_id):
         """
         Retrieve all tasks related to given project.
@@ -1478,13 +1477,37 @@ class ProjectTasksResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: page
+            required: False
+            type: integer
+            x-example: 1
+          - in: query
+            name: task_type_id
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: episode_id
+            required: False
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given project
         """
         projects_service.get_project(project_id)
         page = self.get_page()
-        return tasks_service.get_tasks_for_project(project_id, page)
+        task_type_id = self.get_task_type_id()
+        episode_id = self.get_episode_id()
+        return tasks_service.get_tasks_for_project(
+            project_id,
+            page,
+            task_type_id=task_type_id,
+            episode_id=episode_id
+        )
 
 
 class ProjectCommentsResource(Resource, ArgsMixin):

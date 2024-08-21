@@ -1698,13 +1698,38 @@ def get_time_spents_for_project(project_id, page=0):
     return query_utils.get_paginated_results(query, page)
 
 
-def get_tasks_for_project(project_id, page=0):
+def get_tasks_for_project(
+    project_id,
+    page=0,
+    task_type_id=None,
+    episode_id=None
+):
     """
     Return all tasks for given project.
     """
     query = Task.query.filter(Task.project_id == project_id).order_by(
         Task.updated_at.desc()
     )
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+    if episode_id is not None:
+        Sequence = aliased(Entity, name="sequence")
+        query = (
+            query
+            .join(Entity, Entity.id == Task.entity_id)
+            .join(Sequence, Sequence.id == Entity.parent_id)
+            .filter(Sequence.parent_id == episode_id)
+        )
+
+        if permissions.has_vendor_permissions():
+            query = query.filter(user_service.build_assignee_filter())
+        elif not permissions.has_admin_permissions():
+            query = query.join(Project).filter(
+                user_service.build_related_projects_filter()
+            )
+        return query
+
+
     return query_utils.get_paginated_results(query, page, relations=True)
 
 

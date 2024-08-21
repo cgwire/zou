@@ -76,6 +76,7 @@ ALLOWED_FILE_EXTENSION = [
     "sbbkp",
     "svg",
     "swf",
+    "tvpp",
     "wav",
     "zip",
 ]

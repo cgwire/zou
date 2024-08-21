@@ -48,6 +48,21 @@ def init_db():
 
 
 @cli.command()
+def is_db_ready():
+    """
+    Return a message telling if the database wheter the database is 
+    initiliazed or not."
+    """
+    with app.app_context():
+        is_init = dbhelpers.is_init()
+        if is_init:
+            print("Database is initiliazed.")
+        else:
+            print("Database is not initiliazed. "
+                  "Run 'zou init-db' and 'init-data'.")
+
+
+@cli.command()
 @click.option("--message", default="")
 def migrate_db(message):
     """
