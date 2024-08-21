@@ -18,7 +18,10 @@ from zou.app.services import (
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, query, permissions
-from zou.app.services.exception import WrongParameterException
+from zou.app.services.exception import (
+    WrongParameterException,
+    ArgumentsException,
+)
 
 
 class ShotResource(Resource, ArgsMixin):
@@ -62,10 +65,10 @@ class ShotResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
-         - in: body
+          - in: body
             name: data
             required: True
-          type: object
+            type: object
         responses:
             200:
                 description: Update given shot
@@ -88,7 +91,7 @@ class ShotResource(Resource, ArgsMixin):
             "entities_out",
             "type",
             "shotgun_id",
-            "created_by"
+            "created_by",
         ]:
             data.pop(field, None)
 

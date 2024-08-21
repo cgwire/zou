@@ -13,6 +13,7 @@ from zou.app.models.entity import (
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
+from zou.app.models.task import Task
 from zou.app.services import (
     assets_service,
     breakdown_service,
@@ -58,13 +59,18 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         self.emit_event("new", entity_dict)
 
     def check_read_permissions(self):
-        return not permissions.has_vendor_permissions()
+        return True
 
     def add_project_permission_filter(self, query):
         if not permissions.has_admin_permissions():
             query = query.join(Project).filter(
                 user_service.build_related_projects_filter()
             )
+            if permissions.has_vendor_permissions():
+                query = query.join(Task).filter(
+                    user_service.build_assignee_filter()
+                )
+
         return query
 
     def update_data(self, data):
