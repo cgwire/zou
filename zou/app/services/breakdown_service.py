@@ -50,6 +50,8 @@ def get_casting(shot_id):
             Entity.preview_file_id,
             Entity.source_id,
             Entity.ready_for,
+            Entity.is_shared,
+            Entity.project_id,
         )
         .order_by(EntityType.name, Entity.name)
     )
@@ -61,6 +63,8 @@ def get_casting(shot_id):
         entity_preview_file_id,
         episode_id,
         entity_ready_for,
+        entity_is_shared,
+        entity_project_id,
     ) in links:
         casting.append(
             {
@@ -74,6 +78,8 @@ def get_casting(shot_id):
                 ),
                 "nb_occurences": link.nb_occurences,
                 "label": link.label,
+                "is_shared": entity_is_shared,
+                "project_id": entity_project_id,
             }
         )
     return casting

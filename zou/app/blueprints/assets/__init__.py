@@ -21,6 +21,9 @@ from zou.app.blueprints.assets.resources import (
     ProjectAssetTypeAssetsResource,
     ProjectAssetTypesResource,
     ShotAssetTypesResource,
+    SetSharedProjectAssetsResource,
+    SetSharedProjectAssetTypeAssetsResource,
+    SetSharedAssetsResource,
 )
 
 
@@ -59,6 +62,15 @@ routes = [
     ("/data/projects/<project_id>/asset-types", ProjectAssetTypesResource),
     ("/data/shots/<shot_id>/asset-types", ShotAssetTypesResource),
     ("/data/projects/<project_id>/assets", ProjectAssetsResource),
+    ("/actions/assets/share", SetSharedAssetsResource),
+    (
+        "/actions/projects/<project_id>/assets/share",
+        SetSharedProjectAssetsResource,
+    ),
+    (
+        "/actions/projects/<project_id>/asset-types/<asset_type_id>/assets/share",
+        SetSharedProjectAssetTypeAssetsResource,
+    ),
 ]
 
 blueprint = Blueprint("assets", "assets")

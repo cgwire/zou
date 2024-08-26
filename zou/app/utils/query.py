@@ -1,8 +1,11 @@
 import math
+import orjson as json
+import sqlalchemy.orm as orm
 
 from zou.app import app
 from zou.app.utils import fields, string
 from sqlalchemy import func
+from sqlalchemy.inspection import inspect
 
 
 def get_query_criterions_from_request(request):
@@ -21,12 +24,52 @@ def apply_criterions_to_db_query(model, db_query, criterions):
     """
     Apply criterions given in HTTP request to the sqlachemy db query object.
     """
-    if "name" in criterions and hasattr(model, "name"):
-        value = criterions["name"]
-        db_query = db_query.filter(model.name.ilike(value))
-        del criterions["name"]
 
-    return db_query.filter_by(**criterions)
+    many_join_filter = []
+    in_filter = []
+    name_filter = []
+    filters = {}
+
+    column_names = inspect(model).all_orm_descriptors.keys()
+    for key, value in criterions.items():
+        if key not in ["page", "relations"] and key in column_names:
+            field_key = getattr(model, key)
+
+            is_many_to_many_field = hasattr(
+                field_key, "property"
+            ) and isinstance(
+                field_key.property, orm.properties.RelationshipProperty
+            )
+            value_is_list = len(value) > 0 and value[0] == "["
+
+            if key == "name" and field_key is not None:
+                name_filter.append(value)
+
+            elif is_many_to_many_field:
+                many_join_filter.append((key, value))
+
+            elif value_is_list:
+                value_array = json.loads(value)
+                in_filter.append(
+                    field_key.in_(
+                        [cast_value(value, field_key) for value in value_array]
+                    )
+                )
+            else:
+                filters[key] = cast_value(value, field_key)
+        if filters:
+            db_query = db_query.filter_by(**filters)
+
+        for value in name_filter:
+            db_query = db_query.filter(model.name.ilike(value))
+
+        for id_filter in in_filter:
+            db_query = db_query.filter(id_filter)
+
+        for key, value in many_join_filter:
+            db_query = db_query.filter(getattr(model, key).any(id=value))
+
+    return db_query
 
 
 def get_paginated_results(query, page, limit=None, relations=False):

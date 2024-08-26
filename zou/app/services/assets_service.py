@@ -706,3 +706,43 @@ def cancel_asset(asset_id, force=True):
         project_id=str(asset.project_id),
     )
     return asset_dict
+
+
+def set_shared_assets(
+    is_shared=True,
+    project_id=None,
+    asset_type_id=None,
+    asset_ids=None,
+):
+    """
+    Set all assets of a project to is_shared=True or False.
+    """
+
+    query = Entity.query.filter(build_asset_type_filter()).filter()
+
+    if project_id is not None:
+        query = query.filter(Entity.project_id == project_id)
+
+    if asset_type_id is not None:
+        query = query.filter(Entity.entity_type_id == asset_type_id)
+
+    if asset_ids is not None:
+        query = query.filter(Entity.id.in_(asset_ids))
+
+    assets = query.all()
+
+    for asset in assets:
+        asset.update_no_commit({"is_shared": is_shared})
+
+    Entity.commit()
+
+    for asset in assets:
+        asset_id = str(asset.id)
+        clear_asset_cache(asset_id)
+        events.emit(
+            "asset:update",
+            {"asset_id": asset_id},
+            project_id=project_id,
+        )
+
+    return Entity.serialize_list(assets, obj_type="Asset")
