@@ -2,8 +2,6 @@ import pyotp
 import random
 import string
 import flask_bcrypt
-import fido2.features
-import requests
 
 from datetime import timedelta
 
@@ -38,35 +36,14 @@ from zou.app.services.exception import (
 )
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import date_helpers, emails
-from zou.app import config
-
-from saml2 import (
-    BINDING_HTTP_POST,
-    BINDING_HTTP_REDIRECT,
-)
-from saml2.client import Saml2Client
-from saml2.config import Config as Saml2Config
 
 from fido2.webauthn import (
-    PublicKeyCredentialRpEntity,
     PublicKeyCredentialUserEntity,
 )
-from fido2.server import Fido2Server
 from sqlalchemy.orm.attributes import flag_modified
-from urllib.parse import urlparse
+
 from fido2.utils import bytes2int, int2bytes
 from fido2.webauthn import AttestedCredentialData
-
-fido2.features.webauthn_json_mapping.enabled = True
-
-fido_server = Fido2Server(
-    PublicKeyCredentialRpEntity(
-        name="Kitsu", id=urlparse(f"https://{config.DOMAIN_NAME}").hostname
-    ),
-    verify_origin=(
-        None if config.DOMAIN_NAME != "localhost:8080" else lambda a: True
-    ),
-)
 
 
 def check_auth(
@@ -353,7 +330,7 @@ def check_fido(person, authentication_response):
     except KeyError:
         return False
     try:
-        fido_server.authenticate_complete(
+        current_app.extensions["fido_server"].authenticate_complete(
             state,
             get_fido_attested_credential_data_from_person(
                 person["fido_credentials"],
@@ -559,7 +536,7 @@ def pre_register_fido(person_id):
     Pre-register FIDO device for a person.
     """
     person = Person.get(person_id)
-    options, state = fido_server.register_begin(
+    options, state = current_app.extensions["fido_server"].register_begin(
         PublicKeyCredentialUserEntity(
             id=str(person.id).encode(),
             name=person.email,
@@ -585,7 +562,9 @@ def register_fido(person_id, registration_response, device_name):
     except KeyError:
         raise FIDONoPreregistrationException()
     try:
-        auth_data = fido_server.register_complete(state, registration_response)
+        auth_data = current_app.extensions["fido_server"].register_complete(
+            state, registration_response
+        )
     except BaseException:
         raise FIDOServerException()
     credential_data = {
@@ -646,7 +625,7 @@ def get_challenge_fido(person_id):
     Get new FIDO challenge for a person.
     """
     person = Person.get(person_id)
-    options, state = fido_server.authenticate_begin(
+    options, state = current_app.extensions["fido_server"].authenticate_begin(
         credentials=get_fido_attested_credential_data_from_person(
             person.fido_credentials
         ),
@@ -759,53 +738,3 @@ def logout(jti):
         revoke_tokens(current_app, jti)
     except Exception:
         pass
-
-
-def saml_client_for(metadata_url):
-    """
-    Given the name of an IdP, return a configuation.
-    The configuration is a hash for use by saml2.config.Config
-    """
-    acs_url = f"http://{config.DOMAIN_NAME}/api/auth/saml/sso"
-    https_acs_url = f"https://{config.DOMAIN_NAME}/api/auth/saml/sso"
-
-    # TODO: store that in cache instead of fetching it every time
-    rv = requests.get(metadata_url)
-
-    settings = {
-        "entityid": f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/api/auth/saml/login",
-        "metadata": {
-            "inline": [rv.text],
-        },
-        "service": {
-            "sp": {
-                "endpoints": {
-                    "assertion_consumer_service": [
-                        (acs_url, BINDING_HTTP_REDIRECT),
-                        (acs_url, BINDING_HTTP_POST),
-                        (https_acs_url, BINDING_HTTP_REDIRECT),
-                        (https_acs_url, BINDING_HTTP_POST),
-                    ],
-                },
-                # Don't verify that the incoming requests originate from us via
-                # the built-in cache for authn request ids in pysaml2
-                "allow_unsolicited": True,
-                # Don't sign authn requests, since signed requests only make
-                # sense in a situation where you control both the SP and IdP
-                "authn_requests_signed": False,
-                "logout_requests_signed": True,
-                "want_assertions_signed": True,
-                "want_response_signed": False,
-            },
-        },
-    }
-    spConfig = Saml2Config()
-    spConfig.load(settings)
-    spConfig.allow_unknown_attributes = True
-    saml_client = Saml2Client(config=spConfig)
-    return saml_client
-
-
-saml_client = None
-if config.SAML_ENABLED:
-    saml_client = saml_client_for(config.SAML_METADATA_URL)

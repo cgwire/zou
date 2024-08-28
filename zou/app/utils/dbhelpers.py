@@ -47,7 +47,8 @@ def is_init():
     """
     from zou.app import db
     from zou.app.models.project_status import ProjectStatus
+
     return (
-      inspect(db.engine).has_table("person")
-      and db.session.query(ProjectStatus).count() == 2
+        inspect(db.engine).has_table("person")
+        and db.session.query(ProjectStatus).count() == 2
     )

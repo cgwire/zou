@@ -1699,10 +1699,7 @@ def get_time_spents_for_project(project_id, page=0):
 
 
 def get_tasks_for_project(
-    project_id,
-    page=0,
-    task_type_id=None,
-    episode_id=None
+    project_id, page=0, task_type_id=None, episode_id=None
 ):
     """
     Return all tasks for given project.
@@ -1715,8 +1712,7 @@ def get_tasks_for_project(
     if episode_id is not None:
         Sequence = aliased(Entity, name="sequence")
         query = (
-            query
-            .join(Entity, Entity.id == Task.entity_id)
+            query.join(Entity, Entity.id == Task.entity_id)
             .join(Sequence, Sequence.id == Entity.parent_id)
             .filter(Sequence.parent_id == episode_id)
         )
@@ -1728,7 +1724,6 @@ def get_tasks_for_project(
                 user_service.build_related_projects_filter()
             )
         return query
-
 
     return query_utils.get_paginated_results(query, page, relations=True)
 

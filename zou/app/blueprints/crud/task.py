@@ -66,16 +66,13 @@ class TasksResource(BaseModelsResource, ArgsMixin):
         if episode_id is not None:
             Sequence = aliased(Entity)
             query = (
-                query
-                .join(Entity, Task.entity_id == Entity.id)
+                query.join(Entity, Task.entity_id == Entity.id)
                 .join(Sequence, Entity.parent_id == Sequence.id)
                 .filter(Sequence.parent_id == episode_id)
             )
         elif project_id is not None:
-            query = (
-                query
-                .join(Entity, Task.entity_id == Entity.id)
-                .filter(Entity.project_id == project_id)
+            query = query.join(Entity, Task.entity_id == Entity.id).filter(
+                Entity.project_id == project_id
             )
 
         return query
