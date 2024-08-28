@@ -1,6 +1,6 @@
 import urllib.parse
 
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, redirect, make_response
 from flask_restful import Resource
 from flask_principal import (
     Identity,
@@ -19,6 +19,7 @@ from flask_jwt_extended import (
 
 from sqlalchemy.exc import OperationalError, TimeoutError
 from babel.dates import format_datetime
+from saml2 import entity
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
@@ -1331,3 +1332,90 @@ class RecoveryCodesResource(Resource, ArgsMixin):
                 },
                 400,
             )
+
+
+class SAMLSSOResource(Resource, ArgsMixin):
+    """
+    Resource to allow a user to login with SAML SSO.
+    """
+
+    def post(self):
+        """ """
+        authn_response = auth_service.saml_client.parse_authn_request_response(
+            request.form["SAMLResponse"], entity.BINDING_HTTP_POST
+        )
+        authn_response.get_identity()
+        user_info = authn_response.get_subject()
+        email = user_info.text
+
+        try:
+            user = persons_service.get_person_by_email(email)
+        except PersonNotFoundException:
+            person_info = {
+                k: v if not isinstance(v, list) else " ".join(v)
+                for k, v in authn_response.ava.items()
+            }
+            user = persons_service.create_person(
+                email, "default".encode("utf-8"), **person_info
+            )
+
+        access_token = create_access_token(
+            identity=user["id"],
+            additional_claims={
+                "identity_type": "person",
+            },
+        )
+        refresh_token = create_refresh_token(
+            identity=user["id"],
+            additional_claims={
+                "identity_type": "person",
+            },
+        )
+        identity_changed.send(
+            current_app._get_current_object(),
+            identity=Identity(user["id"], "person"),
+        )
+
+        ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
+
+        if is_from_browser(request.user_agent):
+            response = make_response(
+                redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")
+            )
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            events_service.create_login_log(user["id"], ip_address, "web")
+
+        # NOTE:
+        #   On a production system, the RelayState MUST be checked
+        #   to make sure it doesn't contain dangerous URLs!
+        if "RelayState" in request.form:
+            request.form["RelayState"]
+        return response
+
+
+class SAMLLoginResource(Resource, ArgsMixin):
+    """
+    Resource to allow a user to login with SAML SSO.
+    """
+
+    def get(self):
+        """ """
+        reqid, info = auth_service.saml_client.prepare_for_authenticate()
+
+        redirect_url = None
+        # Select the IdP URL to send the AuthN request to
+        for key, value in info["headers"]:
+            if key == "Location":
+                redirect_url = value
+        response = redirect(redirect_url, code=302)
+        # NOTE:
+        #   I realize I _technically_ don't need to set Cache-Control or Pragma:
+        #     http://stackoverflow.com/a/5494469
+        #   However, Section 3.2.3.2 of the SAML spec suggests they are set:
+        #     http://docs.oasis-open.org/security/saml/v2.0/saml-bindings-2.0-os.pdf
+        #   We set those headers here as a "belt and suspenders" approach,
+        #   since enterprise environments don't always conform to RFCs
+        response.headers["Cache-Control"] = "no-cache, no-store"
+        response.headers["Pragma"] = "no-cache"
+        return response

@@ -14,7 +14,8 @@
       },
       "args": ["run", "--no-reload"],
       "jinja": true,
-      "justMyCode": false
+      "justMyCode": false,
+      "envFile": "${workspaceFolder}/OKTA_SAML.env"
     },
     {
       "name": "Python: Current File",
