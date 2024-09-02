@@ -132,6 +132,10 @@ LDAP_IS_AD = envtobool("LDAP_IS_AD", False)
 LDAP_IS_AD_SIMPLE = envtobool("LDAP_IS_AD_SIMPLE", False)
 LDAP_SSL = envtobool("LDAP_SSL", False)
 
+SAML_ENABLED = envtobool("SAML_ENABLED", False)
+SAML_IDP_NAME = os.getenv("SAML_IDP_NAME", "")
+SAML_METADATA_URL = os.getenv("SAML_METADATA_URL", "")
+
 LOGS_MODE = os.getenv("LOGS_MODE", "default")
 LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
 LOGS_PORT = os.getenv("LOGS_PORT", 2202)

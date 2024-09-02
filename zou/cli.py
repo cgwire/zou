@@ -50,7 +50,7 @@ def init_db():
 @cli.command()
 def is_db_ready():
     """
-    Return a message telling if the database wheter the database is 
+    Return a message telling if the database wheter the database is
     initiliazed or not."
     """
     with app.app_context():
@@ -58,8 +58,10 @@ def is_db_ready():
         if is_init:
             print("Database is initiliazed.")
         else:
-            print("Database is not initiliazed. "
-                  "Run 'zou init-db' and 'init-data'.")
+            print(
+                "Database is not initiliazed. "
+                "Run 'zou init-db' and 'init-data'."
+            )
 
 
 @cli.command()

@@ -2,7 +2,6 @@ import pyotp
 import random
 import string
 import flask_bcrypt
-import fido2.features
 
 from datetime import timedelta
 
@@ -37,28 +36,14 @@ from zou.app.services.exception import (
 )
 from zou.app.stores import auth_tokens_store
 from zou.app.utils import date_helpers, emails
-from zou.app import config
 
 from fido2.webauthn import (
-    PublicKeyCredentialRpEntity,
     PublicKeyCredentialUserEntity,
 )
-from fido2.server import Fido2Server
 from sqlalchemy.orm.attributes import flag_modified
-from urllib.parse import urlparse
+
 from fido2.utils import bytes2int, int2bytes
 from fido2.webauthn import AttestedCredentialData
-
-fido2.features.webauthn_json_mapping.enabled = True
-
-fido_server = Fido2Server(
-    PublicKeyCredentialRpEntity(
-        name="Kitsu", id=urlparse(f"https://{config.DOMAIN_NAME}").hostname
-    ),
-    verify_origin=(
-        None if config.DOMAIN_NAME != "localhost:8080" else lambda a: True
-    ),
-)
 
 
 def check_auth(
@@ -345,7 +330,7 @@ def check_fido(person, authentication_response):
     except KeyError:
         return False
     try:
-        fido_server.authenticate_complete(
+        current_app.extensions["fido_server"].authenticate_complete(
             state,
             get_fido_attested_credential_data_from_person(
                 person["fido_credentials"],
@@ -551,7 +536,7 @@ def pre_register_fido(person_id):
     Pre-register FIDO device for a person.
     """
     person = Person.get(person_id)
-    options, state = fido_server.register_begin(
+    options, state = current_app.extensions["fido_server"].register_begin(
         PublicKeyCredentialUserEntity(
             id=str(person.id).encode(),
             name=person.email,
@@ -577,7 +562,9 @@ def register_fido(person_id, registration_response, device_name):
     except KeyError:
         raise FIDONoPreregistrationException()
     try:
-        auth_data = fido_server.register_complete(state, registration_response)
+        auth_data = current_app.extensions["fido_server"].register_complete(
+            state, registration_response
+        )
     except BaseException:
         raise FIDOServerException()
     credential_data = {
@@ -638,7 +625,7 @@ def get_challenge_fido(person_id):
     Get new FIDO challenge for a person.
     """
     person = Person.get(person_id)
-    options, state = fido_server.authenticate_begin(
+    options, state = current_app.extensions["fido_server"].authenticate_begin(
         credentials=get_fido_attested_credential_data_from_person(
             person.fido_credentials
         ),

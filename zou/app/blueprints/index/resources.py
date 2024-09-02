@@ -25,7 +25,7 @@ class IndexResource(Resource):
             200:
                 description: API name and version
         """
-        return {"api": app.config["APP_NAME"], "version": __version__}
+        return {"api": config.APP_NAME, "version": __version__}
 
 
 class BaseStatusResource(Resource):
@@ -86,10 +86,8 @@ class BaseStatusResource(Resource):
 
         version = __version__
 
-        api_name = app.config["APP_NAME"]
-
         return (
-            api_name,
+            config.APP_NAME,
             version,
             is_db_up,
             is_kv_up,
@@ -281,20 +279,22 @@ class ConfigResource(Resource):
             200:
                 description: Crisp token
         """
-        config = {
-            "is_self_hosted": app.config["IS_SELF_HOSTED"],
-            "crisp_token": app.config["CRISP_TOKEN"],
+        conf = {
+            "is_self_hosted": config.IS_SELF_HOSTED,
+            "crisp_token": config.CRISP_TOKEN,
             "indexer_configured": (
-                len(app.config["INDEXER"]["key"]) > 0
-                and app.config["INDEXER"]["key"] != "masterkey"
+                len(config.INDEXER["key"]) > 0
+                and config.INDEXER["key"] != "masterkey"
             ),
+            "saml_enabled": config.SAML_ENABLED,
+            "saml_idp_name": config.SAML_IDP_NAME,
         }
-        if app.config["SENTRY_KITSU_ENABLED"]:
-            config["sentry"] = {
-                "dsn": app.config["SENTRY_KITSU_DSN"],
-                "sampleRate": app.config["SENTRY_KITSU_SR"],
+        if config.SENTRY_KITSU_ENABLED:
+            conf["sentry"] = {
+                "dsn": config.SENTRY_KITSU_DSN,
+                "sampleRate": config.SENTRY_KITSU_SR,
             }
-        return config
+        return conf
 
 
 class TestEventsResource(Resource):

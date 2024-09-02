@@ -41,6 +41,9 @@ from zou.app.utils.flask import (
     wrong_auth_handler,
 )
 
+from zou.app.utils.saml import saml_client_for
+from zou.app.utils.fido import get_fido_server
+
 app = Flask(__name__)
 app.json = ORJSONProvider(app)
 app.request_class.user_agent_class = ParsedUserAgent
@@ -63,6 +66,11 @@ mail.init_app(app)  # To send emails
 swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
+
+if config.SAML_ENABLED:
+    app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
+
+app.extensions["fido_server"] = get_fido_server()
 
 
 @app.teardown_appcontext

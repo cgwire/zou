@@ -1503,10 +1503,7 @@ class ProjectTasksResource(Resource, ArgsMixin):
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
         return tasks_service.get_tasks_for_project(
-            project_id,
-            page,
-            task_type_id=task_type_id,
-            episode_id=episode_id
+            project_id, page, task_type_id=task_type_id, episode_id=episode_id
         )
 
 

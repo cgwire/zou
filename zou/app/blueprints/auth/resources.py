@@ -1,6 +1,6 @@
 import urllib.parse
 
-from flask import request, jsonify, current_app
+from flask import request, jsonify, current_app, redirect, make_response
 from flask_restful import Resource
 from flask_principal import (
     Identity,
@@ -19,6 +19,7 @@ from flask_jwt_extended import (
 
 from sqlalchemy.exc import OperationalError, TimeoutError
 from babel.dates import format_datetime
+from saml2 import entity
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
@@ -1331,3 +1332,108 @@ class RecoveryCodesResource(Resource, ArgsMixin):
                 },
                 400,
             )
+
+
+class SAMLSSOResource(Resource, ArgsMixin):
+    """
+    Resource to allow a user to login with SAML SSO.
+    """
+
+    def post(self):
+        """
+        Resource to allow a user to login with SAML SSO.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          302:
+            description: Login successful, redirect to the home page.
+          400:
+            description: Wrong parameter
+        """
+        if not config.SAML_ENABLED:
+            return {"error": "SAML is not enabled."}, 400
+        authn_response = current_app.extensions[
+            "saml_client"
+        ].parse_authn_request_response(
+            request.form["SAMLResponse"], entity.BINDING_HTTP_POST
+        )
+        authn_response.get_identity()
+        email = authn_response.get_subject().text
+        person_info = {
+            k: v if not isinstance(v, list) else " ".join(v)
+            for k, v in authn_response.ava.items()
+        }
+        try:
+            user = persons_service.get_person_by_email(email)
+            for k, v in person_info.items():
+                if user.get(k) != v:
+                    persons_service.update_person(user["id"], person_info)
+                    break
+        except PersonNotFoundException:
+            user = persons_service.create_person(
+                email, "default".encode("utf-8"), **person_info
+            )
+
+        access_token = create_access_token(
+            identity=user["id"],
+            additional_claims={
+                "identity_type": "person",
+            },
+        )
+        refresh_token = create_refresh_token(
+            identity=user["id"],
+            additional_claims={
+                "identity_type": "person",
+            },
+        )
+        identity_changed.send(
+            current_app._get_current_object(),
+            identity=Identity(user["id"], "person"),
+        )
+
+        ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
+
+        response = make_response(
+            redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")
+        )
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+        events_service.create_login_log(user["id"], ip_address, "web")
+
+        return response
+
+
+class SAMLLoginResource(Resource, ArgsMixin):
+    """
+    Resource to allow a user to login with SAML SSO.
+    """
+
+    def get(self):
+        """
+        Resource to allow a user to login with SAML SSO.
+        ---
+        description: ""
+        tags:
+            - Authentication
+        responses:
+          302:
+            description: Redirect to the SAML IDP.
+          400:
+            description: Wrong parameter.
+        """
+        if not config.SAML_ENABLED:
+            return {"error": "SAML is not enabled."}, 400
+        _, info = current_app.extensions[
+            "saml_client"
+        ].prepare_for_authenticate()
+
+        redirect_url = None
+
+        # Select the IdP URL to send the AuthN request to
+        for key, value in info["headers"]:
+            if key == "Location":
+                redirect_url = value
+
+        return redirect(redirect_url, code=302)
