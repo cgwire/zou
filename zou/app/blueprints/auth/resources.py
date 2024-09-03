@@ -1376,31 +1376,35 @@ class SAMLSSOResource(Resource, ArgsMixin):
                 email, "default".encode("utf-8"), **person_info
             )
 
-        access_token = create_access_token(
-            identity=user["id"],
-            additional_claims={
-                "identity_type": "person",
-            },
-        )
-        refresh_token = create_refresh_token(
-            identity=user["id"],
-            additional_claims={
-                "identity_type": "person",
-            },
-        )
-        identity_changed.send(
-            current_app._get_current_object(),
-            identity=Identity(user["id"], "person"),
-        )
-
-        ip_address = request.environ.get("HTTP_X_REAL_IP", request.remote_addr)
-
         response = make_response(
             redirect(f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}")
         )
-        set_access_cookies(response, access_token)
-        set_refresh_cookies(response, refresh_token)
-        events_service.create_login_log(user["id"], ip_address, "web")
+
+        if user["active"]:
+            access_token = create_access_token(
+                identity=user["id"],
+                additional_claims={
+                    "identity_type": "person",
+                },
+            )
+            refresh_token = create_refresh_token(
+                identity=user["id"],
+                additional_claims={
+                    "identity_type": "person",
+                },
+            )
+            identity_changed.send(
+                current_app._get_current_object(),
+                identity=Identity(user["id"], "person"),
+            )
+
+            ip_address = request.environ.get(
+                "HTTP_X_REAL_IP", request.remote_addr
+            )
+
+            set_access_cookies(response, access_token)
+            set_refresh_cookies(response, refresh_token)
+            events_service.create_login_log(user["id"], ip_address, "web")
 
         return response
 
