@@ -981,6 +981,7 @@ class BaseThumbnailResource(Resource):
 
 
 class PersonThumbnailResource(BaseThumbnailResource):
+
     def __init__(self):
         BaseThumbnailResource.__init__(
             self,
@@ -1028,6 +1029,7 @@ class ProjectThumbnailResource(BaseThumbnailResource):
             "projects",
             projects_service.get_project,
             projects_service.update_project,
+            thumbnail_utils.BIG_SQUARE_SIZE,
         )
 
     def check_allowed_to_get(self, instance_id):
