@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="CGWire" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Development environment - Kitsu API Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Development environment";
+        var mkdocs_page_input_path = "development.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Kitsu API Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../api/">API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../backup/">Backup</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Development environment</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#database">Database</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#key-value-store">Key-value store</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#indexer">Indexer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ffmpeg">FFMPEG</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#source-and-dependencies">Source and dependencies</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#init-data">Init data</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#update-database">Update database</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#event-server">Event server</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#tests">Tests</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#create-a-testing-database">Create a testing database</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#run-the-tests">Run the tests</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#debug-email-sending">Debug email sending</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../events/">Events</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../file_trees/">File trees descriptors</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../indexer/">Data indexation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../jobs/">Job Queue</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../ldap/">LDAP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../log_rotation/">Log rotation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sync/">Data migration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Kitsu API Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Development environment</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/cgwire/zou/edit/docs/docs/development.md">Edit on Zou</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="development-environment">Development environment</h1>
+<p>To start with developing on Zou, you need Python 3 installed and a
+Postgres database instance.</p>
+<h2 id="database">Database</h2>
+<p>To run Postgres, we recommend using Docker (it's simpler, and it won't impact
+your local system):</p>
+<pre><code class="language-bash">sudo docker pull postgres
+sudo docker run \
+    --name postgres \
+    -p 5432:5432 \
+    -e POSTGRES_PASSWORD=mysecretpassword \
+    -d postgres
+</code></pre>
+<h2 id="key-value-store">Key-value store</h2>
+<p>To run Redis, we recommend using Docker again:</p>
+<pre><code class="language-bash">sudo docker pull redis
+sudo docker run \
+    --name redis \
+    -p 6379:6379 \
+    -d redis
+</code></pre>
+<h2 id="indexer">Indexer</h2>
+<p>To run Meilisearch, we recommend using Docker again:</p>
+<pre><code class="language-bash">sudo docker pull getmeili/meilisearch:v1.8.3
+sudo docker run -it --rm \
+    --name meilisearch \
+    -p 7700:7700 \
+    -e MEILI_ENV='development' \
+    -e MEILI_MASTER_KEY='meilimasterkey' \
+    -v $(pwd)/meili_data:/meili_data \
+    -d getmeili/meilisearch:v1.5
+</code></pre>
+<h2 id="ffmpeg">FFMPEG</h2>
+<p>For video operations, FFMPEG is required. For that, install it through your OS package manager:</p>
+<pre><code>sudo apt-get install ffmpeg
+</code></pre>
+<h2 id="source-and-dependencies">Source and dependencies</h2>
+<p>Then get Zou sources:</p>
+<pre><code class="language-bash">git clone git@github.com:cgwire/zou.git
+</code></pre>
+<p>Install <code>virtualenvwrapper</code>:</p>
+<pre><code class="language-bash">pip install virtualenvwrapper
+</code></pre>
+<p>Add configuration for <code>virtualenvwrapper</code> to your .bashrc:</p>
+<pre><code class="language-bash">export WORKON_HOME=directory_for_virtualenvs
+VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+source ~/.local/bin/virtualenvwrapper.sh
+</code></pre>
+<p>Create a virtual environment with <code>mkvirtualenv</code>:</p>
+<pre><code class="language-bash">mkvirtualenv zou
+workon zou
+</code></pre>
+<p>Install dependencies:</p>
+<pre><code class="language-bash">pip install -r requirements.txt
+</code></pre>
+<h2 id="init-data">Init data</h2>
+<p>Create a database in Postgres named <code>zoudb</code> with user <code>postgres</code> and password
+<code>mysecretpassword</code>. Then init db:</p>
+<pre><code class="language-bash">python zou/cli.py clear-db
+python zou/cli.py init-db
+python zou/cli.py init-data
+</code></pre>
+<p>Create a first user:</p>
+<pre><code class="language-bash">python zou/cli.py create-admin super.user@mycgstudio.com --password=mysecretpassword
+</code></pre>
+<p>Run server:</p>
+<pre><code class="language-bash">PREVIEW_FOLDER=$PWD/previews DEBUG=1 MAIL_DEBUG=1 FLASK_DEBUG=1 FLASK_APP=zou.app INDEXER_KEY=meilimasterkey python zou/debug.py
+</code></pre>
+<p>You can now use the API by requesting <code>http://localhost:5000</code>.</p>
+<h2 id="update-database">Update database</h2>
+<p>In case of adding/removing attributes of models, you must generate the DB update file:</p>
+<pre><code>python zou/cli.py migrate-db
+</code></pre>
+<h3 id="event-server">Event server</h3>
+<p>To run the Server Events server used to update the web GUI in realtime, use the
+following command.</p>
+<pre><code class="language-bash">gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -b 127.0.0.1:5001 -w 1 zou.event_stream:app
+</code></pre>
+<h2 id="tests">Tests</h2>
+<p>To run unit tests, we recommend using another database. </p>
+<h3 id="create-a-testing-database">Create a testing database</h3>
+<p>In the CLI of the hosting, the PostgreSQL DB executes the following:
+<em>If Docker, connect with: <code>docker exec -it postgres bash</code></em></p>
+<pre><code>sudo su -l postgres
+psql -c 'create database zoutest;' -U postgres
+</code></pre>
+<h3 id="run-the-tests">Run the tests</h3>
+<p>In your zou environment <code>workon zou</code>, execute the tests with the <code>DB_DATABASE</code> environment variable:</p>
+<pre><code>DB_DATABASE=zoutest py.test
+</code></pre>
+<p>If you want to run a specific test (you can list several):</p>
+<pre><code>DB_DATABASE=zoutest py.test tests/models/test_entity_type.py
+</code></pre>
+<h3 id="debug-email-sending">Debug email sending</h3>
+<p>If you set properly the <code>MAIL_DEBUG=1</code> flag, the body of each sent email is
+displayed in the console.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../configuration/" class="btn btn-neutral float-left" title="Configuration"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../events/" class="btn btn-neutral float-right" title="Events">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/cgwire/zou/" class="fa fa-code-fork" style="color: #fcfcfc"> Zou</a>
+        </span>
+    
+    
+      <span><a href="../configuration/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../events/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

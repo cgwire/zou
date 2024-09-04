@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="CGWire" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Troubleshooting - Kitsu API Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Troubleshooting";
+        var mkdocs_page_input_path = "troubleshooting.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Kitsu API Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../api/">API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../backup/">Backup</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../development/">Development environment</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../events/">Events</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../file_trees/">File trees descriptors</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../indexer/">Data indexation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../jobs/">Job Queue</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../ldap/">LDAP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../log_rotation/">Log rotation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sync/">Data migration</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Troubleshooting</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#database-status">Database status</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#error-logs">Error logs</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#status-route">Status route</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Kitsu API Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Troubleshooting</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/cgwire/zou/edit/docs/docs/troubleshooting.md">Edit on Zou</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="troubleshooting">Troubleshooting</h1>
+<p>To solve issues related to your installation, you can do several actions to
+get information about what is going wrong.</p>
+<h2 id="database-status">Database status</h2>
+<p>Prior to look for logs or any clue about your problem, make sure that the
+database is up and up to date:</p>
+<pre><code class="language-bash">DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
+</code></pre>
+<h2 id="error-logs">Error logs</h2>
+<p>Main error logs are stored in the <code>/opt/zou/gunicorn_error.log</code> file. Errors 
+can be explicit. They can tell what is going wrong.</p>
+<h2 id="status-route">Status route</h2>
+<p>To know if all the required services are up, you can connect to the following
+route: <code>http://kitsu.mystudio.com/api/status</code>.</p>
+<p>You should see something like this:</p>
+<pre><code class="language-javascript">{
+    &quot;name&quot;: &quot;Zou&quot;
+    &quot;database-up&quot;: true,
+    &quot;event-stream-up&quot;: true,
+    &quot;job-queue-up&quot;: true,
+    &quot;key-value-store-up&quot;: true,
+    &quot;version&quot;: &quot;0.11.3&quot;,
+}
+</code></pre>
+<p>If one of the service is set to false, it means that it is down or that
+Zou cannot connect to it. Zou cannot run properly in that case.</p>
+<p>NB: Database refers to Posgres, Key Value Store refers to Redis, Event
+Stream refers to <code>zou-events</code> service, job queue refers to <code>zou-jobs</code> service.</p>
+<h1 id="changing-password">Changing password</h1>
+<p>If, for any reasons, the user cannot access to his rest password email, you can
+change his password with the following command:</p>
+<pre><code class="language-bash">DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou change-password email@studio.com --password newsecretpassword
+</code></pre>
+<h2 id="installing-on-ubuntu-server-or-minimal-desktop">Installing on Ubuntu server or minimal desktop</h2>
+<p>Zou install will require <code>libjpeg-dev</code> to be installed at the 3rd party
+software step:</p>
+<pre><code class="language-bash">sudo apt-get install libjpeg-dev
+</code></pre>
+<h2 id="to-enable-zou-to-start-on-reboot">To enable zou to start on reboot</h2>
+<pre><code class="language-bash">sudo systemctl enable zou
+
+sudo systemctl enable zou-events
+</code></pre>
+<h2 id="job-queue">Job queue</h2>
+<p>Error logs are not displayed in the zou error log files. So you have to check
+directly the service logs if you look for error messages related to
+asynchronous jobs (email sending, video normalization and playlist buird).</p>
+<p>To see the job queue logs, run the following command:</p>
+<pre><code class="language-bash">journalctl -u zou-jobs.service
+</code></pre>
+<h2 id="postgres-connection-slots">Postgres connection slots</h2>
+<p>If your Zou server complains by the lack of connection to Postgres available, 
+you can increase the value of <code>BD_POOL_SIZE</code> (default 30) and 
+<code>DB_MAX_OVERFLOW</code> (default 60). They are two environment variables that must be
+set in your systemd configuration alongside the others. </p>
+<p>If the problem persists, you can dig into 
+<a href="https://pgpool.net/mediawiki/index.php/Main_Page">pgpool</a> software.</p>
+<h2 id="playlist-build-failing">Playlist build failing</h2>
+<h3 id="unmatching-resolutions">Unmatching resolutions</h3>
+<p>If your previews have different resolutions, the build will fail. Make sure
+your playlists have movies with the same size.</p>
+<p>The build doesn't include pictures, only movies are included.</p>
+<h3 id="disk-space">Disk space</h3>
+<p>Check logs and look for: <code>OSError: [Errno 28] No space left on device</code></p>
+<p>Make sure it's coherent with what your system tells:</p>
+<pre><code>df -h
+du -sh /opt/zou/previews/movies
+du -sh /opt/zou/previews/files
+du -sh /opt/zou/previews/pictures
+</code></pre>
+<p>The error is explicit: your drive is full. You have multiple options:</p>
+<ul>
+<li>Add more space</li>
+<li>Use a s3 compatible service</li>
+<li>Delete unused files</li>
+<li>Delete data into Kitsu old projects, old shots or old preview revisions (or
+  both).</li>
+<li>Create a cronjob that deletes tmp files older than 5 days:</li>
+</ul>
+<pre><code class="language-bash"># clean kitsu tmp folder
+17      2       *       *       *       /usr/bin/find /opt/zou/tmp/ -mtime +5 -exec rm {} \;
+</code></pre>
+<h3 id="unable-to-successfully-upgrade-from-a-much-earlier-version">Unable to successfully upgrade from a much earlier version</h3>
+<p>If your current working version of Zou is much earlier than the latest 
+version, upgrading directly to the latest may cause problems with the database.
+This is because occasionally important changes are made to the database during
+the upgrade process.</p>
+<p>The solution is to upgrade in smaller steps, making sure you don't miss any 
+critical versions.  Since it can be hard to know which version is critical,
+one option is to apply all updates one after the other.</p>
+<p>The following script can assist by making updating to a specific version and
+then incrementing to the next quite easy.  Add your database password and
+edit for any other path differences. Run as &lt;script name&gt; &lt;zou version&gt;
+eg; ./zou_to_version.sh 0.14.12</p>
+<pre><code>sudo /opt/zou/zouenv/bin/python -m pip install 'zou=='$1 #this is the version number variable
+DB_PASSWORD=&lt;db password here&gt; /opt/zou/zouenv/bin/zou upgrade-db
+sudo service zou restart
+sudo service zou-events restart
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../sync/" class="btn btn-neutral float-left" title="Data migration"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/cgwire/zou/" class="fa fa-code-fork" style="color: #fcfcfc"> Zou</a>
+        </span>
+    
+    
+      <span><a href="../sync/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="CGWire" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Configuration - Kitsu API Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Configuration";
+        var mkdocs_page_input_path = "configuration.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Kitsu API Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../api/">API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../backup/">Backup</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Configuration</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#database">Database</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#key-value-store">Key-Value store</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#indexer">Indexer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#authentication">Authentication</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#previews">Previews</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#emails">Emails</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#indexes">Indexes</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#s3-storage">S3 Storage</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#swift-storage">Swift Storage</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ldap">LDAP</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#job-queue">Job queue</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#misc">Misc</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../development/">Development environment</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../events/">Events</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../file_trees/">File trees descriptors</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../indexer/">Data indexation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../jobs/">Job Queue</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../ldap/">LDAP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../log_rotation/">Log rotation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sync/">Data migration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Kitsu API Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Configuration</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/cgwire/zou/edit/docs/docs/configuration.md">Edit on Zou</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="configuration">Configuration</h1>
+<p>Zou requires several configuration parameters. In the following, you will find
+the list of all expected parameters.</p>
+<h2 id="database">Database</h2>
+<ul>
+<li><code>DB_HOST</code> (default: localhost): The database server host.</li>
+<li><code>DB_PORT</code> (default: 5432): The port on which the database is running.</li>
+<li><code>DB_USERNAME</code> (default: postgres): The username used to access the database.</li>
+<li><code>DB_PASSWORD</code> (default: mysecretpassword): The password used to access the
+  database.</li>
+<li><code>DB_DATABASE</code> (default: zoudb): The database name to use.</li>
+<li><code>DB_POOL_SIZE</code> (default: 30): The number of connections opened simultaneously 
+  to access the database.</li>
+<li><code>DB_MAX_OVERFLOW</code> (default: 60): The number of additional connections available 
+  once the pool is full. They are disconnected when the request is finished. They
+  are not reused.</li>
+</ul>
+<h2 id="key-value-store">Key-Value store</h2>
+<ul>
+<li><code>KV_HOST</code> (default: localhost): The Redis server host.</li>
+<li><code>KV_PORT</code> (default: 6379): The Redis server port.</li>
+</ul>
+<h2 id="indexer">Indexer</h2>
+<p>Kitsu uses the Meilisearch service for its indexation.</p>
+<ul>
+<li><code>INDEXER_KEY</code> (default: masterkey): The key required by Meilisearch.</li>
+<li><code>INDEXER_HOST</code> (default: localhost): The Meilisearch host.</li>
+<li><code>INDEXER_PORT</code> (default: 7700): The Meilisearch port.</li>
+</ul>
+<h2 id="authentication">Authentication</h2>
+<ul>
+<li><code>AUTH_STRATEGY</code> (default: auth_local_classic): Allow to choose between
+traditional auth and Active Directory auth (auth_remote_active_directory).</li>
+<li><code>SECRET_KEY</code> (default: mysecretkey) complex key used for auth token encryption.</li>
+</ul>
+<h2 id="previews">Previews</h2>
+<ul>
+<li><code>PREVIEW_FOLDER</code> (default: ./previews): The folder where
+  thumbnails will be stored. The default value is set for development
+  environments. We encourage you to set an absolute path when you use it in
+  production.</li>
+</ul>
+<h2 id="emails">Emails</h2>
+<p>The email configuration is required for emails sent after a password reset and,
+email notifications.</p>
+<ul>
+<li><code>MAIL_SERVER</code> (default: "localhost"): the host of your email server</li>
+<li><code>MAIL_PORT</code> (default: "25"): the port of your email server</li>
+<li><code>MAIL_USERNAME</code> (default: ""): the username to access to your mail server</li>
+<li><code>MAIL_PASSWORD</code> (default: ""): the password to access to your mail server</li>
+<li><code>MAIL_DEBUG</code> (default: "0"): set 1 if you are in a development environment
+  (emails are printed in the console instead of being sent).</li>
+<li><code>MAIL_USE_TLS</code> (default: "False"): To use TLS to communicate with the email
+  server.</li>
+<li><code>MAIL_USE_SSL</code> (default: "False"): To use SSL to communicate with the email
+  server.</li>
+<li><code>MAIL_DEFAULT_SENDER</code> (default: "no-reply@cg-wire.com"): to set the sender
+  email.</li>
+<li><code>DOMAIN_NAME</code> (default: "localhost:8080"): To build URLs (for a password reset
+  for instance).</li>
+<li><code>DOMAIN_PROTOCOL</code> (default: "https"): To build URLs (for a password reset
+  for instance).</li>
+</ul>
+<p>You can find more information here:
+https://flask-mail.readthedocs.io/en/latest/</p>
+<h2 id="indexes">Indexes</h2>
+<ul>
+<li><code>INDEXES_FOLDER</code> (default: "./indexes"): The folder to store your indexes, we
+  recommend to set a full path here.</li>
+</ul>
+<h2 id="s3-storage">S3 Storage</h2>
+<p>If you want to store your previews in an S3 backend, add the following
+variables (we assume that you created a programmatic user that can access
+to S3).</p>
+<ul>
+<li><code>FS_BACKEND</code>: Set this variable with "s3"</li>
+<li><code>FS_BUCKET_PREFIX</code>: A prefix for your bucket names. It's mandatory to 
+   set it to properly use S3.</li>
+<li><code>FS_S3_REGION</code>: Example: <em>eu-west-3</em></li>
+<li><code>FS_S3_ENDPOINT</code>: The url of your region. 
+   Example: <em>https://s3.eu-west-3.amazonaws.com</em></li>
+<li><code>FS_S3_ACCESS_KEY</code>: Your user access key.</li>
+<li><code>FS_S3_SECRET_KEY</code>: Your user secret key.</li>
+</ul>
+<p>Then install the following package in your virtual environment:</p>
+<pre><code>cd /opt/zou
+. zouenv/bin/activate
+pip install boto3
+</code></pre>
+<p>When you restart Zou, it should use S3 to store and retrieve files.</p>
+<h2 id="swift-storage">Swift Storage</h2>
+<p>If you want to store your previews in a Swift backend, add the following
+variables (Only Auth 2.0 and 3.0 are supported).</p>
+<ul>
+<li><code>FS_BACKEND</code>: Set this variable with "swift"</li>
+<li><code>FS_BUCKET_PREFIX</code>: A prefix for your bucket/container names.</li>
+<li><code>FS_SWIFT_AUTH_URL</code>: Authentication URL of your swift backend.</li>
+<li><code>FS_SWIFT_USER</code>: Your Swift login.</li>
+<li><code>FS_SWIFT_TENANT_NAME</code>: The Swift tenant name.</li>
+<li><code>FS_SWIFT_KEY</code>: Your Swift password.</li>
+<li><code>FS_SWIFT_REGION_NAME</code>: Your Swift region name.</li>
+</ul>
+<h2 id="ldap">LDAP</h2>
+<p>These variables are active only if auth_remote_ldap strategy is selected.</p>
+<ul>
+<li><code>LDAP_HOST</code> (default: "127.0.0.1"): the IP address of your LDAP server.</li>
+<li><code>LDAP_PORT</code> (default: "389"): the listening port of your LDAP server.</li>
+<li><code>LDAP_BASE_DN</code> (default: "CN=Users,DC=studio,DC=local"): the base domain of your
+   LDAP configuration.</li>
+<li><code>LDAP_DOMAIN</code> (default: "studio.local"): the domain used for your LDAP
+  authentication (NTLM).</li>
+<li><code>LDAP_FALLBACK</code> (default: "False"): Set to True if you want to allow admins
+  to fallback on default auth strategy when the LDAP server is down.</li>
+<li><code>LDAP_IS_AD</code> (default: "False"): Set to True if you use LDAP with an active directory.</li>
+</ul>
+<h2 id="job-queue">Job queue</h2>
+<ul>
+<li><code>ENABLE_JOB_QUEUE</code> (default: "False"): Set to True if you want to send
+  asynchronous tasks to the <code>zou-jobs</code> service.</li>
+<li><code>JOB_QUEUE_TIMEOUT</code> (default: 3600): Set the timeout (in seconds) for preview and playlist encoding jobs sent to the <code>zou-jobs</code> service.</li>
+<li><code>ENABLE_JOB_QUEUE_REMOTE</code> (default: "False"): Set to True if you want to send
+  playlist builds to a Nomad cluster.</li>
+</ul>
+<h2 id="misc">Misc</h2>
+<ul>
+<li><code>TMP_DIR</code> (default: /tmp): The temporary directory used to handle uploads.</li>
+<li><code>DEBUG</code> (default: False): Activate the debug mode for development purposes.</li>
+<li><code>CRISP TOKEN</code> (default: ): Activate the Crisp support chatbox on the bottom right.</li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../backup/" class="btn btn-neutral float-left" title="Backup"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../development/" class="btn btn-neutral float-right" title="Development environment">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/cgwire/zou/" class="fa fa-code-fork" style="color: #fcfcfc"> Zou</a>
+        </span>
+    
+    
+      <span><a href="../backup/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../development/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

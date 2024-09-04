@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="CGWire" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Log rotation - Kitsu API Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Log rotation";
+        var mkdocs_page_input_path = "log_rotation.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Kitsu API Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../api/">API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../backup/">Backup</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../development/">Development environment</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../events/">Events</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../file_trees/">File trees descriptors</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../indexer/">Data indexation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../jobs/">Job Queue</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../ldap/">LDAP</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Log rotation</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#store-pid-of-zou-processes">Store PID of zou processes</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#configure-logrotate">Configure logrotate</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sync/">Data migration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Kitsu API Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Log rotation</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/cgwire/zou/edit/docs/docs/log_rotation.md">Edit on Zou</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="log-rotation">Log rotation</h1>
+<p>Log produced by the API grow quickly and lead to big log files. You will need
+quickly to configure <code>logrotate</code> to create a new log file every day.</p>
+<h2 id="store-pid-of-zou-processes">Store PID of zou processes</h2>
+<p>To create a folder on boot to store pid files add a RuntimeDirectory add a line
+before ExecStart in the unit file
+(<code>/etc/systemd/system/zou.service</code>):</p>
+<pre><code>RuntimeDirectory=zou
+</code></pre>
+<p>Add this to the ExecStart line to create the pid file for zou</p>
+<pre><code>-p /run/zou/zou.pid
+</code></pre>
+<p>For example:</p>
+<blockquote>
+<p>ExecStart=/opt/zou/zouenv/bin/gunicorn -p /run/zou/zou.pid  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app</p>
+</blockquote>
+<p>Edit the zou-events unit file to create the pid file for zou-events<br />
+(<code>/etc/systemd/system/zou-events.service</code>):</p>
+<pre><code>-p /run/zou/zou-events.pid
+</code></pre>
+<p>PIDs are now stored in mentioned files. </p>
+<h2 id="configure-logrotate">Configure logrotate</h2>
+<p>We can now proceed to the Logrotate configuration. Logrotate is a Unix tool 
+that will handle the log rotation for you. It just requires a configuration 
+file to work properly.</p>
+<p>Add this logrotate configuration (<code>/etc/logrotate.d/zou</code>):</p>
+<pre><code>/opt/zou/logs/gunicorn_access.log {
+    daily
+    missingok
+    rotate 14
+    notifempty
+    nocompress
+    size 100M
+    create 644 zou zou
+    postrotate
+        kill -USR1 `cat /run/zou/zou.pid`
+    endscript
+}
+
+/opt/zou/logs/gunicorn_error.log {
+    daily
+    missingok
+    rotate 14
+    nocompress
+    size 100M
+    notifempty
+    create 644 zou zou
+    postrotate
+        kill -USR1 `cat /run/zou/zou.pid`
+    endscript
+}
+
+/opt/zou/logs/gunicorn_events_access.log {
+    daily
+    missingok
+    rotate 14
+    nocompress
+    size 100M
+    notifempty
+    create 644 zou zou
+    postrotate
+        kill -USR1 `cat /run/zou/zou-events.pid`
+    endscript
+}
+
+/opt/zou/logs/gunicorn_events_error.log {
+    daily
+    missingok
+    rotate 14
+    nocompress
+    size 100M
+    notifempty
+    create 644 zou zou
+    postrotate
+        kill -USR1 `cat /run/zou/zou-events.pid`
+    endscript
+}
+</code></pre>
+<p>It will create a new log file for each day, and keep only the last 14 files.</p>
+<p>You can test the log rotation is set up correctly by running</p>
+<pre><code>logrotate /etc/logrotate.d/zou --debug
+</code></pre>
+<p>You're done with log rotation!</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../ldap/" class="btn btn-neutral float-left" title="LDAP"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../sync/" class="btn btn-neutral float-right" title="Data migration">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/cgwire/zou/" class="fa fa-code-fork" style="color: #fcfcfc"> Zou</a>
+        </span>
+    
+    
+      <span><a href="../ldap/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../sync/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

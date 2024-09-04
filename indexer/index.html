@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="CGWire" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Data indexation - Kitsu API Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Data indexation";
+        var mkdocs_page_input_path = "indexer.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> Kitsu API Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../api/">API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../backup/">Backup</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../development/">Development environment</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../events/">Events</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../file_trees/">File trees descriptors</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Data indexation</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#setup-the-indexer">Setup the indexer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#configuring-the-connection-to-the-indexer">Configuring the connection to the indexer</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#refreshing-indexes">Refreshing indexes</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../jobs/">Job Queue</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../ldap/">LDAP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../log_rotation/">Log rotation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../sync/">Data migration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">Kitsu API Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Data indexation</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/cgwire/zou/edit/docs/docs/indexer.md">Edit on Zou</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="data-indexation">Data indexation</h1>
+<p>To allow full-text search, Kitsu relies on an Indexing engine. It uses the
+<a href="https://www.meilisearch.com/docs">Meilisearch</a> technology.</p>
+<p>The indexer is optional. Kitsu can run without it.</p>
+<h2 id="setup-the-indexer">Setup the indexer</h2>
+<p>First, retrieve the Meilisearch package:</p>
+<pre><code># Add Meilisearch package
+echo &quot;deb [trusted=yes] https://apt.fury.io/meilisearch/ /&quot; | sudo tee /etc/apt/sources.list.d/fury.list
+
+# Update APT and install Meilisearch
+sudo apt update &amp;&amp; sudo apt install meilisearch
+</code></pre>
+<p>Define a master key then create the service file for Meilisearch:</p>
+<p><em>Path: /etc/systemd/system/meilisearch.service</em></p>
+<pre><code>[Unit]
+Description=Meilisearch search engine
+After=network.target
+
+[Service]
+User=meilisearch
+Group=meilisearch
+ExecStart=/usr/bin/meilisearch --master-key=&quot;masterkey&quot;
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Finally, start the Meilisearch indexer:</p>
+<pre><code>sudo service meilisearch start
+</code></pre>
+<h2 id="configuring-the-connection-to-the-indexer">Configuring the connection to the indexer</h2>
+<p>To connect to the indexer Kitsu relies on three environment variables.</p>
+<p>The first one is the master key you set when you started Meilisearch.</p>
+<pre><code>INDEXER_KEY=&quot;masterkey&quot;
+</code></pre>
+<p>The two other variables are the indexer API location (host and port): </p>
+<pre><code>INDEXER_HOST=&quot;localhost&quot;
+INDEXER_PORT=&quot;7700&quot;
+</code></pre>
+<p>Once set, Kitsu will be able to connect to the indexer and will enable
+full-text search.</p>
+<h2 id="refreshing-indexes">Refreshing indexes</h2>
+<p>If for any reason, the indexer was not running during changes in the Kitsu
+database, you can reset it at any time. Simply use this command (assuming all
+environment variables are correctly set).</p>
+<pre><code>zou reset-search-index
+</code></pre>
+<p>Or add directly your environment variables in the command:</p>
+<pre><code>DB_PASSWORD=yourdbpasword INDEXER_KEY=yourindexerapikey zou reset-search-index
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../file_trees/" class="btn btn-neutral float-left" title="File trees descriptors"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../jobs/" class="btn btn-neutral float-right" title="Job Queue">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/cgwire/zou/" class="fa fa-code-fork" style="color: #fcfcfc"> Zou</a>
+        </span>
+    
+    
+      <span><a href="../file_trees/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../jobs/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
