@@ -82,7 +82,7 @@ This simplifies migration/augmentation of volumes.
 The installation requires:
 
 * Ubuntu (version >= 20.04)
-* Python (version >= 3.6)
+* Python (version >= 3.9)
 * An up-and-running Postgres instance (version >= 9.2)
 * An up-and-running Redis server instance (version >= 2.0)
 * A Nginx instance
@@ -97,15 +97,23 @@ First, let's install third-party software:
 
 ```bash
 sudo apt-get install postgresql postgresql-client postgresql-server-dev-all
+sudo apt-get install build-essential
 sudo apt-get install redis-server
-sudo apt-get install python3 python3-pip python3-venv
-sudo apt-get install git
 sudo apt-get install nginx
+sudo apt-get install xmlsec1
 sudo apt-get install ffmpeg
 ```
 
 *NB: We recommend installing Postgres on a separate machine.*
 
+### Install Python 3.12
+
+```
+sudo apt-get install software-properties-common
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt-get update
+sudo apt-get install python3.12 python3.12-venv python3.12-dev
+```
 
 ### Get sources
 
@@ -121,7 +129,7 @@ sudo chown zou: /opt/zou/backups
 Install Zou and its dependencies:
 
 ```
-sudo python3 -m venv /opt/zou/zouenv
+sudo python3.12 -m venv /opt/zou/zouenv
 sudo /opt/zou/zouenv/bin/python -m pip install --upgrade pip
 sudo /opt/zou/zouenv/bin/python -m pip install zou
 ```
@@ -209,7 +217,7 @@ Install Meilisearch:
 
 ```
 echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/sources.list.d/fury.list
-sudo apt update && sudo apt install meilisearch
+sudo apt-get update && sudo apt-get install meilisearch
 ```
 
 Create a folder for the index:
@@ -387,7 +395,7 @@ sudo rm /etc/nginx/sites-enabled/default
 We enable that Nginx configuration with this command:
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/zou /etc/nginx/sites-enabled
+sudo ln -s /etc/nginx/sites-available/zou /etc/nginx/sites-enabled/zou
 ```
 
 Finally, we can start our daemon and restart Nginx:
@@ -443,12 +451,10 @@ Deploying Kitsu requires retrieving the built version. For that let's grab it
 from Github: 
 
 ```
-cd /opt/
-sudo git clone -b build https://github.com/cgwire/kitsu
-cd kitsu
-git config --global --add safe.directory /opt/kitsu
-sudo git config --global --add safe.directory /opt/kitsu
-sudo git checkout build
+sudo mkdir -p /opt/kitsu/dist
+curl -L -o /tmp/kitsu.tgz $(curl -v https://api.github.com/repos/cgwire/kitsu/releases/latest | grep 'browser_download_url.*kitsu-.*.tgz' | cut -d : -f 2,3 | tr -d \")
+sudo tar xvzf /tmp/kitsu.tgz -C /opt/kitsu/dist/
+rm /tmp/kitsu.tgz
 ```
 
 Then we need to adapt the Nginx configuration to allow it to serve it properly:
@@ -498,28 +504,15 @@ Kitsu!
 
 ### Update Kitsu 
 
-To update Kitsu, update the files through Git:
+To update Kitsu, update the files:
 
 ```
-cd /opt/kitsu
-sudo git reset --hard
-sudo git pull --rebase origin build
+sudo rm -rf /opt/kitsu/dist
+sudo mkdir /opt/kitsu/dist
+curl -L -o /tmp/kitsu.tgz $(curl -v https://api.github.com/repos/cgwire/kitsu/releases/latest | grep 'browser_download_url.*kitsu-.*.tgz' | cut -d : -f 2,3 | tr -d \")
+sudo tar xvzf /tmp/kitsu.tgz -C /opt/kitsu/dist/
+rm /tmp/kitsu.tgz
 ```
-
-## Admin users
-
-To start with Zou you need to add an admin user. This user will be able to 
-log in and create other users. For that go into the terminal and run the
-`zou` binary:
-
-```
-cd /opt/zou/
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou create-admin adminemail@yourstudio.com
-```
-
-It expects the password as the first argument. Then your user will be created with
-the email as login, `default` as password, and "Super Admin" as first name and
-last name.
 
 ## Initialise data:
 
@@ -528,6 +521,27 @@ Some basic data are required by Kitsu to work properly (like project status) :
 ```
 DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-data
 ```
+
+If you have install the indexer, you can also index the data:
+
+```
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou reset-search-index
+```
+
+## Admin users
+
+To start with Zou you need to add an admin user. This user will be able to
+log in and create other users. For that go into the terminal and run the
+`zou` binary:
+
+```
+cd /opt/zou/
+DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou create-admin --password 1SecretPass adminemail@yourstudio.com
+```
+
+It expects the password as the first argument. Then your user will be created with
+the email as login, `1SecretPass` as password, and "Super Admin" as first name and
+last name.
 
 # Configuration 
 
