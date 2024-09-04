@@ -362,6 +362,11 @@ def remove_project(project_id):
 
     ApiEvent.delete_all_by(project_id=project_id)
     Entity.delete_all_by(project_id=project_id)
+
+    descriptors = MetadataDescriptor.query.filter_by(project_id=project_id)
+    for descriptor in descriptors:
+        descriptor.departments = []
+        descriptor.save()
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
