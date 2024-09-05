@@ -158,7 +158,7 @@ def get_time_spents_for_year(
         else:
             query = query.filter(Task.project_id == project_id)
 
-    if department_ids is not None:
+    if department_ids:
         query = query.join(TaskType).filter(
             TaskType.department_id.in_(department_ids)
         )
@@ -200,7 +200,7 @@ def get_time_spents_for_month(
         else:
             query = query.filter(Task.project_id == project_id)
 
-    if department_ids is not None:
+    if department_ids:
         query = query.join(TaskType).filter(
             TaskType.department_id.in_(department_ids)
         )
@@ -255,7 +255,7 @@ def get_time_spents(
         if project_ids is not None:
             query = query.filter(Task.project_id.in_(project_ids))
 
-        if department_ids is not None:
+        if department_ids:
             query = query.join(TaskType)
             query = query.filter(TaskType.department_id.in_(department_ids))
     except DataError:
@@ -430,7 +430,7 @@ def get_person_time_spent_entries(
         else:
             query = query.filter(Task.project_id == project_id)
 
-    if department_ids is not None:
+    if department_ids:
         query = query.join(TaskType, TaskType.id == Task.task_type_id).filter(
             TaskType.department_id.in_(department_ids)
         )
