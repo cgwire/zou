@@ -746,3 +746,27 @@ def set_shared_assets(
         )
 
     return Entity.serialize_list(assets, obj_type="Asset")
+
+
+def get_shared_assets_used_in_project(project_id, episode_id=None):
+    """
+    Get all shared assets used in a project.
+    """
+    Shot = aliased(Entity, name="shot")
+    Sequence = aliased(Entity, name="sequence")
+
+    assets = (
+        Entity.query.filter(build_asset_type_filter())
+        .filter(Entity.is_shared == True)
+        .join(EntityLink, EntityLink.entity_out_id == Entity.id)
+        .join(Shot, EntityLink.entity_in_id == Shot.id)
+        .join(Sequence, Shot.parent_id == Sequence.id)
+        .filter(Shot.project_id == project_id)
+        .filter(Entity.canceled != True)
+        .filter(Entity.project_id != project_id)
+    )
+
+    if episode_id is not None:
+        links = links.filter(Sequence.parent_id == episode_id)
+
+    return Entity.serialize_list(assets.all(), obj_type="Asset")

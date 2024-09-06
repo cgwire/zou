@@ -827,3 +827,57 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
         for project_id in project_ids:
             user_service.check_manager_project_access(project_id)
         return super().post(asset_ids=asset_ids)
+
+
+class ProjectAssetsSharedUsedResource(Resource):
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Retrieve all shared assets used in project.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shared assets used in project
+        """
+        user_service.check_project_access(project_id)
+        return assets_service.get_shared_assets_used_in_project(project_id)
+
+
+class ProjectEpisodeAssetsSharedUsedResource(Resource):
+    @jwt_required()
+    def get(self, project_id, episode_id):
+        """
+        Retrieve all shared assets used in project episode.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: episode_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shared assets used in project episode
+        """
+        user_service.check_project_access(project_id)
+        return assets_service.get_shared_assets_used_in_project(
+            project_id, episode_id
+        )
