@@ -40,7 +40,11 @@ def apply_criterions_to_db_query(model, db_query, criterions):
             ) and isinstance(
                 field_key.property, orm.properties.RelationshipProperty
             )
-            value_is_list = len(value) > 0 and value[0] == "["
+            value_is_list = (
+                hasattr(value, "__len__")
+                and len(value) > 0
+                and value[0] == "["
+            )
 
             if key == "name" and field_key is not None:
                 name_filter.append(value)
