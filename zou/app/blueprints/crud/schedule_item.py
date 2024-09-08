@@ -3,7 +3,7 @@ from zou.app.models.schedule_item import ScheduleItem
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.services import user_service
-from zou.app.services.exception import ArgumentsException
+from zou.app.services.exception import WrongParameterException
 
 
 class ScheduleItemsResource(BaseModelsResource):
@@ -17,7 +17,7 @@ class ScheduleItemsResource(BaseModelsResource):
             object_id=data.get("object_id", None),
         )
         if schedule_item is not None:
-            raise ArgumentsException("A similar schedule item already exists")
+            raise WrongParameterException("A similar schedule item already exists")
         return schedule_item
 
 

@@ -251,17 +251,13 @@ class EntryAlreadyExistsException(Exception):
     pass
 
 
-class ArgumentsException(Exception):
+class WrongParameterException(Exception):
     def __init__(self, message, dict=None):
         super().__init__(message)
         self.dict = dict
 
 
 class WrongIdFormatException(Exception):
-    pass
-
-
-class WrongParameterException(Exception):
     pass
 
 

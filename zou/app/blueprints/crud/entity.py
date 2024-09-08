@@ -28,7 +28,7 @@ from zou.app.services import (
 )
 from zou.app.utils import date_helpers, events, permissions
 
-from zou.app.services.exception import ArgumentsException
+from zou.app.services.exception import WrongParameterException
 
 from werkzeug.exceptions import NotFound
 
@@ -88,7 +88,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
         if "status" in data:
             types = [entity_status for entity_status, _ in ENTITY_STATUSES]
             if data["status"] not in types:
-                raise ArgumentsException("Invalid status")
+                raise WrongParameterException("Invalid status")
         return True
 
     def all_entries(self, query=None, relations=False):
@@ -255,5 +255,5 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         if "status" in data:
             types = [entity_status for entity_status, _ in ENTITY_STATUSES]
             if data["status"] not in types:
-                raise ArgumentsException("Invalid status")
+                raise WrongParameterException("Invalid status")
         return data

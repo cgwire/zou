@@ -11,6 +11,7 @@ from flask_jwt_extended import (
 )
 from flask_socketio import SocketIO, disconnect, join_room, emit
 from flask_sqlalchemy import SQLAlchemy
+
 from zou.app import config
 from zou.app.stores import auth_tokens_store
 from zou.app.utils.monitoring import init_monitoring

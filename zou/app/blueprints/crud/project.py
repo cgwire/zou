@@ -18,7 +18,7 @@ from zou.app.utils import events, permissions, fields
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
-from zou.app.services.exception import ArgumentsException
+from zou.app.services.exception import WrongParameterException
 
 
 class ProjectsResource(BaseModelsResource):
@@ -44,7 +44,7 @@ class ProjectsResource(BaseModelsResource):
             if data["production_style"] not in [
                 type_name for type_name, _ in PROJECT_STYLES
             ]:
-                raise ArgumentsException("Invalid production_style")
+                raise WrongParameterException("Invalid production_style")
         return True
 
     def update_data(self, data):
@@ -71,7 +71,7 @@ class ProjectsResource(BaseModelsResource):
                 or data["preview_background_file_id"]
                 not in data["preview_background_files_ids"]
             ):
-                raise ArgumentsException("Invalid preview_background_file_id")
+                raise WrongParameterException("Invalid preview_background_file_id")
         return data
 
     def post_creation(self, project):
@@ -131,7 +131,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                 data["preview_background_file_id"]
                 not in preview_background_files_ids
             ):
-                raise ArgumentsException("Invalid preview_background_file_id")
+                raise WrongParameterException("Invalid preview_background_file_id")
 
         return data
 
@@ -167,7 +167,7 @@ class ProjectResource(BaseModelResource, ArgsMixin):
             if data["production_style"] not in [
                 type_name for type_name, _ in PROJECT_STYLES
             ]:
-                raise ArgumentsException("Invalid production_style")
+                raise WrongParameterException("Invalid production_style")
         return data
 
     @jwt_required()

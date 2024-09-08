@@ -10,7 +10,7 @@ from zou.app.services import (
     persons_service,
     user_service,
 )
-from zou.app.services.exception import ArgumentsException
+from zou.app.services.exception import WrongParameterException
 
 
 class ChatResource(Resource):
@@ -116,7 +116,7 @@ class ChatMessagesResource(Resource):
 
         chat = chats_service.get_chat(entity_id)
         if person["id"] not in chat["participants"]:
-            raise ArgumentsException("You are not a participant of this chat")
+            raise WrongParameterException("You are not a participant of this chat")
 
         return (
             chats_service.create_chat_message(

@@ -6,7 +6,7 @@ from zou.app.models.metadata_descriptor import (
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 
 from zou.app.services.exception import (
-    ArgumentsException,
+    WrongParameterException,
 )
 
 
@@ -30,7 +30,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
         if "data_type" in data:
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
-                raise ArgumentsException("Invalid data_type")
+                raise WrongParameterException("Invalid data_type")
         return True
 
 
@@ -47,5 +47,5 @@ class MetadataDescriptorResource(BaseModelResource):
         if "data_type" in data:
             types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
             if data["data_type"] not in types:
-                raise ArgumentsException("Invalid data_type")
+                raise WrongParameterException("Invalid data_type")
         return data

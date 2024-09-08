@@ -20,7 +20,7 @@ from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 from zou.app.mixin import ArgsMixin
 
 from zou.app.services.exception import (
-    ArgumentsException,
+    WrongParameterException,
     PersonInProtectedAccounts,
 )
 
@@ -61,11 +61,9 @@ class PersonsResource(BaseModelsResource):
             and data.get("active", True)
             and persons_service.is_user_limit_reached()
         ):
-            raise ArgumentsException(
+            raise WrongParameterException(
                 "User limit reached.",
                 {
-                    "error": True,
-                    "message": "User limit reached.",
                     "limit": config.USER_LIMIT,
                 },
             )
@@ -75,18 +73,18 @@ class PersonsResource(BaseModelsResource):
         if "role" in data and data["role"] not in [
             role for role, _ in ROLE_TYPES
         ]:
-            raise ArgumentsException("Invalid role")
+            raise WrongParameterException("Invalid role")
         if "contract_type" in data and data["contract_type"] not in [
             contract_type for contract_type, _ in CONTRACT_TYPES
         ]:
-            raise ArgumentsException("Invalid contract_type")
+            raise WrongParameterException("Invalid contract_type")
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [
             two_factor_authentication
             for two_factor_authentication, _ in TWO_FACTOR_AUTHENTICATION_TYPES
         ]:
-            raise ArgumentsException("Invalid two_factor_authentication")
+            raise WrongParameterException("Invalid two_factor_authentication")
 
         if "expiration_date" in data and data["expiration_date"] is not None:
             try:
@@ -96,11 +94,11 @@ class PersonsResource(BaseModelsResource):
                     ).date()
                     < datetime.date.today()
                 ):
-                    raise ArgumentsException(
+                    raise WrongParameterException(
                         "Expiration date can't be in the past."
                     )
             except:
-                raise ArgumentsException("Expiration date is not valid.")
+                raise WrongParameterException("Expiration date is not valid.")
         return data
 
     def update_data(self, data):
@@ -156,18 +154,18 @@ class PersonResource(BaseModelResource, ArgsMixin):
         if "role" in data and data["role"] not in [
             role for role, _ in ROLE_TYPES
         ]:
-            raise ArgumentsException("Invalid role")
+            raise WrongParameterException("Invalid role")
         if "contract_type" in data and data["contract_type"] not in [
             contract_type for contract_type, _ in CONTRACT_TYPES
         ]:
-            raise ArgumentsException("Invalid contract_type")
+            raise WrongParameterException("Invalid contract_type")
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [
             two_factor_authentication
             for two_factor_authentication, _ in TWO_FACTOR_AUTHENTICATION_TYPES
         ]:
-            raise ArgumentsException("Invalid two_factor_authentication")
+            raise WrongParameterException("Invalid two_factor_authentication")
 
         if "expiration_date" in data and data["expiration_date"] is not None:
             try:
@@ -177,11 +175,11 @@ class PersonResource(BaseModelResource, ArgsMixin):
                     ).date()
                     < datetime.date.today()
                 ):
-                    raise ArgumentsException(
+                    raise WrongParameterException(
                         "Expiration date can't be in the past."
                     )
             except:
-                raise ArgumentsException("Expiration date is not valid.")
+                raise WrongParameterException("Expiration date is not valid.")
         return data
 
     def check_delete_permissions(self, instance_dict):
@@ -204,7 +202,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and not data.get("is_bot", False)
             and persons_service.is_user_limit_reached()
         ):
-            raise ArgumentsException("User limit reached.")
+            raise WrongParameterException("User limit reached.")
         if instance_dict["email"] in config.PROTECTED_ACCOUNTS:
             message = None
             if data.get("active") is False:

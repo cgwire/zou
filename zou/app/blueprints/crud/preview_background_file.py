@@ -1,5 +1,5 @@
 from zou.app.models.preview_background_file import PreviewBackgroundFile
-from zou.app.services.exception import ArgumentsException
+from zou.app.services.exception import WrongParameterException
 from zou.app.services import files_service, deletion_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -17,7 +17,7 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
         name = data.get("name", None)
         preview_background_file = PreviewBackgroundFile.get_by(name=name)
         if preview_background_file is not None:
-            raise ArgumentsException(
+            raise WrongParameterException(
                 "A preview background file with similar name already exists"
             )
         return data
@@ -44,7 +44,7 @@ class PreviewBackgroundFileResource(BaseModelResource):
             if preview_background_file is not None and instance_id != str(
                 preview_background_file.id
             ):
-                raise ArgumentsException(
+                raise WrongParameterException(
                     "A preview background file with similar name already exists"
                 )
         return data
