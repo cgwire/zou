@@ -659,7 +659,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             200:
               description: All metadata descriptors
         """
-        user_service.check_manager_project_access(project_id)
+        user_service.check_project_access(project_id)
         for_client = permissions.has_client_permissions()
         return projects_service.get_metadata_descriptors(
             project_id, for_client

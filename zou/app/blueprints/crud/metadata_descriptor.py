@@ -4,6 +4,8 @@ from zou.app.models.metadata_descriptor import (
 )
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
+from zou.app.utils import permissions
+from zou.app.models.project import Project
 
 from zou.app.services.exception import (
     WrongParameterException,
@@ -13,6 +15,16 @@ from zou.app.services.exception import (
 class MetadataDescriptorsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, MetadataDescriptor)
+
+    def check_read_permissions(self):
+        return not permissions.has_vendor_permissions()
+
+    def add_project_permission_filter(self, query):
+        if not permissions.has_admin_permissions():
+            query = query.join(Project).filter(
+                user_service.build_related_projects_filter()
+            )
+        return query
 
     def all_entries(self, query=None, relations=True):
         if query is None:
@@ -35,6 +47,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
 
 
 class MetadataDescriptorResource(BaseModelResource):
+
     def __init__(self):
         BaseModelResource.__init__(self, MetadataDescriptor)
 
