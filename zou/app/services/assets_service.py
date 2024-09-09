@@ -766,7 +766,7 @@ def get_shared_assets_used_in_project(project_id, episode_id=None):
         .filter(Entity.project_id != project_id)
     )
 
-    if episode_id is not None:
+    if episode_id is not None and episode_id not in ["main", "all"]:
         assets = assets.filter(Sequence.parent_id == episode_id)
 
     return Entity.serialize_list(assets.all(), obj_type="Asset")
