@@ -306,6 +306,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
                 "episode_id": source_id,
                 "casting_episode_ids": cast_in_episode_ids.get(asset_id, []),
                 "is_casting_standby": asset.is_casting_standby,
+                "is_shared": asset.is_shared,
                 "data": data,
                 "tasks": [],
             }
@@ -571,6 +572,7 @@ def create_asset(
     name,
     description,
     data,
+    is_shared=False,
     source_id=None,
     created_by=None,
 ):
@@ -587,6 +589,7 @@ def create_asset(
         name=name,
         description=description,
         data=data,
+        is_shared=is_shared,
         source_id=source_id,
         created_by=created_by,
     )
