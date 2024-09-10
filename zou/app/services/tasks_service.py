@@ -1082,7 +1082,7 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
     else:
         query = query.filter(user_service.build_open_project_filter())
 
-    if department_ids is not None:
+    if department_ids:
         query = query.filter(TaskType.department_id.in_(department_ids))
     tasks = []
     for (
