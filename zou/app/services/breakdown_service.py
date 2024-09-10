@@ -99,11 +99,27 @@ def get_production_episodes_casting(project_id):
         .join(EntityType, Entity.entity_type_id == EntityType.id)
         .filter(Episode.project_id == project_id)
         .filter(Entity.canceled != True)
-        .add_columns(Entity.name, EntityType.name, Entity.preview_file_id)
-        .order_by(EntityType.name, Entity.name)
+        .add_columns(
+            Entity.name,
+            EntityType.name,
+            Entity.preview_file_id,
+            Entity.is_shared,
+            Entity.project_id,
+        )
+        .order_by(
+            EntityType.name,
+            Entity.name,
+        )
     )
 
-    for link, entity_name, entity_type_name, entity_preview_file_id in links:
+    for (
+        link,
+        entity_name,
+        entity_type_name,
+        entity_preview_file_id,
+        entity_is_shared,
+        entity_project_id,
+    ) in links:
         episode_id = str(link.entity_in_id)
         if episode_id not in castings:
             castings[episode_id] = []
@@ -118,6 +134,8 @@ def get_production_episodes_casting(project_id):
                 ),
                 "nb_occurences": link.nb_occurences,
                 "label": link.label,
+                "is_shared": entity_is_shared,
+                "project_id": entity_project_id,
             }
         )
     return castings
@@ -145,6 +163,8 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
             Entity.name,
             EntityType.name,
             Entity.preview_file_id,
+            Entity.is_shared,
+            Entity.project_id,
             Sequence.name,
         )
     )
@@ -169,6 +189,8 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
         entity_name,
         entity_type_name,
         entity_preview_file_id,
+        entity_is_shared,
+        entity_project_id,
         sequence_name,
     ) in links:
         shot_id = str(link.entity_in_id)
@@ -186,6 +208,8 @@ def get_sequence_casting(sequence_id, project_id=None, episode_id=None):
                 ),
                 "nb_occurences": link.nb_occurences,
                 "label": link.label,
+                "is_shared": entity_is_shared,
+                "project_id": entity_project_id,
             }
         )
     return castings

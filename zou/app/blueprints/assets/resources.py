@@ -435,6 +435,7 @@ class NewAssetResource(Resource, ArgsMixin):
                 - name
                 - description
                 - data
+                - is_shared
                 - source_id
                 properties:
                     name:
@@ -443,6 +444,8 @@ class NewAssetResource(Resource, ArgsMixin):
                         type: string
                     data:
                         type: string
+                    is_shared:
+                        type: boolean
                     source_id:
                         type: string
                         format: UUID
@@ -451,7 +454,7 @@ class NewAssetResource(Resource, ArgsMixin):
             201:
                 description: New asset resource created
         """
-        (name, description, data, source_id) = self.get_arguments()
+        (name, description, data, is_shared, source_id) = self.get_arguments()
 
         user_service.check_manager_project_access(project_id)
         asset = assets_service.create_asset(
@@ -460,6 +463,7 @@ class NewAssetResource(Resource, ArgsMixin):
             name,
             description,
             data,
+            is_shared,
             source_id,
             created_by=persons_service.get_current_user()["id"],
         )
@@ -475,6 +479,12 @@ class NewAssetResource(Resource, ArgsMixin):
                 },
                 "description",
                 ("data", {}, False, dict),
+                (
+                    "is_shared",
+                    True,
+                    False,
+                    bool,
+                ),
                 "episode_id",
             ]
         )
@@ -483,6 +493,7 @@ class NewAssetResource(Resource, ArgsMixin):
             args["name"],
             args.get("description", ""),
             args["data"],
+            args["is_shared"],
             args["episode_id"],
         )
 
