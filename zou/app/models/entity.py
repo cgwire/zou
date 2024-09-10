@@ -3,7 +3,6 @@ from sqlalchemy_utils import UUIDType, ChoiceType
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from zou.app.utils import fields
 
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -90,10 +89,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     tasks and files.
     """
 
-    id = db.Column(
-        UUIDType(binary=False), primary_key=True, default=fields.gen_uuid
-    )
-
+    id = BaseMixin.id
     name = db.Column(db.String(160), nullable=False)
     code = db.Column(db.String(160))  # To store sanitized version of name
     description = db.Column(db.Text())
@@ -103,6 +99,8 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     nb_frames = db.Column(db.Integer)  # Specific to shots
     nb_entities_out = db.Column(db.Integer, default=0)
     is_casting_standby = db.Column(db.Boolean, default=False)
+
+    is_shared = db.Column(db.Boolean, default=False, nullable=False)
 
     status = db.Column(
         ChoiceType(ENTITY_STATUSES), default="running", nullable=False

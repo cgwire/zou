@@ -21,6 +21,10 @@ def check_criterion_access(criterions):
     elif "episode_id" in criterions:
         episode_id = criterions.get("episode_id", None)
         project_id = shots_service.get_episode(episode_id)["project_id"]
+
+    if "is_shared" in criterions and project_id is None:
+        return permissions.check_manager_permissions()
+
     return user_service.check_project_access(project_id)
 
 
@@ -658,3 +662,222 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
             asset_id, args["asset_to_instantiate_id"], args["description"]
         )
         return asset_instance, 201
+
+
+class BaseSetSharedAssetsResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def post(self, project_id=None, asset_type_id=None, asset_ids=None):
+        args = self.get_args(
+            [
+                (
+                    "is_shared",
+                    True,
+                    False,
+                    bool,
+                ),
+            ]
+        )
+        return assets_service.set_shared_assets(
+            is_shared=args["is_shared"],
+            project_id=project_id,
+            asset_type_id=asset_type_id,
+            asset_ids=asset_ids,
+        )
+
+
+class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
+    """
+    Share or unshare all assets (or a list of assets) for given project.
+    """
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Share or unshare all assets (or a list of assets) for given project.
+        ---
+        tags:
+        - Assets
+        consumes:
+            - multipart/form-data
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: asset_ids
+            default: None,
+            type: array
+            items:
+                type: UUID
+            x-example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+          - in: formData
+            name: is_shared
+            default: true
+            type: boolean
+            x-example: true
+        responses:
+            201:
+                description: All assets modified.
+        """
+        args = self.get_args(
+            [
+                (
+                    "asset_ids",
+                    None,
+                    False,
+                    str,
+                    "append",
+                ),
+            ]
+        )
+        user_service.check_manager_project_access(project_id)
+        return super().post(project_id=project_id, asset_ids=args["asset_ids"])
+
+
+class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
+    """
+    Share or unshare all assets for given project and asset type.
+    """
+
+    @jwt_required()
+    def post(self, project_id, asset_type_id):
+        """
+        Share or unshare all assets for given project and asset type.
+        ---
+        tags:
+        - Assets
+        consumes:
+            - multipart/form-data
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: asset_type_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: is_shared
+            default: true
+            type: boolean
+            x-example: true
+        responses:
+            201:
+                description: All assets modified.
+        """
+        user_service.check_manager_project_access(project_id)
+        return super().post(project_id=project_id, asset_type_id=asset_type_id)
+
+
+class SetSharedAssetsResource(BaseSetSharedAssetsResource):
+    """
+    Share or unshare all assets (or a list of assets) for given project.
+    """
+
+    @jwt_required()
+    def post(self):
+        """
+        Share or unshare a list of assets.
+        ---
+        tags:
+        - Assets
+        consumes:
+            - multipart/form-data
+        parameters:
+          - in: formData
+            name: asset_ids
+            default: None,
+            type: array
+            items:
+                type: UUID
+            x-example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+          - in: formData
+            name: is_shared
+            default: true
+            type: boolean
+            x-example: true
+        responses:
+            201:
+                description: All assets modified.
+        """
+        args = self.get_args(
+            [
+                (
+                    "asset_ids",
+                    [],
+                    True,
+                    str,
+                    "append",
+                ),
+            ]
+        )
+        asset_ids = args["asset_ids"]
+        project_ids = set()
+        for asset_id in asset_ids:
+            project_ids.add(assets_service.get_asset(asset_id)["project_id"])
+        for project_id in project_ids:
+            user_service.check_manager_project_access(project_id)
+        return super().post(asset_ids=asset_ids)
+
+
+class ProjectAssetsSharedUsedResource(Resource):
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Retrieve all shared assets used in project.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shared assets used in project
+        """
+        user_service.check_project_access(project_id)
+        return assets_service.get_shared_assets_used_in_project(project_id)
+
+
+class ProjectEpisodeAssetsSharedUsedResource(Resource):
+    @jwt_required()
+    def get(self, project_id, episode_id):
+        """
+        Retrieve all shared assets used in project episode.
+        ---
+        tags:
+            - Assets
+        parameters:
+          - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: episode_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: All shared assets used in project episode
+        """
+        user_service.check_project_access(project_id)
+        return assets_service.get_shared_assets_used_in_project(
+            project_id, episode_id
+        )

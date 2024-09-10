@@ -813,7 +813,29 @@ class BasePreviewPictureResource(BasePreviewFileResource):
             abort(404)
 
 
-class PreviewFileThumbnailResource(BasePreviewPictureResource):
+class BasePreviewFileThumbnailResource(BasePreviewPictureResource):
+    """
+    Base class to download a thumbnail for a preview file.
+    """
+
+    def is_allowed(self, preview_file_id):
+        self.preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(self.preview_file["task_id"])
+        entity = entities_service.get_entity(task["entity_id"])
+        if (
+            entity["preview_file_id"] != preview_file_id
+            or not entity["is_shared"]
+            or permissions.has_vendor_permissions()
+        ):
+            user_service.check_project_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
+        self.last_modified = date_helpers.get_datetime_from_string(
+            self.preview_file["updated_at"]
+        )
+
+
+class PreviewFileThumbnailResource(BasePreviewFileThumbnailResource):
+
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "thumbnails")
 
@@ -832,12 +854,12 @@ class PreviewFilePreviewResource(BasePreviewPictureResource):
         BasePreviewPictureResource.__init__(self, "previews")
 
 
-class PreviewFileThumbnailSquareResource(BasePreviewPictureResource):
+class PreviewFileThumbnailSquareResource(BasePreviewFileThumbnailResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "thumbnails-square")
 
 
-class PreviewFileOriginalResource(BasePreviewPictureResource):
+class PreviewFileOriginalResource(BasePreviewFileThumbnailResource):
     def __init__(self):
         BasePreviewPictureResource.__init__(self, "original")
 
@@ -1034,7 +1056,8 @@ class ProjectThumbnailResource(BaseThumbnailResource):
 
     def check_allowed_to_get(self, instance_id):
         super().check_allowed_to_get(instance_id)
-        user_service.check_project_access(instance_id)
+        if not permissions.has_manager_permissions():
+            user_service.check_project_access(instance_id)
 
 
 class CreateProjectThumbnailResource(ProjectThumbnailResource):

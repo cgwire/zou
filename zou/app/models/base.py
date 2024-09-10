@@ -184,7 +184,12 @@ class BaseMixin(object):
 
     @classmethod
     def commit(cls):
-        db.session.commit()
+        try:
+            db.session.commit()
+        except BaseException:
+            db.session.rollback()
+            db.session.remove()
+            raise
 
     def save(self):
         """

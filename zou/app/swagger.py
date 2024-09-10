@@ -14,6 +14,7 @@ swagger_config = {
     "static_url_path": "/docs",
     "swagger_ui": True,
     "specs_route": "/apidocs/",
+    "openapi": "3.0.2",
 }
 
 
@@ -41,7 +42,7 @@ You will find the information to retrieve it in the
 """
 
 swagger_template = {
-    "openapi": "3.1",
+    "openapi": "3.0.2",
     "info": {
         "title": "Kitsu API",
         "description": description,
@@ -62,12 +63,14 @@ swagger_template = {
     "host": "localhost:8080",
     "basePath": "/api",
     "schemes": ["http", "https"],
-    "securityDefinitions": {
-        "JWT Authorization": {
-            "name": "Authorization",
-            "in": "header",
-            "type": "apiKey",
-            "description": "Format in header: **Authorization: Bearer {token}**. \n\n Value example: Bearer xxxxx.yyyyy.zzzzz",
+    "components": {
+        "securitySchemes": {
+            "JWT Authorization": {
+                "name": "Authorization",
+                "in": "header",
+                "type": "apiKey",
+                "description": "Format in header: **Authorization: Bearer {token}**. \n\n Value example: Bearer xxxxx.yyyyy.zzzzz",
+            }
         }
     },
     "security": [{"JWT Authorization": []}],
