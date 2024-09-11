@@ -34,7 +34,7 @@ from zou.app.utils import (
     thumbnail as thumbnail_utils,
 )
 from zou.app.services.exception import (
-    ArgumentsException,
+    WrongParameterException,
     PreviewFileNotFoundException,
     ProjectNotFoundException,
     EpisodeNotFoundException,
@@ -650,7 +650,7 @@ def extract_tile_from_preview_file(preview_file):
         extracted_tile_path = movie.generate_tile(preview_file_path)
         return extracted_tile_path
     else:
-        return ArgumentsException("Preview file is not a movie")
+        return WrongParameterException("Preview file is not a movie")
 
 
 def reset_movie_files_metadata():

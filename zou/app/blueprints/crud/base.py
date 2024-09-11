@@ -12,7 +12,7 @@ from sqlalchemy.inspection import inspect
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions, query
 from zou.app.services.exception import (
-    ArgumentsException,
+    WrongParameterException,
     WrongParameterException,
 )
 
@@ -237,7 +237,7 @@ class BaseModelsResource(Resource, ArgsMixin):
         try:
             data = request.json
             if data is None:
-                raise ArgumentsException(
+                raise WrongParameterException(
                     "Data are empty. Please verify that you sent JSON data and"
                     " that you set the right headers."
                 )
@@ -258,7 +258,7 @@ class BaseModelsResource(Resource, ArgsMixin):
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
-        except ArgumentsException as exception:
+        except WrongParameterException as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return (
                 exception.dict
@@ -406,7 +406,7 @@ class BaseModelResource(Resource, ArgsMixin):
         try:
             data = self.get_arguments()
             if data is None:
-                raise ArgumentsException(
+                raise WrongParameterException(
                     "Data are empty. Please verify that you sent JSON data and"
                     " that you set the right headers."
                 )
@@ -429,7 +429,7 @@ class BaseModelResource(Resource, ArgsMixin):
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
-        except ArgumentsException as exception:
+        except WrongParameterException as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return (
                 exception.dict

@@ -20,7 +20,7 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, query, permissions
 from zou.app.services.exception import (
     WrongParameterException,
-    ArgumentsException,
+    WrongParameterException,
 )
 
 
@@ -77,7 +77,7 @@ class ShotResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(shot["project_id"])
         data = request.json
         if data is None:
-            raise ArgumentsException(
+            raise WrongParameterException(
                 "Data are empty. Please verify that you sent JSON data and"
                 " that you set the right headers."
             )

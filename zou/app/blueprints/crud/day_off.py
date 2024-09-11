@@ -5,7 +5,7 @@ from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.services import user_service, time_spents_service
 
-from zou.app.services.exception import ArgumentsException
+from zou.app.services.exception import WrongParameterException
 
 from zou.app.utils import permissions
 
@@ -21,7 +21,7 @@ class DayOffsResource(BaseModelsResource):
         if time_spents_service.get_day_offs_between(
             data["date"], data["end_date"], data["person_id"]
         ):
-            raise ArgumentsException("Day off already exists for this period")
+            raise WrongParameterException("Day off already exists for this period")
         return data
 
     def post_creation(self, instance):
@@ -67,5 +67,5 @@ class DayOffResource(BaseModelResource):
             data.get("person_id", instance_dict["person_id"]),
             exclude_id=instance_dict["id"],
         ):
-            raise ArgumentsException("Day off already exists for this period")
+            raise WrongParameterException("Day off already exists for this period")
         return data

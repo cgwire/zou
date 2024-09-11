@@ -30,7 +30,7 @@ from zou.app.services.exception import (
     UnactiveUserException,
     TwoFactorAuthenticationNotEnabledException,
     PersonInProtectedAccounts,
-    ArgumentsException,
+    WrongParameterException,
 )
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
@@ -779,7 +779,7 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
                     )["departments"]
                     if department_id is not None:
                         if department_id not in persons_departments:
-                            raise ArgumentsException(
+                            raise WrongParameterException(
                                 "Supervisor not allowed to access this department"
                             )
                     else:

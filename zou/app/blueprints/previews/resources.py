@@ -35,7 +35,7 @@ from zou.app.utils import (
     date_helpers,
 )
 from zou.app.services.exception import (
-    ArgumentsException,
+    WrongParameterException,
     PreviewBackgroundFileNotFoundException,
     PreviewFileReuploadNotAllowedException,
 )
@@ -1097,7 +1097,7 @@ class SetMainPreviewResource(Resource, ArgsMixin):
         user_service.check_entity_access(task["entity_id"])
         if frame_number is not None:
             if preview_file["extension"] != "mp4":
-                raise ArgumentsException(
+                raise WrongParameterException(
                     "Can't use a given frame on non movie preview"
                 )
             preview_files_service.replace_extracted_frame_for_preview_file(

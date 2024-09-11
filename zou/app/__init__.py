@@ -96,7 +96,7 @@ def id_parameter_format_error(error):
 
 @app.errorhandler(WrongParameterException)
 def wrong_parameter(error):
-    return jsonify(error=True, message=str(error)), 400
+    return jsonify(error=True, message=str(error), data=error.dict), 400
 
 
 @app.errorhandler(ExpiredSignatureError)
