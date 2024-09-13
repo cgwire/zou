@@ -84,7 +84,7 @@ def build_entity_type_asset_type_filter():
     return ~EntityType.id.in_(ids_to_exclude)
 
 
-def get_assets(criterions={}):
+def get_assets(criterions={}, is_admin=False):
     """
     Get all assets for given criterions.
     """
@@ -101,6 +101,12 @@ def get_assets(criterions={}):
     if assigned_to:
         query = query.outerjoin(Task)
         query = query.filter(user_service.build_assignee_filter())
+
+    if "is_shared" in criterions:
+        if not is_admin:
+            query = (
+                query.join(Project).filter(user_service.build_team_filter())
+            )
 
     if episode_id is not None:
         # Filter based on main episode.

@@ -22,10 +22,10 @@ def check_criterion_access(criterions):
         episode_id = criterions.get("episode_id", None)
         project_id = shots_service.get_episode(episode_id)["project_id"]
 
-    if "is_shared" in criterions and project_id is None:
-        return permissions.check_manager_permissions()
+    if "project_id" in criterions:
+        user_service.check_project_access(project_id)
 
-    return user_service.check_project_access(project_id)
+    return True
 
 
 class AssetResource(Resource, ArgsMixin):
@@ -110,7 +110,10 @@ class AllAssetsResource(Resource):
             criterions["assigned_to"] = persons_service.get_current_user()[
                 "id"
             ]
-        return assets_service.get_assets(criterions)
+        return assets_service.get_assets(
+            criterions,
+            is_admin=permissions.has_admin_permissions(),
+        )
 
 
 class AllAssetsAliasResource(AllAssetsResource):
