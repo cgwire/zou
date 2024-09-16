@@ -61,6 +61,7 @@ def apply_criterions_to_db_query(model, db_query, criterions):
                 )
             else:
                 filters[key] = cast_value(value, field_key)
+
         if filters:
             db_query = db_query.filter_by(**filters)
 
