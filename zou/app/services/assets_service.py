@@ -722,6 +722,7 @@ def set_shared_assets(
     project_id=None,
     asset_type_id=None,
     asset_ids=None,
+    with_events=False
 ):
     """
     Set all assets of a project to is_shared=True or False.
@@ -748,11 +749,12 @@ def set_shared_assets(
     for asset in assets:
         asset_id = str(asset.id)
         clear_asset_cache(asset_id)
-        events.emit(
-            "asset:update",
-            {"asset_id": asset_id},
-            project_id=project_id,
-        )
+        if with_events:
+            events.emit(
+                "asset:update",
+                {"asset_id": asset_id},
+                project_id=project_id,
+            )
 
     return Entity.serialize_list(assets, obj_type="Asset")
 
