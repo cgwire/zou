@@ -114,6 +114,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             if assignees is not None:
                 instance.assignees = persons
             instance.save()
+            self.emit_create_event(instance.serialize())
 
             return tasks_service.get_task_with_relations(str(instance.id)), 201
 
