@@ -19,6 +19,7 @@ AUTH_STRATEGY = os.getenv("AUTH_STRATEGY", "auth_local_classic")
 KEY_VALUE_STORE = {
     "host": os.getenv("KV_HOST", "localhost"),
     "port": os.getenv("KV_PORT", "6379"),
+    "password": os.getenv("KV_PASSWORD", None),
 }
 AUTH_TOKEN_BLACKLIST_KV_INDEX = 0
 MEMOIZE_DB_INDEX = 1

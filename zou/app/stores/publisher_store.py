@@ -7,7 +7,11 @@ from zou.app import config
 host = config.KEY_VALUE_STORE["host"]
 port = config.KEY_VALUE_STORE["port"]
 redis_db = config.KV_EVENTS_DB_INDEX
-redis_url = "redis://%s:%s/%s" % (host, port, redis_db)
+password = config.KEY_VALUE_STORE["password"]
+if password:
+    redis_url = "redis://:%s@%s:%s/%s" % (password, host, port, redis_db)
+else:
+    redis_url = "redis://%s:%s/%s" % (host, port, redis_db)
 
 socketio = None
 
@@ -27,7 +31,11 @@ def init():
 
     try:
         publisher_store = redis.StrictRedis(
-            host=host, port=port, db=redis_db, decode_responses=True
+            host=host,
+            port=port,
+            db=redis_db,
+            password=password,
+            decode_responses=True,
         )
         publisher_store.get("test")
         socketio = SocketIO(

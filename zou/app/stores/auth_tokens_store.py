@@ -9,6 +9,7 @@ try:
         host=config.KEY_VALUE_STORE["host"],
         port=config.KEY_VALUE_STORE["port"],
         db=config.AUTH_TOKEN_BLACKLIST_KV_INDEX,
+        password=config.KEY_VALUE_STORE["password"],
         decode_responses=True,
     )
     revoked_tokens_store.ping()

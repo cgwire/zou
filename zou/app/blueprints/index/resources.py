@@ -42,6 +42,7 @@ class BaseStatusResource(Resource):
                 host=config.KEY_VALUE_STORE["host"],
                 port=config.KEY_VALUE_STORE["port"],
                 db=config.AUTH_TOKEN_BLACKLIST_KV_INDEX,
+                password=config.KEY_VALUE_STORE["password"],
                 decode_responses=True,
             )
             store.get("test")
@@ -64,7 +65,11 @@ class BaseStatusResource(Resource):
             host = config.KEY_VALUE_STORE["host"]
             port = config.KEY_VALUE_STORE["port"]
             db = config.KV_JOB_DB_INDEX
-            url = "redis://%s:%s/%s" % (host, port, db)
+            password = config.KEY_VALUE_STORE["password"]
+            if password:
+                url = "redis://:%s@%s:%s/%s" % (password, host, port, db)
+            else:
+                url = "redis://%s:%s/%s" % (host, port, db)
             args = ["rq", "info", "--url", url]
             out = shell.run_command(args)
             is_jq_up = b"0 workers" not in out
