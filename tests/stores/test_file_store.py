@@ -15,6 +15,7 @@ class FileStoreTestCase(unittest.TestCase):
         self.store.clear()
 
     def tearDown(self):
+        super(FileStoreTestCase, self).tearDown()
         self.store.clear()
 
     def get_fixture_file_path(self, relative_path):

@@ -30,6 +30,7 @@ class AuthTestCase(ApiDBTestCase):
             pass
 
     def tearDown(self):
+        super(AuthTestCase, self).tearDown()
         try:
             self.get("auth/logout")
         except AssertionError:

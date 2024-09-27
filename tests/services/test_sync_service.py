@@ -38,6 +38,7 @@ class SyncServiceTestCase(ApiDBTestCase):
         gazu.client.fetch_one = fetch_one_mock
 
     def tearDown(self):
+        super(SyncServiceTestCase, self).tearDown()
         gazu.client.fetch_one = self.real_fetch_one
 
     def handle_event(self, data={}):
