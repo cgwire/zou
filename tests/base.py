@@ -57,20 +57,39 @@ class ApiTestCase(unittest.TestCase):
     """
     Set of helpers to make test development easier.
     """
-
-    def setUp(self):
+    @classmethod
+    def setUpClass(cls):
         """
-        Configure Flask application before each test.
+        Configure resources shared by all tests in the class.
         """
         app.test_request_context(headers={"mimetype": "application/json"})
-        self.flask_app = app
-        self.app = app.test_client()
-        self.base_headers = {}
-        self.post_headers = {"Content-type": "application/json"}
+        cls.flask_app = app
+        cls.app = app.test_client()
+        cls.base_headers = {}
+        cls.post_headers = {"Content-type": "application/json"}
         app.app_context().push()
         from zou.app.utils import cache
 
         cache.clear()
+
+    @classmethod
+    def tearDownClass(self):
+        # Clean up resources after all test methods have run
+        """
+        Clean up resources after all test methods have run.
+        """
+        pass
+
+    def setUp(self):
+        """
+        Configure application before each test.
+        """
+        pass
+    def tearDown(self):
+        """
+        Configure application after each test.
+        """
+        pass
 
     def log_in(self, email):
         tokens = self.post(
@@ -217,8 +236,6 @@ class ApiTestCase(unittest.TestCase):
         file_descriptor.write(response.data)
         return open(target_file_path, "rb").read()
 
-    def tearDown(self):
-        pass
 
 
 class ApiDBTestCase(ApiTestCase):
