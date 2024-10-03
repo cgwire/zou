@@ -242,6 +242,7 @@ def get_entities_and_tasks(criterions={}):
             Task.due_date,
             Task.done_date,
             Task.last_comment_date,
+            Task.difficulty,
             assignees_table.columns.person,
         )
     )
@@ -272,6 +273,7 @@ def get_entities_and_tasks(criterions={}):
         task_due_date,
         task_done_date,
         task_last_comment_date,
+        task_difficulty,
         person_id,
     ) in query.all():
         entity_id = str(entity.id)
@@ -315,6 +317,7 @@ def get_entities_and_tasks(criterions={}):
                         "real_start_date": task_real_start_date,
                         "retake_count": task_retake_count,
                         "start_date": task_start_date,
+                        "difficulty": task_difficulty,
                         "task_status_id": str(task_status_id),
                         "task_type_id": str(task_type_id),
                         "assignees": [],

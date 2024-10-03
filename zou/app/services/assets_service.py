@@ -127,7 +127,7 @@ def get_assets(criterions={}, is_admin=False):
         result += [a for a in query.all() if a.source_id != episode_id]
     else:
         result = query.all()
-    return EntityType.serialize_list(result, obj_type="Asset")
+    return Entity.serialize_list(result, obj_type="Asset")
 
 
 def get_all_raw_assets():
@@ -202,6 +202,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         Task.due_date,
         Task.done_date,
         Task.last_comment_date,
+        Task.difficulty,
         assignees_table.columns.person,
     ).order_by(EntityType.name, Entity.name)
 
@@ -281,6 +282,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
         task_due_date,
         task_done_date,
         task_last_comment_date,
+        task_difficulty,
         person_id,
     ) in query_result:
         if asset.source_id is None:
@@ -338,6 +340,7 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
                     ),
                     "retake_count": task_retake_count,
                     "start_date": fields.serialize_value(task_start_date),
+                    "difficulty": task_difficulty,
                     "task_status_id": str(task_status_id),
                     "task_type_id": str(task_type_id),
                     "assignees": [],
