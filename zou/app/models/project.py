@@ -142,6 +142,9 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     is_preview_download_allowed = db.Column(db.Boolean(), default=False)
     is_set_preview_automated = db.Column(db.Boolean(), default=False)
     homepage = db.Column(db.String(80), default="assets")
+    is_publish_default_for_artists = db.Column(db.Boolean(), default=False)
+    hd_bitrate_compression = db.Column(db.Integer, default=28)
+    ld_bitrate_compression = db.Column(db.Integer, default=6)
 
     project_status_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project_status.id"), index=True
