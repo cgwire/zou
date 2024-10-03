@@ -33,6 +33,7 @@ from zou.app.blueprints.user.resources import (
     FilterGroupResource,
     FilterGroupsResource,
     DesktopLoginLogsResource,
+    MarkAllNotificationsAsReadResource,
     NotificationsResource,
     NotificationResource,
     HasTaskSubscribedResource,
@@ -107,6 +108,10 @@ routes = [
     (
         "/actions/user/sequences/<sequence_id>/task-types/<task_type_id>/unsubscribe",
         SequenceUnsubscribeResource,
+    ),
+    (
+        "/actions/user/notifications/mark-all-as-read",
+        MarkAllNotificationsAsReadResource,
     ),
 ]
 
