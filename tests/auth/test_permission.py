@@ -15,8 +15,8 @@ class PermissionTestCase(ApiDBTestCase):
         self.project_id = self.project.id
 
     def tearDown(self):
-        super(PermissionTestCase, self).tearDown()
         self.log_out()
+        super(PermissionTestCase, self).tearDown()
 
     def test_admin_can_create_project(self):
         self.log_in(self.user["email"])
