@@ -185,7 +185,7 @@ def get_last_news_for_project(
         preview_file_annotations,
         entity_preview_file_id,
     ) in news_list:
-        (full_entity_name, episode_id) = names_service.get_full_entity_name(
+        full_entity_name, episode_id, _ = names_service.get_full_entity_name(
             task_entity_id
         )
 

@@ -561,7 +561,7 @@ def get_running_preview_files():
         result = preview_file.serialize()
         result["project_id"] = fields.serialize_value(project_id)
         result["task_type_id"] = fields.serialize_value(task_type_id)
-        (result["full_entity_name"], _) = names_service.get_full_entity_name(
+        result["full_entity_name"], _, _ = names_service.get_full_entity_name(
             entity_id
         )
         results.append(result)

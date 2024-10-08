@@ -296,7 +296,7 @@ def get_task_descriptors(person_id, task):
     project = projects_service.get_project(task["project_id"])
     task_type = tasks_service.get_task_type(task["task_type_id"])
     entity = entities_service.get_entity(task["entity_id"])
-    (entity_name, episode_id) = names_service.get_full_entity_name(
+    entity_name, episode_id, _ = names_service.get_full_entity_name(
         entity["id"]
     )
 

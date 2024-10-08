@@ -213,7 +213,7 @@ def get_chats_for_person(person_id):
     result = []
     for chat_model, project_id, preview_file_id in chats:
         chat = chat_model.present()
-        chat["entity_name"], _ = names_service.get_full_entity_name(
+        chat["entity_name"], _, _ = names_service.get_full_entity_name(
             chat["object_id"]
         )
         chat["project_id"] = project_id
