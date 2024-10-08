@@ -35,7 +35,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     priority = db.Column(db.Integer, default=0)
     difficulty = db.Column(
         db.Integer,
-        db.CheckConstraint('difficulty > 0 AND difficullt < 6'),
+        db.CheckConstraint('difficulty > 0 AND difficulty < 6'),
         default=3,
     )
     duration = db.Column(db.Float, default=0)
