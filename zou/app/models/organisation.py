@@ -14,6 +14,7 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     has_avatar = db.Column(db.Boolean(), default=False)
     use_original_file_name = db.Column(db.Boolean(), default=False)
     timesheets_locked = db.Column(db.Boolean(), default=False)
+    format_duration_in_hours = db.Column(db.Boolean(), default=False)
     hd_by_default = db.Column(db.Boolean(), default=False)
     chat_token_slack = db.Column(db.String(80), default="")
     chat_webhook_mattermost = db.Column(db.String(80), default="")
@@ -32,6 +33,7 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
                 "hd_by_default": self.hd_by_default,
                 "use_original_file_name": self.use_original_file_name,
                 "timesheets_locked": self.timesheets_locked,
+                "format_duration_in_hours": self.format_duration_in_hours,
                 "updated_at": self.updated_at,
                 "created_at": self.created_at,
             }
