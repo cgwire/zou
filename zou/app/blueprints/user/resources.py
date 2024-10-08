@@ -1,4 +1,4 @@
-from flask import abort
+from flask import abort, request
 from flask_restful import Resource
 
 from zou.app.mixin import ArgsMixin
@@ -593,7 +593,6 @@ class FilterResource(Resource, ArgsMixin):
                 ("project_id", None, None),
             ]
         )
-
         data = self.clear_empty_fields(
             data, ignored_fields=["search_filter_group_id"]
         )
@@ -848,14 +847,24 @@ class NotificationsResource(Resource, ArgsMixin):
             task_status_id,
             notification_type,
         ) = self.get_arguments()
+
+        read = None
+        if request.args.get("read", None) is not None:
+            read = self.get_bool_parameter("read")
+        watching = None
+        if request.args.get("watching", None) is not None:
+            watching = self.get_bool_parameter("watching")
+        print("watching", watching)
         notifications = user_service.get_last_notifications(
             before=before,
             task_type_id=task_type_id,
             task_status_id=task_status_id,
             notification_type=notification_type,
+            read=read,
+            watching=watching,
         )
-        user_service.mark_notifications_as_read()
         return notifications
+
 
     def get_arguments(self):
         return (
@@ -863,11 +872,11 @@ class NotificationsResource(Resource, ArgsMixin):
             self.get_text_parameter("before"),
             self.get_text_parameter("task_type_id"),
             self.get_text_parameter("task_status_id"),
-            self.get_text_parameter("type"),
+            self.get_text_parameter("type")
         )
 
 
-class NotificationResource(Resource):
+class NotificationResource(Resource, ArgsMixin):
     """
     Return notification matching given id, only if it's a notification that
     belongs to current user.
@@ -894,6 +903,42 @@ class NotificationResource(Resource):
         """
         return user_service.get_notification(notification_id)
 
+    def put(self, notification_id):
+        """
+        Change notification read status.
+        ---
+        tags:
+        - User
+        parameters:
+          - in: path
+            name: notification_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Notification
+        """
+        data = self.get_args([("read", None, False, bool)])
+        return user_service.update_notification(notification_id, data["read"])
+
+
+class MarkAllNotificationsAsReadResource(Resource):
+
+    def post(self):
+        """
+        Mark all notifications as read for the current user.
+        ---
+        tags:
+        - User
+        responses:
+            200:
+                description: All notifications marked as read
+        """
+        user_service.mark_notifications_as_read()
+        return {"success": True}
+
 
 class HasTaskSubscribedResource(Resource):
     """
@@ -905,7 +950,7 @@ class HasTaskSubscribedResource(Resource):
         Return true if current user has subscribed to given task.
         ---
         tags:
-        - User
+          - User
         parameters:
           - in: path
             name: task_id
