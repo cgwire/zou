@@ -33,11 +33,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     description = db.Column(db.Text())
 
     priority = db.Column(db.Integer, default=0)
-    difficulty = db.Column(
-        db.Integer,
-        db.CheckConstraint('difficulty > 0 AND difficulty < 6'),
-        default=3,
-    )
+    difficulty = db.Column(db.Integer, default=3, nullable=False)
     duration = db.Column(db.Float, default=0)
     estimation = db.Column(db.Float, default=0)
     completion_rate = db.Column(db.Integer, default=0)
@@ -74,6 +70,9 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     __table_args__ = (
         db.UniqueConstraint(
             "name", "project_id", "task_type_id", "entity_id", name="task_uc"
+        ),
+        db.CheckConstraint(
+            "difficulty > 0 AND difficulty < 6", name="check_difficulty"
         ),
     )
 

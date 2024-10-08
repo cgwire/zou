@@ -21,7 +21,9 @@ class DayOffsResource(BaseModelsResource):
         if time_spents_service.get_day_offs_between(
             data["date"], data["end_date"], data["person_id"]
         ):
-            raise WrongParameterException("Day off already exists for this period")
+            raise WrongParameterException(
+                "Day off already exists for this period"
+            )
         return data
 
     def post_creation(self, instance):
@@ -67,5 +69,7 @@ class DayOffResource(BaseModelResource):
             data.get("person_id", instance_dict["person_id"]),
             exclude_id=instance_dict["id"],
         ):
-            raise WrongParameterException("Day off already exists for this period")
+            raise WrongParameterException(
+                "Day off already exists for this period"
+            )
         return data

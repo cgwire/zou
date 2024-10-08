@@ -72,7 +72,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
             person_last_name,
         ) = time_spent_row
         if entity_type_name == "Shot":
-            entity_name, _ = names_service.get_full_entity_name(entity_id)
+            entity_name, _, _ = names_service.get_full_entity_name(entity_id)
 
         date = ""
         if time_spent.date is not None:

@@ -26,12 +26,8 @@ class NamesServiceTestCase(ApiDBTestCase):
         self.shot_task = self.generate_fixture_shot_task().serialize()
 
     def test_get_full_entity_name(self):
-        (asset_name, episode_id) = names_service.get_full_entity_name(
-            self.asset.id
-        )
-        (shot_name, episode_id) = names_service.get_full_entity_name(
-            self.shot.id
-        )
+        asset_name, _, _ = names_service.get_full_entity_name(self.asset.id)
+        shot_name, _, _ = names_service.get_full_entity_name(self.shot.id)
         self.assertEqual(asset_name, "Props / Tree")
         self.assertEqual(shot_name, "E01 / S01 / P01")
 

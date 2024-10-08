@@ -1481,7 +1481,7 @@ def get_weighted_quota_shots_between(
     for entity, task_duration, duration in query_shots:
         shot = entity.serialize()
         if shot["id"] not in already_listed:
-            full_name, _ = names_service.get_full_entity_name(shot["id"])
+            full_name, _, _ = names_service.get_full_entity_name(shot["id"])
             shot["full_name"] = full_name
             shot["weight"] = round(duration / task_duration, 2) or 0
             shots.append(shot)
@@ -1528,7 +1528,7 @@ def get_weighted_quota_shots_between(
             business_days = (
                 date_helpers.get_business_days(task_start, task_end) + 1
             )
-            full_name, _ = names_service.get_full_entity_name(shot["id"])
+            full_name, _, _ = names_service.get_full_entity_name(shot["id"])
             shot["full_name"] = full_name
             multiplicator = 1
             if task_start >= start and task_end <= end:
@@ -1586,7 +1586,7 @@ def get_raw_quota_shots_between(
 
     for entity in query_shots:
         shot = entity.serialize()
-        full_name, _ = names_service.get_full_entity_name(shot["id"])
+        full_name, _, _ = names_service.get_full_entity_name(shot["id"])
         shot["full_name"] = full_name
         shot["weight"] = 1
         shots.append(shot)

@@ -116,7 +116,9 @@ class ChatMessagesResource(Resource):
 
         chat = chats_service.get_chat(entity_id)
         if person["id"] not in chat["participants"]:
-            raise WrongParameterException("You are not a participant of this chat")
+            raise WrongParameterException(
+                "You are not a participant of this chat"
+            )
 
         return (
             chats_service.create_chat_message(

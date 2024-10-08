@@ -22,10 +22,10 @@ class Subscription(db.Model, BaseMixin, SerializerMixin):
 
     entity_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("entity.id"), index=True
-    ) # Deprecated
+    )  # Deprecated
     task_type_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("task_type.id"), index=True
-    ) # Deprecated
+    )  # Deprecated
 
     __table_args__ = (
         db.UniqueConstraint(

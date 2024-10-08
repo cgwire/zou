@@ -71,7 +71,9 @@ class ProjectsResource(BaseModelsResource):
                 or data["preview_background_file_id"]
                 not in data["preview_background_files_ids"]
             ):
-                raise WrongParameterException("Invalid preview_background_file_id")
+                raise WrongParameterException(
+                    "Invalid preview_background_file_id"
+                )
         return data
 
     def post_creation(self, project):
@@ -131,7 +133,9 @@ class ProjectResource(BaseModelResource, ArgsMixin):
                 data["preview_background_file_id"]
                 not in preview_background_files_ids
             ):
-                raise WrongParameterException("Invalid preview_background_file_id")
+                raise WrongParameterException(
+                    "Invalid preview_background_file_id"
+                )
 
         return data
 
