@@ -17,7 +17,9 @@ class ScheduleItemsResource(BaseModelsResource):
             object_id=data.get("object_id", None),
         )
         if schedule_item is not None:
-            raise WrongParameterException("A similar schedule item already exists")
+            raise WrongParameterException(
+                "A similar schedule item already exists"
+            )
         return schedule_item
 
 

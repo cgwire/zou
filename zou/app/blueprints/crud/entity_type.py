@@ -7,7 +7,6 @@ from zou.app.services import entities_service, assets_service
 from zou.app.services.exception import WrongParameterException
 
 
-
 class EntityTypesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, EntityType)
@@ -32,11 +31,9 @@ class EntityTypesResource(BaseModelsResource):
         return instance.serialize(relations=True)
 
     def check_creation_integrity(self, data):
-        entity_type = (
-            EntityType.query
-            .filter(EntityType.name.ilike(data.get("name", "")))
-            .first()
-        )
+        entity_type = EntityType.query.filter(
+            EntityType.name.ilike(data.get("name", ""))
+        ).first()
         if entity_type is not None:
             raise WrongParameterException(
                 "Entity type with this name already exists"

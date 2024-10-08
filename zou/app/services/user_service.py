@@ -1210,6 +1210,7 @@ def get_unread_notifications_count(notification_id=None):
 
 from sqlalchemy import and_, func
 
+
 def get_last_notifications(
     notification_id=None,
     after=None,
@@ -1233,11 +1234,12 @@ def get_last_notifications(
         .join(Author, Author.id == Notification.author_id)
         .join(Task, Task.id == Notification.task_id)
         .join(Project, Project.id == Task.project_id)
-        .outerjoin(Subscription,
+        .outerjoin(
+            Subscription,
             and_(
                 Subscription.task_id == Task.id,
-                Subscription.person_id == current_user["id"]
-            )
+                Subscription.person_id == current_user["id"],
+            ),
         )
         .outerjoin(Comment, Comment.id == Notification.comment_id)
         .add_columns(
@@ -1303,11 +1305,9 @@ def get_last_notifications(
         subscription_id,
         role,
     ) in notifications:
-        (
-            full_entity_name,
-            episode_id,
-            entity_preview_file_id
-        ) = names_service.get_full_entity_name(task_entity_id)
+        (full_entity_name, episode_id, entity_preview_file_id) = (
+            names_service.get_full_entity_name(task_entity_id)
+        )
         preview_file_id = None
         mentions = []
         department_mentions = []

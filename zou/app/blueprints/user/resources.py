@@ -865,14 +865,13 @@ class NotificationsResource(Resource, ArgsMixin):
         )
         return notifications
 
-
     def get_arguments(self):
         return (
             self.get_text_parameter("after"),
             self.get_text_parameter("before"),
             self.get_text_parameter("task_type_id"),
             self.get_text_parameter("task_status_id"),
-            self.get_text_parameter("type")
+            self.get_text_parameter("type"),
         )
 
 

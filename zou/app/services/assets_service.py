@@ -104,8 +104,8 @@ def get_assets(criterions={}, is_admin=False):
 
     if "is_shared" in criterions:
         if not is_admin:
-            query = (
-                query.join(Project).filter(user_service.build_team_filter())
+            query = query.join(Project).filter(
+                user_service.build_team_filter()
             )
 
     if episode_id is not None:
@@ -725,7 +725,7 @@ def set_shared_assets(
     project_id=None,
     asset_type_id=None,
     asset_ids=None,
-    with_events=False
+    with_events=False,
 ):
     """
     Set all assets of a project to is_shared=True or False.
