@@ -15,8 +15,9 @@ def saml_client_for(metadata_url):
     Given the name of an IdP, return a configuation.
     The configuration is a hash for use by saml2.config.Config
     """
-    acs_url = f"http://{config.DOMAIN_NAME}/api/auth/saml/sso"
-    https_acs_url = f"https://{config.DOMAIN_NAME}/api/auth/saml/sso"
+    acs_url = (
+        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/api/auth/saml/sso"
+    )
 
     rv = requests.get(metadata_url)
 
@@ -29,8 +30,6 @@ def saml_client_for(metadata_url):
                     "assertion_consumer_service": [
                         (acs_url, BINDING_HTTP_REDIRECT),
                         (acs_url, BINDING_HTTP_POST),
-                        (https_acs_url, BINDING_HTTP_REDIRECT),
-                        (https_acs_url, BINDING_HTTP_POST),
                     ],
                 },
                 # Don't verify that the incoming requests originate from us via
