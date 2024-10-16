@@ -6,7 +6,7 @@ import re
 from string import Template
 
 from flask import request, current_app
-from flask_restful import Resource
+from flask_restful import Resource, inputs
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
@@ -308,7 +308,7 @@ class OTIOImportResource(OTIOBaseResource):
                     False,
                     str,
                 ),
-                ("match_case", True, False, bool),
+                ("match_case", True, False, inputs.boolean),
             ]
         )
 
@@ -359,6 +359,6 @@ class OTIOImportEpisodeResource(OTIOBaseResource):
                     False,
                     str,
                 ),
-                ("match_case", True, False, bool),
+                ("match_case", True, False, inputs.boolean),
             ]
         )

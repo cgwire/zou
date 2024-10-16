@@ -1,5 +1,5 @@
 from flask import abort, request
-from flask_restful import Resource
+from flask_restful import Resource, inputs
 
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -556,7 +556,7 @@ class FiltersResource(Resource, ArgsMixin):
                 ("list_type", "todo", True),
                 ("project_id", None, False),
                 ("entity_type", None, False),
-                ("is_shared", False, False, bool),
+                ("is_shared", False, False, inputs.boolean),
                 ("search_filter_group_id", None, False),
             ]
         )
@@ -589,7 +589,7 @@ class FilterResource(Resource, ArgsMixin):
                 ("name", None, False),
                 ("search_query", None, False),
                 ("search_filter_group_id", None, False),
-                ("is_shared", None, False, bool),
+                ("is_shared", None, False, inputs.boolean),
                 ("project_id", None, None),
             ]
         )
@@ -695,7 +695,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
                 ("color", "", True),
                 ("list_type", "todo", True),
                 ("project_id", None, False),
-                ("is_shared", False, False, bool),
+                ("is_shared", False, False, inputs.boolean),
                 ("entity_type", None, False),
             ]
         )
@@ -741,7 +741,7 @@ class FilterGroupResource(Resource, ArgsMixin):
             [
                 ("name", None, False),
                 ("color", None, False),
-                ("is_shared", None, False, bool),
+                ("is_shared", None, False, inputs.boolean),
                 ("project_id", None, None),
             ]
         )
@@ -919,7 +919,7 @@ class NotificationResource(Resource, ArgsMixin):
             200:
                 description: Notification
         """
-        data = self.get_args([("read", None, False, bool)])
+        data = self.get_args([("read", None, False, inputs.boolean)])
         return user_service.update_notification(notification_id, data["read"])
 
 
