@@ -1,5 +1,5 @@
 from flask import request
-from flask_restful import Resource
+from flask_restful import Resource, inputs
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import permissions, query
@@ -486,7 +486,7 @@ class NewAssetResource(Resource, ArgsMixin):
                     "is_shared",
                     True,
                     False,
-                    bool,
+                    inputs.boolean,
                 ),
                 "episode_id",
             ]
@@ -688,7 +688,7 @@ class BaseSetSharedAssetsResource(Resource, ArgsMixin):
                     "is_shared",
                     True,
                     False,
-                    bool,
+                    inputs.boolean,
                 ),
             ]
         )

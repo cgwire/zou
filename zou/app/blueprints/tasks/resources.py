@@ -2,7 +2,7 @@ import datetime
 
 
 from flask import abort, request
-from flask_restful import Resource
+from flask_restful import Resource, inputs
 from flask_jwt_extended import jwt_required
 
 from zou.app.services.exception import (
@@ -793,7 +793,11 @@ class ToReviewResource(Resource, ArgsMixin):
                 ("comment", ""),
                 ("name", "main"),
                 {"name": "revision", "default": 1, "type": int},
-                {"name": "change_status", "default": True, "type": bool},
+                {
+                    "name": "change_status",
+                    "default": True,
+                    "type": inputs.boolean,
+                },
             ]
         )
 

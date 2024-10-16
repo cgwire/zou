@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restful import Resource, inputs
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
@@ -7,7 +7,7 @@ from zou.app.services.exception import NewsNotFoundException
 from zou.app.utils import permissions
 
 
-class NewsMixin:
+class NewsMixin(ArgsMixin):
     def get_news(self, project_ids=[]):
         (
             only_preview,
@@ -21,7 +21,6 @@ class NewsMixin:
             before,
         ) = self.get_arguments()
 
-        user_service
         after = self.parse_date_parameter(after)
         before = self.parse_date_parameter(before)
         result = news_service.get_last_news_for_project(
@@ -38,6 +37,7 @@ class NewsMixin:
         )
         stats = news_service.get_news_stats_for_project(
             project_ids=project_ids,
+            only_preview=only_preview,
             task_type_id=task_type_id,
             task_status_id=task_status_id,
             episode_id=episode_id,
@@ -51,7 +51,12 @@ class NewsMixin:
     def get_arguments(self):
         args = self.get_args(
             [
-                {"name": "only_preview", "default": False, "type": bool},
+                (
+                    "only_preview",
+                    False,
+                    False,
+                    inputs.boolean,
+                ),
                 "task_type_id",
                 "task_status_id",
                 "person_id",
