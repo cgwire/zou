@@ -23,6 +23,10 @@ class SearchFilter(db.Model, BaseMixin, SerializerMixin):
         nullable=False,
     )
 
+    department_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("department.id"),
+    )
     search_filter_group_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("search_filter_group.id"),

@@ -1,10 +1,11 @@
 from tests.base import ApiDBTestCase
 
-
 from zou.app.services import (
     tasks_service,
     notifications_service,
+    persons_service,
     projects_service,
+    user_service,
 )
 
 from zou.app.models.project import Project
@@ -510,7 +511,6 @@ class UserContextRoutesTestCase(ApiDBTestCase):
             self.sequence_dict["id"],
             self.task_type_dict["id"],
         )
-        print(path)
         self.post(path, {})
 
         recipients = notifications_service.get_notification_recipients(
@@ -565,108 +565,257 @@ class UserContextRoutesTestCase(ApiDBTestCase):
     def test_shared_filters(self):
         project_id = str(self.project.id)
         self.generate_fixture_user_cg_artist()
+
+        # Create a filter for artist
+        self.log_in_cg_artist()
         path = "data/user/filters/"
         filter_1 = {
             "list_type": "asset",
-            "name": "props",
+            "name": "my filter",
             "query": "props",
             "project_id": project_id,
             "is_shared": True,
         }
         self.post(path, filter_1)
+
+        # Admin cannot see artist's filter
+        self.log_in_admin()
         result = self.get(path)
-        self.assertEqual(len(result["asset"][project_id]), 1)
-        self.assertEqual(
-            result["asset"][project_id][0]["search_query"], "props"
-        )
-        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
+        self.assertEqual(result, {})
+
+        # Add artist to the project and a department
+        self.log_in_admin()
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
         )
-        self.log_in_cg_artist()
+        artist = persons_service.get_person_raw(self.user_cg_artist["id"])
+        artist.departments.append(self.department)
+        artist.save()
 
+        # Create a shared filter
         filter_2 = {
             "list_type": "asset",
-            "name": "myfilter",
+            "name": "team filter",
             "query": "character",
             "project_id": project_id,
             "is_shared": True,
         }
-        self.post(path, filter_2)
+        filter_2 = self.post(path, filter_2)
+
+         # Artist can see their filters and the shared filters
+        self.log_in_cg_artist()
         result = self.get(path)
         self.assertEqual(len(result["asset"][project_id]), 2)
-        self.assertEqual(
-            result["asset"][project_id][0]["search_query"], "props"
-        )
-        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
-        self.assertEqual(
-            result["asset"][project_id][1]["search_query"], "character"
-        )
-        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
+        self.assertEqual(result["asset"][project_id][0]["name"], "my filter")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
+        self.assertEqual(result["asset"][project_id][1]["name"], "team filter")
+        self.assertEqual(result["asset"][project_id][1]["is_shared"], True)
 
-        self.put(
-            "data/user/filters/%s" % result["asset"][project_id][1]["id"],
-            {"name": "updated", "is_shared": True},
-        )
-        result = self.get(path)
-        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
-        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
-        self.put(
-            "data/user/filters/%s" % result["asset"][project_id][0]["id"],
-            {"name": "updated", "is_shared": True},
-            404,
-        )
-
-    def test_shared_group_filters(self):
-        project_id = str(self.project.id)
-        self.generate_fixture_user_cg_artist()
-        path = "data/user/filter-groups/"
-        filter_group_1 = {
-            "list_type": "asset",
-            "name": "props",
-            "project_id": project_id,
-            "is_shared": True,
-            "color": "",
-        }
-        self.post(path, filter_group_1)
-        result = self.get(path)
-        self.assertEqual(len(result["asset"][project_id]), 1)
-        self.assertEqual(result["asset"][project_id][0]["name"], "props")
-        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
         )
         self.log_in_cg_artist()
 
-        filter_group_2 = {
+         # Admin can update filter
+        self.log_in_admin()
+        self.put(
+            "data/user/filters/%s" % filter_2["id"],
+            {"name": "team updated"},
+        )
+        result = self.get(path)
+        user_service.clear_filter_cache()
+        self.assertEqual(result["asset"][project_id][0]["name"], "team updated")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
+
+        # Artist cannot update admin's filter
+        self.log_in_cg_artist()
+        self.put(
+            "data/user/filters/%s"
+            % result["asset"][project_id][0]["id"],
+            {"name": "updated", "is_shared": True},
+            404,
+        )
+
+        # Admin can create a shared filter for a department
+        self.log_in_admin()
+        filter_3 = {
             "list_type": "asset",
-            "name": "myfilter",
+            "name": "department filter",
+            "query": "character",
             "project_id": project_id,
             "is_shared": True,
+            "department_id": self.department_animation.id,
+        }
+        filter_3 = self.post(path, filter_3)
+        result = self.get(path)
+        user_service.clear_filter_cache()
+        self.assertEqual(len(result["asset"][project_id]), 2)
+
+        # Artist can't see the department filter
+        # because he is not in the department.
+        self.log_in_cg_artist()
+        result = self.get(path)
+        user_service.clear_filter_cache()
+        self.assertEqual(len(result["asset"][project_id]), 2)
+        self.assertEqual(result["asset"][project_id][0]["name"], "my filter")
+        self.assertEqual(result["asset"][project_id][1]["name"], "team updated")
+
+        # Filter is shared with the artist's department
+        self.log_in_admin()
+        self.put(
+            "data/user/filters/%s" % filter_3["id"],
+            {
+                "name": "department updated",
+                "is_shared": True,
+                "department_id": self.department.id
+            },
+        )
+        result = self.get(path)
+        user_service.clear_filter_cache()
+        self.assertEqual(len(result["asset"][project_id]), 2)
+        self.assertEqual(result["asset"][project_id][0]["name"], "team updated")
+        self.assertEqual(result["asset"][project_id][1]["name"], "department updated")
+
+        # Now artist can see the department filter
+        self.log_in_cg_artist()
+        user_service.clear_filter_cache()
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 3)
+        self.assertEqual(
+            result["asset"][project_id][2]["name"], "department updated")
+        self.assertEqual(
+            result["asset"][project_id][1]["name"], "team updated")
+        self.assertEqual(
+            result["asset"][project_id][0]["name"], "my filter")
+
+    def test_shared_group_filters(self):
+        project_id = str(self.project.id)
+        self.generate_fixture_user_cg_artist()
+
+        # Create a filter group for artist
+        self.log_in_cg_artist()
+        path = "data/user/filter-groups/"
+        filter_group_1 = {
+            "list_type": "asset",
+            "project_id": project_id,
+            "is_shared": False,
+            "name": "my group",
+            "color": "",
+        }
+        self.post(path, filter_group_1)
+
+         # Admin cannot see artist's filter group
+        self.log_in_admin()
+        result = self.get(path)
+        self.assertEqual(result, {})
+
+         # Artist can see their filter groups
+        self.log_in_cg_artist()
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 1)
+        self.assertEqual(result["asset"][project_id][0]["name"], "my group")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
+
+        # Add artist to the project and a department
+        self.log_in_admin()
+        projects_service.add_team_member(
+            self.project_id, self.user_cg_artist["id"]
+        )
+        artist = persons_service.get_person_raw(self.user_cg_artist["id"])
+        artist.departments.append(self.department)
+        artist.save()
+
+        # Create a shared filter group
+        filter_group_2 = {
+            "list_type": "asset",
+            "project_id": project_id,
+            "is_shared": True,
+            "name": "team group",
             "color": "",
         }
         self.post(path, filter_group_2)
+
+         # Artist can see their groups and the shared groups
+        self.log_in_cg_artist()
         result = self.get(path)
         self.assertEqual(len(result["asset"][project_id]), 2)
-        self.assertEqual(result["asset"][project_id][0]["name"], "myfilter")
-        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
-        self.assertEqual(result["asset"][project_id][1]["name"], "props")
-        self.assertEqual(result["asset"][project_id][1]["is_shared"], True)
+        self.assertEqual(result["asset"][project_id][0]["name"], "team group")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
+        self.assertEqual(result["asset"][project_id][1]["name"], "my group")
+        self.assertEqual(result["asset"][project_id][1]["is_shared"], False)
 
+         # Admin can update filter group
+        self.log_in_admin()
+        self.put(
+            "data/user/filter-groups/%s"
+            % result["asset"][project_id][0]["id"],
+            {"name": "updated"},
+        )
+        result = self.get(path)
+        user_service.clear_filter_group_cache()
+        self.assertEqual(result["asset"][project_id][0]["name"], "updated")
+        self.assertEqual(result["asset"][project_id][0]["is_shared"], True)
+
+        # Artist cannot update admin's filter group
+        self.log_in_cg_artist()
         self.put(
             "data/user/filter-groups/%s"
             % result["asset"][project_id][0]["id"],
             {"name": "updated", "is_shared": True},
-        )
-        result = self.get(path)
-        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
-        self.assertEqual(result["asset"][project_id][0]["is_shared"], False)
-        self.put(
-            "data/user/filter-groups/%s"
-            % result["asset"][project_id][1]["id"],
-            {"name": "updated", "is_shared": True},
             404,
         )
+
+        # Admin can create a shared filter group for a department
+        self.log_in_admin()
+        filter_group_3 = {
+            "list_type": "asset",
+            "project_id": project_id,
+            "is_shared": True,
+            "name": "department group",
+            "color": "",
+            "department_id": self.department_animation.id,
+        }
+        filter_group_3 = self.post(path, filter_group_3)
+        result = self.get(path)
+        user_service.clear_filter_group_cache()
+        self.assertEqual(len(result["asset"][project_id]), 2)
+
+        # Artist can't see the department filter group
+        # because he is not in the department.
+        self.log_in_cg_artist()
+        result = self.get(path)
+        user_service.clear_filter_group_cache()
+        self.assertEqual(len(result["asset"][project_id]), 2)
+        self.assertEqual(result["asset"][project_id][0]["name"], "updated")
+        self.assertEqual(result["asset"][project_id][1]["name"], "my group")
+
+        # Filter group is shared with the artist's department
+        self.log_in_admin()
+        self.put(
+            "data/user/filter-groups/%s" % filter_group_3["id"],
+            {
+                "name": "department updated",
+                "is_shared": True,
+                "department_id": self.department.id
+            },
+        )
+        user_service.clear_filter_group_cache()
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 2)
+        self.assertEqual(result["asset"][project_id][0]["name"], "department updated")
+        self.assertEqual(result["asset"][project_id][1]["name"], "updated")
+
+        # Now artist can see the department filter group
+        self.log_in_cg_artist()
+        user_service.clear_filter_group_cache()
+        result = self.get(path)
+        self.assertEqual(len(result["asset"][project_id]), 3)
+        self.assertEqual(
+            result["asset"][project_id][0]["name"], "department updated")
+        self.assertEqual(
+            result["asset"][project_id][1]["name"], "updated")
+        self.assertEqual(
+            result["asset"][project_id][2]["name"], "my group")
 
     def create_test_folder(self):
         return super().create_test_folder()
