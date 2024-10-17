@@ -24,16 +24,10 @@ class AuthTestCase(ApiDBTestCase):
             "email": self.person_dict["email"],
             "password": "secretpassword",
         }
-        try:
-            self.get("auth/logout")
-        except AssertionError:
-            pass
 
     def tearDown(self):
-        try:
-            self.get("auth/logout")
-        except AssertionError:
-            pass
+        self.log_out()
+        super(AuthTestCase, self).tearDown()
 
     def get_auth_headers(self, tokens):
         return {
