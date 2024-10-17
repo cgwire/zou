@@ -544,6 +544,7 @@ class FiltersResource(Resource, ArgsMixin):
                 arguments["entity_type"],
                 arguments["is_shared"],
                 arguments["search_filter_group_id"],
+                department_id=arguments["department_id"],
             ),
             201,
         )
@@ -558,6 +559,7 @@ class FiltersResource(Resource, ArgsMixin):
                 ("entity_type", None, False),
                 ("is_shared", False, False, inputs.boolean),
                 ("search_filter_group_id", None, False),
+                ("department_id", None, False),
             ]
         )
 
@@ -591,6 +593,7 @@ class FilterResource(Resource, ArgsMixin):
                 ("search_filter_group_id", None, False),
                 ("is_shared", None, False, inputs.boolean),
                 ("project_id", None, None),
+                ("department_id", None, None),
             ]
         )
         data = self.clear_empty_fields(
@@ -664,9 +667,18 @@ class FilterGroupsResource(Resource, ArgsMixin):
             required: False
             type: string
           - in: formData
+            name: is_shared
+            required: False
+            type: boolean
+          - in: formData
             name: project_id
             required: True
             type: string
+            format: UUID
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: department_id
+            required: False
             format: UUID
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -675,7 +687,6 @@ class FilterGroupsResource(Resource, ArgsMixin):
                              open projects created.
         """
         arguments = self.get_arguments()
-
         return (
             user_service.create_filter_group(
                 arguments["list_type"],
@@ -684,6 +695,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
                 arguments["project_id"],
                 arguments["entity_type"],
                 arguments["is_shared"],
+                arguments["department_id"],
             ),
             201,
         )
@@ -697,6 +709,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
                 ("project_id", None, False),
                 ("is_shared", False, False, inputs.boolean),
                 ("entity_type", None, False),
+                ("department_id", None, False),
             ]
         )
 
@@ -733,6 +746,28 @@ class FilterGroupResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            type: string
+            x-example: Name of the filter group
+          - in: formData
+            name: color
+            type: string
+            x-example: Color of the filter group
+          - in: formData
+            name: is_shared
+            type: boolean
+            x-example: True
+          - in: formData
+            name: project_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: department_id
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given filter group with updated data
@@ -743,10 +778,12 @@ class FilterGroupResource(Resource, ArgsMixin):
                 ("color", None, False),
                 ("is_shared", None, False, inputs.boolean),
                 ("project_id", None, None),
+                ("department_id", None, None),
             ]
         )
 
         data = self.clear_empty_fields(data)
+        print("data", data)
         user_filter = user_service.update_filter_group(filter_group_id, data)
         return user_filter, 200
 

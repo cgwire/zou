@@ -9,7 +9,7 @@ from zou import __version__
 
 from zou.app import app, config
 from zou.app.utils import permissions, shell, date_helpers
-from zou.app.services import projects_service, stats_service
+from zou.app.services import projects_service, stats_service, persons_service
 
 from flask_jwt_extended import jwt_required
 
@@ -276,17 +276,21 @@ class StatsResource(Resource):
 class ConfigResource(Resource):
     def get(self):
         """
-        Get crisp token.
+        Get basic configuration for the current instance.
         ---
         tags:
           - Index
         responses:
             200:
-                description: Crisp token
+                description: Configuration object including self-hosted status,
+                Crisp token, indexer configuration, SAML status, and dark theme 
+                status
         """
+        organisation = persons_service.get_organisation()
         conf = {
             "is_self_hosted": config.IS_SELF_HOSTED,
             "crisp_token": config.CRISP_TOKEN,
+            "dark_theme_by_default": organisation["dark_theme_by_default"],
             "indexer_configured": (
                 len(config.INDEXER["key"]) > 0
                 and config.INDEXER["key"] != "masterkey"

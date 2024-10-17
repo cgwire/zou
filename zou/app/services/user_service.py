@@ -889,20 +889,30 @@ def get_user_filters(current_user_id):
         .all()
     )
 
+    current_user = persons_service.get_current_user(relations=True)
+    is_manager = permissions.has_manager_permissions()
+
     for search_filter in filters:
-        if search_filter.list_type not in result:
-            result[search_filter.list_type] = {}
-        subresult = result[search_filter.list_type]
+        department_id = search_filter.department_id
+        is_in_departments = (
+            department_id is not None and \
+            str(department_id) in current_user["departments"]
+        )
 
-        if search_filter.project_id is None:
-            project_id = "all"
-        else:
-            project_id = str(search_filter.project_id)
+        if department_id is None or is_manager or is_in_departments:
+            if search_filter.list_type not in result:
+                result[search_filter.list_type] = {}
+            subresult = result[search_filter.list_type]
 
-        if project_id not in subresult:
-            subresult[project_id] = []
+            if search_filter.project_id is None:
+                project_id = "all"
+            else:
+                project_id = str(search_filter.project_id)
 
-        subresult[project_id].append(search_filter.serialize())
+            if project_id not in subresult:
+                subresult[project_id] = []
+
+            subresult[project_id].append(search_filter.serialize())
 
     return result
 
@@ -915,6 +925,7 @@ def create_filter(
     entity_type=None,
     is_shared=False,
     search_filter_group_id=None,
+    department_id=None,
 ):
     """
     Add a new search filter to the database.
@@ -937,6 +948,13 @@ def create_filter(
                 "A search filter should have the same value for is_shared than its search filter group."
             )
 
+    if department_id is not None:
+        department = tasks_service.get_department(department_id)
+        if department is None:
+            raise WrongParameterException(
+                f"No department found with id: {department_id}"
+            )
+
     search_filter = SearchFilter.create(
         list_type=list_type,
         name=name,
@@ -946,6 +964,7 @@ def create_filter(
         entity_type=entity_type,
         is_shared=is_shared,
         search_filter_group_id=search_filter_group_id,
+        department_id=department_id,
     )
     search_filter.serialize()
     if search_filter.is_shared:
@@ -969,10 +988,23 @@ def update_filter(search_filter_id, data):
     if search_filter is None:
         raise SearchFilterNotFoundException
 
-    if data.get("project_id", None) is None or (
-        data["project_id"] is not None
-        and not has_manager_project_access(data["project_id"])
-    ):
+    department_id = data.get("department_id", None)
+    if department_id is not None:
+        department = tasks_service.get_department(department_id)
+        if department is None:
+            raise WrongParameterException(
+                f"No department found with id: {department_id}"
+            )
+
+    if data.get("is_shared", None) is not None and \
+        search_filter.is_shared != data["is_shared"] and \
+        (
+          data.get("project_id", None) is None or
+          (
+                data["project_id"] is not None
+                and not has_manager_project_access(data["project_id"])
+          )
+       ):
         data["is_shared"] = False
 
     if (
@@ -992,6 +1024,15 @@ def update_filter(search_filter_id, data):
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
             )
+
+    department_id = data.get("department_id", None)
+    if department_id is not None:
+        department = tasks_service.get_department(department_id)
+        if department is None:
+            raise WrongParameterException(
+                f"No department found with id: {department_id}"
+            )
+
     search_filter.update(data)
     if search_filter.is_shared:
         clear_filter_cache()
@@ -1028,7 +1069,7 @@ def get_filter_groups():
     return get_user_filter_groups(current_user["id"])
 
 
-@cache.memoize_function(120)
+@cache.memoize_function(10)
 def get_user_filter_groups(current_user_id):
     """
     Retrieve search filter groups used for given user. It groups them by
@@ -1055,26 +1096,41 @@ def get_user_filter_groups(current_user_id):
         .all()
     )
 
+    current_user = persons_service.get_current_user(relations=True)
+    is_manager = permissions.has_manager_permissions()
+
     for search_filter_group in filter_groups:
         if search_filter_group.list_type not in result:
             result[search_filter_group.list_type] = {}
-        subresult = result[search_filter_group.list_type]
 
-        if search_filter_group.project_id is None:
-            project_id = "all"
-        else:
-            project_id = str(search_filter_group.project_id)
+        department_id = search_filter_group.department_id
+        is_in_departments = (
+            department_id is not None and \
+            str(department_id) in current_user["departments"]
+        )
+        if department_id is None or is_manager or is_in_departments:
+            subresult = result[search_filter_group.list_type]
 
-        if project_id not in subresult:
-            subresult[project_id] = []
+            if search_filter_group.project_id is None:
+                project_id = "all"
+            else:
+                project_id = str(search_filter_group.project_id)
 
-        subresult[project_id].append(search_filter_group.serialize())
+            if project_id not in subresult:
+                subresult[project_id] = []
+            subresult[project_id].append(search_filter_group.serialize())
 
     return result
 
 
 def create_filter_group(
-    list_type, name, color, project_id=None, entity_type=None, is_shared=False
+    list_type,
+    name,
+    color,
+    project_id=None,
+    entity_type=None,
+    is_shared=False,
+    department_id=None
 ):
     """
     Add a new search filter group to the database.
@@ -1084,6 +1140,14 @@ def create_filter_group(
         project_id is not None and not has_manager_project_access(project_id)
     ):
         is_shared = False
+
+    if department_id is not None:
+        department = tasks_service.get_department(department_id)
+        if department is None:
+            raise WrongParameterException(
+                f"No department found with id: {department_id}"
+            )
+
     search_filter_group = SearchFilterGroup.create(
         list_type=list_type,
         name=name,
@@ -1092,12 +1156,15 @@ def create_filter_group(
         person_id=current_user["id"],
         entity_type=entity_type,
         is_shared=is_shared,
+        department_id=department_id,
     )
     search_filter_group.serialize()
+
     if search_filter_group.is_shared:
         clear_filter_group_cache()
     else:
         clear_filter_group_cache(current_user["id"])
+
     return search_filter_group.serialize()
 
 
@@ -1122,16 +1189,26 @@ def update_filter_group(search_filter_group_id, data):
     search_filter_group = SearchFilterGroup.get_by(
         id=search_filter_group_id, person_id=current_user["id"]
     )
+
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
-    if data.get("project_id", None) is None or (
-        data["project_id"] is not None
-        and not has_manager_project_access(data["project_id"])
-    ):
-        data["is_shared"] = False
+
+    if data.get("is_shared", None) is not None and \
+        search_filter_group.is_shared != data["is_shared"] and \
+        (
+          data.get("project_id", None) is None or
+          (
+                data["project_id"] is not None
+                and not has_manager_project_access(data["project_id"])
+          )
+       ):
+            data["is_shared"] = False
+
     search_filter_group.update(data)
 
-    if data.get("is_shared", None) is not None:
+    if data.get("is_shared", None) is not None \
+        and data.get("project_id", None) is not None \
+        and has_manager_project_access(data["project_id"]):
         if (
             SearchFilter.query.filter_by(
                 search_filter_group_id=search_filter_group_id
@@ -1284,7 +1361,6 @@ def get_last_notifications(
         query = query.filter(Notification.read == read)
 
     if watching is not None:
-        print(watching)
         if watching:
             query = query.filter(Subscription.id != None)
         else:
