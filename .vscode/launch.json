@@ -10,7 +10,8 @@
         "FLASK_APP": "zou.app",
         "FLASK_DEBUG": "1",
         "DEBUG": "1",
-        "MAIL_DEBUG": "1"
+        "MAIL_DEBUG_BODY": "1",
+        "MAIL_ENABLED": "False"
       },
       "args": ["run", "--no-reload"],
       "jinja": true,

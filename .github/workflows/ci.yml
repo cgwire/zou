@@ -55,4 +55,5 @@ jobs:
           py.test
         env:
           DEBUG: 1
-          MAIL_DEBUG: 1
+          MAIL_DEBUG_BODY: 1
+          MAIL_ENABLED: False
