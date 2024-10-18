@@ -1255,7 +1255,10 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         permissions.check_admin_permissions()
         try:
             person = persons_service.get_person(person_id)
-            if person["email"] in config.PROTECTED_ACCOUNTS:
+            if (
+                person["email"] in config.PROTECTED_ACCOUNTS
+                and person["id"] != persons_service.get_current_user()["id"]
+            ):
                 raise PersonInProtectedAccounts()
             current_user = persons_service.get_current_user()
             auth.validate_password(password, password_2)
