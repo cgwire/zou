@@ -12,9 +12,9 @@ def send_email(subject, html, recipient_email, body=None):
     """
     if body is None:
         body = strip_html_tags(html)
-    if app.config["MAIL_DEBUG"]:
+    if app.config["MAIL_DEBUG_BODY"]:
         print(body)
-    elif app.config["MAIL_ENABLED"]:
+    if app.config["MAIL_ENABLED"]:
         with app.app_context():
             try:
                 mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
