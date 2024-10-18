@@ -394,7 +394,9 @@ def sync_with_ldap_server():
             )
             .all()
         ):
-            persons_service.update_person(person.id, {"active": False})
+            persons_service.update_person(
+                person.id, {"active": False}, bypass_protected_accounts=True
+            )
             print(
                 "User %s disabled (not found in LDAP)." % person.desktop_login
             )
@@ -418,6 +420,7 @@ def sync_with_ldap_server():
                         "desktop_login": user["desktop_login"],
                         "ldap_uid": user["ldap_uid"],
                     },
+                    bypass_protected_accounts=True,
                 )
                 print(f"User {user['desktop_login']} updated.")
             except IsUserLimitReachedException:
@@ -470,7 +473,9 @@ def sync_with_ldap_server():
         )
         file_store.add_picture("thumbnails", person["id"], thumbnail_png_path)
         os.remove(thumbnail_png_path)
-        persons_service.update_person(person["id"], {"has_avatar": True})
+        persons_service.update_person(
+            person["id"], {"has_avatar": True}, bypass_protected_accounts=True
+        )
 
     ldap_users = get_ldap_users()
     update_person_list_with_ldap_users(ldap_users)

@@ -203,7 +203,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
             and persons_service.is_user_limit_reached()
         ):
             raise WrongParameterException("User limit reached.")
-        if instance_dict["email"] in config.PROTECTED_ACCOUNTS:
+        if (
+            instance_dict["email"] in config.PROTECTED_ACCOUNTS
+            and instance_dict["id"] != persons_service.get_current_user()["id"]
+        ):
             message = None
             if data.get("active") is False:
                 message = "Can't set this person as inactive it's a protected account."

@@ -381,7 +381,9 @@ def update_person_last_presence(person_id):
         date = log.date
     elif time_spent is not None:
         date = time_spent.date
-    return update_person(person_id, {"last_presence": date})
+    return update_person(
+        person_id, {"last_presence": date}, bypass_protected_accounts=True
+    )
 
 
 def get_presence_logs(year, month):

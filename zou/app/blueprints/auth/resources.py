@@ -1369,7 +1369,9 @@ class SAMLSSOResource(Resource, ArgsMixin):
             user = persons_service.get_person_by_email(email)
             for k, v in person_info.items():
                 if user.get(k) != v:
-                    persons_service.update_person(user["id"], person_info)
+                    persons_service.update_person(
+                        user["id"], person_info, bypass_protected_accounts=True
+                    )
                     break
         except PersonNotFoundException:
             user = persons_service.create_person(

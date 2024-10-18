@@ -1023,6 +1023,11 @@ class PersonThumbnailResource(BaseThumbnailResource):
         if not is_current_user and not permissions.has_admin_permissions():
             raise permissions.PermissionDenied
 
+    def prepare_creation(self, instance_id):
+        self.model = self.update_model_func(
+            instance_id, {"has_avatar": True}, bypass_protected_accounts=True
+        )
+
 
 class CreatePersonThumbnailResource(PersonThumbnailResource):
     pass
