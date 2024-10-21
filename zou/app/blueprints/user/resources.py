@@ -783,7 +783,6 @@ class FilterGroupResource(Resource, ArgsMixin):
         )
 
         data = self.clear_empty_fields(data)
-        print("data", data)
         user_filter = user_service.update_filter_group(filter_group_id, data)
         return user_filter, 200
 
