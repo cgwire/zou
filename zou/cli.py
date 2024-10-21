@@ -30,7 +30,7 @@ def cli():
 @cli.command()
 def version():
     """
-    Returns current installation version.
+    Return current installation version.
     """
     from zou import __version__
 
@@ -39,7 +39,7 @@ def version():
 
 @cli.command()
 def init_db():
-    "Creates datababase table (database must be created through PG client)."
+    "Create database table (database must be created through PG client)."
 
     print("Creating database and tables...")
     with app.app_context():
@@ -50,17 +50,16 @@ def init_db():
 @cli.command()
 def is_db_ready():
     """
-    Return a message telling if the database wheter the database is
-    initiliazed or not."
+    Return a message telling whether the database is initialized or not.
     """
     with app.app_context():
         is_init = dbhelpers.is_init()
         if is_init:
-            print("Database is initiliazed.")
+            print("Database is initialized.")
         else:
             print(
-                "Database is not initiliazed. "
-                "Run 'zou init-db' and 'init-data'."
+                "Database is not initialized. "
+                "Run 'zou init-db' and 'zou init-data'."
             )
 
 
@@ -99,7 +98,7 @@ def clear_db():
 
 @cli.command()
 def reset_db():
-    "Drop all tables then recreates them."
+    "Drop all tables, then recreate them."
     with app.app_context():
         print("Deleting database and tables...")
         dbhelpers.drop_all()
@@ -113,7 +112,7 @@ def reset_db():
 @click.option("--no-telemetry", is_flag=True, default=False)
 def upgrade_db(no_telemetry=False):
     """
-    Upgrade database schema. Send anonymized statistics to our telemery
+    Upgrade database schema. Send anonymized statistics to our telemetry
     services (user and preview amounts). It allows us to size the Kitsu
     community.
     """
@@ -217,7 +216,7 @@ def clear_all_auth_tokens():
 
 @cli.command()
 def init_data():
-    "Generates minimal data set required to run Kitsu."
+    "Generate minimal data set required to run Kitsu."
     commands.init_data()
 
 
@@ -441,7 +440,7 @@ def sync_last_events(source, minutes, page_size):
 @click.option("--page-size", default=50)
 def sync_last_files(source, minutes, page_size):
     """
-    Retrieve last preview files and thumbnails updloaded on source instance.
+    Retrieve last preview files and thumbnails uploaded on source instance.
     It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
@@ -495,7 +494,7 @@ def clean_tasks_data(project_id):
 def remove_old_data(days):
     """
     Remove old events, notifications and login logs older than 90 days
-    (by deafult).
+    (by default).
     """
     commands.remove_old_data(days)
 
