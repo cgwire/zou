@@ -895,8 +895,8 @@ def get_user_filters(current_user_id):
     for search_filter in filters:
         department_id = search_filter.department_id
         is_in_departments = (
-            department_id is not None and \
-            str(department_id) in current_user["departments"]
+            department_id is not None
+            and str(department_id) in current_user["departments"]
         )
 
         if department_id is None or is_manager or is_in_departments:
@@ -996,15 +996,17 @@ def update_filter(search_filter_id, data):
                 f"No department found with id: {department_id}"
             )
 
-    if data.get("is_shared", None) is not None and \
-        search_filter.is_shared != data["is_shared"] and \
-        (
-          data.get("project_id", None) is None or
-          (
+    if (
+        data.get("is_shared", None) is not None
+        and search_filter.is_shared != data["is_shared"]
+        and (
+            data.get("project_id", None) is None
+            or (
                 data["project_id"] is not None
                 and not has_manager_project_access(data["project_id"])
-          )
-       ):
+            )
+        )
+    ):
         data["is_shared"] = False
 
     if (
@@ -1105,8 +1107,8 @@ def get_user_filter_groups(current_user_id):
 
         department_id = search_filter_group.department_id
         is_in_departments = (
-            department_id is not None and \
-            str(department_id) in current_user["departments"]
+            department_id is not None
+            and str(department_id) in current_user["departments"]
         )
         if department_id is None or is_manager or is_in_departments:
             subresult = result[search_filter_group.list_type]
@@ -1130,7 +1132,7 @@ def create_filter_group(
     project_id=None,
     entity_type=None,
     is_shared=False,
-    department_id=None
+    department_id=None,
 ):
     """
     Add a new search filter group to the database.
@@ -1193,22 +1195,26 @@ def update_filter_group(search_filter_group_id, data):
     if search_filter_group is None:
         raise SearchFilterGroupNotFoundException
 
-    if data.get("is_shared", None) is not None and \
-        search_filter_group.is_shared != data["is_shared"] and \
-        (
-          data.get("project_id", None) is None or
-          (
+    if (
+        data.get("is_shared", None) is not None
+        and search_filter_group.is_shared != data["is_shared"]
+        and (
+            data.get("project_id", None) is None
+            or (
                 data["project_id"] is not None
                 and not has_manager_project_access(data["project_id"])
-          )
-       ):
-            data["is_shared"] = False
+            )
+        )
+    ):
+        data["is_shared"] = False
 
     search_filter_group.update(data)
 
-    if data.get("is_shared", None) is not None \
-        and data.get("project_id", None) is not None \
-        and has_manager_project_access(data["project_id"]):
+    if (
+        data.get("is_shared", None) is not None
+        and data.get("project_id", None) is not None
+        and has_manager_project_access(data["project_id"])
+    ):
         if (
             SearchFilter.query.filter_by(
                 search_filter_group_id=search_filter_group_id
