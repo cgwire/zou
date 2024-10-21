@@ -283,8 +283,8 @@ class ConfigResource(Resource):
         responses:
             200:
                 description: Configuration object including self-hosted status,
-                Crisp token, indexer configuration, SAML status, and dark theme
-                status
+                    Crisp token, indexer configuration, SAML status, and dark
+                    theme status.
         """
         organisation = persons_service.get_organisation()
         conf = {
