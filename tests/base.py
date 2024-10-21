@@ -7,7 +7,7 @@ import fakeredis
 
 from mixer.backend.flask import mixer
 
-from zou.app import app
+from zou.app import app, db
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.utils import fields, auth, fs
 from zou.app.services import (
@@ -46,6 +46,11 @@ from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
 from zou.app.stores import auth_tokens_store
 
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import sessionmaker
+from flask import current_app
+
+
 TEST_FOLDER = os.path.join("tests", "tmp")
 
 auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
@@ -57,10 +62,17 @@ class ApiTestCase(unittest.TestCase):
     """
     Set of helpers to make test development easier.
     """
+    @classmethod
+    def setUpClass(cls):
+        pass
+
+    @classmethod
+    def tearDownClass(cls):
+        pass
 
     def setUp(self):
         """
-        Configure Flask application before each test.
+        Configure application before each test.
         """
         app.test_request_context(headers={"mimetype": "application/json"})
         self.flask_app = app
@@ -68,9 +80,12 @@ class ApiTestCase(unittest.TestCase):
         self.base_headers = {}
         self.post_headers = {"Content-type": "application/json"}
         app.app_context().push()
-        from zou.app.utils import cache
 
+        from zou.app.utils import cache
         cache.clear()
+
+    def tearDown(self):
+        pass
 
     def log_in(self, email):
         tokens = self.post(
@@ -217,31 +232,60 @@ class ApiTestCase(unittest.TestCase):
         file_descriptor.write(response.data)
         return open(target_file_path, "rb").read()
 
-    def tearDown(self):
-        pass
 
 
 class ApiDBTestCase(ApiTestCase):
+    """
+    Set of helpers for Api tests.
+    """
+    @classmethod
+    def setUpClass(cls):
+        """
+        Configure application before all test methods.
+        Create all database tables only once for all tests in this class.
+        """
+        super(ApiDBTestCase, cls).setUpClass()
+        from zou.app.utils import dbhelpers
+        with app.app_context():
+            dbhelpers.drop_all()
+            dbhelpers.create_all()
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Clean up resources after all test methods have run.
+        Delete database.
+        """
+        super(ApiDBTestCase, cls).tearDownClass()
+        from zou.app.utils import dbhelpers
+        with app.app_context():
+            dbhelpers.drop_all()
+    
     def setUp(self):
         """
-        Reset database before each test.
+        Configure application before each test.
+        set up database transaction.
         """
         super(ApiDBTestCase, self).setUp()
 
-        from zou.app.utils import dbhelpers
+        self._db_connection = db.engine.connect()
+        self._db_transaction = self._db_connection.begin()
+        factory = sessionmaker(bind=self._db_connection, binds={})
+        self._db_session = scoped_session(factory, current_app._get_current_object)
+        db.session = self._db_session 
 
-        dbhelpers.drop_all()
-        dbhelpers.create_all()
         self.generate_fixture_user()
         self.log_in_admin()
 
     def tearDown(self):
         """
-        Delete database after each test.
+        Configure application after each test.
+        Rollback transaction to return database to its original state.
         """
-        from zou.app.utils import dbhelpers
-
-        dbhelpers.drop_all()
+        super(ApiDBTestCase, self).tearDown()
+        self._db_transaction.rollback()
+        self._db_connection.close()
+        self._db_session.remove()
 
     def generate_data(self, cls, number, **kwargs):
         """
