@@ -829,7 +829,9 @@ def _get_task_type_priority_map(project_id):
 
 def _is_asset_ready(asset, task, priority_map):
     is_ready = False
-    if "ready_for" in asset and asset["ready_for"] is not None:
+    if asset["is_shared"] and asset["project_id"] != str(task.project_id):
+        is_ready = True
+    elif "ready_for" in asset and asset["ready_for"] is not None:
         priority_ready = priority_map.get(asset["ready_for"], -1) or -1
         priority_task = priority_map.get(str(task.task_type_id), 0) or 0
         is_ready = priority_task <= priority_ready
