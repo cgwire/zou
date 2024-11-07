@@ -6,6 +6,7 @@ from zou.app.models.metadata_descriptor import (
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import permissions
 from zou.app.models.project import Project
+from zou.app.services import user_service
 
 from zou.app.services.exception import (
     WrongParameterException,
