@@ -127,7 +127,7 @@ class BaseModelsResource(Resource, ArgsMixin):
 
         return query
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return permissions.check_admin_permissions()
 
     def add_project_permission_filter(self, query):
@@ -165,13 +165,14 @@ class BaseModelsResource(Resource, ArgsMixin):
                 description: Permission denied
         """
         try:
-            self.check_read_permissions()
             query = self.model.query
             if not request.args:
+                self.check_read_permissions()
                 query = self.add_project_permission_filter(query)
                 return self.all_entries(query)
             else:
                 options = request.args
+                self.check_read_permissions(options)
                 query = self.apply_filters(query, options)
                 query = self.add_project_permission_filter(query)
                 page = int(options.get("page", "-1"))

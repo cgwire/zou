@@ -1518,7 +1518,6 @@ class ProjectCommentsResource(Resource, ArgsMixin):
     """
 
     @jwt_required()
-    @permissions.require_admin
     def get(self, project_id):
         """
         Retrieve all comments to tasks related to given project.
@@ -1538,6 +1537,12 @@ class ProjectCommentsResource(Resource, ArgsMixin):
                 description: All comments to tasks related to given project
         """
         projects_service.get_project(project_id)
+        user_service.check_project_access(project_id)
+        if (
+            permissions.has_vendor_permissions()
+            or permissions.has_client_permissions()
+        ):
+            raise permissions.PermissionDenied
         page = self.get_page()
         return tasks_service.get_comments_for_project(project_id, page)
 
