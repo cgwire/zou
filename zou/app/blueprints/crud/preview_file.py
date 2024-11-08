@@ -37,7 +37,7 @@ class PreviewFilesResource(BaseModelsResource):
 
         return query
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
 

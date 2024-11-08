@@ -52,7 +52,7 @@ class PersonsResource(BaseModelsResource):
                 for person in query.all()
             ]
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def check_create_permissions(self, data):

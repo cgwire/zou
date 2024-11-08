@@ -16,7 +16,7 @@ class WorkingFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, WorkingFile)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         """
         Overriding so that people without admin credentials can still access
         this resource.

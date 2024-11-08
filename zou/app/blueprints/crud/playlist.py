@@ -9,7 +9,7 @@ class PlaylistsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Playlist)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def check_create_permissions(self, playlist):

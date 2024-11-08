@@ -17,7 +17,7 @@ class OutputFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, OutputFile)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         user_service.block_access_to_vendor()
         return True
 

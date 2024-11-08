@@ -288,7 +288,10 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(priority_map[self.task_type_layout_id], 1)
         self.assertEqual(priority_map[self.task_type_animation_id], 2)
         self.assertEqual(priority_map[self.task_type_compositing_id], 3)
-        asset = {"ready_for": str(self.task_type_animation.id)}
+        asset = {
+            "ready_for": str(self.task_type_animation.id),
+            "is_shared": False,
+        }
         self.assertTrue(
             breakdown_service._is_asset_ready(
                 asset, self.task_layout, priority_map
@@ -302,6 +305,33 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertFalse(
             breakdown_service._is_asset_ready(
                 asset, self.task_compositing, priority_map
+            )
+        )
+
+        asset = {
+            "ready_for": str(self.task_type_animation.id),
+            "is_shared": True,
+            "project_id": self.project_id,
+        }
+        self.assertTrue(
+            breakdown_service._is_asset_ready(
+                asset, self.task_layout, priority_map
+            )
+        )
+        self.assertTrue(
+            breakdown_service._is_asset_ready(
+                asset, self.task_animation, priority_map
+            )
+        )
+        self.assertFalse(
+            breakdown_service._is_asset_ready(
+                asset, self.task_compositing, priority_map
+            )
+        )
+        asset["project_id"] = "000000000000000000000000"
+        self.assertTrue(
+            breakdown_service._is_asset_ready(
+                asset, self.task_layout, priority_map
             )
         )
 

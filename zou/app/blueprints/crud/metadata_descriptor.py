@@ -6,6 +6,7 @@ from zou.app.models.metadata_descriptor import (
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
 from zou.app.utils import permissions
 from zou.app.models.project import Project
+from zou.app.services import user_service
 
 from zou.app.services.exception import (
     WrongParameterException,
@@ -16,7 +17,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, MetadataDescriptor)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return not permissions.has_vendor_permissions()
 
     def add_project_permission_filter(self, query):

@@ -20,7 +20,7 @@ class EntityTypesResource(BaseModelsResource):
             for asset_type in query.all()
         ]
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def emit_create_event(self, instance_dict):

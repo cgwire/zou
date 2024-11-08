@@ -12,7 +12,7 @@ class OutputTypesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, OutputType)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
 

@@ -12,7 +12,7 @@ class SoftwaresResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Software)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
 

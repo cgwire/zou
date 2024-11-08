@@ -61,7 +61,7 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
     def emit_create_event(self, entity_dict):
         self.emit_event("new", entity_dict)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def add_project_permission_filter(self, query):
