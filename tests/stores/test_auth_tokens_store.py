@@ -12,6 +12,7 @@ class AuthTokensTestCase(ApiTestCase):
         self.store.clear()
 
     def tearDown(self):
+        super(AuthTokensTestCase, self).tearDown()
         self.store.clear()
 
     def test_get_and_add(self):

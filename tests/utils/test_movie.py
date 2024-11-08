@@ -24,6 +24,7 @@ class MovieTestCase(unittest.TestCase):
         request.urlretrieve(test_url, self.video_only_path)
 
     def tearDown(self):
+        super(MovieTestCase, self).tearDown()
         shutil.rmtree(self.tmpdir)
 
     def test_soundtrack(self):

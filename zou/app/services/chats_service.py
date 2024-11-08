@@ -155,8 +155,8 @@ def create_chat_message(chat_id, person_id, message, files=None):
         "chat:new-message",
         data={
             "chat_id": chat_id,
-            "chat_message_id": str(message.id),
-            "last_message": chat.last_message,
+            "chat_message_id": serialized_message["id"],
+            "last_message": serialized_message["created_at"],
         },
         persist=False,
     )

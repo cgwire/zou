@@ -103,8 +103,11 @@ class SequenceTestCase(ApiDBTestCase):
             "data/sequences?project_id=%s&name=SE01" % self.project_id, 403
         )
 
-    def test_delete_sequence(self):
+    def test_force_delete_sequence(self):
         self.get("data/sequences/%s" % self.sequence_id)
-        self.delete("data/sequences/%s" % self.sequence_id, 400)
         self.delete("data/sequences/%s?force=true" % self.sequence_id)
         self.get("data/sequences/%s" % self.sequence_id, 404)
+
+    def test_cant_delete_sequence(self):
+        self.get("data/sequences/%s" % self.sequence_id)
+        self.delete("data/sequences/%s" % self.sequence_id, 400)
