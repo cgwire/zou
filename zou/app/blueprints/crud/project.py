@@ -31,7 +31,7 @@ class ProjectsResource(BaseModelsResource):
         else:
             return query.filter(user_service.build_related_projects_filter())
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def check_creation_integrity(self, data):

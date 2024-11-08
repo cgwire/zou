@@ -28,7 +28,7 @@ class TasksResource(BaseModelsResource, ArgsMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Task)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def add_project_permission_filter(self, query):

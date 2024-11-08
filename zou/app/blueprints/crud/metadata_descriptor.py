@@ -17,7 +17,7 @@ class MetadataDescriptorsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, MetadataDescriptor)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return not permissions.has_vendor_permissions()
 
     def add_project_permission_filter(self, query):

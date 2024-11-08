@@ -9,7 +9,7 @@ class PreviewBackgroundFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, PreviewBackgroundFile)
 
-    def check_read_permissions(self):
+    def check_read_permissions(self, options=None):
         return True
 
     def update_data(self, data):
