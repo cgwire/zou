@@ -62,6 +62,7 @@ class ApiTestCase(unittest.TestCase):
     """
     Set of helpers to make test development easier.
     """
+
     @classmethod
     def setUpClass(cls):
         pass
@@ -82,6 +83,7 @@ class ApiTestCase(unittest.TestCase):
         app.app_context().push()
 
         from zou.app.utils import cache
+
         cache.clear()
 
     def tearDown(self):
@@ -233,11 +235,11 @@ class ApiTestCase(unittest.TestCase):
         return open(target_file_path, "rb").read()
 
 
-
 class ApiDBTestCase(ApiTestCase):
     """
     Set of helpers for Api tests.
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -246,6 +248,7 @@ class ApiDBTestCase(ApiTestCase):
         """
         super(ApiDBTestCase, cls).setUpClass()
         from zou.app.utils import dbhelpers
+
         with app.app_context():
             dbhelpers.drop_all()
             dbhelpers.create_all()
@@ -258,10 +261,11 @@ class ApiDBTestCase(ApiTestCase):
         """
         super(ApiDBTestCase, cls).tearDownClass()
         from zou.app.utils import dbhelpers
+
         with app.app_context():
             dbhelpers.drop_all()
-    
-    def setUp(self):
+
+    def setUp(self, expire_on_commit=True):
         """
         Configure application before each test.
         set up database transaction.
@@ -270,9 +274,15 @@ class ApiDBTestCase(ApiTestCase):
 
         self._db_connection = db.engine.connect()
         self._db_transaction = self._db_connection.begin()
-        factory = sessionmaker(bind=self._db_connection, binds={})
-        self._db_session = scoped_session(factory, current_app._get_current_object)
-        db.session = self._db_session 
+        factory = sessionmaker(
+            bind=self._db_connection,
+            binds={},
+            expire_on_commit=expire_on_commit,
+        )
+        self._db_session = scoped_session(
+            factory, current_app._get_current_object
+        )
+        db.session = self._db_session
 
         self.generate_fixture_user()
         self.log_in_admin()
