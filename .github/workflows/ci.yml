@@ -6,7 +6,7 @@ on: [push, pull_request]
 jobs:
   ci:
     name: Test with different versions of Python 🐍
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       INDEXER_KEY: testkey0123456789
       PGPASSWORD: mysecretpassword
