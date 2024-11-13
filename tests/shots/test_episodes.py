@@ -128,7 +128,7 @@ class EpisodeTestCase(ApiDBTestCase):
 
     def test_force_delete_episode(self):
         self.get("data/episodes/%s" % self.episode_id)
-        self.delete("data/episodes/%s" % self.episode_id, 400)
+        self.delete("data/episodes/%s?force=true" % self.episode_id)
         self.get("data/episodes/%s" % self.episode_id, 404)
 
     def test_cant_delete_episode(self):
