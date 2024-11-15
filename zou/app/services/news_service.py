@@ -96,6 +96,7 @@ def get_last_news_for_project(
     before=None,
     after=None,
     episode_id=None,
+    current_user=None,
 ):
     """
     Return last 50 news for given project. Add related information to make it
@@ -120,6 +121,9 @@ def get_last_news_for_project(
 
     if len(project_ids) > 0:
         query = query.filter(Project.id.in_(project_ids))
+    elif current_user is not None:
+        if current_user.role.code != "admin":
+            query = query.filter(Project.team.contains(current_user))
 
     if entity_id is not None:
         query = query.filter(Entity.id == entity_id)
@@ -239,6 +243,7 @@ def get_news_stats_for_project(
     author_id=None,
     before=None,
     after=None,
+    current_user=None,
 ):
     """
     Return the number of news by task status for given project and filters.
@@ -262,6 +267,9 @@ def get_news_stats_for_project(
 
     if len(project_ids) > 0:
         query = query.filter(Project.id.in_(project_ids))
+    elif current_user is not None:
+        if current_user.role.code != "admin":
+            query = query.filter(Project.team.contains(current_user))
 
     if task_status_id is not None:
         query = query.filter(Comment.task_status_id == task_status_id)
