@@ -78,12 +78,24 @@ class SearchResource(Resource, ArgsMixin):
                 query, limit=limit, offset=offset
             )
         if "assets" in index_names:
-            results["assets"] = index_service.search_assets(
-                query, project_ids, limit=limit, offset=offset
-            )
+            if (
+                len(project_ids) == 0
+                and not permissions.has_admin_permissions()
+            ):
+                results["assets"] = []
+            else:
+                results["assets"] = index_service.search_assets(
+                    query, project_ids, limit=limit, offset=offset
+                )
         if "shots" in index_names:
-            results["shots"] = index_service.search_shots(
-                query, project_ids, limit=limit, offset=offset
-            )
+            if (
+                len(project_ids) == 0
+                and not permissions.has_admin_permissions()
+            ):
+                results["shots"] = []
+            else:
+                results["shots"] = index_service.search_shots(
+                    query, project_ids, limit=limit, offset=offset
+                )
 
         return results

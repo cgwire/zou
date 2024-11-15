@@ -55,6 +55,12 @@ class AssetSearchTestCase(ApiDBTestCase):
         assets = self.post("data/search", {"query": "rabbit"}, 200)["assets"]
         self.assertEqual(len(assets), 1)
 
+    def test_search_assets_not_allowed(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        assets = self.post("data/search", {"query": "rabbit"}, 200)["assets"]
+        self.assertEqual(len(assets), 0)
+
     def test_search_assets_partial(self):
         assets = self.post("data/search", {"query": "rab"}, 200)["assets"]
         self.assertEqual(len(assets), 1)
@@ -122,6 +128,12 @@ class AssetSearchTestCase(ApiDBTestCase):
     def test_search_shots_exact(self):
         shots = self.post("data/search", {"query": "sh001"}, 200)["shots"]
         self.assertEqual(len(shots), 1)
+
+    def test_search_shots_not_allowed(self):
+        self.generate_fixture_user_manager()
+        self.log_in_manager()
+        assets = self.post("data/search", {"query": "sh001"}, 200)["shots"]
+        self.assertEqual(len(assets), 0)
 
     def test_search_shots_partial(self):
         shots = self.post("data/search", {"query": "sH00"}, 200)["shots"]
