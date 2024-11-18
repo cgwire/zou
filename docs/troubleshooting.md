@@ -43,7 +43,7 @@ Zou cannot connect to it. Zou cannot run properly in that case.
 NB: Database refers to Posgres, Key Value Store refers to Redis, Event
 Stream refers to `zou-events` service, job queue refers to `zou-jobs` service.
 
-# Changing password
+## Changing password
 
 If, for any reasons, the user cannot access to his rest password email, you can
 change his password with the following command:
