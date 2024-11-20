@@ -108,7 +108,9 @@ def generate_tile(movie_path):
     height = 100
     width = math.ceil(height * ratio)
     if rows == 480:
-        select = f"select='not(mod(n\,{math.ceil(duration_in_frames/3840)}))',"
+        select = (
+            rf"select='not(mod(n\,{math.ceil(duration_in_frames/3840)}))',"
+        )
     else:
         select = ""
     try:
@@ -493,7 +495,11 @@ def concat_demuxer(in_files, output_path, *args):
 
         stream = ffmpeg.input(temp.name, format="concat", safe=0)
         stream = ffmpeg.output(
-            stream.video, stream.audio, output_path, c="copy"
+            stream.video,
+            stream.audio,
+            output_path,
+            vf="select=concatdec_select",
+            af="aselect=concatdec_select,aresample=async=1",
         )
         return run_ffmpeg(stream, "-xerror")
 
