@@ -182,6 +182,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         )
         return {
             "id": data["id"],
+            "type": data["type"],
             "first_name": data["first_name"],
             "last_name": data["last_name"],
             "full_name": self.full_name,
