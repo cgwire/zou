@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["3.9", "3.10", "3.11", "3.12"]
+        version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
     services:
       postgres:
         image: "postgres:12.16"
