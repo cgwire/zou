@@ -595,7 +595,7 @@ def check_supervisor_task_access(task, new_data={}):
         # checks that the supervisor only modifies columns
         # for which he is authorized
         allowed_columns = set(
-            ["priority", "start_date", "due_date", "estimation"]
+            ["priority", "start_date", "due_date", "estimation", "difficulty"]
         )
         if len(set(new_data.keys()) - allowed_columns) == 0:
             user_departments = persons_service.get_current_user(
