@@ -1362,8 +1362,22 @@ class SAMLSSOResource(Resource, ArgsMixin):
         authn_response.get_identity()
         email = authn_response.get_subject().text
         person_info = {
-            k: v if not isinstance(v, list) else " ".join(v)
+            k: (
+                " ".join(v)
+                if isinstance(v, list) and k in ["first_name", "last_name"]
+                else v
+            )
             for k, v in authn_response.ava.items()
+            if k
+            in [
+                "first_name",
+                "last_name",
+                "phone",
+                "role",
+                "departments",
+                "studio_id",
+                "active",
+            ]
         }
         try:
             user = persons_service.get_person_by_email(email)
