@@ -77,7 +77,7 @@ class PersonTestCase(ApiDBTestCase):
             "email": "john3.doe@gmail.com",
         }
         resp = self.post("data/persons", data, 400)
-        self.assertEqual(resp["limit"], 4)
+        self.assertEqual(resp["data"]["limit"], 4)
         config.USER_LIMIT = 100
 
     def test_create_person_with_no_data(self):

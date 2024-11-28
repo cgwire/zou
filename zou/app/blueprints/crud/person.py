@@ -97,6 +97,8 @@ class PersonsResource(BaseModelsResource):
                     raise WrongParameterException(
                         "Expiration date can't be in the past."
                     )
+            except WrongParameterException:
+                raise
             except:
                 raise WrongParameterException("Expiration date is not valid.")
         return data
@@ -178,6 +180,8 @@ class PersonResource(BaseModelResource, ArgsMixin):
                     raise WrongParameterException(
                         "Expiration date can't be in the past."
                     )
+            except WrongParameterException:
+                raise
             except:
                 raise WrongParameterException("Expiration date is not valid.")
         return data

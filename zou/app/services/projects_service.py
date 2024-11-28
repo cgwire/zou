@@ -487,7 +487,7 @@ def add_metadata_descriptor(
             field_name=slugify.slugify(name, separator="_"),
         )
     except Exception:
-        raise WrongParameterException
+        raise WrongParameterException("Metadata descriptor already exists.")
     events.emit(
         "metadata-descriptor:new",
         {"metadata_descriptor_id": str(descriptor.id)},
