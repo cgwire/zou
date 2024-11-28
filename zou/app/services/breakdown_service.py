@@ -414,7 +414,7 @@ def _create_episode_casting_link(entity, asset_id, nb_occurences=1, label=""):
                 link = EntityLink.create(
                     entity_in_id=sequence["parent_id"],
                     entity_out_id=asset_id,
-                    nb_occurences=1,
+                    nb_occurences=nb_occurences,
                     label=label,
                 )
                 events.emit(
