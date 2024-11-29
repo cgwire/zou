@@ -116,7 +116,10 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             instance.save()
             self.emit_create_event(instance.serialize())
 
-            return tasks_service.get_task_with_relations(str(instance.id)), 201
+            return (
+                tasks_service.get_task(str(instance.id), relations=True),
+                201,
+            )
 
         except TypeError as exception:
             current_app.logger.error(str(exception), exc_info=1)

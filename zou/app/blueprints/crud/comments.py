@@ -1,7 +1,5 @@
 from flask_jwt_extended import jwt_required
-from flask import current_app
 
-from sqlalchemy.exc import StatementError
 
 from zou.app.models.comment import Comment
 from zou.app.models.attachment_file import AttachmentFile
@@ -18,10 +16,6 @@ from zou.app.services import (
 from zou.app.utils import events, permissions
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-
-from zou.app.services.exception import (
-    CommentNotFoundException,
-)
 
 
 class CommentsResource(BaseModelsResource):
@@ -47,25 +41,8 @@ class CommentResource(BaseModelResource):
         BaseModelResource.__init__(self, Comment)
         self.protected_fields += ["mentions", "department_mentions"]
 
-    @jwt_required()
-    def get(self, instance_id):
-        """
-        Retrieve a model corresponding at given ID and return it as a JSON
-        object.
-        """
-        try:
-            instance = tasks_service.get_comment_with_relations(instance_id)
-            self.check_read_permissions(instance)
-            result = self.clean_get_result(instance)
-
-        except StatementError as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return {"message": str(exception)}, 400
-
-        except ValueError:
-            raise CommentNotFoundException
-
-        return result, 200
+    def get_serialized_instance(self, instance_id, relations=True):
+        return tasks_service.get_comment(instance_id, relations=relations)
 
     def clean_get_result(self, result):
         if permissions.has_client_permissions():
@@ -123,8 +100,8 @@ class CommentResource(BaseModelResource):
                 instance["object_id"], relations=True
             )
             task_type = tasks_service.get_task_type(task["task_type_id"])
-            project = projects_service.get_project_with_relations(
-                task["project_id"]
+            project = projects_service.get_project(
+                task["project_id"], relations=True
             )
             current_user = persons_service.get_current_user(relations=True)
             if current_user["id"] not in project["team"]:

@@ -91,13 +91,12 @@ def clear_studio_cache(studio_id):
 def clear_task_cache(task_id):
     cache.cache.delete_memoized(get_task, task_id)
     cache.cache.delete_memoized(get_task, task_id, True)
-    cache.cache.delete_memoized(get_task_with_relations, task_id)
 
 
 @cache.memoize_function(120)
 def clear_comment_cache(comment_id):
     cache.cache.delete_memoized(get_comment, comment_id)
-    cache.cache.delete_memoized(get_comment_with_relations, comment_id)
+    cache.cache.delete_memoized(get_comment, comment_id, True)
 
 
 @cache.memoize_function(120)
@@ -250,14 +249,6 @@ def get_task(task_id, relations=False):
     return get_task_raw(task_id).serialize(relations=relations)
 
 
-@cache.memoize_function(120)
-def get_task_with_relations(task_id):
-    """
-    Get task matching given id as a dictionary.
-    """
-    return get_task_raw(task_id).serialize(relations=True)
-
-
 def get_task_by_shotgun_id(shotgun_id):
     """
     Get task matching given shotgun id as a dictionary.
@@ -396,7 +387,7 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
             entity_name,
         ) = entry
 
-        task = get_task_with_relations(str(task_object.id))
+        task = get_task(str(task_object.id), relations=relations)
         task["project_name"] = project_name
         task["task_type_name"] = task_type_name
         task["task_status_name"] = task_status_name
@@ -774,21 +765,11 @@ def get_comment_raw(comment_id):
 
 
 @cache.memoize_function(120)
-def get_comment(comment_id):
+def get_comment(comment_id, relations=False):
     """
     Return comment matching give id as a dict.
     """
-    comment = get_comment_raw(comment_id)
-    return comment.serialize()
-
-
-@cache.memoize_function(120)
-def get_comment_with_relations(comment_id):
-    """
-    Return comment matching give id as a dict with joins information.
-    """
-    comment = get_comment_raw(comment_id)
-    return comment.serialize(relations=True)
+    return get_comment_raw(comment_id).serialize(relations=relations)
 
 
 def get_comment_by_preview_file_id(preview_file_id):
@@ -985,7 +966,7 @@ def get_person_tasks(person_id, projects, is_done=None):
                 except EpisodeNotFoundException:
                     episode_name = "MP"
 
-        task_dict = get_task_with_relations(str(task.id))
+        task_dict = get_task(str(task.id), relations=True)
         if entity_type_name == "Sequence" and entity_parent_id is not None:
             episode_id = entity_parent_id
             episode = shots_service.get_episode(episode_id)
@@ -1117,7 +1098,7 @@ def get_person_tasks_to_check(project_ids=None, department_ids=None):
         if episode_id is None:
             episode_id = entity_source_id
 
-        task_dict = get_task_with_relations(str(task.id))
+        task_dict = get_task(str(task.id), relations=True)
         if entity_type_name == "Sequence" and entity_parent_id is not None:
             episode_id = entity_parent_id
             episode = shots_service.get_episode(episode_id)
@@ -1729,7 +1710,7 @@ def get_tasks_for_project(
 
 
 def get_full_task(task_id, user_id):
-    task = get_task_with_relations(task_id)
+    task = get_task(task_id, relations=True)
     task_type = get_task_type(task["task_type_id"])
     project = projects_service.get_project(task["project_id"])
     task_status = get_task_status(task["task_status_id"])
@@ -2054,7 +2035,7 @@ def get_open_tasks(
                 except EpisodeNotFoundException:
                     episode_name = "MP"
 
-        task_dict = get_task_with_relations(str(task.id))
+        task_dict = get_task(str(task.id), relations=True)
         if entity_type_name == "Sequence" and entity_parent_id is not None:
             episode_id = entity_parent_id
             episode = shots_service.get_episode(episode_id)

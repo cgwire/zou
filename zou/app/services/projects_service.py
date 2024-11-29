@@ -38,7 +38,7 @@ from sqlalchemy import or_
 
 def clear_project_cache(project_id):
     cache.cache.delete_memoized(get_project, project_id)
-    cache.cache.delete_memoized(get_project_with_relations, project_id)
+    cache.cache.delete_memoized(get_project, project_id, True)
     cache.cache.delete_memoized(get_project_by_name)
     cache.cache.delete_memoized(open_projects)
 
@@ -259,21 +259,12 @@ def get_project_raw(project_id):
 
 
 @cache.memoize_function(240)
-def get_project(project_id):
+def get_project(project_id, relations=False):
     """
     Get project matching given id, as a dict. Raises an exception if project is
     not found.
     """
-    return get_project_raw(project_id).serialize()
-
-
-@cache.memoize_function(240)
-def get_project_with_relations(project_id):
-    """
-    Get project matching given id, as a dict. Raises an exception if project is
-    not found.
-    """
-    return get_project_raw(project_id).serialize(relations=True)
+    return get_project_raw(project_id).serialize(relations=relations)
 
 
 @cache.memoize_function(120)

@@ -281,6 +281,10 @@ class BaseModelResource(Resource, ArgsMixin):
             abort(404)
         return instance
 
+    def get_serialized_instance(self, instance_id, relations=True):
+        instance = self.get_model_or_404(instance_id)
+        return self.serialize_instance(instance, relations=relations)
+
     def check_read_permissions(self, instance_dict):
         return permissions.check_admin_permissions()
 
@@ -329,8 +333,9 @@ class BaseModelResource(Resource, ArgsMixin):
         """
         relations = self.get_bool_parameter("relations", "true")
         try:
-            instance = self.get_model_or_404(instance_id)
-            result = self.serialize_instance(instance, relations=relations)
+            result = self.get_serialized_instance(
+                instance_id, relations=relations
+            )
             self.check_read_permissions(result)
             result = self.clean_get_result(result)
 
