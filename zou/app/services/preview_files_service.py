@@ -89,7 +89,7 @@ def _is_valid_partial_resolution(resolution):
     return resolution is not None and bool(re.match(r"x\d{3,4}", resolution))
 
 
-def get_preview_file_fps(project):
+def get_preview_file_fps(project, entity=None):
     """
     Return fps set at project level or default fps if the dimensions are not
     set.
@@ -97,6 +97,12 @@ def get_preview_file_fps(project):
     fps = "25.00"
     if project.get("fps", None) is not None:
         fps = project["fps"].replace(",", ".")
+
+    if entity is not None:
+        entity_data = entity.get("data", {}) or {}
+        if entity_data.get("fps", None) is not None:
+            fps = entity_data["fps"].replace(",", ".")
+
     return "%.3f" % float(fps)
 
 
@@ -193,7 +199,7 @@ def prepare_and_store_movie(
                 preview_file = set_preview_file_as_broken(preview_file_id)
                 return preview_file
 
-        fps = get_preview_file_fps(project)
+        fps = get_preview_file_fps(project, entity)
         (width, height) = get_preview_file_dimensions(project, entity)
 
         if normalize:
@@ -619,7 +625,9 @@ def extract_frame_from_preview_file(preview_file, frame_number):
     else:
         raise PreviewFileNotFoundException
 
-    fps = get_preview_file_fps(project)
+    fps = get_preview_file_fps(
+        project, get_entity_from_preview_file(preview_file["id"])
+    )
     extracted_frame_path = movie.extract_frame_from_movie(
         preview_file_path, frame_number, fps
     )
