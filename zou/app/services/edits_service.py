@@ -33,7 +33,7 @@ from zou.app.services.exception import (
 
 def clear_edit_cache(edit_id):
     cache.cache.delete_memoized(get_edit, edit_id)
-    cache.cache.delete_memoized(get_edit_with_relations, edit_id)
+    cache.cache.delete_memoized(get_edit, edit_id, True)
     cache.cache.delete_memoized(get_full_edit, edit_id)
 
 
@@ -241,19 +241,13 @@ def get_edit_raw(edit_id):
 
 
 @cache.memoize_function(120)
-def get_edit(edit_id):
+def get_edit(edit_id, relations=False):
     """
     Return given edit as a dictionary.
     """
-    return get_edit_raw(edit_id).serialize(obj_type="Edit")
-
-
-@cache.memoize_function(120)
-def get_edit_with_relations(edit_id):
-    """
-    Return given edit as a dictionary.
-    """
-    return get_edit_raw(edit_id).serialize(obj_type="Edit", relations=True)
+    return get_edit_raw(edit_id).serialize(
+        obj_type="Edit", relations=relations
+    )
 
 
 @cache.memoize_function(120)

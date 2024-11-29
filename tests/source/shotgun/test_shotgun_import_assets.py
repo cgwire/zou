@@ -57,7 +57,10 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
 
         assets = sorted(self.assets, key=lambda x: x["name"])
         asset = assets[0]
-        asset = assets_service.get_asset_with_relations(asset["id"])
+        asset = assets_service.get_asset(
+            asset["id"],
+            relations=True,
+        )
         project = Project.get_by(shotgun_id=sg_asset["project"]["id"])
         self.assertEqual(asset["description"], sg_asset["description"])
         self.assertEqual(asset["shotgun_id"], sg_asset["id"])

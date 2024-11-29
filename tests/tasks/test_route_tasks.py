@@ -124,9 +124,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         data = {"task_ids": [task_id, shot_task_id]}
         self.put("/actions/persons/%s/assign" % person_id, data)
 
-        task = tasks_service.get_task_with_relations(task_id)
+        task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 1)
-        task = tasks_service.get_task_with_relations(shot_task_id)
+        task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 1)
         notifications = notifications_service.get_last_notifications()
         self.assertEqual(len(notifications), 2)
@@ -143,15 +143,15 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.put("/actions/tasks/clear-assignation", data)
         self.log_in_cg_artist()
         self.put("/actions/persons/%s/assign" % person_id, data)
-        task = tasks_service.get_task_with_relations(task_id)
+        task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
-        task = tasks_service.get_task_with_relations(shot_task_id)
+        task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
         persons_service.add_to_department(department_id, person_id)
         self.put("/actions/persons/%s/assign" % person_id, data)
-        task = tasks_service.get_task_with_relations(task_id)
+        task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
-        task = tasks_service.get_task_with_relations(shot_task_id)
+        task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
 
     def test_clear_assignation(self):
@@ -164,9 +164,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         data = {"task_ids": [task_id, shot_task_id]}
         self.put("/actions/tasks/clear-assignation", data)
 
-        task = tasks_service.get_task_with_relations(task_id)
+        task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
-        task = tasks_service.get_task_with_relations(shot_task_id)
+        task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
 
     def test_comment_task(self):

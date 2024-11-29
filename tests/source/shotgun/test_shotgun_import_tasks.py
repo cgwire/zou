@@ -108,7 +108,10 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         self.assertEqual(len(self.tasks), 1)
 
         task = self.tasks[0]
-        task = tasks_service.get_task_with_relations(task["id"])
+        task = tasks_service.get_task(
+            task["id"],
+            relations=True,
+        )
         project = Project.get_by(name=self.sg_task["project"]["name"])
         task_type = TaskType.get_by(name=self.sg_task["step"]["name"])
         task_status = TaskStatus.get_by(

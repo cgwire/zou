@@ -50,7 +50,7 @@ from zou.app.services.exception import (
 
 def clear_shot_cache(shot_id):
     cache.cache.delete_memoized(get_shot, shot_id)
-    cache.cache.delete_memoized(get_shot_with_relations, shot_id)
+    cache.cache.delete_memoized(get_shot, shot_id, True)
     cache.cache.delete_memoized(get_full_shot, shot_id)
 
 
@@ -402,19 +402,13 @@ def get_shot_raw(shot_id):
 
 
 @cache.memoize_function(120)
-def get_shot(shot_id):
+def get_shot(shot_id, relations=False):
     """
     Return given shot as a dictionary.
     """
-    return get_shot_raw(shot_id).serialize(obj_type="Shot")
-
-
-@cache.memoize_function(120)
-def get_shot_with_relations(shot_id):
-    """
-    Return given shot as a dictionary.
-    """
-    return get_shot_raw(shot_id).serialize(obj_type="Shot", relations=True)
+    return get_shot_raw(shot_id).serialize(
+        obj_type="Shot", relations=relations
+    )
 
 
 @cache.memoize_function(120)
@@ -426,7 +420,7 @@ def get_full_shot(shot_id):
     shots = get_shots_and_tasks({"id": shot_id})
     if len(shots) > 0:
         shot = shots[0]
-        shot.update(get_shot_with_relations(shot_id))
+        shot.update(get_shot(shot_id, relations=True))
         return shot
     else:
         raise ShotNotFoundException

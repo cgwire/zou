@@ -82,7 +82,7 @@ def create_comment(
     """
     Create a new comment and related: news, notifications and events.
     """
-    task = tasks_service.get_task_with_relations(task_id)
+    task = tasks_service.get_task(task_id, relations=True)
     task_status = tasks_service.get_task_status(task_status_id)
     author = _get_comment_author(person_id)
     _check_retake_capping(task_status, task)

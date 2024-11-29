@@ -33,7 +33,7 @@ from zou.app.services.exception import (
 
 def clear_concept_cache(concept_id):
     cache.cache.delete_memoized(get_concept, concept_id)
-    cache.cache.delete_memoized(get_concept_with_relations, concept_id)
+    cache.cache.delete_memoized(get_concept, concept_id, True)
     cache.cache.delete_memoized(get_full_concept, concept_id)
 
 
@@ -61,21 +61,13 @@ def get_concept_raw(concept_id):
 
 
 @cache.memoize_function(120)
-def get_concept_with_relations(concept_id):
+def get_concept(concept_id, relations=False):
     """
     Return given concept as a dictionary.
     """
     return get_concept_raw(concept_id).serialize(
-        obj_type="Concept", relations=True
+        obj_type="Concept", relations=relations
     )
-
-
-@cache.memoize_function(120)
-def get_concept(concept_id):
-    """
-    Return given concept as a dictionary.
-    """
-    return get_concept_raw(concept_id).serialize(obj_type="Concept")
 
 
 @cache.memoize_function(120)
@@ -86,7 +78,7 @@ def get_full_concept(concept_id):
     concepts = get_concepts_and_tasks({"id": concept_id})
     if len(concepts) > 0:
         concept = concepts[0]
-        concept.update(get_concept_with_relations(concept_id))
+        concept.update(get_concept(concept_id, relations=True))
         return concept
     else:
         raise ConceptNotFoundException

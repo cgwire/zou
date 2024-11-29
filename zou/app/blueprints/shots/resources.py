@@ -20,7 +20,6 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import fields, query, permissions
 from zou.app.services.exception import (
     WrongParameterException,
-    WrongParameterException,
 )
 
 

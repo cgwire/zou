@@ -94,7 +94,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         TimezoneType(backend="pytz"),
         default=pytz_timezone(config.DEFAULT_TIMEZONE),
     )
-    locale = db.Column(LocaleType, default=Locale("en", "US"))
+    locale = db.Column(LocaleType, default=Locale(config.DEFAULT_LOCALE))
     data = db.Column(JSONB)
     role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
     has_avatar = db.Column(db.Boolean(), default=False)

@@ -158,6 +158,7 @@ CRISP_TOKEN = os.getenv("CRISP_TOKEN", "")
 IS_SELF_HOSTED = envtobool("IS_SELF_HOSTED", True)
 
 DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
+DEFAULT_LOCALE = os.getenv("DEFAULT_LOCALE", "en_US")
 
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))

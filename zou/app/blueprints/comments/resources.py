@@ -435,8 +435,8 @@ class CommentManyTasksResource(Resource):
         allowed_comments = []
         for comment in comments:
             try:
-                task = tasks_service.get_task_with_relations(
-                    comment["object_id"],
+                task = tasks_service.get_task(
+                    comment["object_id"], relations=True
                 )
                 if (
                     person["role"] == "supervisor"

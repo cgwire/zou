@@ -30,7 +30,6 @@ from zou.app.services.exception import (
     UnactiveUserException,
     TwoFactorAuthenticationNotEnabledException,
     PersonInProtectedAccounts,
-    WrongParameterException,
 )
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,

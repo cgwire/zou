@@ -24,7 +24,7 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
             "data/projects/%s/team" % self.project_id,
             {"person_id": self.person_id},
         )
-        project = projects_service.get_project_with_relations(self.project_id)
+        project = projects_service.get_project(self.project_id, relations=True)
         self.assertEqual(project["team"], [str(self.person_id)])
 
     def test_remove_team_member(self):
@@ -33,5 +33,5 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
         self.delete(
             "data/projects/%s/team/%s" % (self.project_id, self.person_id)
         )
-        project = projects_service.get_project_with_relations(self.project_id)
+        project = projects_service.get_project(self.project_id, relations=True)
         self.assertEqual(project["team"], [])

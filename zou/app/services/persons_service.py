@@ -230,6 +230,8 @@ def create_person(
                 raise WrongParameterException(
                     "Expiration date can't be in the past."
                 )
+        except WrongParameterException:
+            raise
         except:
             raise WrongParameterException("Expiration date is not valid.")
 
@@ -310,6 +312,8 @@ def update_person(person_id, data, bypass_protected_accounts=False):
                 raise WrongParameterException(
                     "Expiration date can't be in the past."
                 )
+        except WrongParameterException:
+            raise
         except:
             raise WrongParameterException("Expiration date is not valid.")
 

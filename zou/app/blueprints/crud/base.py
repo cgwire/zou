@@ -13,7 +13,6 @@ from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions, query
 from zou.app.services.exception import (
     WrongParameterException,
-    WrongParameterException,
 )
 
 
@@ -259,14 +258,6 @@ class BaseModelsResource(Resource, ArgsMixin):
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
 
-        except WrongParameterException as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return (
-                exception.dict
-                if exception.dict is not None
-                else {"message": str(exception)}
-            ), 400
-
     def emit_create_event(self, instance_dict):
         return events.emit(
             "%s:new" % self.model.__tablename__.replace("_", "-"),
@@ -289,6 +280,10 @@ class BaseModelResource(Resource, ArgsMixin):
         if instance is None:
             abort(404)
         return instance
+
+    def get_serialized_instance(self, instance_id, relations=True):
+        instance = self.get_model_or_404(instance_id)
+        return self.serialize_instance(instance, relations=relations)
 
     def check_read_permissions(self, instance_dict):
         return permissions.check_admin_permissions()
@@ -338,8 +333,9 @@ class BaseModelResource(Resource, ArgsMixin):
         """
         relations = self.get_bool_parameter("relations", "true")
         try:
-            instance = self.get_model_or_404(instance_id)
-            result = self.serialize_instance(instance, relations=relations)
+            result = self.get_serialized_instance(
+                instance_id, relations=relations
+            )
             self.check_read_permissions(result)
             result = self.clean_get_result(result)
 
@@ -429,14 +425,6 @@ class BaseModelResource(Resource, ArgsMixin):
         ) as exception:
             current_app.logger.error(str(exception), exc_info=1)
             return {"message": str(exception)}, 400
-
-        except WrongParameterException as exception:
-            current_app.logger.error(str(exception), exc_info=1)
-            return (
-                exception.dict
-                if exception.dict is not None
-                else {"message": str(exception)}
-            ), 400
 
     @jwt_required()
     def delete(self, instance_id):

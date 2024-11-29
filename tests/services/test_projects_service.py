@@ -92,14 +92,14 @@ class ProjectServiceTestCase(ApiDBTestCase):
     def test_add_team_member(self):
         self.generate_fixture_person()
         projects_service.add_team_member(self.project.id, self.person.id)
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [str(self.person.id)])
 
     def test_remove_team_member(self):
         self.generate_fixture_person()
         projects_service.add_team_member(self.project.id, self.person.id)
         projects_service.remove_team_member(self.project.id, self.person.id)
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["team"], [])
 
     def test_add_asset_type_setting(self):
@@ -107,7 +107,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.add_asset_type_setting(
             self.project.id, self.asset_type.id
         )
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["asset_types"], [str(self.asset_type.id)])
 
     def test_remove_asset_type(self):
@@ -118,7 +118,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.remove_asset_type_setting(
             self.project.id, self.asset_type.id
         )
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["asset_types"], [])
 
     def test_add_task_type_setting(self):
@@ -127,7 +127,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.add_task_type_setting(
             self.project.id, self.task_type.id
         )
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["task_types"], [str(self.task_type.id)])
 
     def test_remove_task_type(self):
@@ -139,7 +139,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.remove_task_type_setting(
             self.project.id, self.task_type.id
         )
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["task_types"], [])
 
     def test_add_task_status_setting(self):
@@ -147,7 +147,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.add_task_status_setting(
             self.project.id, self.task_status.id
         )
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["task_statuses"], [str(self.task_status.id)])
 
     def test_remove_task_status(self):
@@ -158,7 +158,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         projects_service.remove_task_status_setting(
             self.project.id, self.task_status.id
         )
-        project = projects_service.get_project_with_relations(self.project.id)
+        project = projects_service.get_project(self.project.id, relations=True)
         self.assertEqual(project["task_statuses"], [])
 
     def test_add_asset_metadata_descriptor(self):
