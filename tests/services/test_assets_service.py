@@ -186,7 +186,10 @@ class AssetServiceTestCase(ApiDBTestCase):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
         assets_service.add_asset_link(self.asset.id, self.asset_character.id)
-        asset = assets_service.get_asset_with_relations(self.asset.id)
+        asset = assets_service.get_asset(
+            self.asset.id,
+            relations=True,
+        )
         self.assertEqual(
             asset["entities_out"][0], str(self.asset_character.id)
         )
@@ -198,5 +201,8 @@ class AssetServiceTestCase(ApiDBTestCase):
         assets_service.remove_asset_link(
             self.asset.id, self.asset_character.id
         )
-        asset = assets_service.get_asset_with_relations(self.asset.id)
+        asset = assets_service.get_asset(
+            self.asset.id,
+            relations=True,
+        )
         self.assertEqual(len(asset["entities_out"]), 0)

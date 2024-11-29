@@ -73,7 +73,7 @@ class UserServiceTestCase(ApiDBTestCase):
         projects_service.add_team_member(
             str(self.project.id), str(self.get_current_user_raw().id)
         )
-        projects_service.get_project_with_relations(self.project_id)
+        projects_service.get_project(self.project_id, relations=True)
         self.assertTrue(
             user_service.check_project_access(str(self.project_id))
         )
