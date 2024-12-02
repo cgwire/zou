@@ -297,6 +297,8 @@ class ConfigResource(Resource):
             ),
             "saml_enabled": config.SAML_ENABLED,
             "saml_idp_name": config.SAML_IDP_NAME,
+            "default_locale": config.DEFAULT_LOCALE,
+            "default_timezone": config.DEFAULT_TIMEZONE,
         }
         if config.SENTRY_KITSU_ENABLED:
             conf["sentry"] = {
