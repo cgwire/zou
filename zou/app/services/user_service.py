@@ -1559,40 +1559,25 @@ def get_timezone():
 
 
 def get_context():
-    if permissions.has_admin_permissions():
-        projects = projects_service.open_projects()
-    else:
-        projects = get_open_projects()
-
-    asset_types = assets_service.get_asset_types()
-    custom_actions = custom_actions_service.get_custom_actions()
-    status_automations = status_automations_service.get_status_automations()
-    persons = persons_service.get_persons(
-        minimal=not permissions.has_manager_permissions()
-    )
-    notification_count = get_unread_notifications_count()
-    project_status_list = projects_service.get_project_statuses()
-    departments = tasks_service.get_departments()
-    studios = tasks_service.get_studios()
-    task_types = tasks_service.get_task_types()
-    task_status_list = tasks_service.get_task_statuses()
-    search_filters = get_filters()
-    search_filter_groups = get_filter_groups()
-    preview_background_files = files_service.get_preview_background_files()
-
-    return {
-        "asset_types": asset_types,
-        "custom_actions": custom_actions,
-        "status_automations": status_automations,
-        "departments": departments,
-        "studios": studios,
-        "notification_count": notification_count,
-        "persons": persons,
-        "project_status": project_status_list,
-        "projects": projects,
-        "task_types": task_types,
-        "task_status": task_status_list,
-        "search_filters": search_filters,
-        "search_filter_groups": search_filter_groups,
-        "preview_background_files": preview_background_files,
+    context = {
+        "asset_types": assets_service.get_asset_types(),
+        "custom_actions": custom_actions_service.get_custom_actions(),
+        "status_automations": status_automations_service.get_status_automations(),
+        "departments": tasks_service.get_departments(),
+        "studios": tasks_service.get_studios(),
+        "notification_count": get_unread_notifications_count(),
+        "persons": persons_service.get_persons(
+            minimal=not permissions.has_manager_permissions()
+        ),
+        "project_status": projects_service.get_project_statuses(),
+        "projects": get_open_projects(),
+        "task_types": tasks_service.get_task_types(),
+        "task_status": tasks_service.get_task_statuses(),
+        "search_filters": get_filters(),
+        "search_filter_groups": get_filter_groups(),
+        "preview_background_files": files_service.get_preview_background_files(),
     }
+
+    if permissions.has_admin_permissions():
+        context["user_limit"] = config.USER_LIMIT
+    return context
