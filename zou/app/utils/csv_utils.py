@@ -1,9 +1,6 @@
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
 import csv
 
+from io import StringIO
 from flask import make_response
 from slugify import slugify
 
