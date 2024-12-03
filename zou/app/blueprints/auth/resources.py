@@ -78,7 +78,9 @@ class AuthenticatedResource(Resource):
             description: Person not found
         """
         person = persons_service.get_current_user(relations=True)
-        organisation = persons_service.get_organisation()
+        organisation = persons_service.get_organisation(
+            sensitive=permissions.has_admin_permissions()
+        )
         return {
             "authenticated": True,
             "user": person,

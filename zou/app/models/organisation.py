@@ -22,7 +22,19 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     dark_theme_by_default = db.Column(db.Boolean(), default=False)
     format_duration_in_hours = db.Column(db.Boolean(), default=False)
 
-    def present(self):
+    def present(self, sensitive=False):
+        self.serialize(
+            ignored_attrs=(
+                []
+                if sensitive
+                else [
+                    "chat_token_slack",
+                    "chat_webhook_mattermost",
+                    "chat_token_discord",
+                ]
+            )
+        )
+
         return fields.serialize_dict(
             {
                 "id": self.id,
