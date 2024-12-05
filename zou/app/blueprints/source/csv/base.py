@@ -131,5 +131,5 @@ class BaseCsvProjectImportResource(BaseCsvImportResource, ArgsMixin):
         descriptors = projects_service.get_metadata_descriptors(project_id)
         for descriptor in descriptors:
             if descriptor["entity_type"] == entity_type:
-                descriptor_map[descriptor["name"]] = descriptor["field_name"]
+                descriptor_map[descriptor["name"]] = descriptor
         return descriptor_map

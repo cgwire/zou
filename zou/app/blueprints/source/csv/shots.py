@@ -21,7 +21,7 @@ from zou.app.services.tasks_service import (
 )
 from zou.app.services.comments_service import create_comment
 from zou.app.services.exception import WrongParameterException
-from zou.app.utils import events
+from zou.app.utils import events, string
 
 
 class ShotsCsvImportResource(BaseCsvProjectImportResource):
@@ -229,9 +229,16 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if fps is not None:
             shot_new_values["data"]["fps"] = fps
 
-        for name, field_name in self.descriptor_fields.items():
+        for name, descriptor in self.descriptor_fields.items():
             if name in row:
-                shot_new_values["data"][field_name] = row[name]
+                if descriptor["data_type"] == "boolean":
+                    shot_new_values["data"][descriptor["field_name"]] = (
+                        "true" if string.strtobool(row[name]) else "false"
+                    )
+                else:
+                    shot_new_values["data"][descriptor["field_name"]] = row[
+                        name
+                    ]
 
         tasks_update = self.get_tasks_update(row)
 
