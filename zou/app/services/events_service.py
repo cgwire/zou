@@ -7,7 +7,7 @@ from sqlalchemy import func
 def get_last_events(
     after=None,
     before=None,
-    page_size=100,
+    limit=100,
     only_files=False,
     project_id=None,
     name=None,
@@ -46,7 +46,7 @@ def get_last_events(
     if name is not None:
         query = query.filter(ApiEvent.name == name)
 
-    events = query.limit(page_size).all()
+    events = query.limit(limit).all()
     return [
         fields.serialize_dict(
             {
@@ -71,7 +71,7 @@ def create_login_log(person_id, ip_address, origin):
     return login_log.serialize()
 
 
-def get_last_login_logs(before=None, page_size=100):
+def get_last_login_logs(before=None, limit=100):
     """
     Return last 100 login logs published. If before parameter is set, it returns
     last 100 login logs before this date.
@@ -85,7 +85,7 @@ def get_last_login_logs(before=None, page_size=100):
             LoginLog.created_at < func.cast(before, LoginLog.created_at.type)
         )
 
-    login_logs = query.limit(page_size).all()
+    login_logs = query.limit(limit).all()
     return [
         {
             "created_at": fields.serialize_value(created_at),

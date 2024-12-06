@@ -290,5 +290,5 @@ class AuthTestCase(ApiDBTestCase):
         self.log_in("john.did@gmail.com")
         login_logs = self.get("/data/events/login-logs/last")
         self.assertEqual(len(login_logs), 4)
-        login_logs = self.get("/data/events/login-logs/last?page_size=2")
+        login_logs = self.get("/data/events/login-logs/last?limit=2")
         self.assertEqual(len(login_logs), 2)

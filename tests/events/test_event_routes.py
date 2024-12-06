@@ -34,7 +34,7 @@ class EventsRoutesTestCase(ApiDBTestCase):
 
         events = self.get("/data/events/last")
         self.assertEqual(len(events), 4)
-        events = self.get("/data/events/last?page_size=2")
+        events = self.get("/data/events/last?limit=2")
         self.assertEqual(len(events), 2)
         events = self.get("/data/events/last?before=%s" % before)
         self.assertEqual(len(events), 2)

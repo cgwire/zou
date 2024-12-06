@@ -92,7 +92,7 @@ def get_last_news_for_project(
     task_status_id=None,
     author_id=None,
     page=1,
-    page_size=50,
+    limit=50,
     before=None,
     after=None,
     episode_id=None,
@@ -102,7 +102,7 @@ def get_last_news_for_project(
     Return last 50 news for given project. Add related information to make it
     displayable.
     """
-    offset = (page - 1) * page_size
+    offset = (page - 1) * limit
 
     query = (
         News.query.order_by(News.created_at.desc())
@@ -158,7 +158,7 @@ def get_last_news_for_project(
             News.created_at < func.cast(before, News.created_at.type)
         )
 
-    (total, nb_pages) = _get_news_total(query, page_size)
+    (total, nb_pages) = _get_news_total(query, limit)
 
     query = query.add_columns(
         Project.id,
@@ -172,7 +172,7 @@ def get_last_news_for_project(
         Entity.preview_file_id,
     )
 
-    query = query.limit(page_size)
+    query = query.limit(limit)
     query = query.offset(offset)
     news_list = query.all()
     result = []
@@ -221,15 +221,15 @@ def get_last_news_for_project(
         "data": result,
         "total": total,
         "nb_pages": nb_pages,
-        "limit": page_size,
+        "limit": limit,
         "offset": offset,
         "page": page,
     }
 
 
-def _get_news_total(query, page_size):
+def _get_news_total(query, limit):
     total = query.count()
-    nb_pages = int(math.ceil(total / float(page_size)))
+    nb_pages = int(math.ceil(total / float(limit)))
     return total, nb_pages
 
 
@@ -314,4 +314,4 @@ def get_news_for_entity(entity_id):
     """
     Get all news related to a given entity.
     """
-    return get_last_news_for_project(entity_id=entity_id, page_size=2000)
+    return get_last_news_for_project(entity_id=entity_id, limit=2000)
