@@ -398,14 +398,14 @@ class ProjectEntityLinksResource(Resource, ArgsMixin):
             type: string
             format: Number
             x-example: 2
-          - in: limit
-            name: page
+          - in: query
+            name: limit
             required: False
             type: string
             format: Number
             x-example: 100
-          - in: cursor_created_at
-            name: page
+          - in: query
+            name: cursor_created_at
             required: False
             type: string
             format: Datetime
