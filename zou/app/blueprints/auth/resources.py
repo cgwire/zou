@@ -229,15 +229,15 @@ class LoginResource(Resource, ArgsMixin):
                 "HTTP_X_REAL_IP", request.remote_addr
             )
 
+            organisation = persons_service.get_organisation()
+
+            response = {
+                "user": user,
+                "organisation": organisation,
+                "login": True,
+            }
+
             if is_from_browser(request.user_agent):
-                organisation = persons_service.get_organisation()
-                response = jsonify(
-                    {
-                        "user": user,
-                        "organisation": organisation,
-                        "login": True,
-                    }
-                )
                 set_access_cookies(response, access_token)
                 set_refresh_cookies(response, refresh_token)
                 events_service.create_login_log(user["id"], ip_address, "web")
@@ -245,12 +245,8 @@ class LoginResource(Resource, ArgsMixin):
                 events_service.create_login_log(
                     user["id"], ip_address, "script"
                 )
-                response = {
-                    "login": True,
-                    "user": user,
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                }
+                response["access_token"] = access_token
+                response["refresh_token"] = refresh_token
             current_app.logger.info(f"User {email} is logged in.")
             return response
         except WrongUserException:
