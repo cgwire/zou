@@ -231,11 +231,15 @@ class LoginResource(Resource, ArgsMixin):
 
             organisation = persons_service.get_organisation()
 
-            response = {
-                "user": user,
-                "organisation": organisation,
-                "login": True,
-            }
+            response = jsonify(
+                {
+                    "user": user,
+                    "organisation": organisation,
+                    "login": True,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }
+            )
 
             if is_from_browser(request.user_agent):
                 set_access_cookies(response, access_token)
@@ -245,8 +249,6 @@ class LoginResource(Resource, ArgsMixin):
                 events_service.create_login_log(
                     user["id"], ip_address, "script"
                 )
-                response["access_token"] = access_token
-                response["refresh_token"] = refresh_token
             current_app.logger.info(f"User {email} is logged in.")
             return response
         except WrongUserException:
