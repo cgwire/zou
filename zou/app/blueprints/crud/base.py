@@ -29,19 +29,7 @@ class BaseModelsResource(Resource, ArgsMixin):
         return self.serialize_list(query.all(), relations=relations)
 
     def serialize_list(self, entries, relations=False):
-        return self.model.serialize_list(
-            entries,
-            relations=relations,
-            ignored_attrs=(
-                []
-                if permissions.has_admin_permissions()
-                else [
-                    "chat_token_slack",
-                    "chat_webhook_mattermost",
-                    "chat_token_discord",
-                ]
-            ),
-        )
+        return self.model.serialize_list(entries, relations=relations)
 
     def paginated_entries(self, query, page, limit=None, relations=False):
         total = query.count()
