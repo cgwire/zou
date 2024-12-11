@@ -36,7 +36,7 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_persons)
 
 
-def clear_oranisation_cache():
+def clear_organisation_cache():
     cache.cache.delete_memoized(get_organisation)
     cache.cache.delete_memoized(get_organisation, True)
 
@@ -502,7 +502,7 @@ def update_organisation(organisation_id, data):
     organisation = Organisation.get(organisation_id)
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
-    clear_oranisation_cache()
+    clear_organisation_cache()
     return organisation.present()
 
 

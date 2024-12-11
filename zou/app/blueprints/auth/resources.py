@@ -229,7 +229,9 @@ class LoginResource(Resource, ArgsMixin):
                 "HTTP_X_REAL_IP", request.remote_addr
             )
 
-            organisation = persons_service.get_organisation()
+            organisation = persons_service.get_organisation(
+                sensitive=user["role"] != "admin"
+            )
 
             response = jsonify(
                 {
