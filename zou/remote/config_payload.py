@@ -67,7 +67,8 @@ def get_file_from_storage(storage, output_file_path, filename):
         or os.path.getsize(output_file_path) == 0
     ):
         with open(output_file_path, "wb") as output_file:
-            output_file.write(storage.read(filename))
+            for chunk in storage.read_chunks(filename):
+                output_file.write(chunk)
     return output_file_path
 
 
