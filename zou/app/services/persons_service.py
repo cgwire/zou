@@ -36,8 +36,9 @@ def clear_person_cache():
     cache.cache.delete_memoized(get_persons)
 
 
-def clear_oranisation_cache():
+def clear_organisation_cache():
     cache.cache.delete_memoized(get_organisation)
+    cache.cache.delete_memoized(get_organisation, True)
 
 
 @cache.memoize_function(120)
@@ -484,14 +485,14 @@ Thank you and see you soon on Kitsu,
 
 
 @cache.memoize_function(120)
-def get_organisation():
+def get_organisation(sensitive=False):
     """
     Return organisation set up on this instance. It creates it if none exists.
     """
     organisation = Organisation.query.first()
     if organisation is None:
         organisation = Organisation.create(name="Kitsu")
-    return organisation.present()
+    return organisation.present(sensitive=sensitive)
 
 
 def update_organisation(organisation_id, data):
@@ -501,7 +502,7 @@ def update_organisation(organisation_id, data):
     organisation = Organisation.get(organisation_id)
     organisation.update(data)
     events.emit("organisation:update", {"organisation_id": organisation_id})
-    clear_oranisation_cache()
+    clear_organisation_cache()
     return organisation.present()
 
 

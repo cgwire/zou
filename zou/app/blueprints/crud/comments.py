@@ -22,19 +22,6 @@ class CommentsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Comment)
 
-    def check_read_permissions(self, options=None):
-        if options is not None:
-            if "project_id" in options:
-                user_service.check_project_access(options["project_id"])
-                if (
-                    permissions.has_vendor_permissions()
-                    or permissions.has_client_permissions()
-                ):
-                    raise permissions.PermissionDenied
-                else:
-                    return True
-        return permissions.check_admin_permissions()
-
 
 class CommentResource(BaseModelResource):
     def __init__(self):

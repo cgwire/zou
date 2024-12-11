@@ -421,7 +421,7 @@ def sync_file_changes(event_source, source, logs_directory):
 @click.option("--source", default="http://localhost:8080/api")
 @click.option("--minutes", default=0)
 @click.option("--page-size", default=300)
-def sync_last_events(source, minutes, page_size):
+def sync_last_events(source, minutes, limit):
     """
     Retrieve last events that occured on source instance and import data related
     to them. It expects that credentials to connect to source instance are
@@ -430,7 +430,7 @@ def sync_last_events(source, minutes, page_size):
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_last_changes_from_another_instance(
-        source, login, password, minutes=minutes, page_size=page_size
+        source, login, password, minutes=minutes, limit=limit
     )
 
 
@@ -438,7 +438,7 @@ def sync_last_events(source, minutes, page_size):
 @click.option("--source", default="http://localhost:8080/api")
 @click.option("--minutes", default=20)
 @click.option("--page-size", default=50)
-def sync_last_files(source, minutes, page_size):
+def sync_last_files(source, minutes, limit):
     """
     Retrieve last preview files and thumbnails uploaded on source instance.
     It expects that credentials to connect to source instance are
@@ -447,7 +447,7 @@ def sync_last_files(source, minutes, page_size):
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_last_file_changes_from_another_instance(
-        source, login, password, minutes=minutes, page_size=page_size
+        source, login, password, minutes=minutes, limit=limit
     )
 
 

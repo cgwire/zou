@@ -32,7 +32,7 @@ class EventsResource(Resource, ArgsMixin):
             type: boolean
             default: False
           - in: query
-            name: page_size
+            name: limit
             type: integer
             default: 100
             x-example: 100
@@ -50,7 +50,7 @@ class EventsResource(Resource, ArgsMixin):
                 ("after", None, False),
                 ("before", None, False),
                 ("only_files", False, False),
-                ("page_size", 100, False),
+                ("limit", 100, False),
                 ("project_id", None, False),
                 ("name", None, False),
             ],
@@ -59,7 +59,7 @@ class EventsResource(Resource, ArgsMixin):
         permissions.check_manager_permissions()
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
-        page_size = args["page_size"]
+        limit = args["limit"]
         only_files = args["only_files"] == "true"
         project_id = args.get("project_id", None)
         name = args["name"]
@@ -71,7 +71,7 @@ class EventsResource(Resource, ArgsMixin):
             return events_service.get_last_events(
                 after=after,
                 before=before,
-                page_size=page_size,
+                limit=limit,
                 only_files=only_files,
                 project_id=project_id,
                 name=name,
@@ -93,18 +93,18 @@ class LoginLogsResource(Resource, ArgsMixin):
             format: date
             x-example: "2022-07-12T00:00:00"
           - in: query
-            name: page_size
+            name: limit
             type: integer
             x-example: 100
         responses:
             200:
                 description: All login logs
         """
-        args = self.get_args(["before", ("page_size", 100)])
+        args = self.get_args(["before", ("limit", 100)])
 
         permissions.check_manager_permissions()
         before = None
         if args["before"] is not None:
             before = date_helpers.get_datetime_from_string(args["before"])
-        page_size = args["page_size"]
-        return events_service.get_last_login_logs(before, page_size)
+        limit = args["limit"]
+        return events_service.get_last_login_logs(before, limit)

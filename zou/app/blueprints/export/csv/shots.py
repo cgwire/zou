@@ -76,7 +76,7 @@ class ShotsCsvExport(Resource):
             "FPS",
         ]
 
-        metadata_headers = [name for (name, _) in metadata_infos]
+        metadata_headers = [name for (name, _, _) in metadata_infos]
 
         validation_assignations_columns = []
         for validation_column in validation_columns:
@@ -123,9 +123,15 @@ class ShotsCsvExport(Resource):
                     for person_id in task["assignees"]
                 ]
             )
-
-        for _, field_name in metadata_infos:
-            row.append(result.get("data", {}).get(field_name, ""))
+        result_data = result.get("data", {}) or {}
+        for _, field_name, data_type in metadata_infos:
+            result_metadata = result_data.get(field_name, "")
+            if data_type == "boolean":
+                row.append(
+                    "true" if result_metadata.lower() == "true" else "false"
+                )
+            else:
+                row.append(result_metadata)
 
         for column in validation_columns:
             if column in task_map:
@@ -171,7 +177,11 @@ class ShotsCsvExport(Resource):
         ]
 
         columns = [
-            (descriptor["name"], descriptor["field_name"])
+            (
+                descriptor["name"],
+                descriptor["field_name"],
+                descriptor["data_type"],
+            )
             for descriptor in descriptors
         ]
 

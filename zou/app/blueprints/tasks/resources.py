@@ -1532,6 +1532,11 @@ class ProjectCommentsResource(Resource, ArgsMixin):
             type: string
             format: UUID
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: limit
+            type: integer
+            default: 100
+            x-example: 100
         responses:
             200:
                 description: All comments to tasks related to given project
@@ -1544,7 +1549,8 @@ class ProjectCommentsResource(Resource, ArgsMixin):
         ):
             raise permissions.PermissionDenied
         page = self.get_page()
-        return tasks_service.get_comments_for_project(project_id, page)
+        limit = self.get_limit()
+        return tasks_service.get_comments_for_project(project_id, page, limit)
 
 
 class ProjectPreviewFilesResource(Resource, ArgsMixin):

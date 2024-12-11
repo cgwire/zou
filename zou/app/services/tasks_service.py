@@ -1659,7 +1659,7 @@ def update_preview_file_info(preview_file):
     return entity
 
 
-def get_comments_for_project(project_id, page=0):
+def get_comments_for_project(project_id, page=0, limit=None):
     """
     Return all comments for given project.
     """
@@ -1668,7 +1668,9 @@ def get_comments_for_project(project_id, page=0):
         .filter(Task.project_id == project_id)
         .order_by(Comment.updated_at.desc())
     )
-    return query_utils.get_paginated_results(query, page, relations=True)
+    return query_utils.get_paginated_results(
+        query, page, limit, relations=True
+    )
 
 
 def get_time_spents_for_project(project_id, page=0):

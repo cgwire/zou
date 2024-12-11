@@ -323,12 +323,12 @@ def run_other_sync(project=None, with_events=False):
         sync_entries("events", ApiEvent, project=project)
 
 
-def run_last_events_sync(minutes=0, page_size=300):
+def run_last_events_sync(minutes=0, limit=300):
     """
     Retrieve last events from source instance and import related data and
     action.
     """
-    path = "events/last?page_size=%s" % page_size
+    path = "events/last?limit=%s" % limit
     if minutes > 0:
         now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
@@ -346,12 +346,12 @@ def run_last_events_sync(minutes=0, page_size=300):
                 pass
 
 
-def run_last_events_files(minutes=0, page_size=50):
+def run_last_events_files(minutes=0, limit=50):
     """
     Retrieve last events from source instance and import related data and
     action.
     """
-    path = "events/last?only_files=true&page_size=%s" % page_size
+    path = "events/last?only_files=true&limit=%s" % limit
     if minutes > 0:
         now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)

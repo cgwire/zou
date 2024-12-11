@@ -27,15 +27,6 @@ class MetadataDescriptorsResource(BaseModelsResource):
             )
         return query
 
-    def all_entries(self, query=None, relations=True):
-        if query is None:
-            query = self.model.query
-
-        return [
-            metadata_descriptor.serialize(relations=relations)
-            for metadata_descriptor in query.all()
-        ]
-
     def check_creation_integrity(self, data):
         """
         Check if the data descriptor has a valid data_type.
@@ -45,6 +36,15 @@ class MetadataDescriptorsResource(BaseModelsResource):
             if data["data_type"] not in types:
                 raise WrongParameterException("Invalid data_type")
         return True
+
+    def all_entries(self, query=None, relations=True):
+        if query is None:
+            query = self.model.query
+
+        return [
+            metadata_descriptor.serialize(relations=relations)
+            for metadata_descriptor in query.all()
+        ]
 
 
 class MetadataDescriptorResource(BaseModelResource):

@@ -21,7 +21,7 @@ class NewsMixin(ArgsMixin):
             episode_id,
             person_id,
             page,
-            page_size,
+            limit,
             after,
             before,
         ) = self.get_arguments()
@@ -38,7 +38,7 @@ class NewsMixin(ArgsMixin):
             episode_id=episode_id,
             author_id=person_id,
             page=page,
-            page_size=page_size,
+            limit=limit,
             after=after,
             before=before,
             current_user=current_user,
@@ -72,7 +72,7 @@ class NewsMixin(ArgsMixin):
                 "project_id",
                 "episode_id",
                 {"name": "page", "default": 1, "type": int},
-                {"name": "page_size", "default": 50, "type": int},
+                {"name": "limit", "default": 50, "type": int},
                 "after",
                 "before",
             ],
@@ -84,7 +84,7 @@ class NewsMixin(ArgsMixin):
             args["episode_id"],
             args["person_id"],
             args["page"],
-            args["page_size"],
+            args["limit"],
             args["after"],
             args["before"],
         )
@@ -120,7 +120,7 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
             type: integer
             x-example: 1
           - in: query
-            name: page_size
+            name: limit
             type: integer
             x-example: 50
           - in: query
@@ -183,7 +183,7 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
             type: integer
             x-example: 1
           - in: query
-            name: page_size
+            name: limit
             type: integer
             x-example: 50
           - in: query

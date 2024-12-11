@@ -134,7 +134,7 @@ def indexer_key_error(error):
         raise error
 
 
-if not config.DEBUG:
+if config.DEBUG:
 
     @app.errorhandler(Exception)
     def server_error(error):

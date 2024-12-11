@@ -1,7 +1,6 @@
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from zou.app.utils import fields
 
 
 class Organisation(db.Model, BaseMixin, SerializerMixin):
@@ -22,22 +21,15 @@ class Organisation(db.Model, BaseMixin, SerializerMixin):
     dark_theme_by_default = db.Column(db.Boolean(), default=False)
     format_duration_in_hours = db.Column(db.Boolean(), default=False)
 
-    def present(self):
-        return fields.serialize_dict(
-            {
-                "id": self.id,
-                "chat_token_slack": self.chat_token_slack,
-                "chat_webhook_mattermost": self.chat_webhook_mattermost,
-                "chat_token_discord": self.chat_token_discord,
-                "name": self.name,
-                "has_avatar": self.has_avatar,
-                "hours_by_day": self.hours_by_day,
-                "hd_by_default": self.hd_by_default,
-                "use_original_file_name": self.use_original_file_name,
-                "timesheets_locked": self.timesheets_locked,
-                "dark_theme_by_default": self.dark_theme_by_default,
-                "format_duration_in_hours": self.format_duration_in_hours,
-                "updated_at": self.updated_at,
-                "created_at": self.created_at,
-            }
+    def present(self, sensitive=False):
+        return self.serialize(
+            ignored_attrs=(
+                []
+                if sensitive
+                else [
+                    "chat_token_slack",
+                    "chat_webhook_mattermost",
+                    "chat_token_discord",
+                ]
+            )
         )

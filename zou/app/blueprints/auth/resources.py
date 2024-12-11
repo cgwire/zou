@@ -78,7 +78,9 @@ class AuthenticatedResource(Resource):
             description: Person not found
         """
         person = persons_service.get_current_user(relations=True)
-        organisation = persons_service.get_organisation()
+        organisation = persons_service.get_organisation(
+            sensitive=permissions.has_admin_permissions()
+        )
         return {
             "authenticated": True,
             "user": person,
@@ -227,15 +229,21 @@ class LoginResource(Resource, ArgsMixin):
                 "HTTP_X_REAL_IP", request.remote_addr
             )
 
+            organisation = persons_service.get_organisation(
+                sensitive=user["role"] != "admin"
+            )
+
+            response = jsonify(
+                {
+                    "user": user,
+                    "organisation": organisation,
+                    "login": True,
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                }
+            )
+
             if is_from_browser(request.user_agent):
-                organisation = persons_service.get_organisation()
-                response = jsonify(
-                    {
-                        "user": user,
-                        "organisation": organisation,
-                        "login": True,
-                    }
-                )
                 set_access_cookies(response, access_token)
                 set_refresh_cookies(response, refresh_token)
                 events_service.create_login_log(user["id"], ip_address, "web")
@@ -243,12 +251,6 @@ class LoginResource(Resource, ArgsMixin):
                 events_service.create_login_log(
                     user["id"], ip_address, "script"
                 )
-                response = {
-                    "login": True,
-                    "user": user,
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                }
             current_app.logger.info(f"User {email} is logged in.")
             return response
         except WrongUserException:
