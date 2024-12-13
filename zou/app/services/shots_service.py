@@ -1663,7 +1663,7 @@ def set_frames_from_task_type_preview_files(
     project = projects_service.get_project(project_id)
     updates = []
     for shot, preview_duration in results:
-        nb_frames = round(preview_duration * int(project["fps"]))
+        nb_frames = round(preview_duration * float(project["fps"]))
         updates.append(
             {
                 "id": shot.id,
