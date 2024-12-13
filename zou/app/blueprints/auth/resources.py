@@ -14,6 +14,7 @@ from flask_jwt_extended import (
     set_access_cookies,
     set_refresh_cookies,
     unset_jwt_cookies,
+    unset_refresh_cookies,
     get_jwt,
 )
 
@@ -388,6 +389,7 @@ class RefreshTokenResource(Resource):
         if is_from_browser(request.user_agent):
             response = jsonify({"refresh": True})
             set_access_cookies(response, access_token)
+            unset_refresh_cookies(response)
         else:
             return {"access_token": access_token}
 
