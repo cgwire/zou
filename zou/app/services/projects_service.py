@@ -678,7 +678,7 @@ def get_project_fps(project_id):
     Return fps set at project level or default fps if it not set.
     """
     project = get_project(project_id)
-    return float(project["fps"] or "24.00")
+    return float(project["fps"] or "25.00")
 
 
 def get_task_type_priority_map(project_id, for_entity="Asset"):
