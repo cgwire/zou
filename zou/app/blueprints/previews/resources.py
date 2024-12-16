@@ -11,7 +11,6 @@ from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.stores import file_store
 from zou.app.services import (
-    assets_service,
     comments_service,
     chats_service,
     deletion_service,
@@ -21,7 +20,6 @@ from zou.app.services import (
     persons_service,
     projects_service,
     preview_files_service,
-    shots_service,
     tasks_service,
     user_service,
 )
@@ -1111,13 +1109,11 @@ class SetMainPreviewResource(Resource, ArgsMixin):
             preview_files_service.replace_extracted_frame_for_preview_file(
                 preview_file, frame_number
             )
-        asset = entities_service.update_entity_preview(
+        entity = entities_service.update_entity_preview(
             task["entity_id"],
             preview_file_id,
         )
-        assets_service.clear_asset_cache(asset["id"])
-        shots_service.clear_shot_cache(asset["id"])
-        return asset
+        return entity
 
 
 class UpdatePreviewPositionResource(Resource, ArgsMixin):

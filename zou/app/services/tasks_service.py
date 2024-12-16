@@ -1646,16 +1646,10 @@ def update_preview_file_info(preview_file):
         project = projects_service.get_project(task.project_id)
 
         if project["is_set_preview_automated"]:
-            entity_id = str(task.entity_id)
             entity = entities_service.update_entity_preview(
-                entity_id,
+                task.entity_id,
                 preview_file["id"],
             )
-            assets_service.clear_asset_cache(entity_id)
-            edits_service.clear_edit_cache(entity_id)
-            shots_service.clear_shot_cache(entity_id)
-            shots_service.clear_episode_cache(entity_id)
-            shots_service.clear_sequence_cache(entity_id)
     return entity
 
 
