@@ -2,6 +2,9 @@ from zou.app.services import (
     base_service,
     projects_service,
     notifications_service,
+    assets_service,
+    shots_service,
+    edits_service,
 )
 from zou.app.utils import (
     date_helpers,
@@ -108,12 +111,13 @@ def update_entity_preview(entity_id, preview_file_id):
     if entity is None:
         raise EntityNotFoundException
 
+    entity_id = str(entity.id)
     preview_file = PreviewFile.get(preview_file_id)
     if preview_file is None:
         raise PreviewFileNotFoundException
 
     entity.update({"preview_file_id": preview_file.id})
-    clear_entity_cache(str(entity.id))
+    clear_entity_cache(entity_id)
     events.emit(
         "preview-file:set-main",
         {"entity_id": entity_id, "preview_file_id": preview_file_id},
@@ -125,9 +129,14 @@ def update_entity_preview(entity_id, preview_file_id):
         entity_type_name = entity_type.name.lower()
     events.emit(
         "%s:update" % entity_type_name,
-        {"%s_id" % entity_type_name: str(entity.id)},
+        {"%s_id" % entity_type_name: entity_id},
         project_id=str(entity.project_id),
     )
+    assets_service.clear_asset_cache(entity_id)
+    edits_service.clear_edit_cache(entity_id)
+    shots_service.clear_shot_cache(entity_id)
+    shots_service.clear_episode_cache(entity_id)
+    shots_service.clear_sequence_cache(entity_id)
     return entity.serialize()
 
 
