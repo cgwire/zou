@@ -1,6 +1,5 @@
 import collections
 import uuid
-import datetime
 
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
@@ -1971,12 +1970,12 @@ def get_open_tasks(
             query_stats = query_stats.filter(Task.assignees.any(id=person_id))
 
     if start_date is not None:
-        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        start_date = func.cast(start_date, Task.start_date.type)
         query = query.filter(Task.start_date >= start_date)
         query_stats = query_stats.filter(Task.start_date >= start_date)
 
     if due_date is not None:
-        due_date = datetime.datetime.strptime(due_date, "%Y-%m-%d").date()
+        due_date = func.cast(due_date, Task.due_date.type)
         query = query.filter(Task.due_date <= due_date)
         query_stats = query_stats.filter(Task.due_date <= due_date)
 
