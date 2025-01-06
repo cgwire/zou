@@ -1,4 +1,5 @@
 import os
+import orjson as json
 
 from flask import abort, request, current_app
 from flask import send_file as flask_send_file
@@ -207,106 +208,10 @@ def send_storage_file(
         raise FileNotFound
 
 
-class CreatePreviewFilePictureResource(Resource, ArgsMixin):
+class BaseNewPreviewFilePicture:
     """
-    Main resource to add a preview. It stores the preview file and generates
-    three picture files matching preview when it's possible: a square thumbnail,
-    a rectangle thumbnail and a midsize file.
+    Base class to add previews.
     """
-
-    @jwt_required()
-    def post(self, instance_id):
-        """
-        Main resource to add a preview.
-        ---
-        tags:
-          - Previews
-        description: "It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file."
-        consumes:
-          - multipart/form-data
-          - image/png
-          - application/pdf
-        parameters:
-          - in: path
-            name: instance_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            required: True
-            type: file
-        responses:
-            200:
-                description: Preview added
-        """
-        if not self.is_exist(instance_id):
-            abort(404)
-
-        if not self.is_allowed(instance_id):
-            abort(403)
-
-        uploaded_file = request.files["file"]
-
-        file_name_parts = uploaded_file.filename.split(".")
-        extension = file_name_parts.pop().lower()
-        original_file_name = ".".join(file_name_parts)
-
-        if extension in ALLOWED_PICTURE_EXTENSION:
-            metadada = self.save_picture_preview(instance_id, uploaded_file)
-            preview_file = preview_files_service.update_preview_file(
-                instance_id,
-                {
-                    "extension": "png",
-                    "original_name": original_file_name,
-                    "width": metadada["width"],
-                    "height": metadada["height"],
-                    "file_size": metadada["file_size"],
-                    "status": "ready",
-                },
-            )
-            tasks_service.update_preview_file_info(preview_file)
-            self.emit_app_preview_event(instance_id)
-            return preview_file, 201
-
-        elif extension in ALLOWED_MOVIE_EXTENSION:
-            try:
-                normalize = self.get_bool_parameter("normalize", "true")
-                self.save_movie_preview(instance_id, uploaded_file, normalize)
-            except Exception as e:
-                current_app.logger.error(e, exc_info=1)
-                current_app.logger.error("Normalization failed.")
-                deletion_service.remove_preview_file_by_id(
-                    instance_id, force=True
-                )
-                abort(400, "Normalization failed.")
-            preview_file = preview_files_service.update_preview_file(
-                instance_id,
-                {"extension": "mp4", "original_name": original_file_name},
-            )
-            self.emit_app_preview_event(instance_id)
-            return preview_file, 201
-
-        elif extension in ALLOWED_FILE_EXTENSION:
-            self.save_file_preview(instance_id, uploaded_file, extension)
-            preview_file = preview_files_service.update_preview_file(
-                instance_id,
-                {
-                    "extension": extension,
-                    "original_name": original_file_name,
-                    "status": "ready",
-                },
-            )
-            self.emit_app_preview_event(instance_id)
-            return preview_file, 201
-
-        else:
-            current_app.logger.info(
-                "Wrong file format, extension: %s", extension
-            )
-            deletion_service.remove_preview_file_by_id(instance_id)
-            abort(400, "Wrong file format, extension: %s" % extension)
 
     def save_picture_preview(self, instance_id, uploaded_file):
         """
@@ -396,6 +301,115 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
                 project_id=task["project_id"],
             )
 
+    def process_uploaded_file(
+        self, instance_id, uploaded_file, abort_on_failed=False
+    ):
+        file_name_parts = uploaded_file.filename.split(".")
+        extension = file_name_parts.pop().lower()
+        original_file_name = ".".join(file_name_parts)
+        preview_file = None
+        if extension in ALLOWED_PICTURE_EXTENSION:
+            metadada = self.save_picture_preview(instance_id, uploaded_file)
+            preview_file = preview_files_service.update_preview_file(
+                instance_id,
+                {
+                    "extension": "png",
+                    "original_name": original_file_name,
+                    "width": metadada["width"],
+                    "height": metadada["height"],
+                    "file_size": metadada["file_size"],
+                    "status": "ready",
+                },
+            )
+            tasks_service.update_preview_file_info(preview_file)
+        elif extension in ALLOWED_MOVIE_EXTENSION:
+            try:
+                normalize = self.get_bool_parameter("normalize", "true")
+                self.save_movie_preview(instance_id, uploaded_file, normalize)
+            except Exception as e:
+                current_app.logger.error(e, exc_info=1)
+                current_app.logger.error("Normalization failed.")
+                deletion_service.remove_preview_file_by_id(
+                    instance_id, force=True
+                )
+                if abort_on_failed:
+                    abort(400, "Normalization failed.")
+            preview_file = preview_files_service.update_preview_file(
+                instance_id,
+                {"extension": "mp4", "original_name": original_file_name},
+            )
+        elif extension in ALLOWED_FILE_EXTENSION:
+            self.save_file_preview(instance_id, uploaded_file, extension)
+            preview_file = preview_files_service.update_preview_file(
+                instance_id,
+                {
+                    "extension": extension,
+                    "original_name": original_file_name,
+                    "status": "ready",
+                },
+            )
+
+        if preview_file is None:
+            current_app.logger.info(
+                "Wrong file format, extension: %s", extension
+            )
+            deletion_service.remove_preview_file_by_id(instance_id)
+            if abort_on_failed:
+                abort(400, "Wrong file format, extension: %s" % extension)
+        else:
+            self.emit_app_preview_event(instance_id)
+        return preview_file
+
+
+class CreatePreviewFilePictureResource(
+    BaseNewPreviewFilePicture, Resource, ArgsMixin
+):
+    """
+    Main resource to add a preview. It stores the preview file and generates
+    three picture files matching preview when it's possible: a square thumbnail,
+    a rectangle thumbnail and a midsize file.
+    """
+
+    @jwt_required()
+    def post(self, instance_id):
+        """
+        Main resource to add a preview.
+        ---
+        tags:
+          - Previews
+        description: "It stores the preview file and generates three picture files matching preview when it's possible: a square thumbnail, a rectangle thumbnail and a midsize file."
+        consumes:
+          - multipart/form-data
+          - image/png
+          - application/pdf
+        parameters:
+          - in: path
+            name: instance_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            required: True
+            type: file
+        responses:
+            200:
+                description: Preview added
+        """
+        if not self.is_exist(instance_id):
+            abort(404)
+
+        if not self.is_allowed(instance_id):
+            abort(403)
+
+        return (
+            self.process_uploaded_file(
+                instance_id, request.files["file"], abort_on_failed=True
+            ),
+            201,
+        )
+
     def is_allowed(self, preview_file_id):
         """
         Return true if user is allowed to add a preview.
@@ -420,6 +434,122 @@ class CreatePreviewFilePictureResource(Resource, ArgsMixin):
         Return true if preview file entry matching given id exists in database.
         """
         return files_service.get_preview_file(preview_file_id) is not None
+
+
+class AddCommentsPreviewsResource(
+    BaseNewPreviewFilePicture, Resource, ArgsMixin
+):
+    """
+    Creates new comments for given task. Each comments requires a text, a
+    task_status and a person as arguments.
+    """
+
+    @jwt_required()
+    def post(self, task_id):
+        """
+        Creates new comments for given task. Each comments requires a text, a
+        task_status and a person as arguments.
+        ---
+        tags:
+        - Comments
+        description: Creates new comments for given task. Each comments
+        requires a text, a task_status and a person as arguments.
+        parameters:
+          - in: path
+            name: task_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: body
+            name: Comment
+            description: person ID, name, comment, revision and change status of task
+            schema:
+                type: object
+                required:
+                    - comments
+                properties:
+                    comments:
+                        type: string
+        responses:
+            201:
+                description: New comments created
+        """
+        if request.is_json:
+            args = self.get_args(
+                [
+                    {
+                        "name": "comments",
+                        "required": True,
+                        "default": [],
+                        "type": dict,
+                        "action": "append",
+                        "help": "List of comments to add",
+                    }
+                ],
+            )
+        else:
+            args = self.get_args(
+                [
+                    {
+                        "name": "comments",
+                        "required": True,
+                        "default": "[]",
+                        "help": "List of comments to add",
+                    }
+                ],
+            )
+            args["comments"] = json.loads(args["comments"])
+
+        task = tasks_service.get_task(task_id)
+        user_service.check_project_access(task["project_id"])
+        user_service.check_entity_access(task["entity_id"])
+
+        new_comments = []
+        for i, comment in enumerate(args["comments"]):
+            user_service.check_task_status_access(comment["task_status_id"])
+
+            if not permissions.has_manager_permissions():
+                comment["person_id"] = None
+                comment["created_at"] = None
+
+            new_comment = comments_service.create_comment(
+                comment.get("person_id", None),
+                task_id,
+                comment["task_status_id"],
+                comment["text"],
+                comment.get("checklist", []),
+                {
+                    k: v
+                    for (k, v) in request.files.items()
+                    if f"attachment_file-{i}" in k
+                },
+                comment.get("created_at", None),
+                comment.get("links", []),
+            )
+
+            new_comment["preview_files"] = []
+            for uploaded_preview_file in {
+                k: v
+                for (k, v) in request.files.items()
+                if f"preview_file-{i}" in k
+            }.values():
+                new_preview_file = tasks_service.add_preview_file_to_comment(
+                    new_comment["id"],
+                    new_comment["person_id"],
+                    task_id,
+                )
+                new_preview_file = self.process_uploaded_file(
+                    new_preview_file["id"],
+                    uploaded_preview_file,
+                    abort_on_failed=False,
+                )
+                if new_preview_file:
+                    new_comment["preview_files"].append(new_preview_file)
+
+            new_comments.append(new_comment)
+
+        return new_comments, 201
 
 
 class BasePreviewFileResource(Resource):
