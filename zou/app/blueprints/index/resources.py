@@ -8,9 +8,8 @@ from flask_restful import Resource
 from zou import __version__
 
 from zou.app import app, config
-from zou.app.utils import permissions, shell, date_helpers, redis
+from zou.app.utils import permissions, shell, date_helpers
 from zou.app.services import projects_service, stats_service, persons_service
-
 from flask_jwt_extended import jwt_required
 
 
