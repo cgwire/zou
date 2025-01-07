@@ -8,7 +8,7 @@ from flask_restful import Resource
 from zou import __version__
 
 from zou.app import app, config
-from zou.app.utils import permissions, shell, date_helpers
+from zou.app.utils import permissions, shell, date_helpers, redis
 from zou.app.services import projects_service, stats_service, persons_service
 
 from flask_jwt_extended import jwt_required
@@ -62,15 +62,7 @@ class BaseStatusResource(Resource):
 
         is_jq_up = True
         try:
-            host = config.KEY_VALUE_STORE["host"]
-            port = config.KEY_VALUE_STORE["port"]
-            db = config.KV_JOB_DB_INDEX
-            password = config.KEY_VALUE_STORE["password"]
-            if password:
-                url = "redis://:%s@%s:%s/%s" % (password, host, port, db)
-            else:
-                url = "redis://%s:%s/%s" % (host, port, db)
-            args = ["rq", "info", "--url", url]
+            args = ["rq", "info", "--url", redis.get_redis_url()]
             out = shell.run_command(args)
             is_jq_up = b"0 workers" not in out
         except Exception:

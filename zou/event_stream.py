@@ -14,11 +14,10 @@ from flask_socketio import SocketIO, disconnect, join_room, emit
 from zou.app import config, app
 from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service
+from zou.app.utils.redis import get_redis_url
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}
-
-# Review room helpers
 
 
 def _get_empty_room(current_frame=0):
@@ -74,28 +73,6 @@ def _update_room_playing_status(data, room):
     if "speed" in data:
         room["speed"] = data["speed"]
     return room
-
-
-# Database helpers
-
-
-def get_redis_url():
-    redis_host = config.KEY_VALUE_STORE["host"]
-    redis_port = config.KEY_VALUE_STORE["port"]
-    db_index = config.KV_EVENTS_DB_INDEX
-    redis_password = config.KEY_VALUE_STORE["password"]
-    if redis_password:
-        return "redis://:%s@%s:%s/%s" % (
-            redis_password,
-            redis_host,
-            redis_port,
-            db_index,
-        )
-    else:
-        return "redis://%s:%s/%s" % (redis_host, redis_port, db_index)
-
-
-# Routes
 
 
 def set_info_routes(socketio, app):
