@@ -452,8 +452,8 @@ class AddCommentsPreviewsResource(
         ---
         tags:
         - Comments
-        description: Creates new comments for given task. Each comments
-        requires a text, a task_status and a person as arguments.
+        description: Creates new comments for given task. Each comments requires
+                     a text, a task_status and a person as arguments.
         parameters:
           - in: path
             name: task_id
