@@ -2,6 +2,7 @@ from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
 from zou.app.blueprints.previews.resources import (
+    AddCommentsPreviewsResource,
     AttachmentThumbnailResource,
     CreatePreviewFilePictureResource,
     PreviewFileLowMovieResource,
@@ -36,6 +37,10 @@ routes = [
     (
         "/pictures/preview-files/<instance_id>",
         CreatePreviewFilePictureResource,
+    ),
+    (
+        "/actions/tasks/<task_id>/add-comments-previews",
+        AddCommentsPreviewsResource,
     ),
     (
         "/movies/originals/preview-files/<instance_id>.mp4",

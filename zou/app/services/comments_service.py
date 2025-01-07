@@ -74,9 +74,9 @@ def create_comment(
     task_id,
     task_status_id,
     text,
-    checklist,
-    files,
-    created_at,
+    checklist=[],
+    files={},
+    created_at="",
     links=[],
 ):
     """

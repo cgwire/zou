@@ -2,7 +2,7 @@ from gevent import monkey
 
 monkey.patch_all()
 
-from flask import Flask, jsonify
+from flask import jsonify
 from flask_jwt_extended import (
     get_jwt_identity,
     jwt_required,
@@ -10,12 +10,9 @@ from flask_jwt_extended import (
     JWTManager,
 )
 from flask_socketio import SocketIO, disconnect, join_room, emit
-from flask_sqlalchemy import SQLAlchemy
 
-from zou.app import config
+from zou.app import config, app
 from zou.app.stores import auth_tokens_store
-from zou.app.utils.monitoring import init_monitoring
-from zou.app.utils.flask import ORJSONProvider
 from zou.app.services import persons_service
 
 server_stats = {"nb_connections": 0}
@@ -227,12 +224,6 @@ def create_app():
     socketio = SocketIO(
         logger=True, cors_allowed_origins=[], cors_credentials=False
     )
-    app = Flask(__name__)
-    app.json = ORJSONProvider(app)
-    app.config.from_object(config)
-    init_monitoring(app)
-    db = SQLAlchemy(app)
-    app.extensions["sqlalchemy"].db = db
     set_info_routes(socketio, app)
     set_application_routes(socketio, app)
     set_playlist_room_routes(socketio, app)

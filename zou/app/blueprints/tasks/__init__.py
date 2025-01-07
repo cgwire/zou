@@ -94,8 +94,7 @@ routes = [
         AddPreviewResource,
     ),
     (
-        "/actions/tasks/<task_id>/comments/<comment_id>/preview-files/"
-        "<preview_file_id>",
+        "/actions/tasks/<task_id>/comments/<comment_id>/preview-files/<preview_file_id>",
         AddExtraPreviewResource,
     ),
     ("/actions/tasks/<task_id>/to-review", ToReviewResource),
