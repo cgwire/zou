@@ -122,10 +122,10 @@ class UtilsTestCase(unittest.TestCase):
         db_index = 0
         self.assertEqual(
             redis.get_redis_url(db_index),
-            f"redis://{config.KEY_VALUE_STORE["host"]}:{config.KEY_VALUE_STORE["port"]}/{db_index}",
+            f"redis://{config.KEY_VALUE_STORE['host']}:{config.KEY_VALUE_STORE['port']}/{db_index}",
         )
         config.KEY_VALUE_STORE["password"] = "password"
         self.assertEqual(
             redis.get_redis_url(db_index),
-            f"redis://:{config.KEY_VALUE_STORE["password"]}@{config.KEY_VALUE_STORE["host"]}:{config.KEY_VALUE_STORE["port"]}/{db_index}",
+            f"redis://:{config.KEY_VALUE_STORE['password']}@{config.KEY_VALUE_STORE['host']}:{config.KEY_VALUE_STORE['port']}/{db_index}",
         )
