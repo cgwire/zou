@@ -37,7 +37,7 @@ def send_notification(person_id, subject, messages):
             )
 
     if person["notifications_slack_enabled"]:
-        organisation = persons_service.get_organisation()
+        organisation = persons_service.get_organisation(sensitive=True)
         userid = person["notifications_slack_userid"]
         token = organisation.get("chat_token_slack", "")
         if config.ENABLE_JOB_QUEUE:
@@ -49,7 +49,7 @@ def send_notification(person_id, subject, messages):
             chats.send_to_slack(token, userid, slack_message)
 
     if person["notifications_mattermost_enabled"]:
-        organisation = persons_service.get_organisation()
+        organisation = persons_service.get_organisation(sensitive=True)
         userid = person["notifications_mattermost_userid"]
         webhook = organisation.get("chat_webhook_mattermost", "")
         if config.ENABLE_JOB_QUEUE:
@@ -61,7 +61,7 @@ def send_notification(person_id, subject, messages):
             chats.send_to_mattermost(webhook, userid, mattermost_message)
 
     if person["notifications_discord_enabled"]:
-        organisation = persons_service.get_organisation()
+        organisation = persons_service.get_organisation(sensitive=True)
         userid = person["notifications_discord_userid"]
         token = organisation.get("chat_token_discord", "")
         if config.ENABLE_JOB_QUEUE:
