@@ -10,6 +10,7 @@ from pytz import timezone
 from zou.app.utils import colors, fields, query, fs, shell, date_helpers, redis
 from zou.app.models.person import Person
 from zou.app.models.task import Task
+from zou.app import config
 
 
 class UtilsTestCase(unittest.TestCase):
@@ -118,16 +119,13 @@ class UtilsTestCase(unittest.TestCase):
         self.assertEqual(end.strftime("%Y-%m-%d"), "2021-02-11")
 
     def test_get_redis_url(self):
-        redis_host = "localhost"
-        redis_port = 6379
         db_index = 0
-        redis_password = ""
         self.assertEqual(
-            redis.get_redis_url(),
-            f"redis://{redis_host}:{redis_port}/{db_index}",
+            redis.get_redis_url(db_index),
+            f"redis://{config.KEY_VALUE_STORE["host"]}:{config.KEY_VALUE_STORE["port"]}/{db_index}",
         )
-        redis_password = "password"
+        config.KEY_VALUE_STORE["password"] = "password"
         self.assertEqual(
-            redis.get_redis_url(),
-            f"redis://:{redis_password}@{redis_host}:{redis_port}/{db_index}",
+            redis.get_redis_url(db_index),
+            f"redis://:{config.KEY_VALUE_STORE["password"]}@{config.KEY_VALUE_STORE["host"]}:{config.KEY_VALUE_STORE["port"]}/{db_index}",
         )
