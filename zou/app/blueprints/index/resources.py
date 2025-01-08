@@ -11,6 +11,7 @@ from zou.app import app, config
 from zou.app.utils import permissions, shell, date_helpers
 from zou.app.services import projects_service, stats_service, persons_service
 from flask_jwt_extended import jwt_required
+from zou.app.utils.redis import get_redis_url
 
 
 class IndexResource(Resource):
@@ -61,7 +62,7 @@ class BaseStatusResource(Resource):
 
         is_jq_up = True
         try:
-            args = ["rq", "info", "--url", redis.get_redis_url()]
+            args = ["rq", "info", "--url", get_redis_url()]
             out = shell.run_command(args)
             is_jq_up = b"0 workers" not in out
         except Exception:
