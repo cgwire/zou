@@ -1,10 +1,9 @@
 from zou.app import config
 
 
-def get_redis_url():
+def get_redis_url(db_index):
     redis_host = config.KEY_VALUE_STORE["host"]
     redis_port = config.KEY_VALUE_STORE["port"]
-    db_index = config.KV_EVENTS_DB_INDEX
     if config.KEY_VALUE_STORE["password"]:
         redis_password = f":{config.KEY_VALUE_STORE['password']}@"
     else:

@@ -31,7 +31,7 @@ def init():
         )
         publisher_store.get("test")
         socketio = SocketIO(
-            message_queue=get_redis_url(),
+            message_queue=get_redis_url(config.KV_EVENTS_DB_INDEX),
             cors_allowed_origins=[],
             cors_credentials=False,
         )

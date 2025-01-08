@@ -197,7 +197,7 @@ def set_playlist_room_routes(socketio, app):
 
 
 def create_app():
-    redis_url = get_redis_url()
+    redis_url = get_redis_url(config.KV_EVENTS_DB_INDEX)
     socketio = SocketIO(
         logger=True, cors_allowed_origins=[], cors_credentials=False
     )

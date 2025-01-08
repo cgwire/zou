@@ -62,7 +62,12 @@ class BaseStatusResource(Resource):
 
         is_jq_up = True
         try:
-            args = ["rq", "info", "--url", get_redis_url()]
+            args = [
+                "rq",
+                "info",
+                "--url",
+                get_redis_url(config.KV_JOB_DB_INDEX),
+            ]
             out = shell.run_command(args)
             is_jq_up = b"0 workers" not in out
         except Exception:
