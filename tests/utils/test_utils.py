@@ -7,7 +7,7 @@ import uuid
 from babel import Locale
 from pytz import timezone
 
-from zou.app.utils import colors, fields, query, fs, shell, date_helpers
+from zou.app.utils import colors, fields, query, fs, shell, date_helpers, redis
 from zou.app.models.person import Person
 from zou.app.models.task import Task
 
@@ -116,3 +116,18 @@ class UtilsTestCase(unittest.TestCase):
         start, end = date_helpers.get_day_interval(2021, 2, 10)
         self.assertEqual(start.strftime("%Y-%m-%d"), "2021-02-10")
         self.assertEqual(end.strftime("%Y-%m-%d"), "2021-02-11")
+
+    def test_get_redis_url(self):
+        redis_host = "localhost"
+        redis_port = 6379
+        db_index = 0
+        redis_password = ""
+        self.assertEqual(
+            redis.get_redis_url(),
+            f"redis://{redis_host}:{redis_port}/{db_index}",
+        )
+        redis_password = "password"
+        self.assertEqual(
+            redis.get_redis_url(),
+            f"redis://:{redis_password}@{redis_host}:{redis_port}/{db_index}",
+        )
