@@ -91,9 +91,7 @@ class WorkingFileFileResource(Resource):
 
     def check_access(self, working_file_id):
         working_file = files_service.get_working_file(working_file_id)
-        task = tasks_service.get_task(working_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(working_file["task_id"])
         return working_file
 
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
@@ -556,10 +554,8 @@ class LastWorkingFilesResource(Resource):
               description: Last working files revision for each file name for given task
         """
         result = {}
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
-        result = files_service.get_last_working_files_for_task(task["id"])
+        user_service.check_task_access(task_id)
+        result = files_service.get_last_working_files_for_task(task_id)
 
         return result
 
@@ -588,10 +584,8 @@ class TaskWorkingFilesResource(Resource):
               description: Last working files revision for each file name for given task
         """
         result = {}
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
-        result = files_service.get_working_files_for_task(task["id"])
+        user_service.check_task_access(task_id)
+        result = files_service.get_working_files_for_task(task_id)
 
         return result
 
@@ -774,9 +768,7 @@ class ModifiedFileResource(Resource):
               description: Working file modification date updated
         """
         working_file = files_service.get_working_file(working_file_id)
-        task = tasks_service.get_task(working_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(working_file["task_id"])
         working_file = files_service.update_working_file(
             working_file_id,
             {"updated_at": date_helpers.get_utc_now_datetime()},
@@ -827,9 +819,7 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
         )
 
         working_file = files_service.get_working_file(working_file_id)
-        task = tasks_service.get_task(working_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(working_file["task_id"])
         working_file = self.update_comment(working_file_id, args["comment"])
         return working_file
 

@@ -100,7 +100,7 @@ def get_preview_file_fps(project, entity=None):
 
     if entity is not None:
         entity_data = entity.get("data", {}) or {}
-        if entity_data.get("fps", None) is not None:
+        if entity_data.get("fps", None):
             fps = str(entity_data["fps"]).replace(",", ".")
 
     return "%.3f" % float(fps)

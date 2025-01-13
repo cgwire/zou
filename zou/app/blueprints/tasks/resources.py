@@ -69,9 +69,7 @@ class AddPreviewResource(Resource, ArgsMixin):
         """
         args = self.get_args([("revision", 0, False, int)])
 
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
 
         person = persons_service.get_current_user()
         preview_file = tasks_service.add_preview_file_to_comment(
@@ -119,9 +117,7 @@ class AddExtraPreviewResource(Resource):
             201:
                 description: Preview added to given comment
         """
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         tasks_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()
@@ -191,9 +187,7 @@ class TaskPreviewsResource(Resource):
             200:
                 description: Previews linked to given task
         """
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         return files_service.get_preview_files_for_task(task_id)
 
 
@@ -220,9 +214,7 @@ class TaskCommentsResource(Resource):
             200:
                 description: Comments linked to given task
         """
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         is_client = permissions.has_client_permissions()
         is_manager = permissions.has_manager_permissions()
         is_supervisor = permissions.has_supervisor_permissions()
@@ -753,7 +745,7 @@ class ToReviewResource(Resource, ArgsMixin):
         try:
             task = tasks_service.get_task(task_id)
             user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["project_id"])
+            user_service.check_entity_access(task["entity_id"])
 
             if person_id is not None:
                 person = persons_service.get_person(person_id)
@@ -763,7 +755,7 @@ class ToReviewResource(Resource, ArgsMixin):
             preview_path = self.get_preview_path(task, name, revision)
 
             task = tasks_service.task_to_review(
-                task["id"], person, comment, preview_path, change_status
+                task_id, person, comment, preview_path, change_status
             )
         except PersonNotFoundException:
             return {"error": True, "message": "Cannot find given person."}, 400
@@ -1274,9 +1266,7 @@ class GetTimeSpentResource(Resource):
             404:
                 description: Wrong date format
         """
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         return tasks_service.get_time_spents(task_id)
 
 
@@ -1312,9 +1302,7 @@ class GetTimeSpentDateResource(Resource):
                 description: Wrong date format
         """
         try:
-            task = tasks_service.get_task(task_id)
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            user_service.check_task_access(task_id)
             return tasks_service.get_time_spents(task_id, date)
         except WrongDateFormatException:
             abort(404)

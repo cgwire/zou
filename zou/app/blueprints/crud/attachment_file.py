@@ -20,15 +20,12 @@ class AttachmentFileResource(BaseModelResource):
         attachment_file = instance
         if attachment_file["comment_id"] is not None:
             comment = tasks_service.get_comment(attachment_file["comment_id"])
-            task = tasks_service.get_task(comment["object_id"])
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            user_service.check_task_access(comment["object_id"])
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 attachment_file["chat_message_id"]
             )
             chat = chats_service.get_chat(message["chat_id"])
-            print(chat)
             user_service.check_entity_access(chat["object_id"])
         else:
             raise PermissionDenied()
