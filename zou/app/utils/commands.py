@@ -774,20 +774,23 @@ def renormalize_movie_preview_files(
                             config.TMP_DIR,
                             f"{preview_file_id}.{extension}.tmp",
                         )
-                        if config.FS_BACKEND == "local":
-                            shutil.copyfile(
-                                file_store.get_local_movie_path(
-                                    "source", preview_file_id
-                                ),
-                                uploaded_movie_path,
-                            )
-                        else:
-                            sync_service.download_file(
-                                uploaded_movie_path,
-                                "source",
-                                file_store.open_movie,
-                                str(preview_file_id),
-                            )
+                        try:
+                            if config.FS_BACKEND == "local":
+                                shutil.copyfile(
+                                    file_store.get_local_movie_path(
+                                        "source", preview_file_id
+                                    ),
+                                    uploaded_movie_path,
+                                )
+                            else:
+                                sync_service.download_file(
+                                    uploaded_movie_path,
+                                    "source",
+                                    file_store.open_movie,
+                                    str(preview_file_id),
+                                )
+                        except:
+                            pass
                         if config.ENABLE_JOB_QUEUE:
                             queue_store.job_queue.enqueue(
                                 preview_files_service.prepare_and_store_movie,

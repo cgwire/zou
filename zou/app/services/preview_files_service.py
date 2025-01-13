@@ -181,6 +181,10 @@ def prepare_and_store_movie(
     from zou.app import app as current_app
 
     with current_app.app_context():
+        if add_source_to_file_store:
+            file_store.add_movie(
+                "source", preview_file_id, uploaded_movie_path
+            )
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
         normalized_movie_low_path = None
         try:
@@ -205,10 +209,6 @@ def prepare_and_store_movie(
         if normalize:
             current_app.logger.info("start normalization")
             try:
-                if add_source_to_file_store:
-                    file_store.add_movie(
-                        "source", preview_file_id, uploaded_movie_path
-                    )
                 if (
                     config.ENABLE_JOB_QUEUE_REMOTE
                     and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
