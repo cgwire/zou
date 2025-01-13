@@ -57,9 +57,7 @@ class DownloadAttachmentResource(Resource):
         )
         if attachment_file["comment_id"] is not None:
             comment = tasks_service.get_comment(attachment_file["comment_id"])
-            task = tasks_service.get_task(comment["object_id"])
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            user_service.check_task_access(comment["object_id"])
         elif attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 attachment_file["chat_message_id"]
@@ -122,9 +120,7 @@ class AckCommentResource(Resource):
             200:
                 description: Comment acknowledged
         """
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         return comments_service.acknowledge_comment(comment_id)
 
 
@@ -193,9 +189,7 @@ class CommentTaskResource(Resource):
             links,
         ) = self.get_arguments()
 
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         user_service.check_task_status_access(task_status_id)
         files = request.files
 
@@ -496,9 +490,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
             ]
         )
 
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         return comments_service.reply_comment(comment_id, args["text"])
 
 
@@ -537,9 +529,7 @@ class DeleteReplyCommentResource(Resource):
             200:
                 description: Given comment reply deleted
         """
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(task_id)
         reply = comments_service.get_reply(comment_id, reply_id)
         current_user = persons_service.get_current_user()
         if reply["person_id"] != current_user["id"]:

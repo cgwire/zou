@@ -8,7 +8,7 @@ from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 from zou.app.models.entity import Entity
 from zou.app.models.project import Project
 from zou.app.models.working_file import WorkingFile
-from zou.app.services import user_service, tasks_service, files_service
+from zou.app.services import user_service, files_service
 from zou.app.utils import permissions
 
 
@@ -46,16 +46,12 @@ class WorkingFileResource(BaseModelResource):
 
     def check_read_permissions(self, instance):
         working_file = files_service.get_working_file(instance["id"])
-        task = tasks_service.get_task(working_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(working_file["task_id"])
         return True
 
     def check_update_permissions(self, instance, data):
         working_file = files_service.get_working_file(instance["id"])
-        task = tasks_service.get_task(working_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(working_file["task_id"])
         return True
 
     @jwt_required()

@@ -478,6 +478,16 @@ def check_task_status_access(task_status_id):
     return True
 
 
+def check_task_access(task_id):
+    """
+    Return true if current user can have access to a task.
+    """
+    task = tasks_service.get_task(task_id)
+    check_project_access(task["project_id"])
+    check_entity_access(task["entity_id"])
+    return True
+
+
 def check_comment_access(comment_id):
     """
     Return true if current user can have access to a comment.

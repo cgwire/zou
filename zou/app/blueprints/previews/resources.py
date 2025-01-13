@@ -397,11 +397,8 @@ class CreatePreviewFilePictureResource(
             200:
                 description: Preview added
         """
-        if not self.is_exist(instance_id):
-            abort(404)
-
-        if not self.is_allowed(instance_id):
-            abort(403)
+        self.is_exist(instance_id)
+        self.is_allowed(instance_id)
 
         return (
             self.process_uploaded_file(
@@ -421,10 +418,8 @@ class CreatePreviewFilePictureResource(
             )
             raise PreviewFileReuploadNotAllowedException
 
-        task = tasks_service.get_task(preview_file["task_id"])
         try:
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            user_service.check_task_access(preview_file["task_id"])
             return True
         except permissions.PermissionDenied:
             return False
@@ -436,9 +431,102 @@ class CreatePreviewFilePictureResource(
         return files_service.get_preview_file(preview_file_id) is not None
 
 
-class AddCommentsPreviewsResource(
-    BaseNewPreviewFilePicture, Resource, ArgsMixin
-):
+class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
+    """
+    Base class to add comments/previews/attachments.
+    """
+
+    def get_comments_args(self):
+        """
+        Return comments arguments.
+        """
+        if request.is_json:
+            return self.get_args(
+                [
+                    {
+                        "name": "comments",
+                        "required": True,
+                        "default": [],
+                        "type": dict,
+                        "action": "append",
+                        "help": "List of comments to add",
+                    }
+                ],
+            )
+        else:
+            args = self.get_args(
+                [
+                    {
+                        "name": "comments",
+                        "required": True,
+                        "default": "[]",
+                        "help": "List of comments to add",
+                    }
+                ],
+            )
+            args["comments"] = json.loads(args["comments"])
+            return args
+
+    def process_comments(self, task_id=None):
+        """
+        Process comments.
+        """
+        args = self.get_comments_args()
+
+        if task_id is not None:
+            user_service.check_task_access(task_id)
+
+        new_comments = []
+        for i, comment in enumerate(args["comments"]):
+            user_service.check_task_status_access(comment["task_status_id"])
+
+            if task_id is None:
+                user_service.check_task_access(comment["task_id"])
+
+            if not permissions.has_manager_permissions():
+                comment["person_id"] = None
+                comment["created_at"] = None
+
+            new_comment = comments_service.create_comment(
+                comment.get("person_id", None),
+                task_id or comment["task_id"],
+                comment["task_status_id"],
+                comment["text"],
+                comment.get("checklist", []),
+                {
+                    k: v
+                    for (k, v) in request.files.items()
+                    if f"attachment_file-{i}" in k
+                },
+                comment.get("created_at", None),
+                comment.get("links", []),
+            )
+
+            new_comment["preview_files"] = []
+            for uploaded_preview_file in {
+                k: v
+                for (k, v) in request.files.items()
+                if f"preview_file-{i}" in k
+            }.values():
+                new_preview_file = tasks_service.add_preview_file_to_comment(
+                    new_comment["id"],
+                    new_comment["person_id"],
+                    task_id or comment["task_id"],
+                )
+                new_preview_file = self.process_uploaded_file(
+                    new_preview_file["id"],
+                    uploaded_preview_file,
+                    abort_on_failed=False,
+                )
+                if new_preview_file:
+                    new_comment["preview_files"].append(new_preview_file)
+
+            new_comments.append(new_comment)
+
+        return new_comments, 201
+
+
+class AddTaskBatchCommentResource(BaseBatchComment, Resource):
     """
     Creates new comments for given task. Each comments requires a text, a
     task_status and a person as arguments.
@@ -475,81 +563,41 @@ class AddCommentsPreviewsResource(
             201:
                 description: New comments created
         """
-        if request.is_json:
-            args = self.get_args(
-                [
-                    {
-                        "name": "comments",
-                        "required": True,
-                        "default": [],
-                        "type": dict,
-                        "action": "append",
-                        "help": "List of comments to add",
-                    }
-                ],
-            )
-        else:
-            args = self.get_args(
-                [
-                    {
-                        "name": "comments",
-                        "required": True,
-                        "default": "[]",
-                        "help": "List of comments to add",
-                    }
-                ],
-            )
-            args["comments"] = json.loads(args["comments"])
+        return self.process_comments(task_id)
 
-        task = tasks_service.get_task(task_id)
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
 
-        new_comments = []
-        for i, comment in enumerate(args["comments"]):
-            user_service.check_task_status_access(comment["task_status_id"])
+class AddTasksBatchCommentResource(BaseBatchComment, Resource):
+    """
+    Creates new comments for given tasks. Each comments requires a task_id,
+    text, a task_status and a person as arguments.
+    """
 
-            if not permissions.has_manager_permissions():
-                comment["person_id"] = None
-                comment["created_at"] = None
-
-            new_comment = comments_service.create_comment(
-                comment.get("person_id", None),
-                task_id,
-                comment["task_status_id"],
-                comment["text"],
-                comment.get("checklist", []),
-                {
-                    k: v
-                    for (k, v) in request.files.items()
-                    if f"attachment_file-{i}" in k
-                },
-                comment.get("created_at", None),
-                comment.get("links", []),
-            )
-
-            new_comment["preview_files"] = []
-            for uploaded_preview_file in {
-                k: v
-                for (k, v) in request.files.items()
-                if f"preview_file-{i}" in k
-            }.values():
-                new_preview_file = tasks_service.add_preview_file_to_comment(
-                    new_comment["id"],
-                    new_comment["person_id"],
-                    task_id,
-                )
-                new_preview_file = self.process_uploaded_file(
-                    new_preview_file["id"],
-                    uploaded_preview_file,
-                    abort_on_failed=False,
-                )
-                if new_preview_file:
-                    new_comment["preview_files"].append(new_preview_file)
-
-            new_comments.append(new_comment)
-
-        return new_comments, 201
+    @jwt_required()
+    def post(self):
+        """
+        Creates new comments for given task. Each comments requires a task_id,
+        text, a task_status and a person as arguments.
+        ---
+        tags:
+        - Comments
+        description: Creates new comments for given task. Each comments requires
+                     a task_id, a text, a task_status and a person as arguments.
+        parameters:
+          - in: body
+            name: Comment
+            description: person ID, name, comment, revision and change status of task
+            schema:
+                type: object
+                required:
+                    - comments
+                properties:
+                    comments:
+                        type: string
+        responses:
+            201:
+                description: New comments created
+        """
+        return self.process_comments()
 
 
 class BasePreviewFileResource(Resource):
@@ -564,9 +612,7 @@ class BasePreviewFileResource(Resource):
 
     def is_allowed(self, preview_file_id):
         self.preview_file = files_service.get_preview_file(preview_file_id)
-        task = tasks_service.get_task(self.preview_file["task_id"])
-        user_service.check_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(self.preview_file["task_id"])
         self.last_modified = date_helpers.get_datetime_from_string(
             self.preview_file["updated_at"]
         )
@@ -843,9 +889,7 @@ class AttachmentThumbnailResource(Resource):
             comment = tasks_service.get_comment(
                 self.attachment_file["comment_id"]
             )
-            task = tasks_service.get_task(comment["object_id"])
-            user_service.check_project_access(task["project_id"])
-            user_service.check_entity_access(task["entity_id"])
+            user_service.check_task_access(comment["object_id"])
         elif self.attachment_file["chat_message_id"] is not None:
             message = chats_service.get_chat_message(
                 self.attachment_file["chat_message_id"]
@@ -1272,9 +1316,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         """
         args = self.get_args([{"name": "position", "default": 0, "type": int}])
         preview_file = files_service.get_preview_file(preview_file_id)
-        task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, args["position"]
         )
@@ -1424,9 +1466,7 @@ class ExtractTileFromPreview(Resource):
     @jwt_required()
     def get(self, preview_file_id):
         preview_file = files_service.get_preview_file(preview_file_id)
-        task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
-        user_service.check_entity_access(task["entity_id"])
+        user_service.check_task_access(preview_file["task_id"])
         extracted_tile_path = (
             preview_files_service.extract_tile_from_preview_file(preview_file)
         )
