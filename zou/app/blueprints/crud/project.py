@@ -207,6 +207,8 @@ class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
             ]
         )
 
+        user_service.check_manager_project_access(args["project_id"])
+
         task_type_link = projects_service.create_project_task_type_link(
             args["project_id"],
             args["task_type_id"],
@@ -233,6 +235,8 @@ class ProjectTaskStatusLinksResource(Resource, ArgsMixin):
                 ),
             ]
         )
+
+        user_service.check_manager_project_access(args["project_id"])
 
         task_status_link = projects_service.create_project_task_status_link(
             args["project_id"],
