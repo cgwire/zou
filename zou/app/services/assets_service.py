@@ -248,7 +248,10 @@ def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
             episode_links_query = episode_links_query.filter(
                 Episode.project_id == criterions["project_id"]
             )
-        if "episode_id" in criterions:
+        if "episode_id" in criterions and criterions["episode_id"] not in [
+            "main",
+            "all",
+        ]:
             episode_links_query = episode_links_query.filter(
                 EntityLink.entity_in_id == criterions["episode_id"]
             )
