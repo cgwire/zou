@@ -11,6 +11,7 @@ from zou.app.services import (
 )
 from zou.app.utils import permissions
 from zou.app.services.exception import WrongParameterException
+from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 
 
 class OpenProjectsResource(Resource, ArgsMixin):
@@ -715,6 +716,10 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
         if len(args["name"]) == 0:
             raise WrongParameterException("Name cannot be empty.")
 
+        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
+        if args["data_type"] not in types:
+            raise WrongParameterException("Invalid data_type")
+
         return (
             projects_service.add_metadata_descriptor(
                 project_id,
@@ -827,6 +832,10 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
 
         if len(args["name"]) == 0:
             raise WrongParameterException("Name cannot be empty.")
+
+        types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
+        if args["data_type"] not in types:
+            raise WrongParameterException("Invalid data_type")
 
         args["for_client"] = args["for_client"] == "True"
 
