@@ -1424,7 +1424,7 @@ def get_last_notifications(
             )
             reply_mentions = reply.get("mentions", []) or []
             reply_department_mentions = (
-                reply.get("departement_mentions", []) or []
+                reply.get("department_mentions", []) or []
             )
             if reply is not None:
                 reply_text = reply["text"]

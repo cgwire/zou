@@ -49,11 +49,21 @@ class DepartmentLink(db.Model):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         primary_key=True,
+        index=True,
     )
     department_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("department.id"),
         primary_key=True,
+        index=True,
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "person_id",
+            "department_id",
+            name="department_link_uc",
+        ),
     )
 
 
