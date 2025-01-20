@@ -78,7 +78,7 @@ class AddPreviewResource(Resource, ArgsMixin):
         return preview_file, 201
 
 
-class AddExtraPreviewResource(Resource):
+class AddExtraPreviewResource(Resource, ArgsMixin):
     """
     Add a preview to given comment.
     """
@@ -160,7 +160,9 @@ class AddExtraPreviewResource(Resource):
         """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
-        deletion_service.remove_preview_file_by_id(preview_file_id)
+        deletion_service.remove_preview_file_by_id(
+            preview_file_id, force=self.get_force()
+        )
         return "", 204
 
 
