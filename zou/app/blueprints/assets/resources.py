@@ -484,7 +484,7 @@ class NewAssetResource(Resource, ArgsMixin):
                 ("data", {}, False, dict),
                 (
                     "is_shared",
-                    True,
+                    False,
                     False,
                     inputs.boolean,
                 ),
