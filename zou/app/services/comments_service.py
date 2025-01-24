@@ -252,24 +252,25 @@ def _run_status_automation(automation, task, person_id):
                         task["id"]
                     )
                 )
-                preview_files = (
-                    preview_files_service.get_preview_files_for_revision(
-                        preview_file["task_id"], preview_file["revision"]
-                    )
-                )
-
-                for preview_file in preview_files:
-                    new_preview_file = (
-                        tasks_service.add_preview_file_to_comment(
-                            new_comment["id"],
-                            new_comment["person_id"],
-                            task_to_update["id"],
+                if preview_file is not None:
+                    preview_files = (
+                        preview_files_service.get_preview_files_for_revision(
+                            preview_file["task_id"], preview_file["revision"]
                         )
                     )
 
-                    preview_files_service.copy_preview_file_in_another_one(
-                        preview_file["id"], new_preview_file["id"]
-                    )
+                    for preview_file in preview_files:
+                        new_preview_file = (
+                            tasks_service.add_preview_file_to_comment(
+                                new_comment["id"],
+                                new_comment["person_id"],
+                                task_to_update["id"],
+                            )
+                        )
+
+                        preview_files_service.copy_preview_file_in_another_one(
+                            preview_file["id"], new_preview_file["id"]
+                        )
 
     elif automation["out_field_type"] == "ready_for":
         try:

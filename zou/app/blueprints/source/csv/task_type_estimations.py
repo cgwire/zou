@@ -123,6 +123,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 new_data["start_date"], float(row["Estimation"]) - 1
             )
 
+        if row.get("Difficulty") not in [None, ""]:
+            new_data["difficulty"] = int(row["Difficulty"])
+
         tasks_service.update_task(self.tasks_map[entity_id], new_data)
 
 

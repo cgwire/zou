@@ -98,7 +98,9 @@ class PreviewFileResource(BaseModelResource):
             instance_dict = instance.serialize()
             self.check_delete_permissions(instance_dict)
             self.pre_delete(instance_dict)
-            deletion_service.remove_preview_file(instance)
+            deletion_service.remove_preview_file(
+                instance, force=self.get_force()
+            )
             self.emit_delete_event(instance_dict)
             self.post_delete(instance_dict)
 
