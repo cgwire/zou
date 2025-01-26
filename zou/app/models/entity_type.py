@@ -5,19 +5,28 @@ from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 from zou.app.models.task_type import TaskType
 
-task_type_link = db.Table(
-    "task_type_asset_type_link",
-    db.Column(
-        "asset_type_id",
+
+class TaskTypeAssetTypeLink(db.Model):
+    asset_type_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("entity_type.id"),
-    ),
-    db.Column(
-        "task_type_id",
+        index=True,
+        primary_key=True,
+    )
+    task_type_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("task_type.id"),
-    ),
-)
+        index=True,
+        primary_key=True,
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "asset_type_id",
+            "task_type_id",
+            name="task_type_asset_type_link_uc",
+        ),
+    )
 
 
 class EntityType(db.Model, BaseMixin, SerializerMixin):
@@ -30,7 +39,9 @@ class EntityType(db.Model, BaseMixin, SerializerMixin):
     short_name = db.Column(db.String(20))
     description = db.Column(db.Text())
     task_types = db.relationship(
-        "TaskType", secondary=task_type_link, lazy="joined"
+        TaskType,
+        secondary=TaskTypeAssetTypeLink.__table__,
+        lazy="joined",
     )
     archived = db.Column(db.Boolean(), default=False)
 
