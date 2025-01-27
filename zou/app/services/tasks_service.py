@@ -376,25 +376,17 @@ def _get_entity_task_query():
 
 
 def _convert_rows_to_detailed_tasks(rows, relations=False):
-    results = []
-    for entry in rows:
-        (
-            task_object,
-            project_name,
-            task_type_name,
-            task_status_name,
-            entity_type_name,
-            entity_name,
-        ) = entry
-
-        task = get_task(str(task_object.id), relations=relations)
-        task["project_name"] = project_name
-        task["task_type_name"] = task_type_name
-        task["task_status_name"] = task_status_name
-        task["entity_type_name"] = entity_type_name
-        task["entity_name"] = entity_name
-        results.append(task)
-    return results
+    return [
+        {
+            **task_object.serialize(relations=relations),
+            "project_name": project_name,
+            "task_type_name": task_type_name,
+            "task_status_name": task_status_name,
+            "entity_type_name": entity_type_name,
+            "entity_name": entity_name,
+        }
+        for task_object, project_name, task_type_name, task_status_name, entity_type_name, entity_name in rows
+    ]
 
 
 def get_task_types_for_shot(shot_id):

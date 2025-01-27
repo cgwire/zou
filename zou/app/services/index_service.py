@@ -12,9 +12,8 @@ from zou.app.services import (
 
 def get_index(index_name):
     """
-    Retrieve whoosh index from disk. It is required to perform any operations.
+    Retrieve meilisearch index from disk. It is required to perform any operations.
     """
-    indexing.init()
     return indexing.get_index(index_name)
 
 
@@ -193,9 +192,11 @@ def index_asset(asset):
         document = prepare_asset(asset)
         indexing.index_document(index, document)
         return document
+    except indexing.IndexerNotInitializedError:
+        pass
     except:
         app.logger.error("Indexer is not reachable, indexation failed.")
-        return {}
+    return {}
 
 
 def index_person(person):
@@ -207,9 +208,11 @@ def index_person(person):
         document = prepare_person(person)
         indexing.index_document(index, document)
         return document
+    except indexing.IndexerNotInitializedError:
+        pass
     except:
         app.logger.error("Indexer is not reachable, indexation failed.")
-        return {}
+    return {}
 
 
 def index_shot(shot):
@@ -221,9 +224,11 @@ def index_shot(shot):
         document = prepare_shot(shot)
         indexing.index_document(index, document)
         return document
+    except indexing.IndexerNotInitializedError:
+        pass
     except:
         app.logger.error("Indexer is not reachable, indexation failed.")
-        return {}
+    return {}
 
 
 def prepare_asset(asset):
@@ -320,9 +325,11 @@ def remove_asset_index(asset_id):
     """
     try:
         return indexing.remove_document(get_asset_index(), asset_id)
+    except indexing.IndexerNotInitializedError:
+        pass
     except:
         app.logger.error("Indexer is not reachable, indexation failed.")
-        return {}
+    return {}
 
 
 def remove_person_index(person_id):
@@ -331,9 +338,11 @@ def remove_person_index(person_id):
     """
     try:
         return indexing.remove_document(get_person_index(), person_id)
+    except indexing.IndexerNotInitializedError:
+        pass
     except:
         app.logger.error("Indexer is not reachable, indexation failed.")
-        return {}
+    return {}
 
 
 def remove_shot_index(shot_id):
@@ -342,6 +351,8 @@ def remove_shot_index(shot_id):
     """
     try:
         return indexing.remove_document(get_shot_index(), shot_id)
+    except indexing.IndexerNotInitializedError:
+        pass
     except:
         app.logger.error("Indexer is not reachable, indexation failed.")
-        return {}
+    return {}

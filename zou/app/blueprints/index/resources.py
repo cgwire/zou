@@ -171,7 +171,7 @@ class StatusResourcesResource(BaseStatusResource):
         }
 
         return {
-            "date": datetime.now().isoformat(),
+            "date": datetime.datetime.now().isoformat(),
             "cpu": cpu_stats,
             "memory": memory_stats,
             "jobs": job_stats,

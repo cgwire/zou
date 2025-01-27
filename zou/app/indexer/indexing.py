@@ -3,24 +3,35 @@ from meilisearch.errors import MeilisearchApiError
 
 from zou.app import config
 from zou.app.utils import cache
+from flask import current_app
 
-client = None
 
-
-def init():
+def init_client():
     """
     Configure Meilisearch client.
     """
-    global client
-    if client is None:
-        protocol = config.INDEXER["protocol"]
-        host = config.INDEXER["host"]
-        port = config.INDEXER["port"]
-        client = meilisearch.Client(
-            f"{protocol}://{host}:{port}",
-            config.INDEXER["key"],
-            timeout=config.INDEXER["timeout"],
-        )
+    protocol = config.INDEXER["protocol"]
+    host = config.INDEXER["host"]
+    port = config.INDEXER["port"]
+    return meilisearch.Client(
+        f"{protocol}://{host}:{port}",
+        config.INDEXER["key"],
+        timeout=config.INDEXER["timeout"],
+    )
+
+
+class IndexerNotInitializedError(Exception):
+    pass
+
+
+def get_client():
+    """
+    Get Meilisearch client.
+    """
+    try:
+        return current_app.extensions["indexer_client"]
+    except KeyError:
+        raise IndexerNotInitializedError()
 
 
 def create_index(index_name, searchable_fields=[], filterable_fields=[]):
@@ -34,6 +45,7 @@ def create_index(index_name, searchable_fields=[], filterable_fields=[]):
     except MeilisearchApiError:
         pass
     if index is None:
+        client = get_client()
         task = client.create_index(index_name, {"primaryKey": "id"})
         client.wait_for_task(
             task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
@@ -57,8 +69,7 @@ def get_index(index_name):
     """
     Get index matching given name.
     """
-    init()
-    index = client.get_index(index_name)
+    index = get_client().get_index(index_name)
     return index
 
 
@@ -69,7 +80,7 @@ def clear_index(index_name):
     cache.cache.delete_memoized(get_index)
     index = get_index(index_name)
     task = index.delete_all_documents()
-    client.wait_for_task(
+    get_client().wait_for_task(
         task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
     )
     return index
@@ -80,7 +91,7 @@ def index_document(index, document):
     Add given document to given index.
     """
     task = index.add_documents([document])
-    client.wait_for_task(
+    get_client().wait_for_task(
         task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
     )
     return index
@@ -91,7 +102,7 @@ def index_documents(index, documents):
     Add given documents to given index.
     """
     task = index.add_documents(documents)
-    client.wait_for_task(
+    get_client().wait_for_task(
         task.task_uid, timeout_in_ms=config.INDEXER["timeout"]
     )
     return documents

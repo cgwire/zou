@@ -25,6 +25,7 @@ from meilisearch.errors import (
 
 from zou.app import config, swagger
 from zou.app.stores import auth_tokens_store, file_store
+from zou.app.indexer import indexing
 from zou.app.services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
@@ -71,6 +72,9 @@ if config.SAML_ENABLED:
     app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
 
 app.extensions["fido_server"] = get_fido_server()
+
+if config.INDEXER.get("key") is not None:
+    app.extensions["indexer_client"] = indexing.init_client()
 
 
 @app.teardown_appcontext

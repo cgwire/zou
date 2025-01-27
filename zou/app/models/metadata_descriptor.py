@@ -4,18 +4,31 @@ from sqlalchemy.dialects.postgresql import JSONB
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.models.department import Department
 
-department_metadata_descriptor_link = db.Table(
-    "department_metadata_descriptor_link",
-    db.Column(
-        "metadata_descriptor_id",
+
+class DepartmentMetadataDescriptorLink(db.Model):
+    metadata_descriptor_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("metadata_descriptor.id"),
-    ),
-    db.Column(
-        "department_id", UUIDType(binary=False), db.ForeignKey("department.id")
-    ),
-)
+        index=True,
+        primary_key=True,
+    )
+    department_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("department.id"),
+        index=True,
+        primary_key=True,
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            "metadata_descriptor_id",
+            "department_id",
+            name="department_metadata_descriptor_link_uc",
+        ),
+    )
+
 
 METADATA_DESCRIPTOR_TYPES = [
     ("string", "String"),
@@ -46,7 +59,8 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     choices = db.Column(JSONB)
     for_client = db.Column(db.Boolean(), default=False, index=True)
     departments = db.relationship(
-        "Department", secondary=department_metadata_descriptor_link
+        Department,
+        secondary=DepartmentMetadataDescriptorLink.__table__,
     )
 
     __table_args__ = (
