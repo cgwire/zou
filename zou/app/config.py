@@ -58,7 +58,7 @@ INDEXER = {
     "host": os.getenv("INDEXER_HOST", "localhost"),
     "port": os.getenv("INDEXER_PORT", "7700"),
     "protocol": os.getenv("INDEXER_PROTOCOL", "http"),
-    "key": os.getenv("INDEXER_KEY", "masterkey"),
+    "key": os.getenv("INDEXER_KEY"),
     "timeout": int(os.getenv("INDEXER_TIMEOUT", 5000)),
 }
 
