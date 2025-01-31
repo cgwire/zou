@@ -6,7 +6,7 @@ allows you to start using Kitsu directly with the accounts listed in your LDAP.
 
 ## Activate LDAP
 
-To activate LDAP, you must set the *AUTH\_STRATEGY* environment variable with
+To activate LDAP, you must set the *AUTH\_STRATEGY* environment variable (in /etc/zou/zou.env) with
 the following value:
 
 ```

@@ -20,7 +20,7 @@ Add this to the ExecStart line to create the pid file for zou
 -p /run/zou/zou.pid
 ```
 For example:
-> ExecStart=/opt/zou/zouenv/bin/gunicorn -p /run/zou/zou.pid  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
+> ExecStart=/opt/zou/zouenv/bin/gunicorn -p /run/zou/zou.pid  -c /etc/zou/gunicorn.py -b 127.0.0.1:5000 zou.app:app
 
 Edit the zou-events unit file to create the pid file for zou-events  
 (`/etc/systemd/system/zou-events.service`):

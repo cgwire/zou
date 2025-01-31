@@ -17,6 +17,7 @@ all your environment variables are loaded.
 Clear original database and rebuild tables:
 
 ```
+. /etc/zou/zou.env
 zou clear-db
 zou reset-migrations
 zou upgrade-db
@@ -27,6 +28,7 @@ zou upgrade-db
 Retrieve base data:
 
 ```
+. /etc/zou/zou.env
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
 zou sync-full --source http://yourpreviouskitsu.url/api --no-projects
@@ -35,6 +37,7 @@ zou sync-full --source http://yourpreviouskitsu.url/api --no-projects
 Retrieve project data:
 
 ```
+. /etc/zou/zou.env
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
 zou sync-full --source http://yourpreviouskitsu.url/api --only-projects
@@ -43,6 +46,7 @@ zou sync-full --source http://yourpreviouskitsu.url/api --only-projects
 Retrieve a given project:
 
 ```
+. /etc/zou/zou.env
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
 zou sync-full --source http://yourpreviouskitsu.url/api --project AwesomeProject
@@ -58,6 +62,7 @@ The previous steps were used to retrieve the data stored in the database.
 Retrieve all files:
 
 ```
+. /etc/zou/zou.env
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
 zou sync-full-files --source http://yourpreviouskitsu.url/api
@@ -66,6 +71,7 @@ zou sync-full-files --source http://yourpreviouskitsu.url/api
 Retrieve files for a given project:
 
 ```
+. /etc/zou/zou.env
 SYNC_LOGIN="admin@yourstudio.com" \
 SYNC_PASSWORD="password" \
 zou sync-full-files --source http://yourpreviouskitsu.url/api

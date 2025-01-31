@@ -71,11 +71,6 @@ database, you can reset it at any time. Simply use this command (assuming all
 environment variables are correctly set).
 
 ```
+. /etc/zou/zou.env
 zou reset-search-index
-```
-
-Or add directly your environment variables in the command:
-
-```
-DB_PASSWORD=yourdbpasword INDEXER_KEY=yourindexerapikey zou reset-search-index
 ```

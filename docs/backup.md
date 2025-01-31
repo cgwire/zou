@@ -10,7 +10,8 @@ To run a backup of the Zou database, run the following command:
 
 ```bash
 cd /opt/zou/backups
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou dump-database
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou dump-database
 ```
 
 All data will be stored in a file in the current directory.  The generated file
@@ -43,9 +44,9 @@ ALTER DATABASE targetdb RENAME TO zoudb;
 ```
 you can also change the database being used by using an environment variable in
 
-/etc/systemd/system/zou.service
+/etc/zou/zou.env
 ```bash
-Environment="DB_DATABASE=targetdb"
+DB_DATABASE=targetdb
 ```
 
 
