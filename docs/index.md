@@ -180,12 +180,37 @@ Alternatively, if you want to set the password to avoid interactive prompts, use
 sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'mysecretpassword';"
 ```
 
+`SECRET_KEY` must be generated randomly
+(use `pwgen 16` command for that).
+
+Create the environment variables file for the database:
+
+*Path: /etc/zou/zou.env*
+```bash
+DB_PASSWORD=mysecretpassword
+SECRET_KEY=yourrandomsecretkey
+PREVIEW_FOLDER=/opt/zou/previews
+TMP_DIR=/opt/zou/tmp
+SECRET_KEY=yourrandomsecretkey
+
+# If you add variables above, add the exports below
+export DB_PASSWORD SECRET_KEY PREVIEW_FOLDER TMP_DIR SECRET_KEY
+```
+
+You need to have these variables in memory when you run a `zou` command.
+The easiest way to do this is to run this command:
+
+`. /etc/zou/zou.env`
+
+This line is included with every command in the documentation so that you don't forget it. But you don't have to run it every time.
+
 Finally, create database tables (it is required to leave the Postgres console
 and to activate the Zou virtual environment):
 
-```
+```bash
 # Run it in your bash console.
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-db
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou init-db
 ```
 
 *NB: You can specify a custom username and database. See the [configuration section](https://zou.cg-wire.com/configuration/).*
@@ -249,7 +274,8 @@ WantedBy=multi-user.target
 To finish, start the Meilisearch indexer:
 
 ```
-sudo service meilisearch start
+sudo systemctl enable meilisearch
+sudo systemctl start meilisearch
 ```
 
 
@@ -286,10 +312,6 @@ file that will add a new daemon to be managed by Systemd:
 
 *Path: /etc/systemd/system/zou.service*
 
-Please note that environment variables are positioned here. `DB_PASSWORD` must
-be set with your database password. `SECRET_KEY` must be generated randomly
-(use `pwgen 16` command for that).
-
 ```
 [Unit]
 Description=Gunicorn instance to serve the Zou API
@@ -299,13 +321,9 @@ After=network.target
 User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
-# Append DB_USERNAME=username DB_HOST=server when default values aren't used
 # ffmpeg must be in PATH
-Environment="DB_PASSWORD=mysecretpassword"
-Environment="SECRET_KEY=yourrandomsecretkey"
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
-Environment="PREVIEW_FOLDER=/opt/zou/previews"
-Environment="TMP_DIR=/opt/zou/tmp"
+EnvironmentFile=/etc/zou/zou.env
 ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
 
 [Install]
@@ -339,9 +357,8 @@ After=network.target
 User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
-# Append DB_USERNAME=username DB_HOST=server when default values aren't used
 Environment="PATH=/opt/zou/zouenv/bin"
-Environment="SECRET_KEY=yourrandomsecretkey" # Same one than zou.service
+EnvironmentFile=/etc/zou/zou.env
 ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.conf -b 127.0.0.1:5001 zou.event_stream:app
 
 [Install]
@@ -401,10 +418,8 @@ sudo ln -s /etc/nginx/sites-available/zou /etc/nginx/sites-enabled/zou
 Finally, we can start our daemon and restart Nginx:
 
 ```bash
-sudo systemctl enable zou
-sudo systemctl enable zou-events
-sudo systemctl start zou
-sudo systemctl start zou-events
+sudo systemctl enable zou zou-events
+sudo systemctl start zou zou-events
 sudo systemctl restart nginx
 ```
 
@@ -433,8 +448,7 @@ DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
 Finally, restart the Zou service:
 
 ```bash
-sudo systemctl restart zou
-sudo systemctl restart zou-events
+sudo systemctl restart zou zou-events
 ```
 
 That's it! Your Zou instance is now up to date. 
@@ -519,13 +533,15 @@ rm /tmp/kitsu.tgz
 Some basic data are required by Kitsu to work properly (like project status) :
 
 ```
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou init-data
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou init-data
 ```
 
 If you have install the indexer, you can also index the data:
 
 ```
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou reset-search-index
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou reset-search-index
 ```
 
 ## Admin users
@@ -535,8 +551,8 @@ log in and create other users. For that go into the terminal and run the
 `zou` binary:
 
 ```
-cd /opt/zou/
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou create-admin --password 1SecretPass adminemail@yourstudio.com
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou create-admin --password 1SecretPass adminemail@yourstudio.com
 ```
 
 It expects the password as the first argument. Then your user will be created with

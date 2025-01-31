@@ -12,11 +12,11 @@ is required.
 
 ## Enabling job queue
 
-Set `ENABLE_JOB_QUEUE` environment variable to `True` in the main service file (zou.service).
+Set `ENABLE_JOB_QUEUE` environment variable to `True` in the variables file (/etc/zou/zou.env).
 
 ## S3 Storage
 
-If your main service file (zou.service) uses a S3 backend, you want to add the same variables to the job queue too (zou-jobs.service).
+If your variables file (/etc/zou/zou.env) uses a S3 backend.
 
 * `FS_BACKEND`: Set this variable with "s3"
 * `FS_BUCKET_PREFIX`: A prefix for your bucket names, it's mandatory to 
@@ -48,16 +48,8 @@ After=network.target
 User=zou
 Group=www-data
 WorkingDirectory=/opt/zou
-Environment="DB_PASSWORD=mysecretpassword"
-Environment="SECRET_KEY=yourrandomsecretkey"
+EnvironmentFile=/etc/zou/zou.env
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
-Environment="PREVIEW_FOLDER=/opt/zou/previews"
-# Environment="FS_BACKEND=s3"
-# Environment="FS_BUCKET_PREFIX=prefix"
-# Environment="FS_S3_REGION=region"
-# Environment="FS_S3_ENDPOINT=https://endpoint.url"
-# Environment="FS_S3_ACCESS_KEY=XXX"
-# Environment="FS_S3_SECRET_KEY=XXX"
 ExecStart=/opt/zou/zouenv/bin/rq worker -c zou.job_settings 
 
 [Install]
@@ -66,5 +58,6 @@ WantedBy=multi-user.target
 
 Start the service:
 ```
-sudo service zou-jobs start
+sudo systemctl enable zou-jobs
+sudo systemctl start zou-jobs
 ```
