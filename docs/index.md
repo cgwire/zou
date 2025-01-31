@@ -291,7 +291,7 @@ sudo mkdir /etc/zou
 
 We need to run the application through *gunicorn*, a WSGI server that will run zou as a daemon. Let's write the *gunicorn* configuration:
 
-*Path: /etc/zou/gunicorn.conf*
+*Path: /etc/zou/gunicorn.py*
 
 ```
 accesslog = "/opt/zou/logs/gunicorn_access.log"
@@ -324,7 +324,7 @@ WorkingDirectory=/opt/zou
 # ffmpeg must be in PATH
 Environment="PATH=/opt/zou/zouenv/bin:/usr/bin"
 EnvironmentFile=/etc/zou/zou.env
-ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.conf -b 127.0.0.1:5000 zou.app:app
+ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.py -b 127.0.0.1:5000 zou.app:app
 
 [Install]
 WantedBy=multi-user.target
@@ -335,7 +335,7 @@ WantedBy=multi-user.target
 
 Let's write the *gunicorn* configuration:
 
-*Path: /etc/zou/gunicorn-events.conf*
+*Path: /etc/zou/gunicorn-events.py*
 
 ```
 accesslog = "/opt/zou/logs/gunicorn_events_access.log"
@@ -359,7 +359,7 @@ Group=www-data
 WorkingDirectory=/opt/zou
 Environment="PATH=/opt/zou/zouenv/bin"
 EnvironmentFile=/etc/zou/zou.env
-ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.conf -b 127.0.0.1:5001 zou.event_stream:app
+ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.py -b 127.0.0.1:5001 zou.event_stream:app
 
 [Install]
 WantedBy=multi-user.target
