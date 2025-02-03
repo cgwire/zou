@@ -10,7 +10,8 @@ Prior to look for logs or any clue about your problem, make sure that the
 database is up and up to date:
 
 ```bash
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou upgrade-db
 ```
 
 ## Error logs
@@ -49,7 +50,8 @@ If, for any reasons, the user cannot access to his rest password email, you can
 change his password with the following command:
 
 ```bash
-DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou change-password email@studio.com --password newsecretpassword
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou change-password email@studio.com --password newsecretpassword
 ```
 
 ## Installing on Ubuntu server or minimal desktop
@@ -64,9 +66,7 @@ sudo apt-get install libjpeg-dev
 ## To enable zou to start on reboot
 
 ```bash
-sudo systemctl enable zou
-
-sudo systemctl enable zou-events
+sudo systemctl enable zou zou-events
 ```
 
 
@@ -146,8 +146,8 @@ edit for any other path differences. Run as &lt;script name> &lt;zou version>
 eg; ./zou_to_version.sh 0.14.12
 
 ```
+. /etc/zou/zou.env
 sudo /opt/zou/zouenv/bin/python -m pip install 'zou=='$1 #this is the version number variable
-DB_PASSWORD=<db password here> /opt/zou/zouenv/bin/zou upgrade-db
-sudo service zou restart
-sudo service zou-events restart
+/opt/zou/zouenv/bin/zou upgrade-db
+sudo systemctl restart zou zou-events
 ```
