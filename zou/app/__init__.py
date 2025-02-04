@@ -73,7 +73,7 @@ if config.SAML_ENABLED:
 
 app.extensions["fido_server"] = get_fido_server()
 
-if config.INDEXER.get("key") is not None:
+if config.INDEXER["key"] is not None:
     app.extensions["indexer_client"] = indexing.init_client()
 
 
