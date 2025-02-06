@@ -169,7 +169,7 @@ def get_full_assets(criterions={}):
     return assets
 
 
-def get_assets_and_tasks(criterions={}, page=1, with_episode_ids=False):
+def get_assets_and_tasks(criterions={}, with_episode_ids=False):
     """
     Get all assets for given criterions with related tasks for each asset.
     """
