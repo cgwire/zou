@@ -140,7 +140,6 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
             description: All assets with tasks
         """
         criterions = query.get_query_criterions_from_request(request)
-        page = self.get_page()
         check_criterion_access(criterions)
         if permissions.has_vendor_permissions():
             criterions["assigned_to"] = persons_service.get_current_user()[
@@ -150,7 +149,7 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
                 str(department.id)
                 for department in persons_service.get_current_user_raw().departments
             ]
-        return assets_service.get_assets_and_tasks(criterions, page)
+        return assets_service.get_assets_and_tasks(criterions)
 
 
 class AssetTypeResource(Resource):

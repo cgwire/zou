@@ -188,7 +188,9 @@ def get_playlist_with_preview_file_revisions(playlist_id):
                 shot["preview_file_status"] = preview_file["status"]
                 shot["preview_file_annotations"] = preview_file["annotations"]
                 shot["preview_file_task_id"] = preview_file["task_id"]
-                shot["preview_file_previews"] = preview_file["previews"]
+                shot["preview_file_previews"] = preview_file.get(
+                    "previews", []
+                )
             else:
                 del shot["preview_file_id"]
         except Exception as e:
@@ -234,7 +236,6 @@ def set_preview_files_for_entities(playlist_dict):
         .all()
     )
 
-    is_pictures = False
     for preview_file, task_type_id, entity_id in preview_files:
         entity_id = str(entity_id)
         task_type_id = str(task_type_id)
@@ -243,9 +244,6 @@ def set_preview_files_for_entities(playlist_dict):
 
         if task_type_id not in previews[entity_id]:
             previews[entity_id][task_type_id] = []
-
-        if preview_file.extension == "png":
-            is_pictures = True
 
         task_id = str(preview_file.task_id)
         preview_file_id = str(preview_file.id)
@@ -265,12 +263,11 @@ def set_preview_files_for_entities(playlist_dict):
         previews[entity_id][task_type_id].append(light_preview_file)
         preview_file_map[preview_file_id] = light_preview_file
 
-    if is_pictures:
-        for entity_id in previews.keys():
-            for task_type_id in previews[entity_id].keys():
-                previews[entity_id][task_type_id] = mix_preview_file_revisions(
-                    previews[entity_id][task_type_id]
-                )
+    for entity_id in previews.keys():
+        for task_type_id in previews[entity_id].keys():
+            previews[entity_id][task_type_id] = mix_preview_file_revisions(
+                previews[entity_id][task_type_id]
+            )
 
     for entity in playlist_dict["shots"]:
         if str(entity["id"]) in previews:

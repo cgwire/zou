@@ -47,8 +47,6 @@ class TasksResource(BaseModelsResource, ArgsMixin):
             name_filter,
             criterions,
         ) = super().build_filters(options)
-        if "project_id" in criterions:
-            del criterions["project_id"]
         if "episode_id" in criterions:
             del criterions["episode_id"]
         return (
@@ -61,7 +59,6 @@ class TasksResource(BaseModelsResource, ArgsMixin):
     def apply_filters(self, query, options):
         query = super().apply_filters(query, options)
 
-        project_id = options.get("project_id", None)
         episode_id = options.get("episode_id", None)
         if episode_id is not None:
             Sequence = aliased(Entity)
@@ -69,10 +66,6 @@ class TasksResource(BaseModelsResource, ArgsMixin):
                 query.join(Entity, Task.entity_id == Entity.id)
                 .join(Sequence, Entity.parent_id == Sequence.id)
                 .filter(Sequence.parent_id == episode_id)
-            )
-        elif project_id is not None:
-            query = query.join(Entity, Task.entity_id == Entity.id).filter(
-                Entity.project_id == project_id
             )
 
         return query
