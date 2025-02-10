@@ -3,6 +3,7 @@ from sqlalchemy_utils import UUIDType
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.utils import fields
 
 
 class ChatParticipant(db.Model):
@@ -37,8 +38,10 @@ class Chat(db.Model, BaseMixin, SerializerMixin):
         return "<Message of %s>" % self.object_id
 
     def present(self):
-        return {
-            "id": str(self.id),
-            "object_id": str(self.object_id),
-            "last_message": self.last_message,
-        }
+        return fields.serialize_dict(
+            {
+                "id": self.id,
+                "object_id": self.object_id,
+                "last_message": self.last_message,
+            }
+        )

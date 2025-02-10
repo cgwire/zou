@@ -3,6 +3,7 @@ from sqlalchemy_utils import UUIDType
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.utils import fields
 
 
 class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
@@ -31,12 +32,14 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
         return "<AttachmentFile %s>" % self.id
 
     def present(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "extension": self.extension,
-            "size": self.size,
-        }
+        return fields.serialize_dict(
+            {
+                "id": self.id,
+                "name": self.name,
+                "extension": self.extension,
+                "size": self.size,
+            }
+        )
 
     @classmethod
     def create_from_import(cls, data):

@@ -3,6 +3,7 @@ from sqlalchemy_utils import UUIDType, ChoiceType
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
+from zou.app.utils import fields
 
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -82,16 +83,19 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
             return (previous_data, True)
 
     def present(self):
-        return {
-            "id": str(self.id),
-            "name": self.name,
-            "original_name": self.original_name,
-            "extension": self.extension,
-            "revision": self.revision,
-            "position": self.position,
-            "file_size": self.file_size,
-            "status": str(self.status),
-            "validation_status": str(self.validation_status),
-            "task_id": str(self.task_id),
-            "person_id": str(self.person_id),
-        }
+        return fields.serialize_dict(
+            {
+                "id": self.id,
+                "name": self.name,
+                "original_name": self.original_name,
+                "extension": self.extension,
+                "revision": self.revision,
+                "position": self.position,
+                "file_size": self.file_size,
+                "status": self.status,
+                "validation_status": self.validation_status,
+                "task_id": self.task_id,
+                "person_id": self.person_id,
+                "created_at": self.created_at,
+            }
+        )
