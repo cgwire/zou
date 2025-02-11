@@ -1105,6 +1105,7 @@ def get_user_filter_groups(current_user_id):
             )
         )
         .filter(or_(build_open_project_filter(), Project.id == None))
+        .order_by(SearchFilterGroup.created_at.desc())
         .all()
     )
 
