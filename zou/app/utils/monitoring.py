@@ -1,6 +1,7 @@
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from jwt import ExpiredSignatureError
 from werkzeug.exceptions import Forbidden, NotFound
+from flask_fs.errors import FileNotFound
 
 from zou.app import config
 from zou.app.utils import permissions
@@ -37,6 +38,7 @@ def init_monitoring(app):
                 NotFound,
                 Forbidden,
                 ExpiredSignatureError,
+                FileNotFound,
             ],
         )
 

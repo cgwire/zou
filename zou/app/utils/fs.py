@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+from flask_fs.errors import FileNotFound
 
 import errno
 
@@ -44,6 +45,8 @@ def get_file_path_and_file(
 ):
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
+        if is_unvalid_file(file_path, file_size):
+            raise FileNotFound
     else:
         file_path = os.path.join(
             config.TMP_DIR, "cache-%s-%s.%s" % (prefix, instance_id, extension)
