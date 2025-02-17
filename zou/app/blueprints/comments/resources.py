@@ -83,9 +83,10 @@ class DownloadAttachmentResource(Resource):
                 ),
             )
         except Exception:
-            current_app.logger.error(
-                f"Attachment file was not found for: {attachment_file_id}"
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    f"Attachment file was not found for: {attachment_file_id}"
+                )
             abort(404)
 
 
