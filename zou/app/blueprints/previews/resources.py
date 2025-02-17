@@ -653,9 +653,10 @@ class PreviewFileMovieResource(BasePreviewFileResource):
                 instance_id, last_modified=self.last_modified
             )
         except FileNotFound:
-            current_app.logger.error(
-                "Movie file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Movie file was not found for: %s" % instance_id
+                )
             abort(404)
 
 
@@ -698,9 +699,10 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
                     instance_id, last_modified=self.last_modified
                 )
             except FileNotFound:
-                current_app.logger.error(
-                    "Movie file was not found for: %s" % instance_id
-                )
+                if config.LOG_FILE_NOT_FOUND:
+                    current_app.logger.error(
+                        "Movie file was not found for: %s" % instance_id
+                    )
                 abort(404)
 
 
@@ -740,9 +742,10 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
                 last_modified=self.last_modified,
             )
         except FileNotFound:
-            current_app.logger.error(
-                "Movie file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Movie file was not found for: %s" % instance_id
+                )
             abort(404)
 
 
@@ -800,9 +803,10 @@ class PreviewFileResource(BasePreviewFileResource):
                 )
 
         except FileNotFound:
-            current_app.logger.error(
-                "Non-movie file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Non-movie file was not found for: %s" % instance_id
+                )
             abort(404)
 
 
@@ -869,9 +873,10 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                     last_modified=self.last_modified,
                 )
         except FileNotFound:
-            current_app.logger.error(
-                "Standard file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Standard file was not found for: %s" % instance_id
+                )
             abort(404)
 
 
@@ -935,10 +940,11 @@ class AttachmentThumbnailResource(Resource):
                 ),
             )
         except FileNotFound:
-            current_app.logger.error(
-                "Picture file was not found for attachment: %s"
-                % (attachment_file_id)
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Picture file was not found for attachment: %s"
+                    % (attachment_file_id)
+                )
             abort(404)
 
 
@@ -982,9 +988,10 @@ class BasePreviewPictureResource(BasePreviewFileResource):
                 last_modified=self.last_modified,
             )
         except FileNotFound:
-            current_app.logger.error(
-                "Picture file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Picture file was not found for: %s" % instance_id
+                )
             abort(404)
 
 
@@ -1166,14 +1173,13 @@ class BaseThumbnailResource(Resource):
                 ),
             )
         except FileNotFound:
-            current_app.logger.error(
-                "Thumbnail file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Thumbnail file was not found for: %s" % instance_id
+                )
             abort(404)
-        except IOError:
-            current_app.logger.error(
-                "Thumbnail file was not found for: %s" % instance_id
-            )
+        except IOError as e:
+            current_app.logger.error(e)
             abort(404)
 
 
@@ -1680,9 +1686,11 @@ class PreviewBackgroundFileResource(Resource):
                 ),
             )
         except FileNotFound:
-            current_app.logger.error(
-                "Preview background file was not found for: %s" % instance_id
-            )
+            if config.LOG_FILE_NOT_FOUND:
+                current_app.logger.error(
+                    "Preview background file was not found for: %s"
+                    % instance_id
+                )
             raise PreviewBackgroundFileNotFoundException
 
 
