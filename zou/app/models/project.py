@@ -29,10 +29,16 @@ PROJECT_STYLES = [
 class ProjectPersonLink(db.Model):
     __tablename__ = "project_person_link"
     project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        primary_key=True,
+        index=True,
     )
     person_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("person.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        primary_key=True,
+        index=True,
     )
     shotgun_id = db.Column(db.Integer)
 
@@ -40,10 +46,16 @@ class ProjectPersonLink(db.Model):
 class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
     __tablename__ = "project_task_type_link"
     project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        primary_key=True,
+        index=True,
     )
     task_type_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("task_type.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("task_type.id"),
+        primary_key=True,
+        index=True,
     )
     priority = db.Column(db.Integer, default=None)
 
@@ -57,12 +69,16 @@ class ProjectTaskTypeLink(db.Model, BaseMixin, SerializerMixin):
 class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
     __tablename__ = "project_task_status_link"
     project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        primary_key=True,
+        index=True,
     )
     task_status_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("task_status.id"),
         primary_key=True,
+        index=True,
     )
     priority = db.Column(db.Integer, default=None)
     roles_for_board = db.Column(
@@ -92,12 +108,16 @@ class ProjectAssetTypeLink(db.Model):
 class ProjectStatusAutomationLink(db.Model):
     __tablename__ = "project_status_automation_link"
     project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        primary_key=True,
+        index=True,
     )
     status_automation_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("status_automation.id"),
         primary_key=True,
+        index=True,
     )
 
 

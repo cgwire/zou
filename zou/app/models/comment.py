@@ -6,21 +6,19 @@ from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
 
-preview_link_table = db.Table(
-    "comment_preview_link",
-    db.Column(
-        "comment",
+class CommentPreviewLink(db.Model):
+    comment = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("comment.id"),
         primary_key=True,
-    ),
-    db.Column(
-        "preview_file",
+        index=True,
+    )
+    preview_file = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("preview_file.id"),
         primary_key=True,
-    ),
-)
+        index=True,
+    )
 
 
 mentions_table = db.Table(
@@ -107,7 +105,9 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False), db.ForeignKey("preview_file.id")
     )
     previews = db.relationship(
-        "PreviewFile", secondary=preview_link_table, backref="comments"
+        "PreviewFile",
+        secondary=CommentPreviewLink.__table__,
+        backref="comments",
     )
     mentions = db.relationship("Person", secondary=mentions_table)
     department_mentions = db.relationship(

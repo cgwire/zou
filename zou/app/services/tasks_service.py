@@ -15,7 +15,7 @@ from zou.app.models.comment import (
     acknowledgements_table,
     mentions_table,
     department_mentions_table,
-    preview_link_table,
+    CommentPreviewLink,
 )
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity, EntityLink
@@ -686,9 +686,9 @@ def _build_department_mention_map_for_comments(comment_ids):
 def _build_preview_map_for_comments(comment_ids, is_client=False):
     preview_map = {}
     query = (
-        PreviewFile.query.join(preview_link_table)
-        .filter(preview_link_table.c.comment.in_(comment_ids))
-        .add_columns(preview_link_table.c.comment)
+        PreviewFile.query.join(CommentPreviewLink)
+        .filter(CommentPreviewLink.comment.in_(comment_ids))
+        .add_columns(CommentPreviewLink.comment)
     )
     for preview, comment_id in query.all():
         comment_id = str(comment_id)
