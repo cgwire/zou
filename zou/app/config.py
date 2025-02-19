@@ -142,7 +142,7 @@ LOGS_MODE = os.getenv("LOGS_MODE", "default")
 LOGS_HOST = os.getenv("LOGS_HOST", "localhost")
 LOGS_PORT = os.getenv("LOGS_PORT", 2202)
 LOGS_TOKEN = os.getenv("LOGS_TOKEN")
-LOG_FILE_NOT_FOUND = envtobool("LOG_FILE_NOT_FOUND", True)
+LOG_FILE_NOT_FOUND = envtobool("LOG_FILE_NOT_FOUND", False)
 
 SENTRY_ENABLED = envtobool("SENTRY_ENABLED", False)
 SENTRY_DSN = os.getenv("SENTRY_DSN", "")
