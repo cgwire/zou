@@ -251,6 +251,7 @@ def get_entities_and_tasks(criterions={}):
             Task.due_date,
             Task.done_date,
             Task.last_comment_date,
+            Task.last_preview_file_id,
             Task.difficulty,
             assignees_table.columns.person,
         )
@@ -282,6 +283,7 @@ def get_entities_and_tasks(criterions={}):
         task_due_date,
         task_done_date,
         task_last_comment_date,
+        task_last_preview_file_id,
         task_difficulty,
         person_id,
     ) in query.all():
@@ -322,6 +324,7 @@ def get_entities_and_tasks(criterions={}):
                         "duration": task_duration,
                         "is_subscribed": subscription_map.get(task_id, False),
                         "last_comment_date": task_last_comment_date,
+                        "last_preview_file_id": task_last_preview_file_id,
                         "priority": task_priority or 0,
                         "real_start_date": task_real_start_date,
                         "retake_count": task_retake_count,
