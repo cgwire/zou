@@ -202,6 +202,7 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
         Task.due_date,
         Task.done_date,
         Task.last_comment_date,
+        Task.last_preview_file_id,
         Task.difficulty,
         assignees_table.columns.person,
     ).order_by(EntityType.name, Entity.name)
@@ -294,6 +295,7 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
         task_due_date,
         task_done_date,
         task_last_comment_date,
+        task_last_preview_file_id,
         task_difficulty,
         person_id,
     ) in query_result:
@@ -346,6 +348,7 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
                     "last_comment_date": fields.serialize_value(
                         task_last_comment_date
                     ),
+                    "last_preview_file_id": str(task_last_preview_file_id or ""),
                     "priority": task_priority or 0,
                     "real_start_date": fields.serialize_value(
                         task_real_start_date
