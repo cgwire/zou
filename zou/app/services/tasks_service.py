@@ -1858,6 +1858,8 @@ def get_open_tasks(
     task_status_id=None,
     project_id=None,
     person_id=None,
+    studio_id=None,
+    department_id=None,
     start_date=None,
     due_date=None,
     priority=None,
@@ -1958,8 +1960,22 @@ def get_open_tasks(
             query = query.filter(Task.assignees == None)
             query_stats = query_stats.filter(Task.assignees == None)
         else:
-            query = query.filter(Task.assignees.any(id=person_id))
-            query_stats = query_stats.filter(Task.assignees.any(id=person_id))
+            query = query.filter(Task.assignees.any(
+                Person.id.in_(person_id.split(","))
+            ))
+            query_stats = query_stats.filter(Task.assignees.any(
+                Person.id.in_(person_id.split(","))
+            ))
+
+    if studio_id is not None:
+        query = query.filter(Task.assignees.any(studio_id=studio_id))
+        query_stats = query_stats.filter(Task.assignees.any(studio_id=studio_id))
+
+    if department_id is not None:
+        query = query.filter(
+            Task.assignees.any(Person.departments.any(id=department_id)))
+        query_stats = query_stats.filter(
+            Task.assignees.any(Person.departments.any(id=department_id)))
 
     if start_date is not None:
         start_date = func.cast(start_date, Task.start_date.type)
