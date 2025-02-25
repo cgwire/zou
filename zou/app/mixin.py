@@ -78,7 +78,7 @@ class ArgsMixin(object):
         Returns limit requested by the user as an integer.
         """
         options = request.args
-        return int(options.get("limit", "-1"))
+        return int(options.get("limit", 0))
 
     def get_sort_by(self):
         """
