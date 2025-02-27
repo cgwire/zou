@@ -419,7 +419,7 @@ class CreatePreviewFilePictureResource(
             raise PreviewFileReuploadNotAllowedException
 
         try:
-            user_service.check_task_access(preview_file["task_id"])
+            user_service.check_task_action_access(preview_file["task_id"])
             return True
         except permissions.PermissionDenied:
             return False
@@ -474,14 +474,14 @@ class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
         args = self.get_comments_args()
 
         if task_id is not None:
-            user_service.check_task_access(task_id)
+            user_service.check_task_action_access(task_id)
 
         new_comments = []
         for i, comment in enumerate(args["comments"]):
             user_service.check_task_status_access(comment["task_status_id"])
 
             if task_id is None:
-                user_service.check_task_access(comment["task_id"])
+                user_service.check_task_action_access(comment["task_id"])
 
             if not permissions.has_manager_permissions():
                 comment["person_id"] = None
@@ -1322,7 +1322,7 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
         """
         args = self.get_args([{"name": "position", "default": 0, "type": int}])
         preview_file = files_service.get_preview_file(preview_file_id)
-        user_service.check_task_access(preview_file["task_id"])
+        user_service.check_task_action_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
             preview_file_id, args["position"]
         )

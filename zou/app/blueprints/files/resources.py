@@ -768,7 +768,7 @@ class ModifiedFileResource(Resource):
               description: Working file modification date updated
         """
         working_file = files_service.get_working_file(working_file_id)
-        user_service.check_task_access(working_file["task_id"])
+        user_service.check_task_action_access(working_file["task_id"])
         working_file = files_service.update_working_file(
             working_file_id,
             {"updated_at": date_helpers.get_utc_now_datetime()},
@@ -819,7 +819,7 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
         )
 
         working_file = files_service.get_working_file(working_file_id)
-        user_service.check_task_access(working_file["task_id"])
+        user_service.check_task_action_access(working_file["task_id"])
         working_file = self.update_comment(working_file_id, args["comment"])
         return working_file
 

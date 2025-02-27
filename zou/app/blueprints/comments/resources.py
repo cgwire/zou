@@ -190,7 +190,7 @@ class CommentTaskResource(Resource):
             links,
         ) = self.get_arguments()
 
-        user_service.check_task_access(task_id)
+        user_service.check_task_action_access(task_id)
         user_service.check_task_status_access(task_status_id)
         files = request.files
 
@@ -491,7 +491,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
             ]
         )
 
-        user_service.check_task_access(task_id)
+        user_service.check_task_action_access(task_id)
         return comments_service.reply_comment(comment_id, args["text"])
 
 
@@ -530,7 +530,6 @@ class DeleteReplyCommentResource(Resource):
             200:
                 description: Given comment reply deleted
         """
-        user_service.check_task_access(task_id)
         reply = comments_service.get_reply(comment_id, reply_id)
         current_user = persons_service.get_current_user()
         if reply["person_id"] != current_user["id"]:

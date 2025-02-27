@@ -69,7 +69,7 @@ class AddPreviewResource(Resource, ArgsMixin):
         """
         args = self.get_args([("revision", 0, False, int)])
 
-        user_service.check_task_access(task_id)
+        user_service.check_task_action_access(task_id)
 
         person = persons_service.get_current_user()
         preview_file = tasks_service.add_preview_file_to_comment(
@@ -117,7 +117,7 @@ class AddExtraPreviewResource(Resource, ArgsMixin):
             201:
                 description: Preview added to given comment
         """
-        user_service.check_task_access(task_id)
+        user_service.check_task_action_access(task_id)
         tasks_service.get_comment(comment_id)
 
         person = persons_service.get_current_user()

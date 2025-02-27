@@ -1,5 +1,5 @@
 from sqlalchemy.orm import aliased
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 
 from zou.app import config
 from zou.app.models.comment import Comment
@@ -486,6 +486,37 @@ def check_task_access(task_id):
     check_project_access(task["project_id"])
     check_entity_access(task["entity_id"])
     return True
+
+
+def check_task_action_access(task_id):
+    """
+    Return true if current user can have access to a task action.
+    """
+    task = tasks_service.get_task(task_id)
+    is_allowed = False
+    if permissions.has_admin_permissions():
+        is_allowed = True
+    elif check_belong_to_project(task["project_id"]):
+        if permissions.has_manager_permissions():
+            is_allowed = True
+        else:
+            user = persons_service.get_current_user(relations=True)
+            if permissions.has_supervisor_permissions():
+                is_allowed = (
+                    user["departments"] == []
+                    or tasks_service.get_task_type(task["task_type_id"])[
+                        "department_id"
+                    ]
+                    in user["departments"]
+                )
+            else:
+                is_allowed = user["id"] in task.get("assignees", [])
+    else:
+        is_allowed = False
+
+    if not is_allowed:
+        raise permissions.PermissionDenied
+    return is_allowed
 
 
 def check_comment_access(comment_id):
@@ -1300,9 +1331,6 @@ def get_unread_notifications_count(notification_id=None):
     return Notification.query.filter_by(
         person_id=current_user["id"], read=False
     ).count()
-
-
-from sqlalchemy import and_, func
 
 
 def get_last_notifications(
