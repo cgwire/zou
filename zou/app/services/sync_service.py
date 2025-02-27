@@ -43,6 +43,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.studio import Studio
+from zou.app.models.status_automation import StatusAutomation
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
@@ -103,6 +104,7 @@ event_name_model_map = {
     "subscription": Subscription,
     "search-filter": SearchFilter,
     "search-filter-group": SearchFilterGroup,
+    "status-automation": StatusAutomation,
     "studio": Studio,
     "task": Task,
     "task-status": TaskStatus,
@@ -142,6 +144,7 @@ event_name_model_path_map = {
     "search-filter": "search-filters",
     "search-filter-group": "search-filter-groups",
     "subscription": "subscriptions",
+    "status-automation": "status-automations",
     "studio": "studios",
     "task": "tasks",
     "task-status": "task-status",
@@ -176,6 +179,7 @@ main_events = [
     "department",
     "task-type",
     "task-status",
+    "status-automation",
     "custom-action",
     "organisation",
     "project-status",
@@ -286,6 +290,8 @@ def run_main_data_sync(project=None):
     Retrieve and import all cross-projects data from source instance.
     """
     for event in main_events:
+        if project is None and event == "project":
+            continue
         path = event_name_model_path_map[event]
         model = event_name_model_map[event]
         sync_entries(path, model, project=project)
