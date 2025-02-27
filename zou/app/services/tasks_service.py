@@ -587,11 +587,13 @@ def get_comments(task_id, is_client=False, is_manager=False):
 
 
 def _prepare_query(task_id, is_client, is_manager):
+    UpdatedBy = aliased(Person, name="updated_by")
     query = (
         Comment.query.order_by(Comment.created_at.desc())
         .filter_by(object_id=task_id)
         .join(Person, Comment.person_id == Person.id)
         .join(TaskStatus, Comment.task_status_id == TaskStatus.id)
+        .join(UpdatedBy, Comment.updated_by == UpdatedBy.id, isouter=True)
         .add_columns(
             TaskStatus.name,
             TaskStatus.short_name,
@@ -599,6 +601,9 @@ def _prepare_query(task_id, is_client, is_manager):
             Person.first_name,
             Person.last_name,
             Person.has_avatar,
+            UpdatedBy.first_name,
+            UpdatedBy.last_name,
+            UpdatedBy.has_avatar,
         )
     )
     if not is_manager and not is_client:
@@ -618,6 +623,9 @@ def _run_task_comments_query(query):
             person_first_name,
             person_last_name,
             person_has_avatar,
+            updated_by_first_name,
+            updated_by_last_name,
+            updated_by_has_avatar,
         ) = result
 
         comment_dict = comment.serialize()
@@ -627,6 +635,13 @@ def _run_task_comments_query(query):
             "has_avatar": person_has_avatar,
             "id": str(comment.person_id),
         }
+        if comment.updated_by is not None:
+            comment_dict["updated_by"] = {
+                "first_name": updated_by_first_name,
+                "last_name": updated_by_last_name,
+                "has_avatar": updated_by_has_avatar,
+                "id": str(comment.updated_by),
+            }
         comment_dict["task_status"] = {
             "name": task_status_name,
             "short_name": task_status_short_name,
@@ -1140,7 +1155,7 @@ def get_last_comment_map(task_ids):
     task_comment_map = {}
     comments = (
         Comment.query.filter(Comment.object_id.in_(task_ids))
-        .join(Person)
+        .join(Person, Comment.person_id == Person.id)
         .filter(Person.role != "client")
         .order_by(Comment.object_id, Comment.created_at)
         .all()
@@ -1960,22 +1975,26 @@ def get_open_tasks(
             query = query.filter(Task.assignees == None)
             query_stats = query_stats.filter(Task.assignees == None)
         else:
-            query = query.filter(Task.assignees.any(
-                Person.id.in_(person_id.split(","))
-            ))
-            query_stats = query_stats.filter(Task.assignees.any(
-                Person.id.in_(person_id.split(","))
-            ))
+            query = query.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
+            query_stats = query_stats.filter(
+                Task.assignees.any(Person.id.in_(person_id.split(",")))
+            )
 
     if studio_id is not None:
         query = query.filter(Task.assignees.any(studio_id=studio_id))
-        query_stats = query_stats.filter(Task.assignees.any(studio_id=studio_id))
+        query_stats = query_stats.filter(
+            Task.assignees.any(studio_id=studio_id)
+        )
 
     if department_id is not None:
         query = query.filter(
-            Task.assignees.any(Person.departments.any(id=department_id)))
+            Task.assignees.any(Person.departments.any(id=department_id))
+        )
         query_stats = query_stats.filter(
-            Task.assignees.any(Person.departments.any(id=department_id)))
+            Task.assignees.any(Person.departments.any(id=department_id))
+        )
 
     if start_date is not None:
         start_date = func.cast(start_date, Task.start_date.type)

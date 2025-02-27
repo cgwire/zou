@@ -206,6 +206,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
             403,
         )
         projects_service.add_team_member(self.project_id, user["id"])
+        self.assign_task(working_file["task_id"], user["id"])
         self.put(
             "/actions/working-files/%s/comment" % working_file["id"],
             comment_data,
