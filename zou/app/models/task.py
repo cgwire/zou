@@ -47,6 +47,8 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     last_comment_date = db.Column(db.DateTime)
     nb_assets_ready = db.Column(db.Integer, default=0)
     data = db.Column(JSONB)
+    nb_drawings = db.Column(db.Integer, default=0)
+
     shotgun_id = db.Column(db.Integer)
     last_preview_file_id = db.Column(UUIDType(binary=False))
 

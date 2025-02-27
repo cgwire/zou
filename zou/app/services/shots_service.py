@@ -256,6 +256,7 @@ def get_shots_and_tasks(criterions={}):
             Task.last_preview_file_id,
             Task.nb_assets_ready,
             Task.difficulty,
+            Task.nb_drawings,
             assignees_table.columns.person,
             Project.id,
             Project.name,
@@ -308,6 +309,7 @@ def get_shots_and_tasks(criterions={}):
         task_last_preview_file_id,
         task_nb_assets_ready,
         task_difficulty,
+        task_nb_drawings,
         person_id,
         project_id,
         project_name,
@@ -373,6 +375,7 @@ def get_shots_and_tasks(criterions={}):
                         "retake_count": task_retake_count,
                         "start_date": task_start_date,
                         "difficulty": task_difficulty,
+                        "nb_drawings": task_nb_drawings,
                         "task_status_id": task_status_id,
                         "task_type_id": task_type_id,
                         "assignees": [],
@@ -1168,9 +1171,14 @@ def get_weighted_quotas(
 
     for task, nb_frames, date, duration, person_id in result:
         person_id = str(person_id)
-        if task.duration > 0 and nb_frames is not None:
+        nb_drawings = task.nb_drawings or 0
+        nb_frames = nb_frames or 0
+        if task.duration > 0:
             nb_frames = round(nb_frames * (duration / task.duration))
-            _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps)
+            nb_drawings = round(nb_drawings * (duration / task.duration))
+            _add_quota_entry(
+                quotas, person_id, date, timezone, nb_frames, nb_drawings, fps
+            )
 
     query = (
         Task.query.filter(Task.project_id == project_id)
@@ -1209,10 +1217,13 @@ def get_weighted_quotas(
         else:
             nb_frames = 0
 
+        nb_drawings = task.nb_drawings or 0
+
         for x in range((date - task.real_start_date).days + 1):
             if date.weekday() < 5:
                 _add_quota_entry(
-                    quotas, str(person_id), date, timezone, nb_frames, fps
+                    quotas, str(person_id), date, timezone, nb_frames,
+                    nb_drawings, fps
                 )
             date = date + timedelta(1)
     return quotas
@@ -1263,13 +1274,15 @@ def get_raw_quotas(project_id, task_type_id, studio_id=None, feedback=True):
 
         if nb_frames is None:
             nb_frames = 0
+
+        nb_drawings = task.nb_drawings or 0
         _add_quota_entry(
-            quotas, str(person_id), date, timezone, nb_frames, fps
+            quotas, str(person_id), date, timezone, nb_frames, nb_drawings, fps
         )
     return quotas
 
 
-def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps):
+def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, nb_drawings, fps):
     nb_seconds = nb_frames / fps
     date_str = date_helpers.get_simple_string_with_timezone_from_date(
         date, timezone
@@ -1282,14 +1295,18 @@ def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, fps):
     _init_quota_date(quotas, person_id, date_str, week, month)
     quotas[person_id]["day"]["frames"][date_str] += nb_frames
     quotas[person_id]["day"]["seconds"][date_str] += nb_seconds
+    quotas[person_id]["day"]["drawings"][date_str] += nb_drawings
     quotas[person_id]["day"]["count"][date_str] += 1
     quotas[person_id]["week"]["frames"][week] += nb_frames
     quotas[person_id]["week"]["seconds"][week] += nb_seconds
+    quotas[person_id]["week"]["drawings"][week] += nb_drawings
     quotas[person_id]["week"]["count"][week] += 1
     quotas[person_id]["month"]["frames"][month] += nb_frames
     quotas[person_id]["month"]["seconds"][month] += nb_seconds
+    quotas[person_id]["month"]["drawings"][month] += nb_drawings
     quotas[person_id]["month"]["count"][month] += 1
     quotas[person_id]["year"]["frames"][year] += nb_frames
+    quotas[person_id]["year"]["drawings"][year] += nb_drawings
     quotas[person_id]["year"]["seconds"][year] += nb_seconds
     quotas[person_id]["year"]["count"][year] += 1
 
@@ -1300,6 +1317,7 @@ def _init_quota_date(quotas, person_id, date_str, week, month):
         quotas[person_id]["day"]["frames"][date_str] = 0
         quotas[person_id]["day"]["seconds"][date_str] = 0
         quotas[person_id]["day"]["count"][date_str] = 0
+        quotas[person_id]["day"]["drawings"][date_str] = 0
         if month not in quotas[person_id]["day"]["entries"]:
             quotas[person_id]["day"]["entries"][month] = 0
         quotas[person_id]["day"]["entries"][month] += 1
@@ -1307,6 +1325,7 @@ def _init_quota_date(quotas, person_id, date_str, week, month):
         quotas[person_id]["week"]["frames"][week] = 0
         quotas[person_id]["week"]["seconds"][week] = 0
         quotas[person_id]["week"]["count"][week] = 0
+        quotas[person_id]["week"]["drawings"][week] = 0
         if year not in quotas[person_id]["week"]["entries"]:
             quotas[person_id]["week"]["entries"][year] = 0
         quotas[person_id]["week"]["entries"][year] += 1
@@ -1314,6 +1333,7 @@ def _init_quota_date(quotas, person_id, date_str, week, month):
         quotas[person_id]["month"]["frames"][month] = 0
         quotas[person_id]["month"]["seconds"][month] = 0
         quotas[person_id]["month"]["count"][month] = 0
+        quotas[person_id]["month"]["drawings"][month] = 0
         if year not in quotas[person_id]["month"]["entries"]:
             quotas[person_id]["month"]["entries"][year] = 0
         quotas[person_id]["month"]["entries"][year] += 1
@@ -1321,15 +1341,39 @@ def _init_quota_date(quotas, person_id, date_str, week, month):
         quotas[person_id]["year"]["frames"][year] = 0
         quotas[person_id]["year"]["seconds"][year] = 0
         quotas[person_id]["year"]["count"][year] = 0
+        quotas[person_id]["year"]["drawings"][year] = 0
 
 
 def _init_quota_person(quotas, person_id):
     quotas[person_id] = {}
     quotas[person_id] = {
-        "day": {"frames": {}, "seconds": {}, "count": {}, "entries": {}},
-        "week": {"frames": {}, "seconds": {}, "count": {}, "entries": {}},
-        "month": {"frames": {}, "seconds": {}, "count": {}, "entries": {}},
-        "year": {"frames": {}, "seconds": {}, "count": {}},
+        "day": {
+            "frames": {}, 
+            "seconds": {}, 
+            "count": {}, 
+            "entries": {}, 
+            "drawings": {}
+        },
+        "week": {
+            "frames": {}, 
+            "seconds": {}, 
+            "count": {}, 
+            "entries": {}, 
+            "drawings": {}
+        },
+        "month": {
+            "frames": {}, 
+            "seconds": {}, 
+            "count": {}, 
+            "entries": {}, 
+            "drawings": {}
+        },
+        "year": {
+            "frames": {}, 
+            "seconds": {}, 
+            "count": {}, 
+            "drawings": {}
+        },
     }
 
 
@@ -1487,7 +1531,6 @@ def get_weighted_quota_shots_between(
             shot = already_listed[shot["id"]]
             shot["weight"] += round(duration / task_duration, 2)
 
-    print(start, end)
     if type(start) is str:
         start = date_helpers.get_datetime_from_string(start)
     if type(end) is str:

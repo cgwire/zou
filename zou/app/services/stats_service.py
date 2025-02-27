@@ -19,22 +19,25 @@ DEFAULT_RETAKE_STATS = {
     "done": {
         "count": 0,
         "frames": 0,
+        "drawings": 0,
     },
     "retake": {
         "count": 0,
         "frames": 0,
+        "drawings": 0,
     },
     "other": {
         "count": 0,
         "frames": 0,
+        "drawings": 0,
     },
 }
 
 
 DEFAULT_EVOLUTION_STATS = {
-    "done": {"count": 0, "frames": 0},
-    "retake": {"count": 0, "frames": 0},
-    "other": {"count": 0, "frames": 0},
+    "done": {"count": 0, "frames": 0, "drawings": 0},
+    "retake": {"count": 0, "frames": 0, "drawings": 0},
+    "other": {"count": 0, "frames": 0, "drawings": 0},
 }
 
 
@@ -94,6 +97,7 @@ def _get_episode_counts(project_id, only_assigned=False):
             TaskStatus.color,
         )
         .add_columns(func.count(Task.id))
+        .add_columns(func.sum(Task.nb_drawings))
         .add_columns(func.sum(Entity.nb_frames))
     )
 
@@ -112,6 +116,7 @@ def add_entry_to_stats(
     task_status_short_name,
     task_status_color,
     task_count,
+    task_nb_drawings,
     entity_nb_frames,
 ):
     """
@@ -129,6 +134,7 @@ def add_entry_to_stats(
         "color": task_status_color,
         "count": task_count,
         "frames": entity_nb_frames or 0,
+        "drawings": task_nb_drawings or 0,
     }
 
     # Aggregate for episode
@@ -140,12 +146,14 @@ def add_entry_to_stats(
             "color": task_status_color,
             "count": 0,
             "frames": 0,
+            "drawings": 0,
         },
     )
     results[episode_id]["all"][task_status_id]["count"] += task_count or 0
     results[episode_id]["all"][task_status_id]["frames"] += (
         entity_nb_frames or 0
     )
+    results[episode_id]["all"][task_status_id]["drawings"] += task_nb_drawings or 0
 
 
 def add_entry_to_all_stats(
@@ -157,6 +165,7 @@ def add_entry_to_all_stats(
     task_status_short_name,
     task_status_color,
     task_count,
+    task_nb_drawings,
     entity_nb_frames,
 ):
     """
@@ -175,9 +184,12 @@ def add_entry_to_all_stats(
             "color": task_status_color,
             "count": 0,
             "frames": 0,
+            "drawings": 0,
         },
     )
     results["all"][task_type_id][task_status_id]["count"] += task_count or 0
+    results["all"][task_type_id][task_status_id]["drawings"] += \
+        task_nb_drawings or 0
     results["all"][task_type_id][task_status_id]["frames"] += (
         entity_nb_frames or 0
     )
@@ -189,10 +201,12 @@ def add_entry_to_all_stats(
             "color": task_status_color,
             "count": 0,
             "frames": 0,
+            "drawings": 0,
         },
     )
     results["all"]["all"][task_status_id]["count"] += task_count or 0
     results["all"]["all"][task_status_id]["frames"] += entity_nb_frames or 0
+    results["all"]["all"][task_status_id]["drawings"] += task_nb_drawings or 0
 
 
 def get_episode_retake_stats_for_project(project_id, only_assigned=False):
@@ -207,11 +221,13 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
                 "1": {
                     "retake": {
                         "count": 80,
-                        "frames": 7900
+                        "frames": 7900,
+                        "drawings": 8000
                     },
                     "done": {
                         "count": 117,
                         "frames": 3900
+                        "drawings": 8000
                     }
                 },
                 "2": {
@@ -226,15 +242,18 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             },
             "done": {
                 "count": 197,
-                "frames": 16090
+                "frames": 16090,
+                "drawings": 16090
             },
             "retake": {
                 "count": 0,
-                "frames": 0
+                "frames": 0,
+                "drawings": 0
             },
             "other": {
                 "count": 5,
-                "frames": 185
+                "frames": 185,
+                "drawings": 185
             }
 
         },
@@ -244,6 +263,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
     query_results = query.all()
     for (
         episode_id,
+        nb_drawings,
         nb_frames,
         task_type_id,
         retake_count,
@@ -262,12 +282,14 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             is_done,
             retake_count,
             nb_frames,
+            nb_drawings,
         )
 
     # Another loop is needed because we need to know the max retake count
     # for each entries prior to build evolution stats.
     for (
         episode_id,
+        nb_drawings,
         nb_frames,
         task_type_id,
         retake_count,
@@ -282,6 +304,7 @@ def get_episode_retake_stats_for_project(project_id, only_assigned=False):
             is_done,
             retake_count,
             nb_frames,
+            nb_drawings,
         )
     return results
 
@@ -292,6 +315,7 @@ def _get_retake_stats_query(project_id, only_assigned):
     query = (
         Task.query.with_entities(
             Episode.id,
+            Task.nb_drawings,
             Entity.nb_frames,
             Task.task_type_id,
             Task.retake_count,
@@ -328,6 +352,7 @@ def _add_stats(
     is_done,
     retake_count,
     nb_frames,
+    nb_drawings,
 ):
     for key1, key2 in [
         ("all", "all"),
@@ -345,12 +370,15 @@ def _add_stats(
             # For the "current" stats we prioritize `is_done` over `is_retake`
             results[key1][key2]["done"]["count"] += 1
             results[key1][key2]["done"]["frames"] += nb_frames or 0
+            results[key1][key2]["done"]["drawings"] += nb_drawings or 0
         elif is_retake:
             results[key1][key2]["retake"]["count"] += 1
             results[key1][key2]["retake"]["frames"] += nb_frames or 0
+            results[key1][key2]["retake"]["drawings"] += nb_drawings or 0
         else:
             results[key1][key2]["other"]["count"] += 1
             results[key1][key2]["other"]["frames"] += nb_frames or 0
+            results[key1][key2]["other"]["drawings"] += nb_drawings or 0
     return results
 
 
@@ -362,6 +390,7 @@ def _add_evolution_stats(
     is_done,
     retake_count,
     nb_frames,
+    nb_drawings,
 ):
     for key1, key2 in [(episode_id, "all"), (episode_id, task_type_id)]:
         # In this loop we compute the "evolution" statistics
@@ -382,12 +411,17 @@ def _add_evolution_stats(
                 evolution_data[take_number]["retake"]["frames"] += (
                     nb_frames or 0
                 )
+                evolution_data[take_number]["retake"]["drawings"] += (
+                    nb_drawings or 0
+                )
             elif is_done:
                 evolution_data[take_number]["done"]["count"] += 1
                 evolution_data[take_number]["done"]["frames"] += nb_frames or 0
+                evolution_data[take_number]["done"]["drawings"] += \
+                    nb_drawings or 0
             else:
                 evolution_data[take_number]["other"]["count"] += 1
-                evolution_data[take_number]["other"]["frames"] += (
-                    nb_frames or 0
+                evolution_data[take_number]["other"]["drawings"] += (
+                    nb_drawings or 0
                 )
     return results
