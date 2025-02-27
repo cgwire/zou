@@ -10,6 +10,7 @@ from zou.app.models.person import ROLE_TYPES
 
 PROJECT_STYLES = [
     ("2d", "2D Animation"),
+    ("2dpaper", "2D Animation (Paper)"),
     ("3d", "3D Animation"),
     ("2d3d", "2D/3D Animation"),
     ("ar", "Augmented Reality"),
