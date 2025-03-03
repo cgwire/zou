@@ -355,7 +355,7 @@ class AssetAssetsResource(Resource):
         return breakdown_service.get_entity_casting(asset_id)
 
 
-class AssetTasksResource(Resource):
+class AssetTasksResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, asset_id):
         """
@@ -376,7 +376,9 @@ class AssetTasksResource(Resource):
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
-        return tasks_service.get_tasks_for_asset(asset_id)
+        return tasks_service.get_tasks_for_asset(
+            asset_id, relations=self.get_relations()
+        )
 
 
 class AssetTaskTypesResource(Resource):
