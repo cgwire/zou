@@ -295,13 +295,13 @@ def sync_with_ldap_server():
     For each user account in your LDAP server, it creates a new user.
     """
     with app.app_context():
-        commands.sync_with_ldap_server()
         if persons_service.is_user_limit_reached():
             print(
                 "User limit reached (limit %i). New users will not be added."
                 % config.USER_LIMIT
             )
             sys.exit(1)
+        commands.sync_with_ldap_server()
 
 
 @cli.command()

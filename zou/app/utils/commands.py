@@ -409,20 +409,29 @@ def sync_with_ldap_server():
                     and persons_service.is_user_limit_reached()
                 ):
                     raise IsUserLimitReachedException
-                persons_service.update_person(
-                    person["id"],
-                    {
-                        "email": user["email"],
-                        "first_name": user["first_name"],
-                        "last_name": user["last_name"],
-                        "active": user["active"],
-                        "is_generated_from_ldap": True,
-                        "desktop_login": user["desktop_login"],
-                        "ldap_uid": user["ldap_uid"],
-                    },
-                    bypass_protected_accounts=True,
-                )
-                print(f"User {user['desktop_login']} updated.")
+
+                if any(
+                    user[key] != person[key]
+                    for key in [
+                        key
+                        for key in user.keys()
+                        if key not in ["thumbnail", "emails"]
+                    ]
+                ):
+                    persons_service.update_person(
+                        person["id"],
+                        {
+                            "email": user["email"],
+                            "first_name": user["first_name"],
+                            "last_name": user["last_name"],
+                            "active": user["active"],
+                            "is_generated_from_ldap": True,
+                            "desktop_login": user["desktop_login"],
+                            "ldap_uid": user["ldap_uid"],
+                        },
+                        bypass_protected_accounts=True,
+                    )
+                    print(f"User {user['desktop_login']} updated.")
             except IsUserLimitReachedException:
                 print(
                     f"User {user['desktop_login']} update failed (limit reached, limit {config.USER_LIMIT})."
