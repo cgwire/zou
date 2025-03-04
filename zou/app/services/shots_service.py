@@ -1120,7 +1120,11 @@ def get_base_entity_type_name(entity_dict):
 
 
 def get_weighted_quotas(
-    project_id, task_type_id, studio_id=None, feedback=True
+    project_id, 
+    task_type_id=None, 
+    person_id=None, 
+    studio_id=None, 
+    feedback=True
 ):
     """
     Build quota statistics. It counts the number of frames done for each day.
@@ -1143,7 +1147,6 @@ def get_weighted_quotas(
     query = (
         Task.query.filter(Entity.entity_type_id == shot_type["id"])
         .filter(Task.project_id == project_id)
-        .filter(Task.task_type_id == task_type_id)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(TimeSpent, Task.id == TimeSpent.task_id)
@@ -1154,6 +1157,12 @@ def get_weighted_quotas(
             TimeSpent.person_id,
         )
     )
+
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+
+    if person_id is not None:
+        query = query.filter(TimeSpent.person_id == person_id)
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -1169,15 +1178,25 @@ def get_weighted_quotas(
         )
     result = query.all()
 
-    for task, nb_frames, date, duration, person_id in result:
-        person_id = str(person_id)
+    for task, nb_frames, date, duration, task_person_id in result:
+        task_person_id = str(task_person_id)
         nb_drawings = task.nb_drawings or 0
         nb_frames = nb_frames or 0
         if task.duration > 0:
             nb_frames = round(nb_frames * (duration / task.duration))
             nb_drawings = round(nb_drawings * (duration / task.duration))
+            entry_id = str(task_person_id)
+            # We get quotas for a specific person split by task types
+            if person_id is not None: 
+                entry_id = str(task.task_type_id)
             _add_quota_entry(
-                quotas, person_id, date, timezone, nb_frames, nb_drawings, fps
+                quotas, 
+                entry_id, 
+                date, 
+                timezone, 
+                nb_frames, 
+                nb_drawings, 
+                fps
             )
 
     query = (
@@ -1193,6 +1212,13 @@ def get_weighted_quotas(
         .add_columns(Entity.nb_frames, Person.id)
     )
 
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+
+    if person_id is not None:
+        person = persons_service.get_person_raw(person_id)
+        query = query.filter(Task.assignees.contains(person))
+
     if feedback:
         query = query.filter(Task.end_date != None)
     else:
@@ -1204,7 +1230,7 @@ def get_weighted_quotas(
         )
     result = query.all()
 
-    for task, nb_frames, person_id in result:
+    for task, nb_frames, task_person_id in result:
         date = task.done_date
         if feedback:
             date = task.end_date
@@ -1221,15 +1247,30 @@ def get_weighted_quotas(
 
         for x in range((date - task.real_start_date).days + 1):
             if date.weekday() < 5:
+                entry_id = str(task_person_id)
+                # We get quotas for a specific person split by task types
+                if person_id is not None: 
+                    entry_id = str(task.task_type_id)
                 _add_quota_entry(
-                    quotas, str(person_id), date, timezone, nb_frames,
-                    nb_drawings, fps
+                    quotas, 
+                    entry_id,
+                    date, 
+                    timezone, 
+                    nb_frames, 
+                    nb_drawings, 
+                    fps
                 )
             date = date + timedelta(1)
     return quotas
 
 
-def get_raw_quotas(project_id, task_type_id, studio_id=None, feedback=True):
+def get_raw_quotas(
+    project_id, 
+    task_type_id=None, 
+    person_id=None,
+    studio_id=None, 
+    feedback=True
+):
     """
     Build quota statistics in a raw way. It counts the number of frames done
     for each day. A shot is considered done at the first feedback request (end
@@ -1245,12 +1286,18 @@ def get_raw_quotas(project_id, task_type_id, studio_id=None, feedback=True):
     query = (
         Task.query.filter(Task.project_id == project_id)
         .filter(Entity.entity_type_id == shot_type["id"])
-        .filter(Task.task_type_id == task_type_id)
         .join(Entity, Entity.id == Task.entity_id)
         .join(Project, Project.id == Task.project_id)
         .join(Task.assignees)
         .add_columns(Entity.nb_frames, Person.id)
     )
+
+    if task_type_id is not None:
+        query = query.filter(Task.task_type_id == task_type_id)
+
+    if person_id is not None:
+        person = persons_service.get_person_raw(person_id)
+        query = query.filter(Task.assignees.contains(person))
 
     if feedback:
         query = query.filter(Task.end_date != None)
@@ -1267,7 +1314,7 @@ def get_raw_quotas(project_id, task_type_id, studio_id=None, feedback=True):
 
     result = query.all()
 
-    for task, nb_frames, person_id in result:
+    for task, nb_frames, task_person_id in result:
         date = task.done_date
         if feedback:
             date = task.end_date
@@ -1276,13 +1323,18 @@ def get_raw_quotas(project_id, task_type_id, studio_id=None, feedback=True):
             nb_frames = 0
 
         nb_drawings = task.nb_drawings or 0
+
+        entry_id = str(task_person_id)
+        if person_id is not None:
+            entry_id = str(task.task_type_id)
+
         _add_quota_entry(
-            quotas, str(person_id), date, timezone, nb_frames, nb_drawings, fps
+            quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps
         )
     return quotas
 
 
-def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, nb_drawings, fps):
+def _add_quota_entry(quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps):
     nb_seconds = nb_frames / fps
     date_str = date_helpers.get_simple_string_with_timezone_from_date(
         date, timezone
@@ -1290,63 +1342,62 @@ def _add_quota_entry(quotas, person_id, date, timezone, nb_frames, nb_drawings, 
     year = date_str[:4]
     week = year + "-" + str(date.isocalendar()[1])
     month = date_str[:7]
-    if person_id not in quotas:
-        _init_quota_person(quotas, person_id)
-    _init_quota_date(quotas, person_id, date_str, week, month)
-    quotas[person_id]["day"]["frames"][date_str] += nb_frames
-    quotas[person_id]["day"]["seconds"][date_str] += nb_seconds
-    quotas[person_id]["day"]["drawings"][date_str] += nb_drawings
-    quotas[person_id]["day"]["count"][date_str] += 1
-    quotas[person_id]["week"]["frames"][week] += nb_frames
-    quotas[person_id]["week"]["seconds"][week] += nb_seconds
-    quotas[person_id]["week"]["drawings"][week] += nb_drawings
-    quotas[person_id]["week"]["count"][week] += 1
-    quotas[person_id]["month"]["frames"][month] += nb_frames
-    quotas[person_id]["month"]["seconds"][month] += nb_seconds
-    quotas[person_id]["month"]["drawings"][month] += nb_drawings
-    quotas[person_id]["month"]["count"][month] += 1
-    quotas[person_id]["year"]["frames"][year] += nb_frames
-    quotas[person_id]["year"]["drawings"][year] += nb_drawings
-    quotas[person_id]["year"]["seconds"][year] += nb_seconds
-    quotas[person_id]["year"]["count"][year] += 1
+    if entry_id not in quotas:
+        _init_quota_entry(quotas, entry_id)
+    _init_quota_date(quotas, entry_id, date_str, week, month)
+    quotas[entry_id]["day"]["frames"][date_str] += nb_frames
+    quotas[entry_id]["day"]["seconds"][date_str] += nb_seconds
+    quotas[entry_id]["day"]["drawings"][date_str] += nb_drawings
+    quotas[entry_id]["day"]["count"][date_str] += 1
+    quotas[entry_id]["week"]["frames"][week] += nb_frames
+    quotas[entry_id]["week"]["seconds"][week] += nb_seconds
+    quotas[entry_id]["week"]["drawings"][week] += nb_drawings
+    quotas[entry_id]["week"]["count"][week] += 1
+    quotas[entry_id]["month"]["frames"][month] += nb_frames
+    quotas[entry_id]["month"]["seconds"][month] += nb_seconds
+    quotas[entry_id]["month"]["drawings"][month] += nb_drawings
+    quotas[entry_id]["month"]["count"][month] += 1
+    quotas[entry_id]["year"]["frames"][year] += nb_frames
+    quotas[entry_id]["year"]["drawings"][year] += nb_drawings
+    quotas[entry_id]["year"]["seconds"][year] += nb_seconds
+    quotas[entry_id]["year"]["count"][year] += 1
 
 
-def _init_quota_date(quotas, person_id, date_str, week, month):
+def _init_quota_date(quotas, entry_id, date_str, week, month):
     year = week[:4]
-    if date_str not in quotas[person_id]["day"]["frames"]:
-        quotas[person_id]["day"]["frames"][date_str] = 0
-        quotas[person_id]["day"]["seconds"][date_str] = 0
-        quotas[person_id]["day"]["count"][date_str] = 0
-        quotas[person_id]["day"]["drawings"][date_str] = 0
-        if month not in quotas[person_id]["day"]["entries"]:
-            quotas[person_id]["day"]["entries"][month] = 0
-        quotas[person_id]["day"]["entries"][month] += 1
-    if week not in quotas[person_id]["week"]["frames"]:
-        quotas[person_id]["week"]["frames"][week] = 0
-        quotas[person_id]["week"]["seconds"][week] = 0
-        quotas[person_id]["week"]["count"][week] = 0
-        quotas[person_id]["week"]["drawings"][week] = 0
-        if year not in quotas[person_id]["week"]["entries"]:
-            quotas[person_id]["week"]["entries"][year] = 0
-        quotas[person_id]["week"]["entries"][year] += 1
-    if month not in quotas[person_id]["month"]["frames"]:
-        quotas[person_id]["month"]["frames"][month] = 0
-        quotas[person_id]["month"]["seconds"][month] = 0
-        quotas[person_id]["month"]["count"][month] = 0
-        quotas[person_id]["month"]["drawings"][month] = 0
-        if year not in quotas[person_id]["month"]["entries"]:
-            quotas[person_id]["month"]["entries"][year] = 0
-        quotas[person_id]["month"]["entries"][year] += 1
-    if year not in quotas[person_id]["year"]["frames"]:
-        quotas[person_id]["year"]["frames"][year] = 0
-        quotas[person_id]["year"]["seconds"][year] = 0
-        quotas[person_id]["year"]["count"][year] = 0
-        quotas[person_id]["year"]["drawings"][year] = 0
+    if date_str not in quotas[entry_id]["day"]["frames"]:
+        quotas[entry_id]["day"]["frames"][date_str] = 0
+        quotas[entry_id]["day"]["seconds"][date_str] = 0
+        quotas[entry_id]["day"]["count"][date_str] = 0
+        quotas[entry_id]["day"]["drawings"][date_str] = 0
+        if month not in quotas[entry_id]["day"]["entries"]:
+            quotas[entry_id]["day"]["entries"][month] = 0
+        quotas[entry_id]["day"]["entries"][month] += 1
+    if week not in quotas[entry_id]["week"]["frames"]:
+        quotas[entry_id]["week"]["frames"][week] = 0
+        quotas[entry_id]["week"]["seconds"][week] = 0
+        quotas[entry_id]["week"]["count"][week] = 0
+        quotas[entry_id]["week"]["drawings"][week] = 0
+        if year not in quotas[entry_id]["week"]["entries"]:
+            quotas[entry_id]["week"]["entries"][year] = 0
+        quotas[entry_id]["week"]["entries"][year] += 1
+    if month not in quotas[entry_id]["month"]["frames"]:
+        quotas[entry_id]["month"]["frames"][month] = 0
+        quotas[entry_id]["month"]["seconds"][month] = 0
+        quotas[entry_id]["month"]["count"][month] = 0
+        quotas[entry_id]["month"]["drawings"][month] = 0
+        if year not in quotas[entry_id]["month"]["entries"]:
+            quotas[entry_id]["month"]["entries"][year] = 0
+        quotas[entry_id]["month"]["entries"][year] += 1
+    if year not in quotas[entry_id]["year"]["frames"]:
+        quotas[entry_id]["year"]["frames"][year] = 0
+        quotas[entry_id]["year"]["seconds"][year] = 0
+        quotas[entry_id]["year"]["count"][year] = 0
+        quotas[entry_id]["year"]["drawings"][year] = 0
 
 
-def _init_quota_person(quotas, person_id):
-    quotas[person_id] = {}
-    quotas[person_id] = {
+def _init_quota_entry(quotas, entry_id):
+    quotas[entry_id] = {
         "day": {
             "frames": {}, 
             "seconds": {}, 

@@ -42,6 +42,7 @@ from zou.app.blueprints.shots.resources import (
     EpisodeAssetTasksResource,
     SequenceShotTasksResource,
     ProjectQuotasResource,
+    ProjectPersonQuotasResource,
     SetShotsFramesResource,
 )
 
@@ -94,6 +95,10 @@ routes = [
     (
         "/data/projects/<project_id>/quotas/<task_type_id>",
         ProjectQuotasResource,
+    ),
+    (
+        "/data/projects/<project_id>/quotas/persons/<person_id>",
+        ProjectPersonQuotasResource,
     ),
     (
         "/actions/projects/<project_id>/task-types/<task_type_id>/set-shot-nb-frames",
