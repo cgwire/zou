@@ -497,7 +497,10 @@ def check_task_action_access(task_id):
     if permissions.has_admin_permissions():
         is_allowed = True
     elif check_belong_to_project(task["project_id"]):
-        if permissions.has_manager_permissions():
+        if (
+            permissions.has_manager_permissions()
+            or permissions.has_client_permissions()
+        ):
             is_allowed = True
         else:
             user = persons_service.get_current_user(relations=True)
