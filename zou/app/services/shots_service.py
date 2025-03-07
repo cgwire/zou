@@ -1189,15 +1189,16 @@ def get_weighted_quotas(
             # We get quotas for a specific person split by task types
             if person_id is not None: 
                 entry_id = str(task.task_type_id)
-            _add_quota_entry(
-                quotas, 
-                entry_id, 
-                date, 
-                timezone, 
-                nb_frames, 
-                nb_drawings, 
-                fps
-            )
+            for entry in [entry_id, "total"]:
+                _add_quota_entry(
+                    quotas,
+                    entry,
+                    date,
+                    timezone,
+                    nb_frames,
+                    nb_drawings,
+                    fps
+                )
 
     query = (
         Task.query.filter(Task.project_id == project_id)
@@ -1251,15 +1252,17 @@ def get_weighted_quotas(
                 # We get quotas for a specific person split by task types
                 if person_id is not None: 
                     entry_id = str(task.task_type_id)
-                _add_quota_entry(
-                    quotas, 
-                    entry_id,
-                    date, 
-                    timezone, 
-                    nb_frames, 
-                    nb_drawings, 
-                    fps
-                )
+
+                for entry in [entry_id, "total"]:
+                    _add_quota_entry(
+                        quotas,
+                        entry,
+                        date,
+                        timezone,
+                        nb_frames,
+                        nb_drawings,
+                        fps
+                    )
             date = date + timedelta(1)
     return quotas
 
@@ -1328,9 +1331,16 @@ def get_raw_quotas(
         if person_id is not None:
             entry_id = str(task.task_type_id)
 
-        _add_quota_entry(
-            quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps
-        )
+        for entry in [entry_id, "total"]:
+            _add_quota_entry(
+                quotas,
+                entry,
+                date,
+                timezone,
+                nb_frames,
+                nb_drawings,
+                fps
+            )
     return quotas
 
 
@@ -1399,30 +1409,30 @@ def _init_quota_date(quotas, entry_id, date_str, week, month):
 def _init_quota_entry(quotas, entry_id):
     quotas[entry_id] = {
         "day": {
-            "frames": {}, 
-            "seconds": {}, 
-            "count": {}, 
-            "entries": {}, 
+            "frames": {},
+            "seconds": {},
+            "count": {},
+            "entries": {},
             "drawings": {}
         },
         "week": {
-            "frames": {}, 
-            "seconds": {}, 
-            "count": {}, 
-            "entries": {}, 
+            "frames": {},
+            "seconds": {},
+            "count": {},
+            "entries": {},
             "drawings": {}
         },
         "month": {
-            "frames": {}, 
-            "seconds": {}, 
-            "count": {}, 
-            "entries": {}, 
+            "frames": {},
+            "seconds": {},
+            "count": {},
+            "entries": {},
             "drawings": {}
         },
         "year": {
-            "frames": {}, 
-            "seconds": {}, 
-            "count": {}, 
+            "frames": {},
+            "seconds": {},
+            "count": {},
             "drawings": {}
         },
     }
