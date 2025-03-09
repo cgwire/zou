@@ -1120,11 +1120,11 @@ def get_base_entity_type_name(entity_dict):
 
 
 def get_weighted_quotas(
-    project_id, 
-    task_type_id=None, 
-    person_id=None, 
-    studio_id=None, 
-    feedback=True
+    project_id,
+    task_type_id=None,
+    person_id=None,
+    studio_id=None,
+    feedback=True,
 ):
     """
     Build quota statistics. It counts the number of frames done for each day.
@@ -1187,17 +1187,11 @@ def get_weighted_quotas(
             nb_drawings = round(nb_drawings * (duration / task.duration))
             entry_id = str(task_person_id)
             # We get quotas for a specific person split by task types
-            if person_id is not None: 
+            if person_id is not None:
                 entry_id = str(task.task_type_id)
             for entry in [entry_id, "total"]:
                 _add_quota_entry(
-                    quotas,
-                    entry,
-                    date,
-                    timezone,
-                    nb_frames,
-                    nb_drawings,
-                    fps
+                    quotas, entry, date, timezone, nb_frames, nb_drawings, fps
                 )
 
     query = (
@@ -1250,7 +1244,7 @@ def get_weighted_quotas(
             if date.weekday() < 5:
                 entry_id = str(task_person_id)
                 # We get quotas for a specific person split by task types
-                if person_id is not None: 
+                if person_id is not None:
                     entry_id = str(task.task_type_id)
 
                 for entry in [entry_id, "total"]:
@@ -1261,18 +1255,18 @@ def get_weighted_quotas(
                         timezone,
                         nb_frames,
                         nb_drawings,
-                        fps
+                        fps,
                     )
             date = date + timedelta(1)
     return quotas
 
 
 def get_raw_quotas(
-    project_id, 
-    task_type_id=None, 
+    project_id,
+    task_type_id=None,
     person_id=None,
-    studio_id=None, 
-    feedback=True
+    studio_id=None,
+    feedback=True,
 ):
     """
     Build quota statistics in a raw way. It counts the number of frames done
@@ -1333,18 +1327,14 @@ def get_raw_quotas(
 
         for entry in [entry_id, "total"]:
             _add_quota_entry(
-                quotas,
-                entry,
-                date,
-                timezone,
-                nb_frames,
-                nb_drawings,
-                fps
+                quotas, entry, date, timezone, nb_frames, nb_drawings, fps
             )
     return quotas
 
 
-def _add_quota_entry(quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps):
+def _add_quota_entry(
+    quotas, entry_id, date, timezone, nb_frames, nb_drawings, fps
+):
     nb_seconds = nb_frames / fps
     date_str = date_helpers.get_simple_string_with_timezone_from_date(
         date, timezone
@@ -1413,28 +1403,23 @@ def _init_quota_entry(quotas, entry_id):
             "seconds": {},
             "count": {},
             "entries": {},
-            "drawings": {}
+            "drawings": {},
         },
         "week": {
             "frames": {},
             "seconds": {},
             "count": {},
             "entries": {},
-            "drawings": {}
+            "drawings": {},
         },
         "month": {
             "frames": {},
             "seconds": {},
             "count": {},
             "entries": {},
-            "drawings": {}
+            "drawings": {},
         },
-        "year": {
-            "frames": {},
-            "seconds": {},
-            "count": {},
-            "drawings": {}
-        },
+        "year": {"frames": {}, "seconds": {}, "count": {}, "drawings": {}},
     }
 
 

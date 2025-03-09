@@ -153,7 +153,9 @@ def add_entry_to_stats(
     results[episode_id]["all"][task_status_id]["frames"] += (
         entity_nb_frames or 0
     )
-    results[episode_id]["all"][task_status_id]["drawings"] += task_nb_drawings or 0
+    results[episode_id]["all"][task_status_id]["drawings"] += (
+        task_nb_drawings or 0
+    )
 
 
 def add_entry_to_all_stats(
@@ -188,8 +190,9 @@ def add_entry_to_all_stats(
         },
     )
     results["all"][task_type_id][task_status_id]["count"] += task_count or 0
-    results["all"][task_type_id][task_status_id]["drawings"] += \
+    results["all"][task_type_id][task_status_id]["drawings"] += (
         task_nb_drawings or 0
+    )
     results["all"][task_type_id][task_status_id]["frames"] += (
         entity_nb_frames or 0
     )
@@ -417,8 +420,9 @@ def _add_evolution_stats(
             elif is_done:
                 evolution_data[take_number]["done"]["count"] += 1
                 evolution_data[take_number]["done"]["frames"] += nb_frames or 0
-                evolution_data[take_number]["done"]["drawings"] += \
+                evolution_data[take_number]["done"]["drawings"] += (
                     nb_drawings or 0
+                )
             else:
                 evolution_data[take_number]["other"]["count"] += 1
                 evolution_data[take_number]["other"]["drawings"] += (
