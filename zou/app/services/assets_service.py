@@ -348,7 +348,9 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
                     "last_comment_date": fields.serialize_value(
                         task_last_comment_date
                     ),
-                    "last_preview_file_id": str(task_last_preview_file_id or ""),
+                    "last_preview_file_id": str(
+                        task_last_preview_file_id or ""
+                    ),
                     "priority": task_priority or 0,
                     "real_start_date": fields.serialize_value(
                         task_real_start_date

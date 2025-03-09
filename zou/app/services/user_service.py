@@ -504,7 +504,8 @@ def check_task_action_access(task_id):
             is_allowed = True
         else:
             user = persons_service.get_current_user(relations=True)
-            if permissions.has_supervisor_permissions():
+            is_allowed = user["id"] in task["assignees"]
+            if not is_allowed and permissions.has_supervisor_permissions():
                 is_allowed = (
                     user["departments"] == []
                     or tasks_service.get_task_type(task["task_type_id"])[
@@ -512,8 +513,6 @@ def check_task_action_access(task_id):
                     ]
                     in user["departments"]
                 )
-            else:
-                is_allowed = user["id"] in task["assignees"]
     else:
         is_allowed = False
 

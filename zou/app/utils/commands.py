@@ -324,7 +324,7 @@ def sync_with_ldap_server():
                     {
                         "first_name": clean_value(entry.givenName or entry.cn),
                         "last_name": clean_value(entry.sn),
-                        "email": emails[0],
+                        "email": emails[0].lower(),
                         "emails": emails,
                         "desktop_login": desktop_login,
                         "thumbnail": thumbnail,

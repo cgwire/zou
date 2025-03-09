@@ -418,11 +418,8 @@ class CreatePreviewFilePictureResource(
             )
             raise PreviewFileReuploadNotAllowedException
 
-        try:
-            user_service.check_task_action_access(preview_file["task_id"])
-            return True
-        except permissions.PermissionDenied:
-            return False
+        user_service.check_task_action_access(preview_file["task_id"])
+        return True
 
     def is_exist(self, preview_file_id):
         """

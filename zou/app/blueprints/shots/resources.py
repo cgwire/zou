@@ -1607,7 +1607,6 @@ class ProjectQuotasResource(Resource, ArgsMixin):
             )
 
 
-
 class ProjectPersonQuotasResource(Resource, ArgsMixin):
 
     @jwt_required()
@@ -1680,6 +1679,7 @@ class ProjectPersonQuotasResource(Resource, ArgsMixin):
                 feedback=feedback,
                 studio_id=studio_id,
             )
+
 
 class SetShotsFramesResource(Resource, ArgsMixin):
     @jwt_required()

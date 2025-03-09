@@ -491,7 +491,13 @@ class ReplyCommentResource(Resource, ArgsMixin):
             ]
         )
 
-        user_service.check_task_action_access(task_id)
+        comment = tasks_service.get_comment(comment_id)
+        current_user = persons_service.get_current_user()
+        if comment["person_id"] != current_user["id"]:
+            if permissions.has_client_permissions():
+                raise permissions.PermissionDenied()
+            user_service.check_task_action_access(task_id)
+
         return comments_service.reply_comment(comment_id, args["text"])
 
 
