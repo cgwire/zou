@@ -191,7 +191,7 @@ class CommentResource(BaseModelResource):
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
-        data["updated_by"] = persons_service.get_current_user_raw().id
+        data["editor_id"] = persons_service.get_current_user_raw().id
         return data
 
     @jwt_required()

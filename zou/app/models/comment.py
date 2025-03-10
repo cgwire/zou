@@ -101,7 +101,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         nullable=False,
         index=True,
     )
-    updated_by = db.Column(
+    editor_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         default=None,
