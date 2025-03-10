@@ -20,7 +20,7 @@ from flask_jwt_extended import (
 
 from sqlalchemy.exc import OperationalError, TimeoutError
 from babel.dates import format_datetime
-from saml2 import entity
+from saml2 import entity, client_base
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
@@ -32,6 +32,7 @@ from zou.app.services import (
 )
 
 from zou.app.utils.flask import is_from_browser
+from zou.app.utils.saml import saml_client_for
 
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
@@ -1449,9 +1450,19 @@ class SAMLLoginResource(Resource, ArgsMixin):
         """
         if not config.SAML_ENABLED:
             return {"error": "SAML is not enabled."}, 400
-        _, info = current_app.extensions[
-            "saml_client"
-        ].prepare_for_authenticate()
+
+        try:
+            _, info = current_app.extensions[
+                "saml_client"
+            ].prepare_for_authenticate()
+        except client_base.SAMLError:
+            # retry with new client
+            current_app.extensions["saml_client"] = saml_client_for(
+                config.SAML_METADATA_URL
+            )
+            _, info = current_app.extensions[
+                "saml_client"
+            ].prepare_for_authenticate()
 
         redirect_url = None
 

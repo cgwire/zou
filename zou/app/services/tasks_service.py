@@ -587,13 +587,13 @@ def get_comments(task_id, is_client=False, is_manager=False):
 
 
 def _prepare_query(task_id, is_client, is_manager):
-    UpdatedBy = aliased(Person, name="updated_by")
+    Editor = aliased(Person, name="editor_id")
     query = (
         Comment.query.order_by(Comment.created_at.desc())
         .filter_by(object_id=task_id)
         .join(Person, Comment.person_id == Person.id)
         .join(TaskStatus, Comment.task_status_id == TaskStatus.id)
-        .join(UpdatedBy, Comment.updated_by == UpdatedBy.id, isouter=True)
+        .join(Editor, Comment.editor_id == Editor.id, isouter=True)
         .add_columns(
             TaskStatus.name,
             TaskStatus.short_name,
@@ -601,9 +601,9 @@ def _prepare_query(task_id, is_client, is_manager):
             Person.first_name,
             Person.last_name,
             Person.has_avatar,
-            UpdatedBy.first_name,
-            UpdatedBy.last_name,
-            UpdatedBy.has_avatar,
+            Editor.first_name,
+            Editor.last_name,
+            Editor.has_avatar,
         )
     )
     if not is_manager and not is_client:
@@ -623,9 +623,9 @@ def _run_task_comments_query(query):
             person_first_name,
             person_last_name,
             person_has_avatar,
-            updated_by_first_name,
-            updated_by_last_name,
-            updated_by_has_avatar,
+            editor_first_name,
+            editor_last_name,
+            editor_has_avatar,
         ) = result
 
         comment_dict = comment.serialize()
@@ -635,12 +635,12 @@ def _run_task_comments_query(query):
             "has_avatar": person_has_avatar,
             "id": str(comment.person_id),
         }
-        if comment.updated_by is not None:
-            comment_dict["updated_by"] = {
-                "first_name": updated_by_first_name,
-                "last_name": updated_by_last_name,
-                "has_avatar": updated_by_has_avatar,
-                "id": str(comment.updated_by),
+        if comment.editor_id is not None:
+            comment_dict["editor"] = {
+                "first_name": editor_first_name,
+                "last_name": editor_last_name,
+                "has_avatar": editor_has_avatar,
+                "id": str(comment.editor_id),
             }
         comment_dict["task_status"] = {
             "name": task_status_name,
