@@ -330,7 +330,11 @@ def new_comment(
     add_attachments_to_comment(comment, files)
     events.emit(
         "comment:new",
-        {"comment_id": comment["id"], "task_id": task_id},
+        {
+            "comment_id": comment["id"],
+            "task_id": task_id,
+            "task_status_id": task_status_id
+        },
         project_id=task["project_id"],
     )
     return comment
