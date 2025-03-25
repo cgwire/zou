@@ -17,7 +17,7 @@ class PlaylistsResource(BaseModelsResource):
 
     def update_data(self, data):
         data = super().update_data(data)
-        if "episode_id" in data and data["episode_id"] in ["all", "main"]:
+        if "episode_id" in data and data["episode_id"] in ["all"]:
             data["episode_id"] = None
         if "task_type_id" in data and not fields.is_valid_id(
             data["task_type_id"]

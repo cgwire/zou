@@ -60,7 +60,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             asset_types_map[asset_type["id"]] = slugify(asset_type["name"])
 
         criterions_assets = {"project_id": project_id}
-        if episode_id is not None and episode_id not in ["main", "all"]:
+        if episode_id is not None and episode_id not in ["all"]:
             criterions_assets["source_id"] = episode_id
         assets = assets_service.get_assets(criterions_assets)
         for asset in assets:
@@ -72,7 +72,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
         sequences_map = {}
         criterions_sequences = {"project_id": project_id}
-        if episode_id is not None and episode_id not in ["main", "all"]:
+        if episode_id is not None and episode_id not in ["all"]:
             criterions_sequences["parent_id"] = episode_id
         sequences = shots_service.get_sequences(criterions_sequences)
         for sequence in sequences:

@@ -11,6 +11,8 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         self.generate_fixture_asset_types()
 
     def test_import_casting(self):
+        project_id = str(self.project.id)
+        mp_id = self.generate_fixture_main_pack_episode(project_id).id
         for name, asset_type_id in [
             ("Lake", self.asset_type_environment.id),
             ("Mine", self.asset_type_environment.id),
@@ -22,7 +24,9 @@ class CastingCsvExportTestCase(ApiDBTestCase):
             ("Victor", self.asset_type_character.id),
             ("John", self.asset_type_character.id),
         ]:
-            self.generate_fixture_asset(name, asset_type_id=asset_type_id)
+            self.generate_fixture_asset(
+                name, asset_type_id=asset_type_id, episode_id=mp_id
+            )
             if name == "Lake":
                 self.asset_lake_id = self.asset.id
             if name == "Mine":
@@ -37,7 +41,6 @@ class CastingCsvExportTestCase(ApiDBTestCase):
         episode2_id = self.generate_fixture_episode("E02").id
         self.generate_fixture_sequence("SEQ01")
         self.generate_fixture_shot("SH01").id
-        project_id = str(self.project.id)
 
         path = "/import/csv/projects/%s/casting" % project_id
         self.upload_csv(path, "casting")

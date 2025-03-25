@@ -165,7 +165,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
         episode_id = None
 
         if self.is_tv_show:
-            if episode_name not in [None, "MP"] + list(self.episodes.keys()):
+            if episode_name not in list(self.episodes.keys()):
                 self.episodes[episode_name] = shots_service.create_episode(
                     project_id, episode_name, created_by=self.current_user_id
                 )["id"]

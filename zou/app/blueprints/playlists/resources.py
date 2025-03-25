@@ -96,7 +96,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
         page = self.get_page()
         sort_by = self.get_sort_by()
         task_type_id = self.get_text_parameter("task_type_id")
-        if episode_id not in ["main", "all"]:
+        if episode_id not in ["all"]:
             shots_service.get_episode(episode_id)
         return playlists_service.all_playlists_for_episode(
             project_id,
@@ -234,8 +234,6 @@ class PlaylistDownloadResource(Resource):
                     episode_name = episode["name"]
                 elif playlist["is_for_all"]:
                     episode_name = "all assets"
-                else:
-                    episode_name = "main pack"
                 context_name += "_%s" % slugify.slugify(
                     episode_name, separator="_"
                 )
@@ -365,8 +363,6 @@ class PlaylistZipDownloadResource(Resource):
                 episode_name = episode["name"]
             elif playlist["is_for_all"]:
                 episode_name = "all assets"
-            else:
-                episode_name = "main pack"
             context_name += "_%s" % slugify.slugify(
                 episode_name, separator="_"
             )

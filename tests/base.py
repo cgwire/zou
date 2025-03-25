@@ -349,6 +349,7 @@ class ApiDBTestCase(ApiTestCase):
         description="Description Tree",
         asset_type_id=None,
         project_id=None,
+        episode_id=None,
     ):
         if asset_type_id is None:
             asset_type_id = self.asset_type.id
@@ -361,8 +362,22 @@ class ApiDBTestCase(ApiTestCase):
             description=description,
             project_id=project_id,
             entity_type_id=asset_type_id,
+            source_id=episode_id,
         )
         return self.asset
+
+    def generate_fixture_main_pack_episode(
+        self,
+        project_id,
+        name="MP",
+    ):
+        self.main_pack_episode = Entity.create(
+            name=name,
+            project_id=project_id,
+            entity_type_id=self.episode_type.id,
+            is_main_pack=True,
+        )
+        return self.main_pack_episode
 
     def generate_fixture_asset_character(
         self, name="Rabbit", description="Main char"

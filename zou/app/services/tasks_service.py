@@ -42,7 +42,6 @@ from zou.app.utils import (
 
 from zou.app.services.exception import (
     CommentNotFoundException,
-    EpisodeNotFoundException,
     PersonNotFoundException,
     TaskNotFoundException,
     TaskStatusNotFoundException,
@@ -967,11 +966,8 @@ def get_person_tasks(person_id, projects, is_done=None):
         if episode_id is None:
             episode_id = entity_source_id
             if episode_id is not None and episode_id != "":
-                try:
-                    episode = shots_service.get_episode(episode_id)
-                    episode_name = episode["name"]
-                except EpisodeNotFoundException:
-                    episode_name = "MP"
+                episode = shots_service.get_episode(episode_id)
+                episode_name = episode["name"]
 
         task_dict = get_task(str(task.id), relations=True)
         if entity_type_name == "Sequence" and entity_parent_id is not None:
@@ -2054,11 +2050,8 @@ def get_open_tasks(
         if episode_id is None:
             episode_id = entity_source_id
             if episode_id is not None and episode_id != "":
-                try:
-                    episode = shots_service.get_episode(episode_id)
-                    episode_name = episode["name"]
-                except EpisodeNotFoundException:
-                    episode_name = "MP"
+                episode = shots_service.get_episode(episode_id)
+                episode_name = episode["name"]
 
         task_dict = get_task(str(task.id), relations=True)
         if entity_type_name == "Sequence" and entity_parent_id is not None:

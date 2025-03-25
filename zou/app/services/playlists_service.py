@@ -12,7 +12,6 @@ from zipfile import ZipFile
 
 from flask_fs.errors import FileNotFound
 from slugify import slugify
-from sqlalchemy import or_
 
 from zou.app import config
 from zou.app.stores import file_store
@@ -97,15 +96,7 @@ def all_playlists_for_episode(
     if task_type_id is not None and len(task_type_id) > 0:
         query = query.filter(Playlist.task_type_id == task_type_id)
 
-    if episode_id == "main":
-        query = (
-            query.filter(Playlist.episode_id == None)
-            .filter(Playlist.project_id == project_id)
-            .filter(
-                or_(Playlist.is_for_all is None, Playlist.is_for_all == False)
-            )
-        )
-    elif episode_id == "all":
+    if episode_id == "all":
         query = (
             query.filter(Playlist.episode_id == None)
             .filter(Playlist.project_id == project_id)
