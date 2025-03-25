@@ -95,8 +95,6 @@ class CastingCsvImportResource(BaseCsvProjectImportResource):
 
     def import_row(self, row, project_id):
         asset_key = slugify(f"{row['Asset Type']}{row['Asset']}")
-        if row.get("Episode") in ["MP", None]:
-            row["Episode"] = ""
         target_key = slugify(f"{row['Episode']}{row['Parent']}{row['Name']}")
         occurences = 1
         if len(row["Occurences"]) > 0:
