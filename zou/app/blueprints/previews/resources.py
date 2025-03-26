@@ -1192,11 +1192,7 @@ class PersonThumbnailResource(BaseThumbnailResource):
         )
 
     def check_allowed_to_post(self, instance_id):
-        is_current_user = (
-            persons_service.get_current_user()["id"] == instance_id
-        )
-        if not is_current_user and not permissions.has_admin_permissions():
-            raise permissions.PermissionDenied
+        user_service.check_person_access(instance_id)
 
     def prepare_creation(self, instance_id):
         self.model = self.update_model_func(

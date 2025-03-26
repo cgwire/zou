@@ -1433,7 +1433,7 @@ def get_month_quota_shots(
     feedback=True,
 ):
     """
-    Return shots that are included in quota comptutation for given
+    Return shots that are included in quota computation for given
     person and month.
     """
     start, end = date_helpers.get_month_interval(year, month)
