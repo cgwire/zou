@@ -395,8 +395,10 @@ def check_person_access(person_id):
     """
     Return True if user is an admin or is matching given person id.
     """
-    current_user = persons_service.get_current_user()
-    if permissions.has_admin_permissions() or current_user["id"] == person_id:
+    if (
+        permissions.has_admin_permissions()
+        or persons_service.get_current_user()["id"] == person_id
+    ):
         return True
     else:
         raise permissions.PermissionDenied

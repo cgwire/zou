@@ -532,7 +532,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             abort(404)
 
 
-class PersonQuotaMixin:
+class PersonQuotaMixin(ArgsMixin):
 
     def get_quota_arguments(self):
         project_id = self.get_project_id()
@@ -546,13 +546,47 @@ class PersonQuotaMixin:
         feedback = "done" not in count_mode
         weighted = "weighted" in count_mode
 
-        return (project_id, task_type_id, count_mode, feedback, weighted)
+        return (project_id, task_type_id, feedback, weighted)
+
+    def check_permissions(self, person_id, project_id=None):
+        if permissions.has_manager_permissions():
+            user_service.check_manager_project_access(project_id)
+        else:
+            user_service.check_person_access(person_id)
+
+    def get_person_quotas(self):
+        pass
+
+    @jwt_required()
+    def get(self, person_id, **kwargs):
+        user_service.check_person_is_not_bot(person_id)
+        (project_id, task_type_id, feedback, weighted) = (
+            self.get_quota_arguments()
+        )
+        self.check_permissions(person_id, project_id)
+
+        try:
+            return self.get_person_quotas(
+                person_id,
+                **kwargs,
+                project_id=project_id,
+                task_type_id=task_type_id,
+                feedback=feedback,
+                weighted=weighted,
+            )
+        except WrongDateFormatException:
+            abort(404)
 
 
-class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
+class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
     """
     Get ended shots used for quota calculation of this month.
     """
+
+    def get_person_quotas(self, person_id, year, month, **kwargs):
+        return shots_service.get_month_quota_shots(
+            person_id, year, month, **kwargs
+        )
 
     @jwt_required()
     def get(self, person_id, year, month):
@@ -592,30 +626,18 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             404:
                 description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
-        (project_id, task_type_id, count_mode, feedback, weighted) = (
-            self.get_quota_arguments()
-        )
-
-        try:
-            return shots_service.get_month_quota_shots(
-                person_id,
-                year,
-                month,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                weighted=weighted,
-                feedback=feedback,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        super().get(person_id, year, month)
 
 
-class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
+class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
     """
     Get ended shots used for quota calculation of this week.
     """
+
+    def get_person_quotas(self, person_id, year, week, **kwargs):
+        return shots_service.get_week_quota_shots(
+            person_id, year, week, **kwargs
+        )
 
     @jwt_required()
     def get(self, person_id, year, week):
@@ -655,30 +677,18 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             404:
                 description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
-        (project_id, task_type_id, count_mode, feedback, weighted) = (
-            self.get_quota_arguments()
-        )
-
-        try:
-            return shots_service.get_week_quota_shots(
-                person_id,
-                year,
-                week,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                weighted=weighted,
-                feedback=feedback,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        super().get(person_id, year, week)
 
 
-class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
+class PersonDayQuotaShotsResource(Resource, PersonQuotaMixin):
     """
     Get ended shots used for quota calculation of this day.
     """
+
+    def get_person_quotas(self, person_id, year, month, day, **kwargs):
+        return shots_service.get_day_quota_shots(
+            person_id, year, month, day, **kwargs
+        )
 
     @jwt_required()
     def get(self, person_id, year, month, day):
@@ -725,25 +735,7 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
             404:
                 description: Wrong date format
         """
-        user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
-        (project_id, task_type_id, count_mode, feedback, weighted) = (
-            self.get_quota_arguments()
-        )
-
-        try:
-            return shots_service.get_day_quota_shots(
-                person_id,
-                year,
-                month,
-                day,
-                project_id=project_id,
-                task_type_id=task_type_id,
-                weighted=weighted,
-                feedback=feedback,
-            )
-        except WrongDateFormatException:
-            abort(404)
+        super().get(person_id, year, month, day)
 
 
 class TimeSpentDurationResource(Resource, ArgsMixin):
@@ -1008,9 +1000,7 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
                 description: All day off recorded for given week and person
         """
         user_service.check_person_is_not_bot(person_id)
-        user_id = persons_service.get_current_user()["id"]
-        if person_id != user_id:
-            permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         return time_spents_service.get_person_day_offs_for_week(
             person_id, year, week
         )
@@ -1052,9 +1042,7 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
                 description: All day off recorded for given month and person
         """
         user_service.check_person_is_not_bot(person_id)
-        user_id = persons_service.get_current_user()["id"]
-        if person_id != user_id:
-            permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         return time_spents_service.get_person_day_offs_for_month(
             person_id, year, month
         )
@@ -1089,9 +1077,7 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
                 description: All day off recorded for given year and person
         """
         user_service.check_person_is_not_bot(person_id)
-        user_id = persons_service.get_current_user()["id"]
-        if person_id != user_id:
-            permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         return time_spents_service.get_person_day_offs_for_year(
             person_id, year
         )
@@ -1121,9 +1107,7 @@ class PersonDayOffResource(Resource, ArgsMixin):
                 description: All day off recorded for given person.
         """
         user_service.check_person_is_not_bot(person_id)
-        user_id = persons_service.get_current_user()["id"]
-        if person_id != user_id:
-            permissions.check_admin_permissions()
+        user_service.check_person_access(person_id)
         return time_spents_service.get_day_offs_between(
             person_id=person_id,
         )
