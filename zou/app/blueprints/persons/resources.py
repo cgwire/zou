@@ -627,7 +627,7 @@ class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
             404:
                 description: Wrong date format
         """
-        super().get(person_id, year, month)
+        return super().get(person_id, year, month)
 
 
 class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
@@ -678,7 +678,7 @@ class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
             404:
                 description: Wrong date format
         """
-        super().get(person_id, year, week)
+        return super().get(person_id, year, week)
 
 
 class PersonDayQuotaShotsResource(Resource, PersonQuotaMixin):
@@ -736,7 +736,7 @@ class PersonDayQuotaShotsResource(Resource, PersonQuotaMixin):
             404:
                 description: Wrong date format
         """
-        super().get(person_id, year, month, day)
+        return super().get(person_id, year, month, day)
 
 
 class TimeSpentDurationResource(Resource, ArgsMixin):

@@ -1508,7 +1508,6 @@ def get_day_quota_shots(
     person and day.
     """
     start, end = date_helpers.get_day_interval(year, month, day)
-    # start, end = _get_timezoned_interval(start, end)
     if weighted:
         return get_weighted_quota_shots_between(
             person_id,
