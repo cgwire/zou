@@ -537,7 +537,7 @@ class PersonQuotaMixin(ArgsMixin):
     def get_quota_arguments(self):
         project_id = self.get_project_id()
         task_type_id = self.get_task_type_id()
-        count_mode = self.get_text_parameter("count_mode", default="weigthed")
+        count_mode = self.get_text_parameter("count_mode", default="weighted")
         if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
             raise WrongParameterException(
                 "count_mode must be equal to weighted, weigtheddone, feedback"
@@ -558,7 +558,7 @@ class PersonQuotaMixin(ArgsMixin):
         pass
 
     @jwt_required()
-    def get(self, person_id, **kwargs):
+    def get(self, person_id, *args, **kwargs):
         user_service.check_person_is_not_bot(person_id)
         (project_id, task_type_id, feedback, weighted) = (
             self.get_quota_arguments()
@@ -568,6 +568,7 @@ class PersonQuotaMixin(ArgsMixin):
         try:
             return self.get_person_quotas(
                 person_id,
+                *args,
                 **kwargs,
                 project_id=project_id,
                 task_type_id=task_type_id,
