@@ -1646,7 +1646,13 @@ class ProjectPersonQuotasResource(Resource, ArgsMixin):
                 description: Quotas statistics for shots
         """
         projects_service.get_project(project_id)
-        user_service.check_project_access(project_id)
+        if (
+            permissions.has_manager_permissions()
+            or permissions.has_supervisor_permissions()
+        ):
+            user_service.check_project_access(project_id)
+        else:
+            user_service.check_person_access(person_id)
         args = self.get_args(
             [
                 ("count_mode", "weighted", False, str),
