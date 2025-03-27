@@ -419,7 +419,7 @@ def check_belong_to_project(project_id):
 
 def has_project_access(project_id):
     """
-    Return true if current user is a manager or has a task assigned for this
+    Return true if current user is an admin or has a task assigned for this
     project.
     """
     return permissions.has_admin_permissions() or check_belong_to_project(
