@@ -87,6 +87,12 @@ class ProjectsResource(BaseModelsResource):
             project_dict["first_episode_id"] = fields.serialize_value(
                 episode["id"]
             )
+            episode = shots_service.create_episode(
+                project.id,
+                "MP",
+                created_by=persons_service.get_current_user()["id"],
+                is_main_pack=True,
+            )
         user_service.clear_project_cache()
         projects_service.clear_project_cache("")
         return project_dict

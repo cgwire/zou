@@ -35,6 +35,7 @@ from zou.app.services.exception import (
     AssetNotFoundException,
     AssetInstanceNotFoundException,
     AssetTypeNotFoundException,
+    EpisodeNotFoundException,
 )
 
 
@@ -217,9 +218,7 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
 
     if "episode_id" in criterions:
         episode_id = criterions["episode_id"]
-        if episode_id == "main":
-            tasks_query = tasks_query.filter(Entity.source_id == None)
-        elif episode_id != "all":
+        if episode_id != "all":
             tasks_query = tasks_query.outerjoin(
                 EntityLink, EntityLink.entity_out_id == Entity.id
             )
@@ -250,7 +249,6 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
                 Episode.project_id == criterions["project_id"]
             )
         if "episode_id" in criterions and criterions["episode_id"] not in [
-            "main",
             "all",
         ]:
             episode_links_query = episode_links_query.filter(
@@ -586,6 +584,36 @@ def create_asset_types(asset_type_names):
     return asset_types
 
 
+def get_main_pack_raw(project_id):
+    """
+    Get the main pack episode of a project.
+    """
+    episode_type = shots_service.get_episode_type()
+    if episode_type is None:
+        episode_type = shots_service.get_episode_type()
+
+    try:
+        main_pack_episode = Entity.get_by(
+            entity_type_id=episode_type["id"],
+            is_main_pack=True,
+            project_id=project_id,
+        )
+    except StatementError:
+        raise EpisodeNotFoundException
+
+    if main_pack_episode is None:
+        raise EpisodeNotFoundException
+    return main_pack_episode
+
+
+@cache.memoize_function(120)
+def get_main_pack(project_id):
+    """
+    Get the main pack episode of a project as a dictionnary.
+    """
+    return get_main_pack_raw(project_id).serialize(obj_type="Episode")
+
+
 def create_asset(
     project_id,
     asset_type_id,
@@ -603,6 +631,11 @@ def create_asset(
     asset_type = get_asset_type_raw(asset_type_id)
     if source_id is not None and len(source_id) < 36:
         source_id = None
+
+    if project.production_type == "tvshow" and source_id is None:
+        main_pack = get_main_pack_raw(project_id)
+        source_id = main_pack.id
+
     asset = Entity.create(
         project_id=project_id,
         entity_type_id=asset_type_id,
@@ -791,7 +824,7 @@ def get_shared_assets_used_in_project(project_id, episode_id=None):
         .filter(Entity.project_id != project_id)
     )
 
-    if episode_id is not None and episode_id not in ["main", "all"]:
+    if episode_id is not None and episode_id not in ["all"]:
         assets = assets.filter(Sequence.parent_id == episode_id)
 
     return Entity.serialize_list(assets.all(), obj_type="Asset")
