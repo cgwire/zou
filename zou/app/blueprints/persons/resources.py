@@ -593,10 +593,10 @@ class PersonMonthQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
         (project_id, task_type_id, count_mode, feedback, weighted) = (
             self.get_quota_arguments()
         )
+        user_service.check_person_read_access(project_id, person_id)
 
         try:
             return shots_service.get_month_quota_shots(
@@ -656,10 +656,10 @@ class PersonWeekQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
         (project_id, task_type_id, count_mode, feedback, weighted) = (
             self.get_quota_arguments()
         )
+        user_service.check_person_read_access(project_id, person_id)
 
         try:
             return shots_service.get_week_quota_shots(
@@ -726,10 +726,10 @@ class PersonDayQuotaShotsResource(Resource, ArgsMixin, PersonQuotaMixin):
                 description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        user_service.check_person_access(person_id)
         (project_id, task_type_id, count_mode, feedback, weighted) = (
             self.get_quota_arguments()
         )
+        user_service.check_person_read_access(project_id, person_id)
 
         try:
             return shots_service.get_day_quota_shots(

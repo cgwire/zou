@@ -402,6 +402,22 @@ def check_person_access(person_id):
         raise permissions.PermissionDenied
 
 
+def check_person_read_access(project_id, person_id):
+    """
+    Return True if user is an admin, or a manager in the same project
+    or is matching given person id.
+    """
+    current_user = persons_service.get_current_user()
+
+    if permissions.has_admin_permissions() or current_user["id"] == person_id:
+        return True
+    elif permissions.has_manager_permissions():
+        check_belong_to_project(project_id)
+    else:
+        raise permissions.PermissionDenied
+
+
+
 def check_belong_to_project(project_id):
     """
     Return true if current user is assigned to a task of the given project or
