@@ -2,6 +2,7 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 
+from zou.app.services import budget_service
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     projects_service,
@@ -1092,3 +1093,406 @@ class ProductionSequencesScheduleItemsResource(Resource):
         return schedule_service.get_sequences_schedule_items(
             project_id, task_type_id
         )
+
+
+class ProductionBudgetsResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Retrieve budgets for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: All budgets of given production
+        """
+        user_service.check_manager_project_access(project_id)
+        self.check_id_parameter(project_id)
+        return budget_service.get_budgets(project_id)
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Create a budget for given production.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            required: true
+            type: string
+            x-example: "New Budget"
+          - in: formData
+            name: currency
+            required: false
+            type: string
+            x-example: "USD"
+        responses:
+            201:
+              description: Budget created
+        """
+        self.check_id_parameter(project_id)
+        user_service.check_manager_project_access(project_id)
+        data = self.get_args([
+            ("name", None, True),
+            ("currency", None, False)
+        ])
+        if data["currency"] is None:
+            data["currency"] = "USD"
+        return budget_service.create_budget(
+            project_id, data["name"], data["currency"]
+        )
+
+
+class ProductionBudgetResource(Resource, ArgsMixin):
+    """
+    Resource to retrieve a budget for given production.
+    """
+
+    @jwt_required()
+    def get(self, project_id, budget_id):
+        """
+        Retrieve a budget for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: Budget retrieved
+        """
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        user_service.check_manager_project_access(project_id)
+        return budget_service.get_budget(budget_id)
+
+    @jwt_required()
+    def put(self, project_id, budget_id):
+        """
+        Update a budget name for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: name
+            required: false
+            type: string
+            x-example: "New Budget"
+          - in: formData
+            name: currency
+            required: false
+            type: string
+            x-example: "USD"
+        responses:
+            200:
+              description: Budget updated
+        """
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        user_service.check_manager_project_access(project_id)
+        data = self.get_args([
+            ("name", None, False),
+            ("currency", None, False)
+        ])
+        return budget_service.update_budget(
+            budget_id,
+            name=data["name"],
+            currency=data["currency"]
+        )
+
+    @jwt_required()
+    def delete(self, project_id, budget_id):
+        """
+        Delete a budget for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+              description: Empty response
+        """
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        user_service.check_manager_project_access(project_id)
+        budget_service.delete_budget(budget_id)
+        return "", 204
+
+
+class ProductionBudgetEntriesResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def get(self, project_id, budget_id):
+        """
+        Retrieve budget entries for given production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: All budget entries of given production and budget
+        """
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        user_service.check_manager_project_access(project_id)
+        return budget_service.get_budget_entries(budget_id)
+
+    @jwt_required()
+    def post(self, project_id, budget_id):
+        """
+        Create a budget entry for given production and budget
+        """
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        user_service.check_manager_project_access(project_id)
+        data = self.get_args(
+            [
+                ("department_id", None, True),
+                ("person_id", None, False),
+                ("start_date", None, False),
+                ("months_duration", None, False),
+                ("daily_salary", None, False),
+                ("position", None, False),
+                ("seniority", None, False),
+            ]
+        )
+        return budget_service.create_budget_entry(
+            budget_id,
+            data["department_id"],
+            data["start_date"],
+            data["months_duration"],
+            data["daily_salary"],
+            data["position"],
+            data["seniority"],
+            person_id=data["person_id"],
+        )
+
+
+class ProductionBudgetEntryResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def get(self, project_id, budget_id, entry_id):
+        """
+        Retrieve a budget entry for given production and budget
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: entry_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: Budget entry retrieved
+        """
+        user_service.check_manager_project_access(project_id)
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        self.check_id_parameter(entry_id)
+        return budget_service.get_budget_entry(entry_id)
+
+    @jwt_required()
+    def put(self, project_id, budget_id, entry_id):
+        """
+        Update a budget entry for given production and budget
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: entry_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: department_id
+            required: false
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: person_id
+            required: false
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: start_date
+            required: false
+            type: string
+            format: date
+            x-example: 2025-01-01
+          - in: formData
+            name: months_duration
+            required: false
+            type: integer
+            x-example: 12
+          - in: formData
+            name: daily_salary
+            required: false
+            type: float
+            x-example: 100.00
+          - in: formData
+            name: position
+            required: false
+            type: string
+            x-example: "Artist"
+          - in: formData
+            name: seniority
+            required: false
+            type: string
+            x-example: "Mid"
+        responses:
+            200:
+              description: Budget entry updated
+        """
+        user_service.check_manager_project_access(project_id)
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        self.check_id_parameter(entry_id)
+        data = self.get_args(
+            [
+                ("department_id", None, False),
+                ("person_id", None, False),
+                ("start_date", None, False),
+                ("months_duration", None, False),
+                ("daily_salary", None, False),
+                ("position", None, False),
+                ("seniority", None, False),
+            ]
+        )
+        return budget_service.update_budget_entry(
+            entry_id,
+            data
+        )
+
+    @jwt_required()
+    def delete(self, project_id, budget_id, entry_id):
+        """
+        Delete a budget entry for given production and budget.
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: entry_id
+            required: true
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+              description: empty response
+        """
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(budget_id)
+        self.check_id_parameter(entry_id)
+        user_service.check_manager_project_access(project_id)
+        budget_service.delete_budget_entry(entry_id)
+        return "", 204

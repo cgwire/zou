@@ -92,6 +92,13 @@ def serialize_models(models, relations=False, milliseconds=False):
     ]
 
 
+def present_models(models):
+    """
+    Present a list of models (useful for json dumping)
+    """
+    return [model.present() for model in models if model is not None]
+
+
 def gen_uuid():
     """
     Generate a unique identifier (useful for json dumping).

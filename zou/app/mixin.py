@@ -11,6 +11,9 @@ class ArgsMixin(object):
     """
 
     def get_args(self, descriptors, location=None):
+        """
+        Retrieve arguments from GET or POST queries.
+        """
         parser = reqparse.RequestParser()
         if location is None:
             location = ["values", "json"] if request.is_json else ["values"]
