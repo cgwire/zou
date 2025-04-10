@@ -439,7 +439,7 @@ def invite_person(person_id):
     organisation = get_organisation()
     token = auth_service.generate_reset_token()
     auth_tokens_store.add(
-        "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 2
+        "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 7
     )
     subject = (
         "You are invited by %s to join their Kitsu production tracker"
