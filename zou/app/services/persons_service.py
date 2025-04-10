@@ -470,7 +470,7 @@ Your login is: <strong>{person["email"]}</strong>
 You are invited to set your password by following this link: <a href="{reset_url}">{reset_url}</a>
 </p>
 <p>
-This link will expire after 2 days. After, you have to request to reset your password.
+This link will expire after one week. After, you have to request to reset your password.
 The invitation was sent at this date: {time_string}.
 </p>
 <p>
