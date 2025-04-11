@@ -1452,12 +1452,17 @@ def get_last_notifications(
                 ),
                 None,
             )
-            reply_mentions = reply.get("mentions", []) or []
-            reply_department_mentions = (
-                reply.get("department_mentions", []) or []
-            )
             if reply is not None:
                 reply_text = reply["text"]
+                reply_mentions = reply.get("mentions", []) or []
+                reply_department_mentions = (
+                    reply.get("department_mentions", []) or []
+                )
+            else:
+                reply_mentions = []
+                reply_department_mentions = (
+                    []
+                )
 
         if role == "client" and is_current_user_artist:
             comment_text = ""
