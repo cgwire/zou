@@ -289,7 +289,8 @@ class AttachmentResource(Resource):
         user = persons_service.get_current_user()
         comment = tasks_service.get_comment(comment_id)
         if comment["person_id"] != user["id"]:
-            permissions.check_admin_permissions()
+            task = tasks_service.get_task(task_id)
+            user_service.check_manager_project_access(task["project_id"])
 
         deletion_service.remove_attachment_file_by_id(attachment_id)
         return "", 204
