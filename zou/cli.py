@@ -9,7 +9,7 @@ import traceback
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
-from zou.app.services import persons_service, auth_service
+from zou.app.services import persons_service, auth_service, plugin_service
 from zou.app.services.exception import (
     IsUserLimitReachedException,
     PersonNotFoundException,
@@ -641,6 +641,94 @@ def renormalize_movie_preview_files(
         all_broken,
         all_processing,
     )
+
+
+@cli.command()
+@click.option(
+    "--path",
+    required=True,
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def install_plugin(path, force=False):
+    """
+    Install a plugin.
+    """
+    plugin_service.install_plugin(path, force)
+
+
+@cli.command()
+@click.option(
+    "--id",
+    required=True,
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def uninstall_plugin(plugin_id, force=False):
+    """
+    Uninstall a plugin.
+    """
+    plugin_service.uninstall_plugin(plugin_id, force)
+    print(f"Plugin {plugin_id} uninstalled.")
+
+
+@cli.command()
+@click.option(
+    "--path",
+    required=True,
+)
+@click.option(
+    "--id",
+    default="my_plugin",
+    help="Plugin ID (must be unique).",
+    required=True,
+    show_default=True,
+)
+@click.option(
+    "--name",
+    default="MyPlugin",
+    help="Plugin name.",
+    required=True,
+    show_default=True,
+)
+@click.option(
+    "--description",
+    default=None,
+)
+@click.option(
+    "--version",
+    default=None,
+)
+@click.option(
+    "--maintainer",
+    default=None,
+)
+@click.option("--website", default=None)
+@click.option("--license", default=None)
+def create_plugin_skeleton(
+    path,
+    id,
+    name,
+    description=None,
+    maintainer=None,
+    version=None,
+    license=None,
+):
+    """
+    Create a plugin skeleton.
+    """
+    plugin_service.create_plugin_skeleton(
+        path, id, name, description, maintainer, version, license
+    )
+    print(f"Plugin skeleton created in {path}.")
 
 
 if __name__ == "__main__":
