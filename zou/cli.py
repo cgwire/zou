@@ -9,7 +9,7 @@ import traceback
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
-from zou.app.services import persons_service, auth_service
+from zou.app.services import persons_service, auth_service, plugin_service
 from zou.app.services.exception import (
     IsUserLimitReachedException,
     PersonNotFoundException,
@@ -641,6 +641,114 @@ def renormalize_movie_preview_files(
         all_broken,
         all_processing,
     )
+
+
+@cli.command()
+@click.option(
+    "--path",
+    required=True,
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def install_plugin(path, force=False):
+    """
+    Install a plugin.
+    """
+    with app.app_context():
+        plugin_service.install_plugin(path, force)
+    print(f"Plugin {path} installed. Restart the server to apply changes.")
+
+
+@cli.command()
+@click.option(
+    "--id",
+    required=True,
+)
+def uninstall_plugin(id):
+    """
+    Uninstall a plugin.
+    """
+    with app.app_context():
+        plugin_service.uninstall_plugin(id)
+    print(f"Plugin {id} uninstalled.")
+
+
+@cli.command()
+@click.option(
+    "--path",
+    required=True,
+)
+@click.option(
+    "--id",
+    help="Plugin ID (must be unique).",
+    required=True,
+)
+@click.option(
+    "--name", help="Plugin name.", default="MyPlugin", show_default=True
+)
+@click.option(
+    "--description",
+    help="Plugin description.",
+    default="My plugin description.",
+    show_default=True,
+)
+@click.option(
+    "--version", help="Plugin version.", default="0.1.0", show_default=True
+)
+@click.option(
+    "--maintainer",
+    help="Plugin maintainer.",
+    default="Author <author@author.com>",
+    show_default=True,
+)
+@click.option(
+    "--website",
+    help="Plugin website.",
+    default="mywebsite.com",
+    show_default=True,
+)
+@click.option(
+    "--license",
+    help="Plugin license.",
+    default="GPL-3.0-only",
+    show_default=True,
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def create_plugin_skeleton(
+    path,
+    id,
+    name,
+    description,
+    version,
+    maintainer,
+    website,
+    license,
+    force=False,
+):
+    """
+    Create a plugin skeleton.
+    """
+    plugin_path = plugin_service.create_plugin_skeleton(
+        path,
+        id,
+        name,
+        description,
+        version,
+        maintainer,
+        website,
+        license,
+        force,
+    )
+    print(f"Plugin skeleton created in '{plugin_path}'.")
 
 
 if __name__ == "__main__":
