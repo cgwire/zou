@@ -8,7 +8,7 @@ from flask_jwt_extended import (
     jwt_required,
     verify_jwt_in_request,
 )
-from flask_socketio import SocketIO, disconnect, join_room, emit
+from flask_socketio import SocketIO, disconnect, join_room, leave_room, emit
 
 from zou.app import config, app
 from zou.app.utils.redis import get_redis_url
@@ -25,6 +25,7 @@ socketio.init_app(app, message_queue=redis_url, async_mode="gevent")
 
 def _get_empty_room(current_frame=0):
     return {
+        "playlist_id": None,
         "user_id": None,
         "people": [],
         "is_playing": False,
@@ -60,10 +61,22 @@ def _leave_room(room_id, user_id):
         rooms_data[room_id] = room
     else:
         del rooms_data[room_id]
-    emit("preview-room:room-people-updated", room, room=room_id)
+    _emit_people_updated(room_id, room["people"])
+    return room
+
+
+def _emit_people_updated(room_id, people):
+    event_data = {
+        "people": people,
+        "playlist_id": room_id,
+        "id": room_id,
+    }
+    emit("preview-room:room-people-updated", event_data, room=room_id)
+    return event_data
 
 
 def _update_room_playing_status(data, room):
+    room["playlist_id"] = data.get("playlist_id", False)
     room["user_id"] = data.get("user_id", False)
     room["is_playing"] = data.get("is_playing", False)
     room["is_repeating"] = data.get("is_repeating", False)
@@ -110,10 +123,11 @@ def disconnected(_):
     try:
         verify_jwt_in_request()
         user_id = get_jwt_identity()
-        # needed to be able to clear empty rooms
+        # Needed to be able to clear empty rooms
         tmp_rooms_data = dict(rooms_data)
         for room_id in tmp_rooms_data:
             _leave_room(room_id, user_id)
+            leave_room(room_id, user_id)
         server_stats["nb_connections"] -= 1
         app.logger.info("Websocket client disconnected")
     except Exception:
@@ -141,12 +155,27 @@ def on_open_playlist(data):
     when a person opens the playlist page he immediately enters the
     websocket room. This way he can see in live which people are in the
     review room. The user still has to explicitly enter the review room
-    to actually be in sync with the other users
+    to actually be in sync with the other users.
     """
     room, room_id = _get_room_from_data(data)
     rooms_data[room_id] = room
+    # Connect to the socketio room but dont add the user to the data of
+    # the room.
     join_room(room_id)
-    emit("preview-room:room-people-updated", room, room=room_id)
+    _emit_people_updated(room_id, room["people"])
+
+
+@socketio.on("preview-room:close-playlist", namespace="/events")
+@jwt_required()
+def on_close_playlist(data):
+    """
+    when a person closes the playlist page he immediately leaves the
+    websocket room.
+    """
+    room, room_id = _get_room_from_data(data)
+    # Leave only the socketio room but dont remove the user from the data of
+    # the room. This operation must be done via a leave event.
+    leave_room(room_id)
 
 
 @socketio.on("preview-room:join", namespace="/events")
@@ -161,8 +190,9 @@ def on_join(data):
     if len(room["people"]) == 0:
         _update_room_playing_status(data, room)
     room["people"] = list(set(room["people"] + [user_id]))
+    room["playlist_id"] = room_id
     rooms_data[room_id] = room
-    emit("preview-room:room-people-updated", room, room=room_id)
+    _emit_people_updated(room_id, room["people"])
 
 
 @socketio.on("preview-room:leave", namespace="/events")
