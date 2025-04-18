@@ -524,37 +524,38 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
             movie_file_path = get_playlist_movie_file_path(job)
             tmp_file_paths = retrieve_playlist_tmp_files(previews)
 
-            if not remote:
-                success = False
-                if not full:
-                    success = _run_concatenation(
-                        playlist,
-                        job,
-                        tmp_file_paths,
-                        movie_file_path,
-                        params,
-                        movie.concat_demuxer,
-                    )
-
-                # Try again using concat filter
-                if not success:
-                    success = _run_concatenation(
-                        playlist,
-                        job,
-                        tmp_file_paths,
-                        movie_file_path,
-                        params,
-                        movie.concat_filter,
-                    )
-            else:
-                try:
-                    _run_remote_job_build_playlist(
-                        app, job, previews, params, movie_file_path, full
-                    )
-                    success = True
-                except Exception as exc:
-                    app.logger.error(exc)
+            if tmp_file_paths:
+                if not remote:
                     success = False
+                    if not full:
+                        success = _run_concatenation(
+                            playlist,
+                            job,
+                            tmp_file_paths,
+                            movie_file_path,
+                            params,
+                            movie.concat_demuxer,
+                        )
+
+                    # Try again using concat filter
+                    if not success:
+                        success = _run_concatenation(
+                            playlist,
+                            job,
+                            tmp_file_paths,
+                            movie_file_path,
+                            params,
+                            movie.concat_filter,
+                        )
+                else:
+                    try:
+                        _run_remote_job_build_playlist(
+                            app, job, previews, params, movie_file_path, full
+                        )
+                        success = True
+                    except Exception as exc:
+                        app.logger.error(exc)
+                        success = False
 
         except Exception as exc:
             app.logger.error(exc)
