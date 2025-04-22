@@ -579,6 +579,7 @@ def get_comments(task_id, is_client=False, is_manager=False):
                 comment["text"] = ""
                 comment["attachment_files"] = []
                 comment["checklist"] = []
+                comment["replies"] = []
                 tmp_comments.append(comment)
             elif is_allowed:
                 tmp_comments.append(comment)
