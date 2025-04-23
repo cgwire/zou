@@ -129,6 +129,10 @@ from zou.app.blueprints.crud.chat_message import (
     ChatMessagesResource,
 )
 from zou.app.blueprints.crud.studio import StudioResource, StudiosResource
+from zou.app.blueprints.crud.salary_scale import (
+    SalaryScalesResource,
+    SalaryScaleResource,
+)
 
 routes = [
     ("/data/persons", PersonsResource),
@@ -212,6 +216,8 @@ routes = [
     ),
     ("/data/studios", StudiosResource),
     ("/data/studios/<instance_id>", StudioResource),
+    ("/data/salary-scales", SalaryScalesResource),
+    ("/data/salary-scales/<instance_id>", SalaryScaleResource),
 ]
 
 blueprint = Blueprint("/data", "data")
