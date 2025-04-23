@@ -565,6 +565,7 @@ class SequenceTaskTypesResource(Resource):
 
 
 class ShotsAndTasksResource(Resource):
+
     @jwt_required()
     def get(self):
         """

@@ -130,6 +130,9 @@ def get_default_date_object(date_string):
 
 
 def is_valid_id(uuid):
+    """
+    Check if a given string is a valid UUID.
+    """
     _UUID_RE = re.compile(
         "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}){1}"
     )

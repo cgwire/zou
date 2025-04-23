@@ -166,7 +166,7 @@ class ProductionTeamRemoveResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Person removed from production team
+              description: Empty response
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
@@ -238,7 +238,7 @@ class ProductionAssetTypeRemoveResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Asset type removed from production
+              description: Empty response
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
@@ -344,7 +344,7 @@ class ProductionTaskTypeRemoveResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Task type removed from production
+              description: Empty response
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
@@ -437,7 +437,7 @@ class ProductionTaskStatusRemoveResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Task status removed from production
+              description: Empty response
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
@@ -530,7 +530,7 @@ class ProductionStatusAutomationRemoveResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Status automation removed from production
+              description: Empty response
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
@@ -627,7 +627,7 @@ class ProductionPreviewBackgroundFileRemoveResource(Resource):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Preview background file removed from production
+              description: Empty response
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_preview_background_file_setting(
@@ -865,7 +865,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Metadata descriptor deleted
+              description: Empty response
         """
         user_service.check_all_departments_access(
             project_id,
