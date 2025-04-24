@@ -84,7 +84,9 @@ def _update_room_playing_status(data, room):
     room["current_entity_id"] = data.get("current_entity_id", None)
     room["current_entity_index"] = data.get("current_entity_index", None)
     room["current_preview_file_id"] = data.get("current_preview_file_id", None)
-    room["current_preview_file_index"] = data.get("current_preview_file_index", None)
+    room["current_preview_file_index"] = data.get(
+        "current_preview_file_index", None
+    )
     room["handle_in"] = data.get("handle_in", None)
     room["handle_out"] = data.get("handle_out", None)
     if "current_frame" in data:

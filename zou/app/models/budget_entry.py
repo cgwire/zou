@@ -16,23 +16,24 @@ class BudgetEntry(db.Model, BaseMixin, SerializerMixin):
     Budget entry for a budget. It stores the information about a person
     (present or not) salary for a given department.
     """
+
     budget_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("budget.id"),
         index=True,
-        nullable=False
+        nullable=False,
     )
     department_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("department.id"),
         index=True,
-        nullable=False
+        nullable=False,
     )
     person_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         index=True,
-        nullable=True
+        nullable=True,
     )
     start_date = db.Column(db.Date, nullable=False)
     months_duration = db.Column(db.Integer, nullable=False)

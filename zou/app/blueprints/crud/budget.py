@@ -1,9 +1,6 @@
-from flask_jwt_extended import jwt_required
-
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.models.salary_scale import Budget
-
 
 
 class BudgetsResource(BaseModelsResource):
@@ -13,7 +10,11 @@ class BudgetsResource(BaseModelsResource):
 
 class BudgetResource(BaseModelResource):
     protected_fields = [
-        "id", "created_at", "updated_at", "project_id", "revision",
+        "id",
+        "created_at",
+        "updated_at",
+        "project_id",
+        "revision",
     ]
 
     def __init__(self):

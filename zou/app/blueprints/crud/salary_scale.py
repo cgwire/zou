@@ -42,19 +42,22 @@ class SalaryScalesResource(BaseModelsResource):
         salary_scales = SalaryScale.query.all()
         salary_scale_map = {}
         for salary_scale in salary_scales:
-            key = f"{salary_scale.department_id}-" + \
-                  f"{salary_scale.position.value.lower()}-" + \
-                  f"{salary_scale.seniority.value.lower()}"
+            key = (
+                f"{salary_scale.department_id}-"
+                + f"{salary_scale.position.value.lower()}-"
+                + f"{salary_scale.seniority.value.lower()}"
+            )
             salary_scale_map[key] = True
 
         for department in departments:
             for position in position_types:
                 for seniority in seniority_types:
-                    key = \
-                        f"{department.id}-" + \
-                        f"{position.lower()}-" + \
-                        f"{seniority.lower()}"
-                    if key not in salary_scale_map: 
+                    key = (
+                        f"{department.id}-"
+                        + f"{position.lower()}-"
+                        + f"{seniority.lower()}"
+                    )
+                    if key not in salary_scale_map:
                         SalaryScale.create(
                             department_id=department.id,
                             position=position,

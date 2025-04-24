@@ -6,12 +6,12 @@ from zou.app.models.base import BaseMixin
 from zou.app.utils import fields
 
 
-
 class Budget(db.Model, BaseMixin, SerializerMixin):
     """
     Budget quote for a project. It's a base object where budget entries
     are linked to.
     """
+
     project_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("project.id"), index=True
     )
@@ -24,7 +24,7 @@ class Budget(db.Model, BaseMixin, SerializerMixin):
             self.project_id,
             self.revision,
             self.name,
-            self.id
+            self.id,
         )
 
     def present(self):
