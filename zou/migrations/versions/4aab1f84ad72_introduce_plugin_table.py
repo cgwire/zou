@@ -1,7 +1,7 @@
 """Introduce Plugin table
 
 Revision ID: 4aab1f84ad72
-Revises: 307edd8c639d
+Revises: d25118cddcaa
 Create Date: 2025-04-14 15:18:29.346896
 
 """
@@ -14,7 +14,7 @@ import uuid
 
 # revision identifiers, used by Alembic.
 revision = "4aab1f84ad72"
-down_revision = "307edd8c639d"
+down_revision = "d25118cddcaa"
 branch_labels = None
 depends_on = None
 
