@@ -92,6 +92,13 @@ def serialize_models(models, relations=False, milliseconds=False):
     ]
 
 
+def present_models(models):
+    """
+    Present a list of models (useful for json dumping)
+    """
+    return [model.present() for model in models if model is not None]
+
+
 def gen_uuid():
     """
     Generate a unique identifier (useful for json dumping).
@@ -123,6 +130,9 @@ def get_default_date_object(date_string):
 
 
 def is_valid_id(uuid):
+    """
+    Check if a given string is a valid UUID.
+    """
     _UUID_RE = re.compile(
         "([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}){1}"
     )

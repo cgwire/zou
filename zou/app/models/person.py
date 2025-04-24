@@ -13,8 +13,8 @@ from pytz import timezone as pytz_timezone
 from babel import Locale
 
 from zou.app.models.serializer import SerializerMixin
-from zou.app.models.base import BaseMixin
 from zou.app.models.department import Department
+from zou.app.models.base import BaseMixin
 from zou.app import config, db
 
 
@@ -40,6 +40,18 @@ ROLE_TYPES = [
     ("manager", "Production Manager"),
     ("client", "Client"),
     ("vendor", "Vendor"),
+]
+
+POSITION_TYPES = [
+    ("supervisor", "Supervisor"),
+    ("lead", "Lead"),
+    ("artist", "Artist"),
+]
+
+SENIORITY_TYPES = [
+    ("senior", "Senior"),
+    ("mid", "Mid"),
+    ("junior", "Junior"),
 ]
 
 
@@ -107,6 +119,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     locale = db.Column(LocaleType, default=Locale(config.DEFAULT_LOCALE))
     data = db.Column(JSONB)
     role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
+    position = db.Column(ChoiceType(POSITION_TYPES), default="artist")
+    seniority = db.Column(ChoiceType(SENIORITY_TYPES), default="mid")
+    daily_salary = db.Column(db.Integer, default=0)
+
     has_avatar = db.Column(db.Boolean(), default=False)
 
     notifications_enabled = db.Column(db.Boolean(), default=False)

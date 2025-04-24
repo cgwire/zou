@@ -1,7 +1,7 @@
 from flask_restful import reqparse
 from flask import request
 
-from zou.app.utils import date_helpers
+from zou.app.utils import date_helpers, fields
 from zou.app.services.exception import WrongParameterException
 
 
@@ -11,6 +11,9 @@ class ArgsMixin(object):
     """
 
     def get_args(self, descriptors, location=None):
+        """
+        Retrieve arguments from GET or POST queries.
+        """
         parser = reqparse.RequestParser()
         if location is None:
             location = ["values", "json"] if request.is_json else ["values"]
@@ -157,3 +160,11 @@ class ArgsMixin(object):
                     "Expected format: 2020-01-05T13:23:10 or 2020-01-05"
                 )
         return date
+
+    def check_id_parameter(self, uuid):
+        """
+        Check if the given UUID is valid.
+        """
+        if not fields.is_valid_id(uuid):
+            raise WrongParameterException("Wrong UUID format.")
+        return True
