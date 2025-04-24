@@ -1,9 +1,12 @@
 import os
 import sys
+import tomlkit
+import importlib
+import traceback
 
-from zou.app.utils import events, api as api_utils
+from zou.app.utils import events
+from pathlib import Path
 
-from flask import Blueprint
 
 from zou.app.blueprints.assets import blueprint as assets_blueprint
 from zou.app.blueprints.auth import blueprint as auth_blueprint
@@ -93,44 +96,32 @@ def register_event_handlers(app):
 
 def load_plugins(app):
     """
-    Load plugin, (bunch of resources dedicated to a specific usage).
+    Load plugins from the plugin folder.
     """
+    abs_plugin_path = os.path.abspath(app.config["PLUGIN_FOLDER"])
+    if abs_plugin_path not in sys.path:
+        sys.path.insert(0, abs_plugin_path)
+
     if os.path.exists(app.config["PLUGIN_FOLDER"]):
-        plugins = load_plugin_modules(app.config["PLUGIN_FOLDER"])
-        for plugin in plugins:
-            load_plugin(app, plugin)
+        for plugin_id in os.listdir(app.config["PLUGIN_FOLDER"]):
+            try:
+                load_plugin(app, plugin_id)
+                app.logger.info(f"Plugin {plugin_id} loaded.")
+            except:
+                app.logger.error(f"Plugin {plugin_id} fails to load:")
+                app.logger.error(traceback.format_exc())
+
+    if abs_plugin_path in sys.path:
+        sys.path.remove(abs_plugin_path)
 
 
-def load_plugin_modules(plugin_folder):
-    """
-    Run Python import on all plugin listed in plugin folder. It returns the
-    imported module.
-    """
-    sys.path.insert(0, plugin_folder)
-    return [
-        __import__(file_name)
-        for file_name in os.listdir(plugin_folder)
-        if os.path.isdir(os.path.join(plugin_folder, file_name))
-        and file_name != "__pycache__"
-    ]
-
-
-def load_plugin(app, plugin):
-    """
-    Load a given plugin as an API plugin: add configured routes to the API. It
-    assumes that the plugin is already loaded in memory has a blueprint
-    structure.
-    """
-    routes = [
-        ("/plugins%s" % route_path, resource)
-        for (route_path, resource) in plugin.routes
-        if len(route_path) > 0 and route_path[0] == "/"
-    ]
-    plugin.routes = routes
-    plugin.blueprint = Blueprint(plugin.name, plugin.name)
-    plugin.api = api_utils.configure_api_from_blueprint(
-        plugin.blueprint, plugin.routes
-    )
-    app.register_blueprint(plugin.blueprint)
-    app.logger.info("Plugin %s loaded." % plugin.name)
-    return plugin
+def load_plugin(app, plugin_id):
+    with open(
+        Path(app.config["PLUGIN_FOLDER"]).joinpath(plugin_id, "manifest.toml"),
+        "rb",
+    ) as manifest_file:
+        manifest = tomlkit.load(manifest_file)
+    plugin_module = importlib.import_module(plugin_id)
+    if hasattr(plugin_module, "init_plugin"):
+        plugin_module.init_plugin(app, manifest)
+    return plugin_module

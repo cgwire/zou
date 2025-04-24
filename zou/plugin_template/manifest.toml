@@ -1,0 +1,7 @@
+id = "myplugin"
+name = "MyPlugin"
+description = "My plugin description."
+version = "0.1.0"
+maintainer = "Author <author@author.com>"
+website = "mywebsite.com"
+license = "GPL-3.0-only"
