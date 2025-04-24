@@ -1149,10 +1149,7 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         user_service.check_manager_project_access(project_id)
-        data = self.get_args([
-            ("name", None, True),
-            ("currency", None, False)
-        ])
+        data = self.get_args([("name", None, True), ("currency", None, False)])
         if data["currency"] is None:
             data["currency"] = "USD"
         return budget_service.create_budget(
@@ -1231,14 +1228,11 @@ class ProductionBudgetResource(Resource, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         user_service.check_manager_project_access(project_id)
-        data = self.get_args([
-            ("name", None, False),
-            ("currency", None, False)
-        ])
+        data = self.get_args(
+            [("name", None, False), ("currency", None, False)]
+        )
         return budget_service.update_budget(
-            budget_id,
-            name=data["name"],
-            currency=data["currency"]
+            budget_id, name=data["name"], currency=data["currency"]
         )
 
     @jwt_required()
@@ -1455,10 +1449,7 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
                 ("seniority", None, False),
             ]
         )
-        return budget_service.update_budget_entry(
-            entry_id,
-            data
-        )
+        return budget_service.update_budget_entry(entry_id, data)
 
     @jwt_required()
     def delete(self, project_id, budget_id, entry_id):

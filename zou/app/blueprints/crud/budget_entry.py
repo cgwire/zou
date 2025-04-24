@@ -1,9 +1,6 @@
-from flask_jwt_extended import jwt_required
-
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
 
 from zou.app.models.salary_scale import BudgetEntry
-
 
 
 class BudgetEntriesResource(BaseModelsResource):

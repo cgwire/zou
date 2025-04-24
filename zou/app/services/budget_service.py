@@ -2,7 +2,8 @@ from zou.app.models.budget import Budget
 from zou.app.models.budget_entry import BudgetEntry
 
 from zou.app.services.exception import (
-    BudgetNotFoundException, BudgetEntryNotFoundException
+    BudgetNotFoundException,
+    BudgetEntryNotFoundException,
 )
 
 from zou.app.utils import events
@@ -48,8 +49,7 @@ def create_budget(project_id, name, currency=None):
     Create a new budget for given project ID.
     """
     last_budget = (
-        Budget
-        .query.filter_by(project_id=project_id)
+        Budget.query.filter_by(project_id=project_id)
         .order_by(Budget.revision.desc())
         .first()
     )
@@ -65,7 +65,7 @@ def create_budget(project_id, name, currency=None):
     budget.save()
     events.emit(
         "budget:create",
-        { "budget_id": str(budget.id) },
+        {"budget_id": str(budget.id)},
         project_id=project_id,
     )
     return budget.serialize()
@@ -83,7 +83,7 @@ def update_budget(budget_id, name=None, currency=None):
     budget.save()
     events.emit(
         "budget:update",
-        { "budget_id": str(budget.id) },
+        {"budget_id": str(budget.id)},
         project_id=str(budget.project_id),
     )
     return budget.serialize()
@@ -98,7 +98,7 @@ def delete_budget(budget_id):
     budget.delete()
     events.emit(
         "budget:delete",
-        { "budget_id": budget_id },
+        {"budget_id": budget_id},
         project_id=str(budget.project_id),
     )
     return budget.serialize()
@@ -130,7 +130,7 @@ def get_budget_entry(budget_entry_id):
     """
     Return budget entry corresponding to given budget entry ID as a dictionary.
     """
-    return get_budget_entry_raw(budget_entry_id).   serialize()
+    return get_budget_entry_raw(budget_entry_id).serialize()
 
 
 def create_budget_entry(
@@ -155,14 +155,11 @@ def create_budget_entry(
         months_duration=months_duration,
         daily_salary=daily_salary,
         position=position,
-        seniority=seniority
+        seniority=seniority,
     )
     events.emit(
         "budget-entry:create",
-        {
-            "budget_id": str(budget_id),
-            "budget_entry_id": str(budget_entry.id)
-        },
+        {"budget_id": str(budget_id), "budget_entry_id": str(budget_entry.id)},
         project_id=str(budget.project_id),
     )
     return budget_entry.serialize()
@@ -177,10 +174,7 @@ def update_budget_entry(budget_entry_id, data):
     budget_entry.update(data)
     events.emit(
         "budget-entry:update",
-        {
-            "budget_id": str(budget.id),
-            "budget_entry_id": str(budget_entry.id)
-        },
+        {"budget_id": str(budget.id), "budget_entry_id": str(budget_entry.id)},
         project_id=str(budget.project_id),
     )
     return budget_entry.serialize()
@@ -195,10 +189,7 @@ def delete_budget_entry(budget_entry_id):
     budget_entry.delete()
     events.emit(
         "budget-entry:delete",
-        {
-            "budget_id": str(budget.id),
-            "budget_entry_id": budget_entry_id
-        },
+        {"budget_id": str(budget.id), "budget_entry_id": budget_entry_id},
         project_id=str(budget.project_id),
     )
     return budget_entry.serialize()

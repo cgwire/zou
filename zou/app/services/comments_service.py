@@ -333,7 +333,7 @@ def new_comment(
         {
             "comment_id": comment["id"],
             "task_id": task_id,
-            "task_status_id": task_status_id
+            "task_status_id": task_status_id,
         },
         project_id=task["project_id"],
     )

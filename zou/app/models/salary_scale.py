@@ -17,7 +17,7 @@ class SalaryScale(db.Model, BaseMixin, SerializerMixin):
         UUIDType(binary=False),
         db.ForeignKey("department.id"),
         index=True,
-        nullable=False
+        nullable=False,
     )
 
     position = db.Column(ChoiceType(POSITION_TYPES), default="artist")

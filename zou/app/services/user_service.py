@@ -1460,9 +1460,7 @@ def get_last_notifications(
                 )
             else:
                 reply_mentions = []
-                reply_department_mentions = (
-                    []
-                )
+                reply_department_mentions = []
 
         if role == "client" and is_current_user_artist:
             comment_text = ""
