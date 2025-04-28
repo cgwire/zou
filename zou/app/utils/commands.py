@@ -5,8 +5,10 @@ import datetime
 import tempfile
 import sys
 import shutil
+import click
+import orjson as json
 
-
+from tabulate import tabulate
 from ldap3 import Server, Connection, ALL, NTLM, SIMPLE
 from zou.app.utils import thumbnail as thumbnail_utils, auth
 from zou.app.stores import auth_tokens_store, file_store, queue_store
@@ -27,6 +29,7 @@ from zou.app.services import (
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
+from zou.app.models.plugin import Plugin
 from sqlalchemy.sql.expression import not_
 
 from zou.app.services.exception import (
@@ -823,3 +826,50 @@ def renormalize_movie_preview_files(
                             f"Renormalization of preview file {preview_file_id} failed: {e}"
                         )
                         continue
+
+
+def list_plugins(output_format, verbose, filter_field, filter_value):
+    with app.app_context():
+        query = Plugin.query
+
+        # Apply filter if needed
+        if filter_field and filter_value:
+            if filter_field == "maintainer":
+                query = query.filter(
+                    Plugin.maintainer_name.ilike(f"%{filter_value}%")
+                )
+            else:
+                model_field = getattr(Plugin, filter_field)
+                query = query.filter(model_field.ilike(f"%{filter_value}%"))
+
+        plugins = query.order_by(Plugin.name).all()
+
+        if not plugins:
+            click.echo("No plugins found matching the criteria.")
+            return
+
+        plugin_list = []
+        for plugin in plugins:
+            maintainer = (
+                f"{plugin.maintainer_name} <{plugin.maintainer_email}>"
+                if plugin.maintainer_email
+                else plugin.maintainer_name
+            )
+            plugin_data = {
+                "Plugin ID": plugin.plugin_id,
+                "Name": plugin.name,
+                "Version": plugin.version,
+                "Maintainer": maintainer,
+                "License": plugin.license,
+            }
+            if verbose:
+                plugin_data["Description"] = plugin.description or "-"
+                plugin_data["Website"] = plugin.website or "-"
+            plugin_list.append(plugin_data)
+
+        if output_format == "table":
+            headers = plugin_list[0].keys()
+            rows = [p.values() for p in plugin_list]
+            click.echo(tabulate(rows, headers, tablefmt="fancy_grid"))
+        elif output_format == "json":
+            click.echo(json.dumps(plugin_list, indent=2, ensure_ascii=False))

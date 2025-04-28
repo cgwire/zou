@@ -9,12 +9,13 @@ import traceback
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.utils import dbhelpers, auth, commands
-from zou.app.services import persons_service, auth_service, plugin_service
+from zou.app.services import persons_service, auth_service, plugins_service
 from zou.app.services.exception import (
     IsUserLimitReachedException,
     PersonNotFoundException,
     TwoFactorAuthenticationNotEnabledException,
 )
+
 from zou.app import app, config
 
 from zou import __file__ as root_path
@@ -659,7 +660,7 @@ def install_plugin(path, force=False):
     Install a plugin.
     """
     with app.app_context():
-        plugin_service.install_plugin(path, force)
+        plugins_service.install_plugin(path, force)
     print(f"Plugin {path} installed. Restart the server to apply changes.")
 
 
@@ -673,7 +674,7 @@ def uninstall_plugin(id):
     Uninstall a plugin.
     """
     with app.app_context():
-        plugin_service.uninstall_plugin(id)
+        plugins_service.uninstall_plugin(id)
     print(f"Plugin {id} uninstalled.")
 
 
@@ -737,7 +738,7 @@ def create_plugin_skeleton(
     """
     Create a plugin skeleton.
     """
-    plugin_path = plugin_service.create_plugin_skeleton(
+    plugin_path = plugins_service.create_plugin_skeleton(
         path,
         id,
         name,
@@ -749,6 +750,65 @@ def create_plugin_skeleton(
         force,
     )
     print(f"Plugin skeleton created in '{plugin_path}'.")
+
+
+@cli.command()
+@click.option(
+    "--path",
+    required=True,
+)
+@click.option(
+    "--output-path",
+    required=True,
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def create_plugin_package(
+    path,
+    output_path,
+    force=False,
+):
+    """
+    Create a plugin package.
+    """
+    plugin_path = plugins_service.create_plugin_package(
+        path, output_path, force
+    )
+    print(f"Plugin package created in '{plugin_path}'.")
+
+
+@cli.command()
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["table", "json"], case_sensitive=False),
+    default="table",
+    show_default=True,
+    help="Output format: table or json.",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    default=False,
+    help="Show more plugin information.",
+)
+@click.option(
+    "--filter-field",
+    type=click.Choice(
+        ["plugin_id", "name", "maintainer", "license"], case_sensitive=False
+    ),
+    help="Field to filter by.",
+)
+@click.option("--filter-value", type=str, help="Value to search in the field.")
+def list_plugins(output_format, verbose, filter_field, filter_value):
+    """
+    List installed plugins.
+    """
+    commands.list_plugins(output_format, verbose, filter_field, filter_value)
 
 
 if __name__ == "__main__":
