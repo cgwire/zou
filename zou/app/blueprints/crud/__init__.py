@@ -134,6 +134,8 @@ from zou.app.blueprints.crud.salary_scale import (
     SalaryScaleResource,
 )
 
+from zou.app.blueprints.crud.plugin import PluginResource, PluginsResource
+
 routes = [
     ("/data/persons", PersonsResource),
     ("/data/persons/<instance_id>", PersonResource),
@@ -218,6 +220,8 @@ routes = [
     ("/data/studios/<instance_id>", StudioResource),
     ("/data/salary-scales", SalaryScalesResource),
     ("/data/salary-scales/<instance_id>", SalaryScaleResource),
+    ("/data/plugins/<instance_id>", PluginResource),
+    ("/data/plugins", PluginsResource),
 ]
 
 blueprint = Blueprint("/data", "data")
