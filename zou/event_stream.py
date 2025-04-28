@@ -35,6 +35,9 @@ def _get_empty_room(current_frame=0):
         "current_preview_file_index": None,
         "current_frame": current_frame,
         "is_repeating": None,
+        "is_annotations_displayed": False,
+        "is_zoom_enabled": False,
+        "is_waveform_displayed": False,
         "is_laser_mode": None,
         "handle_in": None,
         "handle_out": None,
@@ -59,7 +62,7 @@ def _leave_room(room_id, user_id):
     room["people"] = list(set(room["people"]) - {user_id})
     if len(room["people"]) > 0:
         rooms_data[room_id] = room
-    else:
+    elif room_id in rooms_data:
         del rooms_data[room_id]
     _emit_people_updated(room_id, room["people"])
     return room
@@ -81,6 +84,11 @@ def _update_room_playing_status(data, room):
     room["is_playing"] = data.get("is_playing", False)
     room["is_repeating"] = data.get("is_repeating", False)
     room["is_laser_mode"] = data.get("is_laser_mode", False)
+    room["is_annotations_displayed"] = data.get(
+        "is_annotations_displayed", False
+    )
+    room["is_zoom_enabled"] = data.get("is_zoom_enabled", False)
+    room["is_waveform_displayed"] = data.get("is_waveform_displayed", False)
     room["current_entity_id"] = data.get("current_entity_id", None)
     room["current_entity_index"] = data.get("current_entity_index", None)
     room["current_preview_file_id"] = data.get("current_preview_file_id", None)
@@ -195,19 +203,20 @@ def on_join(data):
     room["playlist_id"] = room_id
     rooms_data[room_id] = room
     _emit_people_updated(room_id, room["people"])
+    emit("preview-room:room-updated", room, room=room_id)
 
 
 @socketio.on("preview-room:leave", namespace="/events")
 @jwt_required()
 def on_leave(data):
     user_id = get_jwt_identity()
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "")
     _leave_room(room_id, user_id)
 
 
-@socketio.on("preview-room:update-playing-status", namespace="/events")
+@socketio.on("preview-room:room-updated", namespace="/events")
 @jwt_required()
-def on_playing_status_updated(data, only_newcomer=False):
+def on_room_updated(data, only_newcomer=False):
     room, room_id = _get_room_from_data(data)
     rooms_data[room_id] = _update_room_playing_status(data, room)
     event_data = {"only_newcomer": only_newcomer, **rooms_data[room_id]}
@@ -240,6 +249,13 @@ def on_update_annotation(data):
 def on_change_version(data):
     room_id = data["playlist_id"]
     emit("preview-room:change-version", data, room=room_id)
+
+
+@socketio.on("preview-room:panzoom-changed", namespace="/events")
+@jwt_required()
+def on_change_version(data):
+    room_id = data["playlist_id"]
+    emit("preview-room:panzoom-changed", data, room=room_id)
 
 
 if __name__ == "__main__":
