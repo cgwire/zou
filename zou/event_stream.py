@@ -27,6 +27,7 @@ def _get_empty_room(current_frame=0):
     return {
         "playlist_id": None,
         "user_id": None,
+        "local_id": None,
         "people": [],
         "is_playing": False,
         "current_entity_id": None,
@@ -81,6 +82,7 @@ def _emit_people_updated(room_id, people):
 def _update_room_playing_status(data, room):
     room["playlist_id"] = data.get("playlist_id", False)
     room["user_id"] = data.get("user_id", False)
+    room["local_id"] = data.get("local_id", False)
     room["is_playing"] = data.get("is_playing", False)
     room["is_repeating"] = data.get("is_repeating", False)
     room["is_laser_mode"] = data.get("is_laser_mode", False)
