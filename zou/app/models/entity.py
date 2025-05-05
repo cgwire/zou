@@ -102,6 +102,9 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
 
     is_shared = db.Column(db.Boolean, default=False, nullable=False)
 
+    # specific to episodes
+    is_main_pack = db.Column(db.Boolean, default=False, nullable=False)
+
     status = db.Column(
         ChoiceType(ENTITY_STATUSES), default="running", nullable=False
     )
