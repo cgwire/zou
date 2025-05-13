@@ -86,13 +86,15 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
             self.project.id, True
         )
         self.assertEqual(len(playlists), 1)
-
-        self.generate_fixture_playlist("Test main pack", for_entity="asset")
+        mp_id = self.generate_fixture_main_pack_episode(self.project.id).id
+        self.generate_fixture_playlist(
+            "Test main pack", for_entity="asset", episode_id=mp_id
+        )
         self.generate_fixture_playlist(
             "Test all playlist", for_entity="asset", is_for_all=True
         )
         playlists = playlists_service.all_playlists_for_episode(
-            self.project.id, "main"
+            self.project.id, mp_id
         )
         self.assertEqual(len(playlists), 1)
         playlists = playlists_service.all_playlists_for_episode(

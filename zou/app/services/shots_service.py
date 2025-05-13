@@ -932,6 +932,7 @@ def create_episode(
     description="",
     data={},
     created_by=None,
+    is_main_pack=False,
 ):
     """
     Create episode for given project.
@@ -951,6 +952,7 @@ def create_episode(
             description=description,
             data=data,
             created_by=created_by,
+            is_main_pack=is_main_pack,
         )
         events.emit(
             "episode:new", {"episode_id": episode.id}, project_id=project_id
