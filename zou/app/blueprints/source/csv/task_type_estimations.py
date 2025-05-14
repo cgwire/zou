@@ -109,6 +109,9 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 * 60
             )
 
+        if row.get("Drawings") not in [None, ""]:
+            new_data["nb_drawings"] = int(row["Drawings"])
+
         if row.get("Start date") not in [None, ""]:
             new_data["start_date"] = date_helpers.get_date_from_string(
                 row["Start date"]
