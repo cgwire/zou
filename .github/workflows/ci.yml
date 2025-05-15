@@ -14,9 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        pg-version: ["12", "13", "14", "15", "16", "17"]
     services:
       postgres:
-        image: "postgres:12.16"
+        image: "postgres:${{ matrix.pg-version }}"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
