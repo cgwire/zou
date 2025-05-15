@@ -156,6 +156,7 @@ def create_budget_entry(
         daily_salary=daily_salary,
         position=position,
         seniority=seniority,
+        exceptions={},
     )
     events.emit(
         "budget-entry:create",
@@ -171,6 +172,7 @@ def update_budget_entry(budget_entry_id, data):
     """
     budget_entry = get_budget_entry_raw(budget_entry_id)
     budget = get_budget_raw(str(budget_entry.budget_id))
+    data = _clean_exceptions(data)
     budget_entry.update(data)
     events.emit(
         "budget-entry:update",
@@ -178,6 +180,18 @@ def update_budget_entry(budget_entry_id, data):
         project_id=str(budget.project_id),
     )
     return budget_entry.serialize()
+
+
+def _clean_exceptions(data):
+    if "exceptions" in data:
+        if data["exceptions"] is None:
+            data["exceptions"] = {}
+        else:
+            data["exceptions"] = {
+                k: int(v) for k, v in data["exceptions"].items()
+                if v is not None and int(v) > 0
+            }
+    return data
 
 
 def delete_budget_entry(budget_entry_id):
