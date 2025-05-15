@@ -12,14 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Update Zou on staging server
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          script_stop: true
           script: |
+            set -e
             cd /opt/zou
             source /etc/zou/zou.env
             sudo /opt/zou/zouenv/bin/pip uninstall -y zou
