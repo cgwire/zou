@@ -49,7 +49,7 @@ jobs:
           psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
       - name: Launch docker for meilisearch 🐳
         run: |
-          docker pull getmeili/meilisearch:v1.1
+          docker pull getmeili/meilisearch:latest
           docker run -it --rm -d -p 7700:7700 -e MEILI_MASTER_KEY=$INDEXER_KEY getmeili/meilisearch:v1.1
       - name: Run tests 🧪
         run: >-
