@@ -19,3 +19,4 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     maintainer_email = db.Column(EmailType)
     website = db.Column(URLType)
     license = db.Column(db.String(80), nullable=False)
+    revision = db.Column(db.String(12), nullable=True)
