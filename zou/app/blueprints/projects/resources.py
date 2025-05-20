@@ -1453,7 +1453,7 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
                     "default": {},
                     "type": dict,
                     "help": "Map of amount exceptions. Key is the date and value is the amount. Example: {'2025-01-01': 1000, '2025-02-01': 2000}",
-                }
+                },
             ]
         )
         return budget_service.update_budget_entry(entry_id, data)

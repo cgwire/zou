@@ -30,7 +30,6 @@ def check_criterion_access(criterions):
 
 class AssetResource(Resource, ArgsMixin):
 
-
     @jwt_required()
     def get(self, asset_id):
         """

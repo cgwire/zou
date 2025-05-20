@@ -188,7 +188,8 @@ def _clean_exceptions(data):
             data["exceptions"] = {}
         else:
             data["exceptions"] = {
-                k: int(v) for k, v in data["exceptions"].items()
+                k: int(v)
+                for k, v in data["exceptions"].items()
                 if v is not None and int(v) > 0
             }
     return data
