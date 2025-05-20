@@ -2,6 +2,7 @@ from sqlalchemy_utils import (
     UUIDType,
     ChoiceType,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
@@ -40,6 +41,7 @@ class BudgetEntry(db.Model, BaseMixin, SerializerMixin):
     daily_salary = db.Column(db.Float, nullable=False)
     position = db.Column(ChoiceType(POSITION_TYPES), default="artist")
     seniority = db.Column(ChoiceType(SENIORITY_TYPES), default="mid")
+    exceptions = db.Column(JSONB)
 
     def __repr__(self):
         return "<BudgetEntry of %s - %d %s %s>" % (
@@ -61,5 +63,6 @@ class BudgetEntry(db.Model, BaseMixin, SerializerMixin):
                 "daily_salary": self.daily_salary,
                 "position": self.position,
                 "seniority": self.seniority,
+                "exceptions": self.exceptions,
             }
         )
