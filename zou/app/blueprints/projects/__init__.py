@@ -30,6 +30,7 @@ from zou.app.blueprints.projects.resources import (
     ProductionBudgetResource,
     ProductionBudgetEntriesResource,
     ProductionBudgetEntryResource,
+    ProductionMonthTimeSpentsResource,
 )
 
 routes = [
@@ -126,6 +127,10 @@ routes = [
     (
         "/data/projects/<project_id>/budgets/<budget_id>/entries/<entry_id>",
         ProductionBudgetEntryResource,
+    ),
+    (
+        "/data/projects/<project_id>/budgets/time-spents",
+        ProductionMonthTimeSpentsResource,
     ),
 ]
 
