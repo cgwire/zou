@@ -8,7 +8,7 @@ import traceback
 
 from sqlalchemy.exc import IntegrityError
 
-from zou.app.utils import dbhelpers, auth, commands
+from zou.app.utils import dbhelpers, auth, commands, plugins as plugin_utils
 from zou.app.services import persons_service, auth_service, plugins_service
 from zou.app.services.exception import (
     IsUserLimitReachedException,
@@ -738,7 +738,7 @@ def create_plugin_skeleton(
     """
     Create a plugin skeleton.
     """
-    plugin_path = plugins_service.create_plugin_skeleton(
+    plugin_path = plugin_utils.create_plugin_skeleton(
         path,
         id,
         name,
@@ -775,9 +775,7 @@ def create_plugin_package(
     """
     Create a plugin package.
     """
-    plugin_path = plugins_service.create_plugin_package(
-        path, output_path, force
-    )
+    plugin_path = plugin_utils.create_plugin_package(path, output_path, force)
     print(f"Plugin package created in '{plugin_path}'.")
 
 
@@ -809,6 +807,21 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
     List installed plugins.
     """
     commands.list_plugins(output_format, verbose, filter_field, filter_value)
+
+
+@cli.command()
+@click.option(
+    "--path",
+    required=True,
+)
+@click.option("--message", default="")
+def migrate_plugin_db(path, message):
+    """
+    Migrate plugin database.
+    """
+    with app.app_context():
+        plugin_utils.migrate_plugin_db(path, message)
+    print(f"Plugin {path} database migrated.")
 
 
 if __name__ == "__main__":

@@ -1,9 +1,4 @@
-import os
 import sys
-import importlib
-import traceback
-
-from pathlib import Path
 
 from zou.app.blueprints.assets import blueprint as assets_blueprint
 from zou.app.blueprints.auth import blueprint as auth_blueprint
@@ -29,7 +24,7 @@ from zou.app.blueprints.user import blueprint as user_blueprint
 from zou.app.blueprints.edits import blueprint as edits_blueprint
 from zou.app.blueprints.concepts import blueprint as concepts_blueprint
 
-from zou.app.utils.plugins import PluginManifest
+from zou.app.utils.plugins import load_plugins
 from zou.app.utils import events
 
 
@@ -92,40 +87,3 @@ def register_event_handlers(app):
         # app.logger.info("No event handlers folder is configured.")
         pass
     return app
-
-
-def load_plugins(app):
-    """
-    Load plugins from the plugin folder.
-    """
-    plugin_folder = app.config["PLUGIN_FOLDER"]
-    abs_plugin_path = os.path.abspath(plugin_folder)
-    if abs_plugin_path not in sys.path:
-        sys.path.insert(0, abs_plugin_path)
-
-    if os.path.exists(plugin_folder):
-        for plugin_id in os.listdir(plugin_folder):
-            try:
-                load_plugin(app, plugin_id)
-                app.logger.info(f"Plugin {plugin_id} loaded.")
-            except ImportError as e:
-                app.logger.error(f"Plugin {plugin_id} failed to import: {e}")
-            except Exception as e:
-                app.logger.error(
-                    f"Plugin {plugin_id} failed to initialize: {e}"
-                )
-                app.logger.debug(traceback.format_exc())
-
-    if abs_plugin_path in sys.path:
-        sys.path.remove(abs_plugin_path)
-
-
-def load_plugin(app, plugin_id):
-    plugin_path = Path(app.config["PLUGIN_FOLDER"]) / plugin_id
-    manifest = PluginManifest.from_file(plugin_path / "manifest.toml")
-
-    plugin_module = importlib.import_module(plugin_id)
-    if hasattr(plugin_module, "init_plugin"):
-        plugin_module.init_plugin(app, manifest)
-
-    return plugin_module
