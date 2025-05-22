@@ -5,9 +5,11 @@ from flask_jwt_extended import jwt_required
 from zou.app.services import budget_service
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
+    persons_service,
     projects_service,
     schedule_service,
     tasks_service,
+    time_spents_service,
     user_service,
 )
 from zou.app.utils import permissions
@@ -1494,3 +1496,33 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(project_id)
         budget_service.delete_budget_entry(entry_id)
         return "", 204
+
+
+class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Get aggregated time spents by month for given project.
+        ---
+        tags:
+        - Projects
+        parameters:
+        - in: path
+            name: project_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Aggregated time spents for given person and month
+            400:
+                description: Wrong ID format
+        """
+        permissions.check_admin_permissions()
+        self.check_id_parameter(project_id)
+        user = persons_service.get_current_user()
+        return time_spents_service.get_project_month_time_spents(
+            project_id, user["timezone"]
+        )

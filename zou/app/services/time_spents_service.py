@@ -7,6 +7,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm import aliased
 
 from zou.app.models.day_off import DayOff
+from zou.app.models.department import Department
 from zou.app.models.project import Project
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -535,3 +536,38 @@ def get_timezoned_interval(start, end):
     """
     timezone = user_service.get_timezone()
     return date_helpers.get_timezoned_interval(start, end, timezone)
+
+
+def get_project_month_time_spents(project_id, timezone=None):
+    """
+    Get aggregated time spents by department by person by month for given
+    project.
+    """
+    data = {}
+    query = (
+        TimeSpent.query
+        .join(Task)
+        .join(TaskType, TaskType.id == Task.task_type_id)
+        .join(Department, Department.id == TaskType.department_id)
+        .filter(Task.project_id == project_id)
+        .add_columns(Department.id)
+        .order_by(TimeSpent.date)
+    )
+
+    for time_spent, department_id in query.all():
+        date_key = date_helpers.get_simple_string_with_timezone_from_date(
+            time_spent.date, timezone
+        )[0:7]
+        if department_id not in data:
+            data[department_id] = { "total": 0 }
+        if time_spent.person_id not in data[department_id]:
+            data[department_id][time_spent.person_id] = { "total": 0 }
+        if date_key not in data[department_id][time_spent.person_id]:
+            data[department_id][time_spent.person_id][date_key] = 0
+
+        data[department_id][time_spent.person_id][date_key] += \
+            time_spent.duration
+        data[department_id]["total"] += time_spent.duration
+        data[department_id][time_spent.person_id]["total"] += \
+            time_spent.duration
+    return data
