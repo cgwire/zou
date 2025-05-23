@@ -128,9 +128,7 @@ class CastingCsvExport(Resource, ArgsMixin):
         is_shot_casting=False,
     ):
         results = []
-        if episode_id == "main":
-            results = self.build_main_pack_results(project_id)
-        elif episode_id == "all":
+        if episode_id == "all":
             results = self.build_episodes_results(project_id)
         elif is_shot_casting:
             results = self.build_shot_results(
@@ -291,7 +289,6 @@ class CastingCsvExport(Resource, ArgsMixin):
                         entity_link.label,
                     )
                 )
-            results += self.build_main_pack_results(project_id)
         else:
             query = query.add_columns(
                 ParentAssetType.name,
@@ -323,62 +320,6 @@ class CastingCsvExport(Resource, ArgsMixin):
                     )
                 )
 
-        return results
-
-    def build_main_pack_results(self, project_id):
-        results = []
-        ParentAsset = aliased(Entity, name="parent_asset")
-        ParentAssetType = aliased(EntityType, name="parent_asset_type")
-        Asset = aliased(Entity, name="asset")
-        AssetType = aliased(EntityType, name="asset_type")
-        shot_type = shots_service.get_shot_type()
-        episode_type = shots_service.get_episode_type()
-
-        query = (
-            EntityLink.query.join(
-                ParentAsset, EntityLink.entity_in_id == ParentAsset.id
-            )
-            .join(
-                ParentAssetType,
-                ParentAsset.entity_type_id == ParentAssetType.id,
-            )
-            .join(Asset, EntityLink.entity_out_id == Asset.id)
-            .join(AssetType, Asset.entity_type_id == AssetType.id)
-            .filter(ParentAsset.project_id == project_id)
-            .filter(ParentAsset.source_id == None)
-            .filter(ParentAssetType.id != shot_type["id"])
-            .filter(ParentAssetType.id != episode_type["id"])
-        )
-        query = query.add_columns(
-            ParentAssetType.name,
-            ParentAsset.name,
-            AssetType.name,
-            Asset.name,
-        ).order_by(
-            ParentAssetType.name,
-            ParentAsset.name,
-            AssetType.name,
-            Asset.name,
-        )
-        for (
-            entity_link,
-            parent_asset_type_name,
-            parent_name,
-            asset_type_name,
-            asset_name,
-        ) in query.all():
-            results.append(
-                (
-                    "MP",
-                    "",
-                    parent_asset_type_name,
-                    parent_name,
-                    asset_type_name,
-                    asset_name,
-                    entity_link.nb_occurences,
-                    entity_link.label,
-                )
-            )
         return results
 
     def build_episodes_results(self, project_id):
