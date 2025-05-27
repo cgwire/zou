@@ -545,8 +545,7 @@ def get_project_month_time_spents(project_id, timezone=None):
     """
     data = {}
     query = (
-        TimeSpent.query
-        .join(Task)
+        TimeSpent.query.join(Task)
         .join(TaskType, TaskType.id == Task.task_type_id)
         .join(Department, Department.id == TaskType.department_id)
         .filter(Task.project_id == project_id)
@@ -559,15 +558,17 @@ def get_project_month_time_spents(project_id, timezone=None):
             time_spent.date, timezone
         )[0:7]
         if department_id not in data:
-            data[department_id] = { "total": 0 }
+            data[department_id] = {"total": 0}
         if time_spent.person_id not in data[department_id]:
-            data[department_id][time_spent.person_id] = { "total": 0 }
+            data[department_id][time_spent.person_id] = {"total": 0}
         if date_key not in data[department_id][time_spent.person_id]:
             data[department_id][time_spent.person_id][date_key] = 0
 
-        data[department_id][time_spent.person_id][date_key] += \
-            time_spent.duration
+        data[department_id][time_spent.person_id][
+            date_key
+        ] += time_spent.duration
         data[department_id]["total"] += time_spent.duration
-        data[department_id][time_spent.person_id]["total"] += \
-            time_spent.duration
+        data[department_id][time_spent.person_id][
+            "total"
+        ] += time_spent.duration
     return data
