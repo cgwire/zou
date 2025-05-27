@@ -101,6 +101,13 @@ class PersonsResource(BaseModelsResource):
                 raise
             except:
                 raise WrongParameterException("Expiration date is not valid.")
+
+        if "email" in data:
+            try:
+                data["email"] = auth.validate_email(data["email"])
+            except auth.EmailNotValidException as e:
+                raise WrongParameterException(str(e))
+
         return data
 
     def update_data(self, data):
@@ -184,6 +191,13 @@ class PersonResource(BaseModelResource, ArgsMixin):
                 raise
             except:
                 raise WrongParameterException("Expiration date is not valid.")
+
+        if "email" in data:
+            try:
+                data["email"] = auth.validate_email(data["email"])
+            except auth.EmailNotValidException as e:
+                raise WrongParameterException(str(e))
+
         return data
 
     def check_delete_permissions(self, instance_dict):

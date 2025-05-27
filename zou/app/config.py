@@ -88,6 +88,7 @@ MAIL_USE_SSL = envtobool("MAIL_USE_SSL", False)
 MAIL_DEFAULT_SENDER = os.getenv(
     "MAIL_DEFAULT_SENDER", "no-reply@your-studio.com"
 )
+MAIL_CHECK_DELIVERABILITY = envtobool("MAIL_CHECK_DELIVERABILITY", True)
 DOMAIN_NAME = os.getenv("DOMAIN_NAME", "localhost:8080")
 DOMAIN_PROTOCOL = os.getenv("DOMAIN_PROTOCOL", "https")
 

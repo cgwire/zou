@@ -195,8 +195,8 @@ def create_admin(email, password):
             except auth.PasswordTooShortException:
                 print("Password is too short.")
                 sys.exit(1)
-            except auth.EmailNotValidException:
-                print("Email is not valid.")
+            except auth.EmailNotValidException as e:
+                print(f"Email is not valid: {e}")
                 sys.exit(1)
             except IsUserLimitReachedException:
                 print(f"User limit reached (limit {config.USER_LIMIT}).")

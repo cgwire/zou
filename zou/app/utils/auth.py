@@ -23,9 +23,13 @@ def encrypt_password(password):
     return flask_bcrypt.generate_password_hash(password)
 
 
-def validate_email(email):
+def validate_email(
+    email, check_deliverability=config.MAIL_CHECK_DELIVERABILITY
+):
     try:
-        return email_validator.validate_email(email).normalized
+        return email_validator.validate_email(
+            email, check_deliverability=check_deliverability
+        ).normalized
     except email_validator.EmailNotValidError as e:
         raise EmailNotValidException(str(e))
 
