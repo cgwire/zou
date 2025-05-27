@@ -1509,16 +1509,16 @@ class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
         - Projects
         parameters:
         - in: path
-            name: project_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          name: project_id
+          required: True
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Aggregated time spents for given person and month
-            400:
-                description: Wrong ID format
+          200:
+              description: Aggregated time spents for given person and month
+          400:
+              description: Wrong ID format
         """
         permissions.check_admin_permissions()
         self.check_id_parameter(project_id)
