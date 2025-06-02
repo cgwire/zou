@@ -1,7 +1,11 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.playlist import Playlist
-from zou.app.services import playlists_service
+from zou.app.services import (
+    playlists_service,
+    entities_service,
+    projects_service,
+)
 
 
 class PlaylistsServiceTestCase(ApiDBTestCase):
@@ -113,14 +117,27 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         self.generate_fixture_preview_files()
         task_id = self.task.id
         task_type_id = str(self.task.task_type_id)
-        shot = playlists_service.generate_playlisted_entity_from_task(task_id)
+        for_entity = entities_service.get_for_entity_from_task(
+            self.task.serialize()
+        )
+        task_type_links = projects_service.get_task_type_links(
+            self.task.project_id, for_entity
+        )
+        shot = playlists_service.generate_playlisted_entity_from_task(
+            task_id, task_type_links
+        )
         self.assertEqual(str(self.shot.id), shot["id"])
         self.assertEqual(shot["parent_name"], "S01")
         self.assertEqual(len(shot["preview_files"][task_type_id]), 2)
 
         self.task = self.generate_fixture_task()
         task_id = self.task.id
-        asset = playlists_service.generate_playlisted_entity_from_task(task_id)
+        task_type_links = projects_service.get_task_type_links(
+            self.task.project_id, for_entity
+        )
+        asset = playlists_service.generate_playlisted_entity_from_task(
+            task_id, task_type_links
+        )
         self.assertEqual(str(self.asset.id), asset["id"])
         self.assertEqual(asset["parent_name"], "Props")
         self.assertEqual(asset["preview_files"], {})

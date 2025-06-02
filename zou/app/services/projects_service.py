@@ -49,7 +49,9 @@ def open_projects(name=None):
     Return all open projects. Allow to filter projects by name.
     """
     query = (
-        Project.query.join(ProjectStatus)
+        Project.query.join(
+            ProjectStatus, Project.project_status_id == ProjectStatus.id
+        )
         .outerjoin(MetadataDescriptor)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .order_by(Project.name)
@@ -163,7 +165,9 @@ def get_projects():
     Return all projects. Allow to filter projects by name.
     """
     query = (
-        Project.query.join(ProjectStatus)
+        Project.query.join(
+            ProjectStatus, Project.project_status_id == ProjectStatus.id
+        )
         .add_columns(ProjectStatus.name)
         .order_by(Project.name)
     )

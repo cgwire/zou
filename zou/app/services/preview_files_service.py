@@ -555,7 +555,7 @@ def get_running_preview_files():
     entries = (
         PreviewFile.query.join(Task)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.in_(("broken", "processing")))
         .add_columns(Task.project_id, Task.task_type_id, Task.entity_id)
@@ -668,7 +668,7 @@ def reset_movie_files_metadata():
     preview_files = (
         PreviewFile.query.join(Task)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "processing")))
         .filter(PreviewFile.extension == "mp4")
@@ -711,7 +711,7 @@ def reset_picture_files_metadata():
     preview_files = (
         PreviewFile.query.join(Task)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "processing")))
         .filter(PreviewFile.extension == "png")
@@ -765,7 +765,7 @@ def generate_preview_extra(
         PreviewFile.query.join(Task)
         .join(Entity)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(ProjectStatus.name.in_(("Active", "open", "Open")))
         .filter(PreviewFile.status.not_in(("broken", "processing")))
         .filter(PreviewFile.extension.in_(("mp4", "png")))
