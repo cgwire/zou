@@ -696,6 +696,20 @@ def get_task_type_priority_map(project_id, for_entity="Asset"):
     }
 
 
+def get_task_type_links(project_id, for_entity="Asset"):
+    """
+    Return a lisk of links for given project and entity type.
+    """
+    task_type_links = (
+        ProjectTaskTypeLink.query
+        .join(TaskType)
+        .filter(ProjectTaskTypeLink.project_id == project_id)
+        .filter(TaskType.for_entity == for_entity)
+        .order_by(ProjectTaskTypeLink.priority.desc())
+    ).all()
+    return ProjectTaskTypeLink.serialize_list(task_type_links)
+
+
 def get_department_team(project_id, department_id):
     persons = (
         Person.query.join(

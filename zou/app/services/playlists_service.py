@@ -820,9 +820,19 @@ def generate_temp_playlist(task_ids, sort=True):
     persist anything. The goal is to build a temporary playlist used to see
     a quick preview of several shots.
     """
+    if len(task_ids) == 0:
+        return []
+
+    task_id = task_ids[0]
+    task = tasks_service.get_task(task_id)
+    for_entity = entities_service.get_for_entity_from_task(task)
+    task_type_links = projects_service.get_task_type_links(
+        task["project_id"], for_entity
+    )
     entities = []
+
     for task_id in task_ids:
-        entity = generate_playlisted_entity_from_task(task_id)
+        entity = generate_playlisted_entity_from_task(task_id, task_type_links)
         entities.append(entity)
     if len(entities) > 0:
         if not sort:
@@ -846,15 +856,13 @@ def generate_temp_playlist(task_ids, sort=True):
         return []
 
 
-def generate_playlisted_entity_from_task(task_id):
+def generate_playlisted_entity_from_task(task_id, task_type_links):
     """
     Generate the data structure of a playlisted shot for a given task. It
     doesn't persist anything.
     """
     task = tasks_service.get_task(task_id)
-    task = tasks_service.get_task(task_id)
     entity = entities_service.get_entity(task["entity_id"])
-    task = tasks_service.get_task(task_id)
     if shots_service.is_shot(entity):
         playlisted_entity = get_base_shot_for_playlist(entity, task_id)
     elif shots_service.is_sequence(entity):
@@ -866,8 +874,22 @@ def generate_playlisted_entity_from_task(task_id):
 
     task_type_id = task["task_type_id"]
     preview_files = get_preview_files_for_entity(entity["id"])
+
+    preview_file = None
     if task_type_id in preview_files and len(preview_files[task_type_id]) > 0:
         preview_file = preview_files[task_type_id][0]
+
+    if preview_file is None and len(preview_files.keys()) > 0:
+        available_task_types = [
+            link["task_type_id"]
+            for link in task_type_links
+            if link["task_type_id"] in preview_files
+        ]
+        if len(available_task_types) > 0:
+            task_type_id = available_task_types[0]
+            preview_file = preview_files[   task_type_id][0]
+
+    if preview_file is not None:
         playlisted_entity.update(
             {
                 "preview_file_id": preview_file["id"],
@@ -877,7 +899,7 @@ def generate_playlisted_entity_from_task(task_id):
                 "preview_file_duration": preview_file["duration"],
                 "preview_file_revision": preview_file["revision"],
                 "preview_file_status": preview_file["status"],
-                "preview_file_annotations": preview_file["annotations"],
+                "preview_file_annotations": preview_file["annotations"] or [],
                 "preview_file_previews": preview_file["previews"],
             }
         )

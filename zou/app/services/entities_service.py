@@ -140,6 +140,21 @@ def update_entity_preview(entity_id, preview_file_id):
     return entity.serialize()
 
 
+def get_for_entity_from_task(task):
+    """
+    Return the entity type name for given task. All asset types are returned
+    as "Asset".
+    """
+    entity = get_entity(task["entity_id"])
+    entity_type = get_entity_type(entity["entity_type_id"])
+    for_entity = entity_type["name"]
+    if for_entity.lower() not in [
+        "shot", "sequence", "episode", "edit", "concept"
+    ]:
+        for_entity = "Asset"
+    return for_entity
+
+
 def get_entities_for_project(
     project_id,
     entity_type_id,
