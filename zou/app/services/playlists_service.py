@@ -887,7 +887,7 @@ def generate_playlisted_entity_from_task(task_id, task_type_links):
         ]
         if len(available_task_types) > 0:
             task_type_id = available_task_types[0]
-            preview_file = preview_files[   task_type_id][0]
+            preview_file = preview_files[task_type_id][0]
 
     if preview_file is not None:
         playlisted_entity.update(

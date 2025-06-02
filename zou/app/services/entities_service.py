@@ -149,7 +149,11 @@ def get_for_entity_from_task(task):
     entity_type = get_entity_type(entity["entity_type_id"])
     for_entity = entity_type["name"]
     if for_entity.lower() not in [
-        "shot", "sequence", "episode", "edit", "concept"
+        "shot",
+        "sequence",
+        "episode",
+        "edit",
+        "concept",
     ]:
         for_entity = "Asset"
     return for_entity
