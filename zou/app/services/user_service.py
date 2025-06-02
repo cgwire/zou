@@ -86,7 +86,9 @@ def build_related_projects_filter():
     is part of the team.
     """
     projects = (
-        Project.query.join(ProjectStatus)
+        Project.query.join(
+            ProjectStatus, Project.project_status_id == ProjectStatus.id
+        )
         .filter(build_team_filter())
         .filter(build_open_project_filter())
         .all()
@@ -105,7 +107,7 @@ def related_projects():
     """
     projects = (
         Project.query.join(Task)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(build_team_filter())
         .filter(build_open_project_filter())
         .all()
@@ -158,7 +160,7 @@ def get_tasks_for_entity(entity_id):
     """
     query = (
         Task.query.join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Task.entity_id == entity_id)
         .filter(build_assignee_filter())
         .filter(build_open_project_filter())
@@ -175,7 +177,7 @@ def get_task_types_for_entity(entity_id):
     query = (
         TaskType.query.join(Task)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Task.entity_id == entity_id)
         .filter(build_assignee_filter())
         .filter(build_open_project_filter())
@@ -193,7 +195,7 @@ def get_assets_for_asset_type(project_id, asset_type_id):
         Entity.query.join(EntityType)
         .join(Project)
         .join(Task, Task.entity_id == Entity.id)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(EntityType.id == asset_type_id)
         .filter(Project.id == project_id)
         .filter(build_assignee_filter())
@@ -212,7 +214,7 @@ def get_asset_types_for_project(project_id):
         EntityType.query.join(Entity, Entity.entity_type_id == EntityType.id)
         .join(Task, Task.entity_id == Entity.id)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Project.id == project_id)
         .filter(build_assignee_filter())
         .filter(build_open_project_filter())
@@ -236,7 +238,7 @@ def get_sequences_for_project(project_id):
         .join(Task, Task.entity_id == Shot.id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .join(Project, Project.id == Entity.project_id)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Shot.entity_type_id == shot_type["id"])
         .filter(Entity.entity_type_id == sequence_type["id"])
         .filter(Project.id == project_id)
@@ -263,7 +265,7 @@ def get_project_episodes(project_id):
         .join(Shot, Shot.parent_id == Sequence.id)
         .join(Task, Task.entity_id == Shot.id)
         .join(Project, Project.id == Entity.project_id)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .filter(Shot.entity_type_id == shot_type["id"])
         .filter(Sequence.entity_type_id == sequence_type["id"])
         .filter(Entity.entity_type_id == episode_type["id"])
@@ -283,7 +285,7 @@ def get_shots_for_sequence(sequence_id):
     query = (
         Entity.query.join(Task)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .join(EntityType)
         .filter(Entity.entity_type_id == shot_type["id"])
         .filter(Entity.parent_id == sequence_id)
@@ -303,7 +305,7 @@ def get_scenes_for_sequence(sequence_id):
     query = (
         Entity.query.join(Task)
         .join(Project)
-        .join(ProjectStatus)
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
         .join(EntityType)
         .filter(Entity.entity_type_id == scene_type["id"])
         .filter(Entity.parent_id == sequence_id)
@@ -318,9 +320,9 @@ def get_open_projects(name=None):
     """
     Get all open projects for which current user is part of the team.
     """
-    query = Project.query.join(ProjectStatus).filter(
-        build_open_project_filter()
-    )
+    query = Project.query.join(
+        ProjectStatus, Project.project_status_id == ProjectStatus.id
+    ).filter(build_open_project_filter())
 
     if name is not None:
         query = query.filter(Project.name == name)
@@ -353,7 +355,9 @@ def get_projects(name=None):
     """
     Get all projects for which current user has a task assigned.
     """
-    query = Project.query.join(ProjectStatus).filter(build_team_filter())
+    query = Project.query.join(
+        ProjectStatus, Project.project_status_id == ProjectStatus.id
+    ).filter(build_team_filter())
 
     if name is not None:
         query = query.filter(Project.name == name)

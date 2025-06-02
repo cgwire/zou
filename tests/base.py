@@ -293,7 +293,8 @@ class ApiDBTestCase(ApiTestCase):
         Rollback transaction to return database to its original state.
         """
         super(ApiDBTestCase, self).tearDown()
-        self._db_transaction.rollback()
+        if not self._db_transaction._deactivated_from_connection:
+            self._db_transaction.rollback()
         self._db_connection.close()
         self._db_session.remove()
 

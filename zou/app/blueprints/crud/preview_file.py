@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError, StatementError
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.project import Project
+from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
     user_service,
     tasks_service,
@@ -21,19 +22,22 @@ class PreviewFilesResource(BaseModelsResource):
         BaseModelsResource.__init__(self, PreviewFile)
 
     def add_project_permission_filter(self, query):
-        if permissions.has_vendor_permissions():
-            query = (
-                query.join(Task)
-                .filter(user_service.build_assignee_filter())
-                .filter(user_service.build_open_project_filter())
-            )
-        elif not permissions.has_admin_permissions():
+        if not permissions.has_admin_permissions():
             query = (
                 query.join(Task)
                 .join(Project)
-                .filter(user_service.build_related_projects_filter())
+                .join(
+                    ProjectStatus,
+                    Project.project_status_id == ProjectStatus.id,
+                )
                 .filter(user_service.build_open_project_filter())
             )
+            if permissions.has_vendor_permissions():
+                query = query.filter(user_service.build_assignee_filter())
+            else:
+                query = query.filter(
+                    user_service.build_related_projects_filter()
+                )
 
         return query
 
