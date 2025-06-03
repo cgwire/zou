@@ -705,8 +705,7 @@ def get_task_type_links(project_id, for_entity="Asset"):
     Return a lisk of links for given project and entity type.
     """
     task_type_links = (
-        ProjectTaskTypeLink.query
-        .join(TaskType)
+        ProjectTaskTypeLink.query.join(TaskType)
         .filter(ProjectTaskTypeLink.project_id == project_id)
         .filter(TaskType.for_entity == for_entity)
         .order_by(ProjectTaskTypeLink.priority.desc())
