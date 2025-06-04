@@ -163,23 +163,28 @@ license = "GPL-3.0-only"
     ```
     zou create-plugin-skeleton --path ./plugins --id my_plugin
     ```
+    
 2. Implement logic in `views.py`.
 3. Add DB models and generate migrations:
     ```
     zou migrate-plugin-db --path ./plugins/my_plugin
     ```
+
 4. Package it:
     ```
     zou create-plugin-package --path ./plugins/my_plugin --output-path ./dist
     ```
+
 5. Install it:
     ```
     zou install-plugin --path ./dist/my_plugin.zip
     ```
+
 6. List installed plugins:
     ```
     zou list-plugins
     ```
+
 7. Uninstall if needed:
     ```
     zou uninstall-plugin --id my_plugin
