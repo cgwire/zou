@@ -160,38 +160,33 @@ license = "GPL-3.0-only"
 ## Developer workflow
 
 1. Create plugin:
-   
+ 
     ```bash
     zou create-plugin-skeleton --path ./plugins --id my_plugin
     ```
-
 2. Implement logic in `views.py`.
 3. Add DB models and generate migrations:
-   
+ 
     ```bash
     zou migrate-plugin-db --path ./plugins/my_plugin
     ```
-
 4. Package it:
-
+ 
     ```bash
     zou create-plugin-package --path ./plugins/my_plugin --output-path ./dist
     ```
-
 5. Install it:
-
+ 
     ```bash
     zou install-plugin --path ./dist/my_plugin.zip
     ```
-
 6. List installed plugins:
-   
+ 
     ```bash
     zou list-plugins
     ```
-
 7. Uninstall if needed:
-   
+ 
     ```bash
     zou uninstall-plugin --id my_plugin
     ```
