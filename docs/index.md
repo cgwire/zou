@@ -55,12 +55,12 @@ The credentials are:
 
 ## Hardware prerequisites
 
-Users    | Cores | RAM
----------|-------|----
-1-10     | 2     | 4
-11 - 30  | 2     | 8
-31 - 80  | 4     | 15
-81 - 200 | 8     | 30
+| Users    | Cores | RAM |
+| -------- | ----- | --- |
+| 1-10     | 2     | 4   |
+| 11 - 30  | 2     | 8   |
+| 31 - 80  | 4     | 15  |
+| 81 - 200 | 8     | 30  |
 
 That's the recommended minimum. But it depends on the activity of the production/studio.
 
@@ -81,8 +81,8 @@ This simplifies migration/augmentation of volumes.
 
 The installation requires:
 
-* Ubuntu (version >= 20.04)
-* Python (version >= 3.9)
+* Ubuntu (version >= 22.04)
+* Python (version >= 3.10)
 * An up-and-running Postgres instance (version >= 9.2)
 * An up-and-running Redis server instance (version >= 2.0)
 * A Nginx instance
