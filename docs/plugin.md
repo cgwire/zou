@@ -1,10 +1,103 @@
-# Kitsu API plugin system
+# Plugins
 
-Kitsu API (Zou) plugin system allows you to create modular extensions that integrate directly into the API. Each plugin includes a `manifest.toml` file with metadata and can contain database migrations, Flask blueprints, and more.
+The Kitsu API (Zou) plugin system allows you to create modular extensions that 
+integrate directly into the API. Each plugin includes a `manifest.toml` file 
+with metadata and can contain database migrations, Flask blueprints, and more.
 
 ---
 
-## Plugin CLI Commands
+## Plugin structure
+
+A typical plugin created with `create_plugin_skeleton` looks like this:
+
+```
+my_plugin/
+├── manifest.toml
+├── migrations/
+│   ├── env.py
+│   ├── versions/
+├── my_plugin/
+│   ├── __init__.py
+│   └── views.py
+```
+
+---
+
+### `manifest.toml`
+
+A manifest file is required to describe how to deploy your plugin and inform
+other users about how it can be used. 
+It contains the plugin metadata:
+
+```toml
+id = "my_plugin"
+name = "My Plugin"
+version = "0.1.0"
+description = "My plugin description."
+maintainer = "Author <author@example.com>"
+website = "mywebsite.com"
+license = "GPL-3.0-only"
+```
+
+---
+
+## Best practices
+
+* Use unique plugin IDs.
+* Follow semantic versioning (`x.y.z`).
+* Include at least one route or feature inside your plugin module.
+* Write migrations if your plugin defines database models.
+* For license use SPDX identifier (see [here](https://spdx.org/licenses/)). 
+
+---
+
+## Quickstart
+
+Follow this simple workflow to start with writing your own plugin.
+
+
+1. Create plugin:
+
+    ```
+    zou create-plugin-skeleton --path ./plugins --id my_plugin
+    ```
+    
+2. Implement logic in the `views.py` file.
+
+3. Add DB models and generate migrations:
+
+    ```
+    zou migrate-plugin-db --path ./plugins/my_plugin
+    ```
+
+4. Package it:
+
+    ```
+    zou create-plugin-package --path ./plugins/my_plugin --output-path ./dist
+    ```
+
+5. Install it:
+
+    ```
+    zou install-plugin --path ./dist/my_plugin.zip
+    ```
+
+6. List installed plugins:
+
+    ```
+    zou list-plugins
+    ```
+
+7. Uninstall if needed:
+
+    ```
+    zou uninstall-plugin --id my_plugin
+    ```
+
+---
+
+
+## CLI Commands
 
 ### `install_plugin`
 
@@ -19,7 +112,7 @@ zou install-plugin --path /path/to/plugin
 * `--path`: Path to the plugin folder or `.zip` archive (required).
 * `--force`: Overwrite if already installed (default: `False`).
 
-**Note:** Restart the server after installing a plugin.
+**Note:** You need to restart the Zou server after installing a plugin.
 
 ---
 
@@ -41,7 +134,8 @@ zou uninstall-plugin --id my_plugin
 
 ### `create_plugin_skeleton`
 
-Generate the basic structure of a new plugin.
+Generate the basic structure of a plugin. It will allow to start quickly your 
+plugin development.
 
 ```bash
 zou create-plugin-skeleton --path ./plugins --id my_plugin
@@ -113,81 +207,3 @@ zou migrate-plugin-db --path ./plugins/my_plugin
 * `--message`: Optional migration message (default: `""`).
 
 This generates and applies Alembic migration scripts for the plugin’s database schema.
-
----
-
-## Plugin structure
-
-A typical plugin created with `create_plugin_skeleton` looks like this:
-
-```
-my_plugin/
-├── manifest.toml
-├── migrations/
-│   ├── env.py
-│   ├── versions/
-├── my_plugin/
-│   ├── __init__.py
-│   └── views.py
-```
-
-### `manifest.toml`
-
-Contains the plugin metadata:
-
-```toml
-id = "my_plugin"
-name = "My Plugin"
-version = "0.1.0"
-description = "My plugin description."
-maintainer = "Author <author@example.com>"
-website = "mywebsite.com"
-license = "GPL-3.0-only"
-```
-
----
-
-## Best practices
-
-* Use unique plugin IDs.
-* Follow semantic versioning (`x.y.z`).
-* Include at least one route or feature inside your plugin module.
-* Write migrations if your plugin defines database models.
-* For license use SPDX identifier (see [here](https://spdx.org/licenses/)). 
-
----
-
-## Developer workflow
-
-1. Create plugin:
-    ```
-    zou create-plugin-skeleton --path ./plugins --id my_plugin
-    ```
-    
-2. Implement logic in `views.py`.
-3. Add DB models and generate migrations:
-    ```
-    zou migrate-plugin-db --path ./plugins/my_plugin
-    ```
-
-4. Package it:
-    ```
-    zou create-plugin-package --path ./plugins/my_plugin --output-path ./dist
-    ```
-
-5. Install it:
-    ```
-    zou install-plugin --path ./dist/my_plugin.zip
-    ```
-
-6. List installed plugins:
-    ```
-    zou list-plugins
-    ```
-
-7. Uninstall if needed:
-    ```
-    zou uninstall-plugin --id my_plugin
-    ```
-
----
