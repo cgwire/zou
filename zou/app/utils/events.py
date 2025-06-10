@@ -70,7 +70,10 @@ def emit(event, data={}, persist=True, project_id=None):
     data = fields.serialize_dict(data)
     publisher_store.publish(event, data)
     if persist:
-        save_event(event, data, project_id=project_id)
+        # Create DB entry saving the data for the event, and include the ID in
+        # the data so that it can be read by the handlers.
+        api_event = save_event(event, data, project_id=project_id)
+        data["id"] = str(api_event.id)
 
     from zou.app.config import ENABLE_JOB_QUEUE
 
