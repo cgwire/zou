@@ -54,7 +54,7 @@ def _get_empty_room(current_frame=0):
 
 
 def _get_room_from_data(data):
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "0")
     return rooms_data.get(room_id, _get_empty_room()), room_id
 
 
@@ -80,7 +80,7 @@ def _emit_people_updated(room_id, people):
 
 
 def _update_room_playing_status(data, room):
-    room["playlist_id"] = data.get("playlist_id", False)
+    room["playlist_id"] = data.get("playlist_id", "")
     room["user_id"] = data.get("user_id", False)
     room["local_id"] = data.get("local_id", False)
     room["is_playing"] = data.get("is_playing", False)
@@ -228,35 +228,35 @@ def on_room_updated(data, only_newcomer=False):
 @socketio.on("preview-room:add-annotation", namespace="/events")
 @jwt_required()
 def on_add_annotation(data):
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "")
     emit("preview-room:add-annotation", data, room=room_id)
 
 
 @socketio.on("preview-room:remove-annotation", namespace="/events")
 @jwt_required()
 def on_remove_annotation(data):
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "")
     emit("preview-room:remove-annotation", data, room=room_id)
 
 
 @socketio.on("preview-room:update-annotation", namespace="/events")
 @jwt_required()
 def on_update_annotation(data):
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "")
     emit("preview-room:update-annotation", data, room=room_id)
 
 
 @socketio.on("preview-room:change-version", namespace="/events")
 @jwt_required()
 def on_change_version(data):
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "")
     emit("preview-room:change-version", data, room=room_id)
 
 
 @socketio.on("preview-room:panzoom-changed", namespace="/events")
 @jwt_required()
 def on_change_version(data):
-    room_id = data["playlist_id"]
+    room_id = data.get("playlist_id", "")
     emit("preview-room:panzoom-changed", data, room=room_id)
 
 
