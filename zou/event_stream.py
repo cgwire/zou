@@ -260,6 +260,14 @@ def on_change_version(data):
     emit("preview-room:panzoom-changed", data, room=room_id)
 
 
+@socketio.on("preview-room:comparison-panzoom-changed", namespace="/events")
+@jwt_required()
+def on_change_version(data):
+    room_id = data.get("playlist_id", "")
+    emit("preview-room:comparison-panzoom-changed", data, room=room_id)
+
+
+
 if __name__ == "__main__":
     socketio.run(
         app,
