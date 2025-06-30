@@ -46,7 +46,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
 
     def test_status_automation_to_status(self):
         wip_status = tasks_service.get_or_create_status(
-            "Work In Progress", "wip", "#3273dc"
+            "Work In Progress", "wip", "#3273dc", is_wip=True
         )
         comments_service.create_comment(
             self.person.id,
