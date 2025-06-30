@@ -74,12 +74,14 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertTrue(self.is_event_fired)
 
     def test_get_status(self):
-        task_status = tasks_service.get_or_create_status("WIP", "wip")
+        task_status = tasks_service.get_or_create_status(
+            "WIP", "wip", is_wip=True
+        )
         self.assertEqual(task_status["name"], "WIP")
 
     def test_get_wip_status(self):
         task_status = tasks_service.get_or_create_status(
-            "Work In Progress", "wip", "#3273dc"
+            "Work In Progress", "wip", "#3273dc", is_wip=True
         )
         self.assertEqual(task_status["name"], "WIP")
 

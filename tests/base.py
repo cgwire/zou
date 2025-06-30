@@ -651,7 +651,7 @@ class ApiDBTestCase(ApiTestCase):
 
     def generate_fixture_task_status_wip(self):
         self.task_status_wip = TaskStatus.create(
-            name="WIP", short_name="wip", color="#FFFFFF"
+            name="WIP", short_name="wip", color="#FFFFFF", is_wip=True
         )
         return self.task_status_wip
 
