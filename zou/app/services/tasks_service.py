@@ -1305,6 +1305,7 @@ def get_or_create_status(
     is_retake=False,
     is_feedback_request=False,
     is_default=False,
+    is_wip=False,
     for_concept=False,
     is_artist_allowed=True,
     is_client_allowed=True,
@@ -1336,6 +1337,7 @@ def get_or_create_status(
             for_concept=for_concept,
             is_artist_allowed=is_artist_allowed,
             is_client_allowed=is_client_allowed,
+            is_wip=is_wip,
         )
         events.emit("task-status:new", {"task_status_id": task_status.id})
     return task_status.serialize()
@@ -1792,7 +1794,7 @@ def reset_task_data(task_id):
             TaskStatus.is_retake,
             TaskStatus.is_feedback_request,
             TaskStatus.is_done,
-            TaskStatus.short_name,
+            TaskStatus.is_wip,
         )
         .all()
     )
@@ -1803,13 +1805,13 @@ def reset_task_data(task_id):
         task_status_is_retake,
         task_status_is_feedback_request,
         task_status_is_done,
-        task_status_short_name,
+        task_status_is_wip,
     ) in comments:
         if task_status_is_retake and not previous_is_retake:
             retake_count += 1
         previous_is_retake = task_status_is_retake
 
-        if task_status_short_name.lower() == "wip" and real_start_date is None:
+        if task_status_is_wip and real_start_date is None:
             real_start_date = comment.created_at
 
         if task_status_is_feedback_request:

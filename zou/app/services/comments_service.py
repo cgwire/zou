@@ -159,10 +159,7 @@ def _manage_status_change(task_status, task, comment):
             if task_status["is_feedback_request"]:
                 new_data["end_date"] = date_helpers.get_utc_now_datetime()
 
-            if (
-                task_status["short_name"] == "wip"
-                and task["real_start_date"] is None
-            ):
+            if task_status["is_wip"] and task["real_start_date"] is None:
                 new_data["real_start_date"] = datetime.datetime.now(
                     datetime.timezone.utc
                 )
