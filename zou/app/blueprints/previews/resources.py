@@ -73,6 +73,8 @@ ALLOWED_FILE_EXTENSION = [
     "psd",
     "psb",
     "rar",
+    "rev",
+    "riv",
     "sai",
     "sai2",
     "sbbkp",
