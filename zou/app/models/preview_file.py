@@ -99,3 +99,14 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
                 "created_at": self.created_at,
             }
         )
+
+    def present_minimal(self):
+        return fields.serialize_dict(
+            {
+                "id": self.id,
+                "name": self.name,
+                "extension": self.extension,
+                "revision": self.revision,
+                "position": self.position
+            }
+        )

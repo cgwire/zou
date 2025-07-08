@@ -169,6 +169,7 @@ def get_last_news_for_project(
         Task.entity_id,
         PreviewFile.extension,
         PreviewFile.annotations,
+        PreviewFile.revision,
         Entity.preview_file_id,
     )
 
@@ -187,36 +188,63 @@ def get_last_news_for_project(
         task_entity_id,
         preview_file_extension,
         preview_file_annotations,
+        preview_file_revision,
         entity_preview_file_id,
     ) in news_list:
         full_entity_name, episode_id, _ = names_service.get_full_entity_name(
             task_entity_id
         )
 
-        result.append(
-            fields.serialize_dict(
-                {
-                    "id": news.id,
-                    "type": "News",
-                    "author_id": news.author_id,
-                    "comment_id": news.comment_id,
-                    "task_id": news.task_id,
-                    "task_type_id": task_type_id,
-                    "task_status_id": task_status_id,
-                    "task_entity_id": task_entity_id,
-                    "preview_file_id": news.preview_file_id,
-                    "preview_file_extension": preview_file_extension,
-                    "preview_file_annotations": preview_file_annotations,
-                    "project_id": project_id,
-                    "project_name": project_name,
-                    "created_at": news.created_at,
-                    "change": news.change,
-                    "full_entity_name": full_entity_name,
-                    "episode_id": episode_id,
-                    "entity_preview_file_id": entity_preview_file_id,
-                }
+        result.append(fields.serialize_dict({
+            "id": news.id,
+            "type": "News",
+            "author_id": news.author_id,
+            "comment_id": news.comment_id,
+            "task_id": news.task_id,
+            "task_type_id": task_type_id,
+            "task_status_id": task_status_id,
+            "task_entity_id": task_entity_id,
+            "preview_file_id": news.preview_file_id,
+            "preview_file_extension": preview_file_extension,
+            "preview_file_revision": preview_file_revision,
+            "project_id": project_id,
+            "project_name": project_name,
+            "created_at": news.created_at,
+            "change": news.change,
+            "full_entity_name": full_entity_name,
+            "episode_id": episode_id,
+            "entity_preview_file_id": entity_preview_file_id,
+        }))
+
+
+    if only_preview:
+        task_ids = [
+            news["task_id"] for news in result if news["task_id"] is not None
+        ]
+        revisions = [
+            news["preview_file_revision"] for news in result
+        ]
+        preview_files = (
+            PreviewFile.query
+            .filter(PreviewFile.task_id.in_(task_ids))
+            .filter(PreviewFile.revision.in_(revisions))
+            .order_by(
+                PreviewFile.task_id,
+                PreviewFile.revision,
+                PreviewFile.position
             )
         )
+        preview_files_map = {}
+        for preview_file in preview_files:
+            key = f"{str(preview_file.task_id)}-{preview_file.revision}"
+            if not key in preview_files_map:
+                preview_files_map[key] = []
+            preview_files_map[key].append(preview_file.present_minimal())
+
+        for entry in result:
+            key = f"{entry["task_id"]}-{entry["preview_file_revision"]}"
+            entry["preview_files"] = preview_files_map[key]
+
     return {
         "data": result,
         "total": total,
