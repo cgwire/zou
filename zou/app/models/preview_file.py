@@ -107,6 +107,6 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
                 "name": self.name,
                 "extension": self.extension,
                 "revision": self.revision,
-                "position": self.position
+                "position": self.position,
             }
         )

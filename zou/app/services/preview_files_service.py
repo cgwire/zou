@@ -579,8 +579,7 @@ def get_preview_files_for_entity(entity_id):
     Return all preview files related to given entity.
     """
     query = (
-        PreviewFile.query
-        .join(Task)
+        PreviewFile.query.join(Task)
         .join(TaskType)
         .filter(Task.entity_id == entity_id)
         .order_by(
