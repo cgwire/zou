@@ -267,7 +267,6 @@ def on_change_version(data):
     emit("preview-room:comparison-panzoom-changed", data, room=room_id)
 
 
-
 if __name__ == "__main__":
     socketio.run(
         app,
