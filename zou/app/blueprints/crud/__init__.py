@@ -133,8 +133,12 @@ from zou.app.blueprints.crud.salary_scale import (
     SalaryScalesResource,
     SalaryScaleResource,
 )
-
 from zou.app.blueprints.crud.plugin import PluginResource, PluginsResource
+from zou.app.blueprints.crud.production_schedule_version import (
+    ProductionScheduleVersionResource,
+    ProductionScheduleVersionsResource,
+    ProductionScheduleVersionTaskLinkResource,
+)
 
 routes = [
     ("/data/persons", PersonsResource),
@@ -222,6 +226,15 @@ routes = [
     ("/data/salary-scales/<instance_id>", SalaryScaleResource),
     ("/data/plugins/<instance_id>", PluginResource),
     ("/data/plugins", PluginsResource),
+    ("/data/production-schedule-versions", ProductionScheduleVersionsResource),
+    (
+        "/data/production-schedule-versions/<instance_id>",
+        ProductionScheduleVersionResource,
+    ),
+    (
+        "/data/production-schedule-version-task-link/<production_schedule_version_task_link_id>",
+        ProductionScheduleVersionTaskLinkResource,
+    ),
 ]
 
 blueprint = Blueprint("/data", "data")

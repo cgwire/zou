@@ -1846,7 +1846,7 @@ def reset_task_data(task_id):
     return task.serialize(relations=True)
 
 
-def get_persons_tasks_dates():
+def get_persons_tasks_dates(project_id=None):
     """
     For schedule usages, for each active person, it returns the first start
     date of all tasks of assigned to this person and the last end date.
@@ -1861,6 +1861,10 @@ def get_persons_tasks_dates():
         .group_by(Person.id)
         .join(Task.assignees)
     )
+
+    if project_id is not None:
+        query = query.filter(Task.project_id == project_id)
+
     return [
         {
             "person_id": str(person_id),
