@@ -14,9 +14,8 @@ from zou.app.models.entity import (
 from zou.app.models.entity_type import EntityType
 from zou.app.models.subscription import Subscription
 from zou.app.models.project import Project
-from zou.app.models.task import Task
+from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.asset_instance import AssetInstance
-from zou.app.models.task import assignees_table
 
 from zou.app.services import (
     base_service,
@@ -184,7 +183,7 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
         Entity.query.filter(build_asset_type_filter())
         .join(EntityType, Entity.entity_type_id == EntityType.id)
         .outerjoin(Task)
-        .outerjoin(assignees_table)
+        .outerjoin(TaskPersonLink)
     )
 
     tasks_query = query.add_columns(
@@ -204,7 +203,7 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
         Task.last_comment_date,
         Task.last_preview_file_id,
         Task.difficulty,
-        assignees_table.columns.person,
+        TaskPersonLink.person_id,
     ).order_by(EntityType.name, Entity.name)
 
     if "id" in criterions:

@@ -31,6 +31,10 @@ from zou.app.blueprints.projects.resources import (
     ProductionBudgetEntriesResource,
     ProductionBudgetEntryResource,
     ProductionMonthTimeSpentsResource,
+    ProductionScheduleVersionTaskLinksResource,
+    ProductionScheduleVersionSetTaskLinksFromTasksResource,
+    ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource,
+    ProductionScheduleVersionApplyToProductionResource,
 )
 
 routes = [
@@ -131,6 +135,22 @@ routes = [
     (
         "/data/projects/<project_id>/budgets/time-spents",
         ProductionMonthTimeSpentsResource,
+    ),
+    (
+        "/data/production-schedule-versions/<production_schedule_version_id>/task-links",
+        ProductionScheduleVersionTaskLinksResource,
+    ),
+    (
+        "/actions/production-schedule-versions/<production_schedule_version_id>/set-task-links-from-production",
+        ProductionScheduleVersionSetTaskLinksFromTasksResource,
+    ),
+    (
+        "/actions/production-schedule-versions/<production_schedule_version_id>/set-task-links-from-production-schedule-version",
+        ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource,
+    ),
+    (
+        "/actions/production-schedule-versions/<production_schedule_version_id>/apply-to-production",
+        ProductionScheduleVersionApplyToProductionResource,
     ),
 ]
 

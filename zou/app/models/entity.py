@@ -149,7 +149,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
 
     entities_out = db.relationship(
         "Entity",
-        secondary="entity_link",
+        secondary=EntityLink.__table__,
         primaryjoin=(id == EntityLink.entity_in_id),
         secondaryjoin=(id == EntityLink.entity_out_id),
         backref="entities_in",
@@ -157,14 +157,14 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
 
     entity_concept_links = db.relationship(
         "Entity",
-        secondary="entity_concept_link",
+        secondary=EntityConceptLink.__table__,
         primaryjoin=(id == EntityConceptLink.entity_in_id),
         secondaryjoin=(id == EntityConceptLink.entity_out_id),
         lazy="joined",
     )
 
     instance_casting = db.relationship(
-        "AssetInstance", secondary="asset_instance_link", backref="shots"
+        "AssetInstance", secondary=AssetInstanceLink.__table__, backref="shots"
     )
 
     __table_args__ = (

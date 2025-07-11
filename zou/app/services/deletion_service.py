@@ -342,20 +342,13 @@ def remove_project(project_id):
     for task in tasks:
         remove_task(task.id, force=True)
 
-    query = EntityLink.query.join(
-        Entity, EntityLink.entity_in_id == Entity.id
-    ).filter(Entity.project_id == project_id)
-    for link in query:
-        link.delete_no_commit()
-    EntityLink.commit()
-
-    query = EntityVersion.query.join(
-        Entity, EntityVersion.entity_id == Entity.id
-    ).filter(Entity.project_id == project_id)
-    for version in query:
-        version.delete_no_commit()
-    EntityLink.commit()
-
+    EntityLink.query.filter(
+        EntityLink.entity_in_id == Entity.id,
+        Entity.project_id == project_id,
+    ).delete()
+    EntityVersion.query.filter(
+        EntityVersion.entity_id == Entity.id, Entity.project_id == project_id
+    ).delete()
     playlists = Playlist.query.filter_by(project_id=project_id)
     for playlist in playlists:
         playlists_service.remove_playlist(playlist.id)
@@ -372,10 +365,9 @@ def remove_project(project_id):
     ScheduleItem.delete_all_by(project_id=project_id)
     SearchFilterGroup.delete_all_by(project_id=project_id)
     SearchFilter.delete_all_by(project_id=project_id)
-
-    for news in News.query.join(Task).filter_by(project_id=project_id).all():
-        news.delete_no_commit()
-    News.commit()
+    News.query.filter(
+        News.task_id == Task.id, Task.project_id == project_id
+    ).delete()
     project = Project.get(project_id)
     project.delete()
     events.emit("project:delete", {"project_id": project.id})

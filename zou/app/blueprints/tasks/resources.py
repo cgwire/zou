@@ -1603,7 +1603,7 @@ class SetTaskMainPreviewResource(Resource):
         return entity
 
 
-class PersonsTasksDatesResource(Resource):
+class PersonsTasksDatesResource(Resource, ArgsMixin):
     @jwt_required()
     @permissions.require_admin
     def get(self):
@@ -1625,7 +1625,10 @@ class PersonsTasksDatesResource(Resource):
                 description: For each person, the first start date of all tasks of assigned to this person and the last end date.
         """
         permissions.check_admin_permissions()
-        return tasks_service.get_persons_tasks_dates()
+        args = self.get_args([("project_id", None, True, str)])
+        return tasks_service.get_persons_tasks_dates(
+            project_id=args["project_id"]
+        )
 
 
 class OpenTasksResource(Resource, ArgsMixin):

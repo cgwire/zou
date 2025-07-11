@@ -23,8 +23,7 @@ from zou.app.models.project import Project
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task
-from zou.app.models.task import assignees_table
+from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.time_spent import TimeSpent
 
 from zou.app.services import (
@@ -234,7 +233,7 @@ def get_shots_and_tasks(criterions={}):
         .join(Sequence, Sequence.id == Entity.parent_id)
         .outerjoin(Episode, Episode.id == Sequence.parent_id)
         .outerjoin(Task, Task.entity_id == Entity.id)
-        .outerjoin(assignees_table)
+        .outerjoin(TaskPersonLink)
         .add_columns(
             Episode.name,
             Episode.id,
@@ -257,7 +256,7 @@ def get_shots_and_tasks(criterions={}):
             Task.nb_assets_ready,
             Task.difficulty,
             Task.nb_drawings,
-            assignees_table.columns.person,
+            TaskPersonLink.person_id,
             Project.id,
             Project.name,
         )

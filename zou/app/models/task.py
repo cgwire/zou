@@ -5,21 +5,18 @@ from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
 
 
-assignees_table = db.Table(
-    "assignations",
-    db.Column(
-        "task",
+class TaskPersonLink(db.Model):
+    __tablename__ = "task_person_link"
+    task_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("task.id"),
         primary_key=True,
-    ),
-    db.Column(
-        "person",
+    )
+    person_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         primary_key=True,
-    ),
-)
+    )
 
 
 class Task(db.Model, BaseMixin, SerializerMixin):
@@ -67,7 +64,7 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     assigner_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
     )
-    assignees = db.relationship("Person", secondary=assignees_table)
+    assignees = db.relationship("Person", secondary=TaskPersonLink.__table__)
 
     __table_args__ = (
         db.UniqueConstraint(

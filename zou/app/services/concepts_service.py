@@ -15,8 +15,7 @@ from zou.app.models.entity import (
 )
 from zou.app.models.project import Project
 from zou.app.models.subscription import Subscription
-from zou.app.models.task import Task
-from zou.app.models.task import assignees_table
+from zou.app.models.task import Task, TaskPersonLink
 
 from zou.app.services import (
     deletion_service,
@@ -177,7 +176,7 @@ def get_concepts_and_tasks(criterions={}):
     query = (
         Entity.query.join(Project, Project.id == Entity.project_id)
         .outerjoin(Task, Task.entity_id == Entity.id)
-        .outerjoin(assignees_table)
+        .outerjoin(TaskPersonLink)
         .add_columns(
             Task.id,
             Task.task_type_id,
@@ -192,7 +191,7 @@ def get_concepts_and_tasks(criterions={}):
             Task.due_date,
             Task.last_comment_date,
             Task.nb_assets_ready,
-            assignees_table.columns.person,
+            TaskPersonLink.person_id,
             Project.id,
             Project.name,
         )

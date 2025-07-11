@@ -1,16 +1,41 @@
 from datetime import date, timedelta
+from sqlalchemy.exc import StatementError
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import update
+
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.milestone import Milestone
 from zou.app.models.schedule_item import ScheduleItem
-from zou.app.utils import events, fields
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+    ProductionScheduleVersionTaskLink,
+)
+from zou.app.utils import events, fields, cache
 from zou.app.services import (
     assets_service,
     base_service,
     shots_service,
     tasks_service,
+    projects_service,
 )
+from zou.app import db
+
+from zou.app.services.exception import (
+    ProductionScheduleVersionNotFoundException,
+)
+
+
+def clear_production_schedule_version_cache(production_schedule_version_id):
+    cache.cache.delete_memoized(
+        get_production_schedule_version, production_schedule_version_id
+    )
+    cache.cache.delete_memoized(
+        get_production_schedule_version, production_schedule_version_id, True
+    )
 
 
 def get_schedule_items(project_id):
@@ -204,3 +229,220 @@ def get_milestones_for_project(project_id):
     """
     query = Milestone.query.filter_by(project_id=project_id)
     return [milestone.present() for milestone in query.all()]
+
+
+def get_production_schedule_version_raw(production_schedule_version_id):
+    """
+    Get production schedule version matching given id.
+    """
+    try:
+        production_schedule_version = ProductionScheduleVersion.get(
+            production_schedule_version_id
+        )
+    except StatementError:
+        raise ProductionScheduleVersionNotFoundException
+
+    if production_schedule_version is None:
+        raise ProductionScheduleVersionNotFoundException
+
+    return production_schedule_version
+
+
+@cache.memoize_function(120)
+def get_production_schedule_version(
+    production_schedule_version_id, relations=False
+):
+    """
+    Get production schedule version matching given id and serialize it.
+    """
+    return get_production_schedule_version_raw(
+        production_schedule_version_id
+    ).serialize(relations=relations)
+
+
+def get_production_schedule_version_task_links(
+    production_schedule_version_id, task_type_id=None, relations=False
+):
+    """
+    Get all task links for given production schedule version.
+    """
+    query = ProductionScheduleVersionTaskLink.query.filter_by(
+        production_schedule_version_id=production_schedule_version_id
+    )
+
+    if task_type_id is not None:
+        query = (
+            query.join(Task)
+            .join(TaskType)
+            .filter(Task.task_type_id == task_type_id)
+        )
+
+    return fields.serialize_models(query.all(), relations=relations)
+
+
+def update_production_schedule_version(production_schedule_version_id, data):
+    """
+    Update production schedule version with given id with data.
+    """
+    production_schedule_version = get_production_schedule_version_raw(
+        production_schedule_version_id
+    )
+
+    production_schedule_version.update(data)
+    clear_production_schedule_version_cache(production_schedule_version_id)
+    events.emit(
+        "production_schedule_version:update",
+        {"production_schedule_version_id": production_schedule_version_id},
+        project_id=str(production_schedule_version.project_id),
+    )
+    return production_schedule_version.serialize()
+
+
+def set_production_schedule_version_task_links_from_production(
+    production_schedule_version_id,
+):
+    """
+    Set task links for given production schedule version from tasks in the
+    production.
+    """
+    production_schedule_version = get_production_schedule_version(
+        production_schedule_version_id
+    )
+
+    tasks = (
+        db.session.query(Task)
+        .filter(Task.project_id == production_schedule_version["project_id"])
+        .all()
+    )
+
+    rows = [
+        {
+            "id": fields.gen_uuid(),
+            "production_schedule_version_id": production_schedule_version_id,
+            "task_id": task.id,
+            "start_date": task.start_date,
+            "due_date": task.due_date,
+            "estimation": task.estimation,
+        }
+        for task in tasks
+    ]
+    insert_stmt = insert(ProductionScheduleVersionTaskLink).values(rows)
+    insert_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=["production_schedule_version_id", "task_id"],
+        set_={
+            "start_date": insert_stmt.excluded.start_date,
+            "due_date": insert_stmt.excluded.due_date,
+            "estimation": insert_stmt.excluded.estimation,
+        },
+    ).returning(ProductionScheduleVersionTaskLink)
+
+    results = db.session.execute(insert_stmt).scalars().all()
+
+    tasks_map = {task.id: task for task in tasks}
+
+    for task_link in results:
+        task_link.assignees = tasks_map[task_link.task_id].assignees
+
+    db.session.commit()
+
+    return fields.serialize_models(results, relations=True)
+
+
+def set_production_schedule_version_task_links_from_production_schedule_version(
+    production_schedule_version_id, other_production_schedule_version_id
+):
+    """
+    Set task links for given production schedule version from another.
+    """
+
+    other_links = (
+        db.session.query(ProductionScheduleVersionTaskLink)
+        .filter(
+            ProductionScheduleVersionTaskLink.production_schedule_version_id
+            == other_production_schedule_version_id
+        )
+        .all()
+    )
+
+    rows = [
+        {
+            "id": fields.gen_uuid(),
+            "production_schedule_version_id": production_schedule_version_id,
+            "task_id": links.task_id,
+            "start_date": links.start_date,
+            "due_date": links.due_date,
+            "estimation": links.estimation,
+        }
+        for links in other_links
+    ]
+
+    insert_stmt = insert(ProductionScheduleVersionTaskLink).values(rows)
+    insert_stmt = insert_stmt.on_conflict_do_update(
+        index_elements=["production_schedule_version_id", "task_id"],
+        set_={
+            "start_date": insert_stmt.excluded.start_date,
+            "due_date": insert_stmt.excluded.due_date,
+            "estimation": insert_stmt.excluded.estimation,
+        },
+    ).returning(ProductionScheduleVersionTaskLink)
+
+    results = db.session.execute(insert_stmt).scalars().all()
+
+    tasks_map = {link.task_id: link for link in other_links}
+
+    for task_link in results:
+        task_link.assignees = tasks_map[task_link.task_id].assignees
+
+    db.session.commit()
+
+    update_production_schedule_version(
+        production_schedule_version_id,
+        {"production_schedule_from": other_production_schedule_version_id},
+    )
+
+    return fields.serialize_models(results, relations=True)
+
+
+def apply_production_schedule_version_to_production(
+    production_schedule_version_id,
+):
+    """
+    Apply production schedule version to production.
+    """
+
+    stmt = (
+        update(Task)
+        .values(
+            start_date=ProductionScheduleVersionTaskLink.start_date,
+            due_date=ProductionScheduleVersionTaskLink.due_date,
+            estimation=ProductionScheduleVersionTaskLink.estimation,
+        )
+        .where(Task.id == ProductionScheduleVersionTaskLink.task_id)
+        .where(
+            ProductionScheduleVersionTaskLink.production_schedule_version_id
+            == production_schedule_version_id
+        )
+        .returning(Task)
+    )
+
+    results = db.session.execute(stmt).scalars().all()
+
+    db.session.commit()
+
+    for task in results:
+        events.emit(
+            "task:update",
+            {"task_id": str(task.id)},
+            project_id=str(task.project_id),
+        )
+
+    production_schedule_version = update_production_schedule_version(
+        production_schedule_version_id, {"locked": True}
+    )
+
+    projects_service.update_project(
+        production_schedule_version["project_id"],
+        {"from_schedule_version_id": production_schedule_version_id},
+    )
+
+    return fields.serialize_models(results, relations=True)

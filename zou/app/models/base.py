@@ -1,13 +1,14 @@
 from sqlalchemy_utils import UUIDType
-from sqlalchemy import func
-from sqlalchemy import orm
+from sqlalchemy import func, orm
 from zou.app import db
-from zou.app.utils import fields, date_helpers
+from zou.app.utils import date_helpers, fields
 
 
 class BaseMixin(object):
     id = db.Column(
-        UUIDType(binary=False), primary_key=True, default=fields.gen_uuid
+        UUIDType(binary=False),
+        primary_key=True,
+        default=fields.gen_uuid,
     )
 
     # Audit fields

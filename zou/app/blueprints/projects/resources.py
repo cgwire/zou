@@ -1526,3 +1526,203 @@ class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
         return time_spents_service.get_project_month_time_spents(
             project_id, user["timezone"]
         )
+
+
+class ProductionScheduleVersionTaskLinksResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def get(self, production_schedule_version_id):
+        """
+        Get task links for given production schedule version.
+        ---
+        tags:
+        - Projects
+        parameters:
+        - in: path
+            name: production_schedule_version_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            required: false
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Task links for given production schedule version.
+            400:
+                description: Wrong ID format
+        """
+        production_schedule_version = (
+            schedule_service.get_production_schedule_version(
+                production_schedule_version_id
+            )
+        )
+        if (
+            permissions.has_vendor_permissions()
+            or permissions.has_client_permissions()
+        ):
+            raise permissions.PermissionDenied
+        user_service.check_project_access(
+            production_schedule_version["project_id"]
+        )
+
+        args = self.get_args(
+            [
+                ("task_type_id", None, False),
+            ]
+        )
+
+        relations = self.get_relations()
+
+        return schedule_service.get_production_schedule_version_task_links(
+            production_schedule_version_id,
+            task_type_id=args["task_type_id"],
+            relations=relations,
+        )
+
+
+class ProductionScheduleVersionSetTaskLinksFromTasksResource(
+    Resource, ArgsMixin
+):
+
+    @jwt_required()
+    def post(self, production_schedule_version_id):
+        """
+        Set task links for given production schedule version from tasks.
+        ---
+        tags:
+        - Projects
+        parameters:
+        - in: path
+            name: production_schedule_version_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Task links created.
+            400:
+                description: Wrong ID format
+        """
+        production_schedule_version = (
+            schedule_service.get_production_schedule_version(
+                production_schedule_version_id
+            )
+        )
+        user_service.check_manager_project_access(
+            production_schedule_version["project_id"]
+        )
+
+        return schedule_service.set_production_schedule_version_task_links_from_production(
+            production_schedule_version_id
+        )
+
+
+class ProductionScheduleVersionApplyToProductionResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def post(self, production_schedule_version_id):
+        """
+        Apply production schedule version to production.
+        ---
+        tags:
+        - Projects
+        parameters:
+        - in: path
+            name: production_schedule_version_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Task links created.
+            400:
+                description: Wrong ID format
+        """
+        production_schedule_version = (
+            schedule_service.get_production_schedule_version(
+                production_schedule_version_id
+            )
+        )
+        user_service.check_manager_project_access(
+            production_schedule_version["project_id"]
+        )
+
+        return (
+            schedule_service.apply_production_schedule_version_to_production(
+                production_schedule_version_id,
+            )
+        )
+
+
+class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource(
+    Resource, ArgsMixin
+):
+
+    @jwt_required()
+    def post(self, production_schedule_version_id):
+        """
+        Set task links for given production schedule version from another production schedule version.
+        ---
+        tags:
+        - Projects
+        parameters:
+        - in: path
+            name: production_schedule_version_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        - in: formData
+            name: production_schedule_version_id
+            required: True
+            type: string
+            format: UUID
+            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+                description: Task links created.
+            400:
+                description: Wrong ID format
+        """
+        production_schedule_version = (
+            schedule_service.get_production_schedule_version(
+                production_schedule_version_id
+            )
+        )
+        user_service.check_manager_project_access(
+            production_schedule_version["project_id"]
+        )
+
+        args = self.get_args(
+            [
+                ("production_schedule_version_id", None, True),
+            ]
+        )
+
+        other_production_schedule_version = (
+            schedule_service.get_production_schedule_version(
+                args["production_schedule_version_id"]
+            )
+        )
+
+        if (
+            production_schedule_version["project_id"]
+            != other_production_schedule_version["project_id"]
+        ):
+            raise WrongParameterException(
+                "Production schedule versions must belong to the same project."
+            )
+
+        return schedule_service.set_production_schedule_version_task_links_from_production_schedule_version(
+            production_schedule_version_id,
+            other_production_schedule_version_id=other_production_schedule_version[
+                "id"
+            ],
+        )
