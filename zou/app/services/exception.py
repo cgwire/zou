@@ -287,3 +287,7 @@ class WrongTaskTypeForEntityException(Exception):
 
 class IsUserLimitReachedException(Exception):
     pass
+
+
+class ProductionScheduleVersionNotFoundException(NotFound):
+    pass
