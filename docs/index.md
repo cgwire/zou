@@ -188,7 +188,6 @@ Create the environment variables file for the database:
 *Path: /etc/zou/zou.env*
 ```bash
 DB_PASSWORD=mysecretpassword
-SECRET_KEY=yourrandomsecretkey
 PREVIEW_FOLDER=/opt/zou/previews
 TMP_DIR=/opt/zou/tmp
 SECRET_KEY=yourrandomsecretkey
