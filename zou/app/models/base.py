@@ -78,6 +78,18 @@ class BaseMixin(object):
         """
         return cls.query.filter_by(**kw).all()
 
+
+    @classmethod
+    def get_or_create(cls, **kw):
+        """
+        Shorthand to retrieve data by using filters.
+        """
+        instance = cls.get_by(**kw)
+        if instance is None:
+            instance = cls.create(**kw)
+        return instance
+
+
     @classmethod
     def create(cls, **kw):
         """
