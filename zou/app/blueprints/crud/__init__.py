@@ -98,6 +98,10 @@ from zou.app.blueprints.crud.search_filter_group import (
     SearchFilterGroupsResource,
     SearchFilterGroupResource,
 )
+from zou.app.blueprints.crud.hardware_item import (
+    HardwareItemsResource,
+    HardwareItemResource,
+)
 from zou.app.blueprints.crud.software import (
     SoftwaresResource,
     SoftwareResource,
@@ -163,6 +167,8 @@ routes = [
     ("/data/file-status/<instance_id>", FileStatusResource),
     ("/data/softwares", SoftwaresResource),
     ("/data/softwares/<instance_id>", SoftwareResource),
+    ("/data/hardware-items", HardwareItemsResource),
+    ("/data/hardware-items/<instance_id>", HardwareItemResource),
     ("/data/output-files", OutputFilesResource),
     ("/data/output-files/<instance_id>", OutputFileResource),
     ("/data/output-types", OutputTypesResource),
