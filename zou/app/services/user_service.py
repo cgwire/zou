@@ -35,7 +35,7 @@ from zou.app.services.exception import (
     NotificationNotFoundException,
     WrongParameterException,
 )
-from zou.app.utils import cache, fields, permissions
+from zou.app.utils import cache, fields, permissions, events
 
 
 def clear_filter_cache(user_id=None):
@@ -1316,6 +1316,22 @@ def update_notification(notification_id, read):
         id=notification_id, person_id=current_user["id"]
     )
     notification.update({"read": read})
+    if read:
+        events.emit(
+            "notification:read",
+            {
+                "person_id": current_user["id"],
+                "notification_id": notification_id,
+            },
+        )
+    else:
+        events.emit(
+            "notification:unread",
+            {
+                "person_id": current_user["id"],
+                "notification_id": notification_id,
+            },
+        )
     return notification.serialize()
 
 
@@ -1513,7 +1529,7 @@ def mark_notifications_as_read():
 
     db.session.execute(update_stmt)
     db.session.commit()
-
+    events.emit("notification:all-read", {"person_id": current_user["id"]})
     return True
 
 
