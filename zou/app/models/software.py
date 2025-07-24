@@ -13,7 +13,7 @@ class Software(db.Model, BaseMixin, SerializerMixin):
     name = db.Column(db.String(40), unique=True, nullable=False)
     short_name = db.Column(db.String(20), nullable=False)
     archived = db.Column(db.Boolean, default=False)
-    version = db.Column(db.String(20), nullable=False)
+    version = db.Column(db.String(20), nullable=True)
     file_extension = db.Column(db.String(20), nullable=False)
     secondary_extensions = db.Column(JSONB)
     monthly_cost = db.Column(db.Integer, default=0)
