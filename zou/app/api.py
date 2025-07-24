@@ -6,6 +6,7 @@ from zou.app.blueprints.breakdown import blueprint as breakdown_blueprint
 from zou.app.blueprints.chats import blueprint as chats_blueprint
 from zou.app.blueprints.comments import blueprint as comments_blueprint
 from zou.app.blueprints.crud import blueprint as crud_blueprint
+from zou.app.blueprints.departments import blueprint as departments_blueprint
 from zou.app.blueprints.entities import blueprint as entities_blueprint
 from zou.app.blueprints.events import blueprint as events_blueprint
 from zou.app.blueprints.export import blueprint as export_blueprint
@@ -51,6 +52,7 @@ def configure_api_routes(app):
     app.register_blueprint(chats_blueprint)
     app.register_blueprint(comments_blueprint)
     app.register_blueprint(crud_blueprint)
+    app.register_blueprint(departments_blueprint)
     app.register_blueprint(entities_blueprint)
     app.register_blueprint(export_blueprint)
     app.register_blueprint(events_blueprint)

@@ -522,8 +522,10 @@ def _apply_annotation_deletions(annotations, deletions):
         if deletion["time"] in annotation_map:
             annotation = annotation_map[deletion["time"]]
             deleted_object_ids = deletion.get("objects", [])
-            previous_objects = annotation.get("drawing", {}).get("objects", [])
-            annotation.get("drawing", {})["objects"] = [
+            if "drawing" not in annotation or not isinstance(annotation["drawing"], dict):
+                annotation["drawing"] = {}
+            previous_objects = annotation["drawing"].get("objects", [])
+            annotation["drawing"]["objects"] = [
                 previous_object
                 for previous_object in previous_objects
                 if previous_object.get("id", "") not in deleted_object_ids

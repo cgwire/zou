@@ -89,6 +89,10 @@ class SoftwareNotFoundException(NotFound):
     pass
 
 
+class HardwareItemNotFoundException(NotFound):
+    pass
+
+
 class OutputTypeNotFoundException(NotFound):
     pass
 
