@@ -656,8 +656,6 @@ def remove_asset(asset_id, force=False):
         for task in tasks:
             deletion_service.remove_task(task.id, force=True)
             tasks_service.clear_task_cache(str(task.id))
-        asset.delete()
-        clear_asset_cache(str(asset_id))
         index_service.remove_asset_index(str(asset_id))
         events.emit(
             "asset:delete",
@@ -670,6 +668,8 @@ def remove_asset(asset_id, force=False):
         EntityLink.delete_all_by(entity_out_id=asset_id)
         EntityConceptLink.delete_all_by(entity_in_id=asset_id)
         EntityConceptLink.delete_all_by(entity_out_id=asset_id)
+        asset.delete()
+        clear_asset_cache(str(asset_id))
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
 
