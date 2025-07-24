@@ -7,13 +7,14 @@ from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.notification import Notification
 from zou.app.models.person import Person
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.subscription import Subscription
 from zou.app.models.search_filter import SearchFilter
 from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
+
 
 from zou.app.services import (
     assets_service,
@@ -73,11 +74,13 @@ def build_team_filter():
     return Project.team.contains(current_user)
 
 
+
 def build_open_project_filter():
     """
     Query filter for project to retrieve only open projects.
     """
-    return ProjectStatus.name.in_(("Active", "open", "Open"))
+    open_status = projects_service.get_open_status()
+    return Project.project_status_id == open_status["id"]
 
 
 def build_related_projects_filter():
@@ -85,15 +88,8 @@ def build_related_projects_filter():
     Query filter for project to retrieve open projects of which the user
     is part of the team.
     """
-    projects = (
-        Project.query.join(
-            ProjectStatus, Project.project_status_id == ProjectStatus.id
-        )
-        .filter(build_team_filter())
-        .filter(build_open_project_filter())
-        .all()
-    )
-    project_ids = [project.id for project in projects]
+    projects = related_projects()
+    project_ids = [project["id"] for project in projects]
     if len(project_ids) > 0:
         return Project.id.in_(project_ids)
     else:
@@ -103,16 +99,29 @@ def build_related_projects_filter():
 def related_projects():
     """
     Return all projects related to current user: open projects of which the user
-    is part of the team.
+    is part of the team as dicts.
     """
+    current_user = persons_service.get_current_user()
+    projects = related_projects_raw()
+    return Project.serialize_list(projects)
+
+
+def related_projects_raw():
+    """
+    Return all projects related to current user: open projects of which the user
+    is part of the team as models.
+    """
+    current_user = persons_service.get_current_user()
     projects = (
-        Project.query.join(Task)
+        Project.query
         .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
-        .filter(build_team_filter())
+        .join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
+        .filter(ProjectPersonLink.person_id == current_user["id"])
         .filter(build_open_project_filter())
+        .distinct()
         .all()
     )
-    return Project.serialize_list(projects)
+    return projects
 
 
 def get_todos():
@@ -328,7 +337,9 @@ def get_open_projects(name=None):
         query = query.filter(Project.name == name)
 
     if not permissions.has_admin_permissions():
-        query = query.filter(build_team_filter())
+        current_user = persons_service.get_current_user()
+        query = query.join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
+        query = query.filter(ProjectPersonLink.person_id == current_user["id"])
 
     for_client = False
     vendor_departments = None
@@ -353,11 +364,15 @@ def get_open_project_ids():
 
 def get_projects(name=None):
     """
-    Get all projects for which current user has a task assigned.
+    Get all projects for which current user is part of the team.
     """
-    query = Project.query.join(
-        ProjectStatus, Project.project_status_id == ProjectStatus.id
-    ).filter(build_team_filter())
+    current_user = persons_service.get_current_user()
+    query = (
+        Project.query
+        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        .join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
+        .filter(ProjectPersonLink.person_id == current_user["id"])
+    )
 
     if name is not None:
         query = query.filter(Project.name == name)
