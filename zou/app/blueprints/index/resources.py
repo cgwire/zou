@@ -52,10 +52,7 @@ class BaseStatusResource(Resource):
         is_es_up = True
         try:
             requests.get(
-                "http://{host}:{port}".format(
-                    host=config.EVENT_STREAM_HOST,
-                    port=config.EVENT_STREAM_PORT,
-                )
+                f"http://{config.EVENT_STREAM_HOST}:{config.EVENT_STREAM_PORT}"
             )
         except Exception:
             is_es_up = False
@@ -77,11 +74,7 @@ class BaseStatusResource(Resource):
         is_indexer_up = True
         try:
             requests.get(
-                "{protocol}://{host}:{port}".format(
-                    protocol=config.INDEXER["protocol"],
-                    host=config.INDEXER["host"],
-                    port=config.INDEXER["port"],
-                )
+                f"{config.INDEXER['protocol']}://{config.INDEXER['host']}:{config.INDEXER['port']}"
             )
         except Exception:
             is_indexer_up = False

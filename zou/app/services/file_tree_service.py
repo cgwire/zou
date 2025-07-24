@@ -789,7 +789,7 @@ def extract_variable_values_from_path(elements, template_elements):
                 continue
             else:
                 raise WrongPathFormatException(
-                    "{} doesn't match {}".format(elements, template_elements)
+                    f"{elements} doesn't match {template_elements}"
                 )
 
         data_type = token.group("token")
@@ -1131,7 +1131,7 @@ def guess_from_path(project_id, file_path, sep="/"):
                 # Some template_element don't have a corresponding token,
                 # like "05_publish" folder, for example.
                 for token, token_value in tokens.items():
-                    if "<{}>".format(token) in template_element:
+                    if f"<{token}>" in template_element:
                         break
                 else:
                     continue
