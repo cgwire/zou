@@ -138,7 +138,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     expiration_date = db.Column(db.Date(), nullable=True)
 
     departments = db.relationship(
-        "Department", secondary="department_link", lazy="joined"
+        "Department", secondary=DepartmentLink.__table__, lazy="joined"
     )
     studio_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("studio.id"), index=True

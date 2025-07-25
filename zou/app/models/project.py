@@ -178,22 +178,33 @@ class Project(db.Model, BaseMixin, SerializerMixin):
         index=True,
     )
 
-    team = db.relationship("Person", secondary="project_person_link")
+    from_schedule_version_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey(
+            "production_schedule_version.id",
+            name="project_from_schedule_version_id_fkey",
+            use_alter=True,
+        ),
+        index=True,
+        nullable=True,
+    )
+
+    team = db.relationship("Person", secondary=ProjectPersonLink.__table__)
     asset_types = db.relationship(
-        "EntityType", secondary="project_asset_type_link"
+        "EntityType", secondary=ProjectAssetTypeLink.__table__
     )
     task_statuses = db.relationship(
-        "TaskStatus", secondary="project_task_status_link"
+        "TaskStatus", secondary=ProjectTaskStatusLink.__table__
     )
     task_types = db.relationship(
-        "TaskType", secondary="project_task_type_link"
+        "TaskType", secondary=ProjectTaskTypeLink.__table__
     )
     status_automations = db.relationship(
-        "StatusAutomation", secondary="project_status_automation_link"
+        "StatusAutomation", secondary=ProjectStatusAutomationLink.__table__
     )
     preview_background_files = db.relationship(
         "PreviewBackgroundFile",
-        secondary="project_preview_background_file_link",
+        secondary=ProjectPreviewBackgroundFileLink.__table__,
     )
 
     def set_team(self, person_ids):
