@@ -78,7 +78,6 @@ class BaseMixin(object):
         """
         return cls.query.filter_by(**kw).all()
 
-
     @classmethod
     def get_or_create(cls, **kw):
         """
@@ -88,7 +87,6 @@ class BaseMixin(object):
         if instance is None:
             instance = cls.create(**kw)
         return instance
-
 
     @classmethod
     def create(cls, **kw):

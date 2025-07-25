@@ -11,6 +11,7 @@ class HardwareItemDepartmentLink(db.Model, BaseMixin, SerializerMixin):
     It can be used to track which hardware items are used by which departments in
     order to set budget forecasting.
     """
+
     __tablename__ = "hardware_item_department_link"
     department_id = db.Column(
         UUIDType(binary=False),
@@ -40,6 +41,7 @@ class SoftwareDepartmentLink(db.Model, BaseMixin, SerializerMixin):
     It can be used to track which software is used by which departments in
     order to set budget forecasting.
     """
+
     __tablename__ = "software_department_link"
     department_id = db.Column(
         UUIDType(binary=False),

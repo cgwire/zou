@@ -606,7 +606,9 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         result = self.get(path)
         self.assertEqual(len(result["asset"][project_id]), 2)
-        asset_filters = sorted(result["asset"][project_id], key=lambda x: x["name"])
+        asset_filters = sorted(
+            result["asset"][project_id], key=lambda x: x["name"]
+        )
         self.assertEqual(asset_filters[0]["name"], "my filter")
         self.assertEqual(asset_filters[0]["is_shared"], False)
         self.assertEqual(asset_filters[1]["name"], "team filter")
