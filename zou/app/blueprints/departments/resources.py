@@ -5,7 +5,6 @@ from zou.app.utils import permissions
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     departments_service,
-    user_service,
 )
 
 
@@ -64,8 +63,7 @@ class AddSoftwareToDepartmentResource(Resource, ArgsMixin):
         self.check_id_parameter(department_id)
         self.check_id_parameter(args["software_id"])
         software = departments_service.add_software_to_department(
-            department_id,
-            args["software_id"]
+            department_id, args["software_id"]
         )
         return software, 201
 
@@ -124,8 +122,7 @@ class SoftwareDepartmentResource(Resource, ArgsMixin):
             204:
                 description: User removed from given department
             404:
-                description: Department or software ID matches no department or
-                software
+                description: Department or software ID matches no department or software
         """
         self.check_id_parameter(department_id)
         self.check_id_parameter(software_id)
@@ -149,8 +146,9 @@ class AllDepartmentHardwareItemsResource(Resource, ArgsMixin):
             200:
                 description: A dictionary of departments with their hardware items
         """
-        hardware_items = \
+        hardware_items = (
             departments_service.get_all_hardware_items_for_departments()
+        )
         return hardware_items, 200
 
 
@@ -192,8 +190,10 @@ class AddHardwareItemToDepartmentResource(Resource, ArgsMixin):
         )
         self.check_id_parameter(department_id)
         self.check_id_parameter(args["hardware_item_id"])
-        hardware_item_link = departments_service.add_hardware_item_to_department(
-            department_id, args["hardware_item_id"]
+        hardware_item_link = (
+            departments_service.add_hardware_item_to_department(
+                department_id, args["hardware_item_id"]
+            )
         )
         return hardware_item_link, 201
 
@@ -222,12 +222,10 @@ class HardwareItemDepartmentResource(Resource, ArgsMixin):
                 description: Department ID matches no department
         """
         self.check_id_parameter(department_id)
-        hardware_items = \
-            departments_service.get_hardware_items_for_department(
-                department_id
-            )
+        hardware_items = departments_service.get_hardware_items_for_department(
+            department_id
+        )
         return hardware_items, 200
-
 
     @jwt_required()
     @permissions.require_admin
@@ -254,8 +252,7 @@ class HardwareItemDepartmentResource(Resource, ArgsMixin):
             204:
                 description: User removed from given department
             404:
-                description: Department or software ID matches no department or
-                software
+                description: Department or software ID matches no department or software
         """
         self.check_id_parameter(department_id)
         self.check_id_parameter(hardware_item_id)
