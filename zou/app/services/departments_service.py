@@ -17,26 +17,21 @@ from zou.app.services.exception import (
 def _check_department_exists(department_id):
     department = Department.get(department_id)
     if not department:
-        raise DepartmentNotFoundException(
-            "Department with id {} not found".format(department_id)
-        )
+        raise DepartmentNotFoundException
     return department
 
 
 def _check_software_exists(software_id):
     software = Software.get(software_id)
     if not software:
-        raise SoftwareNotFoundException(
-            "Software with id {} not found".format(software_id)
-        )
+        raise SoftwareNotFoundException
     return software
+
 
 def _check_hardware_item_exists(hardware_item_id):
     hardware_item = HardwareItem.get(hardware_item_id)
     if not hardware_item:
-        raise HardwareItemNotFoundException(
-            "Hardware item with id {} not found".format(hardware_item_id)
-        )
+        raise HardwareItemNotFoundException
     return hardware_item
 
 
@@ -109,8 +104,7 @@ def add_software_to_department(department_id, software_id):
     _check_department_exists(department_id)
     _check_software_exists(software_id)
     link = SoftwareDepartmentLink.get_or_create(
-        department_id=department_id,
-        software_id=software_id
+        department_id=department_id, software_id=software_id
     )
     return link.serialize()
 
@@ -122,8 +116,7 @@ def remove_software_from_department(department_id, software_id):
     _check_department_exists(department_id)
     _check_software_exists(software_id)
     link = SoftwareDepartmentLink.get_by(
-        department_id=department_id,
-        software_id=software_id
+        department_id=department_id, software_id=software_id
     )
     if not link:
         return None
@@ -132,34 +125,26 @@ def remove_software_from_department(department_id, software_id):
         return link.serialize()
 
 
-def add_hardware_item_to_department(
-    department_id,
-    hardware_item_id
-):
+def add_hardware_item_to_department(department_id, hardware_item_id):
     """
     Add a hardware item to a department.
     """
     _check_department_exists(department_id)
     _check_hardware_item_exists(hardware_item_id)
     link = HardwareItemDepartmentLink.get_or_create(
-        department_id=department_id,
-        hardware_item_id=hardware_item_id
+        department_id=department_id, hardware_item_id=hardware_item_id
     )
     return link.serialize()
 
 
-def remove_hardware_item_from_department(
-    department_id,
-    hardware_item_id
-):
+def remove_hardware_item_from_department(department_id, hardware_item_id):
     """
     Remove a hardware item from a department.
     """
     _check_department_exists(department_id)
     _check_hardware_item_exists(hardware_item_id)
     link = HardwareItemDepartmentLink.get_by(
-        department_id=department_id,
-        hardware_item_id=hardware_item_id
+        department_id=department_id, hardware_item_id=hardware_item_id
     )
     if not link:
         return None

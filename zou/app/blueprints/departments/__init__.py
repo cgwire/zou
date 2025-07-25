@@ -11,29 +11,23 @@ from zou.app.blueprints.departments.resources import (
 )
 
 routes = [
-    (
-        "/data/departments/software-licenses",
-        AllDepartmentSoftwareResource
-    ),
+    ("/data/departments/software-licenses", AllDepartmentSoftwareResource),
     (
         "/data/departments/<department_id>/software-licenses",
-        AddSoftwareToDepartmentResource
+        AddSoftwareToDepartmentResource,
     ),
     (
         "/data/departments/<department_id>/software-licenses/<software_id>",
-        SoftwareDepartmentResource
+        SoftwareDepartmentResource,
     ),
-    (
-        "/data/departments/hardware-items",
-        AllDepartmentHardwareItemsResource
-    ),
+    ("/data/departments/hardware-items", AllDepartmentHardwareItemsResource),
     (
         "/data/departments/<department_id>/hardware-items",
-        AddHardwareItemToDepartmentResource
+        AddHardwareItemToDepartmentResource,
     ),
     (
         "/data/departments/<department_id>/hardware-items/<hardware_item_id>",
-        HardwareItemDepartmentResource
+        HardwareItemDepartmentResource,
     ),
 ]
 

@@ -1229,9 +1229,7 @@ class TimeSpentsResource(Resource):
         except WrongDateFormatException:
             abort(
                 400,
-                "Wrong date format for {} and/or {}".format(
-                    start_date, end_date
-                ),
+                f"Wrong date format for {start_date} and/or {end_date}",
             )
 
 

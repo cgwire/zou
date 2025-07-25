@@ -74,7 +74,6 @@ def build_team_filter():
     return Project.team.contains(current_user)
 
 
-
 def build_open_project_filter():
     """
     Query filter for project to retrieve only open projects.
@@ -101,7 +100,7 @@ def related_projects():
     Return all projects related to current user: open projects of which the user
     is part of the team as dicts.
     """
-    current_user = persons_service.get_current_user()
+    persons_service.get_current_user()
     projects = related_projects_raw()
     return Project.serialize_list(projects)
 
@@ -113,8 +112,9 @@ def related_projects_raw():
     """
     current_user = persons_service.get_current_user()
     projects = (
-        Project.query
-        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        Project.query.join(
+            ProjectStatus, Project.project_status_id == ProjectStatus.id
+        )
         .join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
         .filter(ProjectPersonLink.person_id == current_user["id"])
         .filter(build_open_project_filter())
@@ -338,7 +338,9 @@ def get_open_projects(name=None):
 
     if not permissions.has_admin_permissions():
         current_user = persons_service.get_current_user()
-        query = query.join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
+        query = query.join(
+            ProjectPersonLink, Project.id == ProjectPersonLink.project_id
+        )
         query = query.filter(ProjectPersonLink.person_id == current_user["id"])
 
     for_client = False
@@ -368,8 +370,9 @@ def get_projects(name=None):
     """
     current_user = persons_service.get_current_user()
     query = (
-        Project.query
-        .join(ProjectStatus, Project.project_status_id == ProjectStatus.id)
+        Project.query.join(
+            ProjectStatus, Project.project_status_id == ProjectStatus.id
+        )
         .join(ProjectPersonLink, Project.id == ProjectPersonLink.project_id)
         .filter(ProjectPersonLink.person_id == current_user["id"])
     )
