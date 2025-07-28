@@ -1539,17 +1539,17 @@ class ProductionScheduleVersionTaskLinksResource(Resource, ArgsMixin):
         - Projects
         parameters:
         - in: path
-            name: production_schedule_version_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: query
-            name: task_type_id
-            required: false
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          name: production_schedule_version_id
+          required: True
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
+        - in: query
+          name: task_type_id
+          required: false
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Task links for given production schedule version.
@@ -1598,11 +1598,11 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
         - Projects
         parameters:
         - in: path
-            name: production_schedule_version_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          name: production_schedule_version_id
+          required: True
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Task links created.
@@ -1634,11 +1634,11 @@ class ProductionScheduleVersionApplyToProductionResource(Resource, ArgsMixin):
         - Projects
         parameters:
         - in: path
-            name: production_schedule_version_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          name: production_schedule_version_id
+          required: True
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Task links created.
@@ -1674,17 +1674,17 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
         - Projects
         parameters:
         - in: path
-            name: production_schedule_version_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          name: production_schedule_version_id
+          required: True
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
         - in: formData
-            name: production_schedule_version_id
-            required: True
-            type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+          name: production_schedule_version_id
+          required: True
+          type: string
+          format: UUID
+          x-example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Task links created.
