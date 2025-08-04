@@ -630,11 +630,17 @@ def create_bot(
 @click.option(
     "--all-processing", is_flag=True, default=False, show_default=True
 )
+@click.option("--days", type=int, default=None, show_default=True)
+@click.option("--hours", type=int, default=None, show_default=True)
+@click.option("--minutes", type=int, default=None, show_default=True)
 def renormalize_movie_preview_files(
     preview_file_id,
     project_id,
     all_broken,
     all_processing,
+    days=None,
+    hours=None,
+    minutes=None,
 ):
     """
     Renormalize all preview files.
@@ -644,6 +650,9 @@ def renormalize_movie_preview_files(
         project_id,
         all_broken,
         all_processing,
+        days=days,
+        hours=hours,
+        minutes=minutes,
     )
 
 

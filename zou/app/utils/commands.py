@@ -741,91 +741,107 @@ def create_bot(
 
 
 def renormalize_movie_preview_files(
-    preview_file_id=None, project_id=None, all_broken=None, all_processing=None
+    preview_file_id=None,
+    project_id=None,
+    all_broken=None,
+    all_processing=None,
+    days=None,
+    hours=None,
+    minutes=None,
 ):
     with app.app_context():
         if preview_file_id is None and not all_broken and not all_processing:
-            print("You must specify at least one option.")
+            print(
+                "You must specify at least one flag from --all-broken or --all-processing."
+            )
+            sys.exit(1)
+
+        query = PreviewFile.query.filter(
+            PreviewFile.extension == "mp4"
+        ).order_by(PreviewFile.created_at.asc())
+
+        if any((minutes, hours, days)):
+            since_date = datetime.datetime.now() - datetime.timedelta(
+                days=days or 0,
+                hours=hours or 0,
+                minutes=minutes or 0,
+            )
+            query = query.filter(PreviewFile.created_at >= since_date)
+
+        if preview_file_id is not None:
+            query = query.filter(PreviewFile.id == preview_file_id)
+
+        if project_id is not None:
+            query = query.join(Task).filter(
+                PreviewFile.project_id == project_id
+            )
+
+        if all_broken and all_processing:
+            query = query.filter(
+                PreviewFile.status.in_(("broken", "processing"))
+            )
+        elif all_broken:
+            query = query.filter(PreviewFile.status == "broken")
+        elif all_processing:
+            query = query.filter(PreviewFile.status == "processing")
+
+        preview_files = query.all()
+        len_preview_files = len(preview_files)
+        if len_preview_files == 0:
+            print("No preview files found.")
             sys.exit(1)
         else:
-            query = PreviewFile.query.filter(
-                PreviewFile.extension == "mp4"
-            ).order_by(PreviewFile.created_at.asc())
-
-            if preview_file_id is not None:
-                query = query.filter(PreviewFile.id == preview_file_id)
-
-            if project_id is not None:
-                query = query.join(Task).filter(
-                    PreviewFile.project_id == project_id
-                )
-
-            if all_broken and all_processing:
-                query = query.filter(
-                    PreviewFile.status.in_(("broken", "processing"))
-                )
-            elif all_broken:
-                query = query.filter(PreviewFile.status == "broken")
-            elif all_processing:
-                query = query.filter(PreviewFile.status == "processing")
-
-            preview_files = query.all()
-            len_preview_files = len(preview_files)
-            if len_preview_files == 0:
-                print("No preview files found.")
-                sys.exit(1)
-            else:
-                for i, preview_file in enumerate(preview_files):
+            for i, preview_file in enumerate(preview_files):
+                try:
+                    preview_file_id = str(preview_file.id)
+                    print(
+                        f"Renormalizing preview file {preview_file_id} ({i+1}/{len_preview_files})."
+                    )
+                    extension = preview_file.extension
+                    uploaded_movie_path = os.path.join(
+                        config.TMP_DIR,
+                        f"{preview_file_id}.{extension}.tmp",
+                    )
                     try:
-                        preview_file_id = str(preview_file.id)
-                        print(
-                            f"Renormalizing preview file {preview_file_id} ({i+1}/{len_preview_files})."
-                        )
-                        extension = preview_file.extension
-                        uploaded_movie_path = os.path.join(
-                            config.TMP_DIR,
-                            f"{preview_file_id}.{extension}.tmp",
-                        )
-                        try:
-                            if config.FS_BACKEND == "local":
-                                shutil.copyfile(
-                                    file_store.get_local_movie_path(
-                                        "source", preview_file_id
-                                    ),
-                                    uploaded_movie_path,
-                                )
-                            else:
-                                sync_service.download_file(
-                                    uploaded_movie_path,
-                                    "source",
-                                    file_store.open_movie,
-                                    str(preview_file_id),
-                                )
-                        except:
-                            pass
-                        if config.ENABLE_JOB_QUEUE:
-                            queue_store.job_queue.enqueue(
-                                preview_files_service.prepare_and_store_movie,
-                                args=(
-                                    preview_file_id,
-                                    uploaded_movie_path,
-                                    True,
-                                    False,
+                        if config.FS_BACKEND == "local":
+                            shutil.copyfile(
+                                file_store.get_local_movie_path(
+                                    "source", preview_file_id
                                 ),
-                                job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+                                uploaded_movie_path,
                             )
                         else:
-                            preview_files_service.prepare_and_store_movie(
+                            sync_service.download_file(
+                                uploaded_movie_path,
+                                "source",
+                                file_store.open_movie,
+                                str(preview_file_id),
+                            )
+                    except:
+                        pass
+                    if config.ENABLE_JOB_QUEUE:
+                        queue_store.job_queue.enqueue(
+                            preview_files_service.prepare_and_store_movie,
+                            args=(
                                 preview_file_id,
                                 uploaded_movie_path,
-                                normalize=True,
-                                add_source_to_file_store=False,
-                            )
-                    except Exception as e:
-                        print(
-                            f"Renormalization of preview file {preview_file_id} failed: {e}"
+                                True,
+                                False,
+                            ),
+                            job_timeout=int(config.JOB_QUEUE_TIMEOUT),
                         )
-                        continue
+                    else:
+                        preview_files_service.prepare_and_store_movie(
+                            preview_file_id,
+                            uploaded_movie_path,
+                            normalize=True,
+                            add_source_to_file_store=False,
+                        )
+                except Exception as e:
+                    print(
+                        f"Renormalization of preview file {preview_file_id} failed: {e}"
+                    )
+                    continue
 
 
 def list_plugins(output_format, verbose, filter_field, filter_value):
