@@ -90,7 +90,7 @@ class EntitiesLinkedWithTasksResource(Resource):
         Resource to retrieve the entities linked on a given entity.
         ---
         tags:
-            - Entity
+            - Entities
         parameters:
           - in: path
             name: entity_id

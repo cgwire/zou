@@ -35,10 +35,8 @@ you will have to get a JWT token to authorize your requests.
 
 <p>
 You will find the information to retrieve it in the 
-<a href="#tag/Authentication">Zou documentation</a>.
+[Zou documentation](https://zou.cg-wire.com/api/).
 </p>
-
-[OpenAPI definition](/openapi.json)
 """
 
 swagger_template = {
@@ -78,8 +76,11 @@ swagger_template = {
         {"name": "Authentication"},
         {"name": "Assets"},
         {"name": "Breakdown"},
+        {"name": "Chat"},
         {"name": "Comments"},
+        {"name": "Concepts"},
         {"name": "Crud"},
+        {"name": "Departments"},
         {"name": "Edits"},
         {"name": "Entities"},
         {"name": "Events"},
