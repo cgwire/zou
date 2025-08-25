@@ -1577,7 +1577,7 @@ class SetTaskMainPreviewResource(Resource):
         This preview will be used as thumbnail to illustrate the entity.
         ---
         tags:
-          - Task
+          - Tasks
         description: This preview will be used to illustrate the entity.
         parameters:
           - in: path

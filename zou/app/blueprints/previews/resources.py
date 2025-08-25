@@ -1496,7 +1496,7 @@ class CreatePreviewBackgroundFileResource(Resource):
         Main resource to add a preview background file.
         ---
         tags:
-          - Preview background file
+          - Previews
         consumes:
           - multipart/form-data
           - image/vnd.radiance
