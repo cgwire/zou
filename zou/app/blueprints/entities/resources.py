@@ -24,8 +24,8 @@ class EntityNewsResource(Resource):
             name: entity_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All news linked to given entity
@@ -48,8 +48,8 @@ class EntityPreviewFilesResource(Resource):
             name: entity_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All preview files linked to given entity
@@ -72,8 +72,8 @@ class EntityTimeSpentsResource(Resource):
             name: entity_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All time spents linked to given entity
@@ -96,8 +96,8 @@ class EntitiesLinkedWithTasksResource(Resource):
             name: entity_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Entities linked on given entity

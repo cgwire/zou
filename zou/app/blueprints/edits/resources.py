@@ -28,8 +28,8 @@ class EditResource(Resource, ArgsMixin):
             name: edit_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given edit
@@ -54,8 +54,8 @@ class EditResource(Resource, ArgsMixin):
             name: edit_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given edit deleted
@@ -84,13 +84,13 @@ class EditsResource(Resource):
             name: project_id
             required: False
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: name
             required: False
             type: string
-            x-example: Name of edit
+            example: Name of edit
           - in: query
             name: force
             required: False
@@ -123,13 +123,13 @@ class AllEditsResource(Resource):
             name: project_id
             required: False
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: name
             required: False
             type: string
-            x-example: Name of edit
+            example: Name of edit
           - in: query
             name: force
             required: False
@@ -161,8 +161,8 @@ class EditTaskTypesResource(Resource):
             name: edit_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given edit
@@ -186,8 +186,8 @@ class EditTasksResource(Resource, ArgsMixin):
             name: edit_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given edit
@@ -212,8 +212,8 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
             name: episode_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given episode
@@ -242,8 +242,8 @@ class EpisodeEditsResource(Resource, ArgsMixin):
             name: episode_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All efits related to given episode
@@ -271,8 +271,8 @@ class EditPreviewsResource(Resource):
             name: edit_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All previews related to given edit
@@ -296,13 +296,13 @@ class EditsAndTasksResource(Resource):
             name: project_id
             required: False
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: name
             required: False
             type: string
-            x-example: Name of edit
+            example: Name of edit
           - in: query
             name: force
             required: False
@@ -338,8 +338,8 @@ class ProjectEditsResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All edits related to given project
@@ -362,22 +362,22 @@ class ProjectEditsResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: name
             required: True
             type: string
-            x-example: Name of edit
+            example: Name of edit
           - in: formData
             name: description
             type: string
-            x-example: Description of edit
+            example: Description of edit
           - in: formData
             name: episode_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Edit created for given project
@@ -435,8 +435,8 @@ class EditVersionsResource(Resource):
             name: edit_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Data versions of given edit

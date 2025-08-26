@@ -28,8 +28,8 @@ class ConceptResource(Resource, ArgsMixin):
             name: concept_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given concept
@@ -56,8 +56,8 @@ class ConceptResource(Resource, ArgsMixin):
             name: concept_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Given concept deleted
@@ -86,14 +86,14 @@ class AllConceptsResource(Resource):
             name: project_id
             required: False
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: parent_id
             required: False
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All concept entries
@@ -121,8 +121,8 @@ class ConceptTaskTypesResource(Resource):
             name: concept_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types related to given concept
@@ -148,8 +148,8 @@ class ConceptTasksResource(Resource, ArgsMixin):
             name: concept_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given concept
@@ -180,8 +180,8 @@ class ConceptPreviewsResource(Resource):
             name: concept_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All previews related to given episode
@@ -207,8 +207,8 @@ class ConceptsAndTasksResource(Resource):
             name: project_id
             required: False
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All concepts
@@ -236,8 +236,8 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All concepts related to given project
@@ -265,21 +265,21 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: name
             required: True
             type: string
-            x-example: Name of concept
+            example: Name of concept
           - in: formData
             name: description
             type: string
-            x-example: Description of concept
+            example: Description of concept
           - in: formData
             name: entity_concept_links
             type: list of UUIDs
-            x-example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+            example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         responses:
             201:
                 description: Concept created for given project

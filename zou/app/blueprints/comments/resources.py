@@ -37,13 +37,13 @@ class DownloadAttachmentResource(Resource):
             name: attachment_file_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: file_name
             required: True
             type: string
-            x-example: filename
+            example: filename
         responses:
             200:
                 description: Attachment file downloaded
@@ -109,14 +109,14 @@ class AckCommentResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Comment acknowledged
@@ -148,8 +148,8 @@ class CommentTaskResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Comment
             description: person ID, name, comment, revision and change status of task
@@ -160,13 +160,13 @@ class CommentTaskResource(Resource):
                 properties:
                     task_status_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     comment:
                         type: string
                     person_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     created_at:
                         type: string
@@ -268,20 +268,20 @@ class AttachmentResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: attachment_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Empty response
@@ -314,14 +314,14 @@ class AddAttachmentToCommentResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: files
             type: file
@@ -364,8 +364,8 @@ class CommentManyTasksResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Comment
             description: person ID, name, comment, revision and change status of task
@@ -376,17 +376,17 @@ class CommentManyTasksResource(Resource):
                 properties:
                     task_status_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     comment:
                         type: string
                     person_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     object_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25a4-ce75-4665-a070-57453082c25
                     created_at:
                         type: string
@@ -471,18 +471,18 @@ class ReplyCommentResource(Resource, ArgsMixin):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: text
             type: string
-            x-example: comment
+            example: comment
         responses:
             200:
                 description: Reply to given comment
@@ -520,20 +520,20 @@ class DeleteReplyCommentResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: reply_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given comment reply deleted
@@ -558,8 +558,8 @@ class ProjectAttachmentFiles(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All attachment files related to given project
@@ -587,8 +587,8 @@ class TaskAttachmentFiles(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All attachment files related to given task

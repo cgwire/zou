@@ -28,7 +28,7 @@ class ChatResource(Resource):
             description: ID of the entity related to the chat
             type: integer
             required: true
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
           200:
             description: Chat information
@@ -56,7 +56,7 @@ class ChatMessagesResource(Resource):
             description: ID of the entity related to the chat
             type: integer
             required: true
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Chat messages
@@ -79,13 +79,13 @@ class ChatMessagesResource(Resource):
             description: ID of the entity related to the chat
             type: integer
             required: true
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: message
             description: Message to send
             type: string
             required: true
-            x-example: Hello, world!
+            example: Hello, world!
           - in: formData
             name: files
             description: Files to attach
@@ -143,13 +143,13 @@ class ChatMessageResource(Resource):
             description: ID of the entity related to the chat
             type: integer
             required: true
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: chat_message_id
             description: ID of the chat message
             type: integer
             required: true
-            x-example: 1
+            example: 1
         responses:
             200:
                 description: Chat message
@@ -172,13 +172,13 @@ class ChatMessageResource(Resource):
             description: ID of the entity related to the chat
             type: integer
             required: true
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: chat_message_id
             description: ID of the chat message
             type: integer
             required: true
-            x-example: 1
+            example: 1
         responses:
             204:
                 description: Empty response

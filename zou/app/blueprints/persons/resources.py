@@ -55,8 +55,8 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Desktop login logs
@@ -84,14 +84,14 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: date
             required: True
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             201:
                 description: Desktop login log entry created.
@@ -130,7 +130,7 @@ class PresenceLogsResource(Resource):
             required: True
             type: string
             format: date
-            x-example: "2022-07"
+            example: "2022-07"
         responses:
             200:
                 description: CSV file containing the presence logs based on a daily basis
@@ -193,14 +193,14 @@ class DateTimeSpentsResource(Resource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
             required: True
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             200:
                 description: Time spents for given person and date
@@ -254,14 +254,14 @@ class DayOffResource(Resource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
             required: True
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             200:
                 description: Day off object for given person and date
@@ -333,13 +333,13 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
         responses:
             200:
                 description: Aggregated time spents for given person and year
@@ -374,18 +374,18 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
         responses:
@@ -441,18 +441,18 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: week
             required: True
             type: integer
-            x-example: 35
+            example: 35
             minimum: 1
             maximum: 52
         responses:
@@ -490,25 +490,25 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
           - in: path
             name: day
             required: True
             type: integer
-            x-example: 12
+            example: 12
             minimum: 1
             maximum: 31
         responses:
@@ -599,18 +599,18 @@ class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
           - in: query
@@ -618,7 +618,7 @@ class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
             required: True
             type: string
             enum: [weighted, weigtheddone, feedback, done]
-            x-example: weighted
+            example: weighted
         responses:
             200:
                 description: Ended shots used for quota calculation of this month
@@ -650,18 +650,18 @@ class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: week
             required: True
             type: integer
-            x-example: 35
+            example: 35
             minimum: 1
             maximum: 52
           - in: query
@@ -669,7 +669,7 @@ class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
             required: True
             type: string
             enum: [weighted, weigtheddone, feedback, done]
-            x-example: weighted
+            example: weighted
         responses:
             200:
                 description: Ended shots used for quota calculation of this week
@@ -701,25 +701,25 @@ class PersonDayQuotaShotsResource(Resource, PersonQuotaMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
           - in: path
             name: day
             required: True
             type: integer
-            x-example: 12
+            example: 12
             minimum: 1
             maximum: 31
           - in: query
@@ -727,7 +727,7 @@ class PersonDayQuotaShotsResource(Resource, PersonQuotaMixin):
             required: True
             type: string
             enum: [weighted, weigtheddone, feedback, done]
-            x-example: weighted
+            example: weighted
         responses:
             200:
                 description: Ended shots used for quota calculation of this day
@@ -803,12 +803,12 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
         responses:
@@ -859,7 +859,7 @@ class TimeSpentMonthsResource(TimeSpentDurationResource):
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
         responses:
             200:
                 description: Table giving time spent by user and by month for given year
@@ -886,7 +886,7 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
         responses:
             200:
                 description: Table giving time spent by user and by week for given year
@@ -913,8 +913,8 @@ class InvitePersonResource(Resource):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Email sent
@@ -942,12 +942,12 @@ class DayOffForMonthResource(Resource, ArgsMixin):
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
         responses:
@@ -980,18 +980,18 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: week
             required: True
             type: integer
-            x-example: 35
+            example: 35
             minimum: 1
             maximum: 52
         responses:
@@ -1022,18 +1022,18 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
           - in: path
             name: month
             required: True
             type: integer
-            x-example: 07
+            example: 07
             minimum: 1
             maximum: 12
         responses:
@@ -1064,13 +1064,13 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
             required: True
             type: integer
-            x-example: "2022"
+            example: "2022"
         responses:
             200:
                 description: All day off recorded for given year and person
@@ -1099,8 +1099,8 @@ class PersonDayOffResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All day off recorded for given person.
@@ -1129,8 +1129,8 @@ class AddToDepartmentResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: User added to given department
@@ -1170,14 +1170,14 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: User removed from given department
@@ -1214,8 +1214,8 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: password
             required: True
@@ -1334,8 +1334,8 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
             name: person_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
           200:
             description: Two factor authentication disabled
