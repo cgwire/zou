@@ -41,8 +41,8 @@ class AssetResource(Resource, ArgsMixin):
           - in: path
             name: asset_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
             required: True
         responses:
           200:
@@ -64,8 +64,8 @@ class AssetResource(Resource, ArgsMixin):
           - in: path
             name: asset_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
             required: True
         responses:
           204:
@@ -155,8 +155,8 @@ class AssetTypeResource(Resource):
           - in: path
             name: asset_type_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
             required: True
         responses:
           200:
@@ -195,8 +195,8 @@ class ProjectAssetTypesResource(Resource):
           - in: path
             name: project_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
             required: True
         responses:
           200:
@@ -219,8 +219,8 @@ class ShotAssetTypesResource(Resource):
           - in: path
             name: shot_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
             required: True
         responses:
           200:
@@ -244,8 +244,8 @@ class ProjectAssetsResource(Resource):
           - in: path
             name: project_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
             required: True
         responses:
           200:
@@ -275,14 +275,14 @@ class ProjectAssetTypeAssetsResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assets for given project and asset type
@@ -312,8 +312,8 @@ class AssetAssetsResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All assets linked to given asset
@@ -338,8 +338,8 @@ class AssetTasksResource(Resource, ArgsMixin):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All tasks related to given asset
@@ -365,8 +365,8 @@ class AssetTaskTypesResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All task types of tasks related to given asset
@@ -390,18 +390,19 @@ class NewAssetResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Asset
-            description: Name, description, data and ID of asset
-            schema:
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                 - name
@@ -412,15 +413,19 @@ class NewAssetResource(Resource, ArgsMixin):
                 properties:
                     name:
                         type: string
+                        example: "Character Name"
                     description:
                         type: string
+                        example: "Main character"
                     data:
                         type: string
+                        example: "{}"
                     is_shared:
                         type: boolean
+                        example: false
                     source_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
@@ -484,8 +489,8 @@ class AssetCastingResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Casting of given asset
@@ -507,8 +512,15 @@ class AssetCastingResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Casting data to update
         responses:
             200:
                 description: Modification of assets linked to given asset
@@ -533,8 +545,8 @@ class AssetCastInResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: List of shots that cast given asset
@@ -559,8 +571,8 @@ class AssetShotAssetInstancesResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shot asset instances linked to given asset
@@ -583,8 +595,8 @@ class AssetSceneAssetInstancesResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All scene asset instances linked to given asset
@@ -607,8 +619,8 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All asset instances instantiated inside given asset
@@ -629,8 +641,26 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset_to_instantiate_id:
+                    type: string
+                    format: uuid
+                    required: true
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  description:
+                    type: string
+                    required: false
+                    example: "Asset instance description"
+                required:
+                  - asset_to_instantiate_id
         responses:
             201:
                 description: Asset instance created inside given asset
@@ -681,27 +711,31 @@ class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
         ---
         tags:
         - Assets
-        consumes:
-            - multipart/form-data
         parameters:
           - in: path
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: asset_ids
-            default: None,
-            type: array
-            items:
-                type: UUID
-            x-example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
-          - in: formData
-            name: is_shared
-            default: true
-            type: boolean
-            x-example: true
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: false
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    default: null
+                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+                  is_shared:
+                    type: boolean
+                    default: true
+                    example: true
         responses:
             201:
                 description: All assets modified.
@@ -737,19 +771,25 @@ class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: is_shared
-            default: true
-            type: boolean
-            x-example: true
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: false
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  is_shared:
+                    type: boolean
+                    default: true
+                    example: true
         responses:
             201:
                 description: All assets modified.
@@ -767,21 +807,24 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
         ---
         tags:
         - Assets
-        consumes:
-            - multipart/form-data
-        parameters:
-          - in: formData
-            name: asset_ids
-            default: None,
-            type: array
-            items:
-                type: UUID
-            x-example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
-          - in: formData
-            name: is_shared
-            default: true
-            type: boolean
-            x-example: true
+        requestBody:
+          required: false
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  asset_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    default: null
+                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
+                  is_shared:
+                    type: boolean
+                    default: true
+                    example: true
         responses:
             201:
                 description: All assets modified.
@@ -819,8 +862,8 @@ class ProjectAssetsSharedUsedResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shared assets used in project
@@ -843,14 +886,14 @@ class ProjectEpisodeAssetsSharedUsedResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: episode_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All shared assets used in project episode
