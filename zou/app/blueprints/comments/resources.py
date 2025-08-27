@@ -326,9 +326,6 @@ class AddAttachmentToCommentResource(Resource):
             name: reply_id
             type: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-            required: True
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: files
             type: file

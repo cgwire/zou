@@ -507,7 +507,7 @@ def reply_comment(comment_id, text, person_id=None, files={}):
         "comment:reply",
         {
             "task_id": task["id"],
-            "comment_id": comment,
+            "comment_id": comment["id"],
             "reply_id": reply["id"],
         },
         project_id=task["project_id"],
