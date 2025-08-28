@@ -89,3 +89,59 @@ class EntityServiceTestCase(ApiDBTestCase):
         sequences = entities_service.get_entities_and_tasks()
         self.assertEqual(len(sequences), 3)
         self.assertEqual(len(sequences[0]["tasks"]), 1)
+
+    def test_get_entity_tasks_shot(self):
+        """Test get_entity_tasks for shot entity"""
+        # Generate fixture tasks for the shot
+        self.generate_fixture_shot_task()
+        
+        # Get shot entity
+        shot_entity = entities_service.get_entity(str(self.shot.id))
+        
+        # Get tasks for the shot entity
+        tasks = entities_service.get_entity_tasks(shot_entity)
+        
+        # Verify tasks were returned
+        self.assertIsInstance(tasks, list)
+        self.assertGreater(len(tasks), 0)
+        
+        # Verify task structure
+        task = tasks[0]
+        self.assertIn("id", task)
+        self.assertIn("task_type_name", task)
+        self.assertIn("entity_id", task)
+        self.assertEqual(task["entity_id"], str(self.shot.id))
+
+    def test_get_entity_tasks_asset(self):
+        """Test get_entity_tasks for asset entity"""
+        # Generate fixture task for the asset
+        self.generate_fixture_asset_task()
+        
+        # Get asset entity
+        asset_entity = entities_service.get_entity(str(self.asset.id))
+        
+        # Get tasks for the asset entity
+        tasks = entities_service.get_entity_tasks(asset_entity)
+        
+        # Verify tasks were returned
+        self.assertIsInstance(tasks, list)
+        self.assertGreater(len(tasks), 0)
+        
+        # Verify task structure
+        task = tasks[0]
+        self.assertIn("id", task)
+        self.assertIn("task_type_name", task)
+        self.assertIn("entity_id", task)
+        self.assertEqual(task["entity_id"], str(self.asset.id))
+
+    def test_get_entity_tasks_no_tasks(self):
+        """Test get_entity_tasks when entity has no tasks"""
+        # Get shot entity without creating any tasks
+        shot_entity = entities_service.get_entity(str(self.shot.id))
+        
+        # Get tasks for the shot entity (should be empty)
+        tasks = entities_service.get_entity_tasks(shot_entity)
+        
+        # Verify empty list is returned
+        self.assertIsInstance(tasks, list)
+        self.assertEqual(len(tasks), 0)

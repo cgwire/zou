@@ -5,6 +5,7 @@ from zou.app.services import (
     assets_service,
     shots_service,
     edits_service,
+    tasks_service,
 )
 from zou.app.utils import (
     date_helpers,
@@ -361,6 +362,21 @@ def get_entities_and_tasks(criterions={}):
                 task_map[task_id]["assignees"].append(str(person_id))
 
     return list(entity_map.values())
+
+
+def get_entity_tasks(entity):
+    """
+    Get all tasks for a given entity.
+    """
+    # Get entity_type
+    entity_type = get_entity_type(entity_type_id=entity["entity_type_id"])
+    
+    # Get entity tasks
+    get_tasks = getattr(
+        tasks_service, "get_tasks_for_" + entity_type["name"].lower()
+    )
+    tasks = get_tasks(entity["id"])    
+    return tasks
 
 
 def remove_entity_link(link_id):
