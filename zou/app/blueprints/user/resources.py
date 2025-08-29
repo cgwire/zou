@@ -32,8 +32,8 @@ class AssetTasksResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given asset for current user
@@ -58,8 +58,8 @@ class AssetTaskTypesResource(Resource):
             name: asset_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Task types related to given asset for current user
@@ -84,8 +84,8 @@ class ShotTaskTypesResource(Resource):
             name: shot_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given shot for current user
@@ -110,8 +110,8 @@ class SceneTaskTypesResource(Resource):
             name: scene_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given scene for current user
@@ -136,8 +136,8 @@ class SequenceTaskTypesResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given sequence for current user
@@ -164,14 +164,14 @@ class AssetTypeAssetsResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Assets of which type is given asset type and are
@@ -222,8 +222,8 @@ class ProjectSequencesResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Sequences related to given project
@@ -250,8 +250,8 @@ class ProjectEpisodesResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Episodes related to given project
@@ -278,8 +278,8 @@ class ProjectAssetTypesResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Asset types related to given project
@@ -306,8 +306,8 @@ class SequenceShotsResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Shots related to given sequence
@@ -334,8 +334,8 @@ class SequenceScenesResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Scenes related to given sequence
@@ -360,8 +360,8 @@ class ShotTasksResource(Resource):
             name: shot_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given shot
@@ -386,8 +386,8 @@ class SceneTasksResource(Resource):
             name: scene_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given scene
@@ -412,8 +412,8 @@ class SequenceTasksResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Tasks related to given sequence
@@ -509,7 +509,7 @@ class FiltersResource(Resource, ArgsMixin):
             name: name
             required: True
             type: string
-            x-example: Name of filter
+            example: Name of filter
           - in: formData
             name: query
             required: True
@@ -526,7 +526,7 @@ class FiltersResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
+            format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
@@ -580,8 +580,8 @@ class FilterResource(Resource, ArgsMixin):
             name: filter_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given filter with updated data.
@@ -613,8 +613,8 @@ class FilterResource(Resource, ArgsMixin):
             name: filter_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Empty response
@@ -653,7 +653,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
             name: name
             required: True
             type: string
-            x-example: Name of filter
+            example: Name of filter
           - in: formData
             name: color
             required: True
@@ -674,12 +674,12 @@ class FilterGroupsResource(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
+            format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: department_id
             required: False
-            format: UUID
+            format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
@@ -744,30 +744,30 @@ class FilterGroupResource(Resource, ArgsMixin):
             name: filter_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: name
             type: string
-            x-example: Name of the filter group
+            example: Name of the filter group
           - in: formData
             name: color
             type: string
-            x-example: Color of the filter group
+            example: Color of the filter group
           - in: formData
             name: is_shared
             type: boolean
-            x-example: True
+            example: True
           - in: formData
             name: project_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: department_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given filter group with updated data
@@ -797,8 +797,8 @@ class FilterGroupResource(Resource, ArgsMixin):
             name: filter_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Empty response
@@ -839,7 +839,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
             name: date
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             201:
                 description: Desktop login log created
@@ -866,12 +866,12 @@ class NotificationsResource(Resource, ArgsMixin):
             name: after
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
           - in: formData
             name: before
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             200:
                 description: 100 last user notifications
@@ -929,8 +929,8 @@ class NotificationResource(Resource, ArgsMixin):
             name: notification_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
 
         responses:
             200:
@@ -949,8 +949,8 @@ class NotificationResource(Resource, ArgsMixin):
             name: notification_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Notification
@@ -991,8 +991,8 @@ class HasTaskSubscribedResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: True if current user has subscribed to given task,
@@ -1021,8 +1021,8 @@ class TaskSubscribeResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Subscription entry created
@@ -1049,8 +1049,8 @@ class TaskUnsubscribeResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Subscription entry removed
@@ -1076,14 +1076,14 @@ class HasSequenceSubscribedResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: True if current user has subscribed to given
@@ -1115,14 +1115,14 @@ class SequenceSubscribeResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Subscription entry created
@@ -1150,14 +1150,14 @@ class SequenceUnsubscribeResource(Resource):
             name: sequence_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: Subscription entry removed
@@ -1184,14 +1184,14 @@ class SequenceSubscriptionsResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description:  List of sequence ids to which the current user
@@ -1264,14 +1264,14 @@ class TaskTimeSpentResource(Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
             required: True
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             200:
                 description:  Time spents for current user and given date
@@ -1304,7 +1304,7 @@ class DayOffResource(Resource):
             required: True
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
         responses:
             200:
                 description:  Day off object for current user and given date
@@ -1380,8 +1380,8 @@ class JoinChatResource(Resource):
             name: entity_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Chat joined
@@ -1403,8 +1403,8 @@ class JoinChatResource(Resource):
             name: entity_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: empty response

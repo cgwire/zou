@@ -41,14 +41,14 @@ class AddSoftwareToDepartmentResource(Resource, ArgsMixin):
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: software_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: User added to given department
@@ -83,8 +83,8 @@ class SoftwareDepartmentResource(Resource, ArgsMixin):
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Software items for given department
@@ -110,14 +110,14 @@ class SoftwareDepartmentResource(Resource, ArgsMixin):
             name: software_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: User removed from given department
@@ -167,14 +167,14 @@ class AddHardwareItemToDepartmentResource(Resource, ArgsMixin):
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: hardware_item_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Hardware item added to given department
@@ -213,8 +213,8 @@ class HardwareItemDepartmentResource(Resource, ArgsMixin):
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Hardware items for given department
@@ -240,14 +240,14 @@ class HardwareItemDepartmentResource(Resource, ArgsMixin):
             name: department_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: hardware_item_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
                 description: User removed from given department

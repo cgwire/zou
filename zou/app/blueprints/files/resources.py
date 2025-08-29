@@ -119,8 +119,8 @@ class WorkingFileFileResource(Resource):
             name: working_file_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Working file downloaded
@@ -147,8 +147,8 @@ class WorkingFileFileResource(Resource):
             name: working_file_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: file
             type: file
@@ -187,8 +187,8 @@ class WorkingFilePathResource(Resource, ArgsMixin):
             name: task_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Name, software, mode, revision and separator.
@@ -203,7 +203,7 @@ class WorkingFilePathResource(Resource, ArgsMixin):
                         default: working
                     software_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     comment:
                         type: string
@@ -309,8 +309,8 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Entity, output type, task type, revision, mode, name and separator.
@@ -328,11 +328,11 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
                         default: output
                     output_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     extension:
                         type: string
@@ -428,14 +428,14 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Asset instance, output type, task type, revision, mode, name and separator.
@@ -453,11 +453,11 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
                         default: output
                     output_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     extension:
                         type: string
@@ -547,8 +547,8 @@ class LastWorkingFilesResource(Resource):
             name: task_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Last working files revision for each file name for given task
@@ -577,8 +577,8 @@ class TaskWorkingFilesResource(Resource):
             name: task_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Last working files revision for each file name for given task
@@ -619,8 +619,8 @@ class NewWorkingFileResource(Resource, ArgsMixin):
             name: task_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Name, mode, description, comment, person ID, software ID, revision and separator.
@@ -640,11 +640,11 @@ class NewWorkingFileResource(Resource, ArgsMixin):
                         type: string
                     person_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     software_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     revision:
                         type: integer
@@ -761,8 +761,8 @@ class ModifiedFileResource(Resource):
             name: working_file_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
               description: Working file modification date updated
@@ -793,8 +793,8 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
             name: working_file_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Comment
             schema:
@@ -867,8 +867,8 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Name, mode, output type ID, task type ID, person ID, working file ID, file status ID, comment, extension, representation, revision, number of elements and separator.
@@ -885,23 +885,23 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                         default: output
                     output_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     person_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     working_file_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     file_status_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     comment:
                         type: string
@@ -1088,14 +1088,14 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Name, mode, output type ID, task type ID, person ID, working file ID, file status ID, comment, extension, representation, revision, number of elements and separator.
@@ -1113,23 +1113,23 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                         default: output
                     output_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     person_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     working_file_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     file_status_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     is_sequence:
                         type: boolean
@@ -1311,8 +1311,8 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Name, output type ID, task type ID.
@@ -1327,11 +1327,11 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
                         default: main
                     output_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -1376,14 +1376,14 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: File
             description: Name, output type ID, task type ID.
@@ -1398,11 +1398,11 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
                         default: main
                     output_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
                     task_type_id:
                         type: string
-                        format: UUID
+                        format: uuid
                         example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -1455,8 +1455,8 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Last revisions of output files for given entity grouped by output type and file name
@@ -1502,38 +1502,38 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
             type: string
-            format: UUID
-            x-example: cache
+            format: uuid
+            example: cache
         responses:
             200:
                 description: Last revisions of output files for given instance
@@ -1581,8 +1581,8 @@ class EntityOutputTypesResource(Resource):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All types of output generated for given entity
@@ -1609,14 +1609,14 @@ class InstanceOutputTypesResource(Resource):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: All types of output generated for given instance
@@ -1647,14 +1647,14 @@ class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: output_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description:  All output files for given entity and given output type
@@ -1690,20 +1690,20 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: output_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description:  All output files for given asset instance and given output type
@@ -1738,32 +1738,32 @@ class ProjectOutputFilesResource(Resource, ArgsMixin):
             name: project_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
             type: string
-            format: UUID
-            x-example: cache
+            format: uuid
+            example: cache
         responses:
             200:
                 description:  All output files for given project.
@@ -1806,32 +1806,32 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
             type: string
-            format: UUID
-            x-example: cache
+            format: uuid
+            example: cache
         responses:
             200:
                 description:  All output files for given entity
@@ -1876,38 +1876,38 @@ class InstanceOutputFilesResource(Resource):
             name: asset_instance_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: temporal_entity_id
             required: true
             type: string
-            format: UUID
-            x-example: cache
+            format: uuid
+            example: cache
           - in: query
             name: output_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
             type: string
-            format: UUID
-            x-example: cache
+            format: uuid
+            example: cache
         responses:
             200:
                 description: All output files for given asset instance and
@@ -1953,8 +1953,8 @@ class FileResource(Resource):
             name: file_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Information about file
@@ -1993,8 +1993,8 @@ class SetTreeResource(Resource, ArgsMixin):
             name: project_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Tree name
             schema:
@@ -2049,8 +2049,8 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
             name: entity_id
             required: true
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description:  All working files for given entity and possibly a task and a name

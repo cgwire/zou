@@ -103,41 +103,41 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: before
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
           - in: query
             name: after
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
           - in: query
             name: page
             type: integer
-            x-example: 1
+            example: 1
           - in: query
             name: limit
             type: integer
-            x-example: 50
+            example: 50
           - in: query
             name: person_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_status_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: episode_id
             type: boolean
@@ -166,41 +166,41 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: before
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
           - in: query
             name: after
             type: string
             format: date
-            x-example: "2022-07-12"
+            example: "2022-07-12"
           - in: query
             name: page
             type: integer
-            x-example: 1
+            example: 1
           - in: query
             name: limit
             type: integer
-            x-example: 50
+            example: 50
           - in: query
             name: person_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_status_id
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: episode_id
             type: boolean
@@ -234,14 +234,14 @@ class ProjectSingleNewsResource(Resource):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: news_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Single given news related to given project

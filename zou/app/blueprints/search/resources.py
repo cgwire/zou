@@ -20,19 +20,19 @@ class SearchResource(Resource, ArgsMixin):
             name: query
             required: True
             type: string
-            x-example: test will search for test
+            example: test will search for test
           - in: formData
             name: limit
             required: False
             type: integer
             default: 3
-            x-example: 3
+            example: 3
           - in: formData
             name: index_names
             required: False
             type: list of strings
             default: ["assets", "shots", "persons"]
-            x-example: ["assets"]
+            example: ["assets"]
         responses:
             200:
                 description: List of entities that contain the query

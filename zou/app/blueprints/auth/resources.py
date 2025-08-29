@@ -153,19 +153,19 @@ class LoginResource(Resource, ArgsMixin):
             required: True
             type: string
             format: email
-            x-example: admin@example.com
+            example: admin@example.com
           - in: formData
             name: password
             required: True
             type: string
             format: password
-            x-example: mysecretpassword
+            example: mysecretpassword
           - in: formData
             name: otp
             required: False
             type: string
             format: password
-            x-example: 123456
+            example: 123456
         responses:
           200:
             description: Login successful
@@ -412,7 +412,7 @@ class RegistrationResource(Resource, ArgsMixin):
             required: True
             type: string
             format: email
-            x-example: admin@example.com
+            example: admin@example.com
           - in: formData
             name: password
             required: True
@@ -647,7 +647,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
             required: True
             type: string
             format: email
-            x-example: admin@example.com
+            example: admin@example.com
           - in: formData
             name: token
             required: True
@@ -726,7 +726,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
             required: True
             type: string
             format: email
-            x-example: admin@example.com
+            example: admin@example.com
         responses:
           200:
             description: Reset token sent

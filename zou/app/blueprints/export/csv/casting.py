@@ -25,8 +25,8 @@ class CastingCsvExport(Resource, ArgsMixin):
             name: project_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Casting exported as csv

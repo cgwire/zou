@@ -389,8 +389,8 @@ class CreatePreviewFilePictureResource(
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: file
             required: True
@@ -546,8 +546,8 @@ class AddTaskBatchCommentResource(BaseBatchComment, Resource):
             name: task_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
             name: Comment
             description: person ID, name, comment, revision and change status of task
@@ -635,8 +635,8 @@ class PreviewFileMovieResource(BasePreviewFileResource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Movie preview downloaded
@@ -676,8 +676,8 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Lowdef movie preview downloaded
@@ -722,8 +722,8 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Movie preview downloaded
@@ -765,13 +765,13 @@ class PreviewFileResource(BasePreviewFileResource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: extension
             required: True
             type: string
-            x-example: png, pdf, jpg, jpeg, ...
+            example: png, pdf, jpg, jpeg, ...
         responses:
             200:
                 description: Generic file preview downloaded
@@ -826,8 +826,8 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Generic file preview downloaded as attachment
@@ -918,8 +918,8 @@ class AttachmentThumbnailResource(Resource):
             name: attachment_file_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Thumbnail downloaded
@@ -968,8 +968,8 @@ class BasePreviewPictureResource(BasePreviewFileResource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Thumbnail downloaded
@@ -1101,8 +1101,8 @@ class BaseThumbnailResource(Resource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: file
             required: True
@@ -1150,8 +1150,8 @@ class BaseThumbnailResource(Resource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Thumbnail downloaded
@@ -1264,8 +1264,8 @@ class SetMainPreviewResource(Resource, ArgsMixin):
             name: preview_file_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given preview set as main preview
@@ -1309,8 +1309,8 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
             name: preview_file_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Orders of previews changed for a single revision
@@ -1351,8 +1351,8 @@ class UpdateAnnotationsResource(Resource, ArgsMixin):
             name: preview_file_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Orders of previews changed for a single revision
@@ -1432,8 +1432,8 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
              name: preview_file_id
              required: True
              type: string
-             format: UUID
-             x-example: a24a6ea4-ce75-4665-a070-57453082c25
+             format: uuid
+             example: a24a6ea4-ce75-4665-a070-57453082c25
          responses:
              200:
                  description: Extracted frame
@@ -1505,8 +1505,8 @@ class CreatePreviewBackgroundFileResource(Resource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: file
             required: True
@@ -1648,14 +1648,14 @@ class PreviewBackgroundFileResource(Resource):
             name: instance_id
             required: True
             type: string
-            format: UUID
-            x-example: a24a6ea4-ce75-4665-a070-57453082c25
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: extension
             required: True
             type: string
             format: extension
-            x-example: hdr
+            example: hdr
         responses:
             200:
                 description: Preview background file downloaded
