@@ -1625,7 +1625,7 @@ class PersonsTasksDatesResource(Resource, ArgsMixin):
                 description: For each person, the first start date of all tasks of assigned to this person and the last end date.
         """
         permissions.check_admin_permissions()
-        args = self.get_args([("project_id", None, True, str)])
+        args = self.get_args([("project_id", None, False, str)])
         return tasks_service.get_persons_tasks_dates(
             project_id=args["project_id"]
         )
