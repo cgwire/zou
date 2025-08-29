@@ -502,11 +502,12 @@ def reply_comment(comment_id, text, person_id=None, files={}):
             new_attachment_file["reply_id"] = reply["id"]
         reply["attachment_files"] = new_attachment_files
     tasks_service.clear_comment_cache(comment_id)
+    comment = comment.serialize(relations=True)
     events.emit(
         "comment:reply",
         {
             "task_id": task["id"],
-            "comment_id": comment_id,
+            "comment_id": comment,
             "reply_id": reply["id"],
         },
         project_id=task["project_id"],
