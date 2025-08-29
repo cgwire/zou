@@ -323,6 +323,13 @@ class AddAttachmentToCommentResource(Resource):
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
+            name: reply_id
+            type: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+            required: True
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
             name: files
             type: file
             required: True
@@ -337,7 +344,9 @@ class AddAttachmentToCommentResource(Resource):
             user_service.check_manager_project_access(task["project_id"])
 
         files = request.files
-        comment = comments_service.add_attachments_to_comment(comment, files)
+        comment = comments_service.add_attachments_to_comment(
+            comment, files, reply_id=None
+        )
         return comment["attachment_files"], 201
 
 
@@ -487,12 +496,6 @@ class ReplyCommentResource(Resource, ArgsMixin):
             200:
                 description: Reply to given comment
         """
-        args = self.get_args(
-            [
-                ("text", "", False),
-            ]
-        )
-
         comment = tasks_service.get_comment(comment_id)
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
@@ -500,7 +503,17 @@ class ReplyCommentResource(Resource, ArgsMixin):
                 raise permissions.PermissionDenied()
             user_service.check_task_action_access(task_id)
 
-        return comments_service.reply_comment(comment_id, args["text"])
+        args = self.get_args(
+            [
+                ("text", "", False),
+            ]
+        )
+        files = request.files
+        return comments_service.reply_comment(
+            comment_id,
+            args["text"],
+            files=files
+        )
 
 
 class DeleteReplyCommentResource(Resource):

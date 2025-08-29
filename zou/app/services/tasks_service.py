@@ -752,6 +752,7 @@ def _build_attachment_map_for_comments(comment_ids):
                 "id": attachment_file_id,
                 "name": attachment_file.name,
                 "extension": attachment_file.extension,
+                "reply_id": attachment_file.reply_id,
                 "size": attachment_file.size,
             }
         )

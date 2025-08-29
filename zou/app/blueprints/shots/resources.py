@@ -64,10 +64,13 @@ class ShotResource(Resource, ArgsMixin):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: data
-            required: True
-            type: object
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Shot data to update
         responses:
             200:
                 description: Update given shot
@@ -711,23 +714,32 @@ class ProjectShotsResource(Resource, ArgsMixin):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of shot
-          - in: formData
-            name: description
-            type: string
-            example: Description of shot
-          - in: formData
-            name: sequence_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: nb_frames
-            type: integer
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                properties:
+                  name:
+                    type: string
+                    required: true
+                    example: "Name of shot"
+                  description:
+                    type: string
+                    required: false
+                    example: "Description of shot"
+                  sequence_id:
+                    type: string
+                    format: uuid
+                    required: false
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  nb_frames:
+                    type: integer
+                    required: false
+                    example: 24
         responses:
             201:
                 description: Shot created for given project
@@ -812,16 +824,24 @@ class ProjectSequencesResource(Resource, ArgsMixin):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of sequence
-          - in: formData
-            name: episode_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                properties:
+                  name:
+                    type: string
+                    required: true
+                    example: "Name of sequence"
+                  episode_id:
+                    type: string
+                    format: uuid
+                    required: false
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Sequence created for given project
@@ -896,16 +916,24 @@ class ProjectEpisodesResource(Resource, ArgsMixin):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of the episode
-          - in: formData
-            name: description
-            required: True
-            type: string
-            example: Description of the episode
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                  - description
+                properties:
+                  name:
+                    type: string
+                    required: true
+                    example: "Name of the episode"
+                  description:
+                    type: string
+                    required: true
+                    example: "Description of the episode"
         responses:
             201:
                 description: Episode created for given project
@@ -1309,17 +1337,25 @@ class ProjectScenesResource(Resource, ArgsMixin):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of scene
-          - in: formData
-            name: sequence_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                  - sequence_id
+                properties:
+                  name:
+                    type: string
+                    required: true
+                    example: "Name of scene"
+                  sequence_id:
+                    type: string
+                    format: uuid
+                    required: true
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
                 description: Scene created for given project
@@ -1453,11 +1489,20 @@ class SceneShotsResource(Resource, ArgsMixin):
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: shot_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - shot_id
+                properties:
+                  shot_id:
+                    type: string
+                    format: uuid
+                    required: true
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
                 description: Given scene marked as source of given shot
@@ -1696,21 +1741,28 @@ class SetShotsFramesResource(Resource, ArgsMixin):
         ---
         tags:
         - Shots
-        parameters:
-          - in: formData
-            name: shots
-            required: True
-            type: array
-            items:
-              type: object
-              properties:
-                shot_id:
-                  type: string
-                  format: uuid
-                  example: a24a6ea4-ce75-4665-a070-57453082c25
-                nb_frames:
-                  type: integer
-                  example: 24
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - shots
+                properties:
+                  shots:
+                    type: array
+                    required: true
+                    items:
+                      type: object
+                      properties:
+                        shot_id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        nb_frames:
+                          type: integer
+                          example: 24
         responses:
             200:
                 description: Frames set for given shots

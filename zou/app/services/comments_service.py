@@ -19,6 +19,7 @@ from zou.app.services import (
     assets_service,
     base_service,
     breakdown_service,
+    deletion_service,
     entities_service,
     news_service,
     notifications_service,
@@ -355,7 +356,7 @@ def reset_mentions(comment):
     return comment_dict
 
 
-def create_attachment(comment, uploaded_file, randomize=False):
+def create_attachment(comment, uploaded_file, randomize=False, reply_id=None):
     tmp_folder = current_app.config["TMP_DIR"]
     filename = uploaded_file.filename
     mimetype = uploaded_file.mimetype
@@ -366,11 +367,19 @@ def create_attachment(comment, uploaded_file, randomize=False):
         filename = f"{filename[:len(filename) - len(extension) - 1]}"
         filename += f"-{random_str}.{extension}"
 
+    if reply_id is not None:
+        is_reply_present = any(
+            reply["id"] == reply_id for reply in comment.get("replies", [])
+        )
+        if not is_reply_present:
+            reply_id = None
+
     attachment_file = AttachmentFile.create(
         name=filename,
         size=0,
         extension=extension,
         mimetype=mimetype,
+        reply_id=reply_id,
         comment_id=comment["id"],
     )
     attachment_file_id = str(attachment_file.id)
@@ -455,7 +464,7 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     )
 
 
-def reply_comment(comment_id, text, person_id=None):
+def reply_comment(comment_id, text, person_id=None, files={}):
     """
     Add a reply entry to the JSONB field of given comment model. Create
     notifications needed for this.
@@ -469,6 +478,7 @@ def reply_comment(comment_id, text, person_id=None):
     task = tasks_service.get_task(comment.object_id, relations=True)
     if comment.replies is None:
         comment.replies = []
+
     reply = {
         "id": str(fields.gen_uuid()),
         "date": date_helpers.get_now(),
@@ -483,18 +493,26 @@ def reply_comment(comment_id, text, person_id=None):
     replies = list(comment.replies)
     replies.append(reply)
     comment.update({"replies": replies})
+    if len(files.keys()) > 0:
+        comment = comment.serialize(relations=True)
+        new_attachment_files = add_attachments_to_comment(
+            comment, files, reply_id=reply["id"]
+        )
+        for new_attachment_file in new_attachment_files:
+            new_attachment_file["reply_id"] = reply["id"]
+        reply["attachment_files"] = new_attachment_files
     tasks_service.clear_comment_cache(comment_id)
     events.emit(
         "comment:reply",
         {
             "task_id": task["id"],
-            "comment_id": str(comment.id),
+            "comment_id": comment["id"],
             "reply_id": reply["id"],
         },
         project_id=task["project_id"],
     )
     notifications_service.create_notifications_for_task_and_reply(
-        task, comment.serialize(), reply
+        task, comment, reply
     )
     return reply
 
@@ -508,6 +526,14 @@ def get_reply(comment_id, reply_id):
 def delete_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id)
+
+    if comment.attachment_files is None:
+        comment.attachment_files = []
+        for attachment_file in comment.attachment_files:
+            if attachment_file.reply_id == reply_id:
+                deletion_service.remove_attachment_file_by_id(
+                    attachment_file["id"]
+                )
     if comment.replies is None:
         comment.replies = []
     comment.replies = [
@@ -567,19 +593,25 @@ def get_comment_department_mention_ids(project_id, text):
     ]
 
 
-def add_attachments_to_comment(comment, files):
+def add_attachments_to_comment(comment, files, reply_id=None):
     """
     Create an attachment entry and for each given uploaded files and tie it
     to given comment.
     """
-    comment["attachment_files"] = []
+    if comment["attachment_files"] is None:
+        comment["attachment_files"] = []
+    new_attachment_files = []
     for uploaded_file in files.values():
         try:
-            attachment_file = create_attachment(comment, uploaded_file)
-            comment["attachment_files"].append(attachment_file)
-        except IntegrityError:
             attachment_file = create_attachment(
-                comment, uploaded_file, randomize=True
+                comment, uploaded_file, reply_id=reply_id
             )
             comment["attachment_files"].append(attachment_file)
-    return comment
+            new_attachment_files.append(attachment_file)
+        except IntegrityError:
+            attachment_file = create_attachment(
+                comment, uploaded_file, randomize=True, reply_id=reply_id
+            )
+            comment["attachment_files"].append(attachment_file)
+            new_attachment_files.append(attachment_file)
+    return new_attachment_files

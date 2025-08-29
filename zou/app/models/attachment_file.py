@@ -21,6 +21,10 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
         index=True,
         nullable=True,
     )
+    reply_id = db.Column(
+        UUIDType(binary=False),
+        nullable=True,
+    )
     chat_message_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("chat_message.id"),
