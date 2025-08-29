@@ -567,7 +567,12 @@ def is_asset_type(entity_type):
     """
     Returns true if given entity type is an asset, not a shot.
     """
-    return str(entity_type.id) not in get_temporal_type_ids()
+    entity_type_id = ""
+    if isinstance(entity_type, dict):
+        entity_type_id = entity_type.get("id", "")
+    else:
+        entity_type_id = str(entity_type.id)
+    return entity_type_id not in get_temporal_type_ids()
 
 
 def create_asset_types(asset_type_names):

@@ -1,4 +1,5 @@
 from zou.app.services import (
+    assets_service,
     base_service,
     projects_service,
     notifications_service,
@@ -368,15 +369,14 @@ def get_entity_tasks(entity):
     """
     Get all tasks for a given entity.
     """
-    # Get entity_type
     entity_type = get_entity_type(entity_type_id=entity["entity_type_id"])
-    
-    # Get entity tasks
+    entity_type_name = entity_type["name"]
+    if assets_service.is_asset_type(entity_type):
+        entity_type_name = "Asset"
     get_tasks = getattr(
-        tasks_service, "get_tasks_for_" + entity_type["name"].lower()
+        tasks_service, "get_tasks_for_" + entity_type_name.lower()
     )
-    tasks = get_tasks(entity["id"])    
-    return tasks
+    return get_tasks(entity["id"])    
 
 
 def remove_entity_link(link_id):

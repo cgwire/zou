@@ -79,39 +79,17 @@ def create_comment(
     files={},
     created_at="",
     links=[],
+    with_hashtags=True
 ):
     """
     Create a new comment and related: news, notifications and events.
     """
-    # Author
+    related_tasks = []
     author = _get_comment_author(person_id)
-
-    # Get original task
     task = tasks_service.get_task(task_id, relations=True)
-    tasks = []
-
-    # Task_status for original task
     task_status = tasks_service.get_task_status(task_status_id)
+    task_type = tasks_service.get_task_type(task["task_type_id"])
     _check_retake_capping(task_status, task)
-
-    # If not links provided the function works as before
-    if not links:
-        # For the original first comment there will be no links from what is observed in the database      
-        original_task_type = tasks_service.get_task_type(task["task_type_id"])
-
-        # Get task entity
-        entity = entities_service.get_entity(entity_id=task["entity_id"])
-
-        # get all tasks of entity
-        tasks = entities_service.get_entity_tasks(entity)
-
-        entity_task_types = [task["task_type_name"] for task in tasks] + ["all"]   
-
-        # Parse hashtags
-        hashtags = get_comment_hashtags(text=text, task_types=entity_task_types)
-
-        if hashtags:
-            tasks = filter_tasks_by_hashtags(tasks, hashtags, exclude_tasks=[original_task_type["name"]])
 
     comment = new_comment(
         task_id=task_id,
@@ -125,22 +103,8 @@ def create_comment(
         links=links,
     )
 
-    # tasks are of length 0 if not links are provided
-    if len(tasks) > 0:
-        for _task in tasks:
-            task_status = tasks_service.get_task_status(_task["task_status_id"])
-            params = dict(
-                person_id=person_id,
-                task_id=_task["id"],
-                text=text
-                + f"</br></br>____</br>Created by: {author['first_name']} {author['last_name']}</br>On task - {_task['name']}{original_task_type['name']}.",
-                files={},
-                task_status_id=task_status["id"],
-                checklist=[],
-                created_at=None,
-                links=[comment["id"]],
-            )
-            create_comment(**params)
+    if with_hashtags:
+        _handle_hashtags(author, task_type, task, text)
 
     task, status_changed = _manage_status_change(task_status, task, comment)
     _manage_subscriptions(task, comment, status_changed)
@@ -154,6 +118,28 @@ def create_comment(
         _run_status_automation(automation, task, person_id)
 
     return comment
+
+
+def _handle_hashtags(person, task_type, task, text):
+    hashtags = get_comment_hashtags(text)
+    if len(hashtags) > 0:
+        entity = entities_service.get_entity(entity_id=task["entity_id"])
+        tasks = entities_service.get_entity_tasks(entity)
+        tasks = filter_tasks_by_hashtags(tasks, hashtags, task_type)
+        if len(tasks) > 0:
+            for _task in tasks:
+                task_status = tasks_service.get_task_status(
+                    _task["task_status_id"]
+                )
+                create_comment(
+                    person_id=person["id"],
+                    task_id=_task["id"],
+                    text=text + f"\n\n____\nFrom {task_type['name']} task",
+                    task_status_id=task_status["id"],
+                    with_hashtags=False
+                )
+    return hashtags
+
 
 
 def _check_retake_capping(task_status, task):
@@ -639,33 +625,43 @@ def get_comment_department_mention_ids(project_id, text):
     ]
 
 
-def get_comment_hashtags(task_types: list, text: str):
+def get_comment_hashtags(text):
     """
-    Check for task type mentions (#full name) in text and returns matching task
-    active records.
+    Check for task type mentions (#full name) in text and returns matching 
+    tags. If all is present, return only all because it includes everything
+    else.
     """
-    hashtags = []
-    for task_type in task_types:
-        if re.search("#%s( |$)" % task_type, text, re.IGNORECASE) is not None:
-            hashtags.append(task_type)
+    hashtags = [
+        hashtag[1:].lower()
+        for hashtag in re.findall("#[a-zA-Z]*", text, re.IGNORECASE)
+    ]
     if "all" in hashtags:
-        hashtags = ["all"]
-    return hashtags
+        return ["all"]
+    return list(set(hashtags))
 
 
-def filter_tasks_by_hashtags(tasks, hashtags: list[str], exclude_tasks: list[str] = []):
+def filter_tasks_by_hashtags(tasks, hashtags, original_task_type):
     """
     Filter tasks based on hashtags, excluding specified task types.
     """
-    # valid hashtags
-    hashtags = [hashtag for hashtag in hashtags if hashtag not in exclude_tasks]    
-    if hashtags and "all" not in hashtags:
-        tasks = [
-            _task
-            for _task in tasks
-            if _task["task_type_name"] in hashtags
+    if "all" in hashtags:
+        return [
+            task
+            for task in tasks
+            if task["task_type_name"].lower() != \
+                original_task_type["name"].lower()
         ]
-    return tasks
+    else:
+        hashtag_map = {
+            hashtag: True
+            for hashtag in hashtags 
+            if hashtag != original_task_type["name"].lower()
+        }
+        return [
+            task
+            for task in tasks
+            if hashtag_map.get(task["task_type_name"].lower(), False)
+        ]
 
 
 def add_attachments_to_comment(comment, files, reply_id=None):

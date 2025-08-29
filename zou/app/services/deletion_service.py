@@ -118,6 +118,10 @@ def remove_task(task_id, force=False):
         for subscription in subscriptions:
             subscription.delete()
 
+        working_files = WorkingFile.query.filter_by(task_id=task_id)
+        for working_file in working_files:
+            working_file.delete()
+
         preview_files = PreviewFile.query.filter_by(task_id=task_id)
         for preview_file in preview_files:
             remove_preview_file(preview_file)
