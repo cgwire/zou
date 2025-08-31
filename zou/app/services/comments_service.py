@@ -544,7 +544,7 @@ def reply_comment(comment_id, text, person_id=None, files={}):
         project_id=task["project_id"],
     )
     notifications_service.create_notifications_for_task_and_reply(
-        task, comment.serialize(), reply
+        task, comment, reply
     )
     return reply
 
