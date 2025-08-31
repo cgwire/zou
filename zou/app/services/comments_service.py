@@ -538,13 +538,13 @@ def reply_comment(comment_id, text, person_id=None, files={}):
         "comment:reply",
         {
             "task_id": task["id"],
-            "comment_id": comment["id"],
+            "comment_id": comment_id,
             "reply_id": reply["id"],
         },
         project_id=task["project_id"],
     )
     notifications_service.create_notifications_for_task_and_reply(
-        task, comment, reply
+        task, comment.serialize(), reply
     )
     return reply
 
