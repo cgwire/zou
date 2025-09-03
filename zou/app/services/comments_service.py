@@ -524,16 +524,15 @@ def reply_comment(comment_id, text, person_id=None, files={}):
     replies = list(comment.replies)
     replies.append(reply)
     comment.update({"replies": replies})
+    comment_dict = comment.serialize(relations=True)
     if len(files.keys()) > 0:
-        comment = comment.serialize(relations=True)
         new_attachment_files = add_attachments_to_comment(
-            comment, files, reply_id=reply["id"]
+            comment_dict, files, reply_id=reply["id"]
         )
         for new_attachment_file in new_attachment_files:
             new_attachment_file["reply_id"] = reply["id"]
         reply["attachment_files"] = new_attachment_files
     tasks_service.clear_comment_cache(comment_id)
-    comment = comment.serialize(relations=True)
     events.emit(
         "comment:reply",
         {
@@ -544,7 +543,7 @@ def reply_comment(comment_id, text, person_id=None, files={}):
         project_id=task["project_id"],
     )
     notifications_service.create_notifications_for_task_and_reply(
-        task, comment, reply
+        task, comment_dict, reply
     )
     return reply
 
@@ -669,7 +668,7 @@ def add_attachments_to_comment(comment, files, reply_id=None):
     Create an attachment entry and for each given uploaded files and tie it
     to given comment.
     """
-    if comment["attachment_files"] is None:
+    if comment.get("attachment_files", None) is None:
         comment["attachment_files"] = []
     new_attachment_files = []
     for uploaded_file in files.values():
