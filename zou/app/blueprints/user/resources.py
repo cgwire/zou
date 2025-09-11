@@ -17,9 +17,6 @@ from zou.app.services.exception import WrongDateFormatException
 
 
 class AssetTasksResource(Resource):
-    """
-    Return tasks related to given asset for current user.
-    """
 
     def get(self, asset_id):
         """
@@ -30,22 +27,28 @@ class AssetTasksResource(Resource):
         parameters:
           - in: path
             name: asset_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given asset for current user
+              description: Tasks related to given asset for current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Asset not found
         """
         assets_service.get_asset(asset_id)
         return user_service.get_tasks_for_entity(asset_id)
 
 
 class AssetTaskTypesResource(Resource):
-    """
-    Return task types related to given asset for current user.
-    """
 
     def get(self, asset_id):
         """
@@ -56,22 +59,28 @@ class AssetTaskTypesResource(Resource):
         parameters:
           - in: path
             name: asset_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Task types related to given asset for current user
+              description: Task types related to given asset for current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Asset not found
         """
         assets_service.get_asset(asset_id)
         return user_service.get_task_types_for_entity(asset_id)
 
 
 class ShotTaskTypesResource(Resource):
-    """
-    Return tasks related to given shot for current user.
-    """
 
     def get(self, shot_id):
         """
@@ -82,13 +91,22 @@ class ShotTaskTypesResource(Resource):
         parameters:
           - in: path
             name: shot_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given shot for current user
+              description: Tasks related to given shot for current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Shot not found
         """
         shots_service.get_shot(shot_id)
         return user_service.get_task_types_for_entity(shot_id)
@@ -108,13 +126,22 @@ class SceneTaskTypesResource(Resource):
         parameters:
           - in: path
             name: scene_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given scene for current user
+              description: Tasks related to given scene for current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Scene not found
         """
         shots_service.get_scene(scene_id)
         return user_service.get_task_types_for_entity(scene_id)
@@ -134,23 +161,28 @@ class SequenceTaskTypesResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given sequence for current user
+              description: Tasks related to given sequence for current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Sequence not found
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_task_types_for_entity(sequence_id)
 
 
 class AssetTypeAssetsResource(Resource):
-    """
-    Return assets of which type is given asset type and are listed in given
-    project if user has access to this project.
-    """
 
     def get(self, project_id, asset_type_id):
         """
@@ -162,20 +194,29 @@ class AssetTypeAssetsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Assets of which type is given asset type and are
-                    listed in given project
+              description: Assets of which type is given asset type and are listed in given project
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Project or asset type not found
         """
         projects_service.get_project(project_id)
         assets_service.get_asset_type(asset_type_id)
@@ -185,9 +226,6 @@ class AssetTypeAssetsResource(Resource):
 
 
 class OpenProjectsResource(Resource, ArgsMixin):
-    """
-    Return open projects for which the user has at least one task assigned.
-    """
 
     def get(self):
         """
@@ -195,20 +233,28 @@ class OpenProjectsResource(Resource, ArgsMixin):
         ---
         tags:
         - User
+        parameters:
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter projects by name
         responses:
             200:
-                description: Open projects for which the user has at least
-                    one task assigned
+              description: Open projects for which the user has at least one task assigned
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         name = self.get_text_parameter("name")
         return user_service.get_open_projects(name=name)
 
 
 class ProjectSequencesResource(Resource):
-    """
-    Return sequences related to given project if the current user has access
-    to it.
-    """
 
     def get(self, project_id):
         """
@@ -220,23 +266,28 @@ class ProjectSequencesResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Sequences related to given project
+              description: Sequences related to given project
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Project not found
         """
         projects_service.get_project(project_id)
         return user_service.get_sequences_for_project(project_id)
 
 
 class ProjectEpisodesResource(Resource):
-    """
-    Return episodes related to given project if the current user has access to
-    it.
-    """
 
     def get(self, project_id):
         """
@@ -248,23 +299,28 @@ class ProjectEpisodesResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Episodes related to given project
+              description: Episodes related to given project
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Project not found
         """
         projects_service.get_project(project_id)
         return user_service.get_project_episodes(project_id)
 
 
 class ProjectAssetTypesResource(Resource):
-    """
-    Return asset types related to given project if the current user has access
-    to it.
-    """
 
     def get(self, project_id):
         """
@@ -276,23 +332,28 @@ class ProjectAssetTypesResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Asset types related to given project
+              description: Asset types related to given project
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Project not found
         """
         projects_service.get_project(project_id)
         return user_service.get_asset_types_for_project(project_id)
 
 
 class SequenceShotsResource(Resource):
-    """
-    Return shots related to given sequence if the current user has access
-    to it.
-    """
 
     def get(self, sequence_id):
         """
@@ -304,23 +365,28 @@ class SequenceShotsResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Shots related to given sequence
+              description: Shots related to given sequence
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Sequence not found
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_shots_for_sequence(sequence_id)
 
 
 class SequenceScenesResource(Resource):
-    """
-    Return scenes related to given sequence if the current user has access
-    to it.
-    """
 
     def get(self, sequence_id):
         """
@@ -332,22 +398,28 @@ class SequenceScenesResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Scenes related to given sequence
+              description: Scenes related to given sequence
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Sequence not found
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_scenes_for_sequence(sequence_id)
 
 
 class ShotTasksResource(Resource):
-    """
-    Return tasks related to given shot for current user.
-    """
 
     def get(self, shot_id):
         """
@@ -358,22 +430,28 @@ class ShotTasksResource(Resource):
         parameters:
           - in: path
             name: shot_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given shot
+              description: Tasks related to given shot
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Shot not found
         """
         shots_service.get_shot(shot_id)
         return user_service.get_tasks_for_entity(shot_id)
 
 
 class SceneTasksResource(Resource):
-    """
-    Return tasks related to given scene for current user.
-    """
 
     def get(self, scene_id):
         """
@@ -384,22 +462,28 @@ class SceneTasksResource(Resource):
         parameters:
           - in: path
             name: scene_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given scene
+              description: Tasks related to given scene
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Scene not found
         """
         shots_service.get_scene(scene_id)
         return user_service.get_tasks_for_entity(scene_id)
 
 
 class SequenceTasksResource(Resource):
-    """
-    Return tasks related to given sequence for current user.
-    """
 
     def get(self, sequence_id):
         """
@@ -410,13 +494,22 @@ class SequenceTasksResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks related to given sequence
+              description: Tasks related to given sequence
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Sequence not found
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_tasks_for_entity(sequence_id)
@@ -437,12 +530,19 @@ class TodosResource(Resource):
         - User
         responses:
             200:
-                description: Unfinished tasks currently assigned to current user
+              description: Unfinished tasks currently assigned to current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         return user_service.get_todos()
 
 
 class ToChecksResource(Resource):
+
     def get(self):
         """
         Return tasks requiring feedback for current user departments.
@@ -453,48 +553,58 @@ class ToChecksResource(Resource):
         - User
         responses:
             200:
-                description: Tasks requiring feedback in current user
-                    departments.
+              description: Tasks requiring feedback in current user departments
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         return user_service.get_tasks_to_check()
 
 
 class DoneResource(Resource):
-    """
-    Return tasks currently assigned to current user and of which status
-    has is_done attribute set to true. It returns only tasks of open projects.
-    """
 
     def get(self):
         """
         Return tasks currently assigned to current user and of which status has
-        is_done attribute set to true.
+        is_done attribute set to true. It returns only tasks of open projects.
         ---
         tags:
         - User
-        description: It returns only tasks of open projects.
         responses:
             200:
-                description: Finished tasks currently assigned to current user
+              description: Finished tasks currently assigned to current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         return user_service.get_done_tasks()
 
 
 class FiltersResource(Resource, ArgsMixin):
-    """
-    Allow to create and retrieve filters for current user and only for
-    open projects.
-    """
+
 
     def get(self):
         """
-        Retrieve filters for current user and only for open projects.
+        Allow to create and retrieve filters for current user and only for
+        open projects.
         ---
         tags:
         - User
         responses:
             200:
-                description: Filters for current user and only for open projects
+              description: Filters for current user and only for open projects
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         return user_service.get_filters()
 
@@ -504,34 +614,52 @@ class FiltersResource(Resource, ArgsMixin):
         ---
         tags:
         - User
-        parameters:
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of filter
-          - in: formData
-            name: query
-            required: True
-            type: string
-          - in: formData
-            name: list_type
-            required: True
-            type: string
-          - in: formData
-            name: entity_type
-            required: False
-            type: string
-          - in: formData
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - name
+                  - query
+                  - list_type
+                  - project_id
+                properties:
+                  name:
+                    type: string
+                    example: Name of filter
+                  query:
+                    type: string
+                    example: '{"project_id": "uuid"}'
+                  list_type:
+                    type: string
+                    example: todo
+                  entity_type:
+                    type: string
+                    example: Asset
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  is_shared:
+                    type: boolean
+                    default: false
+                  search_filter_group_id:
+                    type: string
+                    format: uuid
+                  department_id:
+                    type: string
+                    format: uuid
         responses:
             201:
-                description: Filter for current user and only for open projects
-                    created
+              description: Filter for current user and only for open projects created
+              content:
+                application/json:
+                  schema:
+                    type: object
+            400:
+              description: Bad request
         """
         arguments = self.get_arguments()
 
@@ -565,9 +693,7 @@ class FiltersResource(Resource, ArgsMixin):
 
 
 class FilterResource(Resource, ArgsMixin):
-    """
-    Allow to remove or update given filter if it's owned by current user.
-    """
+
 
     def put(self, filter_id):
         """
@@ -611,23 +737,22 @@ class FilterResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: filter_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Empty response
+              description: Filter deleted successfully
+            404:
+              description: Filter not found
         """
         user_service.remove_filter(filter_id)
         return "", 204
 
 
 class FilterGroupsResource(Resource, ArgsMixin):
-    """
-    Allow to create and retrieve filter groups for current user and only for
-    open projects.
-    """
 
     def get(self):
         """
@@ -637,8 +762,13 @@ class FilterGroupsResource(Resource, ArgsMixin):
         - User
         responses:
             200:
-                description: Filter groups for current user and only for open
-                             projects
+              description: Filter groups for current user and only for open projects
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         return user_service.get_filter_groups()
 
@@ -648,43 +778,50 @@ class FilterGroupsResource(Resource, ArgsMixin):
         ---
         tags:
         - User
-        parameters:
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of filter
-          - in: formData
-            name: color
-            required: True
-            type: string
-          - in: formData
-            name: list_type
-            required: True
-            type: string
-          - in: formData
-            name: entity_type
-            required: False
-            type: string
-          - in: formData
-            name: is_shared
-            required: False
-            type: boolean
-          - in: formData
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: department_id
-            required: False
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - name
+                  - color
+                  - list_type
+                  - project_id
+                properties:
+                  name:
+                    type: string
+                    example: Name of filter group
+                  color:
+                    type: string
+                    example: #FF0000
+                  list_type:
+                    type: string
+                    example: todo
+                  entity_type:
+                    type: string
+                    example: Asset
+                  is_shared:
+                    type: boolean
+                    default: false
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  department_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: Filter groups for the current user and only for
-                             open projects created.
+              description: Filter group for the current user and only for open projects created
+              content:
+                application/json:
+                  schema:
+                    type: object
+            400:
+              description: Bad request
         """
         arguments = self.get_arguments()
         return (
@@ -715,10 +852,6 @@ class FilterGroupsResource(Resource, ArgsMixin):
 
 
 class FilterGroupResource(Resource, ArgsMixin):
-    """
-    Allow to remove or update given filter group if it's owned by
-    the current user.
-    """
 
     def get(self, search_filter_group_id):
         """
@@ -808,10 +941,6 @@ class FilterGroupResource(Resource, ArgsMixin):
 
 
 class DesktopLoginLogsResource(Resource, ArgsMixin):
-    """
-    Allow to create and retrieve desktop login logs. Desktop login logs can
-    only be created by the current user.
-    """
 
     def get(self):
         """
@@ -821,28 +950,46 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
         - User
         responses:
             200:
-                description: Desktop login logs
+              description: Desktop login logs
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         current_user = persons_service.get_current_user()
         return persons_service.get_desktop_login_logs(current_user["id"])
 
     def post(self):
         """
-        Create a desktop login log.
+        Create a desktop login log. Desktop login logs can
+        only be created by the current user.
         ---
         tags:
         - User
         description: The desktop login log can only be created by
                      the current user.
-        parameters:
-          - in: formData
-            name: date
-            type: string
-            format: date
-            example: "2022-07-12"
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                    example: "2022-07-12"
         responses:
             201:
-                description: Desktop login log created
+              description: Desktop login log created
+              content:
+                application/json:
+                  schema:
+                    type: object
+            400:
+              description: Bad request
         """
         arguments = self.get_args(
             ["date", date_helpers.get_utc_now_datetime()]
@@ -855,6 +1002,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
 
 
 class NotificationsResource(Resource, ArgsMixin):
+
     def get(self):
         """
         Return last 100 user notifications filtered by given parameters.
@@ -862,19 +1010,63 @@ class NotificationsResource(Resource, ArgsMixin):
         tags:
           - User
         parameters:
-          - in: formData
+          - in: query
             name: after
-            type: string
-            format: date
+            required: false
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
-          - in: formData
+            description: Filter notifications after this date
+          - in: query
             name: before
-            type: string
-            format: date
+            required: false
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
+            description: Filter notifications before this date
+          - in: query
+            name: task_type_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter by task type ID
+          - in: query
+            name: task_status_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter by task status ID
+          - in: query
+            name: type
+            required: false
+            schema:
+              type: string
+            description: Filter by notification type
+          - in: query
+            name: read
+            required: false
+            schema:
+              type: boolean
+            description: Filter by read status
+          - in: query
+            name: watching
+            required: false
+            schema:
+              type: boolean
+            description: Filter by watching status
         responses:
             200:
-                description: 100 last user notifications
+              description: 100 last user notifications
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         (
             after,
@@ -912,10 +1104,6 @@ class NotificationsResource(Resource, ArgsMixin):
 
 
 class NotificationResource(Resource, ArgsMixin):
-    """
-    Return notification matching given id, only if it's a notification that
-    belongs to current user.
-    """
 
     def get(self, notification_id):
         """
@@ -927,14 +1115,20 @@ class NotificationResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: notification_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-
         responses:
             200:
-                description: Notification matching given ID
+              description: Notification matching given ID
+              content:
+                application/json:
+                  schema:
+                    type: object
+            404:
+              description: Notification not found
         """
         return user_service.get_notification(notification_id)
 
@@ -947,13 +1141,30 @@ class NotificationResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: notification_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                properties:
+                  read:
+                    type: boolean
+                    description: Mark notification as read/unread
         responses:
             200:
-                description: Notification
+              description: Updated notification
+              content:
+                application/json:
+                  schema:
+                    type: object
+            404:
+              description: Notification not found
         """
         data = self.get_args([("read", None, False, inputs.boolean)])
         return user_service.update_notification(notification_id, data["read"])
@@ -969,16 +1180,21 @@ class MarkAllNotificationsAsReadResource(Resource):
         - User
         responses:
             200:
-                description: All notifications marked as read
+              description: All notifications marked as read
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
         """
         user_service.mark_notifications_as_read()
         return {"success": True}
 
 
 class HasTaskSubscribedResource(Resource):
-    """
-    Return true if current user has subscribed to given task.
-    """
 
     def get(self, task_id):
         """
@@ -989,28 +1205,30 @@ class HasTaskSubscribedResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: True if current user has subscribed to given task,
-                    False otherwise
+              description: True if current user has subscribed to given task, False otherwise
+              content:
+                application/json:
+                  schema:
+                    type: boolean
+            404:
+              description: Task not found
         """
         return user_service.has_task_subscription(task_id)
 
 
 class TaskSubscribeResource(Resource):
-    """
-    Create a subscription entry for given task and current user.
-    When a user subscribes, he gets notified everytime a comment is posted on
-    the task.
-    """
 
     def post(self, task_id):
         """
-        Create a subscription entry for given task and current user.
+        Create a subscription entry for given task and current user. When a user
+        subscribes, he gets notified everytime a comment is posted on the task.
         ---
         tags:
         - User
@@ -1019,26 +1237,30 @@ class TaskSubscribeResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: Subscription entry created
+              description: Subscription entry created
+              content:
+                application/json:
+                  schema:
+                    type: object
+            404:
+              description: Task not found
         """
         return user_service.subscribe_to_task(task_id), 201
 
 
 class TaskUnsubscribeResource(Resource):
-    """
-    Remove the subscription entry matching given task and current user.
-    The user will no longer receive notifications for this task.
-    """
 
     def delete(self, task_id):
         """
         Remove the subscription entry matching given task and current user.
+        The user will no longer receive notifications for this task.
         ---
         tags:
         - User
@@ -1047,22 +1269,22 @@ class TaskUnsubscribeResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Subscription entry removed
+              description: Subscription entry removed
+            404:
+              description: Task not found
         """
         user_service.unsubscribe_from_task(task_id)
         return "", 204
 
 
 class HasSequenceSubscribedResource(Resource):
-    """
-    Return true if current user has subscribed to given sequence and task type.
-    """
 
     def get(self, sequence_id, task_type_id):
         """
@@ -1074,20 +1296,27 @@ class HasSequenceSubscribedResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: True if current user has subscribed to given
-                    sequence and task type, False otherwise
+              description: True if current user has subscribed to given sequence and task type, False otherwise
+              content:
+                application/json:
+                  schema:
+                    type: boolean
+            404:
+              description: Sequence or task type not found
         """
         return user_service.has_sequence_subscription(
             sequence_id, task_type_id
@@ -1095,11 +1324,6 @@ class HasSequenceSubscribedResource(Resource):
 
 
 class SequenceSubscribeResource(Resource):
-    """
-    Create a subscription entry for given sequence, task type and current user.
-    When a user subscribes, he gets notified every time a comment is posted
-    on tasks related to the sequence.
-    """
 
     def post(self, sequence_id, task_type_id):
         """
@@ -1113,19 +1337,27 @@ class SequenceSubscribeResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: Subscription entry created
+              description: Subscription entry created
+              content:
+                application/json:
+                  schema:
+                    type: object
+            404:
+              description: Sequence or task type not found
         """
         subscription = user_service.subscribe_to_sequence(
             sequence_id, task_type_id
@@ -1134,9 +1366,6 @@ class SequenceSubscribeResource(Resource):
 
 
 class SequenceUnsubscribeResource(Resource):
-    """
-    Remove a subscription entry for given sequence, task type and current user.
-    """
 
     def delete(self, sequence_id, task_type_id):
         """
@@ -1148,29 +1377,29 @@ class SequenceUnsubscribeResource(Resource):
         parameters:
           - in: path
             name: sequence_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Subscription entry removed
+              description: Subscription entry removed
+            404:
+              description: Sequence or task type not found
         """
         user_service.unsubscribe_from_sequence(sequence_id, task_type_id)
         return "", 204
 
 
 class SequenceSubscriptionsResource(Resource):
-    """
-    Return the list of sequence ids to which the current user has subscribed
-    for given task type.
-    """
 
     def get(self, project_id, task_type_id):
         """
@@ -1182,20 +1411,30 @@ class SequenceSubscriptionsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description:  List of sequence ids to which the current user
-                    has subscribed for given task type
+              description: List of sequence ids to which the current user has subscribed for given task type
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+            404:
+              description: Project or task type not found
         """
         return user_service.get_sequence_subscriptions(
             project_id, task_type_id
@@ -1209,6 +1448,41 @@ class TimeSpentsResource(Resource):
     """
 
     def get(self):
+        """
+        Get all time spents for the current user.
+        Optionnaly can accept date range parameters.
+        ---
+        tags:
+        - User
+        parameters:
+          - in: query
+            name: start_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: Start date for filtering time spents
+          - in: query
+            name: end_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: End date for filtering time spents
+        responses:
+            200:
+              description: All time spents for the current user
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            400:
+              description: Wrong date format
+        """
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         current_user = persons_service.get_current_user()
@@ -1234,24 +1508,42 @@ class TimeSpentsResource(Resource):
 
 
 class DateTimeSpentsResource(Resource):
-    """
-    Get time spents on for current user and given date.
-    """
 
     def get(self, date):
+        """
+        Get time spents on for current user and given date.
+        ---
+        tags:
+        - User
+        parameters:
+          - in: path
+            name: date
+            required: true
+            schema:
+              type: string
+              format: date
+            example: "2022-07-12"
+            description: Date to get time spents for
+        responses:
+            200:
+              description: Time spents on for current user and given date
+              content:
+                application/json:
+                  schema:
+                    type: object
+            400:
+              description: Wrong date format
+        """
         try:
             current_user = persons_service.get_current_user()
             return time_spents_service.get_time_spents(
                 current_user["id"], date
             )
         except WrongDateFormatException:
-            abort(404)
+            abort(400)
 
 
 class TaskTimeSpentResource(Resource):
-    """
-    Get time spents for current user and given date.
-    """
 
     def get(self, task_id, date):
         """
@@ -1262,21 +1554,27 @@ class TaskTimeSpentResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
-            format: date
+            required: true
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
         responses:
             200:
-                description:  Time spents for current user and given date
+              description: Time spents for current user and given date
+              content:
+                application/json:
+                  schema:
+                    type: object
             404:
-                description: Wrong date format
+              description: Wrong date format or task not found
         """
         try:
             current_user = persons_service.get_current_user()
@@ -1288,9 +1586,6 @@ class TaskTimeSpentResource(Resource):
 
 
 class DayOffResource(Resource):
-    """
-    Get day off object for current user and given date.
-    """
 
     def get(self, date):
         """
@@ -1301,15 +1596,20 @@ class DayOffResource(Resource):
         parameters:
           - in: path
             name: date
-            required: True
-            type: string
-            format: date
+            required: true
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
         responses:
             200:
-                description:  Day off object for current user and given date
+              description: Day off object for current user and given date
+              content:
+                application/json:
+                  schema:
+                    type: object
             404:
-                description: Wrong date format
+              description: Wrong date format
         """
         try:
             current_user = persons_service.get_current_user()
@@ -1319,6 +1619,7 @@ class DayOffResource(Resource):
 
 
 class ContextResource(Resource):
+
     def get(self):
         """
         Return context required to properly run a full app connected to the API
@@ -1328,13 +1629,17 @@ class ContextResource(Resource):
           - User
         responses:
             200:
-                description: Context to properly run a full app connected
-                    to the API
+              description: Context to properly run a full app connected to the API
+              content:
+                application/json:
+                  schema:
+                    type: object
         """
         return user_service.get_context()
 
 
 class ClearAvatarResource(Resource):
+
     def delete(self):
         """
         Set `has_avatar` flag to False for current user and remove its avatar
@@ -1344,7 +1649,9 @@ class ClearAvatarResource(Resource):
           - User
         responses:
             204:
-                description: Avatar file deleted
+              description: Avatar file deleted
+            404:
+              description: User not found
         """
         user = persons_service.get_current_user()
         persons_service.clear_avatar(user["id"])
@@ -1361,7 +1668,13 @@ class ChatsResource(Resource):
             - User
         responses:
             200:
-                description: Chats where user is participant
+              description: Chats where user is participant
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
         """
         user = persons_service.get_current_user()
         return chats_service.get_chats_for_person(user["id"])
@@ -1378,13 +1691,20 @@ class JoinChatResource(Resource):
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: Chat joined
+              description: Chat joined
+              content:
+                application/json:
+                  schema:
+                    type: object
+            404:
+              description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -1401,13 +1721,16 @@ class JoinChatResource(Resource):
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: empty response
+              description: Chat left successfully
+            404:
+              description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])

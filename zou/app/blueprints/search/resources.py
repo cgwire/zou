@@ -15,27 +15,69 @@ class SearchResource(Resource, ArgsMixin):
         ---
         tags:
         - Search
-        parameters:
-          - in: formData
-            name: query
-            required: True
-            type: string
-            example: test will search for test
-          - in: formData
-            name: limit
-            required: False
-            type: integer
-            default: 3
-            example: 3
-          - in: formData
-            name: index_names
-            required: False
-            type: list of strings
-            default: ["assets", "shots", "persons"]
-            example: ["assets"]
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - query
+                properties:
+                  query:
+                    type: string
+                    example: test will search for test
+                    description: Search query string (minimum 3 characters)
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Filter search results by project ID
+                  limit:
+                    type: integer
+                    default: 3
+                    example: 3
+                    description: Maximum number of results per index
+                  offset:
+                    type: integer
+                    default: 0
+                    example: 0
+                    description: Number of results to skip
+                  index_names:
+                    type: array
+                    items:
+                      type: string
+                      enum: ["assets", "shots", "persons"]
+                    default: ["assets", "shots", "persons"]
+                    example: ["assets"]
+                    description: List of index names to search in
         responses:
             200:
-                description: List of entities that contain the query
+              description: List of entities that contain the query
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      persons:
+                        type: array
+                        items:
+                          type: object
+                        description: List of matching persons
+                      assets:
+                        type: array
+                        items:
+                          type: object
+                        description: List of matching assets
+                      shots:
+                        type: array
+                        items:
+                          type: object
+                        description: List of matching shots
+            400:
+              description: Bad request
+            403:
+              description: Insufficient permissions
         """
         args = self.get_args(
             [
