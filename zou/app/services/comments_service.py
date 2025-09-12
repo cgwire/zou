@@ -526,7 +526,7 @@ def reply_comment(comment_id, text, person_id=None, files={}):
     comment.update({"replies": replies})
     comment_dict = comment.serialize(relations=True)
     if len(files.keys()) > 0:
-        new_attachment_files = add_attachments_to_comment(
+        _, new_attachment_files = add_attachments_to_comment(
             comment_dict, files, reply_id=reply["id"]
         )
         for new_attachment_file in new_attachment_files:
@@ -684,4 +684,4 @@ def add_attachments_to_comment(comment, files, reply_id=None):
             )
             comment["attachment_files"].append(attachment_file)
             new_attachment_files.append(attachment_file)
-    return new_attachment_files
+    return comment, new_attachment_files

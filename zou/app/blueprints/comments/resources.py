@@ -341,7 +341,7 @@ class AddAttachmentToCommentResource(Resource):
             user_service.check_manager_project_access(task["project_id"])
 
         files = request.files
-        comment = comments_service.add_attachments_to_comment(
+        comment, _ = comments_service.add_attachments_to_comment(
             comment, files, reply_id=None
         )
         return comment["attachment_files"], 201

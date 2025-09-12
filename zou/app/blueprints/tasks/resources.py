@@ -47,25 +47,40 @@ class AddPreviewResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
+            required: true
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
-                    revision:
-                        type: integer
+                  revision:
+                    type: integer
+                    description: Revision number for the preview
+                    example: 1
         responses:
             201:
-                description: Preview metadata added to given task
+              description: Preview metadata added to given task
+              content:
+                application/json:
+                  schema:
+                    type: object
+            400:
+              description: Bad request
+            404:
+              description: Task or comment not found
         """
         args = self.get_args([("revision", 0, False, int)])
 
@@ -93,29 +108,47 @@ class AddExtraPreviewResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: preview_file_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            type: file
-            required: True
+        requestBody:
+          required: true
+          content:
+            multipart/form-data:
+              schema:
+                type: object
+                properties:
+                  file:
+                    type: string
+                    format: binary
+                    description: Preview file to upload
         responses:
             201:
-                description: Preview added to given comment
+              description: Preview added to given comment
+              content:
+                application/json:
+                  schema:
+                    type: object
+            400:
+              description: Bad request
+            404:
+              description: Task, comment, or preview file not found
         """
         user_service.check_task_action_access(task_id)
         tasks_service.get_comment(comment_id)
@@ -138,25 +171,37 @@ class AddExtraPreviewResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: preview_file_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: force
+            required: false
+            schema:
+              type: boolean
+              default: false
+            description: Force deletion even if preview has dependencies
         responses:
             204:
-                description: Preview deleted from given comment
+              description: Preview deleted from given comment
+            404:
+              description: Task, comment, or preview file not found
         """
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
@@ -181,13 +226,22 @@ class TaskPreviewsResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Previews linked to given task
+              description: Previews linked to given task
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Task not found
         """
         user_service.check_task_access(task_id)
         return files_service.get_preview_files_for_task(task_id)
@@ -208,13 +262,22 @@ class TaskCommentsResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Comments linked to given task
+              description: Comments linked to given task
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Task not found
         """
         user_service.check_task_access(task_id)
         is_client = permissions.has_client_permissions()
@@ -240,19 +303,27 @@ class TaskCommentResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Comment corresponding at given ID
+              description: Comment corresponding at given ID
+              content:
+                application/json:
+                  schema:
+                    type: object
+            404:
+              description: Task or comment not found
         """
         comment = tasks_service.get_comment(comment_id)
         user_service.check_comment_access(comment)
@@ -289,19 +360,23 @@ class TaskCommentResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: comment_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Comment corresponding at given ID deleted
+              description: Comment corresponding at given ID deleted
+            404:
+              description: Task or comment not found
         """
         comment = tasks_service.get_comment(comment_id)
         task = tasks_service.get_task(comment["object_id"])
@@ -333,13 +408,22 @@ class PersonTasksResource(Resource):
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks assigned to user that are not done
+              description: Tasks assigned to user that are not done
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Person not found
         """
         user_service.check_person_is_not_bot(person_id)
         if not permissions.has_admin_permissions():
@@ -371,19 +455,29 @@ class PersonRelatedTasksResource(Resource):
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: All Tasks for given task type
+              description: All Tasks for given task type
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Person or task type not found
         """
         user_service.check_person_is_not_bot(person_id)
         user = persons_service.get_current_user()
@@ -409,13 +503,22 @@ class PersonDoneTasksResource(Resource):
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Tasks assigned to user that are done
+              description: Tasks assigned to user that are done
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            404:
+              description: Person not found
         """
         user_service.check_person_is_not_bot(person_id)
         if not permissions.has_admin_permissions():
@@ -446,19 +549,41 @@ class CreateShotTasksResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+                description: List of shot IDs to create tasks for
         responses:
             201:
-                description: New task for given shot and task type created
+              description: New task for given shot and task type created
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            400:
+              description: Bad request
+            404:
+              description: Project or task type not found
         """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
@@ -495,19 +620,31 @@ class CreateConceptTasksResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: New task for given concept and task type created
+              description: New task for given concept and task type created
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            400:
+              description: Bad request
+            404:
+              description: Project or task type not found
         """
         user_service.check_project_access(project_id)
         if (
@@ -549,25 +686,38 @@ class CreateEntityTasksResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: List of created tasks.
+              description: List of created tasks
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            400:
+              description: Bad request
+            404:
+              description: Project, entity type, or task type not found
         """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
@@ -610,19 +760,31 @@ class CreateAssetTasksResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: New task for given asset and task type created
+              description: New task for given asset and task type created
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            400:
+              description: Bad request
+            404:
+              description: Project or task type not found
         """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
@@ -658,19 +820,31 @@ class CreateEditTasksResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-                description: New task for given edit and task type created
+              description: New task for given edit and task type created
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+            400:
+              description: Bad request
+            404:
+              description: Project or task type not found
         """
         user_service.check_manager_project_access(project_id)
         task_type = tasks_service.get_task_type(task_type_id)
@@ -708,8 +882,9 @@ class ToReviewResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
@@ -884,10 +1059,11 @@ class TasksAssignResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: person_id
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-            required: True
           - in: body
             name: Task
             description: List of tasks ID
@@ -955,8 +1131,9 @@ class TaskAssignResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
@@ -1021,8 +1198,9 @@ class TaskFullResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1053,14 +1231,16 @@ class TaskForEntityResource(Resource):
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1089,20 +1269,23 @@ class SetTimeSpentResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: date
             example: "2022-07-12"
           - in: path
             name: person_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
@@ -1146,20 +1329,23 @@ class SetTimeSpentResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: date
             example: "2022-07-12"
           - in: path
             name: person_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1198,20 +1384,23 @@ class AddTimeSpentResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: date
             example: "2022-07-12"
           - in: path
             name: person_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: body
@@ -1258,8 +1447,9 @@ class GetTimeSpentResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1287,14 +1477,16 @@ class GetTimeSpentDateResource(Resource):
         parameters:
           - in: path
             name: task_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: date
             example: "2022-07-12"
         responses:
@@ -1327,14 +1519,16 @@ class DeleteAllTasksForTaskTypeResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1368,8 +1562,9 @@ class DeleteTasksResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1402,8 +1597,9 @@ class ProjectSubscriptionsResource(Resource):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1432,8 +1628,9 @@ class ProjectNotificationsResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1464,8 +1661,9 @@ class ProjectTasksResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
@@ -1515,8 +1713,9 @@ class ProjectCommentsResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
@@ -1556,8 +1755,9 @@ class ProjectPreviewFilesResource(Resource, ArgsMixin):
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1582,8 +1782,9 @@ class SetTaskMainPreviewResource(Resource):
         parameters:
           - in: path
             name: preview_file_id
-            required: True
-            type: string
+            required: true
+            schema:
+              type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
@@ -1614,15 +1815,35 @@ class PersonsTasksDatesResource(Resource, ArgsMixin):
         tags:
         - Tasks
         parameters:
-          - in: path
+          - in: query
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: false
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by project ID
         responses:
             200:
-                description: For each person, the first start date of all tasks of assigned to this person and the last end date.
+              description: For each person, the first start date of all tasks assigned to this person and the last end date
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        person_id:
+                          type: string
+                          format: uuid
+                        first_start_date:
+                          type: string
+                          format: date
+                        last_end_date:
+                          type: string
+                          format: date
+            403:
+              description: Admin permissions required
         """
         permissions.check_admin_permissions()
         args = self.get_args([("project_id", None, False, str)])
@@ -1646,90 +1867,115 @@ class OpenTasksResource(Resource, ArgsMixin):
         parameters:
           - in: query
             name: project_id
-            description: Filter tasks on given project ID
-            type: string
-            format: uuid
+            required: false
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter tasks on given project ID
           - in: query
             name: task_status_id
-            description: Filter tasks on given task status ID
-            type: string
-            format: uuid
+            required: false
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter tasks on given task status ID
           - in: query
             name: task_type_id
-            description: Filter tasks on given task type ID ID
-            type: string
-            format: uuid
+            required: false
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter tasks on given task type ID
           - in: query
             name: person_id
-            description: Filter tasks on given person ID
-            type: string
-            format: uuid
+            required: false
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter tasks on given person ID
           - in: query
             name: start_date
-            description: Filter tasks posterior to given start date
-            type: string
-            format: date
+            required: false
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
+            description: Filter tasks posterior to given start date
           - in: query
             name: due_date
-            description: Filter tasks anterior to given due date
-            type: string
-            format: date
+            required: false
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
+            description: Filter tasks anterior to given due date
           - in: query
             name: priority
+            required: false
+            schema:
+              type: integer
+            example: 3
             description: Filter tasks on given priority
-            type: integer
-            example: "3"
           - in: query
             name: page
-            description: Page number
-            type: integer
+            required: false
+            schema:
+              type: integer
+              default: 1
             example: 1
-            default: 1
+            description: Page number
           - in: query
             name: limit
-            description: Number of tasks per page
-            type: integer
+            required: false
+            schema:
+              type: integer
+              default: 100
             example: 100
-            default: 100
+            description: Number of tasks per page
 
         responses:
             200:
-                schema:
+              description: List of tasks with pagination and statistics
+              content:
+                application/json:
+                  schema:
                     type: object
                     properties:
-                        data:
-                            type: array
-                            description: List of tasks
-                        stats:
+                      data:
+                        type: array
+                        items:
+                          type: object
+                        description: List of tasks
+                      stats:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            description: Total number of tasks
+                          total_duration:
+                            type: integer
+                            description: Total duration of tasks in minutes
+                          total_estimation:
+                            type: integer
+                            description: Total estimation of tasks in minutes
+                          status:
                             type: object
-                            properties:
-                                total:
-                                    type: integer
-                                    description: Total number of tasks
-                                total_duration:
-                                    type: integer
-                                    description: Total duration of tasks in minutes
-                                total_estimation:
-                                    type: integer
-                                    description: Total estimation of tasks in minutes
-                                status:
-                                    type: object
-                                    description: Number of tasks per status
-                        limit:
-                            type: integer
-                            description: Number of tasks per page
-                        page:
-                            type: integer
-                            description: Page number
-                        is_more:
-                            type: boolean
-                            description: True if there are more tasks to retrieve
+                            description: Number of tasks per status
+                      limit:
+                        type: integer
+                        description: Number of tasks per page
+                      page:
+                        type: integer
+                        description: Page number
+                      is_more:
+                        type: boolean
+                        description: True if there are more tasks to retrieve
+            400:
+              description: Bad request
         """
         args = self.get_args(
             [
@@ -1775,7 +2021,28 @@ class OpenTasksStatsResource(Resource, ArgsMixin):
         - Tasks
         responses:
             200:
-                description: A dict organized by project that contains
-                            the results for each task type and status pairs.
+              description: A dict organized by project that contains the results for each task type and status pairs
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        task_types:
+                          type: object
+                          additionalProperties:
+                            type: object
+                            properties:
+                              total:
+                                type: integer
+                              done:
+                                type: integer
+                              estimation:
+                                type: integer
+                              duration:
+                                type: integer
+            400:
+              description: Bad request
         """
         return tasks_service.get_open_tasks_stats()
