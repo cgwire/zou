@@ -2029,19 +2029,14 @@ class OpenTasksStatsResource(Resource, ArgsMixin):
                     additionalProperties:
                       type: object
                       properties:
-                        task_types:
-                          type: object
-                          additionalProperties:
-                            type: object
-                            properties:
-                              total:
-                                type: integer
-                              done:
-                                type: integer
-                              estimation:
-                                type: integer
-                              duration:
-                                type: integer
+                        total:
+                          type: integer
+                        done:
+                          type: integer
+                        estimation:
+                          type: integer
+                        duration:
+                          type: integer
             400:
               description: Bad request
         """

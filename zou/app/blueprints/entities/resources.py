@@ -22,13 +22,39 @@ class EntityNewsResource(Resource):
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All news linked to given entity
+          '200':
+            description: All news linked to given entity
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      title:
+                        type: string
+                      content:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      author_id:
+                        type: string
+                        format: uuid
+                      entity_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -46,13 +72,41 @@ class EntityPreviewFilesResource(Resource):
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All preview files linked to given entity
+          '200':
+            description: All preview files linked to given entity
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      path:
+                        type: string
+                      revision:
+                        type: integer
+                      created_at:
+                        type: string
+                        format: date-time
+                      entity_id:
+                        type: string
+                        format: uuid
+                      task_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -70,13 +124,43 @@ class EntityTimeSpentsResource(Resource):
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All time spents linked to given entity
+          '200':
+            description: All time spents linked to given entity
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      duration:
+                        type: number
+                        format: float
+                        example: 2.5
+                      date:
+                        type: string
+                        format: date
+                        example: "2023-12-07"
+                      created_at:
+                        type: string
+                        format: date-time
+                      person_id:
+                        type: string
+                        format: uuid
+                      entity_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -90,17 +174,54 @@ class EntitiesLinkedWithTasksResource(Resource):
         Resource to retrieve the entities linked on a given entity.
         ---
         tags:
-            - Entities
+          - Entities
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Entities linked on given entity
+          '200':
+            description: Entities linked on given entity
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      entity_type_id:
+                        type: string
+                        format: uuid
+                      project_id:
+                        type: string
+                        format: uuid
+                      parent_id:
+                        type: string
+                        format: uuid
+                      tasks:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                            name:
+                              type: string
+                            task_type_id:
+                              type: string
+                              format: uuid
+          '404':
+            description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])

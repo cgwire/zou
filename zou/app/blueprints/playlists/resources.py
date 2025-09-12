@@ -22,44 +22,61 @@ from zou.utils.movie import EncodingParameters
 
 
 class ProjectPlaylistsResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given project.
-    Result is paginated and can be sorted.
-    """
 
     @jwt_required()
     def get(self, project_id):
         """
         Retrieve all playlists related to given project.
+        Result is paginated and can be sorted.
         ---
         tags:
-        - Playlists
+          - Playlists
         description: Result is paginated and can be sorted.
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: page
-            required: False
-            type: integer
+            required: false
+            schema:
+              type: integer
             example: 1
           - in: query
             name: sort_by
-            required: False
-            type: string
-            example: udpdated_at
+            required: false
+            schema:
+              type: string
+            example: updated_at
           - in: query
             name: task_type_id
-            required: False
-            type: string
+            required: false
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All playlists related to given project
+          '200':
+            description: All playlists related to given project
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      project_id:
+                        type: string
+                        format: uuid
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
@@ -76,35 +93,49 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
 
 
 class EpisodePlaylistsResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given episode.
-    The full list is returned because the number of playlists in an episode is not that big.
-    """
 
     @jwt_required()
     def get(self, project_id, episode_id):
         """
         Retrieve all playlists related to given episode.
+        The full list is returned because the number of playlists in an episode is not that big.
         ---
         tags:
-        - Playlists
+          - Playlists
         description: The full list is returned because the number of playlists in an episode is not that big.
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: episode_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All playlists related to given episode
+          '200':
+            description: All playlists related to given episode
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      episode_id:
+                        type: string
+                        format: uuid
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
@@ -124,33 +155,51 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
 
 
 class ProjectPlaylistResource(Resource):
-    """
-    Retrieve all playlists related to given project.
-    """
 
     @jwt_required()
     def get(self, project_id, playlist_id):
         """
-        Retrieve all playlists related to given project.
+        Retrieve a specific playlist by ID.
         ---
         tags:
-        - Playlists
+          - Playlists
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All playlists related to given project
+          '200':
+            description: Playlist details with preview file revisions
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    project_id:
+                      type: string
+                      format: uuid
+                    shots:
+                      type: array
+                      items:
+                        type: object
+          '404':
+            description: Playlist not found
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
@@ -160,11 +209,6 @@ class ProjectPlaylistResource(Resource):
 
 
 class EntityPreviewsResource(Resource):
-    """
-    Retrieve all previews related to a given entity.
-    It sends them as a dict.
-    Keys are related task type ids and values are arrays of preview for this task type.
-    """
 
     @jwt_required()
     def get(self, entity_id):
@@ -172,19 +216,35 @@ class EntityPreviewsResource(Resource):
         Retrieve all previews related to a given entity.
         ---
         tags:
-        - Playlists
-        description: It sends them as a dict.
-                     Keys are related task type ids and values are arrays of preview for this task type.
+          - Playlists
+        description: It sends them as a dict. Keys are related task type ids and values are arrays of preview for this task type.
         parameters:
           - in: path
             name: entity_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description:  All previews related to given entity
+          '200':
+            description: All previews related to given entity
+            content:
+              application/json:
+                schema:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                        name:
+                          type: string
+          '404':
+            description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -192,9 +252,6 @@ class EntityPreviewsResource(Resource):
 
 
 class PlaylistDownloadResource(Resource):
-    """
-    Download given playlist as a .mp4 after given build job is finished.
-    """
 
     @jwt_required()
     def get(self, playlist_id, build_job_id):
@@ -202,27 +259,43 @@ class PlaylistDownloadResource(Resource):
         Download given playlist build as .mp4.
         ---
         tags:
-        - Playlists
-        produces:
-          - multipart/form-data
+          - Playlists
         parameters:
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Given playlist build downloaded as .mp4
-            400:
-                description: Build not finished, need to retry later
+          '200':
+            description: Given playlist build downloaded as .mp4
+            content:
+              video/mp4:
+                schema:
+                  type: string
+                  format: binary
+          '400':
+            description: Build not finished, need to retry later
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    error:
+                      type: boolean
+                    message:
+                      type: string
+          '404':
+            description: Playlist or build job not found
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -271,9 +344,6 @@ class PlaylistDownloadResource(Resource):
 
 
 class BuildPlaylistMovieResource(Resource, ArgsMixin):
-    """
-    Build given playlist as mp4 movie.
-    """
 
     @jwt_required()
     def get(self, playlist_id):
@@ -281,19 +351,39 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
         Build given playlist as mp4 movie.
         ---
         tags:
-        - Playlists
-        produces:
-          - multipart/form-data
+          - Playlists
         parameters:
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: full
+            required: false
+            schema:
+              type: boolean
+            example: true
         responses:
-            200:
-                description: Given playlist built as mp4 movie
+          '200':
+            description: Given playlist built as mp4 movie
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    status:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+          '404':
+            description: Playlist not found
         """
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
@@ -340,9 +430,6 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
 
 
 class PlaylistZipDownloadResource(Resource):
-    """
-    Download given playlist as zip.
-    """
 
     @jwt_required()
     def get(self, playlist_id):
@@ -350,21 +437,25 @@ class PlaylistZipDownloadResource(Resource):
         Download given playlist as zip.
         ---
         tags:
-        - Playlists
-        produces:
-          - multipart/form-data
+          - Playlists
         parameters:
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Given playlist downloaded as zip
+          '200':
+            description: Given playlist downloaded as zip
+            content:
+              application/zip:
                 schema:
-                    type: file
+                  type: string
+                  format: binary
+          '404':
+            description: Playlist not found
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -400,9 +491,6 @@ class PlaylistZipDownloadResource(Resource):
 
 
 class BuildJobResource(Resource):
-    """
-    Retrieve or remove a given build job related to a given playlist.
-    """
 
     @jwt_required()
     def get(self, playlist_id, build_job_id):
@@ -410,23 +498,40 @@ class BuildJobResource(Resource):
         Retrieve build job related to given playlist.
         ---
         tags:
-        - Playlists
+          - Playlists
         parameters:
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Build job related to given playlist
+          '200':
+            description: Build job related to given playlist
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    status:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+          '404':
+            description: Playlist or build job not found
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -439,23 +544,27 @@ class BuildJobResource(Resource):
         Remove given build job related to given playlist.
         ---
         tags:
-        - Playlists
+          - Playlists
         parameters:
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            204:
-                description: Given build job removed
+          '204':
+            description: Given build job removed
+          '404':
+            description: Playlist or build job not found
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -465,29 +574,44 @@ class BuildJobResource(Resource):
 
 
 class ProjectBuildJobsResource(Resource):
-    """
-    Retrieve all build jobs related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required()
     def get(self, project_id):
         """
         Retrieve all build jobs related to given project.
+        It's mainly used for synchronisation purpose.
         ---
         tags:
-        - Playlists
+          - Playlists
         description: It's mainly used for synchronisation purpose.
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All build jobs related to given project
+          '200':
+            description: All build jobs related to given project
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      status:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+          '404':
+            description: Project not found
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -495,10 +619,6 @@ class ProjectBuildJobsResource(Resource):
 
 
 class ProjectAllPlaylistsResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required()
     def get(self, project_id):
@@ -506,18 +626,36 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
         Retrieve all playlists related to given project.
         ---
         tags:
-        - Playlists
+          - Playlists
         description: It's mainly used for synchronisation purpose.
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All playlists related to given project
+          '200':
+            description: All playlists related to given project
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      project_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Project not found
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -526,29 +664,57 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
 
 
 class TempPlaylistResource(Resource, ArgsMixin):
-    """
-    Retrieve all playlists related to given project.
-    It's mainly used for synchronisation purpose.
-    """
 
     @jwt_required()
     def post(self, project_id):
         """
-        Retrieve all playlists related to given project.
+        Generate a temporary playlist from task IDs.
         ---
         tags:
-        - Playlists
+          - Playlists
         description: It's mainly used for synchronisation purpose.
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - task_ids
+                properties:
+                  task_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         responses:
-            200:
-                description: All playlists related to given project
+          '200':
+            description: Temporary playlist generated
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+          '400':
+            description: Invalid task IDs
+          '404':
+            description: Project not found
         """
         user_service.check_project_access(project_id)
         task_ids = request.json.get("task_ids", [])

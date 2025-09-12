@@ -37,10 +37,6 @@ from zou.app.services.auth_service import (
 
 
 class DesktopLoginsResource(Resource, ArgsMixin):
-    """
-    Allow to create and retrieve desktop login logs. Desktop login logs can only
-    be created by current user.
-    """
 
     @jwt_required()
     def get(self, person_id):
@@ -48,18 +44,37 @@ class DesktopLoginsResource(Resource, ArgsMixin):
         Retrieve desktop login logs.
         ---
         tags:
-        - Persons
+          - Persons
         description: Desktop login logs can only be created by current user.
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Desktop login logs
+          '200':
+            description: Desktop login logs
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      person_id:
+                        type: string
+                        format: uuid
+                      date:
+                        type: string
+                        format: date-time
+          '404':
+            description: Person not found
         """
         current_user = persons_service.get_current_user()
         if (
@@ -77,24 +92,50 @@ class DesktopLoginsResource(Resource, ArgsMixin):
         Create desktop login logs.
         ---
         tags:
-        - Persons
+          - Persons
         description: Add a new log entry for desktop logins.
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: date
-            required: True
-            type: string
-            format: date
-            example: "2022-07-12"
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - date
+                properties:
+                  date:
+                    type: string
+                    format: date
+                    example: "2022-07-12"
         responses:
-            201:
-                description: Desktop login log entry created.
+          '201':
+            description: Desktop login log entry created
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    person_id:
+                      type: string
+                      format: uuid
+                    date:
+                      type: string
+                      format: date-time
+          '400':
+            description: Invalid date format
+          '404':
+            description: Person not found
         """
         args = self.get_args([("date", date_helpers.get_utc_now_datetime())])
 
@@ -113,9 +154,6 @@ class DesktopLoginsResource(Resource, ArgsMixin):
 
 
 class PresenceLogsResource(Resource):
-    """
-    Return a csv file containing the presence logs based on a daily basis.
-    """
 
     @jwt_required()
     def get(self, month_date):
@@ -123,17 +161,25 @@ class PresenceLogsResource(Resource):
         Return a csv file containing the presence logs based on a daily basis.
         ---
         tags:
-        - Persons
+          - Persons
         parameters:
           - in: path
             name: month_date
-            required: True
-            type: string
-            format: date
+            required: true
+            schema:
+              type: string
+              format: date
             example: "2022-07"
         responses:
-            200:
-                description: CSV file containing the presence logs based on a daily basis
+          '200':
+            description: CSV file containing the presence logs based on a daily basis
+            content:
+              text/csv:
+                schema:
+                  type: string
+                  format: binary
+          '400':
+            description: Invalid date format
         """
         permissions.check_admin_permissions()
         date = datetime.datetime.strptime(month_date, "%Y-%m")
@@ -144,13 +190,64 @@ class PresenceLogsResource(Resource):
 
 
 class TimeSpentsResource(Resource, ArgsMixin):
-    """
-    Get all time spents for the given person.
-    Optionnaly can accept date range parameters.
-    """
 
     @jwt_required()
     def get(self, person_id):
+        """
+        Get all time spents for the given person.
+        Optionally can accept date range parameters.
+        ---
+        tags:
+          - Persons
+        parameters:
+          - in: path
+            name: person_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: start_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-01"
+          - in: query
+            name: end_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-31"
+        responses:
+          '200':
+            description: All time spents for the given person
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      person_id:
+                        type: string
+                        format: uuid
+                      duration:
+                        type: number
+                        format: float
+                      date:
+                        type: string
+                        format: date
+          '400':
+            description: Invalid date range parameters
+          '404':
+            description: Person not found
+        """
         user_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
         arguments = self.get_args(["start_date", "end_date"])
@@ -177,9 +274,6 @@ class TimeSpentsResource(Resource, ArgsMixin):
 
 
 class DateTimeSpentsResource(Resource):
-    """
-    Get time spents for given person and date.
-    """
 
     @jwt_required()
     def get(self, person_id, date):
@@ -187,25 +281,48 @@ class DateTimeSpentsResource(Resource):
         Get time spents for given person and date.
         ---
         tags:
-        - Persons
+          - Persons
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
-            format: date
+            required: true
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
         responses:
-            200:
-                description: Time spents for given person and date
-            404:
-                description: Wrong date format
+          '200':
+            description: Time spents for given person and date
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      person_id:
+                        type: string
+                        format: uuid
+                      duration:
+                        type: number
+                        format: float
+                      date:
+                        type: string
+                        format: date
+          '400':
+            description: Wrong date format
+          '404':
+            description: Person not found
         """
         user_service.check_person_is_not_bot(person_id)
         department_ids = None
@@ -238,9 +355,6 @@ class DateTimeSpentsResource(Resource):
 
 
 class DayOffResource(Resource):
-    """
-    Get day off object for given person and date.
-    """
 
     @jwt_required()
     def get(self, person_id, date):
@@ -248,25 +362,45 @@ class DayOffResource(Resource):
         Get day off object for given person and date.
         ---
         tags:
-        - Persons
+          - Persons
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
-            required: True
-            type: string
-            format: date
+            required: true
+            schema:
+              type: string
+              format: date
             example: "2022-07-12"
         responses:
-            200:
-                description: Day off object for given person and date
-            404:
-                description: Wrong date format
+          '200':
+            description: Day off object for given person and date
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    person_id:
+                      type: string
+                      format: uuid
+                    date:
+                      type: string
+                      format: date
+                    type:
+                      type: string
+          '400':
+            description: Wrong date format
+          '404':
+            description: Person not found
         """
         user_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
@@ -282,9 +416,6 @@ class DayOffResource(Resource):
 
 
 class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
-    """
-    Parent class for all person durations time spents resource.
-    """
 
     def get_project_department_arguments(self, person_id):
         project_id = self.get_project_id()
@@ -317,9 +448,6 @@ class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
 
 
 class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
-    """
-    Get aggregated time spents for given person and year.
-    """
 
     @jwt_required()
     def get(self, person_id, year):
@@ -327,24 +455,38 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
         Get aggregated time spents for given person and year.
         ---
         tags:
-        - Persons
+          - Persons
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: year
-            required: True
-            type: integer
-            example: "2022"
+            required: true
+            schema:
+              type: integer
+            example: 2022
         responses:
-            200:
-                description: Aggregated time spents for given person and year
-            404:
-                description: Wrong date format
+          '200':
+            description: Aggregated time spents for given person and year
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    total_duration:
+                      type: number
+                      format: float
+                    year:
+                      type: integer
+          '400':
+            description: Wrong date format
+          '404':
+            description: Person not found
         """
         user_service.check_person_is_not_bot(person_id)
         try:
@@ -358,9 +500,6 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
 
 
 class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
-    """
-    Get aggregated time spents for given person and month.
-    """
 
     @jwt_required()
     def get(self, person_id, year, month):
@@ -407,12 +546,12 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
 
 
 class PersonMonthAllTimeSpentsResource(Resource):
-    """
-    Get all time spents for a given person and month.
-    """
 
     @jwt_required()
     def get(self, person_id, year, month):
+        """
+        Get all time spents for a given person and month.
+        """
         user_service.check_person_is_not_bot(person_id)
         user_service.check_person_access(person_id)
         try:
@@ -425,9 +564,6 @@ class PersonMonthAllTimeSpentsResource(Resource):
 
 
 class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
-    """
-    Get aggregated time spents for given person and week.
-    """
 
     @jwt_required()
     def get(self, person_id, year, week):
@@ -474,9 +610,6 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
 
 
 class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
-    """
-    Get aggregated time spents for given person and day.
-    """
 
     @jwt_required()
     def get(self, person_id, year, month, day):
@@ -578,9 +711,6 @@ class PersonQuotaMixin(ArgsMixin):
 
 
 class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
-    """
-    Get ended shots used for quota calculation of this month.
-    """
 
     def get_person_quotas(self, person_id, year, month, **kwargs):
         return shots_service.get_month_quota_shots(
@@ -629,9 +759,6 @@ class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
 
 
 class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
-    """
-    Get ended shots used for quota calculation of this week.
-    """
 
     def get_person_quotas(self, person_id, year, week, **kwargs):
         return shots_service.get_week_quota_shots(
@@ -680,9 +807,6 @@ class PersonWeekQuotaShotsResource(Resource, PersonQuotaMixin):
 
 
 class PersonDayQuotaShotsResource(Resource, PersonQuotaMixin):
-    """
-    Get ended shots used for quota calculation of this day.
-    """
 
     def get_person_quotas(self, person_id, year, month, day, **kwargs):
         return shots_service.get_day_quota_shots(
@@ -786,10 +910,6 @@ class TimeSpentDurationResource(Resource, ArgsMixin):
 
 
 class TimeSpentMonthResource(TimeSpentDurationResource):
-    """
-    Return a table giving time spent by user and by day for given year and
-    month.
-    """
 
     @jwt_required()
     def get(self, year, month):
@@ -822,9 +942,6 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
 
 
 class TimeSpentYearsResource(TimeSpentDurationResource):
-    """
-    Return a table giving time spent by user and by month for given year.
-    """
 
     @jwt_required()
     def get(self):
@@ -843,9 +960,6 @@ class TimeSpentYearsResource(TimeSpentDurationResource):
 
 
 class TimeSpentMonthsResource(TimeSpentDurationResource):
-    """
-    Return a table giving time spent by user and by month for given year.
-    """
 
     @jwt_required()
     def get(self, year):
@@ -870,9 +984,6 @@ class TimeSpentMonthsResource(TimeSpentDurationResource):
 
 
 class TimeSpentWeekResource(TimeSpentDurationResource):
-    """
-    Return a table giving time spent by user and by week for given year.
-    """
 
     @jwt_required()
     def get(self, year):
@@ -897,9 +1008,6 @@ class TimeSpentWeekResource(TimeSpentDurationResource):
 
 
 class InvitePersonResource(Resource):
-    """
-    Sends an email to given person to invite him/her to connect to Kitsu.
-    """
 
     @jwt_required()
     def get(self, person_id):
@@ -926,9 +1034,6 @@ class InvitePersonResource(Resource):
 
 
 class DayOffForMonthResource(Resource, ArgsMixin):
-    """
-    Return all day off recorded for given month.
-    """
 
     @jwt_required()
     def get(self, year, month):
@@ -964,9 +1069,6 @@ class DayOffForMonthResource(Resource, ArgsMixin):
 
 
 class PersonWeekDayOffResource(Resource, ArgsMixin):
-    """
-    Return all day off recorded for given week and person.
-    """
 
     @jwt_required()
     def get(self, person_id, year, week):
@@ -1006,9 +1108,6 @@ class PersonWeekDayOffResource(Resource, ArgsMixin):
 
 
 class PersonMonthDayOffResource(Resource, ArgsMixin):
-    """
-    Return all day off recorded for given month and person.
-    """
 
     @jwt_required()
     def get(self, person_id, year, month):
@@ -1048,9 +1147,6 @@ class PersonMonthDayOffResource(Resource, ArgsMixin):
 
 
 class PersonYearDayOffResource(Resource, ArgsMixin):
-    """
-    Return all day off recorded for given year and person.
-    """
 
     @jwt_required()
     def get(self, person_id, year):
@@ -1083,9 +1179,6 @@ class PersonYearDayOffResource(Resource, ArgsMixin):
 
 
 class PersonDayOffResource(Resource, ArgsMixin):
-    """
-    Return all day offs recorded for given and person.
-    """
 
     @jwt_required()
     def get(self, person_id):
@@ -1113,9 +1206,6 @@ class PersonDayOffResource(Resource, ArgsMixin):
 
 
 class AddToDepartmentResource(Resource, ArgsMixin):
-    """
-    Add a user to given department.
-    """
 
     @jwt_required()
     def post(self, person_id):
@@ -1123,17 +1213,46 @@ class AddToDepartmentResource(Resource, ArgsMixin):
         Add a user to given department.
         ---
         tags:
-        - Persons
+          - Persons
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - department_id
+                properties:
+                  department_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            201:
-                description: User added to given department
+          '201':
+            description: User added to given department
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    department_id:
+                      type: string
+                      format: uuid
+          '400':
+            description: Invalid department ID
+          '404':
+            description: Person or department not found
         """
         args = self.get_args(
             [
@@ -1154,9 +1273,6 @@ class AddToDepartmentResource(Resource, ArgsMixin):
 
 
 class RemoveFromDepartmentResource(Resource, ArgsMixin):
-    """
-    Remove a user from given department.
-    """
 
     @jwt_required()
     def delete(self, person_id, department_id):
@@ -1194,9 +1310,6 @@ class RemoveFromDepartmentResource(Resource, ArgsMixin):
 
 
 class ChangePasswordForPersonResource(Resource, ArgsMixin):
-    """
-    Allow admin to change password for given user.
-    """
 
     @jwt_required()
     def post(self, person_id):
@@ -1208,29 +1321,54 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
                      The new password requires a confirmation to ensure that the admin didn't
                      make a mistake by typing the new password.
         tags:
-            - Persons
+          - Persons
         parameters:
           - in: path
             name: person_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: password
-            required: True
-            type: string
-            format: password
-          - in: formData
-            name: password_2
-            required: True
-            type: string
-            format: password
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - password
+                  - password_2
+                properties:
+                  password:
+                    type: string
+                    format: password
+                    description: New password
+                  password_2:
+                    type: string
+                    format: password
+                    description: Password confirmation
         responses:
-          200:
+          '200':
             description: Password changed
-          400:
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+          '400':
             description: Invalid password or inactive user
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    error:
+                      type: string
+          '404':
+            description: Person not found
         """
         user_service.check_person_is_not_bot(person_id)
         (password, password_2) = self.get_arguments()
@@ -1314,9 +1452,6 @@ Thank you and see you soon on Kitsu,
 
 
 class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
-    """
-    Allow admin to disable two factor authentication for given user.
-    """
 
     @jwt_required()
     def delete(self, person_id):
