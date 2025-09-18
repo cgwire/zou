@@ -149,8 +149,3 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
 * `DEBUG` (default: False): Activate the debug mode for development purposes.
 * `CRISP TOKEN` (default: ): Activate the Crisp support chatbox on the bottom right.
-* `REMOVE_FILES` (default: False): If set to True, Zou will delete files from storage when their entries are removed via the API (e.g. preview files or attachments). When False, the database record is removed but the file remains on disk.
-* `EVENT_HANDLERS_FOLDER` (default: ): Path to the folder where custom event handler scripts are stored. Zou will load scripts from this directory if provided.
-* `DEFAULT_TIMEZONE` (default: UTC): The default timezone used by Zou for timestamp fields when none is explicitly provided. Affects display of times in the UI and in logs.
-* `DEFAULT_LOCALE` (default: en): The locale used for formatting dates, numbers, and other locale-sensitive content in Zou’s UI.
-
