@@ -6,13 +6,17 @@ the list of all expected parameters.
 ## Database
 
 * `DB_HOST` (default: localhost): The database server host.
+* `DB_HOST` (default: localhost): The database server host.
 * `DB_PORT` (default: 5432): The port on which the database is running.
 * `DB_USERNAME` (default: postgres): The username used to access the database.
 * `DB_PASSWORD` (default: mysecretpassword): The password used to access the
   database.
 * `DB_DATABASE` (default: zoudb): The database name to use.
 * `DB_POOL_SIZE` (default: 30): The number of connections opened simultaneously 
+* `DB_DATABASE` (default: zoudb): The database name to use.
+* `DB_POOL_SIZE` (default: 30): The number of connections opened simultaneously 
   to access the database.
+* `DB_MAX_OVERFLOW` (default: 60): The number of additional connections available 
 * `DB_MAX_OVERFLOW` (default: 60): The number of additional connections available 
   once the pool is full. They are disconnected when the request is finished. They
   are not reused.
@@ -34,6 +38,7 @@ Kitsu uses the Meilisearch service for its indexation.
 
 * `AUTH_STRATEGY` (default: auth\_local\_classic): Allow to choose between
 traditional auth and Active Directory auth (auth\_remote\_active\_directory).
+* `SECRET_KEY` (default: mysecretkey) complex key used for auth token encryption.
 * `SECRET_KEY` (default: mysecretkey) Complex key used for auth token encryption.
 
 ## Previews
@@ -56,6 +61,11 @@ traditional auth and Active Directory auth (auth\_remote\_active\_directory).
 The email configuration is required for emails sent after a password reset and,
 email notifications.
 
+* `MAIL_SERVER` (default: "localhost"): the host of your email server
+* `MAIL_PORT` (default: "25"): the port of your email server
+* `MAIL_USERNAME` (default: ""): the username to access to your mail server
+* `MAIL_PASSWORD` (default: ""): the password to access to your mail server
+* `MAIL_DEBUG` (default: "0"): set 1 if you are in a development environment
 * `MAIL_SERVER` (default: "localhost"): The host of your email server
 * `MAIL_PORT` (default: "25"): The port of your email server
 * `MAIL_USERNAME` (default: ""): The username to access to your mail server
@@ -66,6 +76,7 @@ email notifications.
   server.
 * `MAIL_USE_SSL` (default: "False"): To use SSL to communicate with the email
   server.
+* `MAIL_DEFAULT_SENDER` (default: "no-reply@cg-wire.com"): to set the sender
 * `MAIL_DEFAULT_SENDER` (default: "no-reply@cg-wire.com"): To set the sender
   email.
 * `DOMAIN_NAME` (default: "localhost:8080"): To build URLs (for a password reset
@@ -80,7 +91,6 @@ https://flask-mail.readthedocs.io/en/latest/
 
 * `INDEXES_FOLDER` (default: "./indexes"): The folder to store your indexes, we
   recommend to set a full path here.
-
 
 ## S3 Storage
 
@@ -106,6 +116,7 @@ pip install boto3
 ```
 
 When you restart Zou, it should use S3 to store and retrieve files.
+When you restart Zou, it should use S3 to store and retrieve files.
 
 ## Swift Storage
 
@@ -124,16 +135,19 @@ variables (Only Auth 2.0 and 3.0 are supported).
 
 These variables are active only if auth\_remote\_ldap strategy is selected.
 
+* `LDAP_HOST` (default: "127.0.0.1"): the IP address of your LDAP server.
+* `LDAP_PORT` (default: "389"): the listening port of your LDAP server.
+* `LDAP_BASE_DN` (default: "CN=Users,DC=studio,DC=local"): the base domain of your
 * `LDAP_HOST` (default: "127.0.0.1"): The IP address of your LDAP server.
 * `LDAP_PORT` (default: "389"): The listening port of your LDAP server.
 * `LDAP_BASE_DN` (default: "CN=Users,DC=studio,DC=local"): The base domain of your
    LDAP configuration.
+* `LDAP_DOMAIN` (default: "studio.local"): the domain used for your LDAP
 * `LDAP_DOMAIN` (default: "studio.local"): The domain used for your LDAP
   authentication (NTLM).
 * `LDAP_FALLBACK` (default: "False"): Set to True if you want to allow admins
   to fallback on default auth strategy when the LDAP server is down.
 * `LDAP_IS_AD` (default: "False"): Set to True if you use LDAP with an active directory.
-
 
 ## Job queue
 
@@ -143,14 +157,8 @@ These variables are active only if auth\_remote\_ldap strategy is selected.
 * `ENABLE_JOB_QUEUE_REMOTE` (default: "False"): Set to True if you want to send
   playlist builds to a Nomad cluster.
 
-
 ## Misc
 
 * `TMP_DIR` (default: /tmp): The temporary directory used to handle uploads.
 * `DEBUG` (default: False): Activate the debug mode for development purposes.
 * `CRISP TOKEN` (default: ): Activate the Crisp support chatbox on the bottom right.
-* `REMOVE_FILES` (default: False): If set to True, Zou will delete files from storage when their entries are removed via the API (e.g. preview files or attachments). When False, the database record is removed but the file remains on disk.
-* `EVENT_HANDLERS_FOLDER` (default: ): Path to the folder where custom event handler scripts are stored. Zou will load scripts from this directory if provided.
-* `DEFAULT_TIMEZONE` (default: UTC): The default timezone used by Zou for timestamp fields when none is explicitly provided. Affects display of times in the UI and in logs.
-* `DEFAULT_LOCALE` (default: en): The locale used for formatting dates, numbers, and other locale-sensitive content in Zou’s UI.
-
