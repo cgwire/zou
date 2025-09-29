@@ -617,7 +617,7 @@ class FiltersResource(Resource, ArgsMixin):
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -781,7 +781,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -963,8 +963,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
 
     def post(self):
         """
-        Create a desktop login log. Desktop login logs can
-        only be created by the current user.
+        Create a desktop login log.
         ---
         tags:
         - User
@@ -973,7 +972,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -1149,7 +1148,7 @@ class NotificationResource(Resource, ArgsMixin):
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 properties:
@@ -1174,13 +1173,13 @@ class MarkAllNotificationsAsReadResource(Resource):
 
     def post(self):
         """
-        Mark all notifications as read for the current user.
+        Mark all notifications as read.
         ---
+        description: It applies to all notifications of the current user.
         tags:
         - User
         responses:
             200:
-              description: All notifications marked as read
               content:
                 application/json:
                   schema:
@@ -1198,8 +1197,9 @@ class HasTaskSubscribedResource(Resource):
 
     def get(self, task_id):
         """
-        Return true if current user has subscribed to given task.
+        Check task subscription
         ---
+        description: Return true if current user has subscribed to given task.
         tags:
           - User
         parameters:
@@ -1227,12 +1227,13 @@ class TaskSubscribeResource(Resource):
 
     def post(self, task_id):
         """
-        Create a subscription entry for given task and current user. When a user
-        subscribes, he gets notified everytime a comment is posted on the task.
+        Create a subscription entry
         ---
         tags:
         - User
-        description: When a user subscribes, he gets notified everytime a
+        description: It applies to given task and current user. When a user
+        subscribed, he gets notified everytime a comment is posted on the task.
+        When a user subscribes, he gets notified everytime a
             comment is posted on the task.
         parameters:
           - in: path

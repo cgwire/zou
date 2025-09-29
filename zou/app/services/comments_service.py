@@ -303,9 +303,12 @@ def _run_status_automation(automation, task, person_id):
 
     elif automation["out_field_type"] == "ready_for":
         try:
-            asset = assets_service.update_asset(
-                task["entity_id"],
-                {"ready_for": automation["out_task_type_id"]},
+            data = {"ready_for": automation["out_task_type_id"]}
+            asset = assets_service.update_asset(task["entity_id"], data)
+            events.emit(
+                "asset:update",
+                {"asset_id": task["entity_id"], "data": data},
+                project_id=task["project_id"],
             )
             breakdown_service.refresh_casting_stats(asset)
         except AssetNotFoundException:

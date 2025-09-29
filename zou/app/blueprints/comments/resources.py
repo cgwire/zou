@@ -497,7 +497,10 @@ class ReplyCommentResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
             if permissions.has_client_permissions():
-                raise permissions.PermissionDenied()
+                author = persons_service.get_person(comment["person_id"])
+                if current_user["studio_id"] != author["studio_id"] and \
+                    author["role"] == "client":
+                    raise permissions.PermissionDenied()
             user_service.check_task_action_access(task_id)
 
         args = self.get_args(

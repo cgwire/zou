@@ -109,23 +109,36 @@ class WorkingFileFileResource(Resource):
         ---
         tags:
           - Files
-        produces:
-          - image/png
-          - image/jpg
-          - image/gif
-          - multipart/form-data
         parameters:
           - in: path
             name: working_file_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Working file downloaded
-              schema:
-                type: file
+          '200':
+            description: Working file downloaded
+            content:
+              image/png:
+                schema:
+                  type: string
+                  format: binary
+              image/jpg:
+                schema:
+                  type: string
+                  format: binary
+              image/gif:
+                schema:
+                  type: string
+                  format: binary
+              application/octet-stream:
+                schema:
+                  type: string
+                  format: binary
+          '404':
+            description: Working file not found
         """
         working_file = self.check_access(working_file_id)
         return send_storage_file(
@@ -146,16 +159,38 @@ class WorkingFileFileResource(Resource):
           - in: path
             name: working_file_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: file
-            type: file
-            required: True
+        requestBody:
+          required: true
+          content:
+            multipart/form-data:
+              schema:
+                type: object
+                required:
+                  - file
+                properties:
+                  file:
+                    type: string
+                    format: binary
+                    description: Working file to upload
         responses:
-            201:
-              description: Working file stored
+          '201':
+            description: Working file stored
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      example: true
+          '400':
+            description: Invalid file or parameters
+          '404':
+            description: Working file not found
         """
         working_file = self.check_access(working_file_id)
         file_path = self.save_uploaded_file_in_temporary_folder(
@@ -179,44 +214,59 @@ class WorkingFilePathResource(Resource, ArgsMixin):
         Generate a working file path from file tree template.
         ---
         tags:
-        - Files
-        description: "Generate file path based on several parameters: task, software, mode, revision and separator.
-                     Revision can be computed automatically as next revision if not given."
+          - Files
+        description: Generate file path based on several parameters: task, software, mode, revision and separator.
+                     Revision can be computed automatically as next revision if not given.
         parameters:
           - in: path
             name: task_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Name, software, mode, revision and separator.
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
-                    name:
-                        type: string
-                        default: main
-                    mode:
-                        type: string
-                        default: working
-                    software_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    comment:
-                        type: string
-                    revision:
-                        type: integer
-                    separator:
-                        type: string
-                        default: /
+                  name:
+                    type: string
+                    default: main
+                    example: main
+                  mode:
+                    type: string
+                    default: working
+                    example: working
+                  software_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  comment:
+                    type: string
+                    example: "Updated lighting"
+                  revision:
+                    type: integer
+                    example: 1
+                  separator:
+                    type: string
+                    default: /
+                    example: /
         responses:
-            200:
-                description: Working file path generated
-            400:
-                description: Malformed file tree
+          '200':
+            description: Working file path generated
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                      example: "/project/asset/working/main_v001.blend"
+          '400':
+            description: Malformed file tree
         """
         (
             name,
@@ -301,53 +351,69 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         Generate an output file path from file tree template
         ---
         tags:
-        - Files
-        description: "Generate file path based on several parameters: entity, output type, task type, revision, mode, name and separator.
-                     Revision can be computed automatically as next revision if not given."
+          - Files
+        description: Generate file path based on several parameters: entity, output type, task type, revision, mode, name and separator.
+                     Revision can be computed automatically as next revision if not given.
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Entity, output type, task type, revision, mode, name and separator.
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - output_type_id
                   - task_type_id
                 properties:
-                    name:
-                        type: string
-                        default: main
-                    mode:
-                        type: string
-                        default: output
-                    output_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    extension:
-                        type: string
-                    representation:
-                        type: string
-                    revision:
-                        type: integer
-                    separator:
-                        type: string
-                        default: /
+                  name:
+                    type: string
+                    default: main
+                    example: main
+                  mode:
+                    type: string
+                    default: output
+                    example: output
+                  output_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  extension:
+                    type: string
+                    example: ".mp4"
+                  representation:
+                    type: string
+                    example: "mp4"
+                  revision:
+                    type: integer
+                    example: 1
+                  separator:
+                    type: string
+                    default: /
+                    example: /
         responses:
-            200:
-                description: Output file path generated
-            400:
-                description: Malformed file tree
+          '200':
+            description: Output file path generated
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                      example: "/project/asset/output/main_v001.mp4"
+          '400':
+            description: Malformed file tree
         """
         args = self.get_arguments()
         try:
@@ -546,12 +612,32 @@ class LastWorkingFilesResource(Resource):
           - in: path
             name: task_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Last working files revision for each file name for given task
+          '200':
+            description: Last working files revision for each file name for given task
+            content:
+              application/json:
+                schema:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      updated_at:
+                        type: string
+                        format: date-time
+          '404':
+            description: Task not found
         """
         result = {}
         user_service.check_task_access(task_id)
@@ -568,7 +654,7 @@ class TaskWorkingFilesResource(Resource):
     @jwt_required()
     def get(self, task_id):
         """
-        Return last working files revision for each file name for given task.
+        Return all working file revisions for a given task.
         ---
         tags:
           - Files
@@ -576,12 +662,35 @@ class TaskWorkingFilesResource(Resource):
           - in: path
             name: task_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Last working files revision for each file name for given task
+          '200':
+            description: All working file revisions for given task
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      updated_at:
+                        type: string
+                        format: date-time
+                      task_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Task not found
         """
         result = {}
         user_service.check_task_access(task_id)
@@ -604,60 +713,78 @@ class NewWorkingFileResource(Resource, ArgsMixin):
         Create new working file.
         ---
         tags:
-        - Files
+          - Files
         description: A working file is a file used to produce output files.
                      It is the file the CG artist is working on.
                      It is versioned, tied to a task and a software and requires a comment each time it is created.
                      A path is generated for each file created. The path format is defined in the file tree template file.
-        produces:
-          - image/png
-          - image/jpg
-          - image/gif
-          - multipart/form-data
         parameters:
           - in: path
             name: task_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Name, mode, description, comment, person ID, software ID, revision and separator.
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - name
                 properties:
-                    name:
-                        type: string
-                    mode:
-                        type: string
-                        default: working
-                    description:
-                        type: string
-                    comment:
-                        type: string
-                    person_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    software_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    revision:
-                        type: integer
-                    sep:
-                        type: string
-                        default: /
+                  name:
+                    type: string
+                    example: "main"
+                  mode:
+                    type: string
+                    default: working
+                    example: working
+                  description:
+                    type: string
+                    example: "Main character model"
+                  comment:
+                    type: string
+                    example: "Updated lighting and materials"
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  software_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  revision:
+                    type: integer
+                    example: 1
+                  sep:
+                    type: string
+                    default: /
+                    example: /
         responses:
-            201:
-                description: New working file created
+          '201':
+            description: New working file created
+            content:
+              application/json:
                 schema:
-                    type: file
-            400:
-                description: Given working file already exists
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    path:
+                      type: string
+                    revision:
+                      type: integer
+                    task_id:
+                      type: string
+                      format: uuid
+          '400':
+            description: Given working file already exists
         """
         (
             name,
@@ -760,12 +887,26 @@ class ModifiedFileResource(Resource):
           - in: path
             name: working_file_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Working file modification date updated
+          '200':
+            description: Working file modification date updated
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    updated_at:
+                      type: string
+                      format: date-time
+          '404':
+            description: Working file not found
         """
         working_file = files_service.get_working_file(working_file_id)
         user_service.check_task_action_access(working_file["task_id"])
@@ -787,26 +928,45 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
         Update comment on given working file.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: working_file_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Comment
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - comment
                 properties:
-                    comment:
-                        type: string
+                  comment:
+                    type: string
+                    example: "Updated lighting and materials"
         responses:
-            200:
-                description: Comment updated on given working file
+          '200':
+            description: Comment updated on given working file
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    comment:
+                      type: string
+                    updated_at:
+                      type: string
+                      format: date-time
+          '404':
+            description: Working file not found
         """
         args = self.get_args(
             [
@@ -849,7 +1009,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
         Create new output file linked to a given entity.
         ---
         tags:
-        - Files
+          - Files
         description: Output files are linked to entities.
                      Each time a CG artist is satisfied by what he did on a working file,
                      he can create an output file that will be linked to a target entity (an asset, a shot, a sequence, ...).
@@ -857,75 +1017,93 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                      An output type is required for better categorization (textures, caches, ...).
                      A task type can be set too to give the department related to the output file.
                      Revision is automatically set.
-        produces:
-          - image/png
-          - image/jpg
-          - image/gif
-          - multipart/form-data
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Name, mode, output type ID, task type ID, person ID, working file ID, file status ID, comment, extension, representation, revision, number of elements and separator.
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - output_type_id
                   - task_type_id
                 properties:
-                    name:
-                        type: string
-                    mode:
-                        type: string
-                        default: output
-                    output_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    person_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    working_file_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    file_status_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    comment:
-                        type: string
-                    extension:
-                        type: string
-                    representation:
-                        type: string
-                    revision:
-                        type: integer
-                    nb_elements:
-                        type: integer
-                        default: 1
-                    sep:
-                        type: string
-                        default: /
+                  name:
+                    type: string
+                    example: "main"
+                  mode:
+                    type: string
+                    default: output
+                    example: output
+                  output_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  working_file_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  file_status_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  comment:
+                    type: string
+                    example: "Final render"
+                  extension:
+                    type: string
+                    example: ".mp4"
+                  representation:
+                    type: string
+                    example: "mp4"
+                  revision:
+                    type: integer
+                    example: 1
+                  nb_elements:
+                    type: integer
+                    default: 1
+                    example: 1
+                  sep:
+                    type: string
+                    default: /
+                    example: /
         responses:
-            200:
-                description: New output file created
+          '200':
+            description: New output file created
+            content:
+              application/json:
                 schema:
-                    type: file
-            400:
-                description: Given output file already exists
-                             Given person not found
-                             Given output type not found
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    path:
+                      type: string
+                    revision:
+                      type: integer
+                    entity_id:
+                      type: string
+                      format: uuid
+          '400':
+            description: Given output file already exists, Given person not found, or Given output type not found
         """
         args = self.get_arguments()
 
@@ -1071,92 +1249,115 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
         Create new output file linked to assets through an instance of this asset for a given shot.
         ---
         tags:
-        - Files
+          - Files
         description: Some output files are linked to assets through an instance of this asset for a given shot.
                      Each time a CG artist is satisfied by what he did on a working file,
                      he can create an output file that will be linked to a target instance.
                      It keeps track of the working file at the origin of the output file.
                      An output type is required for better categorization (textures, caches, ...).
                      A task type can be set too to give the department related to the output file.
-        produces:
-          - image/png
-          - image/jpg
-          - image/gif
-          - multipart/form-data
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Name, mode, output type ID, task type ID, person ID, working file ID, file status ID, comment, extension, representation, revision, number of elements and separator.
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - output_type_id
                   - task_type_id
                 properties:
-                    name:
-                        type: string
-                        default: main
-                    mode:
-                        type: string
-                        default: output
-                    output_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    person_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    working_file_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    file_status_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    is_sequence:
-                        type: boolean
-                        default: False
-                    comment:
-                        type: string
-                    extension:
-                        type: string
-                    representation:
-                        type: string
-                    revision:
-                        type: integer
-                    nb_elements:
-                        type: integer
-                        default: 1
-                    sep:
-                        type: string
-                        default: /
+                  name:
+                    type: string
+                    default: main
+                    example: main
+                  mode:
+                    type: string
+                    default: output
+                    example: output
+                  output_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  working_file_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  file_status_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  is_sequence:
+                    type: boolean
+                    default: false
+                    example: false
+                  comment:
+                    type: string
+                    example: "Final render"
+                  extension:
+                    type: string
+                    example: ".mp4"
+                  representation:
+                    type: string
+                    example: "mp4"
+                  revision:
+                    type: integer
+                    example: 1
+                  nb_elements:
+                    type: integer
+                    default: 1
+                    example: 1
+                  sep:
+                    type: string
+                    default: /
+                    example: /
         responses:
-            200:
-                description: New output file created
+          '200':
+            description: New output file created
+            content:
+              application/json:
                 schema:
-                    type: file
-            400:
-                description: Given output file already exists
-                             Given person not found
-                             Given output type not found
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    path:
+                      type: string
+                    revision:
+                      type: integer
+                    asset_instance_id:
+                      type: string
+                      format: uuid
+                    temporal_entity_id:
+                      type: string
+                      format: uuid
+          '400':
+            description: Given output file already exists, Given person not found, or Given output type not found
         """
         args = self.get_arguments()
 
@@ -1305,37 +1506,50 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
         Get next revision for given entity, output type, task type and name.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Name, output type ID, task type ID.
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - output_type_id
                   - task_type_id
                 properties:
-                    name:
-                        type: string
-                        default: main
-                    output_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                  name:
+                    type: string
+                    default: main
+                    example: main
+                  output_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Next revision for given entity, output type, task type and name
+          '200':
+            description: Next revision for given entity, output type, task type and name
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    next_revision:
+                      type: integer
+                      example: 3
+          '404':
+            description: Entity, output type, or task type not found
         """
         args = self.get_arguments()
         entity = entities_service.get_entity(entity_id)
@@ -1496,48 +1710,73 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
         Get last revisions of output files for given instance grouped by output type and file name.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
             example: cache
         responses:
-            200:
-                description: Last revisions of output files for given instance
-                             grouped by output type and file name
+          '200':
+            description: Last revisions of output files for given instance grouped by output type and file name
+            content:
+              application/json:
+                schema:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      path:
+                        type: string
+                      updated_at:
+                        type: string
+                        format: date-time
+          '404':
+            description: Asset instance or temporal entity not found
         """
         args = self.get_args(
             [
@@ -1684,29 +1923,59 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
         Get all output files for given asset instance and given output type.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: output_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description:  All output files for given asset instance and given output type
+          '200':
+            description: All output files for given asset instance and given output type
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      path:
+                        type: string
+                      updated_at:
+                        type: string
+                        format: date-time
+                      asset_instance_id:
+                        type: string
+                        format: uuid
+                      temporal_entity_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Asset instance, temporal entity, or output type not found
         """
         representation = self.get_text_parameter("representation")
 
@@ -1729,44 +1998,72 @@ class ProjectOutputFilesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Get all output files for given poject.
+        Get all output files for given project.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
             example: cache
         responses:
-            200:
-                description:  All output files for given project.
+          '200':
+            description: All output files for given project
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      path:
+                        type: string
+                      updated_at:
+                        type: string
+                        format: date-time
+                      project_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Project not found
         """
         args = self.get_args(
             [
@@ -1800,41 +2097,69 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
         Get all output files for given entity.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
             example: cache
         responses:
-            200:
-                description:  All output files for given entity
+          '200':
+            description: All output files for given entity
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      path:
+                        type: string
+                      updated_at:
+                        type: string
+                        format: date-time
+                      entity_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Entity not found
         """
         args = self.get_args(
             [
@@ -1870,48 +2195,79 @@ class InstanceOutputFilesResource(Resource):
         Get all output files for given asset instance and given output type.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
-            example: cache
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: file_status_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: representation
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
             example: cache
         responses:
-            200:
-                description: All output files for given asset instance and
-                             given temporal entity (shot, sequence, etc.)
+          '200':
+            description: All output files for given asset instance and given temporal entity (shot, sequence, etc.)
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      path:
+                        type: string
+                      updated_at:
+                        type: string
+                        format: date-time
+                      asset_instance_id:
+                        type: string
+                        format: uuid
+                      temporal_entity_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Asset instance or temporal entity not found
         """
         args = self.get_args(
             [
@@ -1947,17 +2303,43 @@ class FileResource(Resource):
         output file.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: file_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Information about file
+          '200':
+            description: Information about file
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    path:
+                      type: string
+                    revision:
+                      type: integer
+                    updated_at:
+                      type: string
+                      format: date-time
+                    task_id:
+                      type: string
+                      format: uuid
+                    entity_id:
+                      type: string
+                      format: uuid
+          '404':
+            description: File not found
         """
         try:
             file_dict = files_service.get_working_file(file_id)
@@ -1985,30 +2367,45 @@ class SetTreeResource(Resource, ArgsMixin):
         Define a template file to use for given project.
         ---
         tags:
-        - Files
+          - Files
         description: Template files are located on the server side.
                      Each template has a name which means that you just have to give a name to "select" the template to link with the project.
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Tree name
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - tree_name
                 properties:
-                    tree_name:
-                        type: string
+                  tree_name:
+                    type: string
+                    example: "default"
         responses:
-            200:
-                description: Template file defined
-            400:
-                description: Selected tree not available
+          '200':
+            description: Template file defined
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      example: true
+                    tree_name:
+                      type: string
+                      example: "default"
+          '400':
+            description: Selected tree not available
         """
         args = self.get_args(
             [
@@ -2043,17 +2440,58 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
         Get all working files for a given entity and possibly a task and a name.
         ---
         tags:
-        - Files
+          - Files
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            example: main
         responses:
-            200:
-                description:  All working files for given entity and possibly a task and a name
+          '200':
+            description: All working files for given entity and possibly a task and a name
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      revision:
+                        type: integer
+                      path:
+                        type: string
+                      updated_at:
+                        type: string
+                        format: date-time
+                      task_id:
+                        type: string
+                        format: uuid
+                      entity_id:
+                        type: string
+                        format: uuid
+          '404':
+            description: Entity not found
         """
         args = self.get_args(
             [
@@ -2083,6 +2521,64 @@ class GuessFromPathResource(Resource, ArgsMixin):
 
     @jwt_required()
     def post(self):
+        """
+        Get list of possible project file tree templates matching a file path
+        and data ids corresponding to template tokens.
+        ---
+        tags:
+          - Files
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - project_id
+                  - file_path
+                properties:
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  file_path:
+                    type: string
+                    example: "/project/asset/working/main_v001.blend"
+                  sep:
+                    type: string
+                    default: /
+                    example: /
+        responses:
+          '200':
+            description: List of possible project file tree templates matching the file path
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    matches:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          template:
+                            type: string
+                            example: "default"
+                          confidence:
+                            type: number
+                            example: 0.95
+                          data:
+                            type: object
+                            properties:
+                              project_id:
+                                type: string
+                                format: uuid
+                              entity_id:
+                                type: string
+                                format: uuid
+          '400':
+            description: Invalid project ID or file path
+        """
         data = self.get_arguments()
 
         return file_tree_service.guess_from_path(

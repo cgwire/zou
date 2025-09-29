@@ -22,8 +22,19 @@ class IndexResource(Resource):
         tags:
           - Index
         responses:
-            200:
-                description: API name and version
+          '200':
+            description: API name and version
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    api:
+                      type: string
+                      example: "Zou"
+                    version:
+                      type: string
+                      example: "0.20.0"
         """
         return {"api": config.APP_NAME, "version": __version__}
 
@@ -100,8 +111,34 @@ class StatusResource(BaseStatusResource):
         tags:
           - Index
         responses:
-            200:
-                description: API name, version and status
+          '200':
+            description: API name, version and status
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: "Zou"
+                    version:
+                      type: string
+                      example: "0.20.0"
+                    database-up:
+                      type: boolean
+                      example: true
+                    key-value-store-up:
+                      type: boolean
+                      example: true
+                    event-stream-up:
+                      type: boolean
+                      example: true
+                    job-queue-up:
+                      type: boolean
+                      example: true
+                    indexer-up:
+                      type: boolean
+                      example: true
         """
         (
             api_name,
@@ -132,8 +169,58 @@ class StatusResourcesResource(BaseStatusResource):
         tags:
           - Index
         responses:
-            200:
-                description: Date and CPU, memory and jobs stats
+          '200':
+            description: Date and CPU, memory and jobs stats
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    date:
+                      type: string
+                      format: date-time
+                      example: "2023-12-07T10:30:00.000Z"
+                    cpu:
+                      type: object
+                      properties:
+                        percent:
+                          type: array
+                          items:
+                            type: number
+                          example: [25.5, 30.2, 28.1]
+                        loadavg:
+                          type: object
+                          properties:
+                            "last 1 min":
+                              type: number
+                              example: 0.75
+                            "last 5 min":
+                              type: number
+                              example: 0.82
+                            "last 10 min":
+                              type: number
+                              example: 0.78
+                    memory:
+                      type: object
+                      properties:
+                        total:
+                          type: integer
+                          example: 8589934592
+                        used:
+                          type: integer
+                          example: 4294967296
+                        available:
+                          type: integer
+                          example: 4294967296
+                        percent:
+                          type: number
+                          example: 50.0
+                    jobs:
+                      type: object
+                      properties:
+                        running_jobs:
+                          type: integer
+                          example: 3
         """
         loadavg = list(psutil.getloadavg())
 
@@ -179,8 +266,20 @@ class TxtStatusResource(BaseStatusResource):
         tags:
           - Index
         responses:
-            200:
-                description: API name, version and status as txt
+          '200':
+            description: API name, version and status as txt
+            content:
+              text/plain:
+                schema:
+                  type: string
+                  example: |
+                    name: Zou
+                    version: 0.20.0
+                    database-up: up
+                    event-stream-up: up
+                    key-value-store-up: up
+                    job-queue-up: up
+                    indexer-up: up
         """
         (
             api_name,
@@ -219,8 +318,32 @@ class InfluxStatusResource(BaseStatusResource):
         tags:
           - Index
         responses:
-            200:
-                description: Status of database, key value, event stream, job queue and time
+          '200':
+            description: Status of database, key value, event stream, job queue and time
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    database-up:
+                      type: integer
+                      example: 1
+                    key-value-store-up:
+                      type: integer
+                      example: 1
+                    event-stream-up:
+                      type: integer
+                      example: 1
+                    job-queue-up:
+                      type: integer
+                      example: 1
+                    indexer-up:
+                      type: integer
+                      example: 1
+                    time:
+                      type: number
+                      format: float
+                      example: 1701948600.123
         """
         (
             _,
@@ -253,10 +376,28 @@ class StatsResource(Resource):
         tags:
           - Index
         responses:
-            403:
-                description: Permission denied
-            200:
-                description: Main stats
+          '200':
+            description: Main stats
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    projects:
+                      type: integer
+                      example: 15
+                    assets:
+                      type: integer
+                      example: 1250
+                    shots:
+                      type: integer
+                      example: 890
+                    tasks:
+                      type: integer
+                      example: 5670
+                    persons:
+                      type: integer
+                      example: 45
         """
         if not permissions.has_admin_permissions():
             abort(403)
@@ -271,10 +412,46 @@ class ConfigResource(Resource):
         tags:
           - Index
         responses:
-            200:
-                description: Configuration object including self-hosted status,
-                    Crisp token, indexer configuration, SAML status, and dark
-                    theme status.
+          '200':
+            description: Configuration object including self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    is_self_hosted:
+                      type: boolean
+                      example: true
+                    crisp_token:
+                      type: string
+                      example: "abc123def456"
+                    dark_theme_by_default:
+                      type: boolean
+                      example: false
+                    indexer_configured:
+                      type: boolean
+                      example: true
+                    saml_enabled:
+                      type: boolean
+                      example: false
+                    saml_idp_name:
+                      type: string
+                      example: "My Company SSO"
+                    default_locale:
+                      type: string
+                      example: "en_US"
+                    default_timezone:
+                      type: string
+                      example: "UTC"
+                    sentry:
+                      type: object
+                      properties:
+                        dsn:
+                          type: string
+                          example: "https://example@sentry.io/123456"
+                        sampleRate:
+                          type: number
+                          example: 0.1
         """
         organisation = persons_service.get_organisation()
         conf = {
@@ -303,8 +480,16 @@ class TestEventsResource(Resource):
         tags:
           - Index
         responses:
-            200:
-                description: Success flage
+          '200':
+            description: Success flag
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      example: true
         """
         from zou.app.utils import events
 

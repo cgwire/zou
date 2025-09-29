@@ -32,8 +32,23 @@ class OpenProjectsResource(Resource, ArgsMixin):
           - Projects
         description: Most of the time, past projects are not needed.
         responses:
-            200:
-              description: All running projects
+          '200':
+            description: All running projects
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      project_status_id:
+                        type: string
+                        format: uuid
         """
         name = self.get_text_parameter("name")
         if permissions.has_admin_permissions():
@@ -57,8 +72,23 @@ class AllProjectsResource(Resource, ArgsMixin):
           - Projects
         description: Ensure that user has at least the manager level before that.
         responses:
-            200:
-              description: All projects listed in database
+          '200':
+            description: All projects listed in database
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                      project_status_id:
+                        type: string
+                        format: uuid
         """
         name = self.get_text_parameter("name")
         try:
@@ -91,12 +121,31 @@ class ProductionTeamResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: People listed in a production team
+          '200':
+            description: People listed in a production team
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      first_name:
+                        type: string
+                      last_name:
+                        type: string
+                      email:
+                        type: string
+          '404':
+            description: Project not found
         """
         user_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
@@ -119,18 +168,40 @@ class ProductionTeamResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: person_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - person_id
+                properties:
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            201:
-              description: Person added to the production team
+          '201':
+            description: Person added to the production team
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project or person not found
         """
         args = self.get_args([("person_id", "", True)])
 
@@ -168,7 +239,9 @@ class ProductionTeamRemoveResource(Resource):
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Empty response
+              description: Person removed from production team
+            404:
+              description: Project or person not found
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
@@ -191,18 +264,40 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: asset_type_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - asset_type_id
+                properties:
+                  asset_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            201:
-              description: Asset type added to production
+          '201':
+            description: Asset type added to production
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project or asset type not found
         """
         args = self.get_args([("asset_type_id", "", True)])
 
@@ -290,23 +385,43 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: task_type_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: priority
-            required: False
-            type: string
-            default: "None"
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - task_type_id
+                properties:
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  priority:
+                    type: string
+                    default: "None"
         responses:
-            201:
-              description: Asset type added to production
+          '201':
+            description: Task type added to production
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project or task type not found
         """
         args = self.get_args(
             [("task_type_id", "", True), ("priority", None, False)]
@@ -382,7 +497,7 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add a task type linked to a production.
+        Add a task status linked to a production.
         ---
         tags:
           - Projects
@@ -390,18 +505,40 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: task_status_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - task_status_id
+                properties:
+                  task_status_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            201:
-              description: Task type added to production
+          '201':
+            description: Task status added to production
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project or task status not found
         """
         args = self.get_args([("task_status_id", "", True)])
 
@@ -681,12 +818,63 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - name
+                  - data_type
+                properties:
+                  entity_type:
+                    type: string
+                    default: "Asset"
+                    enum: ["Asset", "Shot", "Edit", "Episode", "Sequence"]
+                  name:
+                    type: string
+                    description: Name of the metadata descriptor
+                  data_type:
+                    type: string
+                    description: Type of data (string, number, boolean, etc.)
+                  for_client:
+                    type: string
+                    default: "False"
+                    example: "True"
+                  choices:
+                    type: array
+                    items:
+                      type: string
+                    example: ["option1", "option2"]
+                  departments:
+                    type: array
+                    items:
+                      type: string
+                    example: ["department1", "department2"]
         responses:
-            201:
-              description: Create a new metadata descriptor
+          '201':
+            description: Metadata descriptor created
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    data_type:
+                      type: string
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project not found
         """
         args = self.get_args(
             [
@@ -799,19 +987,24 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             required: False
           - in: formData
             name: for_client
-            required: True
-            type: boolean
-            default: False
-            required: False
+            required: false
+            type: string
+            default: "False"
+            example: "True"
           - in: formData
             name: choices
-            required: True
+            required: false
             type: array
-            required: False
+            items:
+              type: string
+            example: ["option1", "option2"]
           - in: formData
             name: departments
+            required: false
             type: array
-            required: False
+            items:
+              type: string
+            example: ["department1", "department2"]
         responses:
             200:
               description: Metadata descriptor updated
@@ -1132,22 +1325,45 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: true
-            type: string
-            example: "New Budget"
-          - in: formData
-            name: currency
-            required: false
-            type: string
-            example: "USD"
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - name
+                properties:
+                  name:
+                    type: string
+                    example: "New Budget"
+                  currency:
+                    type: string
+                    default: "USD"
+                    example: "USD"
         responses:
-            201:
-              description: Budget created
+          '201':
+            description: Budget created
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    name:
+                      type: string
+                    currency:
+                      type: string
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project not found
         """
         self.check_id_parameter(project_id)
         user_service.check_manager_project_access(project_id)
@@ -1303,6 +1519,76 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
     def post(self, project_id, budget_id):
         """
         Create a budget entry for given production and budget
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: budget_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/x-www-form-urlencoded:
+              schema:
+                type: object
+                required:
+                  - department_id
+                properties:
+                  department_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  person_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  start_date:
+                    type: string
+                    format: date
+                    example: "2025-01-01"
+                  months_duration:
+                    type: integer
+                    example: 12
+                  daily_salary:
+                    type: number
+                    format: float
+                    example: 100.00
+                  position:
+                    type: string
+                    example: "Artist"
+                  seniority:
+                    type: string
+                    example: "Mid"
+        responses:
+          '201':
+            description: Budget entry created
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    department_id:
+                      type: string
+                      format: uuid
+          '400':
+            description: Invalid parameters
+          '404':
+            description: Project or budget not found
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1506,19 +1792,19 @@ class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
         Get aggregated time spents by month for given project.
         ---
         tags:
-        - Projects
+          - Projects
         parameters:
-        - in: path
-          name: project_id
-          required: True
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: project_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
           200:
-              description: Aggregated time spents for given person and month
+            description: Aggregated time spents for given person and month
           400:
-              description: Wrong ID format
+            description: Wrong ID format
         """
         permissions.check_admin_permissions()
         self.check_id_parameter(project_id)
@@ -1536,25 +1822,25 @@ class ProductionScheduleVersionTaskLinksResource(Resource, ArgsMixin):
         Get task links for given production schedule version.
         ---
         tags:
-        - Projects
+          - Projects
         parameters:
-        - in: path
-          name: production_schedule_version_id
-          required: True
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
-        - in: query
-          name: task_type_id
-          required: false
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: production_schedule_version_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: task_type_id
+            required: false
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Task links for given production schedule version.
-            400:
-                description: Wrong ID format
+          200:
+            description: Task links for given production schedule version
+          400:
+            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -1595,19 +1881,19 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
         Set task links for given production schedule version from tasks.
         ---
         tags:
-        - Projects
+          - Projects
         parameters:
-        - in: path
-          name: production_schedule_version_id
-          required: True
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: production_schedule_version_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Task links created.
-            400:
-                description: Wrong ID format
+          200:
+            description: Task links created
+          400:
+            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -1631,19 +1917,19 @@ class ProductionScheduleVersionApplyToProductionResource(Resource, ArgsMixin):
         Apply production schedule version to production.
         ---
         tags:
-        - Projects
+          - Projects
         parameters:
-        - in: path
-          name: production_schedule_version_id
-          required: True
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: production_schedule_version_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Task links created.
-            400:
-                description: Wrong ID format
+          200:
+            description: Production schedule version applied
+          400:
+            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
@@ -1671,25 +1957,25 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
         Set task links for given production schedule version from another production schedule version.
         ---
         tags:
-        - Projects
+          - Projects
         parameters:
-        - in: path
-          name: production_schedule_version_id
-          required: True
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
-        - in: formData
-          name: production_schedule_version_id
-          required: True
-          type: string
-          format: uuid
-          example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: production_schedule_version_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: production_schedule_version_id
+            required: true
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: Task links created.
-            400:
-                description: Wrong ID format
+          200:
+            description: Task links created
+          400:
+            description: Wrong ID format
         """
         production_schedule_version = (
             schedule_service.get_production_schedule_version(
