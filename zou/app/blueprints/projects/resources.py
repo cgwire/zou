@@ -1,3 +1,4 @@
+from flask import abort
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
@@ -13,7 +14,10 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.utils import permissions
-from zou.app.services.exception import WrongParameterException
+from zou.app.services.exception import (
+    WrongParameterException,
+    WrongDateFormatException,
+)
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 
 
@@ -2012,3 +2016,158 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
                 "id"
             ],
         )
+
+
+class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
+    """
+    Retrieve time spents for a task type in the production
+    """
+
+    @jwt_required()
+    def get(self, project_id, task_type_id):
+        """
+        Retrieve time spents for a task type in the production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: start_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-01"
+          - in: query
+            name: end_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-31"
+        responses:
+          '200':
+            description: All time spents for given task type and project
+            content:
+              application/json:
+                schema:
+                  type: dict
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      person_id:
+                        type: string
+                        format: uuid
+                      duration:
+                        type: number
+                        format: float
+                      date:
+                        type: string
+                        format: date
+          '400':
+            description: Invalid date range parameters
+        """
+        user_service.check_manager_project_access(project_id)
+        arguments = self.get_args(["start_date", "end_date"])
+        start_date, end_date = arguments["start_date"], arguments["end_date"]
+        try:
+            return time_spents_service.get_project_task_type_time_spents(
+                project_id, task_type_id, start_date, end_date
+            )
+        except WrongDateFormatException:
+            abort(
+                400,
+                f"Wrong date format for {start_date} and/or {end_date}",
+            )
+
+
+class ProductionDayOffsResource(Resource, ArgsMixin):
+    """
+    Retrieve all day offs for a production
+    """
+
+    @jwt_required()
+    def get(self, project_id):
+        """
+        Retrieve all day offs for a production
+        ---
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: start_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-01"
+          - in: query
+            name: end_date
+            required: false
+            schema:
+              type: string
+              format: date
+            example: "2022-07-31"
+        responses:
+          '200':
+            description: All day offs for given project
+            content:
+              application/json:
+                schema:
+                  type: dict
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      person_id:
+                        type: string
+                        format: uuid
+                      description:
+                        type: string
+                      date:
+                        type: string
+                        format: date
+                      end_date:
+                        type: string
+                        format: date
+          '400':
+            description: Invalid date range parameters
+        """
+        user_service.check_manager_project_access(project_id)
+        arguments = self.get_args(["start_date", "end_date"])
+        start_date, end_date = arguments["start_date"], arguments["end_date"]
+        try:
+            return time_spents_service.get_day_offs_between_for_project(
+                project_id, start_date, end_date
+            )
+        except WrongDateFormatException:
+            abort(
+                400,
+                f"Wrong date format for {start_date} and/or {end_date}",
+            )

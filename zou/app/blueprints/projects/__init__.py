@@ -35,6 +35,8 @@ from zou.app.blueprints.projects.resources import (
     ProductionScheduleVersionSetTaskLinksFromTasksResource,
     ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource,
     ProductionScheduleVersionApplyToProductionResource,
+    ProductionTaskTypesTimeSpentsResource,
+    ProductionDayOffsResource,
 )
 
 routes = [
@@ -45,6 +47,11 @@ routes = [
         "/data/projects/<project_id>/task-types",
         ProductionTaskTypesResource,
     ),
+    (
+        "/data/projects/<project_id>/task-types/<task_type_id>/time-spents",
+        ProductionTaskTypesTimeSpentsResource,
+    ),
+    ("/data/projects/<project_id>/day-offs", ProductionDayOffsResource),
     (
         "/data/projects/<project_id>/team/<person_id>",
         ProductionTeamRemoveResource,
