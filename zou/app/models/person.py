@@ -183,13 +183,10 @@ class Person(db.Model, BaseMixin, SerializerMixin):
                 for credential in self.fido_credentials
             ]
 
-    def serialize(
-        self, obj_type="Person", relations=False, milliseconds=False
-    ):
-        data = SerializerMixin.serialize(
-            self, obj_type, relations=relations, milliseconds=milliseconds
-        )
-        data["fido_devices"] = self.fido_devices()
+    def serialize(self, **kwargs):
+        data = super().serialize(**kwargs)
+        if "fido_devices" not in kwargs.get("ignored_attrs", []):
+            data["fido_devices"] = self.fido_devices()
         return data
 
     def serialize_safe(self, **kwargs):
@@ -200,6 +197,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
                 "email_otp_secret",
                 "otp_recovery_codes",
                 "fido_credentials",
+                "fido_devices",
                 "jti",
             ],
             **kwargs,
