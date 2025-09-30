@@ -229,6 +229,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if fps is not None:
             shot_new_values["data"]["fps"] = fps
 
+        resolution = row.get("Resolution", None)
+        if resolution is not None:
+            shot_new_values["data"]["resolution"] = resolution
+
         for name, descriptor in self.descriptor_fields.items():
             if name in row:
                 if descriptor["data_type"] == "boolean":
