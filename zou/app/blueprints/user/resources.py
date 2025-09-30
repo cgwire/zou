@@ -1232,9 +1232,9 @@ class TaskSubscribeResource(Resource):
         tags:
         - User
         description: It applies to given task and current user. When a user
-        subscribed, he gets notified everytime a comment is posted on the task.
-        When a user subscribes, he gets notified everytime a
-            comment is posted on the task.
+            subscribed, he gets notified everytime a comment is posted on the
+            task. When a user subscribes, he gets notified everytime a comment 
+            is posted on the task.
         parameters:
           - in: path
             name: task_id
