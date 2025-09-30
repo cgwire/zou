@@ -202,11 +202,6 @@ class WorkingFileFileResource(Resource):
 
 
 class WorkingFilePathResource(Resource, ArgsMixin):
-    """
-    Generate from file tree template a working file path based on several
-    parameters: task, software, mode, revision and separator. Revision can be
-    computed automatically as next revision if not given.
-    """
 
     @jwt_required()
     def post(self, task_id):
@@ -215,7 +210,7 @@ class WorkingFilePathResource(Resource, ArgsMixin):
         ---
         tags:
           - Files
-        description: Generate file path based on several parameters: task, software, mode, revision and separator.
+        description: Generate file path based on several parameters
                      Revision can be computed automatically as next revision if not given.
         parameters:
           - in: path
@@ -338,12 +333,6 @@ class WorkingFilePathResource(Resource, ArgsMixin):
 
 
 class EntityOutputFilePathResource(Resource, ArgsMixin):
-    """
-    Generate from file tree template an output file path based on several
-    parameters: entity, output type, task type, revision, mode, name
-    and separator. Revision can be computed automatically as next revision if
-    not given.
-    """
 
     @jwt_required()
     def post(self, entity_id):
@@ -352,7 +341,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         ---
         tags:
           - Files
-        description: Generate file path based on several parameters: entity, output type, task type, revision, mode, name and separator.
+        description: Generate file path based on several parameters entity, output type, task type, revision, mode, name and separator.
                      Revision can be computed automatically as next revision if not given.
         parameters:
           - in: path
@@ -474,11 +463,6 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
 
 
 class InstanceOutputFilePathResource(Resource, ArgsMixin):
-    """
-    Generate from file tree template an output file path based on several
-    parameters: asset instance, output type, task type, revision, mode, name and separator.
-    Revision can be computed automatically as next revision in case no revision is given in parameter.
-    """
 
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
@@ -487,7 +471,7 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
         ---
         tags:
         - Files
-        description: "Generate file path based on several parameters: asset instance, output type, task type, revision, mode, name and separator.
+        description: "Generate file path based on several parameters asset instance, output type, task type, revision, mode, name and separator.
                      Revision can be computed automatically as next revision in case no revision is given in parameter."
         parameters:
           - in: path
@@ -991,17 +975,6 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
 
 
 class NewEntityOutputFileResource(Resource, ArgsMixin):
-    """
-    Output files are linked to entities. Each time a CG artist is satisfied
-    by what he did on a working file, he can create an output file that
-    will be linked to a target entity (an asset, a shot, a sequence, ...).
-    It keeps track of the working file at the origin of the output file.
-    An output type is required for better categorization (textures, caches,
-    ...). A task type can be set too to give the department related to the
-    output file.
-
-    Revision is automatically set.
-    """
 
     @jwt_required()
     def post(self, entity_id):
