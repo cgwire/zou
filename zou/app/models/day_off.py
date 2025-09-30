@@ -19,3 +19,6 @@ class DayOff(db.Model, BaseMixin, SerializerMixin):
         db.UniqueConstraint("person_id", "date", name="day_off_uc"),
         db.CheckConstraint("date <= end_date", name="day_off_date_check"),
     )
+
+    def serialize_safe(self, **kwargs):
+        return self.serialize(ignored_attrs=["description"], **kwargs)

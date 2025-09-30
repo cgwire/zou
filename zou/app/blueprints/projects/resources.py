@@ -2159,12 +2159,21 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
           '400':
             description: Invalid date range parameters
         """
-        user_service.check_manager_project_access(project_id)
+        user_service.check_project_access(project_id)
+        if (
+            permissions.has_client_permissions()
+            or permissions.has_vendor_permissions()
+        ):
+            raise permissions.PermissionDenied
         arguments = self.get_args(["start_date", "end_date"])
         start_date, end_date = arguments["start_date"], arguments["end_date"]
         try:
             return time_spents_service.get_day_offs_between_for_project(
-                project_id, start_date, end_date
+                project_id,
+                start_date,
+                end_date,
+                safe=permissions.has_manager_permissions(),
+                current_user_id=persons_service.get_current_user()["id"],
             )
         except WrongDateFormatException:
             abort(

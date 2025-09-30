@@ -606,7 +606,11 @@ def get_project_task_type_time_spents(
 
 
 def get_day_offs_between_for_project(
-    project_id, start_date=None, end_date=None
+    project_id,
+    start_date=None,
+    end_date=None,
+    safe=False,
+    current_user_id=None,
 ):
     """
     Get all day off entries for project, start and end date.
@@ -627,8 +631,12 @@ def get_day_offs_between_for_project(
 
         result = defaultdict(list)
         for day_off in days_offs:
-            result[str(day_off.person_id)].append(day_off.serialize())
-
+            day_off_person_id = str(day_off.person_id)
+            result[day_off_person_id].append(
+                day_off.serialize_safe()
+                if safe and current_user_id != day_off_person_id
+                else day_off.serialize()
+            )
     except DataError:
         raise WrongDateFormatException
     return dict(result)

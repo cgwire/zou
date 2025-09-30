@@ -192,15 +192,18 @@ class Person(db.Model, BaseMixin, SerializerMixin):
         data["fido_devices"] = self.fido_devices()
         return data
 
-    def serialize_safe(self, relations=False, milliseconds=False):
-        data = self.serialize(relations=relations, milliseconds=milliseconds)
-        del data["password"]
-        del data["totp_secret"]
-        del data["email_otp_secret"]
-        del data["otp_recovery_codes"]
-        del data["fido_credentials"]
-        del data["jti"]
-        return data
+    def serialize_safe(self, **kwargs):
+        return self.serialize(
+            ignored_attrs=[
+                "password",
+                "totp_secret",
+                "email_otp_secret",
+                "otp_recovery_codes",
+                "fido_credentials",
+                "jti",
+            ],
+            **kwargs,
+        )
 
     def present_minimal(self, relations=False, milliseconds=False):
         data = SerializerMixin.serialize(
