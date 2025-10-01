@@ -663,7 +663,7 @@ def reset_search_index():
     with app.app_context():
         print("Resetting search index.")
         index_service.reset_index()
-        print("Search index resetted.")
+        print("Search index reset.")
 
 
 def search_asset(query):
