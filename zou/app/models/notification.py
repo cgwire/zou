@@ -13,6 +13,7 @@ TYPES = [
     ("assignation", "Assignation"),
     ("reply", "Reply"),
     ("reply-mention", "Reply Mention"),
+    ("playlist-ready", "Playlist Ready"),
 ]
 
 
@@ -45,7 +46,13 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
     task_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("task.id"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+    playlist_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("playlist.id"),
+        nullable=True,
         index=True,
     )
     reply_id = db.Column(UUIDType(binary=False), nullable=True, index=True)
@@ -56,6 +63,7 @@ class Notification(db.Model, BaseMixin, SerializerMixin):
             "author_id",
             "comment_id",
             "reply_id",
+            "playlist_id",
             "type",
             name="notification_uc",
         ),

@@ -1,8 +1,9 @@
 from sqlalchemy.exc import StatementError
 
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.entity import Entity
 from zou.app.models.notification import Notification
+from zou.app.models.person import Person
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -15,7 +16,7 @@ from zou.app.services import (
     persons_service,
 )
 from zou.app.services.exception import PersonNotFoundException
-from zou.app.utils import events, fields, query as query_utils
+from zou.app.utils import date_helpers, events, fields, query as query_utils
 
 from zou.app.utils import cache
 
@@ -39,6 +40,7 @@ def create_notification(
     change=False,
     type="comment",
     created_at=None,
+    playlist_id=None,
 ):
     """
     Create a new notification for given person and comment.
@@ -52,6 +54,7 @@ def create_notification(
         task_id=task_id,
         comment_id=comment_id,
         reply_id=reply_id,
+        playlist_id=playlist_id,
         type=type,
         created_at=creation_date,
     )
@@ -492,3 +495,37 @@ def get_subscriptions_for_user(project_id, entity_type_id=None):
         for subscription in subscriptions:
             subscription_map[str(subscription.task_id)] = True
     return subscription_map
+
+
+def notify_clients_playlist_ready(playlist, studio_id=None):
+    """
+    Notify clients that given playlist is ready.
+    """
+
+    author = persons_service.get_current_user()
+    project_id = playlist["project_id"]
+    query = (
+        Person.query
+        .join(ProjectPersonLink)
+        .filter(Person.is_bot == False)
+        .filter(Person.role == "client")
+        .filter(ProjectPersonLink.project_id == project_id)
+    )
+
+    if studio_id is not None and studio_id != "":
+        query = query.filter(Person.studio_id == studio_id)
+
+    for client in query.all():
+        recipient_id = str(client.id)
+        author_id = author["id"]
+        created_at = date_helpers.get_now()
+        notification = create_notification(
+            recipient_id,
+            author_id=author_id,
+            playlist_id=playlist["id"],
+            type="playlist-ready",
+            created_at=created_at,
+        )
+        emails_service.send_playlist_ready_notification(
+            recipient_id, author_id, playlist
+        )

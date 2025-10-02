@@ -24,6 +24,7 @@ from zou.app.services import (
     notifications_service,
     names_service,
     persons_service,
+    playlists_service,
     projects_service,
     shots_service,
     status_automations_service,
@@ -1384,8 +1385,8 @@ def get_last_notifications(
         Notification.query.filter_by(person_id=current_user["id"])
         .order_by(Notification.created_at.desc())
         .join(Author, Author.id == Notification.author_id)
-        .join(Task, Task.id == Notification.task_id)
-        .join(Project, Project.id == Task.project_id)
+        .outerjoin(Task, Task.id == Notification.task_id)
+        .outerjoin(Project, Project.id == Task.project_id)
         .outerjoin(
             Subscription,
             and_(
@@ -1442,6 +1443,7 @@ def get_last_notifications(
             query = query.filter(Subscription.id == None)
 
     notifications = query.limit(100).all()
+    print(len(notifications))
 
     for (
         notification,
@@ -1456,9 +1458,22 @@ def get_last_notifications(
         subscription_id,
         role,
     ) in notifications:
-        (full_entity_name, episode_id, entity_preview_file_id) = (
-            names_service.get_full_entity_name(task_entity_id)
-        )
+        full_entity_name, episode_id, entity_preview_file_id = "", None, None
+        playlist_id = notification.playlist_id
+        playlist_name = ""
+        if notification.playlist_id is None:
+            (full_entity_name, episode_id, entity_preview_file_id) = (
+                names_service.get_full_entity_name(task_entity_id)
+            )
+        else:
+            playlist = playlists_service.get_playlist(
+                notification.playlist_id
+            )
+            episode_id = playlist.get("episode_id", None)
+            project = projects_service.get_project(playlist["project_id"])
+            project_id = project["id"]
+            project_name = project["name"]
+            playlist_name = playlist["name"]
         preview_file_id = None
         mentions = []
         department_mentions = []
@@ -1522,6 +1537,8 @@ def get_last_notifications(
                     "episode_id": episode_id,
                     "entity_preview_file_id": entity_preview_file_id,
                     "subscription_id": subscription_id,
+                    "playlist_id": playlist_id,
+                    "playlist_name": playlist_name,
                 }
             )
         )

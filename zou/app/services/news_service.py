@@ -135,9 +135,7 @@ def get_last_news_for_project(
         )
 
     if task_status_id is not None:
-        query = query.filter(Comment.task_status_id == task_status_id).filter(
-            News.change == True
-        )
+        query = query.filter(Comment.task_status_id == task_status_id)
 
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)

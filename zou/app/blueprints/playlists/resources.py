@@ -9,6 +9,7 @@ from zou.app.mixin import ArgsMixin
 
 from zou.app.services import (
     entities_service,
+    notifications_service,
     playlists_service,
     persons_service,
     preview_files_service,
@@ -722,3 +723,52 @@ class TempPlaylistResource(Resource, ArgsMixin):
         return (
             playlists_service.generate_temp_playlist(task_ids, sort=sort) or []
         )
+
+
+class NotifyClientsResource(Resource, ArgsMixin):
+
+  @jwt_required()
+  def post(self, playlist_id):
+    """
+    Notify clients that given playlist is ready.
+
+    ---
+    tags:
+      - Playlists
+    parameters:
+      - in: path
+        name: playlist_id
+        required: true
+        schema:
+          type: string
+          format: uuid
+        example: a24a6ea4-ce75-4665-a070-57453082c25
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              studio_id:
+                type: string
+                format: uuid
+                example: a24a6ea4-ce75-4665-a070-57453082c25
+    responses:
+      '200':
+        description: Clients notified
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: success
+    """
+    studio_id = request.json.get("studio_id", None)
+    playlist = playlists_service.get_playlist(playlist_id)
+    project_id = playlist["project_id"]
+    user_service.check_manager_project_access(project_id)
+    notifications_service.notify_clients_playlist_ready(playlist, studio_id)
+    return {"status": "success"}
