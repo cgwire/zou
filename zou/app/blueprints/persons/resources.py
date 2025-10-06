@@ -1527,7 +1527,7 @@ class ClearAvatarPersonResource(Resource):
         file.
         ---
         tags:
-          - User
+          - Persons
         responses:
             204:
                 description: Avatar file deleted

@@ -20,8 +20,9 @@ class AssetTasksResource(Resource):
 
     def get(self, asset_id):
         """
-        Return tasks related to given asset for current user.
+        Get asset tasks
         ---
+        description: Return tasks related to given asset for current user.
         tags:
         - User
         parameters:
@@ -52,10 +53,11 @@ class AssetTaskTypesResource(Resource):
 
     def get(self, asset_id):
         """
-        Return task types related to given asset for current user.
+        Get asset task types
         ---
         tags:
         - User
+        description: Return task types related to given asset for current user.
         parameters:
           - in: path
             name: asset_id
@@ -84,10 +86,11 @@ class ShotTaskTypesResource(Resource):
 
     def get(self, shot_id):
         """
-        Return tasks related to given shot for current user.
+        Get shot tasks
         ---
         tags:
         - User
+        description: Return tasks related to given shot for current user.
         parameters:
           - in: path
             name: shot_id
@@ -119,10 +122,11 @@ class SceneTaskTypesResource(Resource):
 
     def get(self, scene_id):
         """
-        Return tasks related to given scene for current user.
+        Get scene tasks
         ---
         tags:
         - User
+        description: Return tasks related to given scene for current user.
         parameters:
           - in: path
             name: scene_id
@@ -148,16 +152,14 @@ class SceneTaskTypesResource(Resource):
 
 
 class SequenceTaskTypesResource(Resource):
-    """
-    Return task types related to given sequence for current user.
-    """
 
     def get(self, sequence_id):
         """
-        Return tasks related to given sequence for current user.
+        Get sequence task types
         ---
         tags:
         - User
+        description: Return task types related to given sequence for current user
         parameters:
           - in: path
             name: sequence_id
@@ -186,11 +188,11 @@ class AssetTypeAssetsResource(Resource):
 
     def get(self, project_id, asset_type_id):
         """
-        Return assets of which type is given asset type and are listed in given
-        project if user has access to this project.
+        Get project assets
         ---
         tags:
         - User
+        description: Return assets of which type is given asset type and are listed in given project if user has access to this project.
         parameters:
           - in: path
             name: project_id
@@ -229,10 +231,11 @@ class OpenProjectsResource(Resource, ArgsMixin):
 
     def get(self):
         """
-        Return open projects for which the user has at least one task assigned.
+        Get open projects
         ---
         tags:
         - User
+        description: Return open projects for which the user has at least one task assigned
         parameters:
           - in: query
             name: name
@@ -258,11 +261,11 @@ class ProjectSequencesResource(Resource):
 
     def get(self, project_id):
         """
-        Return sequences related to given project if the current user has access
-        to it.
+        Get project sequences
         ---
         tags:
         - User
+        description: Return sequences related to given project if the current user has access to it
         parameters:
           - in: path
             name: project_id
@@ -291,11 +294,11 @@ class ProjectEpisodesResource(Resource):
 
     def get(self, project_id):
         """
-        Return episodes related to given project if the current user has access
-        to it.
+        Get project episodes
         ---
         tags:
         - User
+        description: Return episodes related to given project if the current user has access to it.
         parameters:
           - in: path
             name: project_id
@@ -324,11 +327,12 @@ class ProjectAssetTypesResource(Resource):
 
     def get(self, project_id):
         """
-        Return asset types related to given project if the current user has
-        access to it.
+        Get project asset types
         ---
         tags:
         - User
+        description: Return asset types related to given project if the current
+          user has access to it.
         parameters:
           - in: path
             name: project_id
@@ -357,11 +361,11 @@ class SequenceShotsResource(Resource):
 
     def get(self, sequence_id):
         """
-        Return shots related to given sequence if the current user has access
-        to it.
+        Get sequence shots
         ---
         tags:
         - User
+        description: Return shots related to given sequence if the current user has access to it.
         parameters:
           - in: path
             name: sequence_id
@@ -390,11 +394,11 @@ class SequenceScenesResource(Resource):
 
     def get(self, sequence_id):
         """
-        Return scenes related to given sequence if the current user has access
-        to it.
+        Get sequence scenes
         ---
         tags:
         - User
+        description: Return scenes related to given sequence if the current user has access to it.
         parameters:
           - in: path
             name: sequence_id
@@ -423,10 +427,11 @@ class ShotTasksResource(Resource):
 
     def get(self, shot_id):
         """
-        Return tasks related to given shot for current user.
+        Get shot tasks
         ---
         tags:
         - User
+        description: Return tasks related to given shot for current user.
         parameters:
           - in: path
             name: shot_id
@@ -455,10 +460,11 @@ class SceneTasksResource(Resource):
 
     def get(self, scene_id):
         """
-        Return tasks related to given scene for current user.
+        Get scene tasks
         ---
         tags:
         - User
+        description: Return tasks related to given scene for current user.
         parameters:
           - in: path
             name: scene_id
@@ -487,10 +493,11 @@ class SequenceTasksResource(Resource):
 
     def get(self, sequence_id):
         """
-        Return tasks related to given sequence for current user.
+        Get sequence tasks
         ---
         tags:
         - User
+        description: Return tasks related to given sequence for current user.
         parameters:
           - in: path
             name: sequence_id
@@ -523,11 +530,11 @@ class TodosResource(Resource):
 
     def get(self):
         """
-        Return tasks currently assigned to current user and of which status has
-        is_done attribute set to false.
+        Get my tasks
         ---
         tags:
         - User
+        description: Return tasks currently assigned to current user and of which status has is_done attribute set to false.
         responses:
             200:
               description: Unfinished tasks currently assigned to current user
@@ -545,12 +552,11 @@ class ToChecksResource(Resource):
 
     def get(self):
         """
-        Return tasks requiring feedback for current user departments.
-
-        If the user is not a supervisor, it returns an empty list.
+        Get tasks requiring feedback
         ---
         tags:
         - User
+        description: Return tasks requiring feedback for current user departments. If the user is not a supervisor, it returns an empty list
         responses:
             200:
               description: Tasks requiring feedback in current user departments
@@ -568,11 +574,11 @@ class DoneResource(Resource):
 
     def get(self):
         """
-        Return tasks currently assigned to current user and of which status has
-        is_done attribute set to true. It returns only tasks of open projects.
+        Get done tasks
         ---
         tags:
         - User
+        description: Return tasks currently assigned to current user and of which status has is_done attribute set to true. It returns only tasks of open projects.
         responses:
             200:
               description: Finished tasks currently assigned to current user
@@ -591,11 +597,11 @@ class FiltersResource(Resource, ArgsMixin):
 
     def get(self):
         """
-        Allow to create and retrieve filters for current user and only for
-        open projects.
+        Get filters
         ---
         tags:
         - User
+        description: Allow toretrieve filters for current user and only for open projects.
         responses:
             200:
               description: Filters for current user and only for open projects
@@ -610,10 +616,11 @@ class FiltersResource(Resource, ArgsMixin):
 
     def post(self):
         """
-        Create filter for current user and only for open projects.
+        Create filter.
         ---
         tags:
         - User
+        description: Create filter for current user and only for open projects.
         requestBody:
           required: true
           content:
@@ -697,10 +704,11 @@ class FilterResource(Resource, ArgsMixin):
 
     def put(self, filter_id):
         """
-        Update given filter if it's owned by current user.
+        Update filter
         ---
         tags:
         - User
+        description: Update given filter if it's owned by current user
         parameters:
           - in: path
             name: filter_id
@@ -730,10 +738,11 @@ class FilterResource(Resource, ArgsMixin):
 
     def delete(self, filter_id):
         """
-        Delete given filter if it's owned by current user.
+        Delete filter.
         ---
         tags:
         - User
+        description: Delete given filter if it's owned by current user
         parameters:
           - in: path
             name: filter_id
@@ -756,10 +765,11 @@ class FilterGroupsResource(Resource, ArgsMixin):
 
     def get(self):
         """
-        Retrieve filter groups for current user and only for open projects.
+        Get filter groups.
         ---
         tags:
         - User
+        description: Retrieve filter groups for current user and only for open projects
         responses:
             200:
               description: Filter groups for current user and only for open projects
@@ -774,10 +784,11 @@ class FilterGroupsResource(Resource, ArgsMixin):
 
     def post(self):
         """
-        Create filter group for current user and only for open projects.
+        Create filter group
         ---
         tags:
         - User
+        description: Create filter group for current user and only for open projects.
         requestBody:
           required: true
           content:
@@ -855,10 +866,11 @@ class FilterGroupResource(Resource, ArgsMixin):
 
     def get(self, search_filter_group_id):
         """
-        Retrieve given filter group for the current user.
+        Get filter group
         ---
         tags:
         - User
+        description: Retrieve given filter group for the current user.
         responses:
             200:
                 description: Filter groups for the current user and only for
@@ -868,10 +880,11 @@ class FilterGroupResource(Resource, ArgsMixin):
 
     def put(self, filter_group_id):
         """
-        Update given filter group if it's owned by the current user.
+        Update filter group
         ---
         tags:
         - User
+        description: Update given filter group if it's owned by the current user.
         parameters:
           - in: path
             name: filter_id
@@ -921,10 +934,11 @@ class FilterGroupResource(Resource, ArgsMixin):
 
     def delete(self, filter_group_id):
         """
-        Delete given filter group if it's owned by the current user.
+        Delete filter group
         ---
         tags:
         - User
+        description: Delete given filter group if it's owned by the current user.
         parameters:
           - in: path
             name: filter_id
@@ -944,10 +958,11 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
 
     def get(self):
         """
-        Retrieve desktop login logs.
+        Get desktop login logs
         ---
         tags:
         - User
+        description: Retrieve desktop login logs.
         responses:
             200:
               description: Desktop login logs
@@ -963,12 +978,11 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
 
     def post(self):
         """
-        Create a desktop login log.
+        Create desktop login log
         ---
         tags:
         - User
-        description: The desktop login log can only be created by
-                     the current user.
+        description: Create a desktop login log. The desktop login log can only be created by the current user.
         requestBody:
           required: true
           content:
@@ -1004,10 +1018,11 @@ class NotificationsResource(Resource, ArgsMixin):
 
     def get(self):
         """
-        Return last 100 user notifications filtered by given parameters.
+        Get notifications
         ---
         tags:
           - User
+        description: Return last 100 user notifications filtered by given parameters.
         parameters:
           - in: query
             name: after
@@ -1106,11 +1121,11 @@ class NotificationResource(Resource, ArgsMixin):
 
     def get(self, notification_id):
         """
-        Return notification matching given id, only if it's a notification that
-        belongs to current user.
+        Get notification
         ---
         tags:
         - User
+        description: Return notification matching given id, only if it's a notification that belongs to current user.
         parameters:
           - in: path
             name: notification_id
@@ -1133,10 +1148,11 @@ class NotificationResource(Resource, ArgsMixin):
 
     def put(self, notification_id):
         """
-        Change notification read status.
+        Update notification
         ---
         tags:
         - User
+        description: Change notification read status.
         parameters:
           - in: path
             name: notification_id
@@ -1173,11 +1189,11 @@ class MarkAllNotificationsAsReadResource(Resource):
 
     def post(self):
         """
-        Mark all notifications as read.
+        Mark all notifications as read
         ---
-        description: It applies to all notifications of the current user.
         tags:
         - User
+        description: Mark all notifications as read. It applies to all notifications of the current user.
         responses:
             200:
               content:
@@ -1199,9 +1215,9 @@ class HasTaskSubscribedResource(Resource):
         """
         Check task subscription
         ---
-        description: Return true if current user has subscribed to given task.
         tags:
           - User
+        description: Return true if current user has subscribed to given task.
         parameters:
           - in: path
             name: task_id
@@ -1227,13 +1243,13 @@ class TaskSubscribeResource(Resource):
 
     def post(self, task_id):
         """
-        Create a subscription entry
+        Subscribe to task
         ---
         tags:
         - User
-        description: It applies to given task and current user. When a user
+        description: Create a subscription entry. It applies to given task and current user. When a user
             subscribed, he gets notified everytime a comment is posted on the
-            task. When a user subscribes, he gets notified everytime a comment 
+            task. When a user subscribes, he gets notified everytime a comment
             is posted on the task.
         parameters:
           - in: path
@@ -1260,13 +1276,11 @@ class TaskUnsubscribeResource(Resource):
 
     def delete(self, task_id):
         """
-        Remove the subscription entry matching given task and current user.
-        The user will no longer receive notifications for this task.
+        Unsubscribe from task
         ---
         tags:
         - User
-        description: The user will no longer receive notifications for
-            this task.
+        description: Remove the subscription entry matching given task and current user. The user will no longer receive notifications for this task.
         parameters:
           - in: path
             name: task_id
@@ -1289,11 +1303,11 @@ class HasSequenceSubscribedResource(Resource):
 
     def get(self, sequence_id, task_type_id):
         """
-        Return true if current user has subscribed to given sequence and
-        task type.
+        Check sequence subscription
         ---
         tags:
         - User
+        description: Return true if current user has subscribed to given sequence and task type.
         parameters:
           - in: path
             name: sequence_id
@@ -1328,13 +1342,11 @@ class SequenceSubscribeResource(Resource):
 
     def post(self, sequence_id, task_type_id):
         """
-        Create a subscription entry for given sequence,
-        task type and current user.
+        Subscribe to sequence
         ---
         tags:
         - User
-        description: When a user subscribes, he gets notified every
-            time a comment is posted on tasks related to the sequence.
+        description: Create a subscription entry for given sequence, task type and current user. When a user subscribes, he gets notified every time a comment is posted on tasks related to the sequence.
         parameters:
           - in: path
             name: sequence_id
@@ -1370,11 +1382,11 @@ class SequenceUnsubscribeResource(Resource):
 
     def delete(self, sequence_id, task_type_id):
         """
-        Remove a subscription entry for given sequence, tasl type
-        and current user.
+        Unsubscribe from sequence
         ---
         tags:
         - User
+        description: Remove a subscription entry for given sequence, task type and current user.
         parameters:
           - in: path
             name: sequence_id
@@ -1404,11 +1416,11 @@ class SequenceSubscriptionsResource(Resource):
 
     def get(self, project_id, task_type_id):
         """
-        Return the list of sequence ids to which the current user has
-        subscribed for given task type.
+        Get sequence subscriptions
         ---
         tags:
         - User
+        description: Return the list of sequence ids to which the current user has subscribed for given task type.
         parameters:
           - in: path
             name: project_id
@@ -1450,11 +1462,11 @@ class TimeSpentsResource(Resource):
 
     def get(self):
         """
-        Get all time spents for the current user.
-        Optionnaly can accept date range parameters.
+        Get time spents
         ---
         tags:
         - User
+        description: Get all time spents for the current user. Optionally can accept date range parameters.
         parameters:
           - in: query
             name: start_date
@@ -1512,10 +1524,11 @@ class DateTimeSpentsResource(Resource):
 
     def get(self, date):
         """
-        Get time spents on for current user and given date.
+        Get time spents by date.
         ---
         tags:
         - User
+        description: Get time spents on for current user and given date.
         parameters:
           - in: path
             name: date
@@ -1548,10 +1561,11 @@ class TaskTimeSpentResource(Resource):
 
     def get(self, task_id, date):
         """
-        Get time spents for current user and given date.
+        Get task time spent.
         ---
         tags:
         - User
+        description: Get time spents for current user and given date.
         parameters:
           - in: path
             name: task_id
@@ -1590,10 +1604,11 @@ class DayOffResource(Resource):
 
     def get(self, date):
         """
-        Get day off object for current user and given date.
+        Get day off
         ---
         tags:
         - User
+        description: Get day off object for current user and given date.
         parameters:
           - in: path
             name: date
@@ -1623,11 +1638,11 @@ class ContextResource(Resource):
 
     def get(self):
         """
-        Return context required to properly run a full app connected to the API
-        (like the Kitsu web client).
+        Get context
         ---
         tags:
           - User
+        description: Return context required to properly run a full app connected to the API (like the Kitsu web client)
         responses:
             200:
               description: Context to properly run a full app connected to the API
@@ -1643,11 +1658,11 @@ class ClearAvatarResource(Resource):
 
     def delete(self):
         """
-        Set `has_avatar` flag to False for current user and remove its avatar
-        file.
+        Clear avatar
         ---
         tags:
           - User
+        description: Set has_avatar flag to False for current user and remove its avatar file.
         responses:
             204:
               description: Avatar file deleted
@@ -1663,10 +1678,11 @@ class ChatsResource(Resource):
 
     def get(self):
         """
-        Return chats where user is participant.
+        Get chats
         ---
         tags:
             - User
+        description: Return chats where user is participant
         responses:
             200:
               description: Chats where user is participant
@@ -1685,10 +1701,11 @@ class JoinChatResource(Resource):
 
     def post(self, entity_id):
         """
-        Join chat for given entity (be listed as participant).
+        Join chat
         ---
         tags:
           - User
+        description: Join chat for given entity (be listed as participant).
         parameters:
           - in: path
             name: entity_id
@@ -1715,10 +1732,11 @@ class JoinChatResource(Resource):
 
     def delete(self, entity_id):
         """
-        Leave chat for given entity (be removed from participants).
+        Leave chat
         ---
         tags:
          - User
+        description: Leave chat for given entity (be removed from participants).
         parameters:
           - in: path
             name: entity_id
