@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import emails_service
+from zou.app.services import emails_service, template_services
 
 
 class EmailsServiceTestCase(ApiDBTestCase):
@@ -11,7 +11,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
         self.generate_assigned_task()
 
     def test_get_signature(self):
-        signature = emails_service.get_signature()
+        signature = template_services.get_signature()
         self.assertEqual(
             signature,
             """
