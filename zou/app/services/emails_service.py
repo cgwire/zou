@@ -415,7 +415,7 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         episode_segment = ""
         if episode is not None:
             episode_segment = f"the episode {episode['name']} of "
-        subject = f'[Kitsu] The playlist "{playlist['name']}" is ready'
+        subject = f'[Kitsu] The playlist {playlist["name"]} in project {project["name"]} is ready for review'
 
         email_message = f"""<p><strong>{author["full_name"]}</strong> notifies you that playlist <a href="{playlist_url}">{playlist["name"]}</a> is ready for a review under {episode_segment}the project {project["name"]}.</p>
         """
