@@ -397,10 +397,19 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         or person["notifications_mattermost_enabled"]
         or person["notifications_discord_enabled"]
     ):
+
+        playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/"
+
         if episode is not None:
-            playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/episodes/{episode['id']}/playlists/{playlist['id']}"
+            playlist_url += f"episodes/{episode['id']}/playlists/{playlist['id']}"
+        elif project["production_type"] == "tvshow" and \
+            playlist["for_entity"] == "asset":
+            if playlist["is_for_all"] == True:
+                playlist_url += f"episodes/all/playlists/{playlist['id']}"
+            else:
+                playlist_url += f"episodes/main/playlists/{playlist['id']}"
         else:
-            playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/playlists/{playlist['id']}"
+            playlist_url += f"playlists/{playlist['id']}"
 
         title = "New Playlist Ready"
         episode_segment = ""
