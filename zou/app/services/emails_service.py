@@ -5,13 +5,13 @@ from zou.app.services import (
     entities_service,
     names_service,
     persons_service,
-    playlists_service,
     projects_service,
     shots_service,
     tasks_service,
 )
 from zou.app.stores import queue_store
 from zou.app.services.template_services import generate_html_body
+
 
 def send_notification(person_id, subject, messages, title=""):
     """
@@ -36,9 +36,7 @@ def send_notification(person_id, subject, messages, title=""):
                 ),
             )
         else:
-            emails.send_email(
-                subject, email_html_body, person["email"]
-            )
+            emails.send_email(subject, email_html_body, person["email"])
 
     if person["notifications_slack_enabled"]:
         organisation = persons_service.get_organisation(sensitive=True)
@@ -157,7 +155,6 @@ _%s_
                 task_status_name,
             )
 
-        title = "New Comment"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -219,7 +216,6 @@ _%s_
             comment["text"],
         )
 
-        title = "Mentioned"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -268,7 +264,6 @@ def send_assignation_notification(person_id, author_id, task):
             task_url,
         )
 
-        title = "Task Assigned"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -368,7 +363,6 @@ _%s_
             reply["text"],
         )
 
-        title = "New Reply"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -397,7 +391,8 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         pass
 
     if (
-        True or person["notifications_enabled"]
+        True
+        or person["notifications_enabled"]
         or person["notifications_slack_enabled"]
         or person["notifications_mattermost_enabled"]
         or person["notifications_discord_enabled"]
@@ -418,9 +413,9 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         {len(playlist["shots"])} elements are listed in the playlist.
         """
 
-        slack_message = f"*{author["full_name"]}* notifies you that a playlist <{playlist_url}|{playlist["name"]}> is ready for a review under {episode_segment} the project {project["name"]}."
+        slack_message = f"*{author['full_name']}* notifies you that a playlist <{playlist_url}|{playlist['name']}> is ready for a review under {episode_segment} the project {project['name']}."
 
-        discord_message = f"*{author["full_name"]}* notifies you that a playlist [{playlist["name"]}]({playlist_url}) is ready for a review under {episode_segment} the project {project["name"]}."
+        discord_message = f"*{author['full_name']}* notifies you that a playlist [{playlist['name']}]({playlist_url}) is ready for a review under {episode_segment} the project {project['name']}."
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
