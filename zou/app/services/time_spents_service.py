@@ -633,9 +633,9 @@ def get_day_offs_between_for_project(
         for day_off in days_offs:
             day_off_person_id = str(day_off.person_id)
             result[day_off_person_id].append(
-                day_off.serialize_safe()
-                if safe and current_user_id != day_off_person_id
-                else day_off.serialize()
+                day_off.serialize()()
+                if safe or current_user_id == day_off_person_id
+                else day_off.serialize_safe()
             )
     except DataError:
         raise WrongDateFormatException
