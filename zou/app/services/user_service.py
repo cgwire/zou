@@ -1461,6 +1461,8 @@ def get_last_notifications(
         full_entity_name, episode_id, entity_preview_file_id = "", None, None
         playlist_id = notification.playlist_id
         playlist_name = ""
+        playlist_for_entity = ""
+        playlist_is_for_all = False
         if notification.playlist_id is None:
             (full_entity_name, episode_id, entity_preview_file_id) = (
                 names_service.get_full_entity_name(task_entity_id)
@@ -1474,6 +1476,9 @@ def get_last_notifications(
             project_id = project["id"]
             project_name = project["name"]
             playlist_name = playlist["name"]
+            playlist_for_entity = playlist["for_entity"]
+            playlist_is_for_all = playlist["is_for_all"]
+
         preview_file_id = None
         mentions = []
         department_mentions = []
@@ -1539,6 +1544,8 @@ def get_last_notifications(
                     "subscription_id": subscription_id,
                     "playlist_id": playlist_id,
                     "playlist_name": playlist_name,
+                    "playlist_for_entity": playlist_for_entity,
+                    "playlist_is_for_all": playlist_is_for_all,
                 }
             )
         )

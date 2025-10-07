@@ -409,8 +409,11 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         subject = f'[Kitsu] The playlist "{playlist['name']}" is ready'
 
         email_message = f"""<p><strong>{author["full_name"]}</strong> notifies you that playlist <a href="{playlist_url}">{playlist["name"]}</a> is ready for a review under {episode_segment}the project {project["name"]}.</p>
+        """
 
-        {len(playlist["shots"])} elements are listed in the playlist.
+        if len(playlist["shots"]) > 1:
+            email_message += f"""
+<p>{len(playlist["shots"])} elements are listed in the playlist.</p>
         """
 
         slack_message = f"*{author['full_name']}* notifies you that a playlist <{playlist_url}|{playlist['name']}> is ready for a review under {episode_segment}the project {project['name']}."
