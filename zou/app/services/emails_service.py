@@ -164,7 +164,7 @@ _%s_
             },
             "discord_message": discord_message,
         }
-        send_notification(person_id, subject, messages)
+        send_notification(person_id, subject, messages, title)
 
     return True
 
@@ -215,7 +215,7 @@ _%s_
             task_url,
             comment["text"],
         )
-
+        title = "New Mention"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -225,7 +225,7 @@ _%s_
             },
             "discord_message": discord_message,
         }
-        return send_notification(person_id, subject, messages)
+        return send_notification(person_id, subject, messages, title)
     else:
         return True
 
@@ -273,7 +273,7 @@ def send_assignation_notification(person_id, author_id, task):
             },
             "discord_message": discord_message,
         }
-        return send_notification(person_id, subject, messages)
+        return send_notification(person_id, subject, messages, title)
     return True
 
 
@@ -372,7 +372,7 @@ _%s_
             },
             "discord_message": discord_message,
         }
-        send_notification(person_id, subject, messages)
+        send_notification(person_id, subject, messages, title)
     return True
 
 
@@ -397,25 +397,37 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         or person["notifications_mattermost_enabled"]
         or person["notifications_discord_enabled"]
     ):
-        if episode is not None:
-            playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/episodes/{episode['id']}/playlists/{playlist['id']}"
-        else:
-            playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/playlists/{playlist['id']}"
 
-        title = "Playlist Ready"
+        playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/"
+
+        if episode is not None:
+            playlist_url += f"episodes/{episode['id']}/playlists/{playlist['id']}"
+        elif project["production_type"] == "tvshow" and \
+            playlist["for_entity"] == "asset":
+            if playlist["is_for_all"] == True:
+                playlist_url += f"episodes/all/playlists/{playlist['id']}"
+            else:
+                playlist_url += f"episodes/main/playlists/{playlist['id']}"
+        else:
+            playlist_url += f"playlists/{playlist['id']}"
+
+        title = "New Playlist Ready"
         episode_segment = ""
         if episode is not None:
-            episode_segment = f"the episode {episode['name']} of"
-        subject = "[Kitsu] A new playlist is ready"
+            episode_segment = f"the episode {episode['name']} of "
+        subject = f'[Kitsu] The playlist {playlist["name"]} in project {project["name"]} is ready for review'
 
-        email_message = f"""<p><strong>{author["full_name"]}</strong> notifies you that playlist <a href="{playlist_url}">{playlist["name"]}</a> is ready for a review under {episode_segment} the project {project["name"]}.</p>
-
-        {len(playlist["shots"])} elements are listed in the playlist.
+        email_message = f"""<p><strong>{author["full_name"]}</strong> notifies you that playlist <a href="{playlist_url}">{playlist["name"]}</a> is ready for a review under {episode_segment}the project {project["name"]}.</p>
         """
 
-        slack_message = f"*{author['full_name']}* notifies you that a playlist <{playlist_url}|{playlist['name']}> is ready for a review under {episode_segment} the project {project['name']}."
+        if len(playlist["shots"]) > 1:
+            email_message += f"""
+<p>{len(playlist["shots"])} elements are listed in the playlist.</p>
+        """
 
-        discord_message = f"*{author['full_name']}* notifies you that a playlist [{playlist['name']}]({playlist_url}) is ready for a review under {episode_segment} the project {project['name']}."
+        slack_message = f"*{author['full_name']}* notifies you that a playlist <{playlist_url}|{playlist['name']}> is ready for a review under {episode_segment}the project {project['name']}."
+
+        discord_message = f"*{author['full_name']}* notifies you that a playlist [{playlist['name']}]({playlist_url}) is ready for a review under {episode_segment}the project {project['name']}."
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,

@@ -529,3 +529,12 @@ def notify_clients_playlist_ready(playlist, studio_id=None):
         emails_service.send_playlist_ready_notification(
             recipient_id, author_id, playlist
         )
+        events.emit(
+            "notification:new",
+            {
+                "notification_id": notification["id"],
+                "person_id": recipient_id,
+            },
+            project_id=playlist["project_id"],
+            persist=False,
+        )
