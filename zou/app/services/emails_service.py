@@ -13,7 +13,7 @@ from zou.app.stores import queue_store
 from zou.app.services.template_services import generate_html_body
 
 
-def send_notification(person_id, subject, messages, title=""):
+def send_notification(person_id, subject, messages, title="", force_email=False):
     """
     Send email notification to given person. Use the job queue if it is
     activated.
@@ -25,7 +25,7 @@ def send_notification(person_id, subject, messages, title=""):
     discord_message = messages["discord_message"]
     email_html_body = generate_html_body(title, email_message)
 
-    if person["notifications_enabled"]:
+    if person["notifications_enabled"] or force_email:
         if config.ENABLE_JOB_QUEUE:
             queue_store.job_queue.enqueue(
                 emails.send_email,
@@ -437,4 +437,4 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
             },
             "discord_message": discord_message,
         }
-        send_notification(person_id, subject, messages, title)
+        send_notification(person_id, subject, messages, title, force_email=True)
