@@ -1468,9 +1468,7 @@ def get_last_notifications(
                 names_service.get_full_entity_name(task_entity_id)
             )
         else:
-            playlist = playlists_service.get_playlist(
-                notification.playlist_id
-            )
+            playlist = playlists_service.get_playlist(notification.playlist_id)
             episode_id = playlist.get("episode_id", None)
             project = projects_service.get_project(playlist["project_id"])
             project_id = project["id"]

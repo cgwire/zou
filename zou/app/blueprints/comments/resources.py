@@ -498,8 +498,10 @@ class ReplyCommentResource(Resource, ArgsMixin):
         if comment["person_id"] != current_user["id"]:
             if permissions.has_client_permissions():
                 author = persons_service.get_person(comment["person_id"])
-                if current_user["studio_id"] != author["studio_id"] and \
-                    author["role"] == "client":
+                if (
+                    current_user["studio_id"] != author["studio_id"]
+                    and author["role"] == "client"
+                ):
                     raise permissions.PermissionDenied()
             user_service.check_task_action_access(task_id)
 
@@ -510,9 +512,7 @@ class ReplyCommentResource(Resource, ArgsMixin):
         )
         files = request.files
         return comments_service.reply_comment(
-            comment_id,
-            args["text"],
-            files=files
+            comment_id, args["text"], files=files
         )
 
 

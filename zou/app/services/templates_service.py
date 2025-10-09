@@ -107,7 +107,6 @@ notification_template_end_title = """
 """
 
 
-
 def get_signature():
     """
     Build signature for Zou emails.
@@ -123,7 +122,11 @@ def get_signature():
 
 
 def generate_html_body(title, message):
-    return notification_template_begin + \
-            title + notification_template_end_title + \
-            message + get_signature () + \
-            notification_template_end
+    return (
+        notification_template_begin
+        + title
+        + notification_template_end_title
+        + message
+        + get_signature()
+        + notification_template_end
+    )

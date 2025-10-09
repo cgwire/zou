@@ -441,9 +441,8 @@ def invite_person(person_id):
     auth_tokens_store.add(
         "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 7
     )
-    subject = (
-        "You are invited by %s to join their Kitsu platform"
-        % (organisation["name"])
+    subject = "You are invited by %s to join their Kitsu platform" % (
+        organisation["name"]
     )
     params = {"email": person["email"], "token": token}
     query = urllib.parse.urlencode(params)

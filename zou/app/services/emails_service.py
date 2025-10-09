@@ -13,7 +13,9 @@ from zou.app.stores import queue_store
 from zou.app.services.templates_service import generate_html_body
 
 
-def send_notification(person_id, subject, messages, title="", force_email=False):
+def send_notification(
+    person_id, subject, messages, title="", force_email=False
+):
     """
     Send email notification to given person. Use the job queue if it is
     activated.
@@ -401,9 +403,13 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         playlist_url = f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/{playlist['project_id']}/"
 
         if episode is not None:
-            playlist_url += f"episodes/{episode['id']}/playlists/{playlist['id']}"
-        elif project["production_type"] == "tvshow" and \
-            playlist["for_entity"] == "asset":
+            playlist_url += (
+                f"episodes/{episode['id']}/playlists/{playlist['id']}"
+            )
+        elif (
+            project["production_type"] == "tvshow"
+            and playlist["for_entity"] == "asset"
+        ):
             if playlist["is_for_all"] == True:
                 playlist_url += f"episodes/all/playlists/{playlist['id']}"
             else:
@@ -437,4 +443,6 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
             },
             "discord_message": discord_message,
         }
-        send_notification(person_id, subject, messages, title, force_email=True)
+        send_notification(
+            person_id, subject, messages, title, force_email=True
+        )

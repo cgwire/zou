@@ -594,7 +594,6 @@ class DoneResource(Resource):
 
 class FiltersResource(Resource, ArgsMixin):
 
-
     def get(self):
         """
         Get filters
@@ -700,7 +699,6 @@ class FiltersResource(Resource, ArgsMixin):
 
 
 class FilterResource(Resource, ArgsMixin):
-
 
     def put(self, filter_id):
         """
