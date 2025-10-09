@@ -572,19 +572,16 @@ class ChangePasswordResource(Resource, ArgsMixin):
             html = f"""<p>Hello {user["first_name"]},</p>
 
 <p>
-You have successfully changed your password at this date : {time_string}.
-
-Your IP when you have changed your password is : {person_IP}.
-</p>
-
-Thank you and see you soon on Kitsu,
+You have successfully changed your password at this date: {time_string}.
 </p>
 <p>
-{organisation["name"]} Team
+Your IP when you have changed your password is: {person_IP}.
 </p>
 """
             subject = f"{organisation['name']} - Kitsu: password changed"
-            emails.send_email(subject, html, user["email"])
+            title = "Password Changed"
+            email_html_body = templates_service.generate_html_body(title, html)
+            emails.send_email(subject, email_html_body, user["email"])
             return {"success": True}
 
         except auth.PasswordsNoMatchException:
@@ -778,15 +775,11 @@ This link will expire after 2 hours. After, you have to do a new request to rese
 This email was sent at this date: {time_string}.
 The IP of the person who requested this is: {person_IP}.
 </p>
-
-Thank you and see you soon on Kitsu,
-</p>
-<p>
-{organisation["name"]} Team
-</p>
 """
         subject = f"{organisation['name']} - Kitsu: password recovery"
-        emails.send_email(subject, html, args["email"])
+        title = "Password Recovery"
+        email_html_body = templates_service.generate_html_body(title, html)
+        emails.send_email(subject, email_html_body, args["email"])
         return {"success": "Reset token sent"}
 
 

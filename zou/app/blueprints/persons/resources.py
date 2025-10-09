@@ -14,6 +14,7 @@ from zou.app.services import (
     time_spents_service,
     shots_service,
     user_service,
+    templates_service,
 )
 from zou.app.utils import (
     permissions,
@@ -1398,17 +1399,18 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             html = f"""<p>Hello {person["first_name"]},</p>
 <p>
 Your password was changed at this date: {time_string}.
-The IP of the user who changed your password is: {person_IP}.
-If you don't know the person who changed the password, please contact our support team.
-</p>
-Thank you and see you soon on Kitsu,
 </p>
 <p>
-{organisation["name"]} Team
+The IP of the user who changed your password is: {person_IP}.
+</p>
+<p>
+If you don't know the person who changed the password, please contact our support team.
 </p>
 """
             subject = f"{organisation['name']} - Kitsu: password changed"
-            emails.send_email(subject, html, person["email"])
+            title = "Password Changed"
+            email_html_body = templates_service.generate_html_body(title, html)
+            emails.send_email(subject, email_html_body, person["email"])
             return {"success": True}
 
         except auth.PasswordsNoMatchException:
@@ -1497,17 +1499,18 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
             html = f"""<p>Hello {person["first_name"]},</p>
 <p>
 Your two factor authentication was disabled at this date: {time_string}.
-The IP of the user who disabled your two factor authentication is: {person_IP}.
-If you don't know the person who disabled the two factor authentication, please contact our support team.
-</p>
-Thank you and see you soon on Kitsu,
 </p>
 <p>
-{organisation["name"]} Team
+The IP of the user who disabled your two factor authentication is: {person_IP}.
+</p>
+<p>
+If you don't know the person who disabled the two factor authentication, please contact our support team.
 </p>
 """
             subject = f"{organisation['name']} - Kitsu: two factor authentication disabled"
-            emails.send_email(subject, html, person["email"])
+            title = "Two Factor Authentication Disabled"
+            email_html_body = templates_service.generate_html_body(title, html)
+            emails.send_email(subject, email_html_body, person["email"])
             return {"success": True}
 
         except UnactiveUserException:

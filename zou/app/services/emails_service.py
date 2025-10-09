@@ -10,7 +10,7 @@ from zou.app.services import (
     tasks_service,
 )
 from zou.app.stores import queue_store
-from zou.app.services.template_services import generate_html_body
+from zou.app.services.templates_service import generate_html_body
 
 
 def send_notification(person_id, subject, messages, title="", force_email=False):

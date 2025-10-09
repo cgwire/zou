@@ -3,6 +3,8 @@ from sqlalchemy.exc import IntegrityError
 
 
 from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.budget import Budget
+from zou.app.models.budget_entry import BudgetEntry
 from zou.app.models.comment import Comment
 from zou.app.models.desktop_login_log import DesktopLoginLog
 from zou.app.models.entity import (
@@ -346,6 +348,11 @@ def remove_project(project_id):
     for task in tasks:
         remove_task(task.id, force=True)
 
+    budgets = Budget.get_all_by(project_id=project_id)
+    for budget in budgets:
+        BudgetEntry.delete_all_by(budget_id=budget.id)
+        budget.delete()
+ 
     EntityLink.query.filter(
         EntityLink.entity_in_id == Entity.id,
         Entity.project_id == project_id,

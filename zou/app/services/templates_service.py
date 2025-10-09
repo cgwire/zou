@@ -115,7 +115,7 @@ def get_signature():
     organisation = persons_service.get_organisation()
     return (
         """
-<p>Best,</p>
+<p>Best regards,</p>
 
 <p>%s Team</p>"""
         % organisation["name"]
