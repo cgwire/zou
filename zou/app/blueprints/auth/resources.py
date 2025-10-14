@@ -29,6 +29,7 @@ from zou.app.services import (
     persons_service,
     auth_service,
     events_service,
+    templates_service
 )
 
 from zou.app.utils.flask import is_from_browser
