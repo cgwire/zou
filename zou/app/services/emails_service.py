@@ -81,7 +81,7 @@ def send_notification(
 
 def send_comment_notification(person_id, author_id, comment, task):
     """
-    Send a notification emali telling that a new comment was posted to person
+    Send a notification email telling that a new comment was posted to person
     matching given person id.
     """
     person = persons_service.get_person(person_id)
@@ -157,6 +157,7 @@ _%s_
                 task_status_name,
             )
 
+        title = "New Comment"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
