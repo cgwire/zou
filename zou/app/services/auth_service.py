@@ -14,7 +14,7 @@ from ldap3.core.exceptions import (
     LDAPInvalidCredentialsResult,
 )
 
-from zou.app.services import persons_service
+from zou.app.services import persons_service, templates_service
 from zou.app.models.person import Person
 from zou.app.services.exception import (
     EmailOTPAlreadyEnabledException,
@@ -493,17 +493,13 @@ This one time password will expire after 5 minutes. After, you will have to requ
 This email was sent at this date : {time_string}.
 The IP of the person who requested this is: {person_IP}.
 </p>
-
-Thank you and see you soon on Kitsu,
-</p>
-<p>
-{organisation["name"]} Team
-</p>
 """
     subject = (
         f"{organisation['name']} - Kitsu : your verification code is {otp}"
     )
-    emails.send_email(subject, html, person["email"])
+    title = "Your verification code"
+    email_html_body = templates_service.generate_html_body(title, html)
+    emails.send_email(subject, email_html_body, person["email"])
     return True
 
 

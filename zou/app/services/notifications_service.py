@@ -505,8 +505,7 @@ def notify_clients_playlist_ready(playlist, studio_id=None):
     author = persons_service.get_current_user()
     project_id = playlist["project_id"]
     query = (
-        Person.query
-        .join(ProjectPersonLink)
+        Person.query.join(ProjectPersonLink)
         .filter(Person.is_bot == False)
         .filter(Person.role == "client")
         .filter(ProjectPersonLink.project_id == project_id)

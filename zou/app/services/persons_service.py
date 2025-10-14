@@ -18,7 +18,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config, file_store
 from zou.app.utils import fields, events, cache, emails, date_helpers
-from zou.app.services import index_service, auth_service
+from zou.app.services import index_service, auth_service, templates_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
     PersonNotFoundException,
@@ -441,9 +441,8 @@ def invite_person(person_id):
     auth_tokens_store.add(
         "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 7
     )
-    subject = (
-        "You are invited by %s to join their Kitsu production tracker"
-        % (organisation["name"])
+    subject = "You are invited by %s to join their Kitsu platform" % (
+        organisation["name"]
     )
     params = {"email": person["email"], "token": token}
     query = urllib.parse.urlencode(params)
@@ -461,27 +460,21 @@ def invite_person(person_id):
 
     html = f"""<p>Hello {person["first_name"]},</p>
 <p>
-You are invited by {organisation["name"]} to collaborate on their Kitsu production tracker.
+You are invited by {organisation["name"]} to join their team on Kitsu.
 </p>
 <p>
 Your login is: <strong>{person["email"]}</strong>
 </p>
 <p>
-You are invited to set your password by following this link: <a href="{reset_url}">{reset_url}</a>
+Set your password to continue:
 </p>
-<p>
-This link will expire after one week. After, you have to request to reset your password.
-The invitation was sent at this date: {time_string}.
-</p>
-<p>
-Thank you and see you soon on Kitsu,
-</p>
-<p>
-{organisation["name"]} Team
+<p class="cta">
+<a class="button" href="{reset_url}">Set your password</a>
 </p>
 """
-
-    emails.send_email(subject, html, person["email"])
+    title = "Welcome to Kitsu"
+    email_html_body = templates_service.generate_html_body(title, html)
+    emails.send_email(subject, email_html_body, person["email"])
 
 
 @cache.memoize_function(120)

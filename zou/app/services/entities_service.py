@@ -376,7 +376,7 @@ def get_entity_tasks(entity):
     get_tasks = getattr(
         tasks_service, "get_tasks_for_" + entity_type_name.lower()
     )
-    return get_tasks(entity["id"])    
+    return get_tasks(entity["id"])
 
 
 def remove_entity_link(link_id):

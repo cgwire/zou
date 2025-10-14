@@ -38,6 +38,7 @@ from zou.app.services import (
     tasks_service,
     names_service,
     persons_service,
+    templates_service,
 )
 
 from zou.app.services.exception import (
@@ -694,19 +695,17 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
             job["id"],
         )
         html = f"""<p>Hello {person.first_name},</p>
-<p>Your playlist {playlist["name"]} is available at:
-<a href="{playlist_url}">{playlist_url}</a>
+<p>Your playlist {playlist["name"]} build is available:
 </p>
-<p>
-Thank you and see you soon on Kitsu,
-</p>
-<p>
-{organisation["name"]} Team
+<p class="cta">
+<a href="{playlist_url}">Download Playlist Build (.mp4)</a>
 </p>
 """
 
         subject = f"{organisation['name']} - Kitsu: playlist download"
-        emails.send_email(subject, html, email)
+        title = "Playlist Download"
+        email_html_body = templates_service.generate_html_body(title, html)
+        emails.send_email(subject, email_html_body, email)
 
 
 def get_playlist_file_name(playlist):

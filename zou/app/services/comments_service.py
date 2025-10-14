@@ -79,7 +79,7 @@ def create_comment(
     files={},
     created_at="",
     links=[],
-    with_hashtags=True
+    with_hashtags=True,
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -136,10 +136,9 @@ def _handle_hashtags(person, task_type, task, text):
                     task_id=_task["id"],
                     text=text + f"\n\n____\nFrom {task_type['name']} task",
                     task_status_id=task_status["id"],
-                    with_hashtags=False
+                    with_hashtags=False,
                 )
     return hashtags
-
 
 
 def _check_retake_capping(task_status, task):
@@ -629,7 +628,7 @@ def get_comment_department_mention_ids(project_id, text):
 
 def get_comment_hashtags(text):
     """
-    Check for task type mentions (#full name) in text and returns matching 
+    Check for task type mentions (#full name) in text and returns matching
     tags. If all is present, return only all because it includes everything
     else.
     """
@@ -650,13 +649,13 @@ def filter_tasks_by_hashtags(tasks, hashtags, original_task_type):
         return [
             task
             for task in tasks
-            if task["task_type_name"].lower() != \
-                original_task_type["name"].lower()
+            if task["task_type_name"].lower()
+            != original_task_type["name"].lower()
         ]
     else:
         hashtag_map = {
             hashtag: True
-            for hashtag in hashtags 
+            for hashtag in hashtags
             if hashtag != original_task_type["name"].lower()
         }
         return [

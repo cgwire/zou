@@ -8,6 +8,7 @@ from zou.app.services import (
     exception,
 )
 
+
 class CommentsServiceTestCase(ApiDBTestCase):
     def setUp(self):
         super(CommentsServiceTestCase, self).setUp()
@@ -293,18 +294,18 @@ class CommentsServiceTestCase(ApiDBTestCase):
             "Great work! #animation"
         )
         self.assertListEqual(hashtags, ["animation"])
-        
+
         hashtags = comments_service.get_comment_hashtags(
             "Check this out #animation #lighting"
         )
         self.assertIn("animation", hashtags)
         self.assertIn("lighting", hashtags)
-        
+
         hashtags = comments_service.get_comment_hashtags(
             "Great work! #ANIMATION"
         )
         self.assertListEqual(hashtags, ["animation"])
-        
+
         hashtags = comments_service.get_comment_hashtags(
             "Great work! #animation."
         )
@@ -312,15 +313,15 @@ class CommentsServiceTestCase(ApiDBTestCase):
 
         hashtags = comments_service.get_comment_hashtags(
             "Great work! No hashtags here"
-         )
+        )
         self.assertListEqual(hashtags, [])
-        
+
     def test_get_comment_hashtags_all_priority(self):
         hashtags = comments_service.get_comment_hashtags(
             "Great work! #all #animation #lighting"
         )
         self.assertListEqual(hashtags, ["all"])
-        
+
         hashtags = comments_service.get_comment_hashtags("Great work! #all")
         self.assertListEqual(hashtags, ["all"])
 
@@ -329,16 +330,16 @@ class CommentsServiceTestCase(ApiDBTestCase):
             {"id": "1", "task_type_name": "animation"},
             {"id": "2", "task_type_name": "modeling"},
             {"id": "3", "task_type_name": "lighting"},
-            {"id": "4", "task_type_name": "rigging"}
+            {"id": "4", "task_type_name": "rigging"},
         ]
         task_type_animation = {"id": "tt1", "name": "Animation"}
-        
+
         filtered = comments_service.filter_tasks_by_hashtags(
             tasks, ["modeling"], task_type_animation
         )
         self.assertEqual(len(filtered), 1)
         self.assertEqual(filtered[0]["task_type_name"], "modeling")
-        
+
         filtered = comments_service.filter_tasks_by_hashtags(
             tasks, ["modeling", "lighting"], task_type_animation
         )
@@ -370,7 +371,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         concept_task = self.generate_fixture_shot_task(
             name="main", task_type_id=self.task_type_concept.id
         )
-        
+
         comment_text = "Great shot! Please check #modeling #concept"
         comment = comments_service.create_comment(
             person_id=self.person_id,
@@ -386,8 +387,8 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertTrue("Animation" in comments[0]["text"])
         modeling_task = tasks_service.get_task_raw(modeling_task.id)
         self.assertEqual(
-            str(modeling_task.task_status_id), 
-            str(modeling_task.task_status_id)
+            str(modeling_task.task_status_id),
+            str(modeling_task.task_status_id),
         )
         comments = tasks_service.get_comments(concept_task.id)
         self.assertEqual(len(comments), 1)
@@ -395,15 +396,15 @@ class CommentsServiceTestCase(ApiDBTestCase):
 
         modeling_task = tasks_service.get_task_raw(modeling_task.id)
         self.assertEqual(
-            str(modeling_task.task_status_id), 
-            str(modeling_task.task_status_id)
+            str(modeling_task.task_status_id),
+            str(modeling_task.task_status_id),
         )
         comment = comments_service.create_comment(
             person_id=self.person_id,
             task_id=str(self.task.id),
             task_status_id=str(self.task_status.id),
             text=comment_text,
-            with_hashtags=False
+            with_hashtags=False,
         )
         self.assertIsNotNone(comment["id"])
         self.assertEqual(comment["text"], comment_text)
@@ -415,7 +416,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         concept_task = self.generate_fixture_shot_task(
             name="main", task_type_id=self.task_type_concept.id
         )
-        
+
         comment_text = "Important update for everyone #all"
         comment = comments_service.create_comment(
             person_id=self.person_id,
