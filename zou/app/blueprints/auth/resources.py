@@ -767,8 +767,12 @@ class ResetPasswordResource(Resource, ArgsMixin):
         html = f"""<p>Hello {user["first_name"]},</p>
 
 <p>
-You have requested for a password reset. You can follow this link to change your
-password: <a href="{reset_url}">{reset_url}</a>
+You have requested for a password reset. Click on the following button
+to change your password:
+</p>
+
+<p class="cta">
+<a class="button" href="{reset_url}">Change your password</a>
 </p>
 
 <p>
