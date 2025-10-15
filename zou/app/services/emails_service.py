@@ -267,6 +267,7 @@ def send_assignation_notification(person_id, author_id, task):
             task_url,
         )
 
+        title = "New Assignation"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -366,6 +367,7 @@ _%s_
             reply["text"],
         )
 
+        title = "New Reply"
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
