@@ -106,40 +106,40 @@ class BaseStatusResource(Resource):
 class StatusResource(BaseStatusResource):
     def get(self):
         """
-       Get status of the API services
-        ---
-        description: Get status of the API services: database, key value store, event stream, job queue, indexer
-        tags:
-          - Index
-        responses:
-          '200':
-            description: Status of the API services
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                      example: "Zou"
-                    version:
-                      type: string
-                      example: "0.20.0"
-                    database-up:
-                      type: boolean
-                      example: true
-                    key-value-store-up:
-                      type: boolean
-                      example: true
-                    event-stream-up:
-                      type: boolean
-                      example: true
-                    job-queue-up:
-                      type: boolean
-                      example: true
-                    indexer-up:
-                      type: boolean
-                      example: true
+        Get status of the API services
+         ---
+         description: Get status of the database, key value store, event stream, job queue, indexer
+         tags:
+           - Index
+         responses:
+           '200':
+             description: Status of the API services
+             content:
+               application/json:
+                 schema:
+                   type: object
+                   properties:
+                     name:
+                       type: string
+                       example: "Zou"
+                     version:
+                       type: string
+                       example: "0.20.0"
+                     database-up:
+                       type: boolean
+                       example: true
+                     key-value-store-up:
+                       type: boolean
+                       example: true
+                     event-stream-up:
+                       type: boolean
+                       example: true
+                     job-queue-up:
+                       type: boolean
+                       example: true
+                     indexer-up:
+                       type: boolean
+                       example: true
         """
         (
             api_name,
@@ -265,7 +265,7 @@ class TxtStatusResource(BaseStatusResource):
         """
         Get status of the API services as text
         ---
-        description: Get status of the API services: database, key value store, event stream, job queue, indexer as a text.
+        description: Get status of the database, key value store, event stream, job queue, the indexer as a text.
         tags:
           - Index
         responses:
@@ -318,7 +318,7 @@ class InfluxStatusResource(BaseStatusResource):
         """
         Get status of the API services for InfluxDB
         ---
-        description: Get status of the API services: database, key value store, event stream, job queue, indexer as a JSON object.
+        description: Get status of the database, key value store, event stream, job queue, indexer as a JSON object.
         tags:
           - Index
         responses:
@@ -414,7 +414,7 @@ class ConfigResource(Resource):
         """
         Get the configuration of the Kitsu instance
         ---
-        description: Get the configuration of the current instance: self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status.
+        description: The configuration includes self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status.
         tags:
           - Index
         responses:

@@ -736,7 +736,7 @@ class FilterResource(Resource, ArgsMixin):
 
     def delete(self, filter_id):
         """
-        Delete filter.
+        Delete filter
         ---
         tags:
         - User
@@ -763,7 +763,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
 
     def get(self):
         """
-        Get filter groups.
+        Get filter groups
         ---
         tags:
         - User
