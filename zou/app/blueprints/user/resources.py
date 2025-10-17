@@ -600,7 +600,7 @@ class FiltersResource(Resource, ArgsMixin):
         ---
         tags:
         - User
-        description: Allow toretrieve filters for current user and only for open projects.
+        description: Allow to retrieve filters for current user and only for open projects.
         responses:
             200:
               description: Filters for current user and only for open projects
@@ -1094,7 +1094,6 @@ class NotificationsResource(Resource, ArgsMixin):
         watching = None
         if request.args.get("watching", None) is not None:
             watching = self.get_bool_parameter("watching")
-        print("watching", watching)
         notifications = user_service.get_last_notifications(
             before=before,
             task_type_id=task_type_id,
@@ -1522,7 +1521,7 @@ class DateTimeSpentsResource(Resource):
 
     def get(self, date):
         """
-        Get time spents by date.
+        Get time spents by date
         ---
         tags:
         - User
@@ -1559,7 +1558,7 @@ class TaskTimeSpentResource(Resource):
 
     def get(self, task_id, date):
         """
-        Get task time spent.
+        Get task time spent
         ---
         tags:
         - User
@@ -1640,7 +1639,7 @@ class ContextResource(Resource):
         ---
         tags:
           - User
-        description: Return context required to properly run a full app connected to the API (like the Kitsu web client)
+        description: Return context required to properly run a full app connected to the API (like the Kitsu web client).
         responses:
             200:
               description: Context to properly run a full app connected to the API

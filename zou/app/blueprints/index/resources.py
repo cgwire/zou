@@ -17,7 +17,7 @@ from zou.app.utils.redis import get_redis_url
 class IndexResource(Resource):
     def get(self):
         """
-        Get API name and version.
+        Get API name and version
         ---
         tags:
           - Index
@@ -106,13 +106,14 @@ class BaseStatusResource(Resource):
 class StatusResource(BaseStatusResource):
     def get(self):
         """
-        Retrieve API name, version and status.
+       Get status of the API services
         ---
+        description: Get status of the API services: database, key value store, event stream, job queue, indexer
         tags:
           - Index
         responses:
           '200':
-            description: API name, version and status
+            description: Status of the API services
             content:
               application/json:
                 schema:
@@ -164,13 +165,14 @@ class StatusResource(BaseStatusResource):
 class StatusResourcesResource(BaseStatusResource):
     def get(self):
         """
-        Retrieve date and CPU, memory and jobs stats.
+        Get resource usage stats
         ---
+        description: Get CPU usage for each core, memory repartition and number of jobs in the job queue.
         tags:
           - Index
         responses:
           '200':
-            description: Date and CPU, memory and jobs stats
+            description: CPU, memory and jobs stats
             content:
               application/json:
                 schema:
@@ -261,8 +263,9 @@ class StatusResourcesResource(BaseStatusResource):
 class TxtStatusResource(BaseStatusResource):
     def get(self):
         """
-        Retrieve API name, version and status as txt.
+        Get status of the API services as text
         ---
+        description: Get status of the API services: database, key value store, event stream, job queue, indexer as a text.
         tags:
           - Index
         responses:
@@ -313,8 +316,9 @@ indexer-up: %s
 class InfluxStatusResource(BaseStatusResource):
     def get(self):
         """
-        Retrieve status of database and time.
+        Get status of the API services for InfluxDB
         ---
+        description: Get status of the API services: database, key value store, event stream, job queue, indexer as a JSON object.
         tags:
           - Index
         responses:
@@ -371,8 +375,9 @@ class StatsResource(Resource):
     @jwt_required()
     def get(self):
         """
-        Retrieve main stats.
+        Get usage stats
         ---
+        description: Get the amount of projects, assets, shots, tasks, and persons.
         tags:
           - Index
         responses:
@@ -407,13 +412,14 @@ class StatsResource(Resource):
 class ConfigResource(Resource):
     def get(self):
         """
-        Get basic configuration for the current instance.
+        Get the configuration of the Kitsu instance
         ---
+        description: Get the configuration of the current instance: self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status.
         tags:
           - Index
         responses:
           '200':
-            description: Configuration object including self-hosted status, Crisp token, indexer configuration, SAML status, and dark theme status
+            description: Configuration object
             content:
               application/json:
                 schema:
@@ -475,8 +481,9 @@ class ConfigResource(Resource):
 class TestEventsResource(Resource):
     def get(self):
         """
-        Generate a main:test event.
+        Generate a test event
         ---
+        description: Generate a `main:test` event to test the event stream with the Python client or similar.
         tags:
           - Index
         responses:
