@@ -62,9 +62,11 @@ class AuthenticatedResource(Resource):
     @jwt_required()
     def get(self):
         """
-        Check user authentication status
+        Check authentication status
         ---
-        description: Returns information if the user is authenticated. Can be used by third party tools, especially browser frontend, to know if current user is still logged in.
+        description: Returns information if the user is authenticated.
+          It can be used by third party tools, especially browser frontend,
+          to know if current user is still logged in.
         tags:
             - Authentication
         responses:
@@ -123,7 +125,12 @@ class LoginResource(Resource, ArgsMixin):
         """
         Login user
         ---
-        description: Log in user by creating and registering auth tokens. Login is based on email and password. If no user matches given email and a desktop ID, it looks for matching desktop ID in database. Useful for desktop tools that don't know user email.
+        description: Log in user by creating and registering auth tokens.
+          Login is based on email and password. If no user matches given email
+          It fallbacks to a desktop ID. It is useful for desktop tools that
+          don't know user email.
+          It is also possible to login with TOTP, Email OTP, FIDO and recovery
+          code.
         tags:
             - Authentication
         requestBody:
@@ -368,7 +375,8 @@ class RefreshTokenResource(Resource):
         """
         Refresh access token
         ---
-        description: Tokens are considered outdated every two weeks. This route allows to extend their lifetime before they get outdated.
+        description: Tokens are considered outdated every two weeks.
+          This route allows to extend their lifetime before they get outdated.
         tags:
             - Authentication
         responses:
@@ -517,7 +525,9 @@ class ChangePasswordResource(Resource, ArgsMixin):
         """
         Change user password
         ---
-        description: Allow the user to change his password. Requires current password for verification and password confirmation to ensure accuracy.
+        description: Allow the user to change his password. Requires current
+          password for verification and password confirmation to ensure
+          accuracy.
         tags:
             - Authentication
         requestBody:
@@ -629,7 +639,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         Reset password with token
         ---
-        description: Allow a user to change his password when he forgets it. Uses a token sent by email to the user.
+        description: Allow a user to change his password when he forgets it.
+          It uses a token sent by email to the user to verify it is the user
+          who requested the password reset.
         tags:
             - Authentication
         requestBody:
@@ -714,7 +726,8 @@ class ResetPasswordResource(Resource, ArgsMixin):
         """
         Request password reset
         ---
-        description: Send a password reset token by email to the user. Uses a classic scheme where a token is sent by email.
+        description: Send a password reset token by email to the user.
+          It uses a classic scheme where a token is sent by email.
         tags:
             - Authentication
         requestBody:
@@ -802,7 +815,8 @@ class TOTPResource(Resource, ArgsMixin):
         """
         Pre-enable TOTP
         ---
-        description: Prepare TOTP (Time-based One-Time Password) for enabling. Returns provisioning URI and secret for authenticator app setup.
+        description: Prepare TOTP (Time-based One-Time Password) for enabling.
+          It returns provisioning URI and secret for authenticator app setup.
         tags:
             - Authentication
         responses:
@@ -831,7 +845,8 @@ class TOTPResource(Resource, ArgsMixin):
         """
         Enable TOTP
         ---
-        description: Enable TOTP (Time-based One-Time Password) authentication. Requires verification code from authenticator app.
+        description: Enable TOTP (Time-based One-Time Password) authentication.
+          It requires verification code from authenticator app.
         tags:
             - Authentication
         requestBody:
@@ -880,7 +895,8 @@ class TOTPResource(Resource, ArgsMixin):
         """
         Disable TOTP
         ---
-        description: Disable TOTP (Time-based One-Time Password) authentication. Requires two-factor authentication verification.
+        description: Disable TOTP (Time-based One-Time Password) authentication.
+          It requires two-factor authentication verification.
         tags:
             - Authentication
         requestBody:
@@ -955,7 +971,8 @@ class EmailOTPResource(Resource, ArgsMixin):
         """
         Send email OTP
         ---
-        description: Send a one-time password by email to the user for authentication.
+        description: Send a one-time password by email to the user for
+          authentication.
         tags:
             - Authentication
         parameters:
@@ -1006,7 +1023,8 @@ class EmailOTPResource(Resource, ArgsMixin):
         """
         Pre-enable email OTP
         ---
-        description: Prepare email OTP (One-Time Password) for enabling. Sets up email-based two-factor authentication.
+        description: Prepare email OTP (One-Time Password) for enabling.
+          It sets up email-based two-factor authentication.
         tags:
             - Authentication
         responses:
@@ -1032,7 +1050,8 @@ class EmailOTPResource(Resource, ArgsMixin):
         """
         Enable email OTP
         ---
-        description: Enable email OTP (One-Time Password) authentication. Requires verification code sent to email.
+        description: Enable email OTP (One-Time Password) authentication.
+          It requires verification code sent to email.
         tags:
             - Authentication
         requestBody:
@@ -1082,7 +1101,8 @@ class EmailOTPResource(Resource, ArgsMixin):
         """
         Disable email OTP
         ---
-        description: Disable email OTP (One-Time Password) authentication. Requires two-factor authentication verification.
+        description: Disable email OTP (One-Time Password) authentication.
+          It requires two-factor authentication verification.
         tags:
             - Authentication
         requestBody:
@@ -1161,7 +1181,8 @@ class FIDOResource(Resource, ArgsMixin):
         """
         Get FIDO challenge
         ---
-        description: Get a challenge for FIDO device authentication. Used for WebAuthn authentication flow.
+        description: Get a challenge for FIDO device authentication.
+          It is used for WebAuthn authentication flow.
         tags:
             - Authentication
         parameters:
@@ -1211,12 +1232,13 @@ class FIDOResource(Resource, ArgsMixin):
         """
         Pre-register FIDO device
         ---
-        description: Prepare FIDO device for registration. Returns registration options for WebAuthn.
+        description: Prepare FIDO device for registration.
+          It returns registration options for WebAuthn.
         tags:
             - Authentication
         responses:
           200:
-            description: FIDO device pre-registered
+            description: FIDO device pre-registered data
           400:
             description: Invalid request
         """
@@ -1230,7 +1252,8 @@ class FIDOResource(Resource, ArgsMixin):
         """
         Register FIDO device
         ---
-        description: Register a FIDO device for WebAuthn authentication. Requires registration response from the device.
+        description: Register a FIDO device for WebAuthn authentication.
+          It requires registration response from the device.
         tags:
             - Authentication
         requestBody:
@@ -1289,7 +1312,8 @@ class FIDOResource(Resource, ArgsMixin):
         """
         Unregister FIDO device
         ---
-        description: Unregister a FIDO device from WebAuthn authentication. Requires two-factor authentication verification.
+        description: Unregister a FIDO device from WebAuthn authentication.
+          It requires two-factor authentication verification.
         tags:
             - Authentication
         requestBody:
@@ -1372,7 +1396,8 @@ class RecoveryCodesResource(Resource, ArgsMixin):
         """
         Generate recovery codes
         ---
-        description: Generate new recovery codes for two-factor authentication. Requires two-factor authentication verification.
+        description: Generate new recovery codes for two-factor authentication.
+          It requires two-factor authentication verification.
         tags:
             - Authentication
         requestBody:
@@ -1451,7 +1476,9 @@ class SAMLSSOResource(Resource, ArgsMixin):
         """
         SAML SSO login
         ---
-        description: Handle SAML SSO login response. Processes authentication response from SAML identity provider.
+        description: Handle SAML SSO login response. Processes authentication
+          response from SAML identity provider and creates a new user if they
+          don't exist.
         tags:
             - Authentication
         responses:
@@ -1539,7 +1566,8 @@ class SAMLLoginResource(Resource, ArgsMixin):
         """
         SAML SSO login redirect
         ---
-        description: Initiate SAML SSO login by redirecting to SAML identity provider.
+        description: Initiate SAML SSO login by redirecting to SAML identity
+          provider.
         tags:
             - Authentication
         responses:

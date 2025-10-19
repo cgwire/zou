@@ -29,13 +29,17 @@ An easy to use Python client to access this API is available:
 
 ## Authentication<div class="auth">
 
-<p>Before you can use any of the endpoints outline below,
-you will have to get a JWT token to authorize your requests.
+<p>Before you can use any of the endpoints outlined below,
+you will need to obtain a JWT token to authorize your requests.
 </p>
 
 <p>
-You will find the information to retrieve it in the 
+You will find detailed information on how to retrieve authentication tokens in the
 [Zou documentation](https://zou.cg-wire.com/api/).
+</p>
+
+<p>
+All API requests require authentication via JWT tokens passed in the Authorization header.
 </p>
 """
 
@@ -73,30 +77,99 @@ swagger_template = {
     },
     "security": [{"JWT Authorization": []}],
     "tags": [
-        {"name": "Authentication"},
-        {"name": "Assets"},
-        {"name": "Breakdown"},
-        {"name": "Chat"},
-        {"name": "Comments"},
-        {"name": "Concepts"},
-        {"name": "Crud"},
-        {"name": "Departments"},
-        {"name": "Edits"},
-        {"name": "Entities"},
-        {"name": "Events"},
-        {"name": "Export"},
-        {"name": "Files"},
-        {"name": "Import"},
-        {"name": "Index"},
-        {"name": "News"},
-        {"name": "Persons"},
-        {"name": "Playlists"},
-        {"name": "Previews"},
-        {"name": "Projects"},
-        {"name": "Search"},
-        {"name": "Shots"},
-        {"name": "Tasks"},
-        {"name": "User"},
+        {
+            "name": "Authentication",
+            "description": "User authentication, login, logout, and session management",
+        },
+        {
+            "name": "Assets",
+            "description": "Production asset management including 3D models, textures, and media files",
+        },
+        {
+            "name": "Breakdown",
+            "description": "Shot breakdown management and asset-to-shot relationships",
+        },
+        {
+            "name": "Chat",
+            "description": "Real-time messaging and communication features",
+        },
+        {
+            "name": "Comments",
+            "description": "Task comments, feedback, and collaboration tools",
+        },
+        {
+            "name": "Concepts",
+            "description": "Concept art and design asset management",
+        },
+        {
+            "name": "Crud",
+            "description": "Generic CRUD operations for various data models",
+        },
+        {
+            "name": "Departments",
+            "description": "Department management and organizational structure",
+        },
+        {
+            "name": "Edits",
+            "description": "Edit management for post-production workflows",
+        },
+        {
+            "name": "Entities",
+            "description": "Generic entity management and relationships",
+        },
+        {
+            "name": "Events",
+            "description": "Event streaming and real-time notifications",
+        },
+        {
+            "name": "Export",
+            "description": "Data export functionality for reports and integrations",
+        },
+        {
+            "name": "Files",
+            "description": "File management, uploads, and storage operations",
+        },
+        {
+            "name": "Import",
+            "description": "Data import from external sources and file formats",
+        },
+        {
+            "name": "Index",
+            "description": "System status, health checks, and configuration",
+        },
+        {
+            "name": "News",
+            "description": "Production news feed and activity tracking",
+        },
+        {"name": "Persons", "description": "User and team member management"},
+        {
+            "name": "Playlists",
+            "description": "Media playlists and review sessions",
+        },
+        {
+            "name": "Previews",
+            "description": "Preview generation and thumbnail management",
+        },
+        {
+            "name": "Projects",
+            "description": "Project management and production organization",
+        },
+        {
+            "name": "Search",
+            "description": "Search functionality across all production data",
+        },
+        {
+            "name": "Shots",
+            "description": "Shot management, sequences, and episodes",
+        },
+        {
+            "name": "Tasks",
+            "description": "Task management, assignments, and progress tracking",
+        },
+        {
+            "name": "User",
+            "description": "User-specific data and personal workspace management",
+        },
     ],
     "definitions": {
         " Common fields for all model instances": {
