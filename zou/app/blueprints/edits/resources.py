@@ -19,20 +19,60 @@ class EditResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, edit_id):
         """
-        Retrieve given edit.
+        Get edit
         ---
+        description: Retrieve detailed information about a specific edit.
         tags:
           - Edits
         parameters:
           - in: path
             name: edit_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the edit
         responses:
-            200:
-                description: Given edit
+          200:
+            description: Edit information successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Edit unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      description: Edit name
+                      example: "Opening Sequence"
+                    description:
+                      type: string
+                      description: Edit description
+                      example: "Main opening sequence edit"
+                    project_id:
+                      type: string
+                      format: uuid
+                      description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
+                    episode_id:
+                      type: string
+                      format: uuid
+                      description: Episode identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         edit = edits_service.get_full_edit(edit_id)
         if edit is None:
@@ -45,20 +85,28 @@ class EditResource(Resource, ArgsMixin):
     @jwt_required()
     def delete(self, edit_id):
         """
-        Delete given edit.
+        Delete edit
         ---
+        description: Permanently remove an edit from the system. Only edit creators or project managers can delete edits.
         tags:
           - Edits
         parameters:
           - in: path
             name: edit_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the edit to delete
+          - in: query
+            name: force
+            type: boolean
+            required: false
+            description: Force deletion bypassing validation checks
+            example: false
         responses:
-            204:
-                description: Given edit deleted
+          204:
+            description: Edit successfully deleted
         """
         force = self.get_force()
         edit = edits_service.get_edit(edit_id)
@@ -74,31 +122,75 @@ class EditsResource(Resource):
     @jwt_required()
     def get(self):
         """
-        Retrieve all edit entries.
+        Get edits
         ---
+        description: Retrieve all edit entries with filtering support. Filters can be specified in the query string.
         tags:
           - Edits
-        description: Filters can be specified in the query string.
         parameters:
           - in: query
             name: project_id
-            required: False
+            required: false
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter edits by specific project
           - in: query
             name: name
-            required: False
+            required: false
             type: string
-            example: Name of edit
+            example: "Opening Sequence"
+            description: Filter edits by name
           - in: query
             name: force
-            required: False
+            required: false
             type: boolean
-            default: False
+            default: false
+            description: Force parameter for additional filtering
+            example: false
         responses:
-            200:
-                description: All edit entries
+          200:
+            description: List of edits successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Edit unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Edit name
+                        example: "Opening Sequence"
+                      description:
+                        type: string
+                        description: Edit description
+                        example: "Main opening sequence edit"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      episode_id:
+                        type: string
+                        format: uuid
+                        description: Episode identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -113,31 +205,75 @@ class AllEditsResource(Resource):
     @jwt_required()
     def get(self):
         """
-        Retrieve all edit entries.
+        Get all edits
         ---
+        description: Retrieve all edit entries with filtering support. Filters can be specified in the query string.
         tags:
           - Edits
-        description: Filters can be specified in the query string.
         parameters:
           - in: query
             name: project_id
-            required: False
+            required: false
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter edits by specific project
           - in: query
             name: name
-            required: False
+            required: false
             type: string
-            example: Name of edit
+            example: "Opening Sequence"
+            description: Filter edits by name
           - in: query
             name: force
-            required: False
+            required: false
             type: boolean
-            default: False
+            default: false
+            description: Force parameter for additional filtering
+            example: false
         responses:
-            200:
-                description: All edit entries
+          200:
+            description: List of all edits successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Edit unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Edit name
+                        example: "Opening Sequence"
+                      description:
+                        type: string
+                        description: Edit description
+                        example: "Main opening sequence edit"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      episode_id:
+                        type: string
+                        format: uuid
+                        description: Episode identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         criterions = query.get_query_criterions_from_request(request)
         if permissions.has_vendor_permissions():
@@ -152,20 +288,50 @@ class EditTaskTypesResource(Resource):
     @jwt_required()
     def get(self, edit_id):
         """
-        Retrieve all task types related to a given edit.
+        Get edit task types
         ---
+        description: Retrieve all task types that are related to a specific edit.
         tags:
           - Edits
         parameters:
           - in: path
             name: edit_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the edit
         responses:
-            200:
-                description: All task types related to given edit
+          200:
+            description: List of edit task types successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task type unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      name:
+                        type: string
+                        description: Task type name
+                        example: "Edit"
+                      short_name:
+                        type: string
+                        description: Task type short name
+                        example: "EDT"
+                      color:
+                        type: string
+                        description: Task type color code
+                        example: "#FF5733"
+                      for_entity:
+                        type: string
+                        description: Entity type this task type is for
+                        example: "Edit"
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
@@ -177,20 +343,74 @@ class EditTasksResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, edit_id):
         """
-        Retrieve all tasks related to a given edit.
+        Get edit tasks
         ---
+        description: Retrieve all tasks that are related to a specific edit.
         tags:
           - Edits
         parameters:
           - in: path
             name: edit_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the edit
+          - in: query
+            name: relations
+            type: boolean
+            required: false
+            description: Include related entity information
+            example: true
         responses:
-            200:
-                description: All tasks related to given edit
+          200:
+            description: List of edit tasks successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      name:
+                        type: string
+                        description: Task name
+                        example: "Edit Task"
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        description: Task type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      task_status_id:
+                        type: string
+                        format: uuid
+                        description: Task status identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      entity_id:
+                        type: string
+                        format: uuid
+                        description: Entity identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      assigned_to:
+                        type: string
+                        format: uuid
+                        description: Assigned person identifier
+                        example: f79f1jf9-hj20-9010-f625-02998537h80
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
@@ -203,20 +423,74 @@ class EpisodeEditTasksResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, episode_id):
         """
-        Retrieve all tasks related to a given episode.
+        Get episode edit tasks
         ---
+        description: Retrieve all tasks that are related to a specific episode.
         tags:
           - Edits
         parameters:
           - in: path
             name: episode_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the episode
+          - in: query
+            name: relations
+            type: boolean
+            required: false
+            description: Include related entity information
+            example: true
         responses:
-            200:
-                description: All tasks related to given episode
+          200:
+            description: List of episode edit tasks successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      name:
+                        type: string
+                        description: Task name
+                        example: "Episode Edit Task"
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        description: Task type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      task_status_id:
+                        type: string
+                        format: uuid
+                        description: Task status identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      entity_id:
+                        type: string
+                        format: uuid
+                        description: Entity identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      assigned_to:
+                        type: string
+                        format: uuid
+                        description: Assigned person identifier
+                        example: f79f1jf9-hj20-9010-f625-02998537h80
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         episode = edits_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -233,20 +507,68 @@ class EpisodeEditsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, episode_id):
         """
-        Retrieve all edits related to a given episode.
+        Get episode edits
         ---
+        description: Retrieve all edits that are related to a specific episode.
         tags:
           - Edits
         parameters:
           - in: path
             name: episode_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the episode
+          - in: query
+            name: relations
+            type: boolean
+            required: false
+            description: Include related entity information
+            example: true
         responses:
-            200:
-                description: All efits related to given episode
+          200:
+            description: List of episode edits successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Edit unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Edit name
+                        example: "Episode Edit"
+                      description:
+                        type: string
+                        description: Edit description
+                        example: "Main episode edit"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      episode_id:
+                        type: string
+                        format: uuid
+                        description: Episode identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         episode = edits_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
@@ -261,21 +583,60 @@ class EditPreviewsResource(Resource):
     @jwt_required()
     def get(self, edit_id):
         """
-        Retrieve all previews related to a given edit.
+        Get edit previews
         ---
+        description: Retrieve all preview files related to a specific edit.
+          Returns them as a dictionary where keys are related task type IDs and
+          values are arrays of previews for that task type.
         tags:
           - Edits
-        description: It sends them as a dict. Keys are related task type ids and values are arrays of preview for this task type.
         parameters:
           - in: path
             name: edit_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the edit
         responses:
-            200:
-                description: All previews related to given edit
+          200:
+            description: Edit previews successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Preview unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Preview name
+                          example: "edit_preview_01"
+                        original_name:
+                          type: string
+                          description: Original file name
+                          example: "edit_sequence.mov"
+                        file_path:
+                          type: string
+                          description: File path
+                          example: "/previews/edit/edit_preview_01.mov"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
@@ -287,30 +648,98 @@ class EditsAndTasksResource(Resource):
     @jwt_required()
     def get(self):
         """
-        Retrieve all edits, adds project name and all related tasks.
+        Get edits and tasks
         ---
+        description: Retrieve all edits with project name and all related tasks.
         tags:
           - Edits
         parameters:
           - in: query
             name: project_id
-            required: False
+            required: false
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter edits by specific project
           - in: query
             name: name
-            required: False
+            required: false
             type: string
-            example: Name of edit
+            example: "Opening Sequence"
+            description: Filter edits by name
           - in: query
             name: force
-            required: False
+            required: false
             type: boolean
-            default: False
+            default: false
+            description: Force parameter for additional filtering
+            example: false
         responses:
-            200:
-                description: All edits and all related tasks.
+          200:
+            description: Edits with tasks successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Edit unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Edit name
+                        example: "Opening Sequence"
+                      description:
+                        type: string
+                        description: Edit description
+                        example: "Main opening sequence edit"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      project_name:
+                        type: string
+                        description: Project name
+                        example: "My Animation Project"
+                      episode_id:
+                        type: string
+                        format: uuid
+                        description: Episode identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      tasks:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              description: Task unique identifier
+                              example: d57d9hd7-fh08-7998-d403-80786315f58
+                            name:
+                              type: string
+                              description: Task name
+                              example: "Edit Task"
+                            task_type_id:
+                              type: string
+                              format: uuid
+                              description: Task type identifier
+                              example: e68e0ie8-gi19-8009-e514-91897426g69
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
@@ -329,20 +758,62 @@ class ProjectEditsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve all edits related to a given project.
+        Get project edits
         ---
+        description: Retrieve all edits that are related to a specific project.
         tags:
           - Edits
         parameters:
           - in: path
             name: project_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the project
         responses:
-            200:
-                description: All edits related to given project
+          200:
+            description: List of project edits successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Edit unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Edit name
+                        example: "Opening Sequence"
+                      description:
+                        type: string
+                        description: Edit description
+                        example: "Main opening sequence edit"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      episode_id:
+                        type: string
+                        format: uuid
+                        description: Episode identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
@@ -353,34 +824,95 @@ class ProjectEditsResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Create an edit for given project.
+        Create edit
         ---
+        description: Create a new edit for a specific project with name, description, and optional episode association.
         tags:
           - Edits
         parameters:
           - in: path
             name: project_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: True
-            type: string
-            example: Name of edit
-          - in: formData
-            name: description
-            type: string
-            example: Description of edit
-          - in: formData
-            name: episode_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the project
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                properties:
+                  name:
+                    type: string
+                    description: Edit name
+                    example: "Opening Sequence"
+                  description:
+                    type: string
+                    description: Edit description
+                    example: "Main opening sequence edit"
+                  data:
+                    type: object
+                    description: Additional edit data
+                    example: {"duration": 120, "fps": 24}
+                  episode_id:
+                    type: string
+                    format: uuid
+                    description: Episode identifier (optional)
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            201:
-                description: Edit created for given project
+          201:
+            description: Edit successfully created
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Edit unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      description: Edit name
+                      example: "Opening Sequence"
+                    description:
+                      type: string
+                      description: Edit description
+                      example: "Main opening sequence edit"
+                    project_id:
+                      type: string
+                      format: uuid
+                      description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
+                    episode_id:
+                      type: string
+                      format: uuid
+                      description: Episode identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
+                    data:
+                      type: object
+                      description: Additional edit data
+                      example: {"duration": 120, "fps": 24}
+                    created_by:
+                      type: string
+                      format: uuid
+                      description: Creator person identifier
+                      example: d57d9hd7-fh08-7998-d403-80786315f58
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:00:00Z"
         """
         (name, description, data, parent_id) = self.get_arguments()
         projects_service.get_project(project_id)
@@ -426,20 +958,58 @@ class EditVersionsResource(Resource):
     @jwt_required()
     def get(self, edit_id):
         """
-        Retrieve data versions of given edit.
+        Get edit versions
         ---
+        description: Retrieve all data versions of a specific edit. This
+          includes historical versions and metadata about changes over time.
         tags:
           - Edits
         parameters:
           - in: path
             name: edit_id
-            required: True
+            required: true
             type: string
             format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Unique identifier of the edit
         responses:
-            200:
-                description: Data versions of given edit
+          200:
+            description: Edit versions successfully retrieved
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Version unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      edit_id:
+                        type: string
+                        format: uuid
+                        description: Edit identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      version_number:
+                        type: integer
+                        description: Version number
+                        example: 1
+                      data:
+                        type: object
+                        description: Version data content
+                        example: {"duration": 120, "fps": 24, "changes": "Added transitions"}
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      created_by:
+                        type: string
+                        format: uuid
+                        description: Creator person identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         edit = edits_service.get_edit(edit_id)
         user_service.check_project_access(edit["project_id"])

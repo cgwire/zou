@@ -57,25 +57,31 @@ class AssetResource(Resource, ArgsMixin):
                       type: string
                       format: uuid
                       description: Asset unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
                       description: Asset name
+                      example: "Character Name"
                     project_id:
                       type: string
                       format: uuid
                       description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     entity_type_id:
                       type: string
                       format: uuid
                       description: Asset type identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
                     created_at:
                       type: string
                       format: date-time
                       description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
                     updated_at:
                       type: string
                       format: date-time
                       description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -167,23 +173,29 @@ class AllAssetsResource(Resource):
                         type: string
                         format: uuid
                         description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       project_name:
                         type: string
                         description: Project name
+                        example: "My Project"
                       asset_type_name:
                         type: string
                         description: Asset type name
+                        example: "Character"
         """
         criterions = query.get_query_criterions_from_request(request)
         check_criterion_access(criterions)
@@ -244,23 +256,29 @@ class AssetsAndTasksResource(Resource, ArgsMixin):
                         type: string
                         format: uuid
                         description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       project_name:
                         type: string
                         description: Project name
+                        example: "My Project"
                       asset_type_name:
                         type: string
                         description: Asset type name
+                        example: "Character"
                       tasks:
                         type: array
                         items:
@@ -310,17 +328,21 @@ class AssetTypeResource(Resource):
                       type: string
                       format: uuid
                       description: Asset type unique identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
                     name:
                       type: string
                       description: Asset type name
+                      example: "Character"
                     created_at:
                       type: string
                       format: date-time
                       description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
                     updated_at:
                       type: string
                       format: date-time
                       description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         return assets_service.get_asset_type(asset_type_id)
 
@@ -356,17 +378,21 @@ class AssetTypesResource(Resource):
                         type: string
                         format: uuid
                         description: Asset type unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       name:
                         type: string
                         description: Asset type name
+                        example: "Character"
                       created_at:
                         type: string
                         format: date-time
                         description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
                       updated_at:
                         type: string
                         format: date-time
                         description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         criterions = query.get_query_criterions_from_request(request)
         return assets_service.get_asset_types(criterions)
@@ -404,13 +430,16 @@ class ProjectAssetTypesResource(Resource):
                         type: string
                         format: uuid
                         description: Asset type unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       name:
                         type: string
                         description: Asset type name
+                        example: "Character"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         user_service.check_project_access(project_id)
         return assets_service.get_asset_types_for_project(project_id)
@@ -448,13 +477,16 @@ class ShotAssetTypesResource(Resource):
                         type: string
                         format: uuid
                         description: Asset type unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       name:
                         type: string
                         description: Asset type name
+                        example: "Character"
                       shot_id:
                         type: string
                         format: uuid
                         description: Shot identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
@@ -509,23 +541,29 @@ class ProjectAssetsResource(Resource):
                         type: string
                         format: uuid
                         description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       project_name:
                         type: string
                         description: Project name
+                        example: "My Project"
                       asset_type_name:
                         type: string
                         description: Asset type name
+                        example: "Character"
         """
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
@@ -586,23 +624,29 @@ class ProjectAssetTypeAssetsResource(Resource):
                         type: string
                         format: uuid
                         description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       project_name:
                         type: string
                         description: Project name
+                        example: "My Project"
                       asset_type_name:
                         type: string
                         description: Asset type name
+                        example: "Character"
         """
         user_service.check_project_access(project_id)
         criterions = query.get_query_criterions_from_request(request)
@@ -647,17 +691,21 @@ class AssetAssetsResource(Resource):
                         type: string
                         format: uuid
                         description: Linked asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Linked asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -709,33 +757,41 @@ class AssetTasksResource(Resource, ArgsMixin):
                         type: string
                         format: uuid
                         description: Task unique identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
                       name:
                         type: string
                         description: Task name
+                        example: "Modeling Task"
                       task_type_id:
                         type: string
                         format: uuid
                         description: Task type identifier
+                        example: f79f1jf9-hj20-9110-f625-02908537h70
                       task_status_id:
                         type: string
                         format: uuid
                         description: Task status identifier
+                        example: g80g2kg0-ik31-0221-g736-13019648i81
                       entity_id:
                         type: string
                         format: uuid
                         description: Asset identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       assigned_to:
                         type: string
                         format: uuid
                         description: Assigned user identifier
+                        example: h91h3lh1-jl42-1332-h847-24120759j92
                       created_at:
                         type: string
                         format: date-time
                         description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
                       updated_at:
                         type: string
                         format: date-time
                         description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -776,18 +832,23 @@ class AssetTaskTypesResource(Resource):
                         type: string
                         format: uuid
                         description: Task type unique identifier
+                        example: f79f1jf9-hj20-9110-f625-02908537h70
                       name:
                         type: string
                         description: Task type name
+                        example: "Modeling"
                       short_name:
                         type: string
                         description: Task type short name
+                        example: "MOD"
                       color:
                         type: string
                         description: Task type color code
+                        example: "#FF5733"
                       for_entity:
                         type: string
                         description: Entity type this task type is for
+                        example: "Asset"
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -843,7 +904,7 @@ class NewAssetResource(Resource, ArgsMixin):
                   data:
                     type: object
                     description: Asset metadata and custom data
-                    example: {}
+                    example: [{"difficulty": "easy", "atmsophere": "sunny"}]
                   is_shared:
                     type: boolean
                     description: Whether the asset is shared across projects
@@ -870,28 +931,35 @@ class NewAssetResource(Resource, ArgsMixin):
                       type: string
                       format: uuid
                       description: Created asset unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
                       description: Asset name
+                      example: "Character Name"
                     description:
                       type: string
                       description: Asset description
+                      example: "Main character"
                     project_id:
                       type: string
                       format: uuid
                       description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     entity_type_id:
                       type: string
                       format: uuid
                       description: Asset type identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
                     created_at:
                       type: string
                       format: date-time
                       description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
                     updated_at:
                       type: string
                       format: date-time
                       description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         (name, description, data, is_shared, source_id) = self.get_arguments()
 
@@ -967,6 +1035,7 @@ class AssetCastingResource(Resource):
                       type: string
                       format: uuid
                       description: Asset unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     casting:
                       type: array
                       items:
@@ -976,16 +1045,20 @@ class AssetCastingResource(Resource):
                             type: string
                             format: uuid
                             description: Casting entry unique identifier
+                            example: b35b7fb5-df86-5776-b181-68564193d36
                           entity_id:
                             type: string
                             format: uuid
                             description: Entity identifier (shot/sequence)
+                            example: d57d9hd7-fh08-7998-d403-80786315f58
                           entity_name:
                             type: string
                             description: Entity name
+                            example: "SH001"
                           entity_type:
                             type: string
                             description: Entity type (shot/sequence)
+                            example: "shot"
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -1025,9 +1098,11 @@ class AssetCastingResource(Resource):
                           type: string
                           format: uuid
                           description: Entity identifier to cast
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
                         entity_type:
                           type: string
                           description: Entity type (shot/sequence)
+                          example: "shot"
         responses:
           200:
             description: Asset casting successfully updated
@@ -1040,6 +1115,7 @@ class AssetCastingResource(Resource):
                       type: string
                       format: uuid
                       description: Asset unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     casting:
                       type: array
                       items:
@@ -1049,13 +1125,16 @@ class AssetCastingResource(Resource):
                             type: string
                             format: uuid
                             description: Casting entry unique identifier
+                            example: b35b7fb5-df86-5776-b181-68564193d36
                           entity_id:
                             type: string
                             format: uuid
                             description: Entity identifier
+                            example: d57d9hd7-fh08-7998-d403-80786315f58
                           entity_name:
                             type: string
                             description: Entity name
+                            example: "SH001"
         """
         casting = request.json
         asset = assets_service.get_asset(asset_id)
@@ -1095,26 +1174,33 @@ class AssetCastInResource(Resource):
                         type: string
                         format: uuid
                         description: Shot unique identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
                       name:
                         type: string
                         description: Shot name
+                        example: "SH001"
                       project_id:
                         type: string
                         format: uuid
                         description: Project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       sequence_id:
                         type: string
                         format: uuid
                         description: Sequence identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
                       frame_in:
                         type: integer
                         description: Frame in
+                        example: 100
                       frame_out:
                         type: integer
                         description: Frame out
+                        example: 200
                       duration:
                         type: integer
                         description: Shot duration in frames
+                        example: 100
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -1154,20 +1240,25 @@ class AssetShotAssetInstancesResource(Resource):
                         type: string
                         format: uuid
                         description: Asset instance unique identifier
+                        example: f79f1jf9-hj20-9110-f625-02908537h70
                       asset_id:
                         type: string
                         format: uuid
                         description: Asset identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       shot_id:
                         type: string
                         format: uuid
                         description: Shot identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
                       number:
                         type: string
                         description: Instance number
+                        example: "001"
                       description:
                         type: string
                         description: Instance description
+                        example: "Main character instance"
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -1205,20 +1296,25 @@ class AssetSceneAssetInstancesResource(Resource):
                         type: string
                         format: uuid
                         description: Asset instance unique identifier
+                        example: f79f1jf9-hj20-9110-f625-02908537h70
                       asset_id:
                         type: string
                         format: uuid
                         description: Asset identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       scene_id:
                         type: string
                         format: uuid
                         description: Scene identifier
+                        example: g80g2kg0-ik31-0221-g736-13019648i81
                       number:
                         type: string
                         description: Instance number
+                        example: "001"
                       description:
                         type: string
                         description: Instance description
+                        example: "Main character instance"
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -1256,20 +1352,25 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
                         type: string
                         format: uuid
                         description: Asset instance unique identifier
+                        example: f79f1jf9-hj20-9110-f625-02908537h70
                       asset_id:
                         type: string
                         format: uuid
                         description: Parent asset identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       target_asset_id:
                         type: string
                         format: uuid
                         description: Target asset identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       number:
                         type: string
                         description: Instance number
+                        example: "001"
                       description:
                         type: string
                         description: Instance description
+                        example: "Main character instance"
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
@@ -1321,24 +1422,30 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
                       type: string
                       format: uuid
                       description: Created asset instance unique identifier
+                      example: f79f1jf9-hj20-9110-f625-02908537h70
                     asset_id:
                       type: string
                       format: uuid
                       description: Parent asset identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     target_asset_id:
                       type: string
                       format: uuid
                       description: Target asset identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     number:
                       type: string
                       description: Instance number
+                      example: "001"
                     description:
                       type: string
                       description: Instance description
+                      example: "Main character instance"
                     created_at:
                       type: string
                       format: date-time
                       description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
         """
         args = self.get_args(
             [
@@ -1424,10 +1531,12 @@ class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
                     updated_count:
                       type: integer
                       description: Number of assets updated
+                      example: 5
                     project_id:
                       type: string
                       format: uuid
                       description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
         """
         args = self.get_args(
             [
@@ -1491,14 +1600,17 @@ class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
                     updated_count:
                       type: integer
                       description: Number of assets updated
+                      example: 3
                     project_id:
                       type: string
                       format: uuid
                       description: Project identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     asset_type_id:
                       type: string
                       format: uuid
                       description: Asset type identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         user_service.check_manager_project_access(project_id)
         return super().post(project_id=project_id, asset_type_id=asset_type_id)
@@ -1545,12 +1657,14 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
                     updated_count:
                       type: integer
                       description: Number of assets updated
+                      example: 2
                     asset_ids:
                       type: array
                       items:
                         type: string
                         format: uuid
                       description: List of updated asset IDs
+                      example: ["a24a6ea4-ce75-4665-a070-57453082c25", "b35b7fb5-df86-5776-b181-68564193d36"]
         """
         args = self.get_args(
             [
@@ -1603,20 +1717,25 @@ class ProjectAssetsSharedUsedResource(Resource):
                         type: string
                         format: uuid
                         description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Original project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       is_shared:
                         type: boolean
                         description: Whether the asset is shared
+                        example: true
         """
         user_service.check_project_access(project_id)
         return assets_service.get_shared_assets_used_in_project(project_id)
@@ -1661,24 +1780,30 @@ class ProjectEpisodeAssetsSharedUsedResource(Resource):
                         type: string
                         format: uuid
                         description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
                         description: Asset name
+                        example: "Character Name"
                       project_id:
                         type: string
                         format: uuid
                         description: Original project identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       entity_type_id:
                         type: string
                         format: uuid
                         description: Asset type identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       is_shared:
                         type: boolean
                         description: Whether the asset is shared
+                        example: true
                       episode_id:
                         type: string
                         format: uuid
                         description: Episode identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
         """
         user_service.check_project_access(project_id)
         return assets_service.get_shared_assets_used_in_project(
