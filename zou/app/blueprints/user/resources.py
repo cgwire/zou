@@ -32,6 +32,7 @@ class AssetTasksResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Asset unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -42,8 +43,48 @@ class AssetTasksResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Asset not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Modeling"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         assets_service.get_asset(asset_id)
         return user_service.get_tasks_for_entity(asset_id)
@@ -55,9 +96,10 @@ class AssetTaskTypesResource(Resource):
         """
         Get asset task types
         ---
+        description: Retrieve task types related to a specific asset for the
+          current user. Returns all task types available for the given asset.
         tags:
         - User
-        description: Return task types related to given asset for current user.
         parameters:
           - in: path
             name: asset_id
@@ -65,6 +107,7 @@ class AssetTaskTypesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Asset unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -75,8 +118,42 @@ class AssetTaskTypesResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Asset not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task type unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task type name
+                          example: "Modeling"
+                        short_name:
+                          type: string
+                          description: Task type short name
+                          example: "MOD"
+                        color:
+                          type: string
+                          description: Task type color
+                          example: "#FF0000"
+                        priority:
+                          type: integer
+                          description: Task type priority
+                          example: 1
+                        for_entity:
+                          type: string
+                          description: Entity type this task type applies to
+                          example: "Asset"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         assets_service.get_asset(asset_id)
         return user_service.get_task_types_for_entity(asset_id)
@@ -86,11 +163,12 @@ class ShotTaskTypesResource(Resource):
 
     def get(self, shot_id):
         """
-        Get shot tasks
+        Get shot task types
         ---
+        description: Retrieve task types related to a specific shot for the
+          current user. Returns all task types available for the given shot.
         tags:
         - User
-        description: Return tasks related to given shot for current user.
         parameters:
           - in: path
             name: shot_id
@@ -98,18 +176,53 @@ class ShotTaskTypesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Shot unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-              description: Tasks related to given shot for current user
+              description: Task types related to given shot for current user
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
-            404:
-              description: Shot not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task type unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task type name
+                          example: "Animation"
+                        short_name:
+                          type: string
+                          description: Task type short name
+                          example: "ANIM"
+                        color:
+                          type: string
+                          description: Task type color
+                          example: "#00FF00"
+                        priority:
+                          type: integer
+                          description: Task type priority
+                          example: 2
+                        for_entity:
+                          type: string
+                          description: Entity type this task type applies to
+                          example: "Shot"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_shot(shot_id)
         return user_service.get_task_types_for_entity(shot_id)
@@ -122,11 +235,12 @@ class SceneTaskTypesResource(Resource):
 
     def get(self, scene_id):
         """
-        Get scene tasks
+        Get scene task types
         ---
+        description: Retrieve task types related to a specific scene for the
+          current user.
         tags:
         - User
-        description: Return tasks related to given scene for current user.
         parameters:
           - in: path
             name: scene_id
@@ -134,18 +248,53 @@ class SceneTaskTypesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Scene unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-              description: Tasks related to given scene for current user
+              description: Task types related to given scene for current user
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
-            404:
-              description: Scene not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task type unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task type name
+                          example: "Layout"
+                        short_name:
+                          type: string
+                          description: Task type short name
+                          example: "LAY"
+                        color:
+                          type: string
+                          description: Task type color
+                          example: "#0000FF"
+                        priority:
+                          type: integer
+                          description: Task type priority
+                          example: 3
+                        for_entity:
+                          type: string
+                          description: Entity type this task type applies to
+                          example: "Scene"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_scene(scene_id)
         return user_service.get_task_types_for_entity(scene_id)
@@ -157,9 +306,10 @@ class SequenceTaskTypesResource(Resource):
         """
         Get sequence task types
         ---
+        description: Retrieve task types related to a specific sequence for the
+          current user.
         tags:
         - User
-        description: Return task types related to given sequence for current user
         parameters:
           - in: path
             name: sequence_id
@@ -167,18 +317,53 @@ class SequenceTaskTypesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-              description: Tasks related to given sequence for current user
+              description: Task types related to given sequence for current user
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
-            404:
-              description: Sequence not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task type unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task type name
+                          example: "Compositing"
+                        short_name:
+                          type: string
+                          description: Task type short name
+                          example: "COMP"
+                        color:
+                          type: string
+                          description: Task type color
+                          example: "#FFFF00"
+                        priority:
+                          type: integer
+                          description: Task type priority
+                          example: 4
+                        for_entity:
+                          type: string
+                          description: Entity type this task type applies to
+                          example: "Sequence"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_task_types_for_entity(sequence_id)
@@ -190,9 +375,10 @@ class AssetTypeAssetsResource(Resource):
         """
         Get project assets
         ---
+        description: Retrieve assets of a specific type within a project
+          matching the asset type in the given project if the user has access.
         tags:
         - User
-        description: Return assets of which type is given asset type and are listed in given project if user has access to this project.
         parameters:
           - in: path
             name: project_id
@@ -200,6 +386,7 @@ class AssetTypeAssetsResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
@@ -207,18 +394,51 @@ class AssetTypeAssetsResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Asset type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
             200:
-              description: Assets of which type is given asset type and are listed in given project
+              description: Assets of given type in the specified project
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
-            404:
-              description: Project or asset type not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Asset unique identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        name:
+                          type: string
+                          description: Asset name
+                          example: "Main Character"
+                        description:
+                          type: string
+                          description: Asset description
+                          example: "Main character model for the project"
+                        asset_type_id:
+                          type: string
+                          format: uuid
+                          description: Asset type identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         projects_service.get_project(project_id)
         assets_service.get_asset_type(asset_type_id)
@@ -233,9 +453,10 @@ class OpenProjectsResource(Resource, ArgsMixin):
         """
         Get open projects
         ---
+        description: Retrieve open projects for which the current user has at
+          least one task assigned. Optionally filter by project name.
         tags:
         - User
-        description: Return open projects for which the user has at least one task assigned
         parameters:
           - in: query
             name: name
@@ -243,15 +464,56 @@ class OpenProjectsResource(Resource, ArgsMixin):
             schema:
               type: string
             description: Filter projects by name
+            example: "My Project"
         responses:
             200:
-              description: Open projects for which the user has at least one task assigned
+              description: Open projects with assigned tasks for current user
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Project unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          description: Project name
+                          example: "My Project"
+                        description:
+                          type: string
+                          description: Project description
+                          example: "A sample project"
+                        status:
+                          type: string
+                          description: Project status
+                          example: "Active"
+                        fps:
+                          type: number
+                          description: Frames per second
+                          example: 24.0
+                        ratio:
+                          type: string
+                          description: Aspect ratio
+                          example: "16:9"
+                        resolution:
+                          type: string
+                          description: Project resolution
+                          example: "1920x1080"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         name = self.get_text_parameter("name")
         return user_service.get_open_projects(name=name)
@@ -263,9 +525,11 @@ class ProjectSequencesResource(Resource):
         """
         Get project sequences
         ---
+        description: Retrieve sequences related to a specific project for the
+          current user. Returns all sequences in the project if the user has
+          access.
         tags:
         - User
-        description: Return sequences related to given project if the current user has access to it
         parameters:
           - in: path
             name: project_id
@@ -273,6 +537,7 @@ class ProjectSequencesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -283,8 +548,39 @@ class ProjectSequencesResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Project not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Sequence unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Sequence name
+                          example: "SEQ001"
+                        description:
+                          type: string
+                          description: Sequence description
+                          example: "Main sequence"
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        fps:
+                          type: number
+                          description: Frames per second
+                          example: 24.0
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         projects_service.get_project(project_id)
         return user_service.get_sequences_for_project(project_id)
@@ -296,9 +592,11 @@ class ProjectEpisodesResource(Resource):
         """
         Get project episodes
         ---
+        description: Retrieve episodes related to a specific project for the
+          current user. Returns all episodes in the project if the user has
+          access.
         tags:
         - User
-        description: Return episodes related to given project if the current user has access to it.
         parameters:
           - in: path
             name: project_id
@@ -306,6 +604,7 @@ class ProjectEpisodesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -316,8 +615,35 @@ class ProjectEpisodesResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Project not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Episode unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Episode name
+                          example: "Episode 01"
+                        description:
+                          type: string
+                          description: Episode description
+                          example: "First episode"
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         projects_service.get_project(project_id)
         return user_service.get_project_episodes(project_id)
@@ -329,10 +655,10 @@ class ProjectAssetTypesResource(Resource):
         """
         Get project asset types
         ---
+        description: Retrieve asset types related to a specific project for the
+          current user.
         tags:
         - User
-        description: Return asset types related to given project if the current
-          user has access to it.
         parameters:
           - in: path
             name: project_id
@@ -340,6 +666,7 @@ class ProjectAssetTypesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -350,8 +677,39 @@ class ProjectAssetTypesResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Project not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Asset type unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Asset type name
+                          example: "Character"
+                        short_name:
+                          type: string
+                          description: Asset type short name
+                          example: "CHAR"
+                        color:
+                          type: string
+                          description: Asset type color
+                          example: "#FF0000"
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         projects_service.get_project(project_id)
         return user_service.get_asset_types_for_project(project_id)
@@ -363,9 +721,10 @@ class SequenceShotsResource(Resource):
         """
         Get sequence shots
         ---
+        description: Retrieve shots related to a specific sequence for the
+          current user.
         tags:
         - User
-        description: Return shots related to given sequence if the current user has access to it.
         parameters:
           - in: path
             name: sequence_id
@@ -373,6 +732,7 @@ class SequenceShotsResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -383,8 +743,40 @@ class SequenceShotsResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Sequence not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Shot unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Shot name
+                          example: "SH001"
+                        description:
+                          type: string
+                          description: Shot description
+                          example: "Main shot"
+                        sequence_id:
+                          type: string
+                          format: uuid
+                          description: Sequence identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_shots_for_sequence(sequence_id)
@@ -396,9 +788,10 @@ class SequenceScenesResource(Resource):
         """
         Get sequence scenes
         ---
+        description: Retrieve scenes related to a specific sequence for the
+          current user.
         tags:
         - User
-        description: Return scenes related to given sequence if the current user has access to it.
         parameters:
           - in: path
             name: sequence_id
@@ -406,6 +799,7 @@ class SequenceScenesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -416,8 +810,40 @@ class SequenceScenesResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Sequence not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Scene unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Scene name
+                          example: "SC001"
+                        description:
+                          type: string
+                          description: Scene description
+                          example: "Main scene"
+                        sequence_id:
+                          type: string
+                          format: uuid
+                          description: Sequence identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_scenes_for_sequence(sequence_id)
@@ -429,9 +855,10 @@ class ShotTasksResource(Resource):
         """
         Get shot tasks
         ---
+        description: Retrieve tasks related to a specific shot for the current
+          user. Returns all tasks assigned to the user for the given shot.
         tags:
         - User
-        description: Return tasks related to given shot for current user.
         parameters:
           - in: path
             name: shot_id
@@ -439,6 +866,7 @@ class ShotTasksResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Shot unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -449,8 +877,48 @@ class ShotTasksResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Shot not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Animation"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_shot(shot_id)
         return user_service.get_tasks_for_entity(shot_id)
@@ -462,9 +930,10 @@ class SceneTasksResource(Resource):
         """
         Get scene tasks
         ---
+        description: Retrieve tasks related to a specific scene for the current
+          user.
         tags:
         - User
-        description: Return tasks related to given scene for current user.
         parameters:
           - in: path
             name: scene_id
@@ -472,6 +941,7 @@ class SceneTasksResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Scene unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -482,8 +952,48 @@ class SceneTasksResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Scene not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Layout"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_scene(scene_id)
         return user_service.get_tasks_for_entity(scene_id)
@@ -495,9 +1005,11 @@ class SequenceTasksResource(Resource):
         """
         Get sequence tasks
         ---
+        description: Retrieve tasks related to a specific sequence for the
+          current user.
+          sequence.
         tags:
         - User
-        description: Return tasks related to given sequence for current user.
         parameters:
           - in: path
             name: sequence_id
@@ -505,6 +1017,7 @@ class SequenceTasksResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
@@ -515,26 +1028,63 @@ class SequenceTasksResource(Resource):
                     type: array
                     items:
                       type: object
-            404:
-              description: Sequence not found
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Compositing"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         shots_service.get_sequence(sequence_id)
         return user_service.get_tasks_for_entity(sequence_id)
 
 
 class TodosResource(Resource):
-    """
-    Return tasks currently assigned to current user and of which status
-    has is_done attribute set to false.
-    """
 
     def get(self):
         """
         Get my tasks
         ---
+        description: Retrieve ttasks currently assigned to current user and of which status
+          has is_done attribute set to false.
         tags:
         - User
-        description: Return tasks currently assigned to current user and of which status has is_done attribute set to false.
         responses:
             200:
               description: Unfinished tasks currently assigned to current user
@@ -544,6 +1094,48 @@ class TodosResource(Resource):
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Modeling"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_todos()
 
@@ -554,9 +1146,11 @@ class ToChecksResource(Resource):
         """
         Get tasks requiring feedback
         ---
+        description: Retrieve tasks requiring feedback for departments where the
+          current user is a supervisor. Returns empty list if user is not a
+          supervisor.
         tags:
         - User
-        description: Return tasks requiring feedback for current user departments. If the user is not a supervisor, it returns an empty list
         responses:
             200:
               description: Tasks requiring feedback in current user departments
@@ -566,6 +1160,48 @@ class ToChecksResource(Resource):
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Review"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_tasks_to_check()
 
@@ -576,9 +1212,10 @@ class DoneResource(Resource):
         """
         Get done tasks
         ---
+        description: Retrieve tasks currently assigned to the current user with
+          status marked as done. Returns only tasks from open projects.
         tags:
         - User
-        description: Return tasks currently assigned to current user and of which status has is_done attribute set to true. It returns only tasks of open projects.
         responses:
             200:
               description: Finished tasks currently assigned to current user
@@ -588,6 +1225,48 @@ class DoneResource(Resource):
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Task unique identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        name:
+                          type: string
+                          description: Task name
+                          example: "Completed Task"
+                        task_type_id:
+                          type: string
+                          format: uuid
+                          description: Task type identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        task_status_id:
+                          type: string
+                          format: uuid
+                          description: Task status identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        assigner_id:
+                          type: string
+                          format: uuid
+                          description: Person who assigned the task
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        assignees:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of assigned person identifiers
+                          example: ["f79f1jf9-hj20-9010-f625-a09008537h80"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_done_tasks()
 
@@ -598,9 +1277,10 @@ class FiltersResource(Resource, ArgsMixin):
         """
         Get filters
         ---
+        description: Retrieve filters for the current user limited to open
+          projects only.
         tags:
         - User
-        description: Allow to retrieve filters for current user and only for open projects.
         responses:
             200:
               description: Filters for current user and only for open projects
@@ -610,16 +1290,58 @@ class FiltersResource(Resource, ArgsMixin):
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Filter unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          description: Filter name
+                          example: "My Filter"
+                        query:
+                          type: string
+                          description: Filter query JSON
+                          example: '{"project_id": "uuid"}'
+                        list_type:
+                          type: string
+                          description: List type
+                          example: "todo"
+                        entity_type:
+                          type: string
+                          description: Entity type
+                          example: "Asset"
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        is_shared:
+                          type: boolean
+                          description: Whether filter is shared
+                          example: false
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_filters()
 
     def post(self):
         """
-        Create filter.
+        Create filter
         ---
+        description: Create a new filter for the current user limited to open
+          projects only.
         tags:
         - User
-        description: Create filter for current user and only for open projects.
         requestBody:
           required: true
           content:
@@ -634,36 +1356,88 @@ class FiltersResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
-                    example: Name of filter
+                    description: Filter name
+                    example: "My Custom Filter"
                   query:
                     type: string
+                    description: Filter query as JSON string
                     example: '{"project_id": "uuid"}'
                   list_type:
                     type: string
-                    example: todo
+                    description: Type of list this filter applies to
+                    example: "todo"
                   entity_type:
                     type: string
-                    example: Asset
+                    description: Entity type this filter applies to
+                    example: "Asset"
                   project_id:
                     type: string
                     format: uuid
+                    description: Project identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   is_shared:
                     type: boolean
+                    description: Whether to share this filter with others
                     default: false
+                    example: false
                   search_filter_group_id:
                     type: string
                     format: uuid
+                    description: Filter group identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
                   department_id:
                     type: string
                     format: uuid
+                    description: Department identifier
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
         responses:
             201:
-              description: Filter for current user and only for open projects created
+              description: Filter created successfully
               content:
                 application/json:
                   schema:
                     type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Filter unique identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      name:
+                        type: string
+                        description: Filter name
+                        example: "My Custom Filter"
+                      query:
+                        type: string
+                        description: Filter query JSON
+                        example: '{"project_id": "uuid"}'
+                      list_type:
+                        type: string
+                        description: List type
+                        example: "todo"
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      is_shared:
+                        type: boolean
+                        description: Whether filter is shared
+                        example: false
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
             400:
               description: Bad request
         """
@@ -704,19 +1478,101 @@ class FilterResource(Resource, ArgsMixin):
         """
         Update filter
         ---
+        description: Update an existing filter if it is owned by the current
+          user.
         tags:
         - User
-        description: Update given filter if it's owned by current user
         parameters:
           - in: path
             name: filter_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Filter unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Filter name
+                    example: "Updated Filter Name"
+                  search_query:
+                    type: string
+                    description: Updated filter query
+                    example: '{"status": "active"}'
+                  search_filter_group_id:
+                    type: string
+                    format: uuid
+                    description: Filter group identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
+                  is_shared:
+                    type: boolean
+                    description: Whether to share this filter
+                    example: true
+                  project_id:
+                    type: string
+                    format: uuid
+                    description: Project identifier
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
+                  department_id:
+                    type: string
+                    format: uuid
+                    description: Department identifier
+                    example: d57d9hd7-fh08-7998-d403-80786315f58
         responses:
             200:
-                description: Given filter with updated data.
+              description: Filter updated successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Filter unique identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      name:
+                        type: string
+                        description: Filter name
+                        example: "Updated Filter Name"
+                      query:
+                        type: string
+                        description: Filter query JSON
+                        example: '{"status": "active"}'
+                      list_type:
+                        type: string
+                        description: List type
+                        example: "todo"
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
+                      is_shared:
+                        type: boolean
+                        description: Whether filter is shared
+                        example: true
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         data = self.get_args(
             [
@@ -738,9 +1594,10 @@ class FilterResource(Resource, ArgsMixin):
         """
         Delete filter
         ---
+        description: Delete a specific filter if it is owned by the current
+          user.
         tags:
         - User
-        description: Delete given filter if it's owned by current user
         parameters:
           - in: path
             name: filter_id
@@ -748,12 +1605,11 @@ class FilterResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Filter unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Filter deleted successfully
-            404:
-              description: Filter not found
         """
         user_service.remove_filter(filter_id)
         return "", 204
@@ -765,9 +1621,10 @@ class FilterGroupsResource(Resource, ArgsMixin):
         """
         Get filter groups
         ---
+        description: Retrieve filter groups for the current user limited to open
+          projects only.
         tags:
         - User
-        description: Retrieve filter groups for current user and only for open projects
         responses:
             200:
               description: Filter groups for current user and only for open projects
@@ -777,6 +1634,47 @@ class FilterGroupsResource(Resource, ArgsMixin):
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Filter group unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          description: Filter group name
+                          example: "My Filter Group"
+                        color:
+                          type: string
+                          description: Filter group color
+                          example: "#FF0000"
+                        list_type:
+                          type: string
+                          description: List type
+                          example: "todo"
+                        entity_type:
+                          type: string
+                          description: Entity type
+                          example: "Asset"
+                        project_id:
+                          type: string
+                          format: uuid
+                          description: Project identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        is_shared:
+                          type: boolean
+                          description: Whether filter group is shared
+                          example: false
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_filter_groups()
 
@@ -784,9 +1682,10 @@ class FilterGroupsResource(Resource, ArgsMixin):
         """
         Create filter group
         ---
+        description: Create a new filter group for the current user limited to
+          open projects only. The filter group can be shared with other users.
         tags:
         - User
-        description: Create filter group for current user and only for open projects.
         requestBody:
           required: true
           content:
@@ -801,34 +1700,83 @@ class FilterGroupsResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
-                    example: Name of filter group
+                    description: Filter group name
+                    example: "My Filter Group"
                   color:
                     type: string
-                    example: #FF0000
+                    description: Filter group color in hex format
+                    example: "#FF0000"
                   list_type:
                     type: string
-                    example: todo
+                    description: Type of list this filter group applies to
+                    example: "todo"
                   entity_type:
                     type: string
-                    example: Asset
+                    description: Entity type this filter group applies to
+                    example: "Asset"
                   is_shared:
                     type: boolean
+                    description: Whether to share this filter group with others
                     default: false
+                    example: false
                   project_id:
                     type: string
                     format: uuid
+                    description: Project identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   department_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Department identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
             201:
-              description: Filter group for the current user and only for open projects created
+              description: Filter group created successfully
               content:
                 application/json:
                   schema:
                     type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Filter group unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      name:
+                        type: string
+                        description: Filter group name
+                        example: "My Filter Group"
+                      color:
+                        type: string
+                        description: Filter group color
+                        example: "#FF0000"
+                      list_type:
+                        type: string
+                        description: List type
+                        example: "todo"
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      is_shared:
+                        type: boolean
+                        description: Whether filter group is shared
+                        example: false
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
             400:
               description: Bad request
         """
@@ -866,13 +1814,67 @@ class FilterGroupResource(Resource, ArgsMixin):
         """
         Get filter group
         ---
+        description: Retrieve a specific filter group for the current user.
+          Returns detailed information about the filter group.
         tags:
         - User
-        description: Retrieve given filter group for the current user.
+        parameters:
+          - in: path
+            name: search_filter_group_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Filter group unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Filter groups for the current user and only for
-                             open projects
+              description: Filter group details
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Filter group unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      name:
+                        type: string
+                        description: Filter group name
+                        example: "My Filter Group"
+                      color:
+                        type: string
+                        description: Filter group color
+                        example: "#FF0000"
+                      list_type:
+                        type: string
+                        description: List type
+                        example: "todo"
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      is_shared:
+                        type: boolean
+                        description: Whether filter group is shared
+                        example: false
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_filter_group(search_filter_group_id)
 
@@ -880,41 +1882,96 @@ class FilterGroupResource(Resource, ArgsMixin):
         """
         Update filter group
         ---
+        description: Update an existing filter group if it is owned by the
+          current user. Allows modification of filter group properties.
         tags:
         - User
-        description: Update given filter group if it's owned by the current user.
         parameters:
           - in: path
-            name: filter_id
-            required: True
-            type: string
-            format: uuid
+            name: filter_group_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Filter group unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            type: string
-            example: Name of the filter group
-          - in: formData
-            name: color
-            type: string
-            example: Color of the filter group
-          - in: formData
-            name: is_shared
-            type: boolean
-            example: True
-          - in: formData
-            name: project_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: department_id
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Filter group name
+                    example: "Updated Filter Group"
+                  color:
+                    type: string
+                    description: Filter group color
+                    example: "#00FF00"
+                  is_shared:
+                    type: boolean
+                    description: Whether to share this filter group
+                    example: true
+                  project_id:
+                    type: string
+                    format: uuid
+                    description: Project identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
+                  department_id:
+                    type: string
+                    format: uuid
+                    description: Department identifier
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
         responses:
             200:
-                description: Given filter group with updated data
+              description: Filter group updated successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Filter group unique identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      name:
+                        type: string
+                        description: Filter group name
+                        example: "Updated Filter Group"
+                      color:
+                        type: string
+                        description: Filter group color
+                        example: "#00FF00"
+                      list_type:
+                        type: string
+                        description: List type
+                        example: "todo"
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      project_id:
+                        type: string
+                        format: uuid
+                        description: Project identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      is_shared:
+                        type: boolean
+                        description: Whether filter group is shared
+                        example: true
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         data = self.get_args(
             [
@@ -934,19 +1991,22 @@ class FilterGroupResource(Resource, ArgsMixin):
         """
         Delete filter group
         ---
+        description: Delete a specific filter group if it is owned by the
+          current user.
         tags:
         - User
-        description: Delete given filter group if it's owned by the current user.
         parameters:
           - in: path
-            name: filter_id
-            required: True
-            type: string
-            format: uuid
+            name: filter_group_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Filter group unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Empty response
+              description: Filter group deleted successfully
         """
         user_service.remove_filter_group(filter_group_id)
         return "", 204
@@ -958,18 +2018,44 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
         """
         Get desktop login logs
         ---
+        description: Retrieve desktop login logs for the current user.
         tags:
         - User
-        description: Retrieve desktop login logs.
         responses:
             200:
-              description: Desktop login logs
+              description: Desktop login logs for current user
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Login log unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        person_id:
+                          type: string
+                          format: uuid
+                          description: Person identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        date:
+                          type: string
+                          format: date
+                          description: Login date
+                          example: "2023-01-01"
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         current_user = persons_service.get_current_user()
         return persons_service.get_desktop_login_logs(current_user["id"])
@@ -978,9 +2064,9 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
         """
         Create desktop login log
         ---
+        description: Create a desktop login log entry for the current user.
         tags:
         - User
-        description: Create a desktop login log. The desktop login log can only be created by the current user.
         requestBody:
           required: true
           content:
@@ -991,14 +2077,41 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
                   date:
                     type: string
                     format: date
-                    example: "2022-07-12"
+                    description: Login date
+                    example: "2023-01-01"
         responses:
             201:
-              description: Desktop login log created
+              description: Desktop login log created successfully
               content:
                 application/json:
                   schema:
                     type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Login log unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      person_id:
+                        type: string
+                        format: uuid
+                        description: Person identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      date:
+                        type: string
+                        format: date
+                        description: Login date
+                        example: "2023-01-01"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
             400:
               description: Bad request
         """
@@ -1018,9 +2131,11 @@ class NotificationsResource(Resource, ArgsMixin):
         """
         Get notifications
         ---
+        description: Retrieve the last 100 user notifications filtered by
+          given parameters. Supports filtering by date range, task type, status,
+          and other criteria.
         tags:
-          - User
-        description: Return last 100 user notifications filtered by given parameters.
+        - User
         parameters:
           - in: query
             name: after
@@ -1028,16 +2143,16 @@ class NotificationsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: date
-            example: "2022-07-12"
             description: Filter notifications after this date
+            example: "2023-01-01"
           - in: query
             name: before
             required: false
             schema:
               type: string
               format: date
-            example: "2022-07-12"
             description: Filter notifications before this date
+            example: "2023-12-31"
           - in: query
             name: task_type_id
             required: false
@@ -1045,6 +2160,7 @@ class NotificationsResource(Resource, ArgsMixin):
               type: string
               format: uuid
             description: Filter by task type ID
+            example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_status_id
             required: false
@@ -1052,33 +2168,76 @@ class NotificationsResource(Resource, ArgsMixin):
               type: string
               format: uuid
             description: Filter by task status ID
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: type
             required: false
             schema:
               type: string
             description: Filter by notification type
+            example: "comment"
           - in: query
             name: read
             required: false
             schema:
               type: boolean
             description: Filter by read status
+            example: false
           - in: query
             name: watching
             required: false
             schema:
               type: boolean
             description: Filter by watching status
+            example: true
         responses:
             200:
-              description: 100 last user notifications
+              description: Last 100 user notifications matching filters
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Notification unique identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        type:
+                          type: string
+                          description: Notification type
+                          example: "comment"
+                        read:
+                          type: boolean
+                          description: Whether notification is read
+                          example: false
+                        author_id:
+                          type: string
+                          format: uuid
+                          description: Author person identifier
+                          example: d57d9hd7-fh08-7998-d403-80786315f58
+                        comment_id:
+                          type: string
+                          format: uuid
+                          description: Comment identifier
+                          example: e68e0ie8-gi19-8009-e514-91897426g69
+                        task_id:
+                          type: string
+                          format: uuid
+                          description: Task identifier
+                          example: f79f1jf9-hj20-9010-f625-a09008537h80
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         (
             after,
@@ -1120,9 +2279,10 @@ class NotificationResource(Resource, ArgsMixin):
         """
         Get notification
         ---
+        description: Retrieve a specific notification by ID, only if it
+          belongs to the current user.
         tags:
         - User
-        description: Return notification matching given id, only if it's a notification that belongs to current user.
         parameters:
           - in: path
             name: notification_id
@@ -1130,16 +2290,54 @@ class NotificationResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Notification unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-              description: Notification matching given ID
+              description: Notification details
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Notification not found
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Notification unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      type:
+                        type: string
+                        description: Notification type
+                        example: "comment"
+                      read:
+                        type: boolean
+                        description: Whether notification is read
+                        example: false
+                      author_id:
+                        type: string
+                        format: uuid
+                        description: Author person identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      comment_id:
+                        type: string
+                        format: uuid
+                        description: Comment identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      task_id:
+                        type: string
+                        format: uuid
+                        description: Task identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         return user_service.get_notification(notification_id)
 
@@ -1147,9 +2345,10 @@ class NotificationResource(Resource, ArgsMixin):
         """
         Update notification
         ---
+        description: Change the read status of a specific notification. Only
+          the notification owner can update their notifications.
         tags:
         - User
-        description: Change notification read status.
         parameters:
           - in: path
             name: notification_id
@@ -1157,6 +2356,7 @@ class NotificationResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Notification unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -1167,16 +2367,54 @@ class NotificationResource(Resource, ArgsMixin):
                 properties:
                   read:
                     type: boolean
-                    description: Mark notification as read/unread
+                    description: Mark notification as read or unread
+                    example: true
         responses:
             200:
-              description: Updated notification
+              description: Notification updated successfully
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Notification not found
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Notification unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      type:
+                        type: string
+                        description: Notification type
+                        example: "comment"
+                      read:
+                        type: boolean
+                        description: Whether notification is read
+                        example: true
+                      author_id:
+                        type: string
+                        format: uuid
+                        description: Author person identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      comment_id:
+                        type: string
+                        format: uuid
+                        description: Comment identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      task_id:
+                        type: string
+                        format: uuid
+                        description: Task identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         data = self.get_args([("read", None, False, inputs.boolean)])
         return user_service.update_notification(notification_id, data["read"])
@@ -1188,11 +2426,12 @@ class MarkAllNotificationsAsReadResource(Resource):
         """
         Mark all notifications as read
         ---
+        description: Mark all notifications as read for the current user.
         tags:
         - User
-        description: Mark all notifications as read. It applies to all notifications of the current user.
         responses:
             200:
+              description: Success object
               content:
                 application/json:
                   schema:
@@ -1200,6 +2439,7 @@ class MarkAllNotificationsAsReadResource(Resource):
                     properties:
                       success:
                         type: boolean
+                        description: Operation success status
                         example: true
         """
         user_service.mark_notifications_as_read()
@@ -1212,9 +2452,10 @@ class HasTaskSubscribedResource(Resource):
         """
         Check task subscription
         ---
+        description: Check if the current user has subscribed to a specific
+          task.
         tags:
-          - User
-        description: Return true if current user has subscribed to given task.
+        - User
         parameters:
           - in: path
             name: task_id
@@ -1222,16 +2463,16 @@ class HasTaskSubscribedResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-              description: True if current user has subscribed to given task, False otherwise
+              description: Subscription status for the task
               content:
                 application/json:
                   schema:
                     type: boolean
-            404:
-              description: Task not found
+                    example: true
         """
         return user_service.has_task_subscription(task_id)
 
@@ -1242,12 +2483,11 @@ class TaskSubscribeResource(Resource):
         """
         Subscribe to task
         ---
+        description: Create a subscription entry for the current user and
+          given task. When subscribed, the user receives notifications for all
+          comments posted on the task.
         tags:
         - User
-        description: Create a subscription entry. It applies to given task and current user. When a user
-            subscribed, he gets notified everytime a comment is posted on the
-            task. When a user subscribes, he gets notified everytime a comment
-            is posted on the task.
         parameters:
           - in: path
             name: task_id
@@ -1255,16 +2495,41 @@ class TaskSubscribeResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-              description: Subscription entry created
+              description: Subscription created successfully
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Task not found
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Subscription unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      person_id:
+                        type: string
+                        format: uuid
+                        description: Person identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      task_id:
+                        type: string
+                        format: uuid
+                        description: Task identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         return user_service.subscribe_to_task(task_id), 201
 
@@ -1275,9 +2540,11 @@ class TaskUnsubscribeResource(Resource):
         """
         Unsubscribe from task
         ---
+        description: Remove the subscription entry for the current user and
+          given task. The user will no longer receive notifications for this
+          task.
         tags:
         - User
-        description: Remove the subscription entry matching given task and current user. The user will no longer receive notifications for this task.
         parameters:
           - in: path
             name: task_id
@@ -1285,12 +2552,11 @@ class TaskUnsubscribeResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-              description: Subscription entry removed
-            404:
-              description: Task not found
+              description: Subscription removed successfully
         """
         user_service.unsubscribe_from_task(task_id)
         return "", 204
@@ -1302,9 +2568,10 @@ class HasSequenceSubscribedResource(Resource):
         """
         Check sequence subscription
         ---
+        description: Check if the current user has subscribed to a specific
+          sequence and task type combination. Returns true if subscribed.
         tags:
         - User
-        description: Return true if current user has subscribed to given sequence and task type.
         parameters:
           - in: path
             name: sequence_id
@@ -1312,6 +2579,7 @@ class HasSequenceSubscribedResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
@@ -1319,16 +2587,16 @@ class HasSequenceSubscribedResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
             200:
-              description: True if current user has subscribed to given sequence and task type, False otherwise
+              description: Subscription status for the sequence and task type
               content:
                 application/json:
                   schema:
                     type: boolean
-            404:
-              description: Sequence or task type not found
+                    example: true
         """
         return user_service.has_sequence_subscription(
             sequence_id, task_type_id
@@ -1341,9 +2609,12 @@ class SequenceSubscribeResource(Resource):
         """
         Subscribe to sequence
         ---
+        description: Create a subscription entry for the current user, given
+          sequence, and task type. When subscribed, the user receives
+          notifications for all comments posted on tasks related to the
+          sequence.
         tags:
         - User
-        description: Create a subscription entry for given sequence, task type and current user. When a user subscribes, he gets notified every time a comment is posted on tasks related to the sequence.
         parameters:
           - in: path
             name: sequence_id
@@ -1351,6 +2622,7 @@ class SequenceSubscribeResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
@@ -1358,16 +2630,46 @@ class SequenceSubscribeResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
             201:
-              description: Subscription entry created
+              description: Subscription created successfully
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Sequence or task type not found
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Subscription unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      person_id:
+                        type: string
+                        format: uuid
+                        description: Person identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      sequence_id:
+                        type: string
+                        format: uuid
+                        description: Sequence identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        description: Task type identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         subscription = user_service.subscribe_to_sequence(
             sequence_id, task_type_id
@@ -1381,9 +2683,11 @@ class SequenceUnsubscribeResource(Resource):
         """
         Unsubscribe from sequence
         ---
+        description: Remove the subscription entry for the current user, given
+          sequence, and task type. The user will no longer receive
+          notifications for tasks related to this sequence.
         tags:
         - User
-        description: Remove a subscription entry for given sequence, task type and current user.
         parameters:
           - in: path
             name: sequence_id
@@ -1391,6 +2695,7 @@ class SequenceUnsubscribeResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Sequence unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
@@ -1398,12 +2703,11 @@ class SequenceUnsubscribeResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
             204:
-              description: Subscription entry removed
-            404:
-              description: Sequence or task type not found
+              description: Subscription removed successfully
         """
         user_service.unsubscribe_from_sequence(sequence_id, task_type_id)
         return "", 204
@@ -1415,9 +2719,10 @@ class SequenceSubscriptionsResource(Resource):
         """
         Get sequence subscriptions
         ---
+        description: Retrieve list of sequence IDs to which the current user
+          has subscribed for a given task type within a specific project.
         tags:
         - User
-        description: Return the list of sequence ids to which the current user has subscribed for given task type.
         parameters:
           - in: path
             name: project_id
@@ -1425,6 +2730,7 @@ class SequenceSubscriptionsResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
@@ -1432,10 +2738,11 @@ class SequenceSubscriptionsResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
             200:
-              description: List of sequence ids to which the current user has subscribed for given task type
+              description: List of subscribed sequence IDs for the task type
               content:
                 application/json:
                   schema:
@@ -1443,8 +2750,7 @@ class SequenceSubscriptionsResource(Resource):
                     items:
                       type: string
                       format: uuid
-            404:
-              description: Project or task type not found
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         return user_service.get_sequence_subscriptions(
             project_id, task_type_id
@@ -1461,9 +2767,10 @@ class TimeSpentsResource(Resource):
         """
         Get time spents
         ---
+        description: Retrieve all time spent entries for the current user.
+          Optionally accepts date range parameters to filter results.
         tags:
         - User
-        description: Get all time spents for the current user. Optionally can accept date range parameters.
         parameters:
           - in: query
             name: start_date
@@ -1471,25 +2778,60 @@ class TimeSpentsResource(Resource):
             schema:
               type: string
               format: date
-            example: "2022-07-12"
             description: Start date for filtering time spents
+            example: "2023-01-01"
           - in: query
             name: end_date
             required: false
             schema:
               type: string
               format: date
-            example: "2022-07-12"
             description: End date for filtering time spents
+            example: "2023-12-31"
         responses:
             200:
-              description: All time spents for the current user
+              description: Time spent entries for the current user
               content:
                 application/json:
                   schema:
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Time spent unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        person_id:
+                          type: string
+                          format: uuid
+                          description: Person identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        task_id:
+                          type: string
+                          format: uuid
+                          description: Task identifier
+                          example: c46c8gc6-eg97-6887-c292-79675204e47
+                        date:
+                          type: string
+                          format: date
+                          description: Date of time spent
+                          example: "2023-01-01"
+                        duration:
+                          type: number
+                          description: Duration in seconds
+                          example: 3600
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
             400:
               description: Wrong date format
         """
@@ -1523,9 +2865,10 @@ class DateTimeSpentsResource(Resource):
         """
         Get time spents by date
         ---
+        description: Retrieve time spent entries for the current user on a
+          specific date. Returns all time entries for the given date.
         tags:
         - User
-        description: Get time spents on for current user and given date.
         parameters:
           - in: path
             name: date
@@ -1533,15 +2876,49 @@ class DateTimeSpentsResource(Resource):
             schema:
               type: string
               format: date
-            example: "2022-07-12"
             description: Date to get time spents for
+            example: "2023-01-01"
         responses:
             200:
-              description: Time spents on for current user and given date
+              description: Time spent entries for the current user on given date
               content:
                 application/json:
                   schema:
                     type: object
+                    properties:
+                      date:
+                        type: string
+                        format: date
+                        description: Date of time spent
+                        example: "2023-01-01"
+                      total_duration:
+                        type: number
+                        description: Total duration in seconds
+                        example: 28800
+                      entries:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              format: uuid
+                              description: Time spent unique identifier
+                              example: a24a6ea4-ce75-4665-a070-57453082c25
+                            task_id:
+                              type: string
+                              format: uuid
+                              description: Task identifier
+                              example: b35b7fb5-df86-5776-b181-68564193d36
+                            duration:
+                              type: number
+                              description: Duration in seconds
+                              example: 3600
+                            created_at:
+                              type: string
+                              format: date-time
+                              description: Creation timestamp
+                              example: "2023-01-01T12:00:00Z"
             400:
               description: Wrong date format
         """
@@ -1560,9 +2937,10 @@ class TaskTimeSpentResource(Resource):
         """
         Get task time spent
         ---
+        description: Retrieve time spent entries for the current user on a
+          specific task and date. Returns detailed time tracking information.
         tags:
         - User
-        description: Get time spents for current user and given date.
         parameters:
           - in: path
             name: task_id
@@ -1570,6 +2948,7 @@ class TaskTimeSpentResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: date
@@ -1577,16 +2956,50 @@ class TaskTimeSpentResource(Resource):
             schema:
               type: string
               format: date
-            example: "2022-07-12"
+            description: Date to get time spent for
+            example: "2023-01-01"
         responses:
             200:
-              description: Time spents for current user and given date
+              description: Time spent entry for the current user on given task and date
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Wrong date format or task not found
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Time spent unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      person_id:
+                        type: string
+                        format: uuid
+                        description: Person identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      task_id:
+                        type: string
+                        format: uuid
+                        description: Task identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
+                      date:
+                        type: string
+                        format: date
+                        description: Date of time spent
+                        example: "2023-01-01"
+                      duration:
+                        type: number
+                        description: Duration in seconds
+                        example: 3600
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         try:
             current_user = persons_service.get_current_user()
@@ -1603,9 +3016,10 @@ class DayOffResource(Resource):
         """
         Get day off
         ---
+        description: Retrieve day off information for the current user on a
+          specific date.
         tags:
         - User
-        description: Get day off object for current user and given date.
         parameters:
           - in: path
             name: date
@@ -1613,16 +3027,41 @@ class DayOffResource(Resource):
             schema:
               type: string
               format: date
-            example: "2022-07-12"
+            description: Date to check for day off
+            example: "2023-01-01"
         responses:
             200:
-              description: Day off object for current user and given date
+              description: Day off object for the current user on given date
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Wrong date format
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Day off unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      person_id:
+                        type: string
+                        format: uuid
+                        description: Person identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      date:
+                        type: string
+                        format: date
+                        description: Day off date
+                        example: "2023-01-01"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         try:
             current_user = persons_service.get_current_user()
@@ -1637,16 +3076,105 @@ class ContextResource(Resource):
         """
         Get context
         ---
+        description: Retrieve context information required to properly run a
+          full application connected to the API. Returns user, project, and
+          system configuration data.
         tags:
-          - User
-        description: Return context required to properly run a full app connected to the API (like the Kitsu web client).
+        - User
         responses:
             200:
-              description: Context to properly run a full app connected to the API
+              description: Context information for running a full app connected to the API
               content:
                 application/json:
                   schema:
                     type: object
+                    properties:
+                      user:
+                        type: object
+                        description: Current user information
+                        example: {"id": "uuid", "name": "John Doe"}
+                      projects:
+                        type: array
+                        items:
+                          type: object
+                        description: Available projects
+                        example: [{"id": "uuid", "name": "Project 1"}]
+                      departments:
+                        type: array
+                        items:
+                          type: object
+                        description: Available departments
+                        example: [{"id": "uuid", "name": "Animation"}]
+                      asset_types:
+                        type: array
+                        items:
+                          type: object
+                        description: Available asset types
+                        example: [{"id": "uuid", "name": "Character"}]
+                      task_types:
+                        type: array
+                        items:
+                          type: object
+                        description: Available task types
+                        example: [{"id": "uuid", "name": "Modeling"}]
+                      task_status:
+                        type: array
+                        items:
+                          type: object
+                        description: Available task statuses
+                        example: [{"id": "uuid", "name": "In Progress"}]
+                      custom_actions:
+                        type: array
+                        items:
+                          type: object
+                        description: Available custom actions
+                        example: [{"id": "uuid", "name": "Custom Action"}]
+                      status_automations:
+                        type: array
+                        items:
+                          type: object
+                        description: Available status automations
+                        example: [{"id": "uuid", "name": "Auto Status"}]
+                      studios:
+                        type: array
+                        items:
+                          type: object
+                        description: Available studios
+                        example: [{"id": "uuid", "name": "Studio Name"}]
+                      notification_count:
+                        type: integer
+                        description: Number of unread notifications
+                        example: 5
+                      persons:
+                        type: array
+                        items:
+                          type: object
+                        description: Available persons
+                        example: [{"id": "uuid", "name": "John Doe"}]
+                      project_status:
+                        type: array
+                        items:
+                          type: object
+                        description: Available project statuses
+                        example: [{"id": "uuid", "name": "Active"}]
+                      search_filters:
+                        type: array
+                        items:
+                          type: object
+                        description: Available search filters
+                        example: [{"id": "uuid", "name": "My Filter"}]
+                      search_filter_groups:
+                        type: array
+                        items:
+                          type: object
+                        description: Available search filter groups
+                        example: [{"id": "uuid", "name": "Filter Group"}]
+                      preview_background_files:
+                        type: array
+                        items:
+                          type: object
+                        description: Available preview background files
+                        example: [{"id": "uuid", "name": "background.jpg"}]
         """
         return user_service.get_context()
 
@@ -1657,14 +3185,13 @@ class ClearAvatarResource(Resource):
         """
         Clear avatar
         ---
+        description: Set the has_avatar flag to false for the current user and
+          remove the avatar file from storage. This action cannot be undone.
         tags:
-          - User
-        description: Set has_avatar flag to False for current user and remove its avatar file.
+        - User
         responses:
             204:
-              description: Avatar file deleted
-            404:
-              description: User not found
+              description: Avatar file deleted successfully
         """
         user = persons_service.get_current_user()
         persons_service.clear_avatar(user["id"])
@@ -1677,9 +3204,10 @@ class ChatsResource(Resource):
         """
         Get chats
         ---
+        description: Retrieve all chats where the current user is a
+          participant. Returns list of chat conversations the user can access.
         tags:
-            - User
-        description: Return chats where user is participant
+        - User
         responses:
             200:
               description: Chats where user is participant
@@ -1689,6 +3217,38 @@ class ChatsResource(Resource):
                     type: array
                     items:
                       type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          description: Chat unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        entity_id:
+                          type: string
+                          format: uuid
+                          description: Entity identifier
+                          example: b35b7fb5-df86-5776-b181-68564193d36
+                        entity_type:
+                          type: string
+                          description: Entity type
+                          example: "Asset"
+                        participants:
+                          type: array
+                          items:
+                            type: string
+                            format: uuid
+                          description: List of participant person identifiers
+                          example: ["c46c8gc6-eg97-6887-c292-79675204e47"]
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                          example: "2023-01-01T12:00:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Last update timestamp
+                          example: "2023-01-01T12:30:00Z"
         """
         user = persons_service.get_current_user()
         return chats_service.get_chats_for_person(user["id"])
@@ -1700,9 +3260,11 @@ class JoinChatResource(Resource):
         """
         Join chat
         ---
+        description: Join a chat for a specific entity by adding the current
+          user as a participant. The user will be listed as a participant in
+          the chat.
         tags:
-          - User
-        description: Join chat for given entity (be listed as participant).
+        - User
         parameters:
           - in: path
             name: entity_id
@@ -1710,16 +3272,47 @@ class JoinChatResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             201:
-              description: Chat joined
+              description: Chat joined successfully
               content:
                 application/json:
                   schema:
                     type: object
-            404:
-              description: Entity not found
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Chat unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      entity_id:
+                        type: string
+                        format: uuid
+                        description: Entity identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      participants:
+                        type: array
+                        items:
+                          type: string
+                          format: uuid
+                        description: List of participant person identifiers
+                        example: ["d57d9hd7-fh08-7998-d403-80786315f58"]
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -1731,9 +3324,11 @@ class JoinChatResource(Resource):
         """
         Leave chat
         ---
+        description: Leave a chat for a specific entity by removing the
+          current user from participants. The user will no longer receive
+          chat messages for this entity.
         tags:
-         - User
-        description: Leave chat for given entity (be removed from participants).
+        - User
         parameters:
           - in: path
             name: entity_id
@@ -1741,12 +3336,11 @@ class JoinChatResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
               description: Chat left successfully
-            404:
-              description: Entity not found
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
