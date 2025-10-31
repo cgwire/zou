@@ -30,13 +30,22 @@ class OpenProjectsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self):
         """
-        Return the list of projects currently running.
+        Get open projects
         ---
+        description: Return the list of projects currently running. Most of the
+          time, past projects are not needed.
         tags:
           - Projects
-        description: Most of the time, past projects are not needed.
+        parameters:
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter projects by name
+            example: "My Project"
         responses:
-          '200':
+          200:
             description: All running projects
             content:
               application/json:
@@ -48,11 +57,17 @@ class OpenProjectsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Project unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
+                        description: Project name
+                        example: "My Project"
                       project_status_id:
                         type: string
                         format: uuid
+                        description: Project status unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         name = self.get_text_parameter("name")
         if permissions.has_admin_permissions():
@@ -70,13 +85,22 @@ class AllProjectsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self):
         """
-        Return all projects listed in database.
+        Get all projects
         ---
+        description: Return all projects listed in database. Ensure that user has
+          at least the manager level before that.
         tags:
           - Projects
-        description: Ensure that user has at least the manager level before that.
+        parameters:
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter projects by name
+            example: "My Project"
         responses:
-          '200':
+          200:
             description: All projects listed in database
             content:
               application/json:
@@ -88,11 +112,17 @@ class AllProjectsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Project unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
+                        description: Project name
+                        example: "My Project"
                       project_status_id:
                         type: string
                         format: uuid
+                        description: Project status unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         name = self.get_text_parameter("name")
         try:
@@ -117,8 +147,9 @@ class ProductionTeamResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Return the people listed in a production team.
+        Get production team
         ---
+        description: Return the people listed in a production team.
         tags:
           - Projects
         parameters:
@@ -128,9 +159,10 @@ class ProductionTeamResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
+          200:
             description: People listed in a production team
             content:
               application/json:
@@ -142,14 +174,20 @@ class ProductionTeamResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Person unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       first_name:
                         type: string
+                        description: Person first name
+                        example: "John"
                       last_name:
                         type: string
+                        description: Person last name
+                        example: "Doe"
                       email:
                         type: string
-          '404':
-            description: Project not found
+                        description: Person email address
+                        example: "john.doe@example.com"
         """
         user_service.check_project_access(project_id)
         project = projects_service.get_project_raw(project_id)
@@ -164,8 +202,9 @@ class ProductionTeamResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add a person to a production team.
+        Add person to production team
         ---
+        description: Add a person to a production team.
         tags:
           - Projects
         parameters:
@@ -175,11 +214,12 @@ class ProductionTeamResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -188,9 +228,10 @@ class ProductionTeamResource(Resource, ArgsMixin):
                   person_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Person unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '201':
+          201:
             description: Person added to the production team
             content:
               application/json:
@@ -200,12 +241,14 @@ class ProductionTeamResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Project unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
-          '400':
+                      description: Project name
+                      example: "My Project"
+          400:
             description: Invalid parameters
-          '404':
-            description: Project or person not found
         """
         args = self.get_args([("person_id", "", True)])
 
@@ -217,35 +260,35 @@ class ProductionTeamResource(Resource, ArgsMixin):
 
 
 class ProductionTeamRemoveResource(Resource):
-    """
-    Allow to remove people listed in a production team.
-    """
 
     @jwt_required()
     def delete(self, project_id, person_id):
         """
-        Remove people listed in a production team.
+        Remove person from production team
         ---
+        description: Remove people listed in a production team.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: person_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Person unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Person removed from production team
-            404:
-              description: Project or person not found
+          204:
+            description: Person removed from production team
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_team_member(project_id, person_id)
@@ -260,8 +303,9 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add an asset type linked to a production.
+        Add asset type to production
         ---
+        description: Add an asset type linked to a production.
         tags:
           - Projects
         parameters:
@@ -271,11 +315,12 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -284,9 +329,10 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
                   asset_type_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Asset type unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '201':
+          201:
             description: Asset type added to production
             content:
               application/json:
@@ -296,12 +342,14 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Project unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
-          '400':
+                      description: Project name
+                      example: "My Project"
+          400:
             description: Invalid parameters
-          '404':
-            description: Project or asset type not found
         """
         args = self.get_args([("asset_type_id", "", True)])
 
@@ -313,33 +361,35 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
 
 
 class ProductionAssetTypeRemoveResource(Resource):
-    """
-    Allow to remove an asset type linked to a production.
-    """
 
     @jwt_required()
     def delete(self, project_id, asset_type_id):
         """
-        Remove an asset type from a production.
+        Remove asset type from production
         ---
+        description: Remove an asset type from a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: asset_type_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Asset type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Asset type removed from production
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_asset_type_setting(project_id, asset_type_id)
@@ -354,20 +404,29 @@ class ProductionTaskTypesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve task types linked to the production
+        Get production task types
         ---
+        description: Retrieve task types linked to the production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Task types linked to the production
+          200:
+            description: Task types linked to the production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         return projects_service.get_project_task_types(project_id)
@@ -381,8 +440,9 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add a task type linked to a production.
+        Add task type to production
         ---
+        description: Add a task type linked to a production.
         tags:
           - Projects
         parameters:
@@ -392,11 +452,12 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -405,12 +466,14 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
                   task_type_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Task type unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
                   priority:
                     type: string
-                    default: "None"
+                    description: Task type priority
+                    example: "None"
         responses:
-          '201':
+          201:
             description: Task type added to production
             content:
               application/json:
@@ -420,12 +483,14 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Project unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
-          '400':
+                      description: Project name
+                      example: "My Project"
+          400:
             description: Invalid parameters
-          '404':
-            description: Project or task type not found
         """
         args = self.get_args(
             [("task_type_id", "", True), ("priority", None, False)]
@@ -446,26 +511,31 @@ class ProductionTaskTypeRemoveResource(Resource):
     @jwt_required()
     def delete(self, project_id, task_type_id):
         """
-        Remove a task type from a production.
+        Remove task type from production
         ---
+        description: Remove a task type from a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Task type removed from production
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_type_setting(project_id, task_type_id)
@@ -480,29 +550,9 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Return task statuses linked to a production
+        Get production task statuses
         ---
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: Task statuses linked to production
-        """
-        user_service.check_project_access(project_id)
-        return projects_service.get_project_task_statuses(project_id)
-
-    @jwt_required()
-    def post(self, project_id):
-        """
-        Add a task status linked to a production.
-        ---
+        description: Return task statuses linked to a production.
         tags:
           - Projects
         parameters:
@@ -512,11 +562,42 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: Task statuses linked to production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+        """
+        user_service.check_project_access(project_id)
+        return projects_service.get_project_task_statuses(project_id)
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Add task status to production
+        ---
+        description: Add a task status linked to a production.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -525,9 +606,10 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
                   task_status_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Task status unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '201':
+          201:
             description: Task status added to production
             content:
               application/json:
@@ -537,12 +619,14 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Project unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
-          '400':
+                      description: Project name
+                      example: "My Project"
+          400:
             description: Invalid parameters
-          '404':
-            description: Project or task status not found
         """
         args = self.get_args([("task_status_id", "", True)])
 
@@ -561,26 +645,31 @@ class ProductionTaskStatusRemoveResource(Resource):
     @jwt_required()
     def delete(self, project_id, task_status_id):
         """
-        Remove a task status from a production.
+        Remove task status from production
         ---
+        description: Remove a task status from a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_status_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Task status unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Task status removed from production
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_task_status_setting(project_id, task_status_id)
@@ -595,20 +684,29 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Get a status automation linked to a production.
+        Get production status automations
         ---
+        description: Get status automations linked to a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Status automation linked to production
+          200:
+            description: Status automations linked to production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_manager_project_access(project_id)
         return projects_service.get_project_status_automations(project_id)
@@ -616,26 +714,51 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add a status automation linked to a production.
+        Add status automation to production
         ---
+        description: Add a status automation linked to a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: status_automation_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status_automation_id
+                properties:
+                  status_automation_id:
+                    type: string
+                    format: uuid
+                    description: Status automation unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            201:
-              description: Status automation added to production
+          201:
+            description: Status automation added to production
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Project unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      description: Project name
+                      example: "My Project"
         """
         args = self.get_args([("status_automation_id", "", True)])
 
@@ -654,26 +777,31 @@ class ProductionStatusAutomationRemoveResource(Resource):
     @jwt_required()
     def delete(self, project_id, status_automation_id):
         """
-        Remove a status automation from a production.
+        Remove status automation from production
         ---
+        description: Remove a status automation from a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: status_automation_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Status automation unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Status automation removed from production
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_status_automation_setting(
@@ -690,20 +818,29 @@ class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Return preview background files linked to a production
+        Get production preview background files
         ---
+        description: Return preview background files linked to a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: Preview background files linked to production
+          200:
+            description: Preview background files linked to production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         return projects_service.get_project_preview_background_files(
@@ -713,26 +850,51 @@ class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Add a preview background file linked to a production.
+        Add preview background file to production
         ---
+        description: Add a preview background file linked to a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: preview_background_file_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - preview_background_file_id
+                properties:
+                  preview_background_file_id:
+                    type: string
+                    format: uuid
+                    description: Preview background file unique identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            201:
-              description: Preview background file added to production
+          201:
+            description: Preview background file added to production
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      description: Project unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      description: Project name
+                      example: "My Project"
         """
         args = self.get_args([("preview_background_file_id", "", True)])
 
@@ -751,26 +913,31 @@ class ProductionPreviewBackgroundFileRemoveResource(Resource):
     @jwt_required()
     def delete(self, project_id, preview_background_file_id):
         """
-        Remove a preview background file from a production.
+        Remove preview background file from production
         ---
+        description: Remove a preview background file from a production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: preview_background_file_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Preview background file unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Preview background file removed from production
         """
         user_service.check_manager_project_access(project_id)
         projects_service.remove_preview_background_file_setting(
@@ -788,21 +955,30 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Get all metadata descriptors
+        Get metadata descriptors
         ---
-        description: It serves to describe extra fields listed in the data attribute of entities.
+        description: Get all metadata descriptors. It serves to describe extra
+          fields listed in the data attribute of entities.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: All metadata descriptors
+          200:
+            description: All metadata descriptors
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         for_client = permissions.has_client_permissions()
@@ -813,9 +989,10 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Create a new metadata descriptor
+        Create metadata descriptor
         ---
-        description: It serves to describe extra fields listed in the data attribute of entities.
+        description: Create a new metadata descriptor. It serves to describe
+          extra fields listed in the data attribute of entities.
         tags:
           - Projects
         parameters:
@@ -825,11 +1002,12 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -838,30 +1016,37 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 properties:
                   entity_type:
                     type: string
-                    default: "Asset"
+                    description: Entity type for the metadata descriptor
                     enum: ["Asset", "Shot", "Edit", "Episode", "Sequence"]
+                    default: "Asset"
+                    example: "Asset"
                   name:
                     type: string
                     description: Name of the metadata descriptor
+                    example: "Custom Field"
                   data_type:
                     type: string
                     description: Type of data (string, number, boolean, etc.)
+                    example: "string"
                   for_client:
                     type: string
+                    description: Whether the descriptor is for client
                     default: "False"
                     example: "True"
                   choices:
                     type: array
+                    description: List of choices for the descriptor
                     items:
                       type: string
                     example: ["option1", "option2"]
                   departments:
                     type: array
+                    description: List of departments for the descriptor
                     items:
                       type: string
                     example: ["department1", "department2"]
         responses:
-          '201':
+          201:
             description: Metadata descriptor created
             content:
               application/json:
@@ -871,14 +1056,18 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Metadata descriptor unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
+                      description: Metadata descriptor name
+                      example: "Custom Field"
                     data_type:
                       type: string
-          '400':
+                      description: Metadata descriptor data type
+                      example: "string"
+          400:
             description: Invalid parameters
-          '404':
-            description: Project not found
         """
         args = self.get_args(
             [
@@ -938,27 +1127,36 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id, descriptor_id):
         """
-        Get a metadata descriptor.
+        Get metadata descriptor
         ---
-        description: Descriptors serve to describe extra fields listed in the data attribute of entities.
+        description: Get a metadata descriptor. Descriptors serve to describe
+          extra fields listed in the data attribute of entities.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: descriptor_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Metadata descriptor unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-              description: Metadata descriptor
+          200:
+            description: Metadata descriptor
+            content:
+              application/json:
+                schema:
+                  type: object
         """
         user_service.check_project_access(project_id)
         return projects_service.get_metadata_descriptor(descriptor_id)
@@ -966,52 +1164,64 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
     @jwt_required()
     def put(self, project_id, descriptor_id):
         """
-        Update a metadata descriptor.
+        Update metadata descriptor
         ---
-        description: Descriptors serve to describe extra fields listed in the data attribute of entities.
+        description: Update a metadata descriptor. Descriptors serve to
+          describe extra fields listed in the data attribute of entities.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: descriptor_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: True
-            type: string
-            required: False
-          - in: formData
-            name: for_client
-            required: false
-            type: string
-            default: "False"
-            example: "True"
-          - in: formData
-            name: choices
-            required: false
-            type: array
-            items:
+            schema:
               type: string
-            example: ["option1", "option2"]
-          - in: formData
-            name: departments
-            required: false
-            type: array
-            items:
-              type: string
-            example: ["department1", "department2"]
+              format: uuid
+            description: Metadata descriptor unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Name of the metadata descriptor
+                    example: "Custom Field"
+                  for_client:
+                    type: string
+                    description: Whether the descriptor is for client
+                    default: "False"
+                    example: "True"
+                  choices:
+                    type: array
+                    description: List of choices for the descriptor
+                    items:
+                      type: string
+                    example: ["option1", "option2"]
+                  departments:
+                    type: array
+                    description: List of departments for the descriptor
+                    items:
+                      type: string
+                    example: ["department1", "department2"]
         responses:
-            200:
-              description: Metadata descriptor updated
+          200:
+            description: Metadata descriptor updated
+            content:
+              application/json:
+                schema:
+                  type: object
         """
         args = self.get_args(
             [
@@ -1044,27 +1254,32 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
     @jwt_required()
     def delete(self, project_id, descriptor_id):
         """
-        Delete a metadata descriptor.
+        Delete metadata descriptor
         ---
-        description: Descriptors serve to describe extra fields listed in the data attribute of entities.
+        description: Delete a metadata descriptor. Descriptors serve to describe
+          extra fields listed in the data attribute of entities.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: descriptor_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Metadata descriptor unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Metadata descriptor deleted
         """
         user_service.check_all_departments_access(
             project_id,
@@ -1084,20 +1299,29 @@ class ProductionTimeSpentsResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve time spents for given production
+        Get production time spents
         ---
+        description: Retrieve time spents for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: All time spents of given production
+          200:
+            description: All time spents of given production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         return tasks_service.get_time_spents_for_project(project_id)
@@ -1111,20 +1335,29 @@ class ProductionMilestonesResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve milestones for given production
+        Get production milestones
         ---
+        description: Retrieve milestones for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: All milestones of given production
+          200:
+            description: All milestones of given production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         return schedule_service.get_milestones_for_project(project_id)
@@ -1138,20 +1371,29 @@ class ProductionScheduleItemsResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve schedule items for given production
+        Get production schedule items
         ---
+        description: Retrieve schedule items for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: All schedule items of given production
+          200:
+            description: All schedule items of given production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -1166,20 +1408,29 @@ class ProductionTaskTypeScheduleItemsResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve task type schedule items for given production
+        Get production task type schedule items
         ---
+        description: Retrieve task type schedule items for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-              description: All task types schedule items of given production
+          200:
+            description: All task types schedule items of given production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -1194,26 +1445,37 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
     @jwt_required()
     def get(self, project_id, task_type_id):
         """
-        Retrieve asset types schedule items for given task type
+        Get asset types schedule items
         ---
+        description: Retrieve asset types schedule items for given task type.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-              description: All asset types schedule items for given task type
+          200:
+            description: All asset types schedule items for given task type
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -1230,26 +1492,37 @@ class ProductionEpisodesScheduleItemsResource(Resource):
     @jwt_required()
     def get(self, project_id, task_type_id):
         """
-        Retrieve episodes schedule items for given task type
+        Get episodes schedule items
         ---
+        description: Retrieve episodes schedule items for given task type.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-              description: All episodes schedule items for given task type
+          200:
+            description: All episodes schedule items for given task type
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -1266,26 +1539,37 @@ class ProductionSequencesScheduleItemsResource(Resource):
     @jwt_required()
     def get(self, project_id, task_type_id):
         """
-        Retrieve sequences schedule items for given task type
+        Get sequences schedule items
         ---
+        description: Retrieve sequences schedule items for given task type.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-              description: All sequences schedule items for given task type
+          200:
+            description: All sequences schedule items for given task type
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
@@ -1299,30 +1583,9 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve budgets for given production
+        Get production budgets
         ---
-        tags:
-          - Projects
-        parameters:
-          - in: path
-            name: project_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-        responses:
-            200:
-              description: All budgets of given production
-        """
-        user_service.check_manager_project_access(project_id)
-        self.check_id_parameter(project_id)
-        return budget_service.get_budgets(project_id)
-
-    @jwt_required()
-    def post(self, project_id):
-        """
-        Create a budget for given production.
-        ---
+        description: Retrieve budgets for given production.
         tags:
           - Projects
         parameters:
@@ -1332,11 +1595,43 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: All budgets of given production
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+        """
+        user_service.check_manager_project_access(project_id)
+        self.check_id_parameter(project_id)
+        return budget_service.get_budgets(project_id)
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Create budget
+        ---
+        description: Create a budget for given production.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -1344,13 +1639,15 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: Budget name
                     example: "New Budget"
                   currency:
                     type: string
+                    description: Budget currency code
                     default: "USD"
                     example: "USD"
         responses:
-          '201':
+          201:
             description: Budget created
             content:
               application/json:
@@ -1360,14 +1657,18 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Budget unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
+                      description: Budget name
+                      example: "New Budget"
                     currency:
                       type: string
-          '400':
+                      description: Budget currency code
+                      example: "USD"
+          400:
             description: Invalid parameters
-          '404':
-            description: Project not found
         """
         self.check_id_parameter(project_id)
         user_service.check_manager_project_access(project_id)
@@ -1387,26 +1688,35 @@ class ProductionBudgetResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id, budget_id):
         """
-        Retrieve a budget for given production
+        Get budget
         ---
+        description: Retrieve a budget for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-              description: Budget retrieved
+          200:
+            description: Budget retrieved
+            content:
+              application/json:
+                schema:
+                  type: object
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1416,36 +1726,50 @@ class ProductionBudgetResource(Resource, ArgsMixin):
     @jwt_required()
     def put(self, project_id, budget_id):
         """
-        Update a budget name for given production
+        Update budget
         ---
+        description: Update a budget for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: name
-            required: false
-            type: string
-            example: "New Budget"
-          - in: formData
-            name: currency
-            required: false
-            type: string
-            example: "USD"
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Budget name
+                    example: "New Budget"
+                  currency:
+                    type: string
+                    description: Budget currency code
+                    example: "USD"
         responses:
-            200:
-              description: Budget updated
+          200:
+            description: Budget updated
+            content:
+              application/json:
+                schema:
+                  type: object
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1460,26 +1784,31 @@ class ProductionBudgetResource(Resource, ArgsMixin):
     @jwt_required()
     def delete(self, project_id, budget_id):
         """
-        Delete a budget for given production
+        Delete budget
         ---
+        description: Delete a budget for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            204:
-              description: Empty response
+          204:
+            description: Budget deleted
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1493,26 +1822,37 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id, budget_id):
         """
-        Retrieve budget entries for given production
+        Get budget entries
         ---
+        description: Retrieve budget entries for given production.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-              description: All budget entries of given production and budget
+          200:
+            description: All budget entries of given production and budget
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1522,8 +1862,9 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id, budget_id):
         """
-        Create a budget entry for given production and budget
+        Create budget entry
         ---
+        description: Create a budget entry for given production and budget.
         tags:
           - Projects
         parameters:
@@ -1533,6 +1874,7 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
@@ -1540,11 +1882,12 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         requestBody:
           required: true
           content:
-            application/x-www-form-urlencoded:
+            application/json:
               schema:
                 type: object
                 required:
@@ -1553,30 +1896,37 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
                   department_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Department unique identifier
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
                   person_id:
                     type: string
                     format: uuid
+                    description: Person unique identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   start_date:
                     type: string
                     format: date
+                    description: Budget entry start date
                     example: "2025-01-01"
                   months_duration:
                     type: integer
+                    description: Budget entry duration in months
                     example: 12
                   daily_salary:
                     type: number
                     format: float
+                    description: Daily salary amount
                     example: 100.00
                   position:
                     type: string
+                    description: Position name
                     example: "Artist"
                   seniority:
                     type: string
+                    description: Seniority level
                     example: "Mid"
         responses:
-          '201':
+          201:
             description: Budget entry created
             content:
               application/json:
@@ -1586,13 +1936,15 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Budget entry unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     department_id:
                       type: string
                       format: uuid
-          '400':
+                      description: Department unique identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
+          400:
             description: Invalid parameters
-          '404':
-            description: Project or budget not found
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1625,32 +1977,43 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id, budget_id, entry_id):
         """
-        Retrieve a budget entry for given production and budget
+        Get budget entry
         ---
+        description: Retrieve a budget entry for given production and budget.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: path
             name: entry_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget entry unique identifier
+            example: c46c8gc6-eg97-6887-c292-79675204e47
         responses:
-            200:
-              description: Budget entry retrieved
+          200:
+            description: Budget entry retrieved
+            content:
+              application/json:
+                schema:
+                  type: object
         """
         user_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
@@ -1661,70 +2024,87 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
     @jwt_required()
     def put(self, project_id, budget_id, entry_id):
         """
-        Update a budget entry for given production and budget
+        Update budget entry
         ---
+        description: Update a budget entry for given production and budget.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: path
             name: entry_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: department_id
-            required: false
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: person_id
-            required: false
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: start_date
-            required: false
-            type: string
-            format: date
-            example: 2025-01-01
-          - in: formData
-            name: months_duration
-            required: false
-            type: integer
-            example: 12
-          - in: formData
-            name: daily_salary
-            required: false
-            type: float
-            example: 100.00
-          - in: formData
-            name: position
-            required: false
-            type: string
-            example: "Artist"
-          - in: formData
-            name: seniority
-            required: false
-            type: string
-            example: "Mid"
+            schema:
+              type: string
+              format: uuid
+            description: Budget entry unique identifier
+            example: c46c8gc6-eg97-6887-c292-79675204e47
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  department_id:
+                    type: string
+                    format: uuid
+                    description: Department unique identifier
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
+                  person_id:
+                    type: string
+                    format: uuid
+                    description: Person unique identifier
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  start_date:
+                    type: string
+                    format: date
+                    description: Budget entry start date
+                    example: "2025-01-01"
+                  months_duration:
+                    type: integer
+                    description: Budget entry duration in months
+                    example: 12
+                  daily_salary:
+                    type: number
+                    format: float
+                    description: Daily salary amount
+                    example: 100.00
+                  position:
+                    type: string
+                    description: Position name
+                    example: "Artist"
+                  seniority:
+                    type: string
+                    description: Seniority level
+                    example: "Mid"
+                  exceptions:
+                    type: object
+                    description: Map of amount exceptions. Key is the date and
+                      value is the amount
+                    example: {"2025-01-01": 1000, "2025-02-01": 2000}
         responses:
-            200:
-              description: Budget entry updated
+          200:
+            description: Budget entry updated
+            content:
+              application/json:
+                schema:
+                  type: object
         """
         user_service.check_manager_project_access(project_id)
         self.check_id_parameter(project_id)
@@ -1753,32 +2133,39 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
     @jwt_required()
     def delete(self, project_id, budget_id, entry_id):
         """
-        Delete a budget entry for given production and budget.
+        Delete budget entry
         ---
+        description: Delete a budget entry for given production and budget.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: budget_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: path
             name: entry_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Budget entry unique identifier
+            example: c46c8gc6-eg97-6887-c292-79675204e47
         responses:
-            204:
-              description: empty response
+          204:
+            description: Budget entry deleted
         """
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
@@ -1793,20 +2180,27 @@ class ProductionMonthTimeSpentsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Get aggregated time spents by month for given project.
+        Get production month time spents
         ---
+        description: Get aggregated time spents by month for given project.
         tags:
           - Projects
         parameters:
           - in: path
             name: project_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
           200:
-            description: Aggregated time spents for given person and month
+            description: Aggregated time spents for given project and month
+            content:
+              application/json:
+                schema:
+                  type: object
           400:
             description: Wrong ID format
         """
@@ -1823,26 +2217,37 @@ class ProductionScheduleVersionTaskLinksResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, production_schedule_version_id):
         """
-        Get task links for given production schedule version.
+        Get production schedule version task links
         ---
+        description: Get task links for given production schedule version.
         tags:
           - Projects
         parameters:
           - in: path
             name: production_schedule_version_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Production schedule version unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_type_id
             required: false
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Task type unique identifier for filtering
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
           200:
             description: Task links for given production schedule version
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
           400:
             description: Wrong ID format
         """
@@ -1882,20 +2287,28 @@ class ProductionScheduleVersionSetTaskLinksFromTasksResource(
     @jwt_required()
     def post(self, production_schedule_version_id):
         """
-        Set task links for given production schedule version from tasks.
+        Set task links from tasks
         ---
+        description: Set task links for given production schedule version from
+          tasks.
         tags:
           - Projects
         parameters:
           - in: path
             name: production_schedule_version_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Production schedule version unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
           200:
             description: Task links created
+            content:
+              application/json:
+                schema:
+                  type: object
           400:
             description: Wrong ID format
         """
@@ -1918,20 +2331,27 @@ class ProductionScheduleVersionApplyToProductionResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, production_schedule_version_id):
         """
-        Apply production schedule version to production.
+        Apply production schedule version
         ---
+        description: Apply production schedule version to production.
         tags:
           - Projects
         parameters:
           - in: path
             name: production_schedule_version_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Production schedule version unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
           200:
             description: Production schedule version applied
+            content:
+              application/json:
+                schema:
+                  type: object
           400:
             description: Wrong ID format
         """
@@ -1958,26 +2378,43 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
     @jwt_required()
     def post(self, production_schedule_version_id):
         """
-        Set task links for given production schedule version from another production schedule version.
+        Set task links from production schedule version
         ---
+        description: Set task links for given production schedule version from
+          another production schedule version.
         tags:
           - Projects
         parameters:
           - in: path
             name: production_schedule_version_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Production schedule version unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: formData
-            name: production_schedule_version_id
-            required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - production_schedule_version_id
+                properties:
+                  production_schedule_version_id:
+                    type: string
+                    format: uuid
+                    description: Source production schedule version unique
+                      identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
           200:
             description: Task links created
+            content:
+              application/json:
+                schema:
+                  type: object
           400:
             description: Wrong ID format
         """
@@ -2026,8 +2463,9 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id, task_type_id):
         """
-        Retrieve time spents for a task type in the production
+        Get production task type time spents
         ---
+        description: Retrieve time spents for a task type in the production.
         tags:
           - Projects
         parameters:
@@ -2037,6 +2475,7 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: task_type_id
@@ -2044,13 +2483,15 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Task type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: start_date
             required: false
             schema:
               type: string
               format: date
+            description: Start date for filtering time spents
             example: "2022-07-01"
           - in: query
             name: end_date
@@ -2058,9 +2499,10 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: date
+            description: End date for filtering time spents
             example: "2022-07-31"
         responses:
-          '200':
+          200:
             description: All time spents for given task type and project
             content:
               application/json:
@@ -2072,16 +2514,24 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Time spent unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       person_id:
                         type: string
                         format: uuid
+                        description: Person unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       duration:
                         type: number
                         format: float
+                        description: Time spent duration in hours
+                        example: 8.5
                       date:
                         type: string
                         format: date
-          '400':
+                        description: Date of time spent entry
+                        example: "2022-07-15"
+          400:
             description: Invalid date range parameters
         """
         user_service.check_manager_project_access(project_id)
@@ -2106,8 +2556,9 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve all day offs for a production
+        Get production day offs
         ---
+        description: Retrieve all day offs for a production.
         tags:
           - Projects
         parameters:
@@ -2117,6 +2568,7 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: start_date
@@ -2124,6 +2576,7 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: date
+            description: Start date for filtering day offs
             example: "2022-07-01"
           - in: query
             name: end_date
@@ -2131,9 +2584,10 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: date
+            description: End date for filtering day offs
             example: "2022-07-31"
         responses:
-          '200':
+          200:
             description: All day offs for given project
             content:
               application/json:
@@ -2145,18 +2599,28 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Day off unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       person_id:
                         type: string
                         format: uuid
+                        description: Person unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       description:
                         type: string
+                        description: Day off description
+                        example: "Vacation"
                       date:
                         type: string
                         format: date
+                        description: Day off start date
+                        example: "2022-07-15"
                       end_date:
                         type: string
                         format: date
-          '400':
+                        description: Day off end date
+                        example: "2022-07-22"
+          400:
             description: Invalid date range parameters
         """
         user_service.check_project_access(project_id)

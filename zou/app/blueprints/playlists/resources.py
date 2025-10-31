@@ -27,12 +27,12 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve all playlists related to given project.
-        Result is paginated and can be sorted.
+        Get project playlists
         ---
+        description: Retrieve all playlists related to given project. Result is
+          paginated and can be sorted.
         tags:
           - Playlists
-        description: Result is paginated and can be sorted.
         parameters:
           - in: path
             name: project_id
@@ -40,18 +40,21 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: page
             required: false
             schema:
               type: integer
+            description: Page number for pagination
             example: 1
           - in: query
             name: sort_by
             required: false
             schema:
               type: string
+            description: Field to sort by
             example: updated_at
           - in: query
             name: task_type_id
@@ -59,9 +62,10 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Task type unique identifier to filter by
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '200':
+          200:
             description: All playlists related to given project
             content:
               application/json:
@@ -73,11 +77,17 @@ class ProjectPlaylistsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Playlist unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
+                        description: Playlist name
+                        example: "Review Playlist"
                       project_id:
                         type: string
                         format: uuid
+                        description: Project unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
@@ -98,12 +108,13 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id, episode_id):
         """
-        Retrieve all playlists related to given episode.
-        The full list is returned because the number of playlists in an episode is not that big.
+        Get episode playlists
         ---
+        description: Retrieve all playlists related to given episode. The full
+          list is returned because the number of playlists in an episode is not
+          that big.
         tags:
           - Playlists
-        description: The full list is returned because the number of playlists in an episode is not that big.
         parameters:
           - in: path
             name: project_id
@@ -111,6 +122,7 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: episode_id
@@ -118,9 +130,10 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Episode unique identifier or special value (main, all)
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
+          200:
             description: All playlists related to given episode
             content:
               application/json:
@@ -132,11 +145,17 @@ class EpisodePlaylistsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Playlist unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
+                        description: Playlist name
+                        example: "Review Playlist"
                       episode_id:
                         type: string
                         format: uuid
+                        description: Episode unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
@@ -160,8 +179,10 @@ class ProjectPlaylistResource(Resource):
     @jwt_required()
     def get(self, project_id, playlist_id):
         """
-        Retrieve a specific playlist by ID.
+        Get playlist
         ---
+        description: Retrieve a specific playlist by ID with preview file
+          revisions.
         tags:
           - Playlists
         parameters:
@@ -171,6 +192,7 @@ class ProjectPlaylistResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: playlist_id
@@ -178,9 +200,10 @@ class ProjectPlaylistResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Playlist unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '200':
+          200:
             description: Playlist details with preview file revisions
             content:
               application/json:
@@ -190,17 +213,23 @@ class ProjectPlaylistResource(Resource):
                     id:
                       type: string
                       format: uuid
+                      description: Playlist unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     name:
                       type: string
+                      description: Playlist name
+                      example: "Review Playlist"
                     project_id:
                       type: string
                       format: uuid
+                      description: Project unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     shots:
                       type: array
+                      description: List of shots with preview file revisions
                       items:
                         type: object
-          '404':
-            description: Playlist not found
+                        example: [{"id": "uuid", "preview_file_id": "uuid"}]
         """
         user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
@@ -214,11 +243,13 @@ class EntityPreviewsResource(Resource):
     @jwt_required()
     def get(self, entity_id):
         """
-        Retrieve all previews related to a given entity.
+        Get entity previews
         ---
+        description: Retrieve all previews related to a given entity. It sends
+          them as a dict. Keys are related task type ids and values are arrays
+          of preview for this task type.
         tags:
           - Playlists
-        description: It sends them as a dict. Keys are related task type ids and values are arrays of preview for this task type.
         parameters:
           - in: path
             name: entity_id
@@ -226,10 +257,11 @@ class EntityPreviewsResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
-            description: All previews related to given entity
+          200:
+            description: All previews related to given entity grouped by task type
             content:
               application/json:
                 schema:
@@ -242,10 +274,12 @@ class EntityPreviewsResource(Resource):
                         id:
                           type: string
                           format: uuid
+                          description: Preview file unique identifier
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
                         name:
                           type: string
-          '404':
-            description: Entity not found
+                          description: Preview file name
+                          example: "preview_v001.png"
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -257,8 +291,9 @@ class PlaylistDownloadResource(Resource):
     @jwt_required()
     def get(self, playlist_id, build_job_id):
         """
-        Download given playlist build as .mp4.
+        Download playlist build
         ---
+        description: Download given playlist build as MP4 file.
         tags:
           - Playlists
         parameters:
@@ -268,6 +303,7 @@ class PlaylistDownloadResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Playlist unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
@@ -275,16 +311,17 @@ class PlaylistDownloadResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Build job unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '200':
-            description: Given playlist build downloaded as .mp4
+          200:
+            description: Playlist build downloaded as MP4 file
             content:
               video/mp4:
                 schema:
                   type: string
                   format: binary
-          '400':
+          400:
             description: Build not finished, need to retry later
             content:
               application/json:
@@ -293,10 +330,12 @@ class PlaylistDownloadResource(Resource):
                   properties:
                     error:
                       type: boolean
+                      description: Error flag
+                      example: true
                     message:
                       type: string
-          '404':
-            description: Playlist or build job not found
+                      description: Error message
+                      example: "Build is not finished"
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -349,8 +388,10 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, playlist_id):
         """
-        Build given playlist as mp4 movie.
+        Build playlist movie
         ---
+        description: Build given playlist as MP4 movie. Starts a build job that
+          processes the playlist shots into a video file.
         tags:
           - Playlists
         parameters:
@@ -360,16 +401,18 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Playlist unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: full
             required: false
             schema:
               type: boolean
+            description: Whether to build full quality movie
             example: true
         responses:
-          '200':
-            description: Given playlist built as mp4 movie
+          200:
+            description: Build job created for playlist movie
             content:
               application/json:
                 schema:
@@ -378,13 +421,17 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Build job unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     status:
                       type: string
+                      description: Build job status
+                      example: "pending"
                     created_at:
                       type: string
                       format: date-time
-          '404':
-            description: Playlist not found
+                      description: Build job creation timestamp
+                      example: "2022-07-12T10:30:00Z"
         """
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
@@ -435,8 +482,10 @@ class PlaylistZipDownloadResource(Resource):
     @jwt_required()
     def get(self, playlist_id):
         """
-        Download given playlist as zip.
+        Download playlist zip
         ---
+        description: Download given playlist as ZIP file containing all preview
+          files.
         tags:
           - Playlists
         parameters:
@@ -446,17 +495,16 @@ class PlaylistZipDownloadResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Playlist unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
-            description: Given playlist downloaded as zip
+          200:
+            description: Playlist downloaded as ZIP file
             content:
               application/zip:
                 schema:
                   type: string
                   format: binary
-          '404':
-            description: Playlist not found
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -496,8 +544,9 @@ class BuildJobResource(Resource):
     @jwt_required()
     def get(self, playlist_id, build_job_id):
         """
-        Retrieve build job related to given playlist.
+        Get build job
         ---
+        description: Retrieve build job related to given playlist.
         tags:
           - Playlists
         parameters:
@@ -507,6 +556,7 @@ class BuildJobResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Playlist unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
@@ -514,9 +564,10 @@ class BuildJobResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Build job unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '200':
+          200:
             description: Build job related to given playlist
             content:
               application/json:
@@ -526,13 +577,17 @@ class BuildJobResource(Resource):
                     id:
                       type: string
                       format: uuid
+                      description: Build job unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
                     status:
                       type: string
+                      description: Build job status
+                      example: "succeeded"
                     created_at:
                       type: string
                       format: date-time
-          '404':
-            description: Playlist or build job not found
+                      description: Build job creation timestamp
+                      example: "2022-07-12T10:30:00Z"
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -542,8 +597,9 @@ class BuildJobResource(Resource):
     @jwt_required()
     def delete(self, playlist_id, build_job_id):
         """
-        Remove given build job related to given playlist.
+        Delete build job
         ---
+        description: Remove given build job related to given playlist.
         tags:
           - Playlists
         parameters:
@@ -553,6 +609,7 @@ class BuildJobResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Playlist unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: build_job_id
@@ -560,12 +617,11 @@ class BuildJobResource(Resource):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Build job unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '204':
-            description: Given build job removed
-          '404':
-            description: Playlist or build job not found
+          204:
+            description: Build job removed successfully
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
@@ -579,12 +635,12 @@ class ProjectBuildJobsResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve all build jobs related to given project.
-        It's mainly used for synchronisation purpose.
+        Get project build jobs
         ---
+        description: Retrieve all build jobs related to given project. It's
+          mainly used for synchronisation purpose.
         tags:
           - Playlists
-        description: It's mainly used for synchronisation purpose.
         parameters:
           - in: path
             name: project_id
@@ -592,9 +648,10 @@ class ProjectBuildJobsResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
+          200:
             description: All build jobs related to given project
             content:
               application/json:
@@ -606,13 +663,17 @@ class ProjectBuildJobsResource(Resource):
                       id:
                         type: string
                         format: uuid
+                        description: Build job unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       status:
                         type: string
+                        description: Build job status
+                        example: "succeeded"
                       created_at:
                         type: string
                         format: date-time
-          '404':
-            description: Project not found
+                        description: Build job creation timestamp
+                        example: "2022-07-12T10:30:00Z"
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -624,11 +685,12 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve all playlists related to given project.
+        Get all project playlists
         ---
+        description: Retrieve all playlists related to given project. It's
+          mainly used for synchronisation purpose.
         tags:
           - Playlists
-        description: It's mainly used for synchronisation purpose.
         parameters:
           - in: path
             name: project_id
@@ -636,9 +698,10 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
+          200:
             description: All playlists related to given project
             content:
               application/json:
@@ -650,13 +713,17 @@ class ProjectAllPlaylistsResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Playlist unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
+                        description: Playlist name
+                        example: "Review Playlist"
                       project_id:
                         type: string
                         format: uuid
-          '404':
-            description: Project not found
+                        description: Project unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         permissions.check_admin_permissions()
         projects_service.get_project(project_id)
@@ -669,11 +736,12 @@ class TempPlaylistResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, project_id):
         """
-        Generate a temporary playlist from task IDs.
+        Generate temp playlist
         ---
+        description: Generate a temporary playlist from task IDs. It's mainly
+          used for synchronisation purpose.
         tags:
           - Playlists
-        description: It's mainly used for synchronisation purpose.
         parameters:
           - in: path
             name: project_id
@@ -681,7 +749,15 @@ class TempPlaylistResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: sort
+            required: false
+            schema:
+              type: boolean
+            description: Whether to sort the playlist
+            example: true
         requestBody:
           required: true
           content:
@@ -696,9 +772,10 @@ class TempPlaylistResource(Resource, ArgsMixin):
                     items:
                       type: string
                       format: uuid
+                    description: List of task unique identifiers
                     example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         responses:
-          '200':
+          200:
             description: Temporary playlist generated
             content:
               application/json:
@@ -710,12 +787,14 @@ class TempPlaylistResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Preview file unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       name:
                         type: string
-          '400':
+                        description: Preview file name
+                        example: "preview_v001.png"
+          400:
             description: Invalid task IDs
-          '404':
-            description: Project not found
         """
         user_service.check_project_access(project_id)
         task_ids = request.json.get("task_ids", [])
@@ -730,9 +809,9 @@ class NotifyClientsResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, playlist_id):
         """
-        Notify clients that given playlist is ready.
-
+        Notify clients playlist ready
         ---
+        description: Notify clients that given playlist is ready for review.
         tags:
           - Playlists
         parameters:
@@ -742,9 +821,10 @@ class NotifyClientsResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Playlist unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
-          required: true
+          required: false
           content:
             application/json:
               schema:
@@ -753,10 +833,11 @@ class NotifyClientsResource(Resource, ArgsMixin):
                   studio_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Studio unique identifier to notify
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '200':
-            description: Clients notified
+          200:
+            description: Clients notified successfully
             content:
               application/json:
                 schema:
@@ -764,7 +845,8 @@ class NotifyClientsResource(Resource, ArgsMixin):
                   properties:
                     status:
                       type: string
-                      example: success
+                      description: Notification status
+                      example: "success"
         """
         studio_id = request.json.get("studio_id", None)
         playlist = playlists_service.get_playlist(playlist_id)

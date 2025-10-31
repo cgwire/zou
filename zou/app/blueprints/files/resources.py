@@ -85,9 +85,6 @@ def send_storage_file(
 
 
 class WorkingFileFileResource(Resource):
-    """
-    Allow to download and store a working file.
-    """
 
     def check_access(self, working_file_id):
         working_file = files_service.get_working_file(working_file_id)
@@ -105,10 +102,12 @@ class WorkingFileFileResource(Resource):
     @jwt_required()
     def get(self, working_file_id):
         """
-        Download a working file.
+        Download working file
         ---
+        description: Download a working file from storage. Returns the file
+          content with appropriate headers for caching and attachment.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: working_file_id
@@ -116,29 +115,36 @@ class WorkingFileFileResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Working file unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
-            description: Working file downloaded
+          200:
+            description: Working file downloaded successfully
             content:
               image/png:
                 schema:
                   type: string
                   format: binary
+                  description: PNG image file
+                  example: "binary data"
               image/jpg:
                 schema:
                   type: string
                   format: binary
+                  description: JPEG image file
+                  example: "binary data"
               image/gif:
                 schema:
                   type: string
                   format: binary
+                  description: GIF image file
+                  example: "binary data"
               application/octet-stream:
                 schema:
                   type: string
                   format: binary
-          '404':
-            description: Working file not found
+                  description: Binary file content
+                  example: "binary data"
         """
         working_file = self.check_access(working_file_id)
         return send_storage_file(
@@ -151,10 +157,12 @@ class WorkingFileFileResource(Resource):
     @jwt_required()
     def post(self, working_file_id):
         """
-        Store a working file.
+        Store working file
         ---
+        description: Store a working file in the file storage system. Uploads
+          the file content and associates it with the working file record.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: working_file_id
@@ -162,6 +170,7 @@ class WorkingFileFileResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Working file unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -176,21 +185,47 @@ class WorkingFileFileResource(Resource):
                     type: string
                     format: binary
                     description: Working file to upload
+                    example: "file content"
         responses:
-          '201':
-            description: Working file stored
+          201:
+            description: Working file stored successfully
             content:
               application/json:
                 schema:
                   type: object
                   properties:
-                    success:
-                      type: boolean
-                      example: true
-          '400':
-            description: Invalid file or parameters
-          '404':
-            description: Working file not found
+                    id:
+                      type: string
+                      format: uuid
+                      description: Working file unique identifier
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      description: Working file name
+                      example: "main"
+                    path:
+                      type: string
+                      description: Working file path
+                      example: "/project/asset/working/main_v001.blend"
+                    revision:
+                      type: integer
+                      description: Working file revision
+                      example: 1
+                    task_id:
+                      type: string
+                      format: uuid
+                      description: Task identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         working_file = self.check_access(working_file_id)
         file_path = self.save_uploaded_file_in_temporary_folder(
@@ -206,12 +241,13 @@ class WorkingFilePathResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, task_id):
         """
-        Generate a working file path from file tree template.
+        Generate working file path
         ---
+        description: Generate a working file path from file tree template based
+          on task parameters. Revision can be computed automatically if not
+          provided.
         tags:
-          - Files
-        description: Generate file path based on several parameters
-                     Revision can be computed automatically as next revision if not given.
+        - Files
         parameters:
           - in: path
             name: task_id
@@ -219,6 +255,7 @@ class WorkingFilePathResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -229,29 +266,35 @@ class WorkingFilePathResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: File name
                     default: main
-                    example: main
+                    example: "main"
                   mode:
                     type: string
+                    description: File mode
                     default: working
-                    example: working
+                    example: "working"
                   software_id:
                     type: string
                     format: uuid
+                    description: Software identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   comment:
                     type: string
+                    description: File comment
                     example: "Updated lighting"
                   revision:
                     type: integer
+                    description: File revision number
                     example: 1
                   separator:
                     type: string
+                    description: Path separator
                     default: /
-                    example: /
+                    example: "/"
         responses:
-          '200':
-            description: Working file path generated
+          200:
+            description: Working file path generated successfully
             content:
               application/json:
                 schema:
@@ -259,8 +302,13 @@ class WorkingFilePathResource(Resource, ArgsMixin):
                   properties:
                     path:
                       type: string
+                      description: Generated file path
                       example: "/project/asset/working/main_v001.blend"
-          '400':
+                    name:
+                      type: string
+                      description: Generated file name
+                      example: "main_v001.blend"
+          400:
             description: Malformed file tree
         """
         (
@@ -337,12 +385,13 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, entity_id):
         """
-        Generate an output file path from file tree template
+        Generate entity output file path
         ---
+        description: Generate an output file path from file tree template
+          based on entity parameters. Revision can be computed automatically
+          if not provided.
         tags:
-          - Files
-        description: Generate file path based on several parameters entity, output type, task type, revision, mode, name and separator.
-                     Revision can be computed automatically as next revision if not given.
+        - Files
         parameters:
           - in: path
             name: entity_id
@@ -350,6 +399,7 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -363,45 +413,58 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: File name
                     default: main
-                    example: main
+                    example: "main"
                   mode:
                     type: string
+                    description: File mode
                     default: output
-                    example: output
+                    example: "output"
                   output_type_id:
                     type: string
                     format: uuid
+                    description: Output type identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   task_type_id:
                     type: string
                     format: uuid
+                    description: Task type identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   extension:
                     type: string
+                    description: File extension
                     example: ".mp4"
                   representation:
                     type: string
+                    description: File representation
                     example: "mp4"
                   revision:
                     type: integer
+                    description: File revision number
                     example: 1
                   separator:
                     type: string
+                    description: Path separator
                     default: /
-                    example: /
+                    example: "/"
         responses:
-          '200':
-            description: Output file path generated
+          200:
+            description: Output file path generated successfully
             content:
               application/json:
                 schema:
                   type: object
                   properties:
-                    path:
+                    folder_path:
                       type: string
-                      example: "/project/asset/output/main_v001.mp4"
-          '400':
+                      description: Generated folder path
+                      example: "/project/asset/output"
+                    file_name:
+                      type: string
+                      description: Generated file name
+                      example: "main_v001.mp4"
+          400:
             description: Malformed file tree
         """
         args = self.get_arguments()
@@ -467,62 +530,93 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
-        Generate an output file path from file tree template
+        Generate instance output file path
         ---
+        description: Generate an output file path from file tree template
+          based on asset instance parameters. Revision can be computed
+          automatically if not provided.
         tags:
         - Files
-        description: "Generate file path based on several parameters asset instance, output type, task type, revision, mode, name and separator.
-                     Revision can be computed automatically as next revision in case no revision is given in parameter."
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Asset instance, output type, task type, revision, mode, name and separator.
             schema:
+              type: string
+              format: uuid
+            description: Temporal entity unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - output_type_id
                   - task_type_id
                 properties:
-                    name:
-                        type: string
-                        default: main
-                    mode:
-                        type: string
-                        default: output
-                    output_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    extension:
-                        type: string
-                    representation:
-                        type: string
-                    revision:
-                        type: integer
-                    separator:
-                        type: string
-                        default: /
+                  name:
+                    type: string
+                    description: File name
+                    default: main
+                    example: "main"
+                  mode:
+                    type: string
+                    description: File mode
+                    default: output
+                    example: "output"
+                  output_type_id:
+                    type: string
+                    format: uuid
+                    description: Output type identifier
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    description: Task type identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
+                  extension:
+                    type: string
+                    description: File extension
+                    example: ".mp4"
+                  representation:
+                    type: string
+                    description: File representation
+                    example: "mp4"
+                  revision:
+                    type: integer
+                    description: File revision number
+                    example: 1
+                  separator:
+                    type: string
+                    description: Path separator
+                    default: /
+                    example: "/"
         responses:
-            200:
-                description: Output file path generated
-            400:
-                description: Malformed file tree
+          200:
+            description: Output file path generated successfully
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    folder_path:
+                      type: string
+                      description: Generated folder path
+                      example: "/project/asset/instance/output"
+                    file_name:
+                      type: string
+                      description: Generated file name
+                      example: "main_v001.mp4"
         """
         args = self.get_arguments()
 
@@ -581,17 +675,17 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
 
 
 class LastWorkingFilesResource(Resource):
-    """
-    Return last working files revision for each file name for given task.
-    """
 
     @jwt_required()
     def get(self, task_id):
         """
-        Return last working files revision for each file name for given task.
+        Get last working files
         ---
+        description: Retrieve the last working file revisions for each file
+          name for a given task. Returns the most recent version of each
+          working file.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: task_id
@@ -599,10 +693,11 @@ class LastWorkingFilesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
-            description: Last working files revision for each file name for given task
+          200:
+            description: Last working file revisions for each file name
             content:
               application/json:
                 schema:
@@ -613,15 +708,21 @@ class LastWorkingFilesResource(Resource):
                       id:
                         type: string
                         format: uuid
+                        description: Working file unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       name:
                         type: string
+                        description: Working file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Working file revision
+                        example: 3
                       updated_at:
                         type: string
                         format: date-time
-          '404':
-            description: Task not found
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
         """
         result = {}
         user_service.check_task_access(task_id)
@@ -631,17 +732,16 @@ class LastWorkingFilesResource(Resource):
 
 
 class TaskWorkingFilesResource(Resource):
-    """
-    Return all working file revisions for a given task.
-    """
 
     @jwt_required()
     def get(self, task_id):
         """
-        Return all working file revisions for a given task.
+        Get task working files
         ---
+        description: Retrieve all working file revisions for a given task.
+          Returns complete list of working files with their revisions.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: task_id
@@ -649,9 +749,10 @@ class TaskWorkingFilesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
+          200:
             description: All working file revisions for given task
             content:
               application/json:
@@ -663,18 +764,26 @@ class TaskWorkingFilesResource(Resource):
                       id:
                         type: string
                         format: uuid
+                        description: Working file unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
                       name:
                         type: string
+                        description: Working file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Working file revision
+                        example: 1
                       updated_at:
                         type: string
                         format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
                       task_id:
                         type: string
                         format: uuid
-          '404':
-            description: Task not found
+                        description: Task identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         result = {}
         user_service.check_task_access(task_id)
@@ -684,24 +793,18 @@ class TaskWorkingFilesResource(Resource):
 
 
 class NewWorkingFileResource(Resource, ArgsMixin):
-    """
-    A working file is a file used to produce output files.
-    It is the file the CG artist is working on.
-    It is versioned, tied to a task and a software and requires a comment each time it is created.
-    A path is generated for each file created. The path format is defined in the file tree template file.
-    """
 
     @jwt_required()
     def post(self, task_id):
         """
-        Create new working file.
+        Create new working file
         ---
+        description: Create a new working file for a task. Working files are
+          versioned files used by artists to produce output files. Each
+          file requires a comment and generates a path based on file tree
+          template.
         tags:
-          - Files
-        description: A working file is a file used to produce output files.
-                     It is the file the CG artist is working on.
-                     It is versioned, tied to a task and a software and requires a comment each time it is created.
-                     A path is generated for each file created. The path format is defined in the file tree template file.
+        - Files
         parameters:
           - in: path
             name: task_id
@@ -709,6 +812,7 @@ class NewWorkingFileResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Task unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -721,35 +825,43 @@ class NewWorkingFileResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: Working file name
                     example: "main"
                   mode:
                     type: string
+                    description: Working file mode
                     default: working
-                    example: working
+                    example: "working"
                   description:
                     type: string
+                    description: Working file description
                     example: "Main character model"
                   comment:
                     type: string
+                    description: Working file comment
                     example: "Updated lighting and materials"
                   person_id:
                     type: string
                     format: uuid
+                    description: Person identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   software_id:
                     type: string
                     format: uuid
+                    description: Software identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   revision:
                     type: integer
+                    description: Working file revision
                     example: 1
                   sep:
                     type: string
+                    description: Path separator
                     default: /
-                    example: /
+                    example: "/"
         responses:
-          '201':
-            description: New working file created
+          201:
+            description: New working file created successfully
             content:
               application/json:
                 schema:
@@ -758,17 +870,35 @@ class NewWorkingFileResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Working file unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     name:
                       type: string
+                      description: Working file name
+                      example: "main"
                     path:
                       type: string
+                      description: Working file path
+                      example: "/project/asset/working/main_v001.blend"
                     revision:
                       type: integer
+                      description: Working file revision
+                      example: 1
                     task_id:
                       type: string
                       format: uuid
-          '400':
-            description: Given working file already exists
+                      description: Task identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         (
             name,
@@ -856,17 +986,16 @@ class NewWorkingFileResource(Resource, ArgsMixin):
 
 
 class ModifiedFileResource(Resource):
-    """
-    Update working file modification date with current date.
-    """
 
     @jwt_required()
     def put(self, working_file_id):
         """
-        Update working file modification date with current date.
+        Update working file modification date
         ---
+        description: Update the modification date of a working file to the
+          current timestamp. Used to track when the file was last modified.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: working_file_id
@@ -874,10 +1003,11 @@ class ModifiedFileResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Working file unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
-            description: Working file modification date updated
+          200:
+            description: Working file modification date updated successfully
             content:
               application/json:
                 schema:
@@ -886,11 +1016,13 @@ class ModifiedFileResource(Resource):
                     id:
                       type: string
                       format: uuid
+                      description: Working file unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     updated_at:
                       type: string
                       format: date-time
-          '404':
-            description: Working file not found
+                      description: Updated modification timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         working_file = files_service.get_working_file(working_file_id)
         user_service.check_task_action_access(working_file["task_id"])
@@ -902,17 +1034,16 @@ class ModifiedFileResource(Resource):
 
 
 class CommentWorkingFileResource(Resource, ArgsMixin):
-    """
-    Update comment on given working file.
-    """
 
     @jwt_required()
     def put(self, working_file_id):
         """
-        Update comment on given working file.
+        Update working file comment
         ---
+        description: Update the comment on a specific working file. Comments
+          provide context about changes made to the working file.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: working_file_id
@@ -920,6 +1051,7 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Working file unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -932,10 +1064,11 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
                 properties:
                   comment:
                     type: string
+                    description: Working file comment
                     example: "Updated lighting and materials"
         responses:
-          '200':
-            description: Comment updated on given working file
+          200:
+            description: Working file comment updated successfully
             content:
               application/json:
                 schema:
@@ -944,13 +1077,17 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Working file unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     comment:
                       type: string
+                      description: Updated comment
+                      example: "Updated lighting and materials"
                     updated_at:
                       type: string
                       format: date-time
-          '404':
-            description: Working file not found
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         args = self.get_args(
             [
@@ -979,17 +1116,17 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, entity_id):
         """
-        Create new output file linked to a given entity.
+        Create new entity output file
         ---
+        description: Create a new output file linked to a specific entity.
+          Output files are created when artists are satisfied with their
+          working files. They track the source working file and require
+          output type and task type for categorization. An output type is
+          required for better categorization (textures, caches, ...).
+          A task type can be set too to give the department related to the
+          output file. The revision is automatically set.
         tags:
-          - Files
-        description: Output files are linked to entities.
-                     Each time a CG artist is satisfied by what he did on a working file,
-                     he can create an output file that will be linked to a target entity (an asset, a shot, a sequence, ...).
-                     It keeps track of the working file at the origin of the output file.
-                     An output type is required for better categorization (textures, caches, ...).
-                     A task type can be set too to give the department related to the output file.
-                     Revision is automatically set.
+        - Files
         parameters:
           - in: path
             name: entity_id
@@ -997,6 +1134,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -1010,54 +1148,67 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: Output file name
                     example: "main"
                   mode:
                     type: string
+                    description: Output file mode
                     default: output
-                    example: output
+                    example: "output"
                   output_type_id:
                     type: string
                     format: uuid
+                    description: Output type identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   task_type_id:
                     type: string
                     format: uuid
+                    description: Task type identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   person_id:
                     type: string
                     format: uuid
+                    description: Person identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   working_file_id:
                     type: string
                     format: uuid
+                    description: Source working file identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   file_status_id:
                     type: string
                     format: uuid
+                    description: File status identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   comment:
                     type: string
+                    description: Output file comment
                     example: "Final render"
                   extension:
                     type: string
+                    description: File extension
                     example: ".mp4"
                   representation:
                     type: string
+                    description: File representation
                     example: "mp4"
                   revision:
                     type: integer
+                    description: File revision number
                     example: 1
                   nb_elements:
                     type: integer
+                    description: Number of elements
                     default: 1
                     example: 1
                   sep:
                     type: string
+                    description: Path separator
                     default: /
-                    example: /
+                    example: "/"
         responses:
-          '200':
-            description: New output file created
+          201:
+            description: New output file created successfully
             content:
               application/json:
                 schema:
@@ -1066,17 +1217,35 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Output file unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     name:
                       type: string
+                      description: Output file name
+                      example: "main"
                     path:
                       type: string
+                      description: Output file path
+                      example: "/project/asset/output/main_v001.mp4"
                     revision:
                       type: integer
+                      description: Output file revision
+                      example: 1
                     entity_id:
                       type: string
                       format: uuid
-          '400':
-            description: Given output file already exists, Given person not found, or Given output type not found
+                      description: Entity identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         args = self.get_arguments()
 
@@ -1205,30 +1374,17 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
 
 
 class NewInstanceOutputFileResource(Resource, ArgsMixin):
-    """
-    Some output files are linked to assets through an instance of this asset
-    for a give shot. Each time a CG artist is satisfied by what he did on a
-    working file, he can create an output file that
-    will be linked to a target instance.
-    It keeps track of the working file at the origin of the output file.
-    An output type is required for better categorization (textures, caches,
-    ...). A task type can be set too to give the department related to the
-    output file.
-    """
 
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
-        Create new output file linked to assets through an instance of this asset for a given shot.
+        Create new instance output file
         ---
+        description: Create a new output file linked to an asset instance
+          for a specific shot. Output files track the source working file
+          and require output type and task type for categorization.
         tags:
-          - Files
-        description: Some output files are linked to assets through an instance of this asset for a given shot.
-                     Each time a CG artist is satisfied by what he did on a working file,
-                     he can create an output file that will be linked to a target instance.
-                     It keeps track of the working file at the origin of the output file.
-                     An output type is required for better categorization (textures, caches, ...).
-                     A task type can be set too to give the department related to the output file.
+        - Files
         parameters:
           - in: path
             name: asset_instance_id
@@ -1236,6 +1392,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
@@ -1243,7 +1400,8 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Temporal entity unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         requestBody:
           required: true
           content:
@@ -1256,59 +1414,73 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: Output file name
                     default: main
-                    example: main
+                    example: "main"
                   mode:
                     type: string
+                    description: Output file mode
                     default: output
-                    example: output
+                    example: "output"
                   output_type_id:
                     type: string
                     format: uuid
+                    description: Output type identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   task_type_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Task type identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
                   person_id:
                     type: string
                     format: uuid
+                    description: Person identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   working_file_id:
                     type: string
                     format: uuid
+                    description: Source working file identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   file_status_id:
                     type: string
                     format: uuid
+                    description: File status identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   is_sequence:
                     type: boolean
+                    description: Whether file is a sequence
                     default: false
                     example: false
                   comment:
                     type: string
+                    description: Output file comment
                     example: "Final render"
                   extension:
                     type: string
+                    description: File extension
                     example: ".mp4"
                   representation:
                     type: string
+                    description: File representation
                     example: "mp4"
                   revision:
                     type: integer
+                    description: File revision number
                     example: 1
                   nb_elements:
                     type: integer
+                    description: Number of elements
                     default: 1
                     example: 1
                   sep:
                     type: string
+                    description: Path separator
                     default: /
-                    example: /
+                    example: "/"
         responses:
-          '200':
-            description: New output file created
+          201:
+            description: New output file created successfully
             content:
               application/json:
                 schema:
@@ -1317,20 +1489,40 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
                     id:
                       type: string
                       format: uuid
+                      description: Output file unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     name:
                       type: string
+                      description: Output file name
+                      example: "main"
                     path:
                       type: string
+                      description: Output file path
+                      example: "/project/asset/instance/output/main_v001.mp4"
                     revision:
                       type: integer
+                      description: Output file revision
+                      example: 1
                     asset_instance_id:
                       type: string
                       format: uuid
+                      description: Asset instance identifier
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
                     temporal_entity_id:
                       type: string
                       format: uuid
-          '400':
-            description: Given output file already exists, Given person not found, or Given output type not found
+                      description: Temporal entity identifier
+                      example: d57d9hd7-fh08-7998-d403-80786315f58
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Creation timestamp
+                      example: "2023-01-01T12:00:00Z"
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         args = self.get_arguments()
 
@@ -1469,17 +1661,17 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
 
 
 class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
-    """
-    Get next revision for given entity, output type, task type and name.
-    """
 
     @jwt_required()
     def post(self, entity_id):
         """
-        Get next revision for given entity, output type, task type and name.
+        Get next entity output file revision
         ---
+        description: Get the next revision number for an output file based
+          on entity, output type, task type, and name. Used for automatic
+          revision numbering.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: entity_id
@@ -1487,6 +1679,7 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -1500,19 +1693,22 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
                 properties:
                   name:
                     type: string
+                    description: File name
                     default: main
-                    example: main
+                    example: "main"
                   output_type_id:
                     type: string
                     format: uuid
+                    description: Output type identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   task_type_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                    description: Task type identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-          '200':
-            description: Next revision for given entity, output type, task type and name
+          200:
+            description: Next revision number for the output file
             content:
               application/json:
                 schema:
@@ -1520,9 +1716,8 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
                   properties:
                     next_revision:
                       type: integer
+                      description: Next available revision number
                       example: 3
-          '404':
-            description: Entity, output type, or task type not found
         """
         args = self.get_arguments()
         entity = entities_service.get_entity(entity_id)
@@ -1547,53 +1742,71 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
 
 
 class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
-    """
-    Get next revision for given asset instance, output type, task type and name.
-    """
 
     @jwt_required()
     def post(self, asset_instance_id, temporal_entity_id):
         """
-        Get next revision for given asset instance, output type, task type and name.
+        Get next instance output file revision
         ---
+        description: Get the next revision number for an output file based
+          on asset instance, output type, task type, and name. Used for
+          automatic revision numbering.
         tags:
         - Files
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: File
-            description: Name, output type ID, task type ID.
             schema:
+              type: string
+              format: uuid
+            description: Temporal entity unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 required:
                   - output_type_id
                   - task_type_id
                 properties:
-                    name:
-                        type: string
-                        default: main
-                    output_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
-                    task_type_id:
-                        type: string
-                        format: uuid
-                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                  name:
+                    type: string
+                    description: File name
+                    default: main
+                    example: "main"
+                  output_type_id:
+                    type: string
+                    format: uuid
+                    description: Output type identifier
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    description: Task type identifier
+                    example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-                description: Next revision for given asset instance, output type, task type and name
+          200:
+            description: Next revision number for the instance output file
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    next_revision:
+                      type: integer
+                      description: Next available revision number
+                      example: 2
         """
         args = self.get_arguments()
 
@@ -1625,28 +1838,96 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
 
 
 class LastEntityOutputFilesResource(Resource, ArgsMixin):
-    """
-    Last revisions of output files for given entity grouped by output type
-    and file name.
-    """
 
     @jwt_required()
     def get(self, entity_id):
         """
-        Get last revisions of output files for given entity grouped by output type and file name.
+        Get last entity output files
         ---
+        description: Retrieve the last revisions of output files for a given
+          entity grouped by output type and file name. Returns the most
+          recent version of each output file.
         tags:
         - Files
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: output_type_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter by output type
+            example: b35b7fb5-df86-5776-b181-68564193d36
+          - in: query
+            name: task_type_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter by task type
+            example: c46c8gc6-eg97-6887-c292-79675204e47
+          - in: query
+            name: representation
+            required: false
+            schema:
+              type: string
+            description: Filter by representation
+            example: "mp4"
+          - in: query
+            name: file_status_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            description: Filter by file status
+            example: d57d9hd7-fh08-7998-d403-80786315f58
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter by file name
+            example: "main"
         responses:
-            200:
-                description: Last revisions of output files for given entity grouped by output type and file name
+          200:
+            description: Last revisions of output files grouped by output type and file name
+            content:
+              application/json:
+                schema:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Output file unique identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
+                      name:
+                        type: string
+                        description: Output file name
+                        example: "main"
+                      revision:
+                        type: integer
+                        description: Output file revision
+                        example: 2
+                      path:
+                        type: string
+                        description: Output file path
+                        example: "/project/asset/output/main_v002.mp4"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
         """
         args = self.get_args(
             [
@@ -1672,18 +1953,17 @@ class LastEntityOutputFilesResource(Resource, ArgsMixin):
 
 
 class LastInstanceOutputFilesResource(Resource, ArgsMixin):
-    """
-    Last revisions of output files for given instance grouped by output type
-    and file name.
-    """
 
     @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
         """
-        Get last revisions of output files for given instance grouped by output type and file name.
+        Get last instance output files
         ---
+        description: Retrieve the last revisions of output files for a given
+          instance grouped by output type and file name. Returns the most
+          recent version of each output file.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: asset_instance_id
@@ -1691,6 +1971,7 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
@@ -1698,37 +1979,49 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Temporal entity unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: output_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by output type
+            example: c46c8gc6-eg97-6887-c292-79675204e47
           - in: query
             name: task_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by task type
+            example: d57d9hd7-fh08-7998-d403-80786315f58
           - in: query
             name: file_status_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by file status
+            example: e68e0ie8-gi19-8009-e514-91897426g69
           - in: query
             name: representation
-            required: true
+            required: false
             schema:
               type: string
-            example: cache
+            description: Filter by representation
+            example: "cache"
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter by file name
+            example: "main"
         responses:
-          '200':
-            description: Last revisions of output files for given instance grouped by output type and file name
+          200:
+            description: Last revisions of output files grouped by output type and file name
             content:
               application/json:
                 schema:
@@ -1739,17 +2032,25 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Output file unique identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
                       name:
                         type: string
+                        description: Output file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Output file revision
+                        example: 1
                       path:
                         type: string
+                        description: Output file path
+                        example: "/project/asset/instance/output/main_v001.mp4"
                       updated_at:
                         type: string
                         format: date-time
-          '404':
-            description: Asset instance or temporal entity not found
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
         """
         args = self.get_args(
             [
@@ -1777,27 +2078,59 @@ class LastInstanceOutputFilesResource(Resource, ArgsMixin):
 
 
 class EntityOutputTypesResource(Resource):
-    """
-    Return all types of output generated for given entity.
-    """
 
     @jwt_required()
     def get(self, entity_id):
         """
-        Return all types of output generated for given entity.
+        Get entity output types
         ---
+        description: Retrieve all types of output files generated for a
+          given entity. Returns list of output types available for the
+          entity.
         tags:
         - Files
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-            200:
-                description: All types of output generated for given entity
+          200:
+            description: All types of output files generated for the entity
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Output type unique identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
+                      name:
+                        type: string
+                        description: Output type name
+                        example: "Cache"
+                      short_name:
+                        type: string
+                        description: Output type short name
+                        example: "CACHE"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
@@ -1805,34 +2138,67 @@ class EntityOutputTypesResource(Resource):
 
 
 class InstanceOutputTypesResource(Resource):
-    """
-    Return all types of output generated for given instance.
-    """
 
     @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id):
         """
-        Return all types of output generated for given instance.
+        Get instance output types
         ---
+        description: Retrieve all types of output files generated for a
+          given asset instance and temporal entity. Returns list of output
+          types available for the instance.
         tags:
         - Files
         parameters:
           - in: path
             name: asset_instance_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Temporal entity unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
         responses:
-            200:
-                description: All types of output generated for given instance
-                             and temporal_entity
+          200:
+            description: All types of output files generated for the instance
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Output type unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      name:
+                        type: string
+                        description: Output type name
+                        example: "Render"
+                      short_name:
+                        type: string
+                        description: Output type short name
+                        example: "RENDER"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:30:00Z"
         """
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         entity = entities_service.get_entity(asset_instance["asset_id"])
@@ -1843,33 +2209,77 @@ class InstanceOutputTypesResource(Resource):
 
 
 class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
-    """
-    Get all output files for given entity and given output type.
-    """
 
     @jwt_required()
     def get(self, entity_id, output_type_id):
         """
-        Get all output files for given entity and given output type.
+        Get entity output type files
         ---
+        description: Retrieve all output files for a given entity and
+          output type. Optionally filter by representation.
         tags:
         - Files
         parameters:
           - in: path
             name: entity_id
             required: true
-            type: string
-            format: uuid
+            schema:
+              type: string
+              format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: output_type_id
             required: true
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            schema:
+              type: string
+              format: uuid
+            description: Output type unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
+          - in: query
+            name: representation
+            required: false
+            schema:
+              type: string
+            description: Filter by representation
+            example: "mp4"
         responses:
-            200:
-                description:  All output files for given entity and given output type
+          200:
+            description: All output files for the entity and output type
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Output file unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
+                      name:
+                        type: string
+                        description: Output file name
+                        example: "main"
+                      revision:
+                        type: integer
+                        description: Output file revision
+                        example: 1
+                      path:
+                        type: string
+                        description: Output file path
+                        example: "/project/asset/output/main_v001.mp4"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
+                      entity_id:
+                        type: string
+                        format: uuid
+                        description: Entity identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
         """
         representation = self.get_text_parameter("representation")
 
@@ -1886,17 +2296,17 @@ class EntityOutputTypeOutputFilesResource(Resource, ArgsMixin):
 
 
 class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
-    """
-    Get all output files for given asset instance and given output type.
-    """
 
     @jwt_required()
     def get(self, asset_instance_id, temporal_entity_id, output_type_id):
         """
-        Get all output files for given asset instance and given output type.
+        Get instance output type files
         ---
+        description: Retrieve all output files for a given asset instance,
+          temporal entity, and output type. Optionally filter by
+          representation.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: asset_instance_id
@@ -1904,6 +2314,7 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: path
             name: temporal_entity_id
@@ -1911,17 +2322,26 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Temporal entity unique identifier
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: path
             name: output_type_id
             required: true
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Output type unique identifier
+            example: c46c8gc6-eg97-6887-c292-79675204e47
+          - in: query
+            name: representation
+            required: false
+            schema:
+              type: string
+            description: Filter by representation
+            example: "mp4"
         responses:
-          '200':
-            description: All output files for given asset instance and given output type
+          200:
+            description: All output files for the asset instance and output type
             content:
               application/json:
                 schema:
@@ -1932,23 +2352,35 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Output file unique identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
                       name:
                         type: string
+                        description: Output file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Output file revision
+                        example: 1
                       path:
                         type: string
+                        description: Output file path
+                        example: "/project/asset/instance/output/main_v001.mp4"
                       updated_at:
                         type: string
                         format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
                       asset_instance_id:
                         type: string
                         format: uuid
+                        description: Asset instance identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
                       temporal_entity_id:
                         type: string
                         format: uuid
-          '404':
-            description: Asset instance, temporal entity, or output type not found
+                        description: Temporal entity identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
         """
         representation = self.get_text_parameter("representation")
 
@@ -1968,13 +2400,17 @@ class InstanceOutputTypeOutputFilesResource(Resource, ArgsMixin):
 
 
 class ProjectOutputFilesResource(Resource, ArgsMixin):
+
     @jwt_required()
     def get(self, project_id):
         """
-        Get all output files for given project.
+        Get project output files
         ---
+        description: Retrieve all output files for a given project with
+          optional filtering by output type, task type, representation,
+          file status, and name.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: project_id
@@ -1982,37 +2418,49 @@ class ProjectOutputFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by output type
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: task_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by task type
+            example: c46c8gc6-eg97-6887-c292-79675204e47
           - in: query
             name: file_status_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by file status
+            example: d57d9hd7-fh08-7998-d403-80786315f58
           - in: query
             name: representation
-            required: true
+            required: false
             schema:
               type: string
-            example: cache
+            description: Filter by representation
+            example: "cache"
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter by file name
+            example: "main"
         responses:
-          '200':
-            description: All output files for given project
+          200:
+            description: All output files for the project
             content:
               application/json:
                 schema:
@@ -2023,20 +2471,30 @@ class ProjectOutputFilesResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Output file unique identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
                       name:
                         type: string
+                        description: Output file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Output file revision
+                        example: 1
                       path:
                         type: string
+                        description: Output file path
+                        example: "/project/asset/output/main_v001.mp4"
                       updated_at:
                         type: string
                         format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
                       project_id:
                         type: string
                         format: uuid
-          '404':
-            description: Project not found
+                        description: Project identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
         """
         args = self.get_args(
             [
@@ -2060,17 +2518,17 @@ class ProjectOutputFilesResource(Resource, ArgsMixin):
 
 
 class EntityOutputFilesResource(Resource, ArgsMixin):
-    """
-    Get all output files for given asset instance and given output type.
-    """
 
     @jwt_required()
     def get(self, entity_id):
         """
-        Get all output files for given entity.
+        Get entity output files
         ---
+        description: Retrieve all output files for a given entity with
+          optional filtering by output type, task type, representation,
+          file status, and name.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: entity_id
@@ -2078,37 +2536,49 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: output_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by output type
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: task_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by task type
+            example: c46c8gc6-eg97-6887-c292-79675204e47
           - in: query
             name: file_status_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by file status
+            example: d57d9hd7-fh08-7998-d403-80786315f58
           - in: query
             name: representation
-            required: true
+            required: false
             schema:
               type: string
-            example: cache
+            description: Filter by representation
+            example: "cache"
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter by file name
+            example: "main"
         responses:
-          '200':
-            description: All output files for given entity
+          200:
+            description: All output files for the entity
             content:
               application/json:
                 schema:
@@ -2119,20 +2589,30 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Output file unique identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
                       name:
                         type: string
+                        description: Output file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Output file revision
+                        example: 1
                       path:
                         type: string
+                        description: Output file path
+                        example: "/project/asset/output/main_v001.mp4"
                       updated_at:
                         type: string
                         format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
                       entity_id:
                         type: string
                         format: uuid
-          '404':
-            description: Entity not found
+                        description: Entity identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
         """
         args = self.get_args(
             [
@@ -2158,17 +2638,17 @@ class EntityOutputFilesResource(Resource, ArgsMixin):
 
 
 class InstanceOutputFilesResource(Resource):
-    """
-    Get all output files for given asset instance and given output type.
-    """
 
     @jwt_required()
     def get(self, asset_instance_id):
         """
-        Get all output files for given asset instance and given output type.
+        Get instance output files
         ---
+        description: Retrieve all output files for a given asset instance
+          and temporal entity with optional filtering by output type, task
+          type, representation, file status, and name.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: asset_instance_id
@@ -2176,44 +2656,57 @@ class InstanceOutputFilesResource(Resource):
             schema:
               type: string
               format: uuid
+            description: Asset instance unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: temporal_entity_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by temporal entity
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: output_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by output type
+            example: c46c8gc6-eg97-6887-c292-79675204e47
           - in: query
             name: task_type_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by task type
+            example: d57d9hd7-fh08-7998-d403-80786315f58
           - in: query
             name: file_status_id
-            required: true
+            required: false
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by file status
+            example: e68e0ie8-gi19-8009-e514-91897426g69
           - in: query
             name: representation
-            required: true
+            required: false
             schema:
               type: string
-            example: cache
+            description: Filter by representation
+            example: "cache"
+          - in: query
+            name: name
+            required: false
+            schema:
+              type: string
+            description: Filter by file name
+            example: "main"
         responses:
-          '200':
-            description: All output files for given asset instance and given temporal entity (shot, sequence, etc.)
+          200:
+            description: All output files for the asset instance and temporal entity
             content:
               application/json:
                 schema:
@@ -2224,23 +2717,35 @@ class InstanceOutputFilesResource(Resource):
                       id:
                         type: string
                         format: uuid
+                        description: Output file unique identifier
+                        example: f79f1jf9-hj20-9010-f625-a09008537h80
                       name:
                         type: string
+                        description: Output file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Output file revision
+                        example: 1
                       path:
                         type: string
+                        description: Output file path
+                        example: "/project/asset/instance/output/main_v001.mp4"
                       updated_at:
                         type: string
                         format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
                       asset_instance_id:
                         type: string
                         format: uuid
+                        description: Asset instance identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
                       temporal_entity_id:
                         type: string
                         format: uuid
-          '404':
-            description: Asset instance or temporal entity not found
+                        description: Temporal entity identifier
+                        example: b35b7fb5-df86-5776-b181-68564193d36
         """
         args = self.get_args(
             [
@@ -2269,14 +2774,17 @@ class InstanceOutputFilesResource(Resource):
 
 
 class FileResource(Resource):
+
     @jwt_required()
     def get(self, file_id):
         """
-        Get information about a file that could be a working file as much as an
-        output file.
+        Get file information
         ---
+        description: Retrieve information about a file that could be either
+          a working file or an output file. Returns detailed file metadata
+          and properties.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: file_id
@@ -2284,10 +2792,11 @@ class FileResource(Resource):
             schema:
               type: string
               format: uuid
+            description: File unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
-          '200':
-            description: Information about file
+          200:
+            description: File information retrieved successfully
             content:
               application/json:
                 schema:
@@ -2296,23 +2805,35 @@ class FileResource(Resource):
                     id:
                       type: string
                       format: uuid
+                      description: File unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
                     name:
                       type: string
+                      description: File name
+                      example: "main"
                     path:
                       type: string
+                      description: File path
+                      example: "/project/asset/working/main_v001.blend"
                     revision:
                       type: integer
+                      description: File revision
+                      example: 1
                     updated_at:
                       type: string
                       format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:00:00Z"
                     task_id:
                       type: string
                       format: uuid
+                      description: Task identifier (for working files)
+                      example: c46c8gc6-eg97-6887-c292-79675204e47
                     entity_id:
                       type: string
                       format: uuid
-          '404':
-            description: File not found
+                      description: Entity identifier (for output files)
+                      example: d57d9hd7-fh08-7998-d403-80786315f58
         """
         try:
             file_dict = files_service.get_working_file(file_id)
@@ -2328,21 +2849,17 @@ class FileResource(Resource):
 
 
 class SetTreeResource(Resource, ArgsMixin):
-    """
-    Define a template file to use for given project. Template files are located
-    on the server side. Each template has a name which means that you just have
-    to give a name to "select" the template to link with the project.
-    """
 
     @jwt_required()
     def post(self, project_id):
         """
-        Define a template file to use for given project.
+        Set project file tree
         ---
+        description: Define a template file to use for a given project.
+          Template files are located on the server side and each template
+          has a name for selection.
         tags:
-          - Files
-        description: Template files are located on the server side.
-                     Each template has a name which means that you just have to give a name to "select" the template to link with the project.
+        - Files
         parameters:
           - in: path
             name: project_id
@@ -2350,6 +2867,7 @@ class SetTreeResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Project unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
           required: true
@@ -2362,23 +2880,34 @@ class SetTreeResource(Resource, ArgsMixin):
                 properties:
                   tree_name:
                     type: string
+                    description: Name of the file tree template
                     example: "default"
         responses:
-          '200':
-            description: Template file defined
+          200:
+            description: File tree template set successfully
             content:
               application/json:
                 schema:
                   type: object
                   properties:
-                    success:
-                      type: boolean
-                      example: true
-                    tree_name:
+                    id:
                       type: string
-                      example: "default"
-          '400':
-            description: Selected tree not available
+                      format: uuid
+                      description: Project unique identifier
+                      example: b35b7fb5-df86-5776-b181-68564193d36
+                    name:
+                      type: string
+                      description: Project name
+                      example: "My Project"
+                    file_tree:
+                      type: object
+                      description: File tree template configuration
+                      example: {"template": "default"}
+                    updated_at:
+                      type: string
+                      format: date-time
+                      description: Last update timestamp
+                      example: "2023-01-01T12:30:00Z"
         """
         args = self.get_args(
             [
@@ -2403,17 +2932,17 @@ class SetTreeResource(Resource, ArgsMixin):
 
 
 class EntityWorkingFilesResource(Resource, ArgsMixin):
-    """
-    Get all working files for a given entity and possibly a task and a name.
-    """
 
     @jwt_required()
     def get(self, entity_id):
         """
-        Get all working files for a given entity and possibly a task and a name.
+        Get entity working files
         ---
+        description: Retrieve all working files for a given entity with
+          optional filtering by task and name. Returns complete list of
+          working files with their revisions.
         tags:
-          - Files
+        - Files
         parameters:
           - in: path
             name: entity_id
@@ -2421,6 +2950,7 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
+            description: Entity unique identifier
             example: a24a6ea4-ce75-4665-a070-57453082c25
           - in: query
             name: task_id
@@ -2428,16 +2958,18 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
             schema:
               type: string
               format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: Filter by task
+            example: b35b7fb5-df86-5776-b181-68564193d36
           - in: query
             name: name
             required: false
             schema:
               type: string
-            example: main
+            description: Filter by file name
+            example: "main"
         responses:
-          '200':
-            description: All working files for given entity and possibly a task and a name
+          200:
+            description: All working files for the entity
             content:
               application/json:
                 schema:
@@ -2448,23 +2980,35 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
                       id:
                         type: string
                         format: uuid
+                        description: Working file unique identifier
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
                       name:
                         type: string
+                        description: Working file name
+                        example: "main"
                       revision:
                         type: integer
+                        description: Working file revision
+                        example: 1
                       path:
                         type: string
+                        description: Working file path
+                        example: "/project/asset/working/main_v001.blend"
                       updated_at:
                         type: string
                         format: date-time
+                        description: Last update timestamp
+                        example: "2023-01-01T12:00:00Z"
                       task_id:
                         type: string
                         format: uuid
+                        description: Task identifier
+                        example: d57d9hd7-fh08-7998-d403-80786315f58
                       entity_id:
                         type: string
                         format: uuid
-          '404':
-            description: Entity not found
+                        description: Entity identifier
+                        example: e68e0ie8-gi19-8009-e514-91897426g69
         """
         args = self.get_args(
             [
@@ -2487,19 +3031,16 @@ class EntityWorkingFilesResource(Resource, ArgsMixin):
 
 
 class GuessFromPathResource(Resource, ArgsMixin):
-    """
-    Get list of possible project file tree templates matching a file path
-    and data ids corresponding to template tokens.
-    """
 
     @jwt_required()
     def post(self):
         """
-        Get list of possible project file tree templates matching a file path
-        and data ids corresponding to template tokens.
+        Guess file tree template
         ---
+        description: Get list of possible project file tree templates matching
+          a file path and data ids corresponding to template tokens.
         tags:
-          - Files
+        - Files
         requestBody:
           required: true
           content:
@@ -2513,16 +3054,19 @@ class GuessFromPathResource(Resource, ArgsMixin):
                   project_id:
                     type: string
                     format: uuid
+                    description: Project unique identifier
                     example: a24a6ea4-ce75-4665-a070-57453082c25
                   file_path:
                     type: string
+                    description: File path to analyze
                     example: "/project/asset/working/main_v001.blend"
                   sep:
                     type: string
+                    description: Path separator
                     default: /
-                    example: /
+                    example: "/"
         responses:
-          '200':
+          200:
             description: List of possible project file tree templates matching the file path
             content:
               application/json:
@@ -2536,20 +3080,27 @@ class GuessFromPathResource(Resource, ArgsMixin):
                         properties:
                           template:
                             type: string
+                            description: Template name
                             example: "default"
                           confidence:
                             type: number
+                            description: Confidence score
                             example: 0.95
                           data:
                             type: object
+                            description: Extracted data from path
                             properties:
                               project_id:
                                 type: string
                                 format: uuid
+                                description: Project identifier
+                                example: a24a6ea4-ce75-4665-a070-57453082c25
                               entity_id:
                                 type: string
                                 format: uuid
-          '400':
+                                description: Entity identifier
+                                example: b35b7fb5-df86-5776-b181-68564193d36
+          400:
             description: Invalid project ID or file path
         """
         data = self.get_arguments()

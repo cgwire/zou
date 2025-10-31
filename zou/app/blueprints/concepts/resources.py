@@ -16,12 +16,14 @@ from zou.app.utils import query, permissions
 
 
 class ConceptResource(Resource, ArgsMixin):
+
     @jwt_required()
     def get(self, concept_id):
         """
         Get concept
         ---
-        description: Retrieve detailed information about a specific concept including metadata, project context, and related data.
+        description: Retrieve detailed information about a specific concept
+          including metadata, project context, and related data.
         tags:
           - Concepts
         parameters:
@@ -84,7 +86,8 @@ class ConceptResource(Resource, ArgsMixin):
         """
         Delete concept
         ---
-        description: Permanently remove a concept from the system. Only concept creators or project managers can delete concepts.
+        description: Permanently remove a concept from the system. Only concept
+          creators or project managers can delete concepts.
         tags:
           - Concepts
         parameters:
@@ -116,12 +119,15 @@ class ConceptResource(Resource, ArgsMixin):
 
 
 class AllConceptsResource(Resource):
+
     @jwt_required()
     def get(self):
         """
         Get all concepts
         ---
-        description: Retrieve all concept entries with filtering support. Filters can be specified in the query string to narrow down results by project or parent concept.
+        description: Retrieve all concept entries with filtering support.
+          Filters can be specified in the query string to narrow down results by
+          project or parent concept.
         tags:
           - Concepts
         parameters:
@@ -194,12 +200,14 @@ class AllConceptsResource(Resource):
 
 
 class ConceptTaskTypesResource(Resource):
+
     @jwt_required()
     def get(self, concept_id):
         """
         Get concept task types
         ---
-        description: Retrieve all task types that are related to a specific concept.
+        description: Retrieve all task types that are related to a specific
+          concept.
         tags:
           - Concepts
         parameters:
@@ -251,6 +259,7 @@ class ConceptTaskTypesResource(Resource):
 
 
 class ConceptTasksResource(Resource, ArgsMixin):
+
     @jwt_required()
     def get(self, concept_id):
         """
@@ -335,12 +344,15 @@ class ConceptTasksResource(Resource, ArgsMixin):
 
 
 class ConceptPreviewsResource(Resource):
+
     @jwt_required()
     def get(self, concept_id):
         """
         Get concept previews
         ---
-        description: Retrieve all preview files related to a specific concept. Returns them as a dictionary where keys are related task type IDs and values are arrays of previews for that task type.
+        description: Retrieve all preview files related to a specific concept.
+          Returns them as a dictionary where keys are related task type IDs and
+          values are arrays of previews for that task type.
         tags:
           - Concepts
         parameters:
@@ -405,7 +417,8 @@ class ConceptsAndTasksResource(Resource):
         """
         Get concepts and tasks
         ---
-        description: Retrieve all concepts and all related tasks included in the response.
+        description: Retrieve all concepts and all related tasks included in the
+          response.
         tags:
           - Concepts
         parameters:
@@ -498,7 +511,8 @@ class ProjectConceptsResource(Resource, ArgsMixin):
         """
         Get project concepts
         ---
-        description: Retrieve all concepts that are related to a specific project.
+        description: Retrieve all concepts that are related to a specific
+          project.
         tags:
           - Concepts
         parameters:
@@ -564,7 +578,8 @@ class ProjectConceptsResource(Resource, ArgsMixin):
         """
         Create concept
         ---
-        description: Create a new concept for a specific project with name, description, and optional entity concept links.
+        description: Create a new concept for a specific project with name,
+          description, and optional entity concept links.
         tags:
           - Concepts
         parameters:

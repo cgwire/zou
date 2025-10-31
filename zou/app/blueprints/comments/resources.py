@@ -20,12 +20,14 @@ from zou.app import config
 
 
 class DownloadAttachmentResource(Resource):
+
     @jwt_required()
     def get(self, attachment_file_id, file_name):
         """
         Download attachment file
         ---
-        description: Download a specific attachment file from a comment or chat message. Supports various file types including images and documents.
+        description: Download a specific attachment file from a comment or chat
+          message. Supports various file types including images and documents.
         tags:
           - Comments
         produces:
@@ -96,17 +98,14 @@ class DownloadAttachmentResource(Resource):
 
 
 class AckCommentResource(Resource):
-    """
-    Acknowledge given comment. If it's already acknowledged, remove
-    acknowledgement.
-    """
 
     @jwt_required()
     def post(self, task_id, comment_id):
         """
         Acknowledge comment
         ---
-        description: Acknowledge a specific comment. If it's already acknowledged, remove the acknowledgement.
+        description: Acknowledge a specific comment. If it's already
+          acknowledged, remove the acknowledgement.
         tags:
           - Comments
         parameters:
@@ -147,19 +146,16 @@ class AckCommentResource(Resource):
 
 
 class CommentTaskResource(Resource):
-    """
-    Creates a new comment for given task. It requires a text, a task_status
-    and a person as arguments. This way, comments keep history of status
-    changes. When the comment is created, it updates the task status with
-    given task status.
-    """
 
     @jwt_required()
     def post(self, task_id):
         """
         Create task comment
         ---
-        description: Create a new comment for a specific task. It requires a text, a task_status and a person as arguments. This way, comments keep history of status changes. When the comment is created, it updates the task status with the given task status.
+        description: Create a new comment for a specific task. It requires a
+          text, a task_status and a person as arguments. This way, comments
+          keep history of status changes. When the comment is created, it
+          updates the task status with the given task status.
         tags:
           - Comments
         parameters:
@@ -326,7 +322,8 @@ class AttachmentResource(Resource):
         """
         Delete comment attachment
         ---
-        description: Delete a specific attachment file linked to a comment. Only the comment author or project managers can delete attachments.
+        description: Delete a specific attachment file linked to a comment. Only
+          the comment author or project managers can delete attachments.
         tags:
           - Comments
         parameters:
@@ -371,7 +368,8 @@ class AddAttachmentToCommentResource(Resource):
         """
         Add comment attachments
         ---
-        description: Add one or more files as attachments to a specific comment. Supports various file types including images and documents.
+        description: Add one or more files as attachments to a specific comment.
+          Supports various file types including images and documents.
         tags:
           - Comments
         consumes:
@@ -452,19 +450,17 @@ class AddAttachmentToCommentResource(Resource):
 
 
 class CommentManyTasksResource(Resource):
-    """
-    Create several comments at once. Each comment requires a text, a task id,
-    a task_status and a person as arguments. This way, comments keep history of
-    status changes. When the comment is created, it updates the task status with
-    given task status.
-    """
 
     @jwt_required()
     def post(self, project_id):
         """
         Create multiple comments
         ---
-        description: Create several comments at once for a specific project. Each comment requires a text, a task id, a task_status and a person as arguments. This way, comments keep history of status changes. When the comment is created, it updates the task status with the given task status.
+        description: Create several comments at once for a specific project.
+          Each comment requires a text, a task id, a task_status and a person as
+          arguments. This way, comments keep history of status changes. When
+          the comment is created, it updates the task status with the given
+          task status.
         tags:
           - Comments
         parameters:
@@ -614,16 +610,14 @@ class CommentManyTasksResource(Resource):
 
 
 class ReplyCommentResource(Resource, ArgsMixin):
-    """
-    Reply to given comment. Add comment to its replies list.
-    """
 
     @jwt_required()
     def post(self, task_id, comment_id):
         """
         Reply to comment
         ---
-        description: Add a reply to a specific comment. The reply will be added to the comment's replies list.
+        description: Add a reply to a specific comment. The reply will be added
+          to the comment's replies list.
         tags:
           - Comments
         parameters:
@@ -703,16 +697,14 @@ class ReplyCommentResource(Resource, ArgsMixin):
 
 
 class DeleteReplyCommentResource(Resource):
-    """
-    Delete given comment reply.
-    """
 
     @jwt_required()
     def delete(self, task_id, comment_id, reply_id):
         """
         Delete comment reply
         ---
-        description: Delete a specific reply from a comment. Only the reply author or administrators can delete replies.
+        description: Delete a specific reply from a comment.
+         Only the reply author or administrators can delete replies.
         tags:
           - Comments
         parameters:
@@ -749,12 +741,14 @@ class DeleteReplyCommentResource(Resource):
 
 
 class ProjectAttachmentFiles(Resource):
+
     @jwt_required()
     def get(self, project_id):
         """
         Get project attachment files
         ---
-        description: Retrieve all attachment files related to a specific project. Requires administrator permissions.
+        description: Retrieve all attachment files related to a specific
+          project. Requires administrator permissions.
         tags:
           - Comments
         parameters:
@@ -810,16 +804,14 @@ class ProjectAttachmentFiles(Resource):
 
 
 class TaskAttachmentFiles(Resource):
-    """
-    Return all attachment files related to given task.
-    """
 
     @jwt_required()
     def get(self, task_id):
         """
         Get task attachment files
         ---
-        description: Retrieve all attachment files related to a specific task. Requires administrator permissions.
+        description: Retrieve all attachment files related to a specific task.
+          Requires administrator permissions.
         tags:
           - Comments
         parameters:
@@ -867,6 +859,11 @@ class TaskAttachmentFiles(Resource):
                         format: uuid
                         description: Task identifier
                         example: a24a6ea4-ce75-4665-a070-57453082c25
+                      reply_id:
+                        type: string
+                        format: uuid
+                        description: Reply identifier if attached to a reply
+                        example: c46c8gc6-eg97-6887-c292-79675204e47
         """
         permissions.check_admin_permissions()
         return comments_service.get_all_attachment_files_for_task(task_id)

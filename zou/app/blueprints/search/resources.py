@@ -11,8 +11,11 @@ class SearchResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self):
         """
-        Search for resource
+        Search entities
         ---
+        description: Search across indexes for persons, assets and shots.
+          Use optional filters to limit results to a project and specific
+          indexes. Results are paginated with limit and offset.
         tags:
         - Search
         requestBody:
@@ -26,58 +29,67 @@ class SearchResource(Resource, ArgsMixin):
                 properties:
                   query:
                     type: string
-                    example: test will search for test
                     description: Search query string (minimum 3 characters)
+                    example: "kitsu"
                   project_id:
                     type: string
                     format: uuid
-                    example: a24a6ea4-ce75-4665-a070-57453082c25
                     description: Filter search results by project ID
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
                   limit:
                     type: integer
                     default: 3
-                    example: 3
                     description: Maximum number of results per index
+                    example: 3
                   offset:
                     type: integer
                     default: 0
-                    example: 0
                     description: Number of results to skip
+                    example: 0
                   index_names:
                     type: array
                     items:
                       type: string
                       enum: ["assets", "shots", "persons"]
                     default: ["assets", "shots", "persons"]
-                    example: ["assets"]
                     description: List of index names to search in
+                    example: ["assets"]
         responses:
-            200:
-              description: List of entities that contain the query
-              content:
-                application/json:
-                  schema:
-                    type: object
-                    properties:
-                      persons:
-                        type: array
-                        items:
-                          type: object
-                        description: List of matching persons
-                      assets:
-                        type: array
-                        items:
-                          type: object
-                        description: List of matching assets
-                      shots:
-                        type: array
-                        items:
-                          type: object
-                        description: List of matching shots
-            400:
-              description: Bad request
-            403:
-              description: Insufficient permissions
+          200:
+            description: List of entities that contain the query
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    persons:
+                      type: array
+                      description: List of matching persons
+                      example: [{
+                          "id": "a24a6ea4-ce75-4665-a070-57453082c25",
+                          "name": "John Doe",
+                          ...
+                        }]
+                    assets:
+                      type: array
+                      description: List of matching assets
+                      example: [{
+                          "id": "a24a6ea4-ce75-4665-a070-57453082c25",
+                          "name": "Chair prop CHR_001",
+                          ...
+                        }]
+                      description: List of matching assets
+                      example: []
+                    shots:
+                      type: array
+                      description: List of matching shots
+                      example: [{
+                          "id": "a24a6ea4-ce75-4665-a070-57453082c25",
+                          "name": "Shot 001",
+                          ...
+                        }]
+          400:
+            description: Bad request
         """
         args = self.get_args(
             [
