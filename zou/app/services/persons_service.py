@@ -444,7 +444,7 @@ def invite_person(person_id):
     subject = "You are invited by %s to join their Kitsu platform" % (
         organisation["name"]
     )
-    params = {"email": person["email"], "token": token}
+    params = {"email": person["email"], "token": token, "type": "new"}
     query = urllib.parse.urlencode(params)
     reset_url = "%s://%s/reset-change-password?%s" % (
         config.DOMAIN_PROTOCOL,
