@@ -96,7 +96,7 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Get latest news for a project
+        Get project latest news
         ---
         description: Get the 50 latest news object (activity feed) for a project
         tags:
@@ -226,9 +226,10 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
     @jwt_required()
     def get(self):
         """
-        Get news from open projects
+        Get open projects news
         ---
-        description: Returns the latest news and activity feed from all projects the user has access to.
+        description: Returns the latest news and activity feed from all 
+          projects the user has access to.
         tags:
           - News
         parameters:
@@ -345,9 +346,10 @@ class ProjectSingleNewsResource(Resource):
     @jwt_required()
     def get(self, project_id, news_id):
         """
-        Get single news item
+        Get news item
         ---
-        description: Retrieves detailed information about a specific news item from a givenproject.
+        description: Retrieves detailed information about a specific news item 
+          from a givenproject.
         tags:
           - News
         parameters:

@@ -1,4 +1,5 @@
 from flask import current_app
+from flask_jwt_extended import jwt_required
 
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
@@ -14,6 +15,125 @@ from zou.app.blueprints.source.shotgun.base import (
 class ImportShotgunShotsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
+
+    @jwt_required()
+    def post(self):
+        """
+        Import shotgun shots
+        ---
+        description: Import Shotgun shots. Send a list of Shotgun shot
+          entries in the JSON body. Returns created or updated shots with
+          frame ranges, custom fields, and asset links.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Shotgun ID of the shot
+                      example: 12345
+                    code:
+                      type: string
+                      description: Shot code
+                      example: "SH010"
+                    sg_cut_in:
+                      type: integer
+                      description: Cut in frame
+                      example: 1001
+                    sg_cut_duration:
+                      type: integer
+                      description: Cut duration in frames
+                      example: 50
+                    project:
+                      type: object
+                      description: Project information
+                      properties:
+                        name:
+                          type: string
+                          example: "My Project"
+                    sg_sequence:
+                      type: object
+                      description: Sequence information
+                      properties:
+                        id:
+                          type: integer
+                          example: 11111
+                    sg_scene:
+                      type: object
+                      description: Scene information
+                      properties:
+                        id:
+                          type: integer
+                          example: 22222
+                    assets:
+                      type: array
+                      description: Linked assets
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 33333
+              example:
+                - id: 12345
+                  code: "SH010"
+                  sg_cut_in: 1001
+                  sg_cut_duration: 50
+                  project:
+                    name: "My Project"
+                  sg_sequence:
+                    id: 11111
+                  sg_scene:
+                    id: 22222
+                  assets:
+                    - id: 33333
+        responses:
+          200:
+            description: Shots imported successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Shot unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Shot name
+                        example: "SH010"
+                      data:
+                        type: object
+                        description: Shot data with frame ranges and custom
+                          fields
+                        example:
+                          frame_in: 1001
+                          frame_out: 1051
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Update timestamp
+                        example: "2024-01-15T11:00:00Z"
+          400:
+            description: Invalid request body or data format error
+        """
+        return super().post()
 
     def prepare_import(self):
         self.shot_type = shots_service.get_shot_type()
@@ -113,3 +233,49 @@ class ImportRemoveShotgunShotResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self, Entity, entity_type_id=shots_service.get_shot_type()["id"]
         )
+
+    @jwt_required()
+    def post(self):
+        """
+        Remove shotgun shot
+        ---
+        description: Remove a Shotgun shot from the database. Provide the
+          Shotgun entry ID in the JSON body.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer
+                    description: Shotgun ID of the shot to remove
+                    example: 12345
+              example:
+                id: 12345
+        responses:
+          200:
+            description: Removal result returned
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      description: Whether the removal was successful
+                      example: true
+                    removed_instance_id:
+                      type: string
+                      format: uuid
+                      description: ID of the removed shot, if found
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+          400:
+            description: Invalid request body or instance not found
+        """
+        return super().post()

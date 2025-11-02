@@ -44,6 +44,36 @@ class OTIOBaseResource(Resource, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id, episode_id=None):
+        """
+        Import otio base
+        ---
+        description: Base resource for importing OTIO files. This method is
+          overridden by subclasses. Import an OTIO file to set frame_in,
+          frame_out, and nb_frames for shots.
+        tags:
+          - Import
+        consumes:
+          - multipart/form-data
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: formData
+            name: file
+            type: file
+            required: true
+            description: OTIO file to import (EDL, OTIO, etc.)
+        responses:
+          201:
+            description: Shots imported successfully
+          400:
+            description: Invalid file format or parsing error
+        """
         args = self.post_args()
         user_service.check_manager_project_access(project_id)
         uploaded_file = request.files["file"]
@@ -274,7 +304,7 @@ class OTIOImportResource(OTIOBaseResource):
     @jwt_required()
     def post(self, **kwargs):
         """
-        Import otio
+        Import otio EDL
         ---
         tags:
           - Import

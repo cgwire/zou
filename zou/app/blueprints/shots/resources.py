@@ -2783,9 +2783,6 @@ class ShotVersionsResource(Resource):
 
 
 class ProjectQuotasResource(Resource, ArgsMixin):
-    """
-    Retrieve quotas statistics for shots
-    """
 
     @jwt_required()
     def get(self, project_id, task_type_id):

@@ -1,5 +1,6 @@
 from flask import current_app
 from flask_restful import Resource
+from flask_jwt_extended import jwt_required
 
 from zou.app.models.department import Department
 from zou.app.models.task_type import TaskType
@@ -15,6 +16,97 @@ from zou.app.blueprints.source.shotgun.base import (
 class ImportShotgunStepsResource(BaseImportShotgunResource):
     def __init__(self):
         Resource.__init__(self)
+
+    @jwt_required()
+    def post(self):
+        """
+        Import shotgun steps
+        ---
+        description: Import Shotgun steps (task types). Send a list of
+          Shotgun step entries in the JSON body. Returns created or updated
+          task types with departments.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Shotgun ID of the step
+                      example: 12345
+                    code:
+                      type: string
+                      description: Step code (used to extract department)
+                      example: "Animation Modeling"
+                    short_name:
+                      type: string
+                      description: Step short name
+                      example: "mod"
+                    color:
+                      type: string
+                      description: Color in RGB format
+                      example: "255,128,0"
+                    entity_type:
+                      type: string
+                      description: Entity type this step applies to
+                      example: "Asset"
+              example:
+                - id: 12345
+                  code: "Animation Modeling"
+                  short_name: "mod"
+                  color: "255,128,0"
+                  entity_type: "Asset"
+        responses:
+          200:
+            description: Task types imported successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Task type unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Task type name
+                        example: "Animation Modeling"
+                      short_name:
+                        type: string
+                        description: Task type short name
+                        example: "mod"
+                      color:
+                        type: string
+                        description: Task type color in hex format
+                        example: "#FF8000"
+                      for_entity:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Update timestamp
+                        example: "2024-01-15T11:00:00Z"
+          400:
+            description: Invalid request body or data format error
+        """
+        return super().post()
 
     def extract_data(self, sg_step):
         color = self.extract_color(sg_step)
@@ -85,3 +177,49 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
 class ImportRemoveShotgunStepResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, TaskType)
+
+    @jwt_required()
+    def post(self):
+        """
+        Remove shotgun step
+        ---
+        description: Remove a Shotgun step (task type) from the database.
+          Provide the Shotgun entry ID in the JSON body.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer
+                    description: Shotgun ID of the step to remove
+                    example: 12345
+              example:
+                id: 12345
+        responses:
+          200:
+            description: Removal result returned
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      description: Whether the removal was successful
+                      example: true
+                    removed_instance_id:
+                      type: string
+                      format: uuid
+                      description: ID of the removed step, if found
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+          400:
+            description: Invalid request body or instance not found
+        """
+        return super().post()

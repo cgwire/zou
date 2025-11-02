@@ -1,4 +1,5 @@
 from flask import current_app
+from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError
 
@@ -25,6 +26,104 @@ from zou.app.services.exception import AssetNotFoundException
 class ImportShotgunAssetsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
+
+    @jwt_required()
+    def post(self):
+        """
+        Import shotgun assets
+        ---
+        description: Import Shotgun assets. Send a list of Shotgun asset
+          entries in the JSON body. Returns created or updated assets with
+          parent-child relationships.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Shotgun ID of the asset
+                      example: 12345
+                    code:
+                      type: string
+                      description: Asset code
+                      example: "Asset01"
+                    description:
+                      type: string
+                      description: Asset description
+                      example: "Main character asset"
+                    sg_asset_type:
+                      type: string
+                      description: Asset type name
+                      example: "Character"
+                    project:
+                      type: object
+                      description: Project information
+                      properties:
+                        id:
+                          type: integer
+                          example: 11111
+                    parents:
+                      type: array
+                      description: Parent assets
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            example: 22222
+              example:
+                - id: 12345
+                  code: "Asset01"
+                  description: "Main character asset"
+                  sg_asset_type: "Character"
+                  project:
+                    id: 11111
+                  parents:
+                    - id: 22222
+        responses:
+          200:
+            description: Assets imported successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Asset unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Asset name
+                        example: "Asset01"
+                      description:
+                        type: string
+                        description: Asset description
+                        example: "Main character asset"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Update timestamp
+                        example: "2024-01-15T11:00:00Z"
+          400:
+            description: Invalid request body or data format error
+        """
+        return super().post()
 
     def prepare_import(self):
         entity_type_names = self.extract_entity_type_names(self.sg_entries)
@@ -119,6 +218,53 @@ class ImportRemoveShotgunAssetResource(ImportRemoveShotgunBaseResource):
         ImportRemoveShotgunBaseResource.__init__(
             self, Entity, self.delete_func
         )
+
+    @jwt_required()
+    def post(self):
+        """
+        Remove shotgun asset
+        ---
+        description: Remove a Shotgun asset from the database. Provide the
+          Shotgun entry ID in the JSON body. If the asset has working files
+          linked to tasks, it will be cancelled instead of deleted.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer
+                    description: Shotgun ID of the asset to remove
+                    example: 12345
+              example:
+                id: 12345
+        responses:
+          200:
+            description: Removal result returned
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      description: Whether the removal was successful
+                      example: true
+                    removed_instance_id:
+                      type: string
+                      format: uuid
+                      description: ID of the removed asset, if found
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+          400:
+            description: Invalid request body or instance not found
+        """
+        return super().post()
 
     def delete_func(self, asset):
         try:

@@ -1,4 +1,5 @@
 from flask import current_app
+from flask_jwt_extended import jwt_required
 
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
@@ -16,6 +17,79 @@ from zou.app.services.exception import WrongFileTreeFileException
 class ImportShotgunProjectsResource(BaseImportShotgunResource):
     def __init__(self):
         BaseImportShotgunResource.__init__(self)
+
+    @jwt_required()
+    def post(self):
+        """
+        Import shotgun projects
+        ---
+        description: Import Shotgun projects. Send a list of Shotgun project
+          entries in the JSON body. Returns created or updated projects with
+          custom fields preserved.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Shotgun ID of the project
+                      example: 12345
+                    name:
+                      type: string
+                      description: Project name
+                      example: "My Project"
+                    sg_status:
+                      type: string
+                      description: Project status
+                      example: "Active"
+              example:
+                - id: 12345
+                  name: "My Project"
+                  sg_status: "Active"
+        responses:
+          200:
+            description: Projects imported successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Project unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Project name
+                        example: "My Project"
+                      data:
+                        type: object
+                        description: Custom project data
+                        example: {}
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Update timestamp
+                        example: "2024-01-15T11:00:00Z"
+          400:
+            description: Invalid request body or data format error
+        """
+        return super().post()
 
     def prepare_import(self):
         self.project_status_names = self.extract_status_names(self.sg_entries)
@@ -77,3 +151,49 @@ class ImportShotgunProjectsResource(BaseImportShotgunResource):
 class ImportRemoveShotgunProjectResource(ImportRemoveShotgunBaseResource):
     def __init__(self):
         ImportRemoveShotgunBaseResource.__init__(self, Project)
+
+    @jwt_required()
+    def post(self):
+        """
+        Remove shotgun project
+        ---
+        description: Remove a Shotgun project from the database. Provide the
+          Shotgun entry ID in the JSON body.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer
+                    description: Shotgun ID of the project to remove
+                    example: 12345
+              example:
+                id: 12345
+        responses:
+          200:
+            description: Removal result returned
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      description: Whether the removal was successful
+                      example: true
+                    removed_instance_id:
+                      type: string
+                      format: uuid
+                      description: ID of the removed project, if found
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+          400:
+            description: Invalid request body or instance not found
+        """
+        return super().post()

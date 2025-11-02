@@ -1,4 +1,5 @@
 from flask import current_app
+from flask_jwt_extended import jwt_required
 
 from zou.app.models.project import Project
 from zou.app.models.entity import Entity
@@ -13,6 +14,93 @@ from zou.app.blueprints.source.shotgun.exception import (
 
 
 class ImportShotgunSequencesResource(BaseImportShotgunResource):
+    @jwt_required()
+    def post(self):
+        """
+        Import shotgun sequences
+        ---
+        description: Import Shotgun sequences. Send a list of Shotgun
+          sequence entries in the JSON body. Returns created or updated
+          sequences linked to episodes.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Shotgun ID of the sequence
+                      example: 12345
+                    code:
+                      type: string
+                      description: Sequence code
+                      example: "SQ01"
+                    description:
+                      type: string
+                      description: Sequence description
+                      example: "Main sequence"
+                    project:
+                      type: object
+                      description: Project information
+                      properties:
+                        name:
+                          type: string
+                          example: "My Project"
+                    episode:
+                      type: object
+                      description: Episode information
+                      properties:
+                        id:
+                          type: integer
+                          example: 11111
+              example:
+                - id: 12345
+                  code: "SQ01"
+                  description: "Main sequence"
+                  project:
+                    name: "My Project"
+                  episode:
+                    id: 11111
+        responses:
+          200:
+            description: Sequences imported successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Sequence unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Sequence name
+                        example: "SQ01"
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Creation timestamp
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Update timestamp
+                        example: "2024-01-15T11:00:00Z"
+          400:
+            description: Invalid request body or data format error
+        """
+        return super().post()
+
     def prepare_import(self):
         self.sequence_type = shots_service.get_sequence_type()
         self.project_map = Project.get_id_map(field="name")
@@ -88,3 +176,49 @@ class ImportRemoveShotgunSequenceResource(ImportRemoveShotgunBaseResource):
             Entity,
             entity_type_id=shots_service.get_sequence_type()["id"],
         )
+
+    @jwt_required()
+    def post(self):
+        """
+        Remove shotgun sequence
+        ---
+        description: Remove a Shotgun sequence from the database. Provide the
+          Shotgun entry ID in the JSON body.
+        tags:
+          - Import
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer
+                    description: Shotgun ID of the sequence to remove
+                    example: 12345
+              example:
+                id: 12345
+        responses:
+          200:
+            description: Removal result returned
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    success:
+                      type: boolean
+                      description: Whether the removal was successful
+                      example: true
+                    removed_instance_id:
+                      type: string
+                      format: uuid
+                      description: ID of the removed sequence, if found
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+          400:
+            description: Invalid request body or instance not found
+        """
+        return super().post()
