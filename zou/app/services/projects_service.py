@@ -498,7 +498,7 @@ def get_metadata_descriptors(project_id, for_client=False):
     """
     query = MetadataDescriptor.query.filter(
         MetadataDescriptor.project_id == project_id
-    ).order_by(MetadataDescriptor.name)
+    ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
     if for_client:
         query = query.filter(MetadataDescriptor.for_client == True)
 
@@ -579,6 +579,46 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     )
     clear_project_cache(str(descriptor.project_id))
     return descriptor.serialize()
+
+
+def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
+    """
+    Reorder metadata descriptors for a given project and entity type.
+    Updates position field based on the order of descriptor IDs provided.
+    Descriptors not in the list are added at the end, ordered by name.
+    """
+    descriptors = MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id == project_id,
+        MetadataDescriptor.entity_type == entity_type,
+    ).all()
+
+    descriptor_map = {str(desc.id): desc for desc in descriptors}
+
+    for descriptor_id in descriptor_ids:
+        if descriptor_id not in descriptor_map:
+            raise WrongParameterException(
+                f"Descriptor {descriptor_id} not found for project {project_id} and entity type {entity_type}"
+            )
+
+    for position, descriptor_id in enumerate(descriptor_ids, start=1):
+        descriptor = descriptor_map[descriptor_id]
+        descriptor.update({"position": position})
+
+    descriptors_not_in_list = [
+        desc for desc in descriptors if not str(desc.id) in descriptor_ids
+    ]
+    descriptors_not_in_list.sort(key=lambda d: d.name)
+    start_position = len(descriptor_ids) + 1
+    for position_offset, descriptor in enumerate(descriptors_not_in_list):
+        descriptor.update({"position": start_position + position_offset})
+
+    clear_project_cache(project_id)
+
+    query = MetadataDescriptor.query.filter(
+        MetadataDescriptor.project_id == project_id,
+        MetadataDescriptor.entity_type == entity_type,
+    ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
+    return fields.serialize_models(query.all(), relations=True)
 
 
 def remove_metadata_descriptor(metadata_descriptor_id):
@@ -714,6 +754,9 @@ def get_task_type_links(project_id, for_entity="Asset"):
 
 
 def get_department_team(project_id, department_id):
+    """
+    Get all persons in a given department for a given project.
+    """
     persons = (
         Person.query.join(
             ProjectPersonLink, ProjectPersonLink.person_id == Person.id

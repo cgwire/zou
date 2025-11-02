@@ -1291,6 +1291,109 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         return "", 204
 
 
+class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def post(self, project_id):
+        """
+        Reorder metadata descriptors
+        ---
+        description: Reorder metadata descriptors for a specific entity type
+          and project. Descriptors are reordered based on the list of
+          descriptor IDs provided in the request body. Position is set
+          according to the order in the list.
+        tags:
+          - Projects
+        parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Project unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - entity_type
+                  - descriptor_ids
+                properties:
+                  entity_type:
+                    type: string
+                    description: Entity type for the metadata descriptors
+                    enum: ["Asset", "Shot", "Edit", "Episode", "Sequence"]
+                    example: "Asset"
+                  descriptor_ids:
+                    type: array
+                    description: List of metadata descriptor IDs in the
+                      desired order
+                    items:
+                      type: string
+                      format: uuid
+                    example: ["b35b7fb5-df86-5776-b181-68564193d36", "c46c8gc6-eg97-6887-c292-79675204e47"]
+        responses:
+          200:
+            description: Metadata descriptors reordered successfully
+            content:
+              application/json:
+                schema:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        description: Metadata descriptor unique identifier
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        description: Metadata descriptor name
+                        example: "Custom Field"
+                      position:
+                        type: integer
+                        description: Position of the descriptor
+                        example: 1
+                      entity_type:
+                        type: string
+                        description: Entity type
+                        example: "Asset"
+          400:
+            description: Invalid parameters or descriptor not found
+        """
+        args = self.get_args(
+            [
+                ("entity_type", "", True),
+                ("descriptor_ids", [], True, str, "append"),
+            ]
+        )
+
+        user_service.check_manager_project_access(project_id)
+
+        if args["entity_type"] not in [
+            "Asset",
+            "Shot",
+            "Edit",
+            "Episode",
+            "Sequence",
+        ]:
+            raise WrongParameterException(
+                "Wrong entity type. Please select Asset, Shot, Sequence, Episode or Edit."
+            )
+
+        if not args["descriptor_ids"]:
+            raise WrongParameterException("descriptor_ids cannot be empty.")
+
+        return projects_service.reorder_metadata_descriptors(
+            project_id, args["entity_type"], args["descriptor_ids"]
+        )
+
+
 class ProductionTimeSpentsResource(Resource):
     """
     Resource to retrieve time spents for given production.

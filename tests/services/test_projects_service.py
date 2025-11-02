@@ -9,7 +9,10 @@ from zou.app.services import (
     deletion_service,
     projects_service,
 )
-from zou.app.services.exception import ProjectNotFoundException
+from zou.app.services.exception import (
+    ProjectNotFoundException,
+    WrongParameterException,
+)
 
 
 class ProjectServiceTestCase(ApiDBTestCase):
@@ -246,3 +249,122 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertFalse(
             projects_service.is_open(self.project_closed.serialize())
         )
+
+    def test_reorder_metadata_descriptors(self):
+        descriptor1 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Contractor", "string", [], False
+        )
+        descriptor2 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Environment", "string", [], False
+        )
+        descriptor3 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Location", "string", [], False
+        )
+        descriptor4 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Type", "string", [], False
+        )
+        descriptor5 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Status", "string", [], False
+        )
+
+        descriptors = projects_service.get_metadata_descriptors(
+            self.project.id
+        )
+        self.assertEqual(len(descriptors), 5)
+
+        descriptor_ids = [
+            str(descriptor3["id"]),
+            str(descriptor1["id"]),
+            str(descriptor5["id"]),
+        ]
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id, "Asset", descriptor_ids
+        )
+
+        self.assertEqual(len(reordered), 5)
+        self.assertEqual(reordered[0]["id"], descriptor3["id"])
+        self.assertEqual(reordered[0]["position"], 1)
+        self.assertEqual(reordered[1]["id"], descriptor1["id"])
+        self.assertEqual(reordered[1]["position"], 2)
+        self.assertEqual(reordered[2]["id"], descriptor5["id"])
+        self.assertEqual(reordered[2]["position"], 3)
+        self.assertEqual(reordered[3]["id"], descriptor2["id"])
+        self.assertEqual(reordered[3]["position"], 4)
+        self.assertEqual(reordered[4]["id"], descriptor4["id"])
+        self.assertEqual(reordered[4]["position"], 5)
+
+        self.assertIn(reordered[3]["name"], ["Environment"])
+        self.assertIn(reordered[4]["name"], ["Type"])
+
+    def test_reorder_metadata_descriptors_all_included(self):
+        descriptor1 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Contractor", "string", [], False
+        )
+        descriptor2 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Environment", "string", [], False
+        )
+
+        descriptor_ids = [
+            str(descriptor2["id"]),
+            str(descriptor1["id"]),
+        ]
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id, "Asset", descriptor_ids
+        )
+
+        self.assertEqual(len(reordered), 2)
+        self.assertEqual(reordered[0]["id"], descriptor2["id"])
+        self.assertEqual(reordered[0]["position"], 1)
+        self.assertEqual(reordered[1]["id"], descriptor1["id"])
+        self.assertEqual(reordered[1]["position"], 2)
+
+    def test_reorder_metadata_descriptors_empty_list(self):
+        descriptor1 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Contractor", "string", [], False
+        )
+        descriptor2 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Environment", "string", [], False
+        )
+        descriptor3 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Location", "string", [], False
+        )
+
+        descriptor_ids = []
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id, "Asset", descriptor_ids
+        )
+
+        self.assertEqual(len(reordered), 3)
+        self.assertEqual(reordered[0]["name"], "Contractor")
+        self.assertEqual(reordered[0]["position"], 1)
+        self.assertEqual(reordered[1]["name"], "Environment")
+        self.assertEqual(reordered[1]["position"], 2)
+        self.assertEqual(reordered[2]["name"], "Location")
+        self.assertEqual(reordered[2]["position"], 3)
+
+    def test_reorder_metadata_descriptors_descriptor_not_found(self):
+        descriptor1 = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Contractor", "string", [], False
+        )
+
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        descriptor_ids = [fake_id]
+
+        with self.assertRaises(WrongParameterException):
+            projects_service.reorder_metadata_descriptors(
+                self.project.id, "Asset", descriptor_ids
+            )
+
+    def test_reorder_metadata_descriptors_different_entity_type(self):
+        asset_descriptor = projects_service.add_metadata_descriptor(
+            self.project.id, "Asset", "Contractor", "string", [], False
+        )
+        shot_descriptor = projects_service.add_metadata_descriptor(
+            self.project.id, "Shot", "Location", "string", [], False
+        )
+        descriptor_ids = [str(shot_descriptor["id"])]
+
+        with self.assertRaises(WrongParameterException):
+            projects_service.reorder_metadata_descriptors(
+                self.project.id, "Asset", descriptor_ids
+            )

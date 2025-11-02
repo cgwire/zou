@@ -19,6 +19,7 @@ from zou.app.blueprints.projects.resources import (
     ProductionStatusAutomationRemoveResource,
     ProductionMetadataDescriptorResource,
     ProductionMetadataDescriptorsResource,
+    ProductionMetadataDescriptorsReorderResource,
     ProductionMilestonesResource,
     ProductionScheduleItemsResource,
     ProductionTaskTypeScheduleItemsResource,
@@ -103,6 +104,10 @@ routes = [
     (
         "/data/projects/<project_id>/metadata-descriptors/<descriptor_id>",
         ProductionMetadataDescriptorResource,
+    ),
+    (
+        "/data/projects/<project_id>/metadata-descriptors/reorder",
+        ProductionMetadataDescriptorsReorderResource,
     ),
     ("/data/projects/<project_id>/milestones", ProductionMilestonesResource),
     (

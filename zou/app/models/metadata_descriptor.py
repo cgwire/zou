@@ -58,6 +58,7 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     field_name = db.Column(db.String(120), nullable=False)
     choices = db.Column(JSONB)
     for_client = db.Column(db.Boolean(), default=False, index=True)
+    position = db.Column(db.Integer(), nullable=True)
     departments = db.relationship(
         Department,
         secondary=DepartmentMetadataDescriptorLink.__table__,
