@@ -62,25 +62,49 @@ class OutputFileResource(BaseModelResource):
     @jwt_required()
     def get(self, instance_id):
         """
-        Retrieve a model corresponding at given ID and return it as a JSON
-        object.
+        Get output file
         ---
         tags:
           - Crud
+        description: Retrieve an output file instance by its ID and return
+          it as a JSON object.
         parameters:
           - in: path
-            name: output_file_id
-            required: True
-            type: string
-            format: uuid
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Model as a JSON object
+              description: Output file retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: output_file_v001
+                      entity_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
             400:
-                description: Statement error
-            404:
-                description: Value error
+              description: Invalid ID format or query error
         """
         try:
             output_file = files_service.get_output_file(instance_id)

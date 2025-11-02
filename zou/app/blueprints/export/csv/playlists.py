@@ -22,20 +22,31 @@ class PlaylistCsvExport(Resource):
     @jwt_required()
     def get(self, playlist_id):
         """
-        Export a given playlist as csv.
+        Export playlist csv
         ---
         tags:
           - Export
+        description: Export playlist as CSV file. Includes playlist shots
+          with preview information, task statuses, comments, and revision
+          details.
+        produces:
+          - text/csv
         parameters:
           - in: path
             name: playlist_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Playlist exported as csv
+              description: Playlist exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Entity name,Nb Frames,Task Type,Retake count,Revision,Task Status,Last comment author,Last comment date,Last comment\nSH010,120,Animation,2,10,WIP,John Doe,2024-01-15,Good work"
         """
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)

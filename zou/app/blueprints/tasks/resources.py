@@ -492,7 +492,6 @@ class TaskCommentResource(Resource):
 
 class PersonTasksResource(Resource):
 
-
     @jwt_required()
     def get(self, person_id):
         """

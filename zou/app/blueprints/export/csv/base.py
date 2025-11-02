@@ -20,13 +20,22 @@ class BaseCsvExport(Resource):
     @jwt_required()
     def get(self):
         """
-        Export as csv.
+        Export csv
         ---
         tags:
-            - Export
+          - Export
+        description: Export data as CSV file. Returns a CSV file with
+          formatted data based on the resource type.
+        produces:
+          - text/csv
         responses:
             200:
-                description: Exported as csv
+              description: CSV file exported successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Header1,Header2\nValue1,Value2"
         """
         self.prepare_import()
         try:

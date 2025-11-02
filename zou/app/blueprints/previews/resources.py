@@ -373,8 +373,8 @@ class CreatePreviewFilePictureResource(
         Create preview file
         ---
         description: Main resource to add a preview. It stores the preview file
-          and generates three picture files (thumbnails) matching preview when 
-          it's possible, a square thumbnail, a rectangle thumbnail and a 
+          and generates three picture files (thumbnails) matching preview when
+          it's possible, a square thumbnail, a rectangle thumbnail and a
           midsize file.
         tags:
           - Previews

@@ -17,20 +17,30 @@ class ShotsCsvExport(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Export shots linked to a given project as csv.
+        Export shots csv
         ---
         tags:
           - Export
+        description: Export project shots as CSV file. Includes shot
+          information, frames, task statuses, assignments, and metadata.
+        produces:
+          - text/csv
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Shots exported as csv
+              description: Shots exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Project,Episode,Sequence,Name,Description,Time Spent,Frames,Frame In,Frame Out,FPS\nProject A,EP01,SQ01,SH010,Description,5.25,120,1001,1120,24"
         """
         project = projects_service.get_project(project_id)
         self.check_permissions(project["id"])

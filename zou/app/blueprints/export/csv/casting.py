@@ -16,20 +16,47 @@ class CastingCsvExport(Resource, ArgsMixin):
     @jwt_required()
     def get(self, project_id):
         """
-        Export casting linked to a given project as csv.
+        Export casting csv
         ---
         tags:
           - Export
+        description: Export project casting links as CSV file. Includes
+          links between assets and shots, sequences, or episodes with
+          occurrence counts and labels.
+        produces:
+          - text/csv
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: episode_id
+            required: false
+            schema:
+              type: string
+              format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c25
+            description: Episode ID to filter casting links
+          - in: query
+            name: is_shot_casting
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to export shot casting only
         responses:
             200:
-                description: Casting exported as csv
+              description: Casting exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Parent,Name,Asset Type,Asset,Occurences,Label\nSequence1,SH010,Character,Asset1,1,fixed"
         """
         project = projects_service.get_project(project_id)  # Check existence
         self.check_permissions(project_id)

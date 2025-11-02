@@ -1,4 +1,5 @@
 from zou.app.blueprints.export.csv.base import BaseCsvExport
+from flask_jwt_extended import jwt_required
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -16,6 +17,29 @@ from zou.app.utils import date_helpers
 class TimeSpentsCsvExport(BaseCsvExport):
     def __init__(self):
         BaseCsvExport.__init__(self)
+
+    @jwt_required()
+    def get(self):
+        """
+        Export time spents csv
+        ---
+        tags:
+          - Export
+        description: Export time spent records as CSV file. Includes time
+          spent entries for open projects with project, person, entity,
+          task type, date, and duration information.
+        produces:
+          - text/csv
+        responses:
+            200:
+              description: Time spents exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Project,Person,Entity Type Name,Entity,Task Type,Date,Time spent\nProject A,John Doe,Shot,SH010,Animation,2024-01-15,480"
+        """
+        return super().get()
 
     def prepare_import(self):
         user = persons_service.get_current_user()

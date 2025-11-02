@@ -1663,10 +1663,12 @@ class ProjectEpisodeStatsResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve number of tasks by status, task_types and episodes for given project.
+        Get episode stats
         ---
         tags:
         - Shots
+        description: Return number of tasks by status, task type and episode
+          for the project.
         parameters:
           - in: path
             name: project_id
@@ -1726,10 +1728,12 @@ class ProjectEpisodeRetakeStatsResource(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Retrieve number of tasks by status, task_types and episodes for given project.
+        Get episode retake stats
         ---
         tags:
         - Shots
+        description: Return retake and done counts by task type and episode.
+          Includes evolution data and max retake count.
         parameters:
           - in: path
             name: project_id

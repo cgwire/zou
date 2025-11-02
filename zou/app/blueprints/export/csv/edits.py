@@ -16,20 +16,30 @@ class EditsCsvExport(Resource):
     @jwt_required()
     def get(self, project_id):
         """
-        Export edits linked to a given project as csv.
+        Export edits csv
         ---
         tags:
           - Export
+        description: Export project edits as CSV file. Includes edit
+          information, task statuses, assignments, and metadata.
+        produces:
+          - text/csv
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Edits exported as csv
+              description: Edits exported as CSV successfully
+              content:
+                text/csv:
+                  schema:
+                    type: string
+                  example: "Project,Episode,Name,Description,Time Spent\nProject A,EP01,Edit_001,Description,8.75"
         """
         self.task_type_map = tasks_service.get_task_type_map()
         self.task_status_map = tasks_service.get_task_status_map()

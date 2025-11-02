@@ -10,22 +10,61 @@ from zou.app.utils.string import strtobool
 class PersonsCsvImportResource(BaseCsvImportResource):
     def post(self):
         """
-        Import persons via a .csv file.
+        Import persons csv
         ---
         tags:
-            - Import
+          - Import
+        description: Import persons from a CSV file. Creates or updates
+          persons based on CSV rows. Supports role, contract type, and
+          active status updates.
         consumes:
           - multipart/form-data
         parameters:
+          - in: query
+            name: update
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to update existing persons
           - in: formData
             name: file
             type: file
             required: true
+            description: CSV file with person data
         responses:
             201:
-                description: The lists of imported persons.
+              description: Persons imported successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        first_name:
+                          type: string
+                          example: John
+                        last_name:
+                          type: string
+                          example: Doe
+                        email:
+                          type: string
+                          format: email
+                          example: john.doe@example.com
+                        phone:
+                          type: string
+                          example: +1234567890
+                        active:
+                          type: boolean
+                          example: true
             400:
-                description: The .csv file is not properly formatted.
+              description: Invalid CSV format or missing required columns
         """
         return super().post()
 

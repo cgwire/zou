@@ -1,3 +1,5 @@
+from flask_jwt_extended import jwt_required
+
 from zou.app.models.schedule_item import ScheduleItem
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -9,6 +11,151 @@ from zou.app.services.exception import WrongParameterException
 class ScheduleItemsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, ScheduleItem)
+
+    @jwt_required()
+    def get(self):
+        """
+        Get schedule items
+        ---
+        tags:
+          - Crud
+        description: Retrieve all schedule items. Supports filtering via
+          query parameters and pagination.
+        parameters:
+          - in: query
+            name: page
+            required: false
+            schema:
+              type: integer
+            example: 1
+            description: Page number for pagination
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+            example: 50
+            description: Number of results per page
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to include relations
+        responses:
+            200:
+              description: Schedule items retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    oneOf:
+                      - type: array
+                        items:
+                          type: object
+                      - type: object
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              type: object
+                            example: []
+                          total:
+                            type: integer
+                            example: 100
+                          nb_pages:
+                            type: integer
+                            example: 2
+                          limit:
+                            type: integer
+                            example: 50
+                          offset:
+                            type: integer
+                            example: 0
+                          page:
+                            type: integer
+                            example: 1
+            400:
+              description: Invalid filter format or query error
+        """
+        return super().get()
+
+    @jwt_required()
+    def post(self):
+        """
+        Create schedule item
+        ---
+        tags:
+          - Crud
+        description: Create a new schedule item with data provided in
+          the request body. JSON format is expected. Similar schedule
+          items cannot exist with same project, task type, and object.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - project_id
+                  - task_type_id
+                  - object_id
+                properties:
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                  object_id:
+                    type: string
+                    format: uuid
+                    example: c24a6ea4-ce75-4665-a070-57453082c25
+                  man_days:
+                    type: number
+                    example: 10.5
+        responses:
+            201:
+              description: Schedule item created successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      object_id:
+                        type: string
+                        format: uuid
+                        example: d24a6ea4-ce75-4665-a070-57453082c25
+                      man_days:
+                        type: number
+                        example: 10.5
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+            400:
+              description: Invalid data format or similar schedule item exists
+        """
+        return super().post()
 
     def check_creation_integrity(self, data):
         schedule_item = ScheduleItem.get_by(
@@ -31,6 +178,164 @@ class ScheduleItemResource(BaseModelResource):
         return user_service.check_supervisor_project_task_type_access(
             instance["project_id"], instance["task_type_id"]
         )
+
+    @jwt_required()
+    def get(self, instance_id):
+        """
+        Get schedule item
+        ---
+        tags:
+          - Crud
+        description: Retrieve a schedule item by its ID and return it as
+          a JSON object. Supports including relations.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: true
+            example: true
+            description: Whether to include relations
+        responses:
+            200:
+              description: Schedule item retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      object_id:
+                        type: string
+                        format: uuid
+                        example: d24a6ea4-ce75-4665-a070-57453082c25
+                      man_days:
+                        type: number
+                        example: 10.5
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+            400:
+              description: Invalid ID format or query error
+        """
+        return super().get(instance_id)
+
+    @jwt_required()
+    def put(self, instance_id):
+        """
+        Update schedule item
+        ---
+        tags:
+          - Crud
+        description: Update a schedule item with data provided in the
+          request body. JSON format is expected. Requires supervisor
+          access to project and task type.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  man_days:
+                    type: number
+                    example: 12.0
+        responses:
+            200:
+              description: Schedule item updated successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      object_id:
+                        type: string
+                        format: uuid
+                        example: d24a6ea4-ce75-4665-a070-57453082c25
+                      man_days:
+                        type: number
+                        example: 12.0
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T11:00:00Z"
+            400:
+              description: Invalid data format or validation error
+        """
+        return super().put(instance_id)
+
+    @jwt_required()
+    def delete(self, instance_id):
+        """
+        Delete schedule item
+        ---
+        tags:
+          - Crud
+        description: Delete a schedule item by its ID. Returns empty
+          response on success.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+              description: Schedule item deleted successfully
+            400:
+              description: Integrity error or cannot delete
+        """
+        return super().delete(instance_id)
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)

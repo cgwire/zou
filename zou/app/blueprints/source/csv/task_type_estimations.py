@@ -16,9 +16,6 @@ from zou.app.utils import date_helpers
 
 
 class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
-    """
-    Import the estimations of task-types for given project.
-    """
 
     def check_permissions(self, project_id, task_type, episode_id=None):
         return user_service.check_supervisor_project_task_type_access(
@@ -27,34 +24,65 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
 
     def post(self, project_id, task_type_id, episode_id=None):
         """
-        Import the estimations of task-types for given project.
+        Import task type estimations csv
         ---
         tags:
           - Import
+        description: Import task type estimations from a CSV file. Updates
+          estimations, dates, and other task properties for assets or shots
+          based on CSV rows.
         consumes:
           - multipart/form-data
         parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: file
             type: file
             required: true
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: CSV file with task estimation data
         responses:
             201:
-                description: Estimations imported
+              description: Task estimations imported successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          example: Asset Modeling
+                        estimation:
+                          type: integer
+                          example: 480
+                        start_date:
+                          type: string
+                          format: date
+                          example: "2024-01-15"
+                        due_date:
+                          type: string
+                          format: date
+                          example: "2024-01-25"
             400:
-                description: Format error
+              description: Invalid CSV format or entity not found
         """
         task_type = tasks_service.get_task_type(task_type_id)
         return super().post(project_id, task_type, episode_id)
@@ -151,39 +179,71 @@ class TaskTypeEstimationsEpisodeCsvImportResource(
 ):
     def post(self, project_id, task_type_id, episode_id):
         """
-        Import the estimations of task-types for given episode of given project.
+        Import episode task type estimations csv
         ---
         tags:
           - Import
+        description: Import task type estimations from a CSV file for a
+          specific episode. Updates estimations, dates, and other task
+          properties for assets or shots based on CSV rows.
         consumes:
           - multipart/form-data
         parameters:
+          - in: path
+            name: project_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: task_type_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: b24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: episode_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: c24a6ea4-ce75-4665-a070-57453082c25
           - in: formData
             name: file
             type: file
             required: true
-          - in: path
-            name: project_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: task_type_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: path
-            name: episode_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: CSV file with task estimation data
         responses:
             201:
-                description: Estimations imported
+              description: Task estimations imported successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          example: Asset Modeling
+                        estimation:
+                          type: integer
+                          example: 480
+                        start_date:
+                          type: string
+                          format: date
+                          example: "2024-01-15"
+                        due_date:
+                          type: string
+                          format: date
+                          example: "2024-01-25"
             400:
-                description: Format error
+              description: Invalid CSV format or entity not found
         """
         return super().post(project_id, task_type_id, episode_id)

@@ -58,6 +58,156 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
     def check_create_permissions(self, entity):
         user_service.check_manager_project_access(entity["project_id"])
 
+    @jwt_required()
+    def get(self):
+        """
+        Get entities
+        ---
+        tags:
+          - Crud
+        description: Retrieve all entities. Supports filtering via query
+          parameters and pagination. Includes project permission filtering
+          for non-admin users.
+        parameters:
+          - in: query
+            name: page
+            required: false
+            schema:
+              type: integer
+            example: 1
+            description: Page number for pagination
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+            example: 50
+            description: Number of results per page
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to include relations
+        responses:
+            200:
+              description: Entities retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    oneOf:
+                      - type: array
+                        items:
+                          type: object
+                      - type: object
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              type: object
+                            example: []
+                          total:
+                            type: integer
+                            example: 100
+                          nb_pages:
+                            type: integer
+                            example: 2
+                          limit:
+                            type: integer
+                            example: 50
+                          offset:
+                            type: integer
+                            example: 0
+                          page:
+                            type: integer
+                            example: 1
+            400:
+              description: Invalid filter format or query error
+        """
+        return super().get()
+
+    @jwt_required()
+    def post(self):
+        """
+        Create entity
+        ---
+        tags:
+          - Crud
+        description: Create a new entity with data provided in the request
+          body. JSON format is expected. Requires manager access to the
+          project.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                  - project_id
+                  - entity_type_id
+                properties:
+                  name:
+                    type: string
+                    example: SH010
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  entity_type_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                  status:
+                    type: string
+                    example: running
+                  data:
+                    type: object
+                    example: {"frame_in": 1001, "frame_out": 1120}
+        responses:
+            201:
+              description: Entity created successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: SH010
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      entity_type_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      status:
+                        type: string
+                        example: running
+                      data:
+                        type: object
+                        example: {"frame_in": 1001, "frame_out": 1120}
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+            400:
+              description: Invalid data format or validation error
+        """
+        return super().post()
+
     def emit_create_event(self, entity_dict):
         self.emit_event("new", entity_dict)
 
@@ -125,6 +275,101 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     def check_update_permissions(self, entity, data):
         return user_service.check_metadata_department_access(entity, data)
 
+    @jwt_required()
+    def get(self, instance_id):
+        """
+        Get entity
+        ---
+        tags:
+          - Crud
+        description: Retrieve an entity by its ID and return it as a JSON
+          object. Supports including relations. Requires project access.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: true
+            example: true
+            description: Whether to include relations
+        responses:
+            200:
+              description: Entity retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: SH010
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      entity_type_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      status:
+                        type: string
+                        example: running
+                      data:
+                        type: object
+                        example: {"frame_in": 1001, "frame_out": 1120}
+                      type:
+                        type: string
+                        example: shot
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+            400:
+              description: Invalid ID format or query error
+        """
+        return super().get(instance_id)
+
+    @jwt_required()
+    def delete(self, instance_id):
+        """
+        Delete entity
+        ---
+        tags:
+          - Crud
+        description: Delete an entity by its ID. Returns empty response
+          on success. Can only be deleted by creator or project manager.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            204:
+              description: Entity deleted successfully
+            400:
+              description: Integrity error or cannot delete
+        """
+        return super().delete(instance_id)
+
     def check_delete_permissions(self, entity):
         return entity["created_by"] == persons_service.get_current_user()[
             "id"
@@ -142,9 +387,58 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     @jwt_required()
     def put(self, instance_id):
         """
-        Update a model with data given in the request body. JSON format is
-        expected. Model performs the validation automatically when fields are
-        modified.
+        Update entity
+        ---
+        tags:
+          - Crud
+        description: Update an entity with data provided in the request
+          body. JSON format is expected. Supports shot versioning when
+          frame data changes.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: SH010
+                  data:
+                    type: object
+                    example: {"frame_in": 1001, "frame_out": 1120}
+        responses:
+            200:
+              description: Entity updated successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: SH010
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      data:
+                        type: object
+                        example: {"frame_in": 1001, "frame_out": 1120}
+            400:
+              description: Invalid data format or validation error
         """
         try:
             data = self.get_arguments()

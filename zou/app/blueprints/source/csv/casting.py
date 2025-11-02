@@ -15,28 +15,65 @@ from zou.app.utils import events
 class CastingCsvImportResource(BaseCsvProjectImportResource):
     def post(self, project_id):
         """
-        Import project casting links via a .csv file.
+        Import casting csv
         ---
         tags:
           - Import
+        description: Import project casting links from a CSV file. Links assets
+          to shots, sequences, or episodes based on CSV rows.
         consumes:
           - multipart/form-data
         parameters:
           - in: path
             name: project_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: update
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to update existing casting links
           - in: formData
             name: file
             type: file
             required: true
+            description: CSV file with casting link data
         responses:
             201:
-                description: The lists of imported casting links.
+              description: Casting links imported successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        entity_in_id:
+                          type: string
+                          format: uuid
+                          example: b24a6ea4-ce75-4665-a070-57453082c25
+                        entity_out_id:
+                          type: string
+                          format: uuid
+                          example: c24a6ea4-ce75-4665-a070-57453082c25
+                        nb_occurences:
+                          type: integer
+                          example: 1
+                        label:
+                          type: string
+                          example: fixed
             400:
-                description: The .csv file is not properly formatted.
+              description: Invalid CSV format or missing required columns
         """
         return super().post(project_id)
 

@@ -28,24 +28,62 @@ class BaseImportShotgunResource(Resource):
     @jwt_required()
     def post(self):
         """
-        Import shotgun resource.
+        Import shotgun resource
         ---
         tags:
           - Import
-        parameters:
-          - in: body
-            name: sg_entries
-            required: True
-            schema:
+        description: Import Shotgun resources. Send a list of Shotgun entries
+          in the JSON body. Returns created or updated resources.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: array
                 items:
-                    type: object
-                    properties:
-                        id:
-                            type: string
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 12345
+                      description: Shotgun ID of the entry
+                    code:
+                      type: string
+                      example: SH010
+                    name:
+                      type: string
+                      example: Shot name
+              example:
+                - id: 12345
+                  code: SH010
+                  name: Shot name
         responses:
             200:
-                description: Resource imported
+              description: Resources imported successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          example: Imported resource
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2024-01-15T10:30:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          example: "2024-01-15T11:00:00Z"
+            400:
+              description: Invalid request body or data format error
         """
         results = []
         self.sg_entries = request.json
@@ -169,13 +207,46 @@ class ImportRemoveShotgunBaseResource(Resource):
     @jwt_required()
     def post(self):
         """
-        Import remove instance.
+        Remove shotgun resource
         ---
         tags:
           - Import
+        description: Remove a Shotgun resource from the database. Provide the
+          Shotgun entry ID in the JSON body.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: integer
+                    example: 12345
+                    description: Shotgun ID of the entry to remove
+              example:
+                id: 12345
         responses:
-            204:
-                description: Instance removed
+            200:
+              description: Removal result returned
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+                        description: Whether the removal was successful
+                      removed_instance_id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                        description: ID of the removed instance, if found
+            400:
+              description: Invalid request body or instance not found
         """
         sg_model = request.json
         instance = self.get_instance(sg_model)

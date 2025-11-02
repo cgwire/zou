@@ -25,6 +25,151 @@ class ProjectsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Project)
 
+    @jwt_required()
+    def get(self):
+        """
+        Get projects
+        ---
+        tags:
+          - Crud
+        description: Retrieve all projects. Supports filtering via query
+          parameters and pagination. Includes project permission filtering
+          for non-admin users.
+        parameters:
+          - in: query
+            name: page
+            required: false
+            schema:
+              type: integer
+            example: 1
+            description: Page number for pagination
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+            example: 50
+            description: Number of results per page
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to include relations
+        responses:
+            200:
+              description: Projects retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    oneOf:
+                      - type: array
+                        items:
+                          type: object
+                      - type: object
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              type: object
+                            example: []
+                          total:
+                            type: integer
+                            example: 100
+                          nb_pages:
+                            type: integer
+                            example: 2
+                          limit:
+                            type: integer
+                            example: 50
+                          offset:
+                            type: integer
+                            example: 0
+                          page:
+                            type: integer
+                            example: 1
+            400:
+              description: Invalid filter format or query error
+        """
+        return super().get()
+
+    @jwt_required()
+    def post(self):
+        """
+        Create project
+        ---
+        tags:
+          - Crud
+        description: Create a new project with data provided in the
+          request body. JSON format is expected. Validates production_style.
+          For tvshow production type, automatically creates first episode.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - name
+                properties:
+                  name:
+                    type: string
+                    example: Project Name
+                  production_type:
+                    type: string
+                    example: feature
+                  production_style:
+                    type: string
+                    default: 2d3d
+                    example: 2d3d
+                  project_status_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            201:
+              description: Project created successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: Project Name
+                      production_type:
+                        type: string
+                        example: feature
+                      production_style:
+                        type: string
+                        example: 2d3d
+                      project_status_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      first_episode_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+            400:
+              description: Invalid data format or invalid production_style
+        """
+        return super().post()
+
     def add_project_permission_filter(self, query):
         if permissions.has_admin_permissions():
             return query
@@ -99,6 +244,149 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     def check_read_permissions(self, project):
         return user_service.check_project_access(project["id"])
+
+    @jwt_required()
+    def get(self, instance_id):
+        """
+        Get project
+        ---
+        tags:
+          - Crud
+        description: Retrieve a project by its ID and return it as a JSON
+          object. Supports including relations. Requires project access.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: true
+            example: true
+            description: Whether to include relations
+        responses:
+            200:
+              description: Project retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: Project Name
+                      production_type:
+                        type: string
+                        example: feature
+                      production_style:
+                        type: string
+                        example: 2d3d
+                      project_status_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      project_status_name:
+                        type: string
+                        example: Open
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+            400:
+              description: Invalid ID format or query error
+        """
+        return super().get(instance_id)
+
+    @jwt_required()
+    def put(self, instance_id):
+        """
+        Update project
+        ---
+        tags:
+          - Crud
+        description: Update a project with data provided in the request
+          body. JSON format is expected. Requires manager access to the
+          project. Validates production_style.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: Updated Project Name
+                  production_style:
+                    type: string
+                    example: 2d
+                  preview_background_file_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+            200:
+              description: Project updated successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: Updated Project Name
+                      production_type:
+                        type: string
+                        example: feature
+                      production_style:
+                        type: string
+                        example: 2d
+                      project_status_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      first_episode_id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T11:00:00Z"
+            400:
+              description: Invalid data format or invalid production_style
+        """
+        return super().put(instance_id)
 
     def check_update_permissions(self, project, data):
         return user_service.check_manager_project_access(project["id"])
@@ -176,6 +464,35 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 
     @jwt_required()
     def delete(self, instance_id):
+        """
+        Delete project
+        ---
+        tags:
+          - Crud
+        description: Delete a project by its ID. Only closed projects can
+          be deleted. Returns empty response on success.
+        parameters:
+          - in: path
+            name: instance_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: force
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Force deletion with cascading removal
+        responses:
+            204:
+              description: Project deleted successfully
+            400:
+              description: Only closed projects can be deleted or integrity error
+        """
         force = self.get_force()
 
         project = self.get_model_or_404(instance_id)
@@ -199,6 +516,62 @@ class ProjectResource(BaseModelResource, ArgsMixin):
 class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self):
+        """
+        Create project task type link
+        ---
+        tags:
+          - Crud
+        description: Create a link between a project and a task type.
+          Sets the priority of the task type within the project.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - project_id
+                  - task_type_id
+                properties:
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_type_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                  priority:
+                    type: integer
+                    default: 1
+                    example: 1
+                    description: Priority of the task type in the project
+        responses:
+            201:
+              description: Project task type link created successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      task_type_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      priority:
+                        type: integer
+                        example: 1
+            400:
+              description: Invalid project or task type
+        """
         args = self.get_args(
             [
                 ("project_id", "", True),
@@ -221,6 +594,73 @@ class ProjectTaskTypeLinksResource(Resource, ArgsMixin):
 class ProjectTaskStatusLinksResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self):
+        """
+        Create project task status link
+        ---
+        tags:
+          - Crud
+        description: Create a link between a project and a task status.
+          Sets the priority and roles that can view it on the board.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - project_id
+                  - task_status_id
+                properties:
+                  project_id:
+                    type: string
+                    format: uuid
+                    example: a24a6ea4-ce75-4665-a070-57453082c25
+                  task_status_id:
+                    type: string
+                    format: uuid
+                    example: b24a6ea4-ce75-4665-a070-57453082c25
+                  priority:
+                    type: integer
+                    default: 1
+                    example: 1
+                    description: Priority of the task status in the project
+                  roles_for_board:
+                    type: array
+                    items:
+                      type: string
+                    example: ["admin", "manager"]
+                    description: Roles allowed to see this status on the board
+        responses:
+            201:
+              description: Project task status link created successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: c24a6ea4-ce75-4665-a070-57453082c25
+                      project_id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      task_status_id:
+                        type: string
+                        format: uuid
+                        example: b24a6ea4-ce75-4665-a070-57453082c25
+                      priority:
+                        type: integer
+                        example: 1
+                      roles_for_board:
+                        type: array
+                        items:
+                          type: string
+                        example: ["admin", "manager"]
+            400:
+              description: Invalid project or task status
+        """
         args = self.get_args(
             [
                 ("project_id", "", True),

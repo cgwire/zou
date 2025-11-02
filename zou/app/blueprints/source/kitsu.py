@@ -26,24 +26,63 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self):
         """
-        Import Kitsu resource.
+        Import kitsu resource
         ---
         tags:
           - Import
-        parameters:
-          - in: body
-            name: entries
-            required: True
-            schema:
+        description: Import Kitsu resources. Send a list of Kitsu entries in
+          the JSON body. Returns created or updated resources.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: array
                 items:
-                    type: object
-                    properties:
-                        id:
-                            type: string
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: a24a6ea4-ce75-4665-a070-57453082c25
+                    name:
+                      type: string
+                      example: Resource name
+                    project_id:
+                      type: string
+                      format: uuid
+                      example: b24a6ea4-ce75-4665-a070-57453082c25
+              example:
+                - id: a24a6ea4-ce75-4665-a070-57453082c25
+                  name: Example resource
+                  project_id: b24a6ea4-ce75-4665-a070-57453082c25
         responses:
             200:
-                description: Resource imported
+              description: Resources imported successfully
+              content:
+                application/json:
+                  schema:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          format: uuid
+                          example: a24a6ea4-ce75-4665-a070-57453082c25
+                        name:
+                          type: string
+                          example: Imported resource
+                        created_at:
+                          type: string
+                          format: date-time
+                          example: "2024-01-15T10:30:00Z"
+                        updated_at:
+                          type: string
+                          format: date-time
+                          example: "2024-01-15T11:00:00Z"
+            400:
+              description: Invalid request body or missing required fields
         """
         kitsu_entries = request.json
         if not isinstance(kitsu_entries, list):

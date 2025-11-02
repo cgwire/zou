@@ -153,18 +153,69 @@ class BaseModelsResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self):
         """
-        Retrieve all entries for given model.
+        Get models
         ---
         tags:
           - Crud
-        description: Filters can be specified in the query string.
+        description: Retrieve all entries for the given model. Supports
+          filtering via query parameters and pagination.
+        parameters:
+          - in: query
+            name: page
+            required: false
+            schema:
+              type: integer
+            example: 1
+            description: Page number for pagination
+          - in: query
+            name: limit
+            required: false
+            schema:
+              type: integer
+            example: 50
+            description: Number of results per page
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: false
+            description: Whether to include relations
         responses:
             200:
-                description: All entries for given model
+              description: Models retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    oneOf:
+                      - type: array
+                        items:
+                          type: object
+                      - type: object
+                        properties:
+                          data:
+                            type: array
+                            items:
+                              type: object
+                            example: []
+                          total:
+                            type: integer
+                            example: 100
+                          nb_pages:
+                            type: integer
+                            example: 2
+                          limit:
+                            type: integer
+                            example: 50
+                          offset:
+                            type: integer
+                            example: 0
+                          page:
+                            type: integer
+                            example: 1
             400:
-                description: Format error
-            403:
-                description: Permission denied
+              description: Invalid filter format or query error
         """
         try:
             query = self.model.query
@@ -206,36 +257,48 @@ class BaseModelsResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self):
         """
-        Create a model with data given in the request body.
+        Create model
         ---
         tags:
           - Crud
-        description: JSON format is expected. The model performs the validation automatically when instantiated.
-        parameters:
-          - in: body
-            name: Model
-            schema:
+        description: Create a new model instance with data provided in the
+          request body. JSON format is expected. The model performs validation
+          automatically when instantiated.
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
-                    data:
-                        type: array
-                        items:
-                            type: string
-                    total:
-                        type: integer
-                    nb_pages:
-                        type: integer
-                    limit:
-                        type: integer
-                    offset:
-                        type: integer
-                    page:
-                        type: integer
+                  name:
+                    type: string
+                    example: Model Name
         responses:
-            200:
-                description: Model created
+            201:
+              description: Model created successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: Model Name
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
             400:
-                description: Error
+              description: Invalid data format or validation error
         """
         try:
             data = request.json
@@ -315,24 +378,53 @@ class BaseModelResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, instance_id):
         """
-        Retrieve a model corresponding at given ID and return it as a JSON object.
+        Get model
         ---
         tags:
           - Crud
+        description: Retrieve a model instance by its ID and return it as a
+          JSON object. Supports including relations.
         parameters:
           - in: path
             name: instance_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: relations
+            required: false
+            schema:
+              type: boolean
+            default: true
+            example: true
+            description: Whether to include relations
         responses:
             200:
-                description: Model as a JSON object
+              description: Model retrieved successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: Model Name
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
             400:
-                description: Statement error
-            404:
-                description: Value error
+              description: Invalid ID format or query error
         """
         relations = self.get_bool_parameter("relations", "true")
         try:
@@ -366,42 +458,56 @@ class BaseModelResource(Resource, ArgsMixin):
     @jwt_required()
     def put(self, instance_id):
         """
-        Update a model with data given in the request body.
+        Update model
         ---
         tags:
           - Crud
-        description: JSON format is expected. Model performs the validation automatically when fields are modified.
+        description: Update a model instance with data provided in the
+          request body. JSON format is expected. Model performs validation
+          automatically when fields are modified.
         parameters:
           - in: path
             name: instance_id
-            required: True
-            type: string
-            format: uuid
-            example: a24a6ea4-ce75-4665-a070-57453082c25
-          - in: body
-            name: Model
+            required: true
             schema:
+              type: string
+              format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
-                    data:
-                        type: array
-                        items:
-                            type: string
-                    total:
-                        type: integer
-                    nb_pages:
-                        type: integer
-                    limit:
-                        type: integer
-                    offset:
-                        type: integer
-                    page:
-                        type: integer
+                  name:
+                    type: string
+                    example: Updated Model Name
         responses:
             200:
-                description: Model updated
+              description: Model updated successfully
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: a24a6ea4-ce75-4665-a070-57453082c25
+                      name:
+                        type: string
+                        example: Updated Model Name
+                      created_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T10:30:00Z"
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: "2024-01-15T11:00:00Z"
             400:
-                description: Error
+              description: Invalid data format or validation error
         """
         try:
             data = self.get_arguments()
@@ -432,24 +538,25 @@ class BaseModelResource(Resource, ArgsMixin):
     @jwt_required()
     def delete(self, instance_id):
         """
-        Delete a model corresponding at given ID and return it as a JSON object.
+        Delete model
         ---
         tags:
           - Crud
+        description: Delete a model instance by its ID. Returns empty
+          response on success.
         parameters:
           - in: path
             name: instance_id
-            required: True
-            type: string
-            format: uuid
+            required: true
+            schema:
+              type: string
+              format: uuid
             example: a24a6ea4-ce75-4665-a070-57453082c25
         responses:
             204:
-                description: Model deleted
+              description: Model deleted successfully
             400:
-                description: Statement or integrity error
-            404:
-                description: Instance non-existant
+              description: Integrity error or cannot delete
         """
         instance = self.get_model_or_404(instance_id)
 
