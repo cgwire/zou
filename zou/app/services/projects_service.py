@@ -107,6 +107,7 @@ def get_projects_with_extra_data(
                     "choices": descriptor.choices,
                     "for_client": descriptor.for_client or False,
                     "entity_type": descriptor.entity_type,
+                    "position": descriptor.position,
                     "departments": [
                         str(department.id)
                         for department in descriptor.departments
