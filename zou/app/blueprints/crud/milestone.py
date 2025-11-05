@@ -315,4 +315,11 @@ class MilestoneResource(BaseModelResource):
         return super().delete(instance_id)
 
     def check_update_permissions(self, milestone, data):
-        user_service.check_manager_project_access(milestone["project_id"])
+        return user_service.check_manager_project_access(
+            milestone["project_id"]
+        )
+
+    def check_delete_permissions(self, milestone):
+        return user_service.check_manager_project_access(
+            milestone["project_id"]
+        )
