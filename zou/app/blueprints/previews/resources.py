@@ -1311,7 +1311,9 @@ class ProjectThumbnailResource(BaseThumbnailResource):
 
 
 class CreateProjectThumbnailResource(ProjectThumbnailResource):
-    pass
+
+    def check_allowed_to_post(self, instance_id):
+        return user_service.check_manager_project_access(instance_id)
 
 
 class SetMainPreviewResource(Resource, ArgsMixin):
