@@ -7,7 +7,13 @@ The indexer is optional. Kitsu can run without it.
 
 ## Setup the indexer
 
-First, retrieve the Meilisearch package:
+Create a Meilisearch user:
+
+```
+sudo useradd meilisearch 
+```
+
+Install the Meilisearch package:
 
 ```
 # Add Meilisearch package
@@ -17,7 +23,14 @@ echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/
 sudo apt update && sudo apt install meilisearch
 ```
 
-Define a master key then create the service file for Meilisearch:
+Create a folder for the index:
+
+```
+sudo mkdir /opt/meilisearch
+sudo chown -R meilisearch: /opt/meilisearch
+```
+
+Define a master key (any alphanumeric string with 16 or more bytes) then create the service file for Meilisearch:
 
 *Path: /etc/systemd/system/meilisearch.service*
 
@@ -38,14 +51,17 @@ WantedBy=multi-user.target
 Finally, start the Meilisearch indexer:
 
 ```
-sudo service meilisearch start
+sudo systemctl enable meilisearch
+sudo systemctl start meilisearch
 ```
-
 
 
 ## Configuring the connection to the indexer
 
 To connect to the indexer Kitsu relies on three environment variables.
+Add them to the zou environment variables file.
+
+*Path: /etc/zou/zou.env*
 
 The first one is the master key you set when you started Meilisearch.
 
@@ -62,6 +78,11 @@ INDEXER_PORT="7700"
 
 Once set, Kitsu will be able to connect to the indexer and will enable
 full-text search.
+
+## Verify the indexer is up and running
+
+Browse to [http://localhost/api/status](http://localhost/api/status)
+You should see "indexer-up": "true"
 
 
 ## Refreshing indexes

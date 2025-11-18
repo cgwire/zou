@@ -231,51 +231,12 @@ article](https://www.techandme.se/performance-tips-for-redis-cache-server/).
 
 ### Set up the indexer (optional)
 
-Create a Meilisearch user:
+To allow full-text search, Kitsu relies on an Indexing engine. It uses the
+[Meilisearch](https://www.meilisearch.com/docs) technology.
 
-```
-sudo useradd meilisearch 
-```
+The indexer is optional. Kitsu can run without it.
 
-Install Meilisearch:
-
-```
-echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/sources.list.d/fury.list
-sudo apt-get update && sudo apt-get install meilisearch
-```
-
-Create a folder for the index:
-```
-sudo mkdir /opt/meilisearch
-sudo chown -R meilisearch: /opt/meilisearch
-```
-
-
-Define a master key then create the service file for Meilisearch:
-
-*Path: /etc/systemd/system/meilisearch.service*
-
-```
-[Unit]
-Description=Meilisearch search engine
-After=network.target
-
-[Service]
-User=meilisearch
-Group=meilisearch
-WorkingDirectory=/opt/meilisearch
-ExecStart=/usr/bin/meilisearch --master-key="masterkey"
-
-[Install]
-WantedBy=multi-user.target
-```
-
-To finish, start the Meilisearch indexer:
-
-```
-sudo systemctl enable meilisearch
-sudo systemctl start meilisearch
-```
+See [Data Indexation](https://zou.cg-wire.com/indexer/)
 
 
 ### Configure Gunicorn
