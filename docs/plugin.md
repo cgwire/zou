@@ -12,16 +12,30 @@ A typical plugin created with `create_plugin_skeleton` looks like this:
 
 ```
 my_plugin/
+├── __init__.py
+├── routes.py
+├── models.py
+├── logo.png
 ├── manifest.toml
 ├── migrations/
 │   ├── env.py
 │   ├── versions/
-├── my_plugin/
-│   ├── __init__.py
-│   └── views.py
+│   ├── /
 ```
 
 ---
+
+### `__init__.py`
+
+You can implement every logic in this python file.
+
+### `routes.py`
+
+Add some routes in this python file.
+
+### `models.py`
+
+Add some new models in this python file.
 
 ### `manifest.toml`
 
@@ -61,34 +75,40 @@ Follow this simple workflow to start with writing your own plugin.
     ```
     zou create-plugin-skeleton --path ./plugins --id my_plugin
     ```
-    
-2. Implement logic in the `views.py` file.
 
-3. Add DB models and generate migrations:
+2. Implement logic in the `__init__.py` file.
+    
+3. Implement routes in the `routes.py` file.
+
+4. Implement models (if needed) in the `models.py` file.
+
+5. Add some informations about your plugin in the `manifest.toml` file.
+
+6. Add DB models and generate migrations:
 
     ```
     zou migrate-plugin-db --path ./plugins/my_plugin
     ```
 
-4. Package it:
+7. Package it:
 
     ```
     zou create-plugin-package --path ./plugins/my_plugin --output-path ./dist
     ```
 
-5. Install it:
+8. Install it:
 
     ```
     zou install-plugin --path ./dist/my_plugin.zip
     ```
 
-6. List installed plugins:
+9. List installed plugins:
 
     ```
     zou list-plugins
     ```
 
-7. Uninstall if needed:
+10. Uninstall if needed:
 
     ```
     zou uninstall-plugin --id my_plugin
