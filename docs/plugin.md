@@ -21,6 +21,7 @@ my_plugin/
 │   ├── env.py
 │   ├── versions/
 │   ├── /
+/
 ```
 
 ---
