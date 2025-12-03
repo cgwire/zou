@@ -183,9 +183,9 @@ def get_movie_display_aspect_ratio(movie_path=None, video_track=None):
     ratio = 1
     if video_track is not None:
         try:
-            width, height = video_track["width"], video_track["height"]
-        except KeyError:
             width, height = video_track["display_aspect_ratio"].split(":")
+        except KeyError:
+            width, height = video_track["width"], video_track["height"]
         ratio = float(width) / float(height)
     return ratio
 
