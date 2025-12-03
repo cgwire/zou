@@ -357,7 +357,7 @@ class PlaylistResource(BaseModelResource):
         """
         return super().delete(instance_id)
 
-    def pre_delete(playlist):
+    def pre_delete(self, playlist):
         query = BuildJob.query.filter_by(playlist_id=playlist["id"])
         for job in query.all():
             playlists_service.remove_build_job(playlist, job.id)
