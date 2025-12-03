@@ -30,6 +30,12 @@ class Playlist(db.Model, BaseMixin, SerializerMixin):
 
     build_jobs = relationship("BuildJob")
 
+    created_by = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("person.id"),
+        nullable=True,
+    )
+
     __table_args__ = (
         db.UniqueConstraint(
             "name", "project_id", "episode_id", name="playlist_uc"

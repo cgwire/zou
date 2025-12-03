@@ -1,10 +1,11 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.playlist import Playlist
-from zou.app.services import user_service, playlists_service
+from zou.app.models.build_job import BuildJob
+from zou.app.services import user_service, playlists_service, persons_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.utils import fields
+from zou.app.utils import fields, permissions
 
 
 class PlaylistsResource(BaseModelsResource):
@@ -169,6 +170,7 @@ class PlaylistsResource(BaseModelsResource):
             data["task_type_id"]
         ):
             data["task_type_id"] = None
+        data["created_by"] = persons_service.get_current_user()["id"]
         return data
 
 
@@ -353,12 +355,23 @@ class PlaylistResource(BaseModelResource):
             400:
               description: Integrity error or cannot delete
         """
-        playlists_service.remove_playlist(instance_id)
-        return "", 204
+        return super().delete(instance_id)
+
+    def pre_delete(playlist):
+        query = BuildJob.query.filter_by(playlist_id=playlist["id"])
+        for job in query.all():
+            playlists_service.remove_build_job(playlist, job.id)
 
     def check_update_permissions(self, playlist, data):
-        user_service.check_project_access(playlist["project_id"])
-        user_service.block_access_to_vendor()
+        if user_service.has_manager_project_access(playlist["project_id"]):
+            return True
+        elif permissions.has_supervisor_permissions() and (
+            playlist["created_by"]
+            in [None, persons_service.get_current_user()["id"]]
+        ):
+            return True
+        else:
+            raise permissions.PermissionDenied()
 
     def pre_update(self, instance_dict, data):
         if "shots" in data:
@@ -372,3 +385,14 @@ class PlaylistResource(BaseModelResource):
             ]
             data["shots"] = shots
         return data
+
+    def check_delete_permissions(self, playlist):
+        if user_service.has_manager_project_access(playlist["project_id"]):
+            return True
+        elif permissions.has_supervisor_permissions() and (
+            playlist["created_by"]
+            in [None, persons_service.get_current_user()["id"]]
+        ):
+            return True
+        else:
+            raise permissions.PermissionDenied()
