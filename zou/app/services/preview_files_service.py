@@ -551,12 +551,12 @@ def _clear_empty_annotations(annotations):
     ]
 
 
-def get_running_preview_files():
+def get_running_preview_files(cursor_preview_file_id=None, limit=None):
     """
     Return preview files for all productions with status equals to broken
-    or processing.
+    or processing using cursor-based pagination.
     """
-    entries = (
+    query = (
         PreviewFile.query.join(Task)
         .join(Project)
         .join(ProjectStatus, ProjectStatus.id == Project.project_status_id)
@@ -565,6 +565,21 @@ def get_running_preview_files():
         .add_columns(Task.project_id, Task.task_type_id, Task.entity_id)
         .order_by(PreviewFile.created_at.desc())
     )
+
+    if cursor_preview_file_id is not None:
+        cursor_preview_file = PreviewFile.query.get(cursor_preview_file_id)
+        if cursor_preview_file is None:
+            raise WrongParameterException(
+                f"No preview file found with id: {cursor_preview_file_id}"
+            )
+        query = query.filter(
+            PreviewFile.created_at < cursor_preview_file.created_at
+        )
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    entries = query.all()
 
     results = []
     for preview_file, project_id, task_type_id, entity_id in entries:
