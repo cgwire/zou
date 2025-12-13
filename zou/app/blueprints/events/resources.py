@@ -39,6 +39,13 @@ class EventsResource(Resource, ArgsMixin):
             description: Return only file-related events
             example: false
           - in: query
+            name: cursor_event_id
+            required: False
+            type: string
+            format: uuid
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+            description: ID of the last event from previous page for cursor-based pagination
+          - in: query
             name: limit
             type: integer
             default: 100
@@ -99,7 +106,8 @@ class EventsResource(Resource, ArgsMixin):
                 ("after", None, False),
                 ("before", None, False),
                 ("only_files", False, False),
-                ("limit", 100, False),
+                ("cursor_event_id", None, False),
+                ("limit", 100, False, int),
                 ("project_id", None, False),
                 ("name", None, False),
             ],
@@ -108,6 +116,7 @@ class EventsResource(Resource, ArgsMixin):
         permissions.check_manager_permissions()
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
+        cursor_event_id = args["cursor_event_id"]
         limit = args["limit"]
         only_files = args["only_files"] == "true"
         project_id = args.get("project_id", None)
@@ -116,15 +125,21 @@ class EventsResource(Resource, ArgsMixin):
             raise WrongParameterException(
                 "The project_id parameter is not a valid id"
             )
-        else:
-            return events_service.get_last_events(
-                after=after,
-                before=before,
-                limit=limit,
-                only_files=only_files,
-                project_id=project_id,
-                name=name,
+        if cursor_event_id is not None and not fields.is_valid_id(
+            cursor_event_id
+        ):
+            raise WrongParameterException(
+                "The cursor_event_id parameter is not a valid id"
             )
+        return events_service.get_last_events(
+            after=after,
+            before=before,
+            cursor_event_id=cursor_event_id,
+            limit=limit,
+            only_files=only_files,
+            project_id=project_id,
+            name=name,
+        )
 
 
 class LoginLogsResource(Resource, ArgsMixin):

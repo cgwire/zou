@@ -1,20 +1,22 @@
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
 from zou.app.utils import fields
+from zou.app.services.exception import WrongParameterException
 from sqlalchemy import func
 
 
 def get_last_events(
     after=None,
     before=None,
+    cursor_event_id=None,
     limit=100,
     only_files=False,
     project_id=None,
     name=None,
 ):
     """
-    Return last 100 events published. If before parameter is set, it returns
-    last 100 events before this date.
+    Return paginated events using cursor-based pagination.
+    If cursor_event_id is set, it returns events older than this event.
     """
     query = ApiEvent.query.order_by(ApiEvent.created_at.desc())
 
@@ -45,6 +47,14 @@ def get_last_events(
 
     if name is not None:
         query = query.filter(ApiEvent.name == name)
+
+    if cursor_event_id is not None:
+        cursor_event = ApiEvent.query.get(cursor_event_id)
+        if cursor_event is None:
+            raise WrongParameterException(
+                f"No event found with id: {cursor_event_id}"
+            )
+        query = query.filter(ApiEvent.created_at < cursor_event.created_at)
 
     events = query.limit(limit).all()
     return [
