@@ -27,6 +27,7 @@ from zou.app.services import (
 from zou.app.stores import queue_store
 from zou.utils import movie
 from zou.app.utils import (
+    fields,
     fs,
     events,
     permissions,
@@ -1567,6 +1568,20 @@ class RunningPreviewFiles(Resource, ArgsMixin):
           states equal to processing or broken.
         tags:
           - Previews
+        parameters:
+          - in: query
+            name: cursor_preview_file_id
+            required: false
+            type: string
+            format: uuid
+            description: ID of the last preview file from previous page for cursor-based pagination
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: limit
+            required: false
+            type: integer
+            description: Maximum number of preview files to return
+            example: 100
         responses:
           200:
             description: All preview files from open productions with processing or broken states
@@ -1588,7 +1603,26 @@ class RunningPreviewFiles(Resource, ArgsMixin):
                         example: "processing"
         """
         permissions.check_admin_permissions()
-        return preview_files_service.get_running_preview_files()
+        args = self.get_args(
+            [
+                ("cursor_preview_file_id", None, False),
+                ("limit", None, False, int),
+            ],
+        )
+        cursor_preview_file_id = args["cursor_preview_file_id"]
+        limit = args["limit"]
+
+        if cursor_preview_file_id is not None and not fields.is_valid_id(
+            cursor_preview_file_id
+        ):
+            raise WrongParameterException(
+                "The cursor_preview_file_id parameter is not a valid id"
+            )
+
+        return preview_files_service.get_running_preview_files(
+            cursor_preview_file_id=cursor_preview_file_id,
+            limit=limit,
+        )
 
 
 class ExtractFrameFromPreview(Resource, ArgsMixin):
