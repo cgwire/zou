@@ -1,6 +1,7 @@
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.task_type import TaskType
+from zou.app.models.schedule_item import ScheduleItem
 from zou.app.services.exception import WrongParameterException
 from zou.app.services import tasks_service
 
@@ -316,6 +317,15 @@ class TaskTypeResource(BaseModelResource):
               description: Integrity error or cannot delete
         """
         return super().delete(instance_id)
+
+    def pre_delete(self, instance_dict):
+        """
+        Delete related ScheduleItems before deleting the TaskType.
+        This runs AFTER check_delete_permissions, preventing foreign key
+        constraint violations while maintaining security.
+        """
+        ScheduleItem.query.filter_by(task_type_id=instance_dict["id"]).delete()
+        return instance_dict
 
     def update_data(self, data, instance_id):
         data = super().update_data(data, instance_id)
