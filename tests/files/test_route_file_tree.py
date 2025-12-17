@@ -61,7 +61,9 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_episode(self):
         data = {"software": self.software_max.id}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.episode_task.id, data, 200
+            "/data/tasks/%s/working-file-path" % self.episode_task.id,
+            data,
+            200,
         )
         self.assertEqual(
             result["path"],
