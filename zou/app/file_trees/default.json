@@ -7,6 +7,7 @@
             "asset": "<Project>/assets/<AssetType>/<Asset>/<TaskType>",
             "sequence": "<Project>/sequences/<Sequence>/<TaskType>",
             "scene": "<Project>/scenes/<Sequence>/<Scene>/<TaskType>",
+            "episode": "<Project>/episodes/<Episode>/<TaskType>",
             "style": "lowercase"
         },
         "file_name": {
@@ -14,6 +15,7 @@
             "asset": "<Project>_<AssetType>_<Asset>_<TaskType>",
             "sequence": "<Project>_<Sequence>_<TaskType>",
             "scene": "<Project>_<Sequence>_<Scene>_<TaskType>",
+            "episode": "<Project>_<Episode>_<TaskType>",
             "style": "lowercase"
         }
     },
@@ -25,6 +27,7 @@
             "asset": "<Project>/assets/<AssetType>/<Asset>/<OutputType>",
             "sequence": "<Project>/sequences/<Sequence>/<OutputType>",
             "scene": "<Project>/scenes/<Sequence>/<Scene>/<OutputType>",
+            "episode": "<Project>/episodes/<Episode>/<OutputType>",
             "style": "lowercase"
         },
         "file_name": {
@@ -32,6 +35,7 @@
             "asset": "<Project>_<AssetType>_<Asset>_<OutputType>_<OutputFile>",
             "sequence": "<Project>_<Sequence>_<OuputType>_<OutputFile>",
             "scene": "<Project>_<Sequence>_<Scene>_<OutputType>_<OutputFile>",
+            "episode": "<Project>_<Episode>_<OutputType>_<OutputFile>",
             "style": "lowercase"
         }
     },
@@ -43,6 +47,7 @@
             "asset": "<Project>/assets/<AssetType>/<Asset>/<TaskType>",
             "sequence": "<Project>/sequences/<Sequence>/<TaskType>",
             "scene": "<Project>/scene/<Scene>/<TaskType>",
+            "episode": "<Project>/episodes/<Episode>/<TaskType>",
             "style": "lowercase"
         },
         "file_name": {
@@ -50,6 +55,7 @@
             "asset": "<Project>_<AssetType>_<Asset>_<TaskType>",
             "sequence": "<Project>_<Sequence>_<TaskType>",
             "scene": "<Project>_<Scene>_<TaskType>",
+            "episode": "<Project>_<Episode>_<TaskType>",
             "style": "lowercase"
         }
     }
