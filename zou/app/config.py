@@ -68,6 +68,7 @@ PREVIEW_FOLDER = os.getenv(
     "PREVIEW_FOLDER",
     os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
+PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
