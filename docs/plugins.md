@@ -1,22 +1,41 @@
 # Plugins
 
-The Kitsu API (Zou) plugin system allows you to create modular extensions that 
-integrate directly into the API. Each plugin includes a `manifest.toml` file 
-with metadata and can contain database migrations, Flask blueprints, and more.
+The Kitsu API (Zou) plugin system allows you to create extensions of the API.
+Each plugin includes a `manifest.toml` file to describe plugin and manage its
+versioning. Each plugin can add routes to the API and add tables to the database.
 
 ---
 
+## Quickstart
+
+Create your plugin:
+
+```bash
+python zou/cli.py create-plugin-skeleton --path ./plugin_name --id plugin-name
+```
+
+Install it:
+
+```
+python zou/cli.py install-plugin --path ./plugin-name
+```
+
+Then restart your Zou server.
+
+All added routes will live under the path `plugins/plugin-name`.
+
+
 ## Plugin structure
 
-A typical plugin created with `create_plugin_skeleton` looks like this:
+Plugins are structured this way:
 
 ```
 my_plugin/
 ├── __init__.py
-├── routes.py
-├── models.py
-├── logo.png
 ├── manifest.toml
+├── models.py
+├── resources.py
+├── logo.png
 ├── migrations/
 │   ├── env.py
 │   ├── versions/
@@ -28,20 +47,24 @@ my_plugin/
 
 ### `__init__.py`
 
-You can implement every logic in this python file.
+List the routes you are adding via the plugin.
 
-### `routes.py`
+### `resources.py`
 
-Add some routes in this python file.
+Describe resources tied to routes here.
 
 ### `models.py`
 
-Add some new models in this python file.
+Add some new models in this python file. Generate related migration files:
+
+```
+zou migrate-plugin-db --path ./plugins/my-plugin
+```
 
 ### `manifest.toml`
 
 A manifest file is required to describe how to deploy your plugin and inform
-other users about how it can be used. 
+other users about how it can be used.
 It contains the plugin metadata:
 
 ```toml
@@ -62,45 +85,45 @@ license = "GPL-3.0-only"
 * Follow semantic versioning (`x.y.z`).
 * Include at least one route or feature inside your plugin module.
 * Write migrations if your plugin defines database models.
-* For license use SPDX identifier (see [here](https://spdx.org/licenses/)). 
+* For license use SPDX identifier (see [here](https://spdx.org/licenses/)).
 
 ---
 
-## Quickstart
+## Full process
 
 Follow this simple workflow to start with writing your own plugin.
 
 
-1. Create plugin:
+1. Create your plugin:
 
     ```
-    zou create-plugin-skeleton --path ./plugins --id my_plugin
+    zou create-plugin-skeleton --path ./plugins --id my-plugin
     ```
 
-2. Implement logic in the `__init__.py` file.
-    
-3. Implement routes in the `routes.py` file.
+3. Implement routes in the `resource.py` file.
+
+3. Add routes to the `__init__.py` file.
 
 4. Implement models (if needed) in the `models.py` file.
 
 5. Add some informations about your plugin in the `manifest.toml` file.
 
-6. Add DB models and generate migrations:
+6. Generate database migrations (if needed):
 
     ```
-    zou migrate-plugin-db --path ./plugins/my_plugin
+    zou migrate-plugin-db --path ./plugins/my-plugin
     ```
 
 7. Package it:
 
     ```
-    zou create-plugin-package --path ./plugins/my_plugin --output-path ./dist
+    zou create-plugin-package --path ./plugins/my-plugin --output-path ./dist
     ```
 
 8. Install it:
 
     ```
-    zou install-plugin --path ./dist/my_plugin.zip
+    zou install-plugin --path ./dist/my-plugin.zip
     ```
 
 9. List installed plugins:
@@ -112,7 +135,7 @@ Follow this simple workflow to start with writing your own plugin.
 10. Uninstall if needed:
 
     ```
-    zou uninstall-plugin --id my_plugin
+    zou uninstall-plugin --id my-plugin
     ```
 
 ---
@@ -150,12 +173,13 @@ zou uninstall-plugin --id my_plugin
 * `--id`: Plugin ID to uninstall (required).
 
 **Note:** This removes plugin files and unregisters its migrations.
+It will remove all your data
 
 ---
 
 ### `create_plugin_skeleton`
 
-Generate the basic structure of a plugin. It will allow to start quickly your 
+Generate the basic structure of a plugin. It will allow to start quickly your
 plugin development.
 
 ```bash
