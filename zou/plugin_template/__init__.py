@@ -1,4 +1,4 @@
-from . import routes
+from . import resources
 from flask import Blueprint
 from zou.app.utils.api import configure_api_from_blueprint
 
@@ -8,7 +8,7 @@ def init_plugin(app, manifest):
     Init the plugin.
     """
     app.logger.info("Loading plugin...")
-    routes_tuples = [(f"/hello-world", routes.HelloWorld)]
+    routes_tuples = [(f"/hello-world", resources.HelloWorld)]
 
     blueprint = Blueprint(manifest["id"], manifest["id"])
     configure_api_from_blueprint(blueprint, routes_tuples)
