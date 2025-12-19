@@ -669,11 +669,11 @@ def renormalize_movie_preview_files(
 )
 def install_plugin(path, force=False):
     """
-    Install a plugin.
+    Install a plugin and apply the migrations.
     """
     with app.app_context():
         plugins_service.install_plugin(path, force)
-    print(f"Plugin {path} installed. Restart the server to apply changes.")
+    print(f"✅ Plugin {path} installed. Restart the server to apply changes.")
 
 
 @cli.command()
@@ -687,7 +687,7 @@ def uninstall_plugin(id):
     """
     with app.app_context():
         plugins_service.uninstall_plugin(id)
-    print(f"Plugin {id} uninstalled.")
+    print(f"Plugin {id} uninstalled. Restart the server to apply changes.")
 
 
 @cli.command()
@@ -748,7 +748,7 @@ def create_plugin_skeleton(
     force=False,
 ):
     """
-    Create a plugin skeleton.
+    Create a plugin template in the given path.
     """
     plugin_path = plugin_utils.create_plugin_skeleton(
         path,
@@ -761,7 +761,7 @@ def create_plugin_skeleton(
         license,
         force,
     )
-    print(f"Plugin skeleton created in '{plugin_path}'.")
+    print(f"Plugin file tree skeleton created in '{plugin_path}'.")
 
 
 @cli.command()

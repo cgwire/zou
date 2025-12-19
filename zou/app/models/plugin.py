@@ -1,12 +1,14 @@
+from sqlalchemy_utils import EmailType, URLType
+
 from zou.app import db
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.base import BaseMixin
-from sqlalchemy_utils import EmailType, URLType
 
 
 class Plugin(db.Model, BaseMixin, SerializerMixin):
     """
-    Describe a plugin.
+    A plugin is a module used to extend the functionality of Zou.
+    You can extend the REST API routes and the database models.
     """
 
     plugin_id = db.Column(
