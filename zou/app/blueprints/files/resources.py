@@ -1303,6 +1303,8 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
             return {"error": "Cannot find given person."}, 400
         except EntryAlreadyExistsException:
             return {"error": "The given output file already exists."}, 400
+        except MalformedFileTreeException as exception:
+            return {"error": str(exception)}, 400
 
         return output_file_dict, 201
 

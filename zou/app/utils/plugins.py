@@ -1,5 +1,3 @@
-import tomlkit
-import semver
 import email.utils
 import spdx_license_list
 import zipfile
@@ -7,17 +5,18 @@ import importlib
 import importlib.util
 import sys
 import os
+import tomlkit
 import traceback
+import semver
 import shutil
 
-from pathlib import Path
-from flask import current_app
 from alembic import command
 from alembic.config import Config
-
-
+from flask import Blueprint, current_app
 from pathlib import Path
 from collections.abc import MutableMapping
+
+from zou.app.utils.api import configure_api_from_blueprint
 
 
 class PluginManifest(MutableMapping):
@@ -106,10 +105,15 @@ def load_plugin(app, plugin_path, init_plugin=True):
     """
     plugin_path = Path(plugin_path)
     manifest = PluginManifest.from_plugin_path(plugin_path)
-
     plugin_module = importlib.import_module(manifest["id"])
-    if init_plugin and hasattr(plugin_module, "init_plugin"):
-        plugin_module.init_plugin(app, manifest)
+
+    if not hasattr(plugin_module, "routes"):
+        raise Exception(f"Plugin {manifest['id']} has no routes.")
+
+    routes = plugin_module.routes
+    blueprint = Blueprint(manifest["id"], manifest["id"])
+    configure_api_from_blueprint(blueprint, routes)
+    app.register_blueprint(blueprint, url_prefix=f"/plugins/{manifest['id']}")
 
     return plugin_module
 

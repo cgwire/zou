@@ -848,7 +848,6 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
     with app.app_context():
         query = Plugin.query
 
-        # Apply filter if needed
         if filter_field and filter_value:
             if filter_field == "maintainer":
                 query = query.filter(

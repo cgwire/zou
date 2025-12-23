@@ -68,6 +68,7 @@ PREVIEW_FOLDER = os.getenv(
     "PREVIEW_FOLDER",
     os.getenv("THUMBNAIL_FOLDER", os.path.join(os.getcwd(), "previews")),
 )
+PREVIEW_SAVE_SOURCE_FILE = envtobool("PREVIEW_SAVE_SOURCE_FILE", False)
 TMP_DIR = os.getenv("TMP_DIR", os.path.join(tempfile.gettempdir(), "zou"))
 
 EVENT_STREAM_HOST = os.getenv("EVENT_STREAM_HOST", "localhost")
@@ -165,6 +166,7 @@ DEFAULT_LOCALE = os.getenv("DEFAULT_LOCALE", "en_US")
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
 PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
+ENFORCE_2FA = envtobool("ENFORCE_2FA", False)
 
 TELEMETRY_URL = os.getenv(
     "TELEMETRY_URL",

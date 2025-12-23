@@ -595,13 +595,18 @@ def get_folder_from_sequence(entity, field="name"):
 
 
 def get_folder_from_episode(entity, field="name"):
-    if shots_service.is_shot(entity) or shots_service.is_scene(entity):
-        sequence = shots_service.get_sequence_from_shot(entity)
-    elif shots_service.is_sequence(entity):
-        sequence = entity
+    episode = None
+
+    if shots_service.is_episode(entity):
+        episode = entity
+    else:
+        if shots_service.is_shot(entity) or shots_service.is_scene(entity):
+            sequence = shots_service.get_sequence_from_shot(entity)
+        elif shots_service.is_sequence(entity):
+            sequence = entity
+        episode = shots_service.get_episode_from_sequence(sequence)
 
     try:
-        episode = shots_service.get_episode_from_sequence(sequence)
         episode_name = episode[field]
     except BaseException:
         episode_name = "e001"

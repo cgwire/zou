@@ -287,6 +287,7 @@ def update_person(person_id, data, bypass_protected_accounts=False):
     if (
         not bypass_protected_accounts
         and person.email in config.PROTECTED_ACCOUNTS
+        and person.is_bot == False
     ):
         message = None
         if data.get("active") is False:

@@ -10,8 +10,8 @@ PluginBase = declarative_base(metadata=plugin_metadata)
 
 class Count(PluginBase, BaseMixin, SerializerMixin):
     """
-    Describe a plugin.
+    A simple model to keep track of a count.
     """
 
-    __tablename__ = "toto_count"
+    __tablename__ = "hello_count"
     count = Column(Integer, nullable=False, default=0)

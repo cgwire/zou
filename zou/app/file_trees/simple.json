@@ -7,6 +7,7 @@
             "asset": "<Project>/assets/<AssetType>/<Asset>/<TaskType>/<Software>",
             "sequence": "<Project>/sequences/<Sequence>/<TaskType>/<Software>",
             "scene": "<Project>/scenes/<Sequence>/<Scene>/<TaskType>/<Software>",
+            "episode": "<Project>/episodes/<Episode>/<TaskType>/<Software>",
             "style": "lowercase"
         },
         "file_name": {
@@ -14,6 +15,7 @@
             "asset": "<Project>_<AssetType>_<Asset>_<TaskType>_<Name>_v<Version>",
             "sequence": "<Project>_<Sequence>_<TaskType>_<Name>_v<Version>",
             "scene": "<Project>_<Scene>_<TaskType>_<Name>_v<Version>",
+            "episode": "<Project>_<Episode>_<TaskType>_<Name>_v<Version>",
             "style": "lowercase"
         }
     },
@@ -25,6 +27,7 @@
             "asset": "<Project>/assets/<AssetType>/<Asset>/<TaskType>/<OutputType>",
             "sequence": "<Project>/sequences/<Sequence>/<TaskType>/<OutputType>",
             "scene": "<Project>/scenes/<Sequence>/<Scene>/<TaskType>/<OutputType>",
+            "episode": "<Project>/episodes/<Episode>/<TaskType>/<OutputType>",
             "instance_asset": "<Project>/assets/<TemporalEntityType>/<TemporalEntity>/<TaskType>/<OutputType>/<AssetType>/<Asset>/instance_<Instance.number>/<Representation>",
             "instance": "<Project>/<TemporalEntityType>/<Sequence>/<TemporalEntity>/<TaskType>/<OutputType>/<AssetType>/<Asset>/instance_<Instance.number>/<Representation>",
             "style": "lowercase"
@@ -34,6 +37,7 @@
             "asset": "<Project>_<AssetType>_<Asset>_<TaskType>_<OutputType>_<Name>_v<Version>",
             "sequence": "<Project>_<Sequence>_<TaskType>_<OutputType>_<Name>_v<Version>",
             "scene": "<Project>_<Scene>_<TaskType>_<OutputType>_<Name>_v<Version>",
+            "episode": "<Project>_<Episode>_<TaskType>_<OutputType>_<Name>_v<Version>",
             "instance_asset": "<Project>_<TemporalEntityType>_<TemporalEntity>_<TaskType>_<OutputType>_<Name>_<Instance.name>_v<Version>",
             "instance": "<Project>_<Sequence>_<TemporalEntity>_<TaskType>_<OutputType>_<Name>_<Instance.name>_v<Version>",
             "style": "lowercase"
@@ -47,6 +51,7 @@
             "asset": "<Project>/assets/<AssetType>/<Asset>/<TaskType>",
             "sequence": "<Project>/sequences/<Sequence>/<TaskType>",
             "scene": "<Project>/scenes/<Sequence>/<Scene>/<TaskType>",
+            "episode": "<Project>/episodes/<Episode>/<TaskType>",
             "style": "lowercase"
         },
         "file_name": {
@@ -54,6 +59,7 @@
             "asset": "<Project>_<AssetType>_<Asset>_<TaskType>",
             "sequence": "<Project>_<Sequence>_<TaskType>",
             "scene": "<Project>_<Scene>_<TaskType>",
+            "episode": "<Project>_<Episode>_<TaskType>",
             "style": "lowercase"
         }
     }

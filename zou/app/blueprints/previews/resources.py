@@ -248,15 +248,24 @@ class BaseNewPreviewFilePicture:
         uploaded_movie_path = movie.save_file(
             tmp_folder, preview_file_id, uploaded_file
         )
+        save_source_file = config.PREVIEW_SAVE_SOURCE_FILE
         if normalize and config.ENABLE_JOB_QUEUE and not no_job:
             queue_store.job_queue.enqueue(
                 preview_files_service.prepare_and_store_movie,
-                args=(preview_file_id, uploaded_movie_path),
+                args=(
+                    preview_file_id,
+                    uploaded_movie_path,
+                    True,
+                    save_source_file,
+                ),
                 job_timeout=int(config.JOB_QUEUE_TIMEOUT),
             )
         else:
             preview_files_service.prepare_and_store_movie(
-                preview_file_id, uploaded_movie_path, normalize=normalize
+                preview_file_id,
+                uploaded_movie_path,
+                normalize=normalize,
+                add_source_to_file_store=save_source_file,
             )
         return preview_file_id
 

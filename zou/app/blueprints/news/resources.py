@@ -228,7 +228,7 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
         """
         Get open projects news
         ---
-        description: Returns the latest news and activity feed from all 
+        description: Returns the latest news and activity feed from all
           projects the user has access to.
         tags:
           - News
@@ -348,7 +348,7 @@ class ProjectSingleNewsResource(Resource):
         """
         Get news item
         ---
-        description: Retrieves detailed information about a specific news item 
+        description: Retrieves detailed information about a specific news item
           from a givenproject.
         tags:
           - News
