@@ -27,11 +27,11 @@ def install_plugin(path, force=False):
         if plugin:
             current = semver.Version.parse(plugin.version)
             new = semver.Version.parse(str(manifest.version))
-            print(f"[Plugins] Upgrading plugin {manifest.id} from version {current} to {new}...")
+            print(
+                f"[Plugins] Upgrading plugin {manifest.id} from version {current} to {new}..."
+            )
             if not force and new <= current:
-                print(
-                    f"⚠️  Plugin version {new} is not newer than {current}."
-                )
+                print(f"⚠️  Plugin version {new} is not newer than {current}.")
             plugin.update_no_commit(manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} upgraded.")
         else:
@@ -46,7 +46,9 @@ def install_plugin(path, force=False):
         run_plugin_migrations(plugin_path, plugin)
         print(f"[Plugins] Database migrations for {manifest.id} applied.")
     except Exception:
-        print(f"❌ [Plugins] An error occurred while installing/updating {manifest.id}...")
+        print(
+            f"❌ [Plugins] An error occurred while installing/updating {manifest.id}..."
+        )
         """"
         uninstall_plugin_files(manifest.id)
         print(f"[Plugins] Plugin {manifest.id} uninstalled.")
@@ -56,7 +58,7 @@ def install_plugin(path, force=False):
         raise
 
     Plugin.commit()
-    print_added_routes(plugin,plugin_path)
+    print_added_routes(plugin, plugin_path)
     return plugin.serialize()
 
 
@@ -98,7 +100,7 @@ def print_added_routes(plugin, plugin_path):
 
     try:
         plugin_module = importlib.import_module(plugin.plugin_id)
-        if hasattr(plugin_module, 'routes'):
+        if hasattr(plugin_module, "routes"):
             routes = plugin_module.routes
             for route in routes:
                 print(f"  - /plugins/{plugin.plugin_id}{route[0]}")
