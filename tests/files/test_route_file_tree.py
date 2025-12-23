@@ -14,6 +14,7 @@ class FolderPathTestCase(ApiDBTestCase):
         self.generate_fixture_asset_type()
         self.generate_fixture_asset()
         self.generate_fixture_sequence()
+        self.generate_fixture_episode()
         self.generate_fixture_shot()
         self.generate_fixture_scene()
         self.generate_fixture_department()
