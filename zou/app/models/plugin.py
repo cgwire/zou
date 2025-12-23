@@ -22,3 +22,5 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     website = db.Column(URLType)
     license = db.Column(db.String(80), nullable=False)
     revision = db.Column(db.String(12), nullable=True)
+    frontend_project_enabled = db.Column(db.Boolean(), default=False)
+    frontend_studio_enabled = db.Column(db.Boolean(), default=False)

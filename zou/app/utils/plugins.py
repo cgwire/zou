@@ -12,11 +12,58 @@ import shutil
 
 from alembic import command
 from alembic.config import Config
-from flask import Blueprint, current_app
-from pathlib import Path
 from collections.abc import MutableMapping
+from flask import Blueprint, current_app
+from flask_restful import Resource
+from pathlib import Path
 
 from zou.app.utils.api import configure_api_from_blueprint
+
+from flask import send_from_directory, abort, current_app
+
+
+class StaticResource(Resource):
+
+    plugin_id = None
+    location = None
+
+    def get(self, filename):
+        """
+        Serve static files
+        ---
+        tags:
+          - Static
+        parameters:
+          - in: path
+            name: filename
+            required: true
+            schema:
+              type: string
+            description: Name of the file to serve
+        responses:
+          200:
+            description: File served successfully
+          404:
+            description: File not found
+        """
+        print(self.plugin_id)
+        print(self.location)
+        static_folder = (
+            Path(current_app.config.get("PLUGIN_FOLDER", "plugins"))
+            / self.plugin_id
+            / "frontend"
+            / self.location
+            / "dist"
+        )
+        file_path = static_folder / filename
+        print(file_path)
+
+        if not file_path.exists() or not file_path.is_file():
+            abort(404)
+
+        return send_from_directory(
+            str(static_folder), filename, conditional=True, max_age=3600
+        )
 
 
 class PluginManifest(MutableMapping):
@@ -56,6 +103,11 @@ class PluginManifest(MutableMapping):
             self.data["maintainer_name"] = name
             self.data["maintainer_email"] = email_addr
 
+        if "frontend_project_enabled" not in self.data:
+            self.data["frontend_project_enabled"] = False
+        if "frontend_studio_enabled" not in self.data:
+            self.data["frontend_studio_enabled"] = False
+
     def to_model_dict(self):
         return {
             "plugin_id": self.data["id"],
@@ -66,6 +118,12 @@ class PluginManifest(MutableMapping):
             "maintainer_email": self.data.get("maintainer_email"),
             "website": self.data.get("website"),
             "license": self.data["license"],
+            "frontend_project_enabled": self.data.get(
+                "frontend_project_enabled", False
+            ),
+            "frontend_studio_enabled": self.data.get(
+                "frontend_studio_enabled", False
+            ),
         }
 
     def __getitem__(self, key):
@@ -111,6 +169,7 @@ def load_plugin(app, plugin_path, init_plugin=True):
         raise Exception(f"Plugin {manifest['id']} has no routes.")
 
     routes = plugin_module.routes
+    add_static_routes(manifest, routes)
     blueprint = Blueprint(manifest["id"], manifest["id"])
     configure_api_from_blueprint(blueprint, routes)
     app.register_blueprint(blueprint, url_prefix=f"/plugins/{manifest['id']}")
@@ -342,3 +401,32 @@ def uninstall_plugin_files(plugin_path):
         shutil.rmtree(plugin_path)
         return True
     return False
+
+
+def add_static_routes(manifest, routes):
+    """
+    Add static routes to the manifest.
+    """
+
+    class ProjectStaticResource(StaticResource):
+
+        def __init__(self):
+            self.plugin_id = manifest.id
+            self.location = "project"
+            super().__init__()
+
+    class StudioStaticResource(StaticResource):
+
+        def __init__(self):
+            self.plugin_id = manifest.id
+            self.location = "studio"
+            super().__init__()
+
+    if manifest["frontend_project_enabled"]:
+        routes.append(
+            (f"/frontend/project/<path:filename>", ProjectStaticResource)
+        )
+    if manifest.frontend_studio_enabled:
+        routes.append(
+            (f"/frontend/studio/<path:filename>", StudioStaticResource)
+        )
