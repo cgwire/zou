@@ -20,7 +20,8 @@ spec.loader.exec_module(module)
 
 # Add zou tables
 module.plugin_metadata.tables = {
-  **db.metadata.tables, **module.plugin_metadata.tables
+    **db.metadata.tables,
+    **module.plugin_metadata.tables,
 }
 
 # Database URL (passed by Alembic)
