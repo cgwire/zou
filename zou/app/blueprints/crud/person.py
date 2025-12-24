@@ -604,7 +604,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
         if (
             instance_dict["email"] in config.PROTECTED_ACCOUNTS
             and instance_dict["id"] != persons_service.get_current_user()["id"]
-            and instance_dict["is_bot"] == False
+            and instance_dict.get("is_bot", False) == False
         ):
             message = None
             if data.get("active") is False:
