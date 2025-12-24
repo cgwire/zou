@@ -55,7 +55,8 @@ def get_task_types_schedule_items(project_id):
     task_types = [
         task_type
         for task_type in task_types
-        if task_type["for_entity"] in ["Asset", "Shot", "Sequence", "Episode", "Edit"]
+        if task_type["for_entity"]
+        in ["Asset", "Shot", "Sequence", "Episode", "Edit"]
     ]
     task_type_map = base_service.get_model_map_from_array(task_types)
     schedule_items = set(

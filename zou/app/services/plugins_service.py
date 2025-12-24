@@ -1,4 +1,5 @@
 import semver
+import shutil
 from pathlib import Path
 
 from zou.app import config, db
@@ -9,16 +10,32 @@ from zou.app.utils.plugins import (
     downgrade_plugin_migrations,
     uninstall_plugin_files,
     install_plugin_files,
+    clone_git_repo,
 )
 
 
 def install_plugin(path, force=False):
     """
     Install a plugin: create folder, copy files, run migrations.
+    Supports local paths, zip files, and git repository URLs.
     """
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f"Plugin path '{path}' does not exist.")
+    is_git_url = (
+        path.startswith("http://")
+        or path.startswith("https://")
+        or path.startswith("git://")
+        or path.startswith("ssh://")
+        or path.startswith("git@")
+    )
+
+    temp_dir = None
+    if is_git_url:
+        cloned_path = clone_git_repo(path)
+        temp_dir = cloned_path.parent
+        path = cloned_path
+    else:
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Plugin path '{path}' does not exist.")
 
     manifest = PluginManifest.from_plugin_path(path)
     plugin = Plugin.query.filter_by(plugin_id=manifest.id).one_or_none()
@@ -27,11 +44,11 @@ def install_plugin(path, force=False):
         if plugin:
             current = semver.Version.parse(plugin.version)
             new = semver.Version.parse(str(manifest.version))
-            print(f"[Plugins] Upgrading plugin {manifest.id} from version {current} to {new}...")
+            print(
+                f"[Plugins] Upgrading plugin {manifest.id} from version {current} to {new}..."
+            )
             if not force and new <= current:
-                print(
-                    f"⚠️  Plugin version {new} is not newer than {current}."
-                )
+                print(f"⚠️  Plugin version {new} is not newer than {current}.")
             plugin.update_no_commit(manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} upgraded.")
         else:
@@ -46,17 +63,18 @@ def install_plugin(path, force=False):
         run_plugin_migrations(plugin_path, plugin)
         print(f"[Plugins] Database migrations for {manifest.id} applied.")
     except Exception:
-        print(f"❌ [Plugins] An error occurred while installing/updating {manifest.id}...")
-        """"
-        uninstall_plugin_files(manifest.id)
-        print(f"[Plugins] Plugin {manifest.id} uninstalled.")
-        db.session.rollback()
-        db.session.remove()
-        """
+        print(
+            f"❌ [Plugins] An error occurred while installing/updating {manifest.id}..."
+        )
         raise
 
     Plugin.commit()
-    print_added_routes(plugin,plugin_path)
+    print_added_routes(plugin, plugin_path)
+
+    if is_git_url:
+        if temp_dir and temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
     return plugin.serialize()
 
 
@@ -98,7 +116,7 @@ def print_added_routes(plugin, plugin_path):
 
     try:
         plugin_module = importlib.import_module(plugin.plugin_id)
-        if hasattr(plugin_module, 'routes'):
+        if hasattr(plugin_module, "routes"):
             routes = plugin_module.routes
             for route in routes:
                 print(f"  - /plugins/{plugin.plugin_id}{route[0]}")
@@ -111,3 +129,10 @@ def print_added_routes(plugin, plugin_path):
             sys.path.remove(abs_plugin_path)
 
     print("--------------------------------")
+
+
+def get_plugins():
+    """
+    Get all plugins.
+    """
+    return [plugin.present() for plugin in Plugin.query.all()]

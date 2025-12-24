@@ -11,16 +11,18 @@ class ImportShotgunProjectConnectionsTestCase(ShotgunTestCase):
         self.load_fixture("projects")
         self.load_fixture("projectconnections")
         projects = self.get("data/projects")
+        projects = sorted(projects, key=lambda x: x["name"])
         project = projects_service.get_project(
             projects[0]["id"],
             relations=True,
         )
-        self.assertEqual(len(project["team"]), 1)
+        self.assertEqual(project["name"], "Agent327")
+        self.assertEqual(len(project["team"]), 2)
         project = projects_service.get_project(
             projects[1]["id"],
             relations=True,
         )
-        self.assertEqual(len(project["team"]), 2)
+        self.assertEqual(len(project["team"]), 1)
 
     def test_import_projects_twice(self):
         self.load_fixture("persons")
