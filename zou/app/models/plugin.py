@@ -24,3 +24,16 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     revision = db.Column(db.String(12), nullable=True)
     frontend_project_enabled = db.Column(db.Boolean(), default=False)
     frontend_studio_enabled = db.Column(db.Boolean(), default=False)
+
+    def present(self):
+        return {
+            "id": self.id,
+            "plugin_id": self.plugin_id,
+            "name": self.name,
+            "description": self.description,
+            "version": self.version,
+            "maintainer_name": self.maintainer_name,
+            "maintainer_email": self.maintainer_email,
+            "frontend_project_enabled": self.frontend_project_enabled,
+            "frontend_studio_enabled": self.frontend_studio_enabled,
+        }

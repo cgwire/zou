@@ -15,6 +15,8 @@ from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
+from zou.app.services import plugins_service
+
 
 from zou.app.services import (
     assets_service,
@@ -1670,6 +1672,7 @@ def get_context():
         "search_filters": get_filters(),
         "search_filter_groups": get_filter_groups(),
         "preview_background_files": files_service.get_preview_background_files(),
+        "plugins": plugins_service.get_plugins(),
     }
 
     if permissions.has_admin_permissions():
