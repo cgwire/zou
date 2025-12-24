@@ -9,6 +9,8 @@ import tomlkit
 import traceback
 import semver
 import shutil
+import subprocess
+import tempfile
 
 from alembic import command
 from alembic.config import Config
@@ -401,6 +403,38 @@ def uninstall_plugin_files(plugin_path):
         shutil.rmtree(plugin_path)
         return True
     return False
+
+
+def clone_git_repo(git_url, temp_dir=None):
+    """
+    Clone a git repository to a temporary directory.
+    Returns the path to the cloned directory.
+    """
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp(prefix="zou_plugin_")
+
+    temp_dir = Path(temp_dir)
+    repo_name = git_url.rstrip("/").split("/")[-1].replace(".git", "")
+    clone_path = temp_dir / repo_name
+
+    print(f"[Plugins] Cloning {git_url}...")
+
+    try:
+        subprocess.run(
+            ["git", "clone", git_url, str(clone_path)],
+            check=True,
+            capture_output=True,
+            timeout=300,
+        )
+        print(f"[Plugins] Successfully cloned {git_url}")
+        return clone_path
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else str(e)
+        raise ValueError(f"Failed to clone repository {git_url}: {error_msg}")
+    except FileNotFoundError:
+        raise ValueError(
+            "git is not available. Please install git to clone repositories."
+        )
 
 
 def add_static_routes(manifest, routes):

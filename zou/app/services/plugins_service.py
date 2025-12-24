@@ -1,4 +1,5 @@
 import semver
+import shutil
 from pathlib import Path
 
 from zou.app import config, db
@@ -9,16 +10,32 @@ from zou.app.utils.plugins import (
     downgrade_plugin_migrations,
     uninstall_plugin_files,
     install_plugin_files,
+    clone_git_repo,
 )
 
 
 def install_plugin(path, force=False):
     """
     Install a plugin: create folder, copy files, run migrations.
+    Supports local paths, zip files, and git repository URLs.
     """
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(f"Plugin path '{path}' does not exist.")
+    is_git_url = (
+        path.startswith("http://")
+        or path.startswith("https://")
+        or path.startswith("git://")
+        or path.startswith("ssh://")
+        or path.startswith("git@")
+    )
+
+    temp_dir = None
+    if is_git_url:
+        cloned_path = clone_git_repo(path)
+        temp_dir = cloned_path.parent
+        path = cloned_path
+    else:
+        path = Path(path)
+        if not path.exists():
+            raise FileNotFoundError(f"Plugin path '{path}' does not exist.")
 
     manifest = PluginManifest.from_plugin_path(path)
     plugin = Plugin.query.filter_by(plugin_id=manifest.id).one_or_none()
@@ -49,16 +66,15 @@ def install_plugin(path, force=False):
         print(
             f"❌ [Plugins] An error occurred while installing/updating {manifest.id}..."
         )
-        """"
-        uninstall_plugin_files(manifest.id)
-        print(f"[Plugins] Plugin {manifest.id} uninstalled.")
-        db.session.rollback()
-        db.session.remove()
-        """
         raise
 
     Plugin.commit()
     print_added_routes(plugin, plugin_path)
+
+    if is_git_url:
+        if temp_dir and temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
     return plugin.serialize()
 
 
@@ -113,3 +129,10 @@ def print_added_routes(plugin, plugin_path):
             sys.path.remove(abs_plugin_path)
 
     print("--------------------------------")
+
+
+def get_plugins():
+    """
+    Get all plugins.
+    """
+    return [plugin.present() for plugin in Plugin.query.all()]
