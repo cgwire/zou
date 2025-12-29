@@ -733,6 +733,12 @@ def uninstall_plugin(id):
     show_default=True,
 )
 @click.option(
+    "--icon",
+    help="Plugin icon (lucide-vue icon name).",
+    default=None,
+    show_default=True,
+)
+@click.option(
     "--force",
     is_flag=True,
     default=False,
@@ -747,6 +753,7 @@ def create_plugin_skeleton(
     maintainer,
     website,
     license,
+    icon,
     force=False,
 ):
     """
@@ -761,6 +768,7 @@ def create_plugin_skeleton(
         maintainer,
         website,
         license,
+        icon,
         force,
     )
     print(f"Plugin file tree skeleton created in '{plugin_path}'.")

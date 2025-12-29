@@ -27,46 +27,58 @@ from flask import send_from_directory, abort, current_app
 class StaticResource(Resource):
 
     plugin_id = None
-    location = None
 
-    def get(self, filename):
-        """
-        Serve static files
-        ---
-        tags:
-          - Static
-        parameters:
-          - in: path
-            name: filename
-            required: true
-            schema:
-              type: string
-            description: Name of the file to serve
-        responses:
-          200:
-            description: File served successfully
-          404:
-            description: File not found
-        """
+    def get(self, filename="index.html"):
+
         print(self.plugin_id)
-        print(self.location)
         static_folder = (
             Path(current_app.config.get("PLUGIN_FOLDER", "plugins"))
             / self.plugin_id
             / "frontend"
-            / self.location
             / "dist"
         )
+
+        if filename == "":
+            filename = "index.html"
+
+        print(static_folder)
         file_path = static_folder / filename
         print(file_path)
 
         if not file_path.exists() or not file_path.is_file():
             abort(404)
 
+        if filename == "":
+            filename = "index.html"
+
         return send_from_directory(
-            str(static_folder), filename, conditional=True, max_age=3600
+            str(static_folder), filename, conditional=True, max_age=0
         )
 
+
+class IndexStaticResource(Resource):
+
+    plugin_id = None
+
+    def get(self):
+        print(self.plugin_id)
+        static_folder = (
+            Path(current_app.config.get("PLUGIN_FOLDER", "plugins"))
+            / self.plugin_id
+            / "frontend"
+            / "dist"
+        )
+
+
+        file_path = static_folder / filename
+
+        if not file_path.exists() or not file_path.is_file():
+            abort(404)
+
+
+        return send_from_directory(
+            str(static_folder), filename, conditional=True, max_age=0
+        )
 
 class PluginManifest(MutableMapping):
     def __init__(self, data):
@@ -126,6 +138,7 @@ class PluginManifest(MutableMapping):
             "frontend_studio_enabled": self.data.get(
                 "frontend_studio_enabled", False
             ),
+            "icon": self.data.get("icon", ""),
         }
 
     def __getitem__(self, key):
@@ -335,6 +348,7 @@ def create_plugin_skeleton(
     maintainer=None,
     website=None,
     license=None,
+    icon=None,
     force=False,
 ):
     plugin_template_path = (
@@ -366,7 +380,8 @@ def create_plugin_skeleton(
         manifest.website = website
     if license:
         manifest.license = license
-
+    if icon:
+        manifest.icon = icon
     manifest.validate()
     manifest.write_to_path(plugin_path)
 
@@ -442,25 +457,16 @@ def add_static_routes(manifest, routes):
     Add static routes to the manifest.
     """
 
-    class ProjectStaticResource(StaticResource):
+    class PluginStaticResource(StaticResource):
 
         def __init__(self):
             self.plugin_id = manifest.id
-            self.location = "project"
             super().__init__()
 
-    class StudioStaticResource(StaticResource):
-
-        def __init__(self):
-            self.plugin_id = manifest.id
-            self.location = "studio"
-            super().__init__()
-
-    if manifest["frontend_project_enabled"]:
+    if manifest["frontend_project_enabled"] or manifest["frontend_studio_enabled"]:
         routes.append(
-            (f"/frontend/project/<path:filename>", ProjectStaticResource)
+            (f"/frontend/<path:filename>", PluginStaticResource)
         )
-    if manifest.frontend_studio_enabled:
         routes.append(
-            (f"/frontend/studio/<path:filename>", StudioStaticResource)
+            (f"/frontend", PluginStaticResource)
         )
