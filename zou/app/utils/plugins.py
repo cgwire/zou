@@ -41,10 +41,7 @@ class StaticResource(Resource):
         if filename == "":
             filename = "index.html"
 
-        print(static_folder)
         file_path = static_folder / filename
-        print(file_path)
-
         if not file_path.exists() or not file_path.is_file():
             abort(404)
 
@@ -55,30 +52,6 @@ class StaticResource(Resource):
             str(static_folder), filename, conditional=True, max_age=0
         )
 
-
-class IndexStaticResource(Resource):
-
-    plugin_id = None
-
-    def get(self):
-        print(self.plugin_id)
-        static_folder = (
-            Path(current_app.config.get("PLUGIN_FOLDER", "plugins"))
-            / self.plugin_id
-            / "frontend"
-            / "dist"
-        )
-
-
-        file_path = static_folder / filename
-
-        if not file_path.exists() or not file_path.is_file():
-            abort(404)
-
-
-        return send_from_directory(
-            str(static_folder), filename, conditional=True, max_age=0
-        )
 
 class PluginManifest(MutableMapping):
     def __init__(self, data):

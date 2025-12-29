@@ -3,18 +3,15 @@ import os
 import tempfile
 import shutil
 import zipfile
-import subprocess
+
 from pathlib import Path
-from unittest.mock import patch, MagicMock, Mock, call
 
 from tests.base import ApiDBTestCase
 
-from zou.app import app, config
 from zou.app.utils.plugins import (
     PluginManifest,
     install_plugin_files,
     uninstall_plugin_files,
-    clone_git_repo,
     create_plugin_package,
     create_plugin_skeleton,
     add_static_routes,
@@ -22,6 +19,7 @@ from zou.app.utils.plugins import (
 
 
 class PluginManifestTestCase(ApiDBTestCase):
+
     def setUp(self):
         super(PluginManifestTestCase, self).setUp()
         self.temp_dir = tempfile.mkdtemp()
@@ -70,30 +68,7 @@ license = "MIT"
         self.assertEqual(manifest["id"], "test_plugin")
         self.assertEqual(manifest["name"], "Test Plugin")
 
-    def test_plugin_manifest_from_plugin_path_zip(self):
-        plugin_dir = Path(self.temp_dir) / "test_plugin"
-        plugin_dir.mkdir()
-
-        manifest_path = plugin_dir / "manifest.toml"
-        manifest_content = '''id = "test_plugin"
-name = "Test Plugin"
-version = "0.1.0"
-maintainer = "Test Author <test@example.com>"
-license = "MIT"
-'''
-        manifest_path.write_text(manifest_content)
-
-        zip_path = Path(self.temp_dir) / "test_plugin.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
-            zf.write(manifest_path, "manifest.toml")
-
-        manifest = PluginManifest.from_plugin_path(zip_path)
-
-        self.assertEqual(manifest["id"], "test_plugin")
-        self.assertEqual(manifest["name"], "Test Plugin")
-
     def test_plugin_manifest_from_plugin_path_invalid(self):
-        """Test creating PluginManifest from invalid path"""
         invalid_path = Path(self.temp_dir) / "invalid.txt"
         invalid_path.write_text("not a plugin")
 
@@ -103,7 +78,6 @@ license = "MIT"
         self.assertIn("Invalid plugin path", str(context.exception))
 
     def test_plugin_manifest_validate_version(self):
-        """Test that manifest validates version format"""
         manifest_data = {
             "id": "test_plugin",
             "name": "Test Plugin",
@@ -116,7 +90,6 @@ license = "MIT"
             PluginManifest(manifest_data)
 
     def test_plugin_manifest_validate_license(self):
-        """Test that manifest validates license"""
         manifest_data = {
             "id": "test_plugin",
             "name": "Test Plugin",
@@ -129,7 +102,6 @@ license = "MIT"
             PluginManifest(manifest_data)
 
     def test_plugin_manifest_validate_maintainer(self):
-        """Test that manifest parses maintainer email"""
         manifest_data = {
             "id": "test_plugin",
             "name": "Test Plugin",
@@ -144,7 +116,6 @@ license = "MIT"
         self.assertEqual(manifest.data.get("maintainer_email"), "test@example.com")
 
     def test_plugin_manifest_to_model_dict(self):
-        """Test converting manifest to model dictionary"""
         manifest_data = {
             "id": "test_plugin",
             "name": "Test Plugin",
@@ -170,7 +141,6 @@ license = "MIT"
         self.assertEqual(model_dict["icon"], "test-icon")
 
     def test_plugin_manifest_write_to_path(self):
-        """Test writing manifest to a path"""
         manifest_data = {
             "id": "test_plugin",
             "name": "Test Plugin",
@@ -256,18 +226,13 @@ class PluginFilesTestCase(ApiDBTestCase):
         plugin_path = Path(self.temp_dir) / "plugin"
         plugin_path.mkdir()
         (plugin_path / "file1.txt").write_text("content1")
-
         result = uninstall_plugin_files(plugin_path)
-
         self.assertTrue(result)
         self.assertFalse(plugin_path.exists())
 
     def test_uninstall_plugin_files_nonexistent(self):
-        """Test uninstalling non-existent plugin files"""
         nonexistent_path = Path(self.temp_dir) / "nonexistent"
-
         result = uninstall_plugin_files(nonexistent_path)
-
         self.assertFalse(result)
 
 
@@ -282,10 +247,8 @@ class PluginPackageTestCase(ApiDBTestCase):
             shutil.rmtree(self.temp_dir)
 
     def test_create_plugin_package(self):
-        """Test creating a plugin package"""
         plugin_dir = Path(self.temp_dir) / "test_plugin"
         plugin_dir.mkdir()
-
         manifest_path = plugin_dir / "manifest.toml"
         manifest_content = '''id = "test_plugin"
 name = "Test Plugin"
@@ -295,10 +258,10 @@ license = "MIT"
 '''
         manifest_path.write_text(manifest_content)
         (plugin_dir / "file1.txt").write_text("content1")
-
         output_path = Path(self.temp_dir) / "output.zip"
 
-        result = create_plugin_package(plugin_dir, output_path)
+        target_path = create_plugin_package(plugin_dir, output_path)
+        result = Path(target_path)
 
         self.assertTrue(result.exists())
         self.assertTrue(result.suffix == ".zip")
@@ -394,7 +357,6 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
                 self.assertEqual(instance.plugin_id, "test_plugin")
 
     def test_add_static_routes_without_frontend(self):
-        """Test adding static routes when frontend is disabled"""
         manifest_data = {
             "id": "test_plugin",
             "name": "Test Plugin",

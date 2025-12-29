@@ -1,11 +1,14 @@
 import importlib.util
 import logging
 import sys
+
 from alembic import context
 from sqlalchemy import create_engine, pool
+
 from pathlib import Path
 from logging.config import fileConfig
 
+from zou.app import db
 from zou.app.utils.plugins import PluginManifest
 
 plugin_path = Path(__file__).resolve().parents[1]

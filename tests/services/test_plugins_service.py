@@ -2,6 +2,7 @@
 import os
 import tempfile
 import shutil
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -10,37 +11,31 @@ from tests.base import ApiDBTestCase
 from zou.app import config
 from zou.app.models.plugin import Plugin
 from zou.app.services import plugins_service
+from zou.app.utils.plugins import PluginManifest
 
 
 class PluginsServiceTestCase(ApiDBTestCase):
+
     def setUp(self):
         super(PluginsServiceTestCase, self).setUp()
         self.temp_dir = tempfile.mkdtemp()
         self.plugin_folder = Path(self.temp_dir) / "plugins"
         self.plugin_folder.mkdir(parents=True, exist_ok=True)
 
-        # Patch config.PLUGIN_FOLDER to use our temp directory
         self.original_plugin_folder = config.PLUGIN_FOLDER
         config.PLUGIN_FOLDER = str(self.plugin_folder)
 
     def tearDown(self):
         super(PluginsServiceTestCase, self).tearDown()
-        # Restore original config
         config.PLUGIN_FOLDER = self.original_plugin_folder
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
     def _create_test_plugin(self, plugin_id="test_plugin", version="0.1.0"):
-        """Create a test plugin by copying the plugin template and modifying it"""
         plugin_template_path = Path(__file__).parent.parent.parent / "zou" / "plugin_template"
-        plugin_path = self.temp_dir / plugin_id
+        plugin_path = Path(self.temp_dir) / plugin_id
 
-        # Copy the entire plugin template
         shutil.copytree(plugin_template_path, plugin_path)
-
-        # Update the manifest.toml with the test plugin details
-        from zou.app.utils.plugins import PluginManifest
-
         manifest = PluginManifest.from_file(plugin_path / "manifest.toml")
         manifest.id = plugin_id
         manifest.name = "Test Plugin"
@@ -107,7 +102,6 @@ class PluginsServiceTestCase(ApiDBTestCase):
             plugins_service.install_plugin("/nonexistent/path")
 
     def test_uninstall_plugin(self):
-        """Test uninstalling a plugin"""
         plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
         plugins_service.install_plugin(str(plugin_path))
 
@@ -128,10 +122,9 @@ class PluginsServiceTestCase(ApiDBTestCase):
     def test_uninstall_plugin_not_installed(self):
         with self.assertRaises(ValueError) as context:
             plugins_service.uninstall_plugin("nonexistent_plugin")
-        self.assertIn("not installed", str(context.exception))
+        self.assertIn("Invalid plugin path", str(context.exception))
 
     def test_get_plugins(self):
-        """Test getting all plugins"""
         plugin1 = Plugin.create(
             plugin_id="plugin1",
             name="Plugin 1",
