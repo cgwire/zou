@@ -291,11 +291,12 @@ def clear_movie_files(preview_file_id):
     Remove all files related to given preview file, supposing the original file
     was a movie.
     """
-    try:
-        file_store.remove_movie("previews", preview_file_id)
-    except BaseException:
-        pass
-    for image_type in ["thumbnails", "thumbnails-square", "previews"]:
+    for movie_type in ["previews", "lowdef", "source"]:
+        try:
+            file_store.remove_movie(movie_type, preview_file_id)
+        except BaseException:
+            pass
+    for image_type in ["thumbnails", "thumbnails-square", "previews", "tiles"]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
         except BaseException:
@@ -343,6 +344,14 @@ def remove_tasks_for_project_and_task_type(project_id, task_type_id):
 
 def remove_project(project_id):
     from zou.app.services import playlists_service
+
+    preview_files = (
+        PreviewFile.query.join(Task)
+        .filter(Task.project_id == project_id)
+        .all()
+    )
+    for preview_file in preview_files:
+        remove_preview_file(preview_file, force=True)
 
     tasks = Task.query.filter_by(project_id=project_id)
     for task in tasks:
