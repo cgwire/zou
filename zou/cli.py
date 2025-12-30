@@ -660,6 +660,7 @@ def renormalize_movie_preview_files(
 @click.option(
     "--path",
     required=True,
+    help="Plugin path: local directory, zip file, or git repository URL",
 )
 @click.option(
     "--force",
@@ -670,6 +671,7 @@ def renormalize_movie_preview_files(
 def install_plugin(path, force=False):
     """
     Install a plugin and apply the migrations.
+    Supports local paths, zip files, and git repository URLs.
     """
     with app.app_context():
         plugins_service.install_plugin(path, force)
@@ -731,6 +733,12 @@ def uninstall_plugin(id):
     show_default=True,
 )
 @click.option(
+    "--icon",
+    help="Plugin icon (lucide-vue icon name).",
+    default=None,
+    show_default=True,
+)
+@click.option(
     "--force",
     is_flag=True,
     default=False,
@@ -745,6 +753,7 @@ def create_plugin_skeleton(
     maintainer,
     website,
     license,
+    icon,
     force=False,
 ):
     """
@@ -759,6 +768,7 @@ def create_plugin_skeleton(
         maintainer,
         website,
         license,
+        icon,
         force,
     )
     print(f"Plugin file tree skeleton created in '{plugin_path}'.")

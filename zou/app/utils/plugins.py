@@ -9,14 +9,48 @@ import tomlkit
 import traceback
 import semver
 import shutil
+import subprocess
+import tempfile
 
 from alembic import command
 from alembic.config import Config
-from flask import Blueprint, current_app
-from pathlib import Path
 from collections.abc import MutableMapping
+from flask import Blueprint, current_app
+from flask_restful import Resource
+from pathlib import Path
 
 from zou.app.utils.api import configure_api_from_blueprint
+
+from flask import send_from_directory, abort, current_app
+
+
+class StaticResource(Resource):
+
+    plugin_id = None
+
+    def get(self, filename="index.html"):
+
+        print(self.plugin_id)
+        static_folder = (
+            Path(current_app.config.get("PLUGIN_FOLDER", "plugins"))
+            / self.plugin_id
+            / "frontend"
+            / "dist"
+        )
+
+        if filename == "":
+            filename = "index.html"
+
+        file_path = static_folder / filename
+        if not file_path.exists() or not file_path.is_file():
+            abort(404)
+
+        if filename == "":
+            filename = "index.html"
+
+        return send_from_directory(
+            str(static_folder), filename, conditional=True, max_age=0
+        )
 
 
 class PluginManifest(MutableMapping):
@@ -56,6 +90,11 @@ class PluginManifest(MutableMapping):
             self.data["maintainer_name"] = name
             self.data["maintainer_email"] = email_addr
 
+        if "frontend_project_enabled" not in self.data:
+            self.data["frontend_project_enabled"] = False
+        if "frontend_studio_enabled" not in self.data:
+            self.data["frontend_studio_enabled"] = False
+
     def to_model_dict(self):
         return {
             "plugin_id": self.data["id"],
@@ -66,6 +105,13 @@ class PluginManifest(MutableMapping):
             "maintainer_email": self.data.get("maintainer_email"),
             "website": self.data.get("website"),
             "license": self.data["license"],
+            "frontend_project_enabled": self.data.get(
+                "frontend_project_enabled", False
+            ),
+            "frontend_studio_enabled": self.data.get(
+                "frontend_studio_enabled", False
+            ),
+            "icon": self.data.get("icon", ""),
         }
 
     def __getitem__(self, key):
@@ -111,6 +157,7 @@ def load_plugin(app, plugin_path, init_plugin=True):
         raise Exception(f"Plugin {manifest['id']} has no routes.")
 
     routes = plugin_module.routes
+    add_static_routes(manifest, routes)
     blueprint = Blueprint(manifest["id"], manifest["id"])
     configure_api_from_blueprint(blueprint, routes)
     app.register_blueprint(blueprint, url_prefix=f"/plugins/{manifest['id']}")
@@ -274,6 +321,7 @@ def create_plugin_skeleton(
     maintainer=None,
     website=None,
     license=None,
+    icon=None,
     force=False,
 ):
     plugin_template_path = (
@@ -305,7 +353,8 @@ def create_plugin_skeleton(
         manifest.website = website
     if license:
         manifest.license = license
-
+    if icon:
+        manifest.icon = icon
     manifest.validate()
     manifest.write_to_path(plugin_path)
 
@@ -342,3 +391,55 @@ def uninstall_plugin_files(plugin_path):
         shutil.rmtree(plugin_path)
         return True
     return False
+
+
+def clone_git_repo(git_url, temp_dir=None):
+    """
+    Clone a git repository to a temporary directory.
+    Returns the path to the cloned directory.
+    """
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp(prefix="zou_plugin_")
+
+    temp_dir = Path(temp_dir)
+    repo_name = git_url.rstrip("/").split("/")[-1].replace(".git", "")
+    clone_path = temp_dir / repo_name
+
+    print(f"[Plugins] Cloning {git_url}...")
+
+    try:
+        subprocess.run(
+            ["git", "clone", git_url, str(clone_path)],
+            check=True,
+            capture_output=True,
+            timeout=300,
+        )
+        print(f"[Plugins] Successfully cloned {git_url}")
+        return clone_path
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode() if e.stderr else str(e)
+        raise ValueError(f"Failed to clone repository {git_url}: {error_msg}")
+    except FileNotFoundError:
+        raise ValueError(
+            "git is not available. Please install git to clone repositories."
+        )
+
+
+def add_static_routes(manifest, routes):
+    """
+    Add static routes to the manifest.
+    """
+
+    class PluginStaticResource(StaticResource):
+
+        def __init__(self):
+            self.plugin_id = manifest.id
+            super().__init__()
+
+    if manifest["frontend_project_enabled"] or manifest["frontend_studio_enabled"]:
+        routes.append(
+            (f"/frontend/<path:filename>", PluginStaticResource)
+        )
+        routes.append(
+            (f"/frontend", PluginStaticResource)
+        )

@@ -880,6 +880,7 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
             if verbose:
                 plugin_data["Description"] = plugin.description or "-"
                 plugin_data["Website"] = plugin.website or "-"
+                plugin_data["Icon"] = plugin.icon or "-"
                 plugin_data["Revision"] = plugin.revision or "-"
                 plugin_data["Installation Date"] = plugin.created_at
                 plugin_data["Last Update"] = plugin.updated_at
