@@ -168,3 +168,13 @@ class ArgsMixin(object):
         if not fields.is_valid_id(uuid):
             raise WrongParameterException("Wrong UUID format.")
         return True
+
+
+    def get_id_parameter(self, field_name, default=None):
+        """
+        Returns ID parameter value matching `field_name`.
+        """
+        entity_id = self.get_text_parameter(field_name + "_id", default)
+        if entity_id is not None and entity_id != "":
+            self.check_id_parameter(entity_id)
+        return entity_id
