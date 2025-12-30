@@ -1,16 +1,21 @@
+import datetime
+
 import psutil
 import redis
 import requests
-import datetime
-
 from flask import Response, abort
-from flask_restful import Resource
-from zou import __version__
-
-from zou.app import app, config
-from zou.app.utils import permissions, shell, date_helpers
-from zou.app.services import projects_service, stats_service, persons_service
 from flask_jwt_extended import jwt_required
+from flask_restful import Resource
+
+from zou import __version__
+from zou.app import app, config
+from zou.app.indexer import indexing
+from zou.app.services import (
+    persons_service,
+    projects_service,
+    stats_service,
+)
+from zou.app.utils import date_helpers, permissions, shell
 from zou.app.utils.redis import get_redis_url
 
 
@@ -40,14 +45,32 @@ class IndexResource(Resource):
 
 
 class BaseStatusResource(Resource):
+
     def get_status(self):
-        is_db_up = True
+        is_db_up = self._check_database()
+        is_kv_up = self._check_key_value_store()
+        is_es_up = self._check_event_stream()
+        is_jq_up = self._check_job_queue()
+        is_indexer_up = self._check_indexer()
+
+        return (
+            config.APP_NAME,
+            __version__,
+            is_db_up,
+            is_kv_up,
+            is_es_up,
+            is_jq_up,
+            is_indexer_up,
+        )
+
+    def _check_database(self):
         try:
             projects_service.get_or_create_status("Open")
+            return True
         except Exception:
-            is_db_up = False
+            return False
 
-        is_kv_up = True
+    def _check_key_value_store(self):
         try:
             store = redis.StrictRedis(
                 host=config.KEY_VALUE_STORE["host"],
@@ -57,18 +80,21 @@ class BaseStatusResource(Resource):
                 decode_responses=True,
             )
             store.get("test")
+            return True
         except redis.ConnectionError:
-            is_kv_up = False
+            return False
 
-        is_es_up = True
+    def _check_event_stream(self):
         try:
             requests.get(
-                f"http://{config.EVENT_STREAM_HOST}:{config.EVENT_STREAM_PORT}"
+                f"http://{config.EVENT_STREAM_HOST}:{config.EVENT_STREAM_PORT}",
+                timeout=5,
             )
+            return True
         except Exception:
-            is_es_up = False
+            return False
 
-        is_jq_up = True
+    def _check_job_queue(self):
         try:
             args = [
                 "rq",
@@ -77,30 +103,20 @@ class BaseStatusResource(Resource):
                 get_redis_url(config.KV_JOB_DB_INDEX),
             ]
             out = shell.run_command(args)
-            is_jq_up = b"0 workers" not in out
+            return b"0 workers" not in out
         except Exception:
             app.logger.error("Job queue is not accessible", exc_info=1)
-            is_jq_up = False
+            return False
 
-        is_indexer_up = True
+    def _check_indexer(self):
         try:
-            requests.get(
-                f"{config.INDEXER['protocol']}://{config.INDEXER['host']}:{config.INDEXER['port']}"
-            )
+            client = indexing.get_client()
+            client.get_indexes()
+            return True
+        except indexing.IndexerNotInitializedError:
+            return False
         except Exception:
-            is_indexer_up = False
-
-        version = __version__
-
-        return (
-            config.APP_NAME,
-            version,
-            is_db_up,
-            is_kv_up,
-            is_es_up,
-            is_jq_up,
-            is_indexer_up,
-        )
+            return False
 
 
 class StatusResource(BaseStatusResource):
@@ -224,9 +240,16 @@ class StatusResourcesResource(BaseStatusResource):
                           type: integer
                           example: 3
         """
-        loadavg = list(psutil.getloadavg())
+        return {
+            "date": datetime.datetime.now().isoformat(),
+            "cpu": self._get_cpu_stats(),
+            "memory": self._get_memory_stats(),
+            "jobs": self._get_job_stats(),
+        }
 
-        cpu_stats = {
+    def _get_cpu_stats(self):
+        loadavg = list(psutil.getloadavg())
+        return {
             "percent": psutil.cpu_percent(interval=1, percpu=True),
             "loadavg": {
                 "last 1 min": loadavg[0],
@@ -235,29 +258,23 @@ class StatusResourcesResource(BaseStatusResource):
             },
         }
 
-        memory_stats = {
-            "total": psutil.virtual_memory().total,
-            "used": psutil.virtual_memory().used,
-            "available": psutil.virtual_memory().available,
-            "percent": psutil.virtual_memory().percent,
+    def _get_memory_stats(self):
+        memory = psutil.virtual_memory()
+        return {
+            "total": memory.total,
+            "used": memory.used,
+            "available": memory.available,
+            "percent": memory.percent,
         }
 
+    def _get_job_stats(self):
         nb_jobs = 0
         if config.ENABLE_JOB_QUEUE:
             from zou.app.stores.queue_store import job_queue
 
             registry = job_queue.started_job_registry
             nb_jobs = registry.count
-        job_stats = {
-            "running_jobs": nb_jobs,
-        }
-
-        return {
-            "date": datetime.datetime.now().isoformat(),
-            "cpu": cpu_stats,
-            "memory": memory_stats,
-            "jobs": job_stats,
-        }
+        return {"running_jobs": nb_jobs}
 
 
 class TxtStatusResource(BaseStatusResource):
@@ -294,22 +311,14 @@ class TxtStatusResource(BaseStatusResource):
             is_indexer_up,
         ) = self.get_status()
 
-        text = """name: %s
-version: %s
-database-up: %s
-event-stream-up: %s
-key-value-store-up: %s
-job-queue-up: %s
-indexer-up: %s
-""" % (
-            api_name,
-            version,
-            "up" if is_db_up else "down",
-            "up" if is_kv_up else "down",
-            "up" if is_es_up else "down",
-            "up" if is_jq_up else "down",
-            "up" if is_indexer_up else "down",
-        )
+        text = f"""name: {api_name}
+version: {version}
+database-up: {"up" if is_db_up else "down"}
+event-stream-up: {"up" if is_es_up else "down"}
+key-value-store-up: {"up" if is_kv_up else "down"}
+job-queue-up: {"up" if is_jq_up else "down"}
+indexer-up: {"up" if is_indexer_up else "down"}
+"""
         return Response(text, mimetype="text")
 
 
