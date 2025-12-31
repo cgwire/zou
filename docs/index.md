@@ -524,12 +524,12 @@ last name.
 To run properly, Zou requires a bunch of parameters you can give through
 environment variables. These variables can be set in your systemd script. 
 All variables are listed in the [configuration
-section](configuration).
+section](configuration.md).
 
 # Available actions
 
 To know more about what is possible to do with the CGWire API, refer to the
-[API section](api).
+[API section](api.md).
 
 # Packaging
 
