@@ -3,7 +3,7 @@ from sqlalchemy.exc import StatementError
 from zou.app.models.project import Project, ProjectPersonLink
 from zou.app.models.entity import Entity
 from zou.app.models.notification import Notification
-from zou.app.models.person import Person
+from zou.app.models.person import Person, DepartmentLink
 from zou.app.models.subscription import Subscription
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -497,7 +497,7 @@ def get_subscriptions_for_user(project_id, entity_type_id=None):
     return subscription_map
 
 
-def notify_clients_playlist_ready(playlist, studio_id=None):
+def notify_clients_playlist_ready(playlist, studio_id=None, department_id=None):
     """
     Notify clients that given playlist is ready.
     """
@@ -513,6 +513,11 @@ def notify_clients_playlist_ready(playlist, studio_id=None):
 
     if studio_id is not None and studio_id != "":
         query = query.filter(Person.studio_id == studio_id)
+
+    if department_id is not None and department_id != "":
+        query = query.join(DepartmentLink).filter(
+            DepartmentLink.department_id == department_id
+        ).distinct()
 
     for client in query.all():
         recipient_id = str(client.id)

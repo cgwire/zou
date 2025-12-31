@@ -835,6 +835,11 @@ class NotifyClientsResource(Resource, ArgsMixin):
                     format: uuid
                     description: Studio unique identifier to notify
                     example: b35b7fb5-df86-5776-b181-68564193d36
+                  department_id:
+                    type: string
+                    format: uuid
+                    description: Department unique identifier to notify
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
         responses:
           200:
             description: Clients notified successfully
@@ -848,11 +853,12 @@ class NotifyClientsResource(Resource, ArgsMixin):
                       description: Notification status
                       example: "success"
         """
-        studio_id = request.json.get("studio_id", None)
+        studio_id = self.get_id_parameter("studio_id", None)
+        department_id = self.get_id_parameter("department_id", None)
         playlist = playlists_service.get_playlist(playlist_id)
         project_id = playlist["project_id"]
         user_service.check_manager_project_access(project_id)
         notifications_service.notify_clients_playlist_ready(
-            playlist, studio_id
+            playlist, studio_id, department_id
         )
         return {"status": "success"}
