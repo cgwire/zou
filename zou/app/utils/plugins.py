@@ -436,10 +436,9 @@ def add_static_routes(manifest, routes):
             self.plugin_id = manifest.id
             super().__init__()
 
-    if manifest["frontend_project_enabled"] or manifest["frontend_studio_enabled"]:
-        routes.append(
-            (f"/frontend/<path:filename>", PluginStaticResource)
-        )
-        routes.append(
-            (f"/frontend", PluginStaticResource)
-        )
+    if (
+        manifest["frontend_project_enabled"]
+        or manifest["frontend_studio_enabled"]
+    ):
+        routes.append((f"/frontend/<path:filename>", PluginStaticResource))
+        routes.append((f"/frontend", PluginStaticResource))

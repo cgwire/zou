@@ -169,7 +169,6 @@ class ArgsMixin(object):
             raise WrongParameterException("Wrong UUID format.")
         return True
 
-
     def get_id_parameter(self, field_name, default=None):
         """
         Returns ID parameter value matching `field_name`.

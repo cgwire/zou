@@ -497,7 +497,9 @@ def get_subscriptions_for_user(project_id, entity_type_id=None):
     return subscription_map
 
 
-def notify_clients_playlist_ready(playlist, studio_id=None, department_id=None):
+def notify_clients_playlist_ready(
+    playlist, studio_id=None, department_id=None
+):
     """
     Notify clients that given playlist is ready.
     """
@@ -515,9 +517,11 @@ def notify_clients_playlist_ready(playlist, studio_id=None, department_id=None):
         query = query.filter(Person.studio_id == studio_id)
 
     if department_id is not None and department_id != "":
-        query = query.join(DepartmentLink).filter(
-            DepartmentLink.department_id == department_id
-        ).distinct()
+        query = (
+            query.join(DepartmentLink)
+            .filter(DepartmentLink.department_id == department_id)
+            .distinct()
+        )
 
     for client in query.all():
         recipient_id = str(client.id)

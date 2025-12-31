@@ -32,7 +32,9 @@ class PluginsServiceTestCase(ApiDBTestCase):
             shutil.rmtree(self.temp_dir)
 
     def _create_test_plugin(self, plugin_id="test_plugin", version="0.1.0"):
-        plugin_template_path = Path(__file__).parent.parent.parent / "zou" / "plugin_template"
+        plugin_template_path = (
+            Path(__file__).parent.parent.parent / "zou" / "plugin_template"
+        )
         plugin_path = Path(self.temp_dir) / plugin_id
 
         shutil.copytree(plugin_template_path, plugin_path)
@@ -74,7 +76,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
             version="0.1.0",
             maintainer_name="Test Author",
             maintainer_email="test@example.com",
-            license="MIT"
+            license="MIT",
         )
         plugin_path = self._create_test_plugin("test_plugin", "0.2.0")
         result = plugins_service.install_plugin(str(plugin_path), force=True)
@@ -90,7 +92,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
             version="0.1.0",
             maintainer_name="Test Author",
             maintainer_email="test@example.com",
-            license="MIT"
+            license="MIT",
         )
         plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
         result = plugins_service.install_plugin(str(plugin_path), force=True)
@@ -115,7 +117,9 @@ class PluginsServiceTestCase(ApiDBTestCase):
 
         self.assertTrue(result)
 
-        deleted_plugin = Plugin.query.filter_by(plugin_id="test_plugin").first()
+        deleted_plugin = Plugin.query.filter_by(
+            plugin_id="test_plugin"
+        ).first()
         self.assertIsNone(deleted_plugin)
         self.assertFalse(installed_path.exists())
 
@@ -131,7 +135,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
             version="0.1.0",
             maintainer_name="Author 1",
             maintainer_email="author1@example.com",
-            license="MIT"
+            license="MIT",
         )
         plugin2 = Plugin.create(
             plugin_id="plugin2",
@@ -139,7 +143,7 @@ class PluginsServiceTestCase(ApiDBTestCase):
             version="0.2.0",
             maintainer_name="Author 2",
             maintainer_email="author2@example.com",
-            license="GPL-3.0-only"
+            license="GPL-3.0-only",
         )
 
         plugins = plugins_service.get_plugins()

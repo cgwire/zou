@@ -24,7 +24,7 @@ class Plugin(db.Model, BaseMixin, SerializerMixin):
     revision = db.Column(db.String(12), nullable=True)
     frontend_project_enabled = db.Column(db.Boolean(), default=False)
     frontend_studio_enabled = db.Column(db.Boolean(), default=False)
-    icon = db.Column(db.String(255), nullable=True) # lucide-vue icon name
+    icon = db.Column(db.String(255), nullable=True)  # lucide-vue icon name
 
     def present(self):
         return {

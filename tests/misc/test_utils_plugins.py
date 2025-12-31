@@ -31,7 +31,7 @@ class PluginManifestTestCase(ApiDBTestCase):
 
     def test_plugin_manifest_from_file(self):
         manifest_path = Path(self.temp_dir) / "manifest.toml"
-        manifest_content = '''id = "test_plugin"
+        manifest_content = """id = "test_plugin"
 name = "Test Plugin"
 description = "A test plugin"
 version = "0.1.0"
@@ -40,7 +40,7 @@ website = "https://example.com"
 license = "MIT"
 frontend_project_enabled = false
 frontend_studio_enabled = false
-'''
+"""
         manifest_path.write_text(manifest_content)
 
         manifest = PluginManifest.from_file(manifest_path)
@@ -55,12 +55,12 @@ frontend_studio_enabled = false
         plugin_dir.mkdir()
 
         manifest_path = plugin_dir / "manifest.toml"
-        manifest_content = '''id = "test_plugin"
+        manifest_content = """id = "test_plugin"
 name = "Test Plugin"
 version = "0.1.0"
 maintainer = "Test Author <test@example.com>"
 license = "MIT"
-'''
+"""
         manifest_path.write_text(manifest_content)
 
         manifest = PluginManifest.from_plugin_path(plugin_dir)
@@ -83,7 +83,7 @@ license = "MIT"
             "name": "Test Plugin",
             "version": "invalid-version",
             "maintainer": "Test Author <test@example.com>",
-            "license": "MIT"
+            "license": "MIT",
         }
 
         with self.assertRaises(Exception):  # semver will raise an exception
@@ -95,7 +95,7 @@ license = "MIT"
             "name": "Test Plugin",
             "version": "0.1.0",
             "maintainer": "Test Author <test@example.com>",
-            "license": "INVALID-LICENSE"
+            "license": "INVALID-LICENSE",
         }
 
         with self.assertRaises(KeyError):
@@ -107,13 +107,15 @@ license = "MIT"
             "name": "Test Plugin",
             "version": "0.1.0",
             "maintainer": "Test Author <test@example.com>",
-            "license": "MIT"
+            "license": "MIT",
         }
 
         manifest = PluginManifest(manifest_data)
 
         self.assertEqual(manifest.data.get("maintainer_name"), "Test Author")
-        self.assertEqual(manifest.data.get("maintainer_email"), "test@example.com")
+        self.assertEqual(
+            manifest.data.get("maintainer_email"), "test@example.com"
+        )
 
     def test_plugin_manifest_to_model_dict(self):
         manifest_data = {
@@ -126,7 +128,7 @@ license = "MIT"
             "license": "MIT",
             "frontend_project_enabled": True,
             "frontend_studio_enabled": False,
-            "icon": "test-icon"
+            "icon": "test-icon",
         }
 
         manifest = PluginManifest(manifest_data)
@@ -146,7 +148,7 @@ license = "MIT"
             "name": "Test Plugin",
             "version": "0.1.0",
             "maintainer": "Test Author <test@example.com>",
-            "license": "MIT"
+            "license": "MIT",
         }
 
         manifest = PluginManifest(manifest_data)
@@ -155,7 +157,9 @@ license = "MIT"
 
         manifest.write_to_path(output_path)
 
-        written_manifest = PluginManifest.from_file(output_path / "manifest.toml")
+        written_manifest = PluginManifest.from_file(
+            output_path / "manifest.toml"
+        )
         self.assertEqual(written_manifest["id"], "test_plugin")
         self.assertEqual(written_manifest["name"], "Test Plugin")
 
@@ -199,7 +203,7 @@ class PluginFilesTestCase(ApiDBTestCase):
         (source_dir / "file2.txt").write_text("content2")
 
         zip_path = Path(self.temp_dir) / "plugin.zip"
-        with zipfile.ZipFile(zip_path, 'w') as zf:
+        with zipfile.ZipFile(zip_path, "w") as zf:
             zf.write(source_dir / "file1.txt", "file1.txt")
             zf.write(source_dir / "file2.txt", "file2.txt")
 
@@ -220,7 +224,9 @@ class PluginFilesTestCase(ApiDBTestCase):
         with self.assertRaises(ValueError) as context:
             install_plugin_files(invalid_path, install_path)
 
-        self.assertIn("not a valid zip file or a directory", str(context.exception))
+        self.assertIn(
+            "not a valid zip file or a directory", str(context.exception)
+        )
 
     def test_uninstall_plugin_files(self):
         plugin_path = Path(self.temp_dir) / "plugin"
@@ -250,12 +256,12 @@ class PluginPackageTestCase(ApiDBTestCase):
         plugin_dir = Path(self.temp_dir) / "test_plugin"
         plugin_dir.mkdir()
         manifest_path = plugin_dir / "manifest.toml"
-        manifest_content = '''id = "test_plugin"
+        manifest_content = """id = "test_plugin"
 name = "Test Plugin"
 version = "0.1.0"
 maintainer = "Test Author <test@example.com>"
 license = "MIT"
-'''
+"""
         manifest_path.write_text(manifest_content)
         (plugin_dir / "file1.txt").write_text("content1")
         output_path = Path(self.temp_dir) / "output.zip"
@@ -266,7 +272,7 @@ license = "MIT"
         self.assertTrue(result.exists())
         self.assertTrue(result.suffix == ".zip")
 
-        with zipfile.ZipFile(result, 'r') as zf:
+        with zipfile.ZipFile(result, "r") as zf:
             files = zf.namelist()
             self.assertIn("manifest.toml", files)
             self.assertIn("file1.txt", files)
@@ -295,7 +301,7 @@ class PluginSkeletonTestCase(ApiDBTestCase):
             maintainer="Test Author <test@example.com>",
             website="https://example.com",
             license="MIT",
-            icon="test-icon"
+            icon="test-icon",
         )
 
         self.assertTrue(result.exists())
@@ -315,10 +321,7 @@ class PluginSkeletonTestCase(ApiDBTestCase):
 
         with self.assertRaises(FileExistsError):
             create_plugin_skeleton(
-                output_dir,
-                id="test_plugin",
-                name="Test Plugin",
-                license="MIT"
+                output_dir, id="test_plugin", name="Test Plugin", license="MIT"
             )
 
         result = create_plugin_skeleton(
@@ -326,7 +329,7 @@ class PluginSkeletonTestCase(ApiDBTestCase):
             id="test_plugin",
             name="Test Plugin",
             license="MIT",
-            force=True
+            force=True,
         )
         self.assertTrue(result.exists())
 
@@ -340,7 +343,7 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
             "maintainer": "Test Author <test@example.com>",
             "license": "MIT",
             "frontend_project_enabled": True,
-            "frontend_studio_enabled": False
+            "frontend_studio_enabled": False,
         }
         manifest = PluginManifest(manifest_data)
         routes = []
@@ -364,7 +367,7 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
             "maintainer": "Test Author <test@example.com>",
             "license": "MIT",
             "frontend_project_enabled": False,
-            "frontend_studio_enabled": False
+            "frontend_studio_enabled": False,
         }
         manifest = PluginManifest(manifest_data)
         routes = []
@@ -372,4 +375,3 @@ class PluginStaticRoutesTestCase(ApiDBTestCase):
         add_static_routes(manifest, routes)
 
         self.assertEqual(len(routes), 0)
-
