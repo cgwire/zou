@@ -41,7 +41,7 @@ sudo docker run -it --rm \
     -e MEILI_ENV='development' \
     -e MEILI_MASTER_KEY='meilimasterkey' \
     -v $(pwd)/meili_data:/meili_data \
-    -d getmeili/meilisearch:v1.5
+    -d getmeili/meilisearch:v1.8.3
 ```
 
 ## FFMPEG
@@ -134,6 +134,18 @@ gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -
 
 To run unit tests, we recommend using another database. 
 
+## Add ffmpeg
+
+To run all tests, `ffmpeg` and `ffprobe` are required.
+
+### Init the search index
+
+The search index can be initialized and reset with the following command:
+
+```
+INDEXER_KEY=meilimasterkey DB_DATABASE=zoutest zou reset-search index
+```
+
 ### Create a testing database
 
 In the CLI of the hosting, the PostgreSQL DB executes the following:
@@ -149,7 +161,7 @@ psql -c 'create database zoutest;' -U postgres
 In your zou environment `workon zou`, execute the tests with the `DB_DATABASE` environment variable:
 
 ```
-DB_DATABASE=zoutest py.test
+INDEXER_KEY=meilimasterkey DB_DATABASE=zoutest py.test
 ```
 
 If you want to run a specific test (you can list several):
