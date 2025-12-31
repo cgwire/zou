@@ -1815,7 +1815,7 @@ def reset_task_data(task_id):
         if task_status_is_wip and real_start_date is None:
             real_start_date = comment.created_at
 
-        if task_status_is_feedback_request:
+        if task_status_is_feedback_request and end_date is None:
             end_date = comment.created_at
 
         print("ok", task_status_is_done)

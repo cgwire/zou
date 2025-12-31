@@ -188,7 +188,8 @@ def _manage_status_change(task_status, task, comment):
                 new_data["retake_count"] = retake_count + 1
 
             if task_status["is_feedback_request"]:
-                new_data["end_date"] = date_helpers.get_utc_now_datetime()
+                if task.get("end_date") is None:
+                    new_data["end_date"] = date_helpers.get_utc_now_datetime()
 
             if task_status["is_wip"] and task["real_start_date"] is None:
                 new_data["real_start_date"] = datetime.datetime.now(
