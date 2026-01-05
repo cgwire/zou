@@ -47,11 +47,38 @@ def make_key(prefix, id):
 
 
 def make_read_generator(bucket, key):
+    """
+    Create a generator that yields chunks from the storage bucket.
+    This function ensures proper cleanup of the underlying stream to avoid
+    reentrant call errors when the stream is accessed concurrently.
+    """
     read_stream = bucket.read_chunks(key)
 
     def read_generator(read_stream):
-        for chunk in read_stream:
-            yield chunk
+        try:
+            for chunk in read_stream:
+                yield chunk
+        except GeneratorExit:
+            try:
+                if hasattr(read_stream, 'close'):
+                    read_stream.close()
+            except Exception:
+                pass
+            raise
+        except StopIteration:
+            try:
+                if hasattr(read_stream, 'close'):
+                    read_stream.close()
+            except Exception:
+                pass
+            raise
+        except Exception:
+            try:
+                if hasattr(read_stream, 'close'):
+                    read_stream.close()
+            except Exception:
+                pass
+            raise
 
     return read_generator(read_stream)
 

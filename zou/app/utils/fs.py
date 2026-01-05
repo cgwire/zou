@@ -57,20 +57,42 @@ def get_file_path_and_file(
             exception = None
             try:
                 with open(file_path, "wb") as tmp_file:
-                    for chunk in open_file(prefix, instance_id):
-                        tmp_file.write(chunk)
-            except:
+                    file_generator = open_file(prefix, instance_id)
+                    try:
+                        for chunk in file_generator:
+                            tmp_file.write(chunk)
+                    finally:
+                        try:
+                            file_generator.close()
+                        except StopIteration:
+                            # Normal end of iteration, expected
+                            pass
+                        except Exception:
+                            pass
+            except Exception as e:
                 download_failed = True
+                exception = e
 
             if is_unvalid_file(
                 file_path, file_size, download_failed
             ):  # download failed
                 time.sleep(3)
                 download_failed = False
+                exception = None
                 try:
                     with open(file_path, "wb") as tmp_file:
-                        for chunk in open_file(prefix, instance_id):
-                            tmp_file.write(chunk)
+                        file_generator = open_file(prefix, instance_id)
+                        try:
+                            for chunk in file_generator:
+                                tmp_file.write(chunk)
+                        finally:
+                            try:
+                                file_generator.close()
+                            except StopIteration:
+                                # Normal end of iteration, expected
+                                pass
+                            except Exception:
+                                pass
                 except Exception as e:
                     download_failed = True
                     exception = e
