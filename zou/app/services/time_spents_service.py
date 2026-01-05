@@ -184,7 +184,10 @@ def get_time_spents_for_month(
     """
     Return all time spents for given month.
     """
-    date = datetime.datetime(int(year), int(month), 1)
+    month_int = int(month)
+    if month_int < 1 or month_int > 12:
+        raise WrongDateFormatException
+    date = datetime.datetime(int(year), month_int, 1)
     next_month = date + relativedelta.relativedelta(months=1)
     query = TimeSpent.query.filter(TimeSpent.date >= date).filter(
         TimeSpent.date < next_month

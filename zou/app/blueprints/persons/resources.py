@@ -672,7 +672,7 @@ class PersonMonthAllTimeSpentsResource(Resource):
             )
             return fields.serialize_list(timespents)
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid month or year.")
 
 
 class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
@@ -1160,10 +1160,12 @@ class TimeSpentMonthResource(TimeSpentDurationResource):
                 schema:
                   type: object
         """
-
-        return time_spents_service.get_day_table(
-            year, month, **self.get_person_project_department_arguments()
-        )
+        try:
+            return time_spents_service.get_day_table(
+                year, month, **self.get_person_project_department_arguments()
+            )
+        except WrongDateFormatException:
+            raise WrongParameterException("Invalid month or year.")
 
 
 class TimeSpentYearsResource(TimeSpentDurationResource):
