@@ -371,7 +371,14 @@ def install_plugin_files(files_path, installation_path):
     installation_path.mkdir(parents=True, exist_ok=True)
 
     if files_path.is_dir():
-        shutil.copytree(files_path, installation_path, dirs_exist_ok=True)
+        def ignore_git(dir, names):
+            ignored = []
+            if ".git" in names:
+                ignored.append(".git")
+            return ignored
+        shutil.copytree(
+            files_path, installation_path, dirs_exist_ok=True, ignore=ignore_git
+        )
     elif zipfile.is_zipfile(files_path):
         shutil.unpack_archive(files_path, installation_path, format="zip")
     else:
