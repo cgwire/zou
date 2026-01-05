@@ -1336,6 +1336,8 @@ def update_notification(notification_id, read):
     notification = Notification.get_by(
         id=notification_id, person_id=current_user["id"]
     )
+    if notification is None:
+        raise NotificationNotFoundException
     notification.update({"read": read})
     if read:
         events.emit(
