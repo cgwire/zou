@@ -42,6 +42,7 @@ from zou.app.services.exception import (
     CommentNotFoundException,
     ModelWithRelationsDeletionException,
     PersonInProtectedAccounts,
+    PreviewFileNotFoundException,
 )
 
 
@@ -157,6 +158,8 @@ def remove_task(task_id, force=False):
 
 def remove_preview_file_by_id(preview_file_id, force=False):
     preview_file = PreviewFile.get(preview_file_id)
+    if preview_file is None:
+        raise PreviewFileNotFoundException
     return remove_preview_file(preview_file, force=force)
 
 
