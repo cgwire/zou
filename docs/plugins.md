@@ -79,9 +79,50 @@ license = "GPL-3.0-only"
 
 ---
 
+## Add new sections to Kitsu UI
+
+### Studio wide section
+
+
+Add these options to your manifest :
+
+```
+frontend_studio_enabled = true
+icon = "ticket-check"
+```
+
+It will add a section in the Kitsu left sidebar. The icon used will picked
+from the [lucide-icon](https://lucide.dev/) list. Use the icon parameter to
+select yours.
+
+Once done add an html entry point in your plugin:
+
+```
+frontend/dist/index.html
+```
+
+Then install your application again and see how it runs into Kitsu.
+
+NB: We recommend to build apps based on Vue or NuxtJS.
+
+### Production wide section
+
+```
+frontend_project_enabled = true
+icon = "ticket-check"
+```
+
+The `frontend_project_enabled` parameter will add a section in the project
+menu located on the top of the Kitsu UI.
+
+It will use the same entry point as the studio but will add two parameters
+in the query loading your index.html file: `production_id` and `episode_id`.
+It will allow you to know the context in which the plugin is loaded.
+
+
 ## Best practices
 
-* Use unique plugin IDs.
+* Use alphanumeric characters and hyphens for the plugin name.
 * Follow semantic versioning (`x.y.z`).
 * Include at least one route or feature inside your plugin module.
 * Write migrations if your plugin defines database models.
