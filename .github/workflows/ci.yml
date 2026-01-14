@@ -13,8 +13,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["3.10", "3.11", "3.12", "3.13"]
-        pg-version: ["12", "13", "14", "15", "16", "17"]
+        version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        pg-version: ["12", "14", "15", "16", "17", "18"]
     services:
       postgres:
         image: "postgres:${{ matrix.pg-version }}"
@@ -28,7 +28,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Install ffmpeg
         run: |
           sudo apt-get update

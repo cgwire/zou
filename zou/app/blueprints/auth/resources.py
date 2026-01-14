@@ -75,7 +75,7 @@ class AuthenticatedResource(Resource):
           401:
             description: Person not found
         """
-        person = persons_service.get_current_user(relations=True)
+        person = persons_service.get_current_user(unsafe=True, relations=True)
         organisation = persons_service.get_organisation(
             sensitive=permissions.has_admin_permissions()
         )
@@ -559,7 +559,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
           400:
             description: Invalid password or inactive user
         """
-        (old_password, password, password_2) = self.get_arguments()
+        old_password, password, password_2 = self.get_arguments()
 
         try:
             user = persons_service.get_current_user()
