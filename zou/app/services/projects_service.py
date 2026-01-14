@@ -333,6 +333,9 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
+    if not task_type_id or not fields.is_valid_id(task_type_id):
+        raise WrongParameterException("task_type_id is required and must be a valid UUID")
+
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
@@ -426,6 +429,11 @@ def remove_preview_background_file_setting(
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
+    if model is None:
+        model_name = model_class.__name__
+        raise WrongParameterException(
+            f"{model_name} with id {model_id} not found"
+        )
     if str(model.id) not in [str(m.id) for m in getattr(project, list_attr)]:
         getattr(project, list_attr).append(model)
         return _save_project(project)
@@ -656,6 +664,9 @@ def is_open(project):
 
 
 def create_project_task_type_link(project_id, task_type_id, priority):
+    if not task_type_id or not fields.is_valid_id(task_type_id):
+        raise WrongParameterException("task_type_id is required and must be a valid UUID")
+
     task_type_link = ProjectTaskTypeLink.get_by(
         project_id=project_id, task_type_id=task_type_id
     )
@@ -676,6 +687,9 @@ def create_project_task_type_link(project_id, task_type_id, priority):
 def create_project_task_status_link(
     project_id, task_status_id, priority, roles_for_board=[]
 ):
+    if not task_status_id or not fields.is_valid_id(task_status_id):
+        raise WrongParameterException("task_status_id is required and must be a valid UUID")
+
     task_status_link = ProjectTaskStatusLink.get_by(
         project_id=project_id, task_status_id=task_status_id
     )
