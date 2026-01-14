@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 import re
 import uuid
 import sqlalchemy.orm as orm
@@ -37,6 +38,8 @@ def serialize_value(value, milliseconds=False):
         return str(value)
     elif isinstance(value, Choice):
         return value.code
+    elif isinstance(value, Enum):
+        return value.value
     elif isinstance(value, IPv4Address):
         return str(value)
     elif value is None:
