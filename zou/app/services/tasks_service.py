@@ -1818,10 +1818,8 @@ def reset_task_data(task_id):
         if task_status_is_feedback_request and end_date is None:
             end_date = comment.created_at
 
-        print("ok", task_status_is_done)
         if task_status_is_done:
             done_date = comment.created_at
-            print(done_date)
 
         task_status_id = comment.task_status_id
         last_comment_date = comment.created_at
