@@ -25,7 +25,7 @@ from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
-from zou.app.models.task import Task
+from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.task_type import TaskType
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.time_spent import TimeSpent
@@ -871,14 +871,16 @@ def get_person_tasks(person_id, projects, is_done=None):
     Sequence = aliased(Entity, name="sequence")
     Episode = aliased(Entity, name="episode")
     query = (
-        Task.query.join(Project, Task.project_id == Project.id)
+        Task.query
+        .join(TaskPersonLink, Task.id == TaskPersonLink.task_id)
+        .join(Project, Task.project_id == Project.id)
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, Task.task_status_id == TaskStatus.id)
         .join(Entity, Entity.id == Task.entity_id)
         .join(EntityType, EntityType.id == Entity.entity_type_id)
         .outerjoin(Sequence, Sequence.id == Entity.parent_id)
         .outerjoin(Episode, Episode.id == Sequence.parent_id)
-        .filter(Task.assignees.contains(person))
+        .filter(TaskPersonLink.person_id == person_id)
         .filter(Project.id.in_(project_ids))
         .add_columns(
             Project.name,
