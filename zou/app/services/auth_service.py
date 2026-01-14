@@ -28,6 +28,7 @@ from zou.app.services.exception import (
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     TwoFactorAuthenticationNotEnabledException,
+    TwoFactorAuthenticationRequiredException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
@@ -93,6 +94,13 @@ def check_auth(
             date_helpers.get_utc_now_datetime(),
         )
         raise WrongPasswordException()
+
+    # Check if 2FA is enforced and user doesn't have it set up
+    # This check happens after password verification to ensure user is authenticated
+    if app.config["ENFORCE_2FA"] and not no_otp:
+        if not _is_user_exempt_from_2fa(person, app):
+            if not person_two_factor_authentication_enabled(person):
+                raise TwoFactorAuthenticationRequiredException()
 
     if not no_otp and person_two_factor_authentication_enabled(person):
         if not check_two_factor_authentication(
@@ -258,6 +266,14 @@ def person_two_factor_authentication_enabled(person):
         or person["email_otp_enabled"]
         or person["fido_enabled"]
     )
+
+
+def _is_user_exempt_from_2fa(person, app):
+    """
+    Check if user is exempt from mandatory 2FA requirement.
+    """
+    exempt_users = app.config.get("TWO_FA_EXEMPT_USERS", [])
+    return person.get("email", "") in exempt_users
 
 
 def person_two_factor_authentication_enabled_raw(person):

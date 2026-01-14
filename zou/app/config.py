@@ -167,6 +167,13 @@ USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
 PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 ENFORCE_2FA = envtobool("ENFORCE_2FA", False)
+# Comma-separated list of user emails exempt from mandatory 2FA requirement
+TWO_FA_EXEMPT_USERS_STR = os.getenv("2FA_EXEMPT_USERS", "")
+TWO_FA_EXEMPT_USERS = (
+    [email.strip() for email in TWO_FA_EXEMPT_USERS_STR.split(",") if email.strip()]
+    if TWO_FA_EXEMPT_USERS_STR
+    else []
+)
 
 TELEMETRY_URL = os.getenv(
     "TELEMETRY_URL",
