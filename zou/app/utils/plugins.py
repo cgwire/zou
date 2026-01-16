@@ -24,6 +24,7 @@ from sqlalchemy.util import FacadeDict
 from zou.app import db, app
 from zou.app.utils.api import configure_api_from_blueprint
 
+
 class StaticResource(Resource):
 
     plugin_id = None
@@ -370,13 +371,18 @@ def install_plugin_files(files_path, installation_path):
     installation_path.mkdir(parents=True, exist_ok=True)
 
     if files_path.is_dir():
+
         def ignore_git(dir, names):
             ignored = []
             if ".git" in names:
                 ignored.append(".git")
             return ignored
+
         shutil.copytree(
-            files_path, installation_path, dirs_exist_ok=True, ignore=ignore_git
+            files_path,
+            installation_path,
+            dirs_exist_ok=True,
+            ignore=ignore_git,
         )
     elif zipfile.is_zipfile(files_path):
         shutil.unpack_archive(files_path, installation_path, format="zip")

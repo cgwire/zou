@@ -6,7 +6,7 @@ from sqlalchemy import MetaData, Column, Integer
 
 from zou.app.utils.plugins import create_plugin_metadata
 
-plugin_metadata = create_plugin_metadata("myplugin") # plugin id expected here
+plugin_metadata = create_plugin_metadata("myplugin")  # plugin id expected here
 PluginBase = declarative_base(metadata=plugin_metadata)
 
 

@@ -334,7 +334,9 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     Add a task type listed in database to the the project task types.
     """
     if not task_type_id or not fields.is_valid_id(task_type_id):
-        raise WrongParameterException("task_type_id is required and must be a valid UUID")
+        raise WrongParameterException(
+            "task_type_id is required and must be a valid UUID"
+        )
 
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
@@ -665,7 +667,9 @@ def is_open(project):
 
 def create_project_task_type_link(project_id, task_type_id, priority):
     if not task_type_id or not fields.is_valid_id(task_type_id):
-        raise WrongParameterException("task_type_id is required and must be a valid UUID")
+        raise WrongParameterException(
+            "task_type_id is required and must be a valid UUID"
+        )
 
     task_type_link = ProjectTaskTypeLink.get_by(
         project_id=project_id, task_type_id=task_type_id
@@ -688,7 +692,9 @@ def create_project_task_status_link(
     project_id, task_status_id, priority, roles_for_board=[]
 ):
     if not task_status_id or not fields.is_valid_id(task_status_id):
-        raise WrongParameterException("task_status_id is required and must be a valid UUID")
+        raise WrongParameterException(
+            "task_status_id is required and must be a valid UUID"
+        )
 
     task_status_link = ProjectTaskStatusLink.get_by(
         project_id=project_id, task_status_id=task_status_id

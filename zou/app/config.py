@@ -170,7 +170,11 @@ ENFORCE_2FA = envtobool("ENFORCE_2FA", False)
 # Comma-separated list of user emails exempt from mandatory 2FA requirement
 TWO_FA_EXEMPT_USERS_STR = os.getenv("2FA_EXEMPT_USERS", "")
 TWO_FA_EXEMPT_USERS = (
-    [email.strip() for email in TWO_FA_EXEMPT_USERS_STR.split(",") if email.strip()]
+    [
+        email.strip()
+        for email in TWO_FA_EXEMPT_USERS_STR.split(",")
+        if email.strip()
+    ]
     if TWO_FA_EXEMPT_USERS_STR
     else []
 )
