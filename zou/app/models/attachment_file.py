@@ -12,7 +12,7 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
     """
 
     name = db.Column(db.String(250))
-    size = db.Column(db.Integer(), default=1)
+    size = db.Column(db.BigInteger(), default=1)
     extension = db.Column(db.String(6))
     mimetype = db.Column(db.String(255))
     comment_id = db.Column(

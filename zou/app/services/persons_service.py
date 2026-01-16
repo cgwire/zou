@@ -28,6 +28,7 @@ from zou.app.services.exception import (
 
 
 def clear_person_cache():
+    cache.cache.delete_memoized(get_person_raw)
     cache.cache.delete_memoized(get_person)
     cache.cache.delete_memoized(get_person_by_email)
     cache.cache.delete_memoized(get_person_by_desktop_login)
@@ -76,6 +77,7 @@ def get_active_persons():
     return fields.serialize_models(persons)
 
 
+@cache.memoize_function(60)
 def get_person_raw(person_id):
     """
     Return given person as an active record.

@@ -103,7 +103,10 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     is_shared = db.Column(db.Boolean, default=False, nullable=False)
 
     status = db.Column(
-        ChoiceType(ENTITY_STATUSES), default="running", nullable=False
+        ChoiceType(ENTITY_STATUSES),
+        default="running",
+        nullable=False,
+        index=True,
     )
 
     project_id = db.Column(
@@ -174,6 +177,12 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
             "entity_type_id",
             "parent_id",
             name="entity_uc",
+        ),
+        db.Index(
+            "ix_entity_project_type_status",
+            "project_id",
+            "entity_type_id",
+            "status",
         ),
     )
 

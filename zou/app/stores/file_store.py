@@ -60,21 +60,21 @@ def make_read_generator(bucket, key):
                 yield chunk
         except GeneratorExit:
             try:
-                if hasattr(read_stream, 'close'):
+                if hasattr(read_stream, "close"):
                     read_stream.close()
             except Exception:
                 pass
             raise
         except StopIteration:
             try:
-                if hasattr(read_stream, 'close'):
+                if hasattr(read_stream, "close"):
                     read_stream.close()
             except Exception:
                 pass
             raise
         except Exception:
             try:
-                if hasattr(read_stream, 'close'):
+                if hasattr(read_stream, "close"):
                     read_stream.close()
             except Exception:
                 pass
