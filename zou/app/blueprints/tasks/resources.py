@@ -242,6 +242,9 @@ class AddExtraPreviewResource(Resource, ArgsMixin):
             204:
               description: Preview deleted from comment
         """
+        self.check_id_parameter(task_id)
+        self.check_id_parameter(comment_id)
+        self.check_id_parameter(preview_file_id)
         task = tasks_service.get_task(task_id)
         user_service.check_project_access(task["project_id"])
         deletion_service.remove_preview_file_by_id(
