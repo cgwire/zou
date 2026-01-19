@@ -79,7 +79,21 @@ if config.INDEXER["key"] is not None:
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):
-    db.session.remove()
+    """
+    Clean up database session when application context is torn down.
+    This ensures connections are properly returned to the pool.
+
+    Flask-SQLAlchemy automatically commits on successful requests and rolls back
+    on exceptions, but we ensure proper cleanup here to prevent connection
+    leaks.
+    """
+    try:
+        if exception is not None or db.session.is_active:
+            db.session.rollback()
+    except Exception:
+        pass
+    finally:
+        db.session.remove()
 
 
 @app.errorhandler(404)

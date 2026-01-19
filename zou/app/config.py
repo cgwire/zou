@@ -52,6 +52,12 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENGINE_OPTIONS = {
     "pool_size": int(os.getenv("DB_POOL_SIZE", 30)),
     "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", 60)),
+    # Verify connections before using them (prevents using stale connections)
+    "pool_pre_ping": envtobool("DB_POOL_PRE_PING", True),
+    # Recycle connections after this many seconds (prevents long-lived connections)
+    "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", 3600)),
+    # Reset connections when returning to pool (cleans up transaction state)
+    "pool_reset_on_return": os.getenv("DB_POOL_RESET_ON_RETURN", "commit"),
 }
 
 INDEXER = {
