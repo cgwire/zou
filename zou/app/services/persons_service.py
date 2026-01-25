@@ -225,9 +225,11 @@ def create_person(
         email = email.strip()
 
     if expiration_date is not None:
+        if type(expiration_date) is str:
+            expiration_date = date_helpers.get_date_from_string(expiration_date)
         try:
             if (
-                date_helpers.get_date_from_string(expiration_date).date()
+                expiration_date.date()
                 < datetime.date.today()
             ):
                 raise WrongParameterException(
