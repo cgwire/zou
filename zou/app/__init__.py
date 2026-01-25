@@ -191,7 +191,7 @@ def configure_auth():
     def user_lookup_callback(_, payload):
         identity_type = payload.get("identity_type")
         try:
-            identity = persons_service.get_person_raw(payload["sub"])
+            identity = persons_service.get_person_raw_cached(payload["sub"])
         except PersonNotFoundException:
             return wrong_auth_handler()
         check_active_identity(identity, identity_type, jti=payload["jti"])
@@ -205,7 +205,7 @@ def configure_auth():
     def on_identity_loaded(_, identity):
         try:
             if isinstance(identity.id, (str, uuid.UUID)):
-                identity.user = persons_service.get_person_raw(identity.id)
+                identity.user = persons_service.get_person_raw_cached(identity.id)
 
                 if hasattr(identity.user, "id"):
                     identity.provides.add(UserNeed(identity.user.id))

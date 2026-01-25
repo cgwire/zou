@@ -16,7 +16,7 @@ from zou.app.models.organisation import Organisation
 from zou.app.models.person import Person
 from zou.app.models.time_spent import TimeSpent
 
-from zou.app import config, file_store
+from zou.app import config, file_store, db
 from zou.app.utils import fields, events, cache, emails, date_helpers
 from zou.app.services import index_service, auth_service, templates_service
 from zou.app.stores import auth_tokens_store
@@ -28,7 +28,7 @@ from zou.app.services.exception import (
 
 
 def clear_person_cache():
-    cache.cache.delete_memoized(get_person_raw)
+    cache.cache.delete_memoized(_get_person_raw_for_cache)
     cache.cache.delete_memoized(get_person)
     cache.cache.delete_memoized(get_person_by_email)
     cache.cache.delete_memoized(get_person_by_desktop_login)
@@ -78,6 +78,49 @@ def get_active_persons():
 
 
 @cache.memoize_function(60)
+def _get_person_raw_for_cache(person_id):
+    """
+    Internal function to get person and prepare it for caching.
+    Expunges the object from session so it can be safely cached.
+    This function is cached - it returns a detached Person object.
+
+    Note: We don't pre-load departments here to avoid stale department data.
+    Departments will be loaded fresh after merging into the session.
+    """
+    if person_id is None:
+        raise PersonNotFoundException()
+
+    try:
+        person = Person.get(person_id)
+    except StatementError:
+        raise PersonNotFoundException()
+
+    if person is None:
+        raise PersonNotFoundException()
+
+    # Don't load departments here - we'll load them fresh after merging
+    # This ensures departments are always up-to-date even if cached
+
+    # Expunge from session so it can be cached without session conflicts
+    # This is cheap - just removes from identity map, no DB query
+    db.session.expunge(person)
+    return person
+
+
+def get_person_raw_cached(person_id):
+    """
+    Return given person as an active record, cached and merged into current session.
+    This avoids session conflicts by caching expunged objects and merging on retrieval.
+
+    Uses load=False to avoid database query on merge - we trust the cached data.
+    Departments are loaded fresh after merging to ensure they're up-to-date.
+    """
+    cached_person = _get_person_raw_for_cache(person_id)
+    # Merge into current session with load=False to avoid DB query
+    merged_person = db.session.merge(cached_person, load=False)
+    return merged_person
+
+
 def get_person_raw(person_id):
     """
     Return given person as an active record.
@@ -162,6 +205,12 @@ def get_current_user_raw():
     Return person from its auth token (the one that does the request) as an
     active record.
     """
+    # current_user is already a Person object from the auth callback
+    # which uses get_person_raw_cached(). However, when merging with load=False,
+    # relationships might not be loaded. We need to ensure departments are loaded.
+    # Accessing departments triggers lazy loading if not already loaded.
+    # Convert to list to force evaluation and ensure departments are loaded
+    _ = list(current_user.departments) if hasattr(current_user, 'departments') else []
     return current_user
 
 
