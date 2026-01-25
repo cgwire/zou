@@ -427,6 +427,8 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
+    project_id = str(project_id)
+    task_type_id = str(task_type_id)
     if not task_type_id or not fields.is_valid_id(task_type_id):
         raise WrongParameterException(
             "task_type_id is required and must be a valid UUID"

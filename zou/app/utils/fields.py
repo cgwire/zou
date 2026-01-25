@@ -1,12 +1,13 @@
 import datetime
-from enum import Enum
-import re
-import uuid
-import sqlalchemy.orm as orm
 
-from pytz import tzinfo
+import re
+import sqlalchemy.orm as orm
+import uuid
+
 from babel import Locale
+from enum import Enum
 from ipaddress import IPv4Address
+from pytz import tzinfo
 from sqlalchemy_utils.types.choice import Choice
 
 
