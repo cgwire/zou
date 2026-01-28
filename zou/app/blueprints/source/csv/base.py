@@ -68,7 +68,7 @@ class BaseCsvImportResource(Resource, ArgsMixin):
         result = []
         self.check_permissions(*args)
         self.prepare_import(*args)
-        with open(file_path) as csvfile:
+        with open(file_path, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile, dialect=self.get_dialect(csvfile))
             line_number = 1
             for row in reader:
@@ -94,9 +94,10 @@ class BaseCsvImportResource(Resource, ArgsMixin):
 
     def get_dialect(self, csvfile):
         sniffer = csv.Sniffer()
-        dialect = sniffer.sniff(csvfile.read())
-        dialect.doublequote = True
+        sample = csvfile.read(8192)
         csvfile.seek(0)
+        dialect = sniffer.sniff(sample)
+        dialect.doublequote = True
         return dialect
 
     def prepare_import(self, *args):
