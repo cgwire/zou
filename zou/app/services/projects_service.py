@@ -77,88 +77,182 @@ def get_projects_with_extra_data(
     Helpers function to attach:
     * First episode name to current project when it's a TV Show.
     * Add metadata descriptors for this project.
+    * Add task types and task statuses for this project.
     """
-    projects = []
-    for project in query.all():
-        project_dict = project.serialize(relations=True)
-        if for_client:
-            descriptors = MetadataDescriptor.get_all_by(
-                project_id=project.id, for_client=True
-            )
-        elif vendor_departments is not None:
-            descriptors = MetadataDescriptor.query.filter(
-                or_(
-                    MetadataDescriptor.departments == None,
-                    MetadataDescriptor.departments.any(
-                        Department.id.in_(vendor_departments)
-                    ),
-                )
-            )
-        else:
-            descriptors = MetadataDescriptor.get_all_by(project_id=project.id)
-        project_dict["descriptors"] = []
-        for descriptor in descriptors:
-            project_dict["descriptors"].append(
-                {
-                    "id": fields.serialize_value(descriptor.id),
-                    "name": descriptor.name,
-                    "field_name": descriptor.field_name,
-                    "data_type": fields.serialize_value(descriptor.data_type),
-                    "choices": descriptor.choices,
-                    "for_client": descriptor.for_client or False,
-                    "entity_type": descriptor.entity_type,
-                    "position": descriptor.position,
-                    "departments": [
-                        str(department.id)
-                        for department in descriptor.departments
-                    ],
-                }
-            )
+    projects_list = query.all()
+    if not projects_list:
+        return []
 
-        project_dict["task_types_priority"] = {
-            str(task_type_link.task_type_id): task_type_link.priority
-            for task_type_link in ProjectTaskTypeLink.query.filter_by(
-                project_id=project.id
-            )
-        }
+    project_ids = [p.id for p in projects_list]
 
-        project_dict["task_statuses_link"] = {
-            str(task_status_link.task_status_id): {
-                "priority": task_status_link.priority,
-                "roles_for_board": fields.serialize_list(
-                    task_status_link.roles_for_board
+    descriptors_by_project = _fetch_metadata_descriptors_by_project(
+        project_ids, for_client, vendor_departments
+    )
+    task_types_by_project = _fetch_task_type_links_by_project(project_ids)
+    task_statuses_by_project = _fetch_task_status_links_by_project(project_ids)
+    tvshow_project_ids = [
+        p.id for p in projects_list if p.production_type == "tvshow"
+    ]
+    first_episodes_by_project = _fetch_first_episodes_by_project(
+        tvshow_project_ids
+    )
+    return [
+        _build_project_dict_with_extra_data(
+            project,
+            descriptors_by_project,
+            task_types_by_project,
+            task_statuses_by_project,
+            first_episodes_by_project,
+        )
+        for project in projects_list
+    ]
+
+def _fetch_metadata_descriptors_by_project(
+    project_ids, for_client=False, vendor_departments=None
+):
+    if for_client:
+        descriptors_query = MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id.in_(project_ids),
+            MetadataDescriptor.for_client == True,
+        )
+    elif vendor_departments is not None:
+        descriptors_query = MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id.in_(project_ids)
+        ).filter(
+            or_(
+                MetadataDescriptor.departments == None,
+                MetadataDescriptor.departments.any(
+                    Department.id.in_(vendor_departments)
                 ),
-            }
-            for task_status_link in ProjectTaskStatusLink.query.filter_by(
-                project_id=project.id
             )
+        )
+    else:
+        descriptors_query = MetadataDescriptor.query.filter(
+            MetadataDescriptor.project_id.in_(project_ids)
+        )
+
+    all_descriptors = descriptors_query.all()
+    descriptors_by_project = {}
+    for desc in all_descriptors:
+        if desc.project_id not in descriptors_by_project:
+            descriptors_by_project[desc.project_id] = []
+        descriptors_by_project[desc.project_id].append(desc)
+    return descriptors_by_project
+
+
+def _fetch_task_type_links_by_project(project_ids):
+    task_type_links = ProjectTaskTypeLink.query.filter(
+        ProjectTaskTypeLink.project_id.in_(project_ids)
+    ).all()
+    task_types_by_project = {}
+    for link in task_type_links:
+        if link.project_id not in task_types_by_project:
+            task_types_by_project[link.project_id] = {}
+        task_types_by_project[link.project_id][
+            str(link.task_type_id)
+        ] = link.priority
+    return task_types_by_project
+
+
+def _fetch_task_status_links_by_project(project_ids):
+    task_status_links = ProjectTaskStatusLink.query.filter(
+        ProjectTaskStatusLink.project_id.in_(project_ids)
+    ).all()
+    task_statuses_by_project = {}
+    for link in task_status_links:
+        if link.project_id not in task_statuses_by_project:
+            task_statuses_by_project[link.project_id] = {}
+        task_statuses_by_project[link.project_id][str(link.task_status_id)] = {
+            "priority": link.priority,
+            "roles_for_board": fields.serialize_list(link.roles_for_board),
         }
+    return task_statuses_by_project
 
-        if project.production_type == "tvshow":
-            first_episode = (
-                Entity.query.join(EntityType)
-                .filter(EntityType.name == "Episode")
-                .filter(Entity.project_id == project.id)
-                .filter(Entity.status == "running")
-                .order_by(Entity.name)
-                .first()
+
+def _fetch_first_episodes_by_project(project_ids):
+    if not project_ids:
+        return {}
+
+    episode_type = shots_service.get_episode_type()
+    first_episodes_by_project = {}
+
+    episodes = (
+        Entity.query.filter(
+            Entity.project_id.in_(project_ids),
+            Entity.entity_type_id == episode_type["id"],
+            Entity.status == "running",
+        )
+        .order_by(Entity.project_id, Entity.name)
+        .all()
+    )
+
+    seen_projects = set()
+    for episode in episodes:
+        if episode.project_id not in seen_projects:
+            first_episodes_by_project[episode.project_id] = episode
+            seen_projects.add(episode.project_id)
+
+    missing_projects = set(project_ids) - seen_projects
+    if missing_projects:
+        fallback_episodes = (
+            Entity.query.filter(
+                Entity.project_id.in_(missing_projects),
+                Entity.entity_type_id == episode_type.id,
             )
-            if first_episode is None:
-                first_episode = (
-                    Entity.query.join(EntityType)
-                    .filter(EntityType.name == "Episode")
-                    .filter(Entity.project_id == project.id)
-                    .order_by(Entity.name)
-                    .first()
-                )
+            .order_by(Entity.project_id, Entity.name)
+            .all()
+        )
 
-            if first_episode is not None:
-                project_dict["first_episode_id"] = fields.serialize_value(
-                    first_episode.id
-                )
+        for episode in fallback_episodes:
+            if episode.project_id not in first_episodes_by_project:
+                first_episodes_by_project[episode.project_id] = episode
 
-        projects.append(project_dict)
-    return projects
+    return first_episodes_by_project
+
+
+def _serialize_descriptor(descriptor):
+    return {
+        "id": fields.serialize_value(descriptor.id),
+        "name": descriptor.name,
+        "field_name": descriptor.field_name,
+        "data_type": fields.serialize_value(descriptor.data_type),
+        "choices": descriptor.choices,
+        "for_client": descriptor.for_client or False,
+        "entity_type": descriptor.entity_type,
+        "position": descriptor.position,
+        "departments": [
+            str(department.id) for department in descriptor.departments
+        ],
+    }
+
+
+def _build_project_dict_with_extra_data(
+    project,
+    descriptors_by_project,
+    task_types_by_project,
+    task_statuses_by_project,
+    first_episodes_by_project,
+):
+    project_dict = project.serialize(relations=True)
+
+    project_dict["descriptors"] = [
+        _serialize_descriptor(descriptor)
+        for descriptor in descriptors_by_project.get(project.id, [])
+    ]
+    project_dict["task_types_priority"] = task_types_by_project.get(
+        project.id, {}
+    )
+    project_dict["task_statuses_link"] = task_statuses_by_project.get(
+        project.id, {}
+    )
+    if project.production_type == "tvshow":
+        episode = first_episodes_by_project.get(project.id)
+        if episode is not None:
+            project_dict["first_episode_id"] = fields.serialize_value(
+                episode.id
+            )
+
+    return project_dict
 
 
 def get_projects():
@@ -333,6 +427,13 @@ def add_task_type_setting(project_id, task_type_id, priority=None):
     """
     Add a task type listed in database to the the project task types.
     """
+    project_id = str(project_id)
+    task_type_id = str(task_type_id)
+    if not task_type_id or not fields.is_valid_id(task_type_id):
+        raise WrongParameterException(
+            "task_type_id is required and must be a valid UUID"
+        )
+
     link = ProjectTaskTypeLink.get_by(
         task_type_id=task_type_id, project_id=project_id
     )
@@ -426,6 +527,11 @@ def remove_preview_background_file_setting(
 def _add_to_list_attr(project_id, model_class, model_id, list_attr):
     project = get_project_raw(project_id)
     model = model_class.get(model_id)
+    if model is None:
+        model_name = model_class.__name__
+        raise WrongParameterException(
+            f"{model_name} with id {model_id} not found"
+        )
     if str(model.id) not in [str(m.id) for m in getattr(project, list_attr)]:
         getattr(project, list_attr).append(model)
         return _save_project(project)
@@ -656,6 +762,11 @@ def is_open(project):
 
 
 def create_project_task_type_link(project_id, task_type_id, priority):
+    if not task_type_id or not fields.is_valid_id(task_type_id):
+        raise WrongParameterException(
+            "task_type_id is required and must be a valid UUID"
+        )
+
     task_type_link = ProjectTaskTypeLink.get_by(
         project_id=project_id, task_type_id=task_type_id
     )
@@ -676,6 +787,11 @@ def create_project_task_type_link(project_id, task_type_id, priority):
 def create_project_task_status_link(
     project_id, task_status_id, priority, roles_for_board=[]
 ):
+    if not task_status_id or not fields.is_valid_id(task_status_id):
+        raise WrongParameterException(
+            "task_status_id is required and must be a valid UUID"
+        )
+
     task_status_link = ProjectTaskStatusLink.get_by(
         project_id=project_id, task_status_id=task_status_id
     )

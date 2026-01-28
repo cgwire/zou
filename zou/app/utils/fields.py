@@ -1,11 +1,13 @@
 import datetime
-import re
-import uuid
-import sqlalchemy.orm as orm
 
-from pytz import tzinfo
+import re
+import sqlalchemy.orm as orm
+import uuid
+
 from babel import Locale
+from enum import Enum
 from ipaddress import IPv4Address
+from pytz import tzinfo
 from sqlalchemy_utils.types.choice import Choice
 
 
@@ -37,6 +39,8 @@ def serialize_value(value, milliseconds=False):
         return str(value)
     elif isinstance(value, Choice):
         return value.code
+    elif isinstance(value, Enum):
+        return value.value
     elif isinstance(value, IPv4Address):
         return str(value)
     elif value is None:

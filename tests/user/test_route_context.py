@@ -591,6 +591,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         artist = persons_service.get_person_raw(self.user_cg_artist["id"])
         artist.departments.append(self.department)
         artist.save()
+        persons_service.clear_person_cache()
 
         # Create a shared filter
         filter_2 = {
@@ -734,6 +735,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         artist = persons_service.get_person_raw(self.user_cg_artist["id"])
         artist.departments.append(self.department)
         artist.save()
+        persons_service.clear_person_cache()
 
         # Create a shared filter group
         filter_group_2 = {

@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required
 from zou.app.models.custom_action import CustomAction
 
 from zou.app.blueprints.crud.base import BaseModelsResource, BaseModelResource
+from zou.app.services.exception import WrongParameterException
 
 from zou.app.services import custom_actions_service, user_service
 
@@ -14,6 +15,16 @@ class CustomActionsResource(BaseModelsResource):
     def check_read_permissions(self, options=None):
         user_service.block_access_to_vendor()
         return True
+
+    def check_creation_integrity(self, data):
+        """
+        Validate that the required 'name' field is present and not None.
+        """
+        if "name" not in data or data.get("name") is None:
+            raise WrongParameterException(
+                "The 'name' field is required and cannot be None."
+            )
+        return data
 
     @jwt_required()
     def get(self):
@@ -289,6 +300,16 @@ class CustomActionResource(BaseModelResource):
               description: Integrity error or cannot delete
         """
         return super().delete(instance_id)
+
+    def pre_update(self, instance_dict, data):
+        """
+        Validate that if 'name' is being updated, it is not None.
+        """
+        if "name" in data and data.get("name") is None:
+            raise WrongParameterException(
+                "The 'name' field cannot be set to None."
+            )
+        return data
 
     def post_update(self, custom_action, data):
         custom_actions_service.clear_custom_action_cache()

@@ -7,7 +7,7 @@ import ffmpeg
 import shutil
 
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm.exc import ObjectDeletedError
+from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
 from zou.app.stores import file_store
@@ -142,7 +142,20 @@ def update_preview_file(preview_file_id, data, silent=False):
 
 
 def update_preview_file_raw(preview_file, data, silent=False):
-    preview_file.update(data)
+    try:
+        preview_file.update(data)
+    except StaleDataError:
+        # Preview file was deleted by another process during update
+        preview_file_id = str(preview_file.id)
+        from zou.app import app as current_app
+
+        current_app.logger.warning(
+            f"Preview file {preview_file_id} was deleted during update"
+        )
+        raise PreviewFileNotFoundException(
+            f"Preview file {preview_file_id} was deleted"
+        )
+
     files_service.clear_preview_file_cache(str(preview_file.id))
     if not silent:
         task = Task.get(preview_file.task_id)
@@ -297,19 +310,28 @@ def prepare_and_store_movie(
             if normalized_movie_low_path:
                 os.remove(normalized_movie_low_path)
 
-        # Save metadata, save preview file id in the related task and entity
-        preview_file = update_preview_file_raw(
-            preview_file_raw,
-            {
-                "status": "ready",
-                "file_size": file_size,
-                "width": width,
-                "height": height,
-                "duration": duration,
-            },
-        )
-        tasks_service.update_preview_file_info(preview_file)
-        return preview_file
+        # Re-fetch preview file before updating (it may have been deleted during processing)
+        try:
+            preview_file_raw = files_service.get_preview_file_raw(
+                preview_file_id
+            )
+            preview_file = update_preview_file_raw(
+                preview_file_raw,
+                {
+                    "status": "ready",
+                    "file_size": file_size,
+                    "width": width,
+                    "height": height,
+                    "duration": duration,
+                },
+            )
+            tasks_service.update_preview_file_info(preview_file)
+            return preview_file
+        except PreviewFileNotFoundException:
+            current_app.logger.warning(
+                f"Preview file {preview_file_id} was deleted during processing"
+            )
+            return {"id": preview_file_id, "status": "broken"}
 
 
 def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):

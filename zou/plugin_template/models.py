@@ -4,7 +4,9 @@ from zou.app.models.base import BaseMixin
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import MetaData, Column, Integer
 
-plugin_metadata = MetaData()
+from zou.app.utils.plugins import create_plugin_metadata
+
+plugin_metadata = create_plugin_metadata("myplugin")  # plugin id expected here
 PluginBase = declarative_base(metadata=plugin_metadata)
 
 

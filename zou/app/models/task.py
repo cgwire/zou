@@ -16,6 +16,7 @@ class TaskPersonLink(db.Model):
         UUIDType(binary=False),
         db.ForeignKey("person.id"),
         primary_key=True,
+        index=True,
     )
 
 
