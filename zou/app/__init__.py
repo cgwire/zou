@@ -88,12 +88,13 @@ def shutdown_session(exception=None):
     leaks.
     """
     try:
-        if exception is not None or db.session.is_active:
+        if exception is not None and db.session.is_active:
             db.session.rollback()
     except Exception:
         pass
     finally:
         db.session.remove()
+
 
 
 @app.errorhandler(404)
