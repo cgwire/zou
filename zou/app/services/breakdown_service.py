@@ -18,6 +18,7 @@ from zou.app.services import (
     entities_service,
     projects_service,
     shots_service,
+    tasks_service,
 )
 
 from flask import current_app
@@ -794,6 +795,7 @@ def refresh_shot_casting_stats(shot, priority_map=None):
             if _is_asset_ready(asset, task, priority_map):
                 nb_ready += 1
         task.update({"nb_assets_ready": nb_ready})
+        tasks_service.clear_task_cache(str(task.id))
         events.emit(
             "task:update-casting-stats",
             {"task_id": str(task.id), "nb_assets_ready": nb_ready},
@@ -829,10 +831,11 @@ def _get_task_type_priority_map(project_id):
 
 def _is_asset_ready(asset, task, priority_map):
     is_ready = False
-    if asset["is_shared"] and asset["project_id"] != str(task.project_id):
-        is_ready = True
-    elif "ready_for" in asset and asset["ready_for"] is not None:
-        priority_ready = priority_map.get(asset["ready_for"], -1) or -1
-        priority_task = priority_map.get(str(task.task_type_id), 0) or 0
-        is_ready = priority_task <= priority_ready
+    if not asset.get("canceled", False):
+        if asset["is_shared"] and asset["project_id"] != str(task.project_id):
+            is_ready = True
+        elif "ready_for" in asset and asset["ready_for"] is not None:
+            priority_ready = priority_map.get(asset["ready_for"], -1) or -1
+            priority_task = priority_map.get(str(task.task_type_id), 0) or 0
+            is_ready = priority_task <= priority_ready
     return is_ready

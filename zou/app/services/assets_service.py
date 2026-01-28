@@ -19,6 +19,7 @@ from zou.app.models.asset_instance import AssetInstance
 
 from zou.app.services import (
     base_service,
+    breakdown_service,
     deletion_service,
     edits_service,
     index_service,
@@ -653,8 +654,16 @@ def remove_asset(asset_id, force=False):
             {"asset_id": asset_id},
             project_id=str(asset.project_id),
         )
+        breakdown_service.refresh_casting_stats(asset.serialize(obj_type="Asset"))
     else:
         from zou.app.services import tasks_service
+
+        # Before deleting EntityLinks, collect affected shot IDs so we can
+        # refresh their casting stats after deletion
+        cast_in = breakdown_service.get_cast_in(asset_id)
+        affected_shot_ids = {
+            entity["shot_id"] for entity in cast_in if "shot_id" in entity
+        }
 
         tasks = Task.query.filter_by(entity_id=asset_id).all()
         for task in tasks:
@@ -674,6 +683,11 @@ def remove_asset(asset_id, force=False):
         EntityConceptLink.delete_all_by(entity_out_id=asset_id)
         asset.delete()
         clear_asset_cache(str(asset_id))
+
+        if affected_shot_ids:
+            for shot_id in affected_shot_ids:
+                shot = shots_service.get_shot(shot_id)
+                breakdown_service.refresh_shot_casting_stats(shot)
     deleted_asset = asset.serialize(obj_type="Asset")
     return deleted_asset
 

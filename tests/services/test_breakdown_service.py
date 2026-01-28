@@ -358,3 +358,58 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(self.task_layout["nb_assets_ready"], 2)
         self.assertEqual(self.task_animation["nb_assets_ready"], 2)
         self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
+
+        # If an asset is archived (canceled) it must not be counted anymore.
+        self.generate_fixture_task(
+            name="Asset Task",
+            entity_id=self.asset_id,
+            task_type_id=self.task_type_layout_id,
+        )
+        assets_service.remove_asset(self.asset_id, force=False)
+        self.task_layout = tasks_service.get_task(self.task_layout["id"])
+        self.task_animation = tasks_service.get_task(self.task_animation["id"])
+        self.task_compositing = tasks_service.get_task(
+            self.task_compositing["id"]
+        )
+        self.assertEqual(self.task_layout["nb_assets_ready"], 1)
+        self.assertEqual(self.task_animation["nb_assets_ready"], 1)
+        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
+
+        # If an asset is deleted from the project, the casting-ready stats
+        # must be recomputed for impacted shots.
+        temp_asset = self.generate_fixture_asset("TempAsset")
+        temp_asset_id = str(temp_asset.id)
+        breakdown_service.update_casting(
+            self.shot_id,
+            [
+                {"asset_id": temp_asset_id, "nb_occurences": 1},
+                {"asset_id": self.asset_character_id, "nb_occurences": 3},
+            ],
+        )
+        # Ensure both assets have their ready_for set
+        temp_asset = assets_service.get_asset_raw(temp_asset_id)
+        temp_asset.update({"ready_for": self.task_type_animation_id})
+        # Verify asset_character still has its ready_for set (it was set earlier)
+        char = assets_service.get_asset_raw(self.asset_character_id)
+        char.update({"ready_for": self.task_type_compositing_id})
+        # Refresh casting stats for the temp asset to update the shot
+        casting = breakdown_service.get_casting(self.shot_id)
+        breakdown_service.refresh_casting_stats(temp_asset.serialize(obj_type="Asset"))
+        self.task_layout = tasks_service.get_task(self.task_layout["id"])
+        self.task_animation = tasks_service.get_task(self.task_animation["id"])
+        self.task_compositing = tasks_service.get_task(
+            self.task_compositing["id"]
+        )
+        self.assertEqual(self.task_layout["nb_assets_ready"], 2)
+        self.assertEqual(self.task_animation["nb_assets_ready"], 2)
+        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
+
+        assets_service.remove_asset(temp_asset_id)
+        self.task_layout = tasks_service.get_task(self.task_layout["id"])
+        self.task_animation = tasks_service.get_task(self.task_animation["id"])
+        self.task_compositing = tasks_service.get_task(
+            self.task_compositing["id"]
+        )
+        self.assertEqual(self.task_layout["nb_assets_ready"], 1)
+        self.assertEqual(self.task_animation["nb_assets_ready"], 1)
+        self.assertEqual(self.task_compositing["nb_assets_ready"], 1)
