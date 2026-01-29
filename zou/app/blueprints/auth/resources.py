@@ -49,6 +49,7 @@ from zou.app.services.exception import (
     TooMuchLoginFailedAttemps,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
+    TwoFactorAuthenticationRequiredException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
@@ -323,6 +324,19 @@ class LoginResource(Resource, ArgsMixin):
                     "wrong_OTP": True,
                 },
                 400,
+            )
+        except TwoFactorAuthenticationRequiredException:
+            current_app.logger.info(
+                f"User {email} can't log in because 2FA is required but not set up."
+            )
+            return (
+                {
+                    "error": True,
+                    "login": False,
+                    "two_factor_authentication_required": True,
+                    "message": "Two-factor authentication is required but not set up. Please configure 2FA to continue.",
+                },
+                403,
             )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)

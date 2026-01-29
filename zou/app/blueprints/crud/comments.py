@@ -198,6 +198,14 @@ class CommentResource(BaseModelResource):
             default: true
             example: true
             description: Whether to include relations
+          - in: query
+            name: with_previews
+            required: false
+            schema:
+              type: boolean
+            default: false
+            example: true
+            description: Whether to expand preview IDs to full preview objects
         responses:
             200:
               description: Comment retrieved successfully
@@ -325,7 +333,8 @@ class CommentResource(BaseModelResource):
         return tasks_service.get_comment(instance_id, relations=relations)
 
     def clean_get_result(self, result):
-        if permissions.has_client_permissions():
+        is_client = permissions.has_client_permissions()
+        if is_client:
             person = persons_service.get_person(result["person_id"])
             if person["role"] != "client":
                 result["text"] = ""
@@ -340,6 +349,20 @@ class CommentResource(BaseModelResource):
                 attachment_file = AttachmentFile.get(attachment_file_id)
                 attachment_files.append(attachment_file.present())
             result["attachment_files"] = attachment_files
+
+        with_previews = self.get_bool_parameter("with_previews", "false")
+        if (
+            with_previews
+            and "previews" in result
+            and isinstance(result["previews"], list)
+        ):
+            previews = result["previews"]
+            if len(previews) > 0 and isinstance(previews[0], str):
+                preview_map = tasks_service._build_preview_map_for_comments(
+                    [result["id"]], is_client
+                )
+                result["previews"] = preview_map.get(result["id"], [])
+
         return result
 
     def pre_update(self, instance_dict, data):

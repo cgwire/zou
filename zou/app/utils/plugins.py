@@ -1,27 +1,28 @@
 import email.utils
-import spdx_license_list
-import zipfile
 import importlib
 import importlib.util
-import sys
 import os
 import tomlkit
 import traceback
 import semver
 import shutil
 import subprocess
+import spdx_license_list
+import sys
 import tempfile
+import zipfile
 
 from alembic import command
 from alembic.config import Config
 from collections.abc import MutableMapping
-from flask import Blueprint, current_app
+from flask import Blueprint, send_from_directory, abort, current_app
 from flask_restful import Resource
 from pathlib import Path
+from sqlalchemy import MetaData
+from sqlalchemy.util import FacadeDict
 
+from zou.app import db, app
 from zou.app.utils.api import configure_api_from_blueprint
-
-from flask import send_from_directory, abort, current_app
 
 
 class StaticResource(Resource):
@@ -30,7 +31,6 @@ class StaticResource(Resource):
 
     def get(self, filename="index.html"):
 
-        print(self.plugin_id)
         static_folder = (
             Path(current_app.config.get("PLUGIN_FOLDER", "plugins"))
             / self.plugin_id
@@ -371,13 +371,18 @@ def install_plugin_files(files_path, installation_path):
     installation_path.mkdir(parents=True, exist_ok=True)
 
     if files_path.is_dir():
+
         def ignore_git(dir, names):
             ignored = []
             if ".git" in names:
                 ignored.append(".git")
             return ignored
+
         shutil.copytree(
-            files_path, installation_path, dirs_exist_ok=True, ignore=ignore_git
+            files_path,
+            installation_path,
+            dirs_exist_ok=True,
+            ignore=ignore_git,
         )
     elif zipfile.is_zipfile(files_path):
         shutil.unpack_archive(files_path, installation_path, format="zip")
@@ -443,9 +448,29 @@ def add_static_routes(manifest, routes):
             self.plugin_id = manifest.id
             super().__init__()
 
+    class PluginIndexStaticResource(StaticResource):
+
+        def __init__(self):
+            self.plugin_id = manifest.id
+            super().__init__()
+
     if (
         manifest["frontend_project_enabled"]
         or manifest["frontend_studio_enabled"]
     ):
+        routes.append((f"/frontend", PluginIndexStaticResource))
         routes.append((f"/frontend/<path:filename>", PluginStaticResource))
-        routes.append((f"/frontend", PluginStaticResource))
+
+
+def create_plugin_metadata(plugin_id):
+    plugin_metadata = MetaData()
+    with app.app_context():
+        plugin_metadata.reflect(bind=db.engine)
+
+        new_tables = {
+            table: plugin_metadata.tables[table]
+            for table in plugin_metadata.tables.keys()
+            if not table.startswith(f"plugin_{plugin_id}_")
+        }
+        plugin_metadata.tables = FacadeDict(new_tables)
+    return plugin_metadata

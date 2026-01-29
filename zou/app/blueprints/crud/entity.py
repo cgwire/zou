@@ -275,6 +275,57 @@ class EntityResource(BaseModelResource, EntityEventMixin):
     def check_update_permissions(self, entity, data):
         return user_service.check_metadata_department_access(entity, data)
 
+    def pre_update(self, instance_dict, data):
+        """
+        Validate that the update won't violate the unique constraint
+        on (name, project_id, entity_type_id, parent_id).
+        """
+        current_name = instance_dict.get("name")
+        current_project_id = instance_dict.get("project_id")
+        current_entity_type_id = instance_dict.get("entity_type_id")
+        current_parent_id = instance_dict.get("parent_id")
+
+        updated_name = data.get("name", current_name)
+        updated_project_id = data.get("project_id", current_project_id)
+        updated_entity_type_id = data.get(
+            "entity_type_id", current_entity_type_id
+        )
+        updated_parent_id = data.get("parent_id", current_parent_id)
+
+        if updated_parent_id == "" or updated_parent_id == "null":
+            updated_parent_id = None
+        if current_parent_id == "" or current_parent_id == "null":
+            current_parent_id = None
+
+        if (
+            updated_name != current_name
+            or updated_project_id != current_project_id
+            or updated_entity_type_id != current_entity_type_id
+            or updated_parent_id != current_parent_id
+        ):
+            query = Entity.query.filter(
+                Entity.name == updated_name,
+                Entity.project_id == updated_project_id,
+                Entity.entity_type_id == updated_entity_type_id,
+                Entity.id != instance_dict["id"],
+            )
+
+            if updated_parent_id is None:
+                query = query.filter(Entity.parent_id.is_(None))
+            else:
+                query = query.filter(Entity.parent_id == updated_parent_id)
+
+            existing_entity = query.first()
+
+            if existing_entity is not None:
+                raise WrongParameterException(
+                    f"An entity with name '{updated_name}', project_id '{updated_project_id}', "
+                    f"entity_type_id '{updated_entity_type_id}', and parent_id '{updated_parent_id}' "
+                    f"already exists. The combination of these fields must be unique."
+                )
+
+        return data
+
     @jwt_required()
     def get(self, instance_id):
         """
@@ -443,7 +494,9 @@ class EntityResource(BaseModelResource, EntityEventMixin):
         try:
             data = self.get_arguments()
             entity = self.get_model_or_404(instance_id)
-            self.check_update_permissions(entity.serialize(), data)
+            entity_dict = entity.serialize()
+            self.check_update_permissions(entity_dict, data)
+            self.pre_update(entity_dict, data)
 
             extra_data = copy.copy(entity.data) or {}
             if "data" not in data or data["data"] is None:

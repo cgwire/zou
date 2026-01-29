@@ -52,6 +52,12 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ENGINE_OPTIONS = {
     "pool_size": int(os.getenv("DB_POOL_SIZE", 30)),
     "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", 60)),
+    # Verify connections before using them (prevents using stale connections)
+    "pool_pre_ping": envtobool("DB_POOL_PRE_PING", True),
+    # Recycle connections after this many seconds (prevents long-lived connections)
+    "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", 3600)),
+    # Reset connections when returning to pool (cleans up transaction state)
+    "pool_reset_on_return": os.getenv("DB_POOL_RESET_ON_RETURN", "commit"),
 }
 
 INDEXER = {
@@ -167,6 +173,17 @@ USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
 PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 ENFORCE_2FA = envtobool("ENFORCE_2FA", False)
+# Comma-separated list of user emails exempt from mandatory 2FA requirement
+TWO_FA_EXEMPT_USERS_STR = os.getenv("2FA_EXEMPT_USERS", "")
+TWO_FA_EXEMPT_USERS = (
+    [
+        email.strip()
+        for email in TWO_FA_EXEMPT_USERS_STR.split(",")
+        if email.strip()
+    ]
+    if TWO_FA_EXEMPT_USERS_STR
+    else []
+)
 
 TELEMETRY_URL = os.getenv(
     "TELEMETRY_URL",

@@ -10,6 +10,7 @@ notification_template_begin = """
             color: #333333;
             font-family: Lato, Arial, sans-serif;
             line-height: 1.6;
+            padding-top: 1em;
         }
 
         a {
