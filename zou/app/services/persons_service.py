@@ -149,10 +149,10 @@ def get_current_user(unsafe=False, relations=False):
     Return person from its auth token (the one that does the request) as a
     dictionary.
     """
+    data = current_user.serialize_safe(relations=relations)
     if unsafe:
-        return current_user.serialize(relations=relations)
-    else:
-        return current_user.serialize_safe(relations=relations)
+        data["fido_devices"] = current_user.fido_devices()
+    return data
 
 
 def get_current_user_raw():
@@ -401,7 +401,7 @@ def get_presence_logs(year, month):
     headers = [str(year)]
     csv_content = []
 
-    (_, limit) = monthrange(year, month)
+    _, limit = monthrange(year, month)
     headers += [str(i) for i in range(1, limit + 1)]
     start_date = datetime.datetime(year, month, 1, 0, 0, 0)
     end_date = datetime.date.today() + relativedelta.relativedelta(months=1)

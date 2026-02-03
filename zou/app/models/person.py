@@ -17,7 +17,6 @@ from zou.app.models.department import Department
 from zou.app.models.base import BaseMixin
 from zou.app import config, db
 
-
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
     ("email_otp", "Email OTP"),
@@ -183,14 +182,8 @@ class Person(db.Model, BaseMixin, SerializerMixin):
                 for credential in self.fido_credentials
             ]
 
-    def serialize(self, **kwargs):
-        data = super().serialize(**kwargs)
-        if "fido_devices" not in kwargs.get("ignored_attrs", []):
-            data["fido_devices"] = self.fido_devices()
-        return data
-
     def serialize_safe(self, **kwargs):
-        return self.serialize(
+        return super().serialize(
             ignored_attrs=[
                 "password",
                 "totp_secret",
