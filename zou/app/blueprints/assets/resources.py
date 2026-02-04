@@ -51,37 +51,18 @@ class AssetResource(Resource, ArgsMixin):
             content:
               application/json:
                 schema:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      format: uuid
-                      description: Asset unique identifier
-                      example: a24a6ea4-ce75-4665-a070-57453082c25
-                    name:
-                      type: string
-                      description: Asset name
-                      example: "Character Name"
-                    project_id:
-                      type: string
-                      format: uuid
-                      description: Project identifier
-                      example: b35b7fb5-df86-5776-b181-68564193d36
-                    entity_type_id:
-                      type: string
-                      format: uuid
-                      description: Asset type identifier
-                      example: c46c8gc6-eg97-6887-c292-79675204e47
-                    created_at:
-                      type: string
-                      format: date-time
-                      description: Creation timestamp
-                      example: "2023-01-01T12:00:00Z"
-                    updated_at:
-                      type: string
-                      format: date-time
-                      description: Last update timestamp
-                      example: "2023-01-01T12:30:00Z"
+                  $ref: '#/components/schemas/Asset'
+        x-codeSamples:
+            - lang: curl
+              label: curl
+              source: |
+                curl \
+                --request GET 'http://api.example.com/data/assets/a24a6ea4-ce75-4665-a070-57453082c25' \
+                --header "Authorization: $API_KEY"
+            - lang: python
+              label: Python
+              source: |
+                gazu.asset.get_asset('a24a6ea4-ce75-4665-a070-57453082c25')
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
