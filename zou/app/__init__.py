@@ -1,5 +1,6 @@
 import traceback
 import uuid
+import json
 
 from flask import Flask, jsonify, current_app
 from flasgger import Swagger
@@ -67,6 +68,11 @@ mail.init_app(app)  # To send emails
 swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
+
+@app.route('/openapispecs')
+def openapispecs():
+    api_spec = swagger.get_apispecs('openapi')
+    return jsonify(api_spec)
 
 if config.SAML_ENABLED:
     app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)

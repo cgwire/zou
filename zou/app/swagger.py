@@ -1481,7 +1481,7 @@ swagger_template = {
         },
         {
             "name": "Assets",
-            "description": f"""Production asset management including 3D models, textures, and media files.\n\n```\nAsset {json.dumps(AssetSchema, indent=2)}\n```""",
+            "description": f"""Production asset management including 3D models, textures, and media files.\n\n```json\nAsset {json.dumps(AssetSchema, indent=2)}\n```""",
         },
         {
             "name": "Breakdown",
