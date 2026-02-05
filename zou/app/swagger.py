@@ -1,4 +1,5 @@
 from zou import __version__
+import json
 
 swagger_config = {
     "headers": [
@@ -42,6 +43,55 @@ You will find detailed information on how to retrieve authentication tokens in t
 All API requests require authentication via JWT tokens passed in the Authorization header.
 </p>
 """
+
+AssetSchema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "description": "Name of asset"},
+        "code": {
+            "type": "string",
+            "description": "Utility field for the pipeline to identify the asset",
+        },
+        "description": {
+            "type": "string",
+            "description": "Asset brief",
+        },
+        "canceled": {
+            "type": "boolean",
+            "default": "False",
+            "description": "True if the asset has been delete one time, False otherwise",
+        },
+        "project_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Project ID",
+        },
+        "entity_type_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Asset type ID",
+        },
+        "source_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "Field uset to set the episode_id",
+        },
+        "preview_file_id": {
+            "type": "string",
+            "format": "UUID",
+            "description": "ID of preview file used as thumbnail",
+        },
+        "data": {
+            "type": "string",
+            "format": "json",
+            "description": "Free JSON field to add metadata",
+        },
+        "shotgun_id": {
+            "type": "integer",
+            "description": "Used for synchronization with a Shotgun instance",
+        },
+    },
+}
 
 swagger_template = {
     "openapi": "3.0.2",
@@ -1431,7 +1481,7 @@ swagger_template = {
         },
         {
             "name": "Assets",
-            "description": "Production asset management including 3D models, textures, and media files",
+            "description": f"""Production asset management including 3D models, textures, and media files.\n\n```\nAsset {json.dumps(AssetSchema, indent=2)}\n```""",
         },
         {
             "name": "Breakdown",
@@ -1541,54 +1591,7 @@ swagger_template = {
                 },
             },
         },
-        "Asset": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Name of asset"},
-                "code": {
-                    "type": "string",
-                    "description": "Utility field for the pipeline to identify the asset",
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Asset brief",
-                },
-                "canceled": {
-                    "type": "boolean",
-                    "default": "False",
-                    "description": "True if the asset has been delete one time, False otherwise",
-                },
-                "project_id": {
-                    "type": "string",
-                    "format": "UUID",
-                    "description": "Project ID",
-                },
-                "entity_type_id": {
-                    "type": "string",
-                    "format": "UUID",
-                    "description": "Asset type ID",
-                },
-                "source_id": {
-                    "type": "string",
-                    "format": "UUID",
-                    "description": "Field uset to set the episode_id",
-                },
-                "preview_file_id": {
-                    "type": "string",
-                    "format": "UUID",
-                    "description": "ID of preview file used as thumbnail",
-                },
-                "data": {
-                    "type": "string",
-                    "format": "json",
-                    "description": "Free JSON field to add metadata",
-                },
-                "shotgun_id": {
-                    "type": "integer",
-                    "description": "Used for synchronization with a Shotgun instance",
-                },
-            },
-        },
+        "Asset": AssetSchema,
         "AssetInstance": {
             "type": "object",
             "properties": {

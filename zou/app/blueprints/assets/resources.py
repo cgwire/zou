@@ -32,11 +32,13 @@ class AssetResource(Resource, ArgsMixin):
     @jwt_required()
     def get(self, asset_id):
         """
-        Get asset
+        Get asset ok
         ---
         description: Retrieve detailed information about a specific asset including metadata, project context, and related data
         tags:
           - Assets
+        x-codeSamples:
+            - lang: python
         parameters:
           - in: path
             name: asset_id
@@ -52,17 +54,6 @@ class AssetResource(Resource, ArgsMixin):
               application/json:
                 schema:
                   $ref: '#/components/schemas/Asset'
-        x-codeSamples:
-            - lang: curl
-              label: curl
-              source: |
-                curl \
-                --request GET 'http://api.example.com/data/assets/a24a6ea4-ce75-4665-a070-57453082c25' \
-                --header "Authorization: $API_KEY"
-            - lang: python
-              label: Python
-              source: |
-                gazu.asset.get_asset('a24a6ea4-ce75-4665-a070-57453082c25')
         """
         asset = assets_service.get_full_asset(asset_id)
         user_service.check_project_access(asset["project_id"])

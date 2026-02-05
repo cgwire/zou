@@ -28,7 +28,6 @@ from zou.app.blueprints.assets.resources import (
     ProjectEpisodeAssetsSharedUsedResource,
 )
 
-
 routes = [
     ("/data/asset-types", AssetTypesResource),
     ("/data/asset-types/<asset_type_id>", AssetTypeResource),
