@@ -1313,7 +1313,7 @@ class FIDOResource(Resource, ArgsMixin):
         Unregister FIDO device
         ---
         description: Unregister a FIDO device from WebAuthn authentication.
-          It requires two-factor authentication verification.
+          The user must be authenticated.
         tags:
             - Authentication
         requestBody:
@@ -1323,18 +1323,6 @@ class FIDOResource(Resource, ArgsMixin):
               schema:
                 type: object
                 properties:
-                  totp:
-                    type: string
-                    description: TOTP verification code
-                  email_otp:
-                    type: string
-                    description: Email OTP verification code
-                  fido_authentication_response:
-                    type: object
-                    description: FIDO authentication response
-                  recovery_code:
-                    type: string
-                    description: Recovery code for two-factor authentication
                   device_name:
                     type: string
                     description: Name of the FIDO device to unregister
@@ -1344,46 +1332,23 @@ class FIDOResource(Resource, ArgsMixin):
           200:
             description: FIDO device unregistered
           400:
-            description: FIDO not enabled or verification failed
+            description: FIDO not enabled
         """
         args = self.get_args(
             [
-                ("totp", None, False),
-                ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, dict),
-                ("recovery_code", None, False),
                 ("device_name", None, True),
             ]
         )
 
         try:
             person = persons_service.get_current_user(unsafe=True)
-            if not auth_service.person_two_factor_authentication_enabled(
-                person
-            ):
+            if not person["fido_enabled"]:
                 raise FIDONotEnabledException
-            if not auth_service.check_two_factor_authentication(
-                person,
-                args["totp"],
-                args["email_otp"],
-                args["fido_authentication_response"],
-                args["recovery_code"],
-            ):
-                raise WrongOTPException
             auth_service.unregister_fido(person["id"], args["device_name"])
             return {"success": True}
         except FIDONotEnabledException:
             return (
                 {"error": True, "message": "FIDO not enabled."},
-                400,
-            )
-        except (WrongOTPException, MissingOTPException):
-            return (
-                {
-                    "error": True,
-                    "message": "OTP verification failed.",
-                    "wrong_OTP": True,
-                },
                 400,
             )
 

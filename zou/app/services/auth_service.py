@@ -330,11 +330,11 @@ def check_fido(person, authentication_response):
     except KeyError:
         return False
     try:
+        # Get fido_credentials from database since it's not in serialized person
+        fido_credentials = Person.get(person["id"]).fido_credentials
         current_app.extensions["fido_server"].authenticate_complete(
             state,
-            get_fido_attested_credential_data_from_person(
-                person["fido_credentials"],
-            ),
+            get_fido_attested_credential_data_from_person(fido_credentials),
             authentication_response,
         )
     except BaseException:
