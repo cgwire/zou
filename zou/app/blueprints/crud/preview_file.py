@@ -330,6 +330,31 @@ class PreviewFileResource(BaseModelResource):
             user_service.check_working_on_task(task["entity_id"])
         return True
 
+    def pre_update(self, instance_dict, data):
+        """
+        Check revision uniqueness before updating a preview file.
+        Only applies to main previews (position 1).
+        When updating a main preview's revision, all extra previews
+        with the same revision are updated too.
+        """
+        if "revision" in data and instance_dict.get("position") == 1:
+            new_revision = data["revision"]
+            current_revision = instance_dict.get("revision")
+            if new_revision != current_revision:
+                tasks_service.check_revision_is_unique_for_task(
+                    instance_dict["task_id"],
+                    new_revision,
+                    exclude_preview_id=instance_dict["id"],
+                )
+                # Update all extra previews with the same revision
+                PreviewFile.query.filter_by(
+                    task_id=instance_dict["task_id"],
+                    revision=current_revision,
+                ).filter(PreviewFile.id != instance_dict["id"]).update(
+                    {"revision": new_revision}
+                )
+        return instance_dict
+
     def check_delete_permissions(self, preview_file):
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_manager_project_access(task["project_id"])
