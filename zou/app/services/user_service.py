@@ -1447,7 +1447,6 @@ def get_last_notifications(
             query = query.filter(Subscription.id == None)
 
     notifications = query.limit(100).all()
-    print(len(notifications))
 
     for (
         notification,

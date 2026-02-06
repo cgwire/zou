@@ -38,10 +38,10 @@ def install_plugin(path, force=False):
             raise FileNotFoundError(f"Plugin path '{path}' does not exist.")
 
     manifest = PluginManifest.from_plugin_path(path)
-    plugin = Plugin.query.filter_by(plugin_id=manifest.id).one_or_none()
+    plugin = Plugin.get_by(plugin_id=manifest.id)
 
     try:
-        if plugin:
+        if plugin is not None:
             current = semver.Version.parse(plugin.version)
             new = semver.Version.parse(str(manifest.version))
             print(
@@ -49,11 +49,11 @@ def install_plugin(path, force=False):
             )
             if not force and new <= current:
                 print(f"⚠️  Plugin version {new} is not newer than {current}.")
-            plugin.update_no_commit(manifest.to_model_dict())
+            plugin.update(manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} upgraded.")
         else:
             print(f"[Plugins] Installing plugin {manifest.id}...")
-            plugin = Plugin.create_no_commit(**manifest.to_model_dict())
+            plugin = Plugin.create(**manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} installed.")
 
         print(f"[Plugins] Running database migrations for {manifest.id}...")
@@ -62,14 +62,17 @@ def install_plugin(path, force=False):
         )
         run_plugin_migrations(plugin_path, plugin)
         print(f"[Plugins] Database migrations for {manifest.id} applied.")
+
+        # Re-query plugin instance after migrations
+        # (Alembic operations may have detached it from the session)
+        plugin = Plugin.get_by(plugin_id=manifest.id)
     except Exception:
         print(
             f"❌ [Plugins] An error occurred while installing/updating {manifest.id}..."
         )
         raise
 
-    Plugin.commit()
-    print_added_routes(plugin, plugin_path)
+    print_added_routes(plugin.plugin_id, plugin_path)
 
     if is_git_url:
         if temp_dir and temp_dir.exists():
@@ -99,14 +102,14 @@ def uninstall_plugin(plugin_id):
     return True
 
 
-def print_added_routes(plugin, plugin_path):
+def print_added_routes(plugin_id, plugin_path):
     """
     Print the added routes for a plugin.
     """
     import importlib
     import sys
 
-    print(f"[Plugins] Routes added by {plugin.plugin_id}:")
+    print(f"[Plugins] Routes added by {plugin_id}:")
     plugin_path = Path(plugin_path)
 
     plugin_folder = plugin_path.parent
@@ -115,11 +118,11 @@ def print_added_routes(plugin, plugin_path):
         sys.path.insert(0, abs_plugin_path)
 
     try:
-        plugin_module = importlib.import_module(plugin.plugin_id)
+        plugin_module = importlib.import_module(plugin_id)
         if hasattr(plugin_module, "routes"):
             routes = plugin_module.routes
             for route in routes:
-                print(f"  - /plugins/{plugin.plugin_id}{route[0]}")
+                print(f"  - /plugins/{plugin_id}{route[0]}")
         else:
             print("  (No routes variable found in plugin)")
     except ImportError as e:

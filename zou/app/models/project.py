@@ -97,12 +97,16 @@ class ProjectTaskStatusLink(db.Model, BaseMixin, SerializerMixin):
 class ProjectAssetTypeLink(db.Model):
     __tablename__ = "project_asset_type_link"
     project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        primary_key=True,
+        index=True,
     )
     asset_type_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("entity_type.id"),
         primary_key=True,
+        index=True,
     )
 
 
@@ -125,12 +129,16 @@ class ProjectStatusAutomationLink(db.Model):
 class ProjectPreviewBackgroundFileLink(db.Model):
     __tablename__ = "project_preview_background_file_link"
     project_id = db.Column(
-        UUIDType(binary=False), db.ForeignKey("project.id"), primary_key=True
+        UUIDType(binary=False),
+        db.ForeignKey("project.id"),
+        primary_key=True,
+        index=True,
     )
     preview_background_file_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("preview_background_file.id"),
         primary_key=True,
+        index=True,
     )
 
 

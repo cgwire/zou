@@ -1587,7 +1587,7 @@ class ProductionAssetTypesScheduleItemsResource(Resource):
         )
 
 
-class ProductionEpisodesScheduleItemsResource(Resource):
+class ProductionEpisodesScheduleItemsResource(Resource, ArgsMixin):
     """
     Resource to retrieve episodes schedule items for given task type.
     """
@@ -1629,6 +1629,8 @@ class ProductionEpisodesScheduleItemsResource(Resource):
         """
         user_service.check_project_access(project_id)
         user_service.block_access_to_vendor()
+        self.check_id_parameter(project_id)
+        self.check_id_parameter(task_type_id)
         return schedule_service.get_episodes_schedule_items(
             project_id, task_type_id
         )
