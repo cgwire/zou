@@ -44,6 +44,7 @@ from zou.app.services.exception import (
     CommentNotFoundException,
     EpisodeNotFoundException,
     PersonNotFoundException,
+    RevisionAlreadyExistsException,
     TaskNotFoundException,
     TaskStatusNotFoundException,
     TaskTypeNotFoundException,
@@ -1611,6 +1612,28 @@ def task_to_review(
     return task_dict_after
 
 
+def check_revision_is_unique_for_task(
+    task_id, revision, exclude_preview_id=None
+):
+    """
+    Check that the revision number is unique for the given task.
+    Raises RevisionAlreadyExistsException if a preview file with the same
+    revision already exists for this task (at position 1).
+    """
+    query = PreviewFile.query.filter_by(
+        task_id=task_id,
+        revision=revision,
+        position=1,
+    )
+    if exclude_preview_id is not None:
+        query = query.filter(PreviewFile.id != exclude_preview_id)
+    existing = query.first()
+    if existing is not None:
+        raise RevisionAlreadyExistsException(
+            f"Revision {revision} already exists for this task."
+        )
+
+
 def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
     """
     Add a preview to comment preview list. Auto set the revision field
@@ -1627,6 +1650,8 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
         revision = comment.previews[0].revision
         position = get_next_position(task_id, revision)
     else:
+        if len(comment.previews) == 0:
+            check_revision_is_unique_for_task(task_id, revision)
         position = get_next_position(task_id, revision)
     preview_file = files_service.create_preview_file_raw(
         str(uuid.uuid4())[:13], revision, task_id, person_id, position=position

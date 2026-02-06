@@ -105,6 +105,10 @@ class PreviewFileReuploadNotAllowedException(BadRequest):
     pass
 
 
+class RevisionAlreadyExistsException(BadRequest):
+    pass
+
+
 class CommentNotFoundException(NotFound):
     pass
 
