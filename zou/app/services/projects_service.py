@@ -197,7 +197,7 @@ def _fetch_first_episodes_by_project(project_ids):
         fallback_episodes = (
             Entity.query.filter(
                 Entity.project_id.in_(missing_projects),
-                Entity.entity_type_id == episode_type.id,
+                Entity.entity_type_id == episode_type["id"],
             )
             .order_by(Entity.project_id, Entity.name)
             .all()
