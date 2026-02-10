@@ -39,12 +39,21 @@ jobs:
         uses: actions/cache@v4
         id: apt-cache
         with:
-          path: /var/cache/apt/archives
+          path: ~/apt-cache
           key: apt-ffmpeg-${{ runner.os }}
       - name: Install ffmpeg
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ffmpeg
+          if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
+            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || sudo apt-get install -y -f --no-install-recommends
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+            mkdir -p ~/apt-cache
+            cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
+          fi
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
