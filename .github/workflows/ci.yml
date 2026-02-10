@@ -27,12 +27,24 @@ jobs:
           - 5432:5432
         env:
           POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+      meilisearch:
+        image: getmeili/meilisearch:v1.1
+        ports:
+          - 7700:7700
+        env:
+          MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
     steps:
       - uses: actions/checkout@v6
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        id: apt-cache
+        with:
+          path: /var/cache/apt/archives
+          key: apt-ffmpeg-${{ runner.os }}
       - name: Install ffmpeg
         run: |
-          sudo apt-get update
-          sudo apt install -y ffmpeg
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -47,10 +59,6 @@ jobs:
       - name: Create database 🗄
         run: >-
           psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
-      - name: Launch docker for meilisearch 🐳
-        run: |
-          docker pull getmeili/meilisearch:latest
-          docker run -it --rm -d -p 7700:7700 -e MEILI_MASTER_KEY=$INDEXER_KEY getmeili/meilisearch:v1.1
       - name: Run tests 🧪
         run: >-
           py.test
