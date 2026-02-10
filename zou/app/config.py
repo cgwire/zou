@@ -21,6 +21,7 @@ KEY_VALUE_STORE = {
     "port": os.getenv("KV_PORT", "6379"),
     "password": os.getenv("KV_PASSWORD", None),
 }
+CACHE_TYPE = os.getenv("CACHE_TYPE", None)
 AUTH_TOKEN_BLACKLIST_KV_INDEX = 0
 MEMOIZE_DB_INDEX = 1
 KV_EVENTS_DB_INDEX = 2
