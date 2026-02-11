@@ -309,14 +309,21 @@ class ApiDBTestCase(ApiTestCase):
         return mixer.cycle(number).blend(cls, id=fields.gen_uuid, **kwargs)
 
     def generate_fixture_project_status(self):
+        if hasattr(self, "open_status"):
+            return
         self.open_status = ProjectStatus.create(name="Open", color="#FFFFFF")
 
     def generate_fixture_project_closed_status(self):
+        if hasattr(self, "closed_status"):
+            return
         self.closed_status = ProjectStatus.create(
             name="closed", color="#FFFFFF"
         )
 
     def generate_fixture_project(self, name="Cosmos Landromat"):
+        if name == "Cosmos Landromat" and hasattr(self, "project"):
+            return self.project
+        self.generate_fixture_project_status()
         self.project = Project.create(
             name=name, project_status_id=self.open_status.id
         )
@@ -327,11 +334,17 @@ class ApiDBTestCase(ApiTestCase):
         return self.project
 
     def generate_fixture_project_closed(self):
+        if hasattr(self, "project_closed"):
+            return
+        self.generate_fixture_project_closed_status()
         self.project_closed = Project.create(
             name="Old Project", project_status_id=self.closed_status.id
         )
 
     def generate_fixture_project_standard(self):
+        if hasattr(self, "project_standard"):
+            return
+        self.generate_fixture_project_status()
         self.project_standard = Project.create(
             name="Big Buck Bunny", project_status_id=self.open_status.id
         )
@@ -340,6 +353,9 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_project_no_preview_tree(self):
+        if hasattr(self, "project_no_preview_tree"):
+            return
+        self.generate_fixture_project_status()
         self.project_no_preview_tree = Project.create(
             name="Agent 327", project_status_id=self.open_status.id
         )
@@ -354,6 +370,16 @@ class ApiDBTestCase(ApiTestCase):
         asset_type_id=None,
         project_id=None,
     ):
+        if (
+            name == "Tree"
+            and description == "Description Tree"
+            and asset_type_id is None
+            and project_id is None
+            and hasattr(self, "asset")
+        ):
+            return self.asset
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project()
         if asset_type_id is None:
             asset_type_id = self.asset_type.id
 
@@ -371,6 +397,14 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_asset_character(
         self, name="Rabbit", description="Main char"
     ):
+        if (
+            name == "Rabbit"
+            and description == "Main char"
+            and hasattr(self, "asset_character")
+        ):
+            return self.asset_character
+        self.generate_fixture_asset_types()
+        self.generate_fixture_project()
         self.asset_character = Entity.create(
             name=name,
             description=description,
@@ -380,6 +414,10 @@ class ApiDBTestCase(ApiTestCase):
         return self.asset_character
 
     def generate_fixture_asset_camera(self):
+        if hasattr(self, "asset_camera"):
+            return
+        self.generate_fixture_asset_types()
+        self.generate_fixture_project()
         self.asset_camera = Entity.create(
             name="Main camera",
             description="Description Camera",
@@ -388,6 +426,10 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_asset_standard(self):
+        if hasattr(self, "asset_standard"):
+            return
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project_standard()
         self.asset_standard = Entity.create(
             name="Car",
             project_id=self.project_standard.id,
@@ -397,6 +439,15 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_sequence(
         self, name="S01", episode_id=None, project_id=None
     ):
+        if (
+            name == "S01"
+            and episode_id is None
+            and project_id is None
+            and hasattr(self, "sequence")
+        ):
+            return self.sequence
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project()
         if episode_id is None and hasattr(self, "episode"):
             episode_id = self.episode.id
 
@@ -412,6 +463,10 @@ class ApiDBTestCase(ApiTestCase):
         return self.sequence
 
     def generate_fixture_sequence_standard(self):
+        if hasattr(self, "sequence_standard"):
+            return self.sequence_standard
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project_standard()
         self.sequence_standard = Entity.create(
             name="S01",
             project_id=self.project_standard.id,
@@ -420,6 +475,10 @@ class ApiDBTestCase(ApiTestCase):
         return self.sequence_standard
 
     def generate_fixture_episode(self, name="E01", project_id=None):
+        if name == "E01" and project_id is None and hasattr(self, "episode"):
+            return self.episode
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project()
         if project_id is None:
             project_id = self.project.id
         self.episode = Entity.create(
@@ -430,6 +489,16 @@ class ApiDBTestCase(ApiTestCase):
         return self.episode
 
     def generate_fixture_shot(self, name="P01", nb_frames=0, sequence_id=None):
+        if (
+            name == "P01"
+            and nb_frames == 0
+            and sequence_id is None
+            and hasattr(self, "shot")
+        ):
+            return self.shot
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project()
+        self.generate_fixture_sequence()
         if sequence_id is None:
             sequence_id = self.sequence.id
         self.shot = Entity.create(
@@ -446,6 +515,16 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_scene(
         self, name="SC01", project_id=None, sequence_id=None
     ):
+        if (
+            name == "SC01"
+            and project_id is None
+            and sequence_id is None
+            and hasattr(self, "scene")
+        ):
+            return self.scene
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project()
+        self.generate_fixture_sequence()
         if project_id is None:
             project_id = self.project.id
 
@@ -463,6 +542,11 @@ class ApiDBTestCase(ApiTestCase):
         return self.scene
 
     def generate_fixture_shot_standard(self, name="SH01"):
+        if name == "SH01" and hasattr(self, "shot_standard"):
+            return self.shot_standard
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project_standard()
+        self.generate_fixture_sequence_standard()
         self.shot_standard = Entity.create(
             name=name,
             description="Description Shot 01",
@@ -525,6 +609,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.user
 
     def generate_fixture_user_manager(self):
+        if hasattr(self, "user_manager"):
+            return self.user_manager
         self.user_manager = Person.create(
             first_name="John",
             last_name="Did2",
@@ -535,6 +621,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.user_manager
 
     def generate_fixture_user_cg_artist(self):
+        if hasattr(self, "user_cg_artist"):
+            return self.user_cg_artist
         self.user_cg_artist = Person.create(
             first_name="John",
             last_name="Did3",
@@ -545,6 +633,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.user_cg_artist
 
     def generate_fixture_user_client(self):
+        if hasattr(self, "user_client"):
+            return self.user_client
         self.user_client = Person.create(
             first_name="John",
             last_name="Did4",
@@ -555,6 +645,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.user_client
 
     def generate_fixture_user_vendor(self):
+        if hasattr(self, "user_vendor"):
+            return self.user_vendor
         self.user_vendor = Person.create(
             first_name="John",
             last_name="Did5",
@@ -571,6 +663,14 @@ class ApiDBTestCase(ApiTestCase):
         desktop_login="john.doe",
         email="john.doe@gmail.com",
     ):
+        if (
+            first_name == "John"
+            and last_name == "Doe"
+            and desktop_login == "john.doe"
+            and email == "john.doe@gmail.com"
+            and hasattr(self, "person")
+        ):
+            return self.person
         self.person = Person.get_by(email=email)
         if self.person is None:
             self.person = Person.create(
@@ -583,6 +683,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.person
 
     def generate_fixture_asset_type(self):
+        if hasattr(self, "asset_type"):
+            return
         self.asset_type = EntityType.create(name="Props")
         self.asset_type_props = self.asset_type
         self.shot_type = EntityType.create(name="Shot")
@@ -592,11 +694,15 @@ class ApiDBTestCase(ApiTestCase):
         self.edit_type = EntityType.create(name="Edit")
 
     def generate_fixture_asset_types(self):
+        if hasattr(self, "asset_type_character"):
+            return
         self.asset_type_character = EntityType.create(name="Character")
         self.asset_type_environment = EntityType.create(name="Environment")
         self.asset_type_camera = EntityType.create(name="Camera")
 
     def generate_fixture_department(self):
+        if hasattr(self, "department"):
+            return self.department
         self.department = Department.create(name="Modeling", color="#FFFFFF")
         self.department_animation = Department.create(
             name="Animation", color="#FFFFFF"
@@ -604,6 +710,9 @@ class ApiDBTestCase(ApiTestCase):
         return self.department
 
     def generate_fixture_task_type(self):
+        if hasattr(self, "task_type"):
+            return
+        self.generate_fixture_department()
         self.task_type = TaskType.create(
             name="Shaders",
             short_name="shd",
@@ -647,36 +756,48 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_task_status(self):
+        if hasattr(self, "task_status"):
+            return self.task_status
         self.task_status = TaskStatus.create(
             name="Open", short_name="opn", color="#FFFFFF"
         )
         return self.task_status
 
     def generate_fixture_task_status_wip(self):
+        if hasattr(self, "task_status_wip"):
+            return self.task_status_wip
         self.task_status_wip = TaskStatus.create(
             name="WIP", short_name="wip", color="#FFFFFF", is_wip=True
         )
         return self.task_status_wip
 
     def generate_fixture_task_status_to_review(self):
+        if hasattr(self, "task_status_to_review"):
+            return self.task_status_to_review
         self.task_status_to_review = TaskStatus.create(
             name="To review", short_name="pndng", color="#FFFFFF"
         )
         return self.task_status_to_review
 
     def generate_fixture_task_status_retake(self):
+        if hasattr(self, "task_status_retake"):
+            return self.task_status_retake
         self.task_status_retake = TaskStatus.create(
             name="Retake", short_name="rtk", color="#FFFFFF", is_retake=True
         )
         return self.task_status_retake
 
     def generate_fixture_task_status_done(self):
+        if hasattr(self, "task_status_done"):
+            return self.task_status_done
         self.task_status_done = TaskStatus.create(
             name="Done", short_name="done", color="#FFFFFF", is_done=True
         )
         return self.task_status_done
 
     def generate_fixture_task_status_wfa(self):
+        if hasattr(self, "task_status_wfa"):
+            return self.task_status_wfa.serialize()
         self.task_status_wfa = TaskStatus.create(
             name="Waiting For Approval",
             short_name="wfa",
@@ -686,10 +807,18 @@ class ApiDBTestCase(ApiTestCase):
         return self.task_status_wfa.serialize()
 
     def generate_fixture_task_status_todo(self):
+        if hasattr(self, "task_status_todo"):
+            return self.task_status_todo
         self.task_status_todo = tasks_service.get_default_status()
         return self.task_status_todo
 
     def generate_fixture_status_automation_to_status(self):
+        if hasattr(self, "status_automation_to_status"):
+            return self.status_automation_to_status
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status_done()
+        self.generate_fixture_task_status_wip()
+        self.generate_fixture_project()
         self.status_automation_to_status = StatusAutomation.create(
             entity_type="asset",
             in_task_type_id=self.task_type_concept.id,
@@ -704,6 +833,11 @@ class ApiDBTestCase(ApiTestCase):
         return self.status_automation_to_status
 
     def generate_fixture_status_automation_to_ready_for(self):
+        if hasattr(self, "status_automation_to_ready_for"):
+            return self.status_automation_to_ready_for
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status_done()
+        self.generate_fixture_project()
         self.status_automation_to_ready_for = StatusAutomation.create(
             entity_type="asset",
             in_task_type_id=self.task_type_modeling.id,
@@ -718,12 +852,27 @@ class ApiDBTestCase(ApiTestCase):
         return self.status_automation_to_ready_for
 
     def generate_fixture_assigner(self):
+        if hasattr(self, "assigner"):
+            return self.assigner
         self.assigner = Person.create(first_name="Ema", last_name="Peel")
         return self.assigner
 
     def generate_fixture_task(
         self, name="Master", entity_id=None, task_type_id=None, project_id=None
     ):
+        if (
+            name == "Master"
+            and entity_id is None
+            and task_type_id is None
+            and project_id is None
+            and hasattr(self, "task")
+        ):
+            return self.task
+        self.generate_fixture_asset()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         if entity_id is None:
             entity_id = self.asset.id
 
@@ -756,6 +905,13 @@ class ApiDBTestCase(ApiTestCase):
         return self.task
 
     def generate_fixture_task_standard(self):
+        if hasattr(self, "task_standard"):
+            return self.task_standard
+        self.generate_fixture_asset_standard()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         start_date = fields.get_date_object("2017-02-20")
         due_date = fields.get_date_object("2017-02-28")
         real_start_date = fields.get_date_object("2017-02-22")
@@ -780,6 +936,18 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_shot_task(
         self, name="Master", shot_id=None, task_type_id=None
     ):
+        if (
+            name == "Master"
+            and shot_id is None
+            and task_type_id is None
+            and hasattr(self, "shot_task")
+        ):
+            return self.shot_task
+        self.generate_fixture_shot()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         if task_type_id is None:
             task_type_id = self.task_type_animation.id
 
@@ -800,6 +968,17 @@ class ApiDBTestCase(ApiTestCase):
         return self.shot_task
 
     def generate_fixture_edit_task(self, name="Edit", task_type_id=None):
+        if (
+            name == "Edit"
+            and task_type_id is None
+            and hasattr(self, "edit_task")
+        ):
+            return self.edit_task
+        self.generate_fixture_edit()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         if task_type_id is None:
             task_type_id = self.task_type_edit.id
 
@@ -817,6 +996,13 @@ class ApiDBTestCase(ApiTestCase):
         return self.edit_task
 
     def generate_fixture_episode_task(self, name="Master"):
+        if name == "Master" and hasattr(self, "episode_task"):
+            return self.episode_task
+        self.generate_fixture_episode()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         self.episode_task = Task.create(
             name=name,
             project_id=self.project.id,
@@ -831,6 +1017,13 @@ class ApiDBTestCase(ApiTestCase):
         return self.episode_task
 
     def generate_fixture_scene_task(self, name="Master"):
+        if name == "Master" and hasattr(self, "scene_task"):
+            return self.scene_task
+        self.generate_fixture_scene()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         self.scene_task = Task.create(
             name=name,
             project_id=self.project.id,
@@ -845,6 +1038,13 @@ class ApiDBTestCase(ApiTestCase):
         return self.scene_task
 
     def generate_fixture_sequence_task(self, name="Master"):
+        if name == "Master" and hasattr(self, "sequence_task"):
+            return self.sequence_task
+        self.generate_fixture_sequence()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         self.sequence_task = Task.create(
             name=name,
             project_id=self.project.id,
@@ -859,6 +1059,13 @@ class ApiDBTestCase(ApiTestCase):
         return self.sequence_task
 
     def generate_fixture_shot_task_standard(self):
+        if hasattr(self, "shot_task_standard"):
+            return self.shot_task_standard
+        self.generate_fixture_shot_standard()
+        self.generate_fixture_task_type()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
         self.shot_task_standard = Task.create(
             name="Super animation",
             project_id=self.project_standard.id,
@@ -875,6 +1082,9 @@ class ApiDBTestCase(ApiTestCase):
     def generate_fixture_comment(
         self, person=None, task_id=None, task_status_id=None
     ):
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.generate_fixture_task_status()
         if person is None:
             person = self.person.serialize()
         if task_id is None:
@@ -887,9 +1097,13 @@ class ApiDBTestCase(ApiTestCase):
         return self.comment
 
     def generate_fixture_file_status(self):
+        if hasattr(self, "file_status"):
+            return
         self.file_status = FileStatus.create(name="To review", color="#FFFFFF")
 
     def generate_fixture_working_file(self, name="main", revision=1):
+        self.generate_fixture_task()
+        self.generate_fixture_software()
         self.working_file = WorkingFile.create(
             name=name,
             comment="",
@@ -902,6 +1116,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.working_file
 
     def generate_fixture_shot_working_file(self):
+        self.generate_fixture_shot_task()
+        self.generate_fixture_software()
         self.working_file = WorkingFile.create(
             name="main",
             comment="",
@@ -922,6 +1138,9 @@ class ApiDBTestCase(ApiTestCase):
         temporal_entity_id=None,
         task=None,
     ):
+        self.generate_fixture_task_type()
+        self.generate_fixture_person()
+        self.generate_fixture_file_status()
         if output_type is None:
             output_type = self.output_type
 
@@ -959,6 +1178,8 @@ class ApiDBTestCase(ApiTestCase):
         return self.output_type
 
     def generate_fixture_software(self):
+        if hasattr(self, "software"):
+            return
         self.software = Software.create(
             name="Blender", short_name="bdr", file_extension=".blender"
         )
@@ -967,6 +1188,8 @@ class ApiDBTestCase(ApiTestCase):
         )
 
     def generate_fixture_organisation(self):
+        if hasattr(self, "organisation"):
+            return
         self.organisation = Organisation.create(
             name="My Studio", hours_by_day=8, use_original_file_name=False
         )
@@ -980,6 +1203,8 @@ class ApiDBTestCase(ApiTestCase):
         duration=10,
         task_id=None,
     ):
+        self.generate_fixture_task()
+        self.generate_fixture_person()
         task_id = task_id or self.task.id
         self.preview_file = PreviewFile.create(
             name=name,
@@ -1107,6 +1332,10 @@ class ApiDBTestCase(ApiTestCase):
         return self.day_off.serialize()
 
     def generate_fixture_edit(self, name="Edit", parent_id=None):
+        if name == "Edit" and parent_id is None and hasattr(self, "edit"):
+            return self.edit
+        self.generate_fixture_asset_type()
+        self.generate_fixture_project()
         self.edit = Entity.create(
             name=name,
             description="Description of the Edit",
