@@ -50,12 +50,15 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from flask import current_app
 
-
 TEST_FOLDER = os.path.join("tests", "tmp")
 
 auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
     decode_responses=True
 )
+
+# Pre-compute the bcrypt hash once for the default test password.
+# Avoids calling bcrypt.generate_password_hash per user per test.
+_CACHED_PASSWORD_HASH = auth.encrypt_password("mypassword")
 
 
 class ApiTestCase(unittest.TestCase):
@@ -517,7 +520,7 @@ class ApiDBTestCase(ApiTestCase):
             last_name="Did",
             role="admin",
             email="john.did@gmail.com",
-            password=auth.encrypt_password("mypassword"),
+            password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user
 
@@ -527,7 +530,7 @@ class ApiDBTestCase(ApiTestCase):
             last_name="Did2",
             role="manager",
             email="john.did.manager@gmail.com",
-            password=auth.encrypt_password("mypassword"),
+            password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_manager
 
@@ -537,7 +540,7 @@ class ApiDBTestCase(ApiTestCase):
             last_name="Did3",
             email="john.did.cg.artist@gmail.com",
             role="user",
-            password=auth.encrypt_password("mypassword"),
+            password=_CACHED_PASSWORD_HASH,
         ).serialize(relations=True)
         return self.user_cg_artist
 
@@ -547,7 +550,7 @@ class ApiDBTestCase(ApiTestCase):
             last_name="Did4",
             role="client",
             email="john.did.client@gmail.com",
-            password=auth.encrypt_password("mypassword"),
+            password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_client
 
@@ -557,7 +560,7 @@ class ApiDBTestCase(ApiTestCase):
             last_name="Did5",
             role="vendor",
             email="john.did.vendor@gmail.com",
-            password=auth.encrypt_password("mypassword"),
+            password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_vendor
 
@@ -575,7 +578,7 @@ class ApiDBTestCase(ApiTestCase):
                 last_name=last_name,
                 desktop_login=desktop_login,
                 email=email,
-                password=auth.encrypt_password("mypassword"),
+                password=_CACHED_PASSWORD_HASH,
             )
         return self.person
 

@@ -15,6 +15,7 @@ APP_SYSTEM_ERROR_SUBJECT_LINE = "%s system error" % APP_NAME
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
 
 AUTH_STRATEGY = os.getenv("AUTH_STRATEGY", "auth_local_classic")
+BCRYPT_LOG_ROUNDS = int(os.getenv("BCRYPT_LOG_ROUNDS", 12))
 
 KEY_VALUE_STORE = {
     "host": os.getenv("KV_HOST", "localhost"),
