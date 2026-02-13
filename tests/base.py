@@ -243,30 +243,9 @@ class ApiDBTestCase(ApiTestCase):
     Set of helpers for Api tests.
     """
 
-    @classmethod
-    def setUpClass(cls):
-        """
-        Configure application before all test methods.
-        Create all database tables only once for all tests in this class.
-        """
-        super(ApiDBTestCase, cls).setUpClass()
-        from zou.app.utils import dbhelpers
-
-        with app.app_context():
-            dbhelpers.drop_all()
-            dbhelpers.create_all()
-
-    @classmethod
-    def tearDownClass(cls):
-        """
-        Clean up resources after all test methods have run.
-        Delete database.
-        """
-        super(ApiDBTestCase, cls).tearDownClass()
-        from zou.app.utils import dbhelpers
-
-        with app.app_context():
-            dbhelpers.drop_all()
+    # Schema creation/teardown is handled once per session in conftest.py.
+    # Per-test isolation is achieved via transaction rollback in
+    # setUp/tearDown.
 
     def setUp(self, expire_on_commit=True):
         """
