@@ -1,9 +1,23 @@
 import os
 
+import pytest
+
 # Must be set before zou.app is imported.
 os.environ.setdefault("CACHE_TYPE", "simple")
 os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
 os.environ.setdefault("DB_POOL_PRE_PING", "false")
+
+_REAL_BCRYPT_FILES = {"test_auth_route.py", "test_auth_service.py"}
+
+
+@pytest.fixture(autouse=True)
+def _skip_bcrypt_check(request, monkeypatch):
+    """Bypass bcrypt verification during login for non-auth tests."""
+    if request.fspath.basename not in _REAL_BCRYPT_FILES:
+        monkeypatch.setattr(
+            "flask_bcrypt.check_password_hash",
+            lambda *args, **kwargs: True,
+        )
 
 
 def pytest_configure(config):
