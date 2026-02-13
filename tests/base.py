@@ -243,9 +243,20 @@ class ApiDBTestCase(ApiTestCase):
     Set of helpers for Api tests.
     """
 
-    # Schema creation/teardown is handled once per session in conftest.py.
-    # Per-test isolation is achieved via transaction rollback in
-    # setUp/tearDown.
+    # Schema is created once per session in conftest.py.
+    # Data is truncated between classes (much faster than drop+create).
+
+    @classmethod
+    def setUpClass(cls):
+        super(ApiDBTestCase, cls).setUpClass()
+        with app.app_context():
+            table_names = ", ".join(
+                f'"{t.name}"' for t in db.metadata.tables.values()
+            )
+            if table_names:
+                with db.engine.connect() as conn:
+                    conn.execute(db.text(f"TRUNCATE {table_names} CASCADE"))
+                    conn.commit()
 
     def setUp(self, expire_on_commit=True):
         """
