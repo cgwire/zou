@@ -1,5 +1,8 @@
 import traceback
 import uuid
+import os
+import json
+from copy import deepcopy
 
 from flask import Flask, jsonify, current_app
 from flasgger import Swagger
@@ -67,6 +70,30 @@ mail.init_app(app)  # To send emails
 swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
+
+@app.route('/openapispecs')
+def openapispecs():
+    api_spec = swagger.get_apispecs('openapi')
+
+    json_path = os.path.join(app.root_path, "openapi-code-samples.json")
+    with open(json_path, "r") as f:
+            code_samples_spec = json.load(f)
+
+    merged_api_spec = deepcopy(api_spec)
+
+    api_paths = merged_api_spec.setdefault("paths", {})
+    code_paths = code_samples_spec.get("paths", {})
+
+    for path, methods in code_paths.items():
+        api_path_item = api_paths.setdefault(path, {})
+
+        for method, method_spec in methods.items():
+            api_method_spec = api_path_item.setdefault(method, {})
+
+            # Merge fields (code samples override or extend existing ones)
+            api_method_spec.update(method_spec)
+
+    return jsonify(merged_api_spec)
 
 if config.SAML_ENABLED:
     app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
