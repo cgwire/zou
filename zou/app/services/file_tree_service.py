@@ -294,7 +294,12 @@ def get_tree_from_project(project):
     return project["file_tree"]
 
 
+_file_tree_cache = {}
+
+
 def get_tree_from_file(tree_name):
+    if tree_name in _file_tree_cache:
+        return _file_tree_cache[tree_name]
     try:
         tree_path = os.path.join(
             os.path.join(app.root_path, "file_trees"), "%s.json" % tree_name
@@ -304,7 +309,9 @@ def get_tree_from_file(tree_name):
         raise WrongFileTreeFileException(
             "File Tree file not found: %s." % tree_path
         )
-    return json.loads(tree_string)
+    tree = json.loads(tree_string)
+    _file_tree_cache[tree_name] = tree
+    return tree
 
 
 def get_folder_path_template(tree, mode, entity):

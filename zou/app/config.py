@@ -15,12 +15,14 @@ APP_SYSTEM_ERROR_SUBJECT_LINE = "%s system error" % APP_NAME
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
 
 AUTH_STRATEGY = os.getenv("AUTH_STRATEGY", "auth_local_classic")
+BCRYPT_LOG_ROUNDS = int(os.getenv("BCRYPT_LOG_ROUNDS", 12))
 
 KEY_VALUE_STORE = {
     "host": os.getenv("KV_HOST", "localhost"),
     "port": os.getenv("KV_PORT", "6379"),
     "password": os.getenv("KV_PASSWORD", None),
 }
+CACHE_TYPE = os.getenv("CACHE_TYPE", None)
 AUTH_TOKEN_BLACKLIST_KV_INDEX = 0
 MEMOIZE_DB_INDEX = 1
 KV_EVENTS_DB_INDEX = 2
