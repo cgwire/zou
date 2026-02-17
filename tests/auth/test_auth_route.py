@@ -1,3 +1,4 @@
+import pyotp
 import orjson as json
 
 from tests.base import ApiDBTestCase
@@ -292,3 +293,201 @@ class AuthTestCase(ApiDBTestCase):
         self.assertEqual(len(login_logs), 4)
         login_logs = self.get("/data/events/login-logs/last?limit=2")
         self.assertEqual(len(login_logs), 2)
+
+
+class Enforce2FATestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_person()
+        self.person.update(
+            {
+                "password": auth.encrypt_password("secretpassword"),
+                "role": "admin",
+            }
+        )
+        self.person_dict = self.person.serialize()
+        self.credentials = {
+            "email": self.person_dict["email"],
+            "password": "secretpassword",
+        }
+        from zou.app import app
+
+        self.app_instance = app
+        self._original_enforce_2fa = app.config["ENFORCE_2FA"]
+        self._original_exempt_users = app.config.get("TWO_FA_EXEMPT_USERS", [])
+        app.config["ENFORCE_2FA"] = True
+
+    def tearDown(self):
+        self.log_out()
+        self.app_instance.config["ENFORCE_2FA"] = self._original_enforce_2fa
+        self.app_instance.config["TWO_FA_EXEMPT_USERS"] = (
+            self._original_exempt_users
+        )
+        super().tearDown()
+
+    def get_auth_headers(self, tokens):
+        return {
+            "Authorization": "Bearer %s" % tokens.get("access_token", None)
+        }
+
+    def test_login_returns_restricted_tokens(self):
+        """Login with ENFORCE_2FA=True, no 2FA configured returns
+        200 with tokens and two_factor_authentication_required."""
+        response = self.post("auth/login", self.credentials, 200)
+        self.assertTrue(response["login"])
+        self.assertTrue(response["two_factor_authentication_required"])
+        self.assertIn("access_token", response)
+        self.assertIn("refresh_token", response)
+
+    def test_restricted_token_blocked_on_non_auth_route(self):
+        """Restricted token is blocked on non-auth routes with
+        403."""
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        response = self.app.get("data/persons", headers=headers)
+        self.assertEqual(response.status_code, 403)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["two_factor_authentication_required"])
+
+    def test_restricted_token_allowed_on_totp(self):
+        """Restricted token can access /auth/totp for TOTP
+        enrollment."""
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+        response = self.app.put("auth/totp", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertIn("otp_secret", data)
+
+    def test_restricted_token_allowed_on_authenticated(self):
+        """Restricted token can access /auth/authenticated."""
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        response = self.app.get("auth/authenticated", headers=headers)
+        self.assertEqual(response.status_code, 200)
+
+    def test_restricted_token_allowed_on_logout(self):
+        """Restricted token can access /auth/logout."""
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        response = self.app.get("auth/logout", headers=headers)
+        self.assertEqual(response.status_code, 200)
+
+    def test_restricted_token_blocked_on_change_password(self):
+        """Restricted token is blocked on /auth/change-password."""
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+        response = self.app.post(
+            "auth/change-password",
+            data=json.dumps(
+                {
+                    "old_password": "secretpassword",
+                    "password": "newpassword",
+                    "password_2": "newpassword",
+                }
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_token_unrestricted_after_2fa_setup(self):
+        """After configuring TOTP, refreshed token is
+        unrestricted."""
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+
+        # Pre-enable TOTP
+        response = self.app.put("auth/totp", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        otp_secret = data["otp_secret"]
+
+        # Enable TOTP with a valid code
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+
+        # Clear cached person data
+        persons_service.clear_person_cache()
+
+        # Refresh token - should no longer be restricted
+        refresh_headers = {
+            "Authorization": "Bearer %s" % tokens.get("refresh_token", None)
+        }
+        response = self.app.get("auth/refresh-token", headers=refresh_headers)
+        self.assertEqual(response.status_code, 200)
+        new_tokens = json.loads(response.data.decode("utf-8"))
+
+        # New token should access non-auth routes
+        new_headers = self.get_auth_headers(new_tokens)
+        response = self.app.get("data/persons", headers=new_headers)
+        self.assertEqual(response.status_code, 200)
+
+    def test_exempt_user_gets_unrestricted_tokens(self):
+        """Users in TWO_FA_EXEMPT_USERS get unrestricted tokens."""
+        self.app_instance.config["TWO_FA_EXEMPT_USERS"] = [
+            self.person_dict["email"]
+        ]
+        tokens = self.post("auth/login", self.credentials, 200)
+        self.assertTrue(tokens["login"])
+        self.assertNotIn("two_factor_authentication_required", tokens)
+        headers = self.get_auth_headers(tokens)
+        response = self.app.get("data/persons", headers=headers)
+        self.assertEqual(response.status_code, 200)
+
+    def test_user_with_2fa_configured_can_login(self):
+        """User with 2FA already configured gets unrestricted
+        tokens."""
+        # Configure TOTP with enforcement disabled
+        self.app_instance.config["ENFORCE_2FA"] = False
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+
+        response = self.app.put("auth/totp", headers=headers)
+        data = json.loads(response.data.decode("utf-8"))
+        otp_secret = data["otp_secret"]
+
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.app.get("auth/logout", headers=headers)
+
+        # Re-enable enforcement and login with TOTP
+        self.app_instance.config["ENFORCE_2FA"] = True
+        persons_service.clear_person_cache()
+        login_response = self.post(
+            "auth/login",
+            {
+                "email": self.credentials["email"],
+                "password": self.credentials["password"],
+                "totp": totp.now(),
+            },
+            200,
+        )
+        self.assertTrue(login_response["login"])
+        self.assertNotIn(
+            "two_factor_authentication_required",
+            login_response,
+        )
+
+    def test_wrong_password_still_returns_400(self):
+        """Wrong password returns 400, not 403, even with
+        ENFORCE_2FA."""
+        credentials = {
+            "email": self.person_dict["email"],
+            "password": "wrongpassword",
+        }
+        response = self.post("auth/login", credentials, 400)
+        self.assertFalse(response["login"])
