@@ -32,7 +32,7 @@ jobs:
       - name: Update openapi.json
         run: |
           cd docs
-          curl --output openapi.json https://kitsu-staging.cg-wire.com/api/openapispecs
+          curl --output openapi.json https://kitsu-staging.cg-wire.com/api/openapi.json
           git config --global user.email "no-reply@cg-wire.com"
           git config --global user.name "CGWire bot"
           git add openapi.json || false
