@@ -1,6 +1,51 @@
-from zou import __version__
 import json
-from zou.app.openapi_schemas import AssetSchema, AssetInstanceSchema, AssetTypeSchema, AttachmentFileSchema, BuildJobSchema, CommentSchema, CustomActionSchema, DataImportErrorSchema, DayOffSchema, DepartmentSchema, DesktopLoginLogSchema, EpisodeSchema, EventSchema, FileStatusSchema, LoginLogSchema, MetadataSchema, MilestoneSchema, NewsSchema, NotificationSchema, OrganisationSchema, OutputFileSchema, OutputTypeSchema, PersonSchema, PlaylistSchema, PreviewFileSchema, ProjectSchema, ProjectStatusSchema, ScheduleItemSchema, SearchFilterSchema, SequenceSchema, ShotSchema, SoftwareSchema, StatusAutomationSchema, SubscriptionToNotificationsSchema, StudioSchema, TaskSchema, TaskStatusSchema, TaskTypeSchema, TimeSpentSchema, WorkingFileSchema
+import os
+from copy import deepcopy
+
+from flask import jsonify
+
+from zou import __version__
+from zou.app.openapi_schemas import (
+    AssetSchema,
+    AssetInstanceSchema,
+    AssetTypeSchema,
+    AttachmentFileSchema,
+    BuildJobSchema,
+    CommentSchema,
+    CustomActionSchema,
+    DataImportErrorSchema,
+    DayOffSchema,
+    DepartmentSchema,
+    DesktopLoginLogSchema,
+    EpisodeSchema,
+    EventSchema,
+    FileStatusSchema,
+    MetadataSchema,
+    MilestoneSchema,
+    NewsSchema,
+    NotificationSchema,
+    OrganisationSchema,
+    OutputFileSchema,
+    OutputTypeSchema,
+    PersonSchema,
+    PlaylistSchema,
+    PreviewFileSchema,
+    ProjectSchema,
+    ProjectStatusSchema,
+    ScheduleItemSchema,
+    SearchFilterSchema,
+    SequenceSchema,
+    ShotSchema,
+    SoftwareSchema,
+    StatusAutomationSchema,
+    SubscriptionToNotificationsSchema,
+    StudioSchema,
+    TaskSchema,
+    TaskStatusSchema,
+    TaskTypeSchema,
+    TimeSpentSchema,
+    WorkingFileSchema,
+)
 
 swagger_config = {
     "headers": [
@@ -12,7 +57,7 @@ swagger_config = {
             "Authorization, Origin, X-Requested-With, Content-Type, Accept",
         ),
     ],
-    "specs": [{"endpoint": "openapi", "route": "/openapi.json"}],
+    "specs": [{"endpoint": "openapi", "route": "/openapi-raw.json"}],
     "static_url_path": "/docs",
     "swagger_ui": True,
     "specs_route": "/apidocs/",
@@ -185,7 +230,10 @@ swagger_template = {
             "name": "News",
             "description": "Production news feed and activity tracking",
         },
-        {"name": "Persons", "description": f"""User and team member management.\n\n```json\nPerson {json.dumps(PersonSchema, indent=2)}\n```"""},
+        {
+            "name": "Persons",
+            "description": f"""User and team member management.\n\n```json\nPerson {json.dumps(PersonSchema, indent=2)}\n```""",
+        },
         {
             "name": "Playlists",
             "description": f"""Media playlists and review sessions. \n\n```json\nPlaylist {json.dumps(PlaylistSchema, indent=2)}\n```""",
@@ -279,3 +327,27 @@ swagger_template = {
         "WorkingFile": WorkingFileSchema,
     },
 }
+
+
+def configure_openapi_route(app, swagger_instance):
+    @app.route("/openapi.json")
+    def openapi_spec():
+        api_spec = swagger_instance.get_apispecs("openapi")
+
+        json_path = os.path.join(app.root_path, "openapi-code-samples.json")
+        with open(json_path, "r") as f:
+            code_samples_spec = json.load(f)
+
+        merged_api_spec = deepcopy(api_spec)
+
+        api_paths = merged_api_spec.setdefault("paths", {})
+        code_paths = code_samples_spec.get("paths", {})
+
+        for path, methods in code_paths.items():
+            api_path_item = api_paths.setdefault(path, {})
+
+            for method, method_spec in methods.items():
+                api_method_spec = api_path_item.setdefault(method, {})
+                api_method_spec.update(method_spec)
+
+        return jsonify(merged_api_spec)
