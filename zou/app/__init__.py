@@ -1,8 +1,5 @@
 import traceback
 import uuid
-import os
-import json
-from copy import deepcopy
 
 from flask import Flask, jsonify, current_app
 from flasgger import Swagger
@@ -27,6 +24,7 @@ from meilisearch.errors import (
 )
 
 from zou.app import config, swagger
+from zou.app.swagger import configure_openapi_route
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.indexer import indexing
 from zou.app.services.exception import (
@@ -70,30 +68,7 @@ mail.init_app(app)  # To send emails
 swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
-
-@app.route('/openapispecs')
-def openapispecs():
-    api_spec = swagger.get_apispecs('openapi')
-
-    json_path = os.path.join(app.root_path, "openapi-code-samples.json")
-    with open(json_path, "r") as f:
-            code_samples_spec = json.load(f)
-
-    merged_api_spec = deepcopy(api_spec)
-
-    api_paths = merged_api_spec.setdefault("paths", {})
-    code_paths = code_samples_spec.get("paths", {})
-
-    for path, methods in code_paths.items():
-        api_path_item = api_paths.setdefault(path, {})
-
-        for method, method_spec in methods.items():
-            api_method_spec = api_path_item.setdefault(method, {})
-
-            # Merge fields (code samples override or extend existing ones)
-            api_method_spec.update(method_spec)
-
-    return jsonify(merged_api_spec)
+configure_openapi_route(app, swagger)
 
 if config.SAML_ENABLED:
     app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
@@ -121,7 +96,6 @@ def shutdown_session(exception=None):
         pass
     finally:
         db.session.remove()
-
 
 
 @app.errorhandler(404)
@@ -233,7 +207,9 @@ def configure_auth():
     def on_identity_loaded(_, identity):
         try:
             if isinstance(identity.id, (str, uuid.UUID)):
-                identity.user = persons_service.get_person_raw_cached(identity.id)
+                identity.user = persons_service.get_person_raw_cached(
+                    identity.id
+                )
 
                 if hasattr(identity.user, "id"):
                     identity.provides.add(UserNeed(identity.user.id))
