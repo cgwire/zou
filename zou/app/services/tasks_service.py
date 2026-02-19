@@ -1186,12 +1186,21 @@ def create_tasks(task_type, entities):
     except RuntimeError:
         pass
 
+    # Batch query existing tasks to avoid N+1 query problem
+    if not entities:
+        return []
+
+    entity_ids = [entity["id"] for entity in entities]
+    existing_tasks = Task.query.filter(
+        Task.entity_id.in_(entity_ids),
+        Task.task_type_id == task_type["id"]
+    ).all()
+    existing_entity_ids = {task.entity_id for task in existing_tasks}
+
     tasks = []
+    task_status_map = {}
     for entity in entities:
-        existing_task = Task.query.filter_by(
-            entity_id=entity["id"], task_type_id=task_type["id"]
-        ).scalar()
-        if existing_task is None:
+        if entity["id"] not in existing_entity_ids:
             task_status = get_default_status(
                 for_concept=entity["entity_type_id"]
                 == concepts_service.get_concept_type()["id"]
@@ -1213,10 +1222,12 @@ def create_tasks(task_type, entities):
                 assignees=[],
             )
             tasks.append(task)
+            task_status_map[task.id] = task_status
     Task.commit()
 
     task_dicts = []
     for task in tasks:
+        task_status = task_status_map[task.id]
         task_dict = _finalize_task_creation(task_type, task_status, task)
         task_dicts.append(task_dict)
 
