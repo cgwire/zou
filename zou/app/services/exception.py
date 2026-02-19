@@ -113,6 +113,10 @@ class CommentNotFoundException(NotFound):
     pass
 
 
+class ReplyNotFoundException(NotFound):
+    pass
+
+
 class NewsNotFoundException(NotFound):
     pass
 
