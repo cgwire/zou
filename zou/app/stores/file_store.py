@@ -16,9 +16,14 @@ def path(self, filename):
     folder_two = file_name[:3]
     folder_three = file_name[3:6]
 
-    return os.path.join(
-        self.root, folder_one, folder_two, folder_three, file_name
+    # Ensure root is absolute to avoid issues with relative paths
+    root = os.path.abspath(self.root) if not os.path.isabs(self.root) else self.root
+
+    file_path = os.path.join(
+        root, folder_one, folder_two, folder_three, file_name
     )
+    # Normalize path to handle any remaining relative components
+    return os.path.normpath(file_path)
 
 
 LocalBackend.path = path
