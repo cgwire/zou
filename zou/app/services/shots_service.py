@@ -858,6 +858,7 @@ def remove_shot(shot_id, force=False):
         EntityLink.delete_all_by(entity_out_id=shot_id)
         EntityConceptLink.delete_all_by(entity_in_id=shot_id)
         EntityConceptLink.delete_all_by(entity_out_id=shot_id)
+        deletion_service.remove_output_files_for_entity(shot_id)
 
         shot.delete()
         events.emit(
@@ -909,6 +910,7 @@ def remove_sequence(sequence_id, force=False):
             deletion_service.remove_task(task.id, force=True)
             tasks_service.clear_task_cache(str(task.id))
         Subscription.delete_all_by(entity_id=sequence_id)
+        deletion_service.remove_output_files_for_entity(sequence_id)
     try:
         sequence.delete()
         events.emit(
