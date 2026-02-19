@@ -1194,10 +1194,8 @@ def create_tasks(task_type, entities):
     existing_tasks = Task.query.filter(
         Task.entity_id.in_(entity_ids), Task.task_type_id == task_type["id"]
     ).all()
-    # Normalize to str so comparison works when entity["id"] comes from JSON/serialize
     existing_entity_ids = {str(task.entity_id) for task in existing_tasks}
 
-    # Statut défini une fois : soit on crée pour des concepts, soit pour d'autres types
     task_status = get_default_status(
         for_concept=entities[0]["entity_type_id"]
         == concepts_service.get_concept_type()["id"]
