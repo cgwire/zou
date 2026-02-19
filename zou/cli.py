@@ -232,11 +232,11 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     with app.app_context():
         try:
-            person_id = persons_service.get_person_by_email_desktop_login(
+            person = persons_service.get_person_by_email_desktop_login(
                 email_or_desktop_login
             )
             auth_service.disable_two_factor_authentication_for_person(
-                person_id
+                person["id"]
             )
             print(
                 f"Two factor authentication disabled for {email_or_desktop_login}."
