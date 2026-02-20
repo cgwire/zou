@@ -5,25 +5,19 @@ import warnings
 warnings.filterwarnings("ignore")
 import os
 import sys
-import flask_migrate
 import click
-import traceback
 
-from sqlalchemy.exc import IntegrityError
 
-from zou.app.utils import dbhelpers, auth, commands, plugins as plugin_utils
-from zou.app.services import persons_service, auth_service, plugins_service
-from zou.app.services.exception import (
-    IsUserLimitReachedException,
-    PersonNotFoundException,
-    TwoFactorAuthenticationNotEnabledException,
-)
+def _get_app():
+    from zou.app import app
 
-from zou.app import app, config
+    return app
 
-from zou import __file__ as root_path
 
-migrations_path = os.path.join(os.path.dirname(root_path), "migrations")
+def _get_migrations_path():
+    from zou import __file__ as root_path
+
+    return os.path.join(os.path.dirname(root_path), "migrations")
 
 
 @click.group()
@@ -45,9 +39,11 @@ def version():
 def init_db():
     "Create database table (database must be created through PG client)."
 
+    import flask_migrate
+
     print("Creating database and tables...")
-    with app.app_context():
-        flask_migrate.upgrade(directory=migrations_path)
+    with _get_app().app_context():
+        flask_migrate.upgrade(directory=_get_migrations_path())
     print("Database and tables created.")
 
 
@@ -56,7 +52,9 @@ def is_db_ready():
     """
     Return a message telling whether the database is initialized or not.
     """
-    with app.app_context():
+    from zou.app.utils import dbhelpers
+
+    with _get_app().app_context():
         is_init = dbhelpers.is_init()
         if is_init:
             print("Database is initialized.")
@@ -74,8 +72,12 @@ def migrate_db(message):
     Generate migration files to describe a new revision of the database schema
     (for development only).
     """
-    with app.app_context():
-        flask_migrate.migrate(directory=migrations_path, message=message)
+    import flask_migrate
+
+    with _get_app().app_context():
+        flask_migrate.migrate(
+            directory=_get_migrations_path(), message=message
+        )
 
 
 @cli.command()
@@ -85,25 +87,38 @@ def downgrade_db(revision):
     Downgrade db to previous revision of the database schema
     (for development only). For revision you can use an hash or a relative migration identifier.
     """
-    with app.app_context():
-        flask_migrate.downgrade(directory=migrations_path, revision=revision)
+    import flask_migrate
+
+    with _get_app().app_context():
+        flask_migrate.downgrade(
+            directory=_get_migrations_path(), revision=revision
+        )
 
 
 @cli.command()
 def clear_db():
     "Drop all tables from database"
 
-    with app.app_context():
+    import flask_migrate
+
+    from zou.app.utils import dbhelpers
+
+    with _get_app().app_context():
         print("Deleting database and tables...")
         dbhelpers.drop_all()
         print("Database and tables deleted.")
-        flask_migrate.stamp(directory=migrations_path, revision="base")
+        flask_migrate.stamp(directory=_get_migrations_path(), revision="base")
 
 
 @cli.command()
 def reset_db():
     "Drop all tables, then recreate them."
-    with app.app_context():
+    import flask_migrate
+
+    from zou.app.utils import dbhelpers
+
+    migrations_path = _get_migrations_path()
+    with _get_app().app_context():
         print("Deleting database and tables...")
         dbhelpers.drop_all()
         print("Database and tables deleted.")
@@ -120,8 +135,14 @@ def upgrade_db(no_telemetry=False):
     services (user and preview amounts). It allows us to size the Kitsu
     community.
     """
-    with app.app_context():
-        flask_migrate.upgrade(directory=migrations_path)
+    import traceback
+
+    import flask_migrate
+
+    from zou.app import config
+
+    with _get_app().app_context():
+        flask_migrate.upgrade(directory=_get_migrations_path())
         if not no_telemetry and config.IS_SELF_HOSTED:
             from zou.app.services import telemetry_services
 
@@ -135,7 +156,10 @@ def upgrade_db(no_telemetry=False):
 @click.option("--revision", default=None)
 def stamp_db(revision):
     "Set the database schema revision to current one."
-    with app.app_context():
+    import flask_migrate
+
+    migrations_path = _get_migrations_path()
+    with _get_app().app_context():
         if revision is None:
             flask_migrate.stamp(directory=migrations_path)
         else:
@@ -147,15 +171,17 @@ def clear_memory_cache():
     "Clear Redis memory cache."
     from zou.app import cache
 
-    with app.app_context():
+    with _get_app().app_context():
         cache.clear()
 
 
 @cli.command()
 def reset_migrations():
     "Set the database schema revision to first one."
-    with app.app_context():
-        flask_migrate.stamp(directory=migrations_path, revision="base")
+    import flask_migrate
+
+    with _get_app().app_context():
+        flask_migrate.stamp(directory=_get_migrations_path(), revision="base")
 
 
 @cli.command()
@@ -165,7 +191,17 @@ def create_admin(email, password):
     """
     Create an admin user to allow usage of the API when database is empty.
     """
-    with app.app_context():
+    from sqlalchemy.exc import IntegrityError
+
+    from zou.app import config
+    from zou.app.utils import auth
+    from zou.app.services import persons_service
+    from zou.app.services.exception import (
+        IsUserLimitReachedException,
+        PersonNotFoundException,
+    )
+
+    with _get_app().app_context():
         try:
             person = persons_service.get_person_by_email(email)
             if person["role"] != "admin":
@@ -209,18 +245,24 @@ def create_admin(email, password):
 @cli.command()
 def clean_auth_tokens():
     "Remove revoked and expired tokens."
+    from zou.app.utils import commands
+
     commands.clean_auth_tokens()
 
 
 @cli.command()
 def clear_all_auth_tokens():
     "Remove all authentication tokens."
+    from zou.app.utils import commands
+
     commands.clear_all_auth_tokens()
 
 
 @cli.command()
 def init_data():
     "Generate minimal data set required to run Kitsu."
+    from zou.app.utils import commands
+
     commands.init_data()
 
 
@@ -230,13 +272,19 @@ def disable_two_factor_authentication(email_or_desktop_login):
     """
     Disable two factor authentication for given user.
     """
-    with app.app_context():
+    from zou.app.services import persons_service, auth_service
+    from zou.app.services.exception import (
+        PersonNotFoundException,
+        TwoFactorAuthenticationNotEnabledException,
+    )
+
+    with _get_app().app_context():
         try:
-            person_id = persons_service.get_person_by_email_desktop_login(
+            person = persons_service.get_person_by_email_desktop_login(
                 email_or_desktop_login
             )
             auth_service.disable_two_factor_authentication_for_person(
-                person_id
+                person["id"]
             )
             print(
                 f"Two factor authentication disabled for {email_or_desktop_login}."
@@ -258,7 +306,10 @@ def change_password(email, password):
     """
     Change the password of given user.
     """
-    with app.app_context():
+    from zou.app.utils import auth
+    from zou.app.services import persons_service
+
+    with _get_app().app_context():
         try:
             auth.validate_password(password)
             password = auth.encrypt_password(password)
@@ -276,7 +327,14 @@ def set_person_as_active(email, unactive):
     """
     Set a person as active.
     """
-    with app.app_context():
+    from zou.app import config
+    from zou.app.services import persons_service
+    from zou.app.services.exception import (
+        IsUserLimitReachedException,
+        PersonNotFoundException,
+    )
+
+    with _get_app().app_context():
         try:
             if persons_service.is_user_limit_reached() and not unactive:
                 raise IsUserLimitReachedException
@@ -298,7 +356,11 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    with app.app_context():
+    from zou.app import config
+    from zou.app.utils import commands
+    from zou.app.services import persons_service
+
+    with _get_app().app_context():
         if persons_service.is_user_limit_reached():
             print(
                 "User limit reached (limit %i). New users will not be added."
@@ -326,6 +388,8 @@ def sync_full(
     connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
+    from zou.app.utils import commands
+
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -363,6 +427,8 @@ def sync_full_files(
     connect to source instance are given through SYNC_LOGIN and SYNC_PASSWORD
     environment variables.
     """
+    from zou.app.utils import commands
+
     print("Start syncing.")
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
@@ -397,6 +463,8 @@ def sync_changes(event_source, source, logs_directory):
     instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
+    from zou.app.utils import commands
+
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.run_sync_change_daemon(
@@ -414,6 +482,8 @@ def sync_file_changes(event_source, source, logs_directory):
     instance. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
+    from zou.app.utils import commands
+
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.run_sync_file_change_daemon(
@@ -431,6 +501,8 @@ def sync_last_events(source, minutes, limit):
     to them. It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
+    from zou.app.utils import commands
+
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_last_changes_from_another_instance(
@@ -448,6 +520,8 @@ def sync_last_files(source, minutes, limit):
     It expects that credentials to connect to source instance are
     given through SYNC_LOGIN and SYNC_PASSWORD environment variables.
     """
+    from zou.app.utils import commands
+
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.import_last_file_changes_from_another_instance(
@@ -461,6 +535,8 @@ def download_storage_files():
     Download all files from a Swift object storage and store them in a local
     storage.
     """
+    from zou.app.utils import commands
+
     commands.download_file_from_storage()
 
 
@@ -471,6 +547,8 @@ def dump_database(store=False):
     Dump database described in Zou environment variables and save it to
     configured object storage.
     """
+    from zou.app.utils import commands
+
     commands.dump_database(store)
 
 
@@ -480,6 +558,8 @@ def upload_files_to_cloud_storage(days):
     """
     Upload all files related to previews to configured object storage.
     """
+    from zou.app.utils import commands
+
     commands.upload_files_to_cloud_storage(days)
 
 
@@ -490,6 +570,8 @@ def clean_tasks_data(project_id):
     Reset task models data (retake count, wip start date and end date)
     """
     if project_id is not None:
+        from zou.app.utils import commands
+
         commands.reset_tasks_data(project_id)
 
 
@@ -500,6 +582,8 @@ def remove_old_data(days):
     Remove old events, notifications and login logs older than 90 days
     (by default).
     """
+    from zou.app.utils import commands
+
     commands.remove_old_data(days)
 
 
@@ -508,6 +592,8 @@ def reset_search_index():
     """
     Reset search index.
     """
+    from zou.app.utils import commands
+
     commands.reset_search_index()
 
 
@@ -515,6 +601,8 @@ def reset_search_index():
 @click.option("--query", default="")
 def search_asset(query):
     """ """
+    from zou.app.utils import commands
+
     commands.search_asset(query)
 
 
@@ -548,6 +636,8 @@ def generate_preview_extra(
     """
     Generate tiles, thumbnails and metadata for all previews.
     """
+    from zou.app.utils import commands
+
     commands.generate_preview_extra(
         project=project,
         entity_id=entity_id,
@@ -566,6 +656,8 @@ def reset_movie_files_metadata():
     """
     Store height and width metadata for all movie previews in the database.
     """
+    from zou.app.utils import commands
+
     commands.reset_movie_files_metadata()
 
 
@@ -574,6 +666,8 @@ def reset_picture_files_metadata():
     """
     Store height and width metadata for all picture previews in the database.
     """
+    from zou.app.utils import commands
+
     commands.reset_picture_files_metadata()
 
 
@@ -582,6 +676,8 @@ def reset_breakdown_data():
     """
     Reset breakdown statistics for all open projects.
     """
+    from zou.app.utils import commands
+
     commands.reset_breakdown_data()
 
 
@@ -605,6 +701,8 @@ def create_bot(
     """
     Create a bot.
     """
+    from zou.app.utils import commands
+
     commands.create_bot(
         email,
         name,
@@ -645,6 +743,8 @@ def renormalize_movie_preview_files(
     """
     Renormalize all preview files.
     """
+    from zou.app.utils import commands
+
     commands.renormalize_movie_preview_files(
         preview_file_id,
         project_id,
@@ -673,7 +773,9 @@ def install_plugin(path, force=False):
     Install a plugin and apply the migrations.
     Supports local paths, zip files, and git repository URLs.
     """
-    with app.app_context():
+    from zou.app.services import plugins_service
+
+    with _get_app().app_context():
         plugins_service.install_plugin(path, force)
     print(f"✅ Plugin {path} installed. Restart the server to apply changes.")
 
@@ -687,7 +789,9 @@ def uninstall_plugin(id):
     """
     Uninstall a plugin.
     """
-    with app.app_context():
+    from zou.app.services import plugins_service
+
+    with _get_app().app_context():
         plugins_service.uninstall_plugin(id)
     print(f"Plugin {id} uninstalled. Restart the server to apply changes.")
 
@@ -759,6 +863,8 @@ def create_plugin_skeleton(
     """
     Create a plugin template in the given path.
     """
+    from zou.app.utils import plugins as plugin_utils
+
     plugin_path = plugin_utils.create_plugin_skeleton(
         path,
         id,
@@ -797,6 +903,8 @@ def create_plugin_package(
     """
     Create a plugin package.
     """
+    from zou.app.utils import plugins as plugin_utils
+
     plugin_path = plugin_utils.create_plugin_package(path, output_path, force)
     print(f"Plugin package created in '{plugin_path}'.")
 
@@ -819,7 +927,8 @@ def create_plugin_package(
 @click.option(
     "--filter-field",
     type=click.Choice(
-        ["plugin_id", "name", "maintainer", "license"], case_sensitive=False
+        ["plugin_id", "name", "maintainer", "license"],
+        case_sensitive=False,
     ),
     help="Field to filter by.",
 )
@@ -828,6 +937,8 @@ def list_plugins(output_format, verbose, filter_field, filter_value):
     """
     List installed plugins.
     """
+    from zou.app.utils import commands
+
     commands.list_plugins(output_format, verbose, filter_field, filter_value)
 
 
@@ -841,7 +952,9 @@ def migrate_plugin_db(path, message):
     """
     Migrate plugin database.
     """
-    with app.app_context():
+    from zou.app.utils import plugins as plugin_utils
+
+    with _get_app().app_context():
         plugin_utils.migrate_plugin_db(path, message)
     print(f"Plugin {path} database migrated.")
 

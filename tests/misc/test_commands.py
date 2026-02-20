@@ -1,11 +1,15 @@
 import datetime
 
+from click.testing import CliRunner
+
 from tests.base import ApiDBTestCase
 
+from zou.app.models.person import Person
 from zou.app.utils import commands
 from zou.app.stores import auth_tokens_store
 from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
+from zou.cli import cli
 
 
 def totimestamp(dt, epoch=datetime.datetime(1970, 1, 1)):
@@ -34,3 +38,64 @@ class CommandsTestCase(ApiDBTestCase):
         entity_types = EntityType.get_all()
         self.assertEqual(len(task_types), 12)
         self.assertEqual(len(entity_types), 8)
+
+
+class DisableTwoFactorAuthenticationCommandTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_person()
+        self.person_id = str(self.person.id)
+        self.person_email = self.person.email
+        self.person_desktop_login = self.person.desktop_login
+        self.runner = CliRunner()
+
+    def enable_totp(self):
+        self.person.update(
+            {"totp_enabled": True, "totp_secret": "JBSWY3DPEHPK3PXP"}
+        )
+
+    def test_disable_by_email(self):
+        self.enable_totp()
+        result = self.runner.invoke(
+            cli,
+            ["disable-two-factor-authentication", self.person_email],
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Two factor authentication disabled", result.output)
+        person = Person.get(self.person_id)
+        self.assertFalse(person.totp_enabled)
+        self.assertIsNone(person.totp_secret)
+
+    def test_disable_by_desktop_login(self):
+        self.enable_totp()
+        result = self.runner.invoke(
+            cli,
+            [
+                "disable-two-factor-authentication",
+                self.person_desktop_login,
+            ],
+        )
+        self.assertEqual(result.exit_code, 0)
+        self.assertIn("Two factor authentication disabled", result.output)
+        person = Person.get(self.person_id)
+        self.assertFalse(person.totp_enabled)
+        self.assertIsNone(person.totp_secret)
+
+    def test_disable_person_not_found(self):
+        result = self.runner.invoke(
+            cli,
+            [
+                "disable-two-factor-authentication",
+                "nonexistent@example.com",
+            ],
+        )
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("not listed in database", result.output)
+
+    def test_disable_two_factor_not_enabled(self):
+        result = self.runner.invoke(
+            cli,
+            ["disable-two-factor-authentication", self.person_email],
+        )
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("can't be disabled", result.output)

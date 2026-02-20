@@ -49,13 +49,39 @@ from zou.app.services.exception import (
     TooMuchLoginFailedAttemps,
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
-    TwoFactorAuthenticationRequiredException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
     WrongPasswordException,
     WrongUserException,
 )
+
+
+def _build_2fa_registration_response(response_data, user_id):
+    """
+    After a successful 2FA registration, re-emit JWT cookies without
+    the requires_2fa_setup claim so the user gets full access.
+    """
+    additional_claims = {"identity_type": "person"}
+    access_token = create_access_token(
+        identity=user_id,
+        additional_claims=additional_claims,
+    )
+    refresh_token = create_refresh_token(
+        identity=user_id,
+        additional_claims=additional_claims,
+    )
+    response_data["access_token"] = access_token
+    response_data["refresh_token"] = refresh_token
+    response = jsonify(response_data)
+    if is_from_browser(request.user_agent):
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+
+    current_app.logger.info(
+        "2FA setup completed, JWT refreshed for user %s." % user_id
+    )
+    return response
 
 
 class AuthenticatedResource(Resource):
@@ -76,7 +102,10 @@ class AuthenticatedResource(Resource):
           401:
             description: Person not found
         """
-        person = persons_service.get_current_user(unsafe=True, relations=True)
+        person = persons_service.get_current_user(relations=True)
+        person["fido_devices"] = (
+            persons_service.get_current_user_fido_devices()
+        )
         organisation = persons_service.get_organisation(
             sensitive=permissions.has_admin_permissions()
         )
@@ -213,17 +242,26 @@ class LoginResource(Resource, ArgsMixin):
                     400,
                 )
 
+            # Check if 2FA enforcement requires restricted access
+            requires_2fa_setup = False
+            if app.config["ENFORCE_2FA"]:
+                if not auth_service.is_user_exempt_from_2fa(user, app):
+                    if not auth_service.person_two_factor_authentication_enabled(
+                        user
+                    ):
+                        requires_2fa_setup = True
+
+            additional_claims = {"identity_type": "person"}
+            if requires_2fa_setup:
+                additional_claims["requires_2fa_setup"] = True
+
             access_token = create_access_token(
                 identity=user["id"],
-                additional_claims={
-                    "identity_type": "person",
-                },
+                additional_claims=additional_claims,
             )
             refresh_token = create_refresh_token(
                 identity=user["id"],
-                additional_claims={
-                    "identity_type": "person",
-                },
+                additional_claims=additional_claims,
             )
             identity_changed.send(
                 current_app._get_current_object(),
@@ -238,15 +276,17 @@ class LoginResource(Resource, ArgsMixin):
                 sensitive=user["role"] != "admin"
             )
 
-            response = jsonify(
-                {
-                    "user": user,
-                    "organisation": organisation,
-                    "login": True,
-                    "access_token": access_token,
-                    "refresh_token": refresh_token,
-                }
-            )
+            response_data = {
+                "user": user,
+                "organisation": organisation,
+                "login": True,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+            }
+            if requires_2fa_setup:
+                response_data["two_factor_authentication_required"] = True
+
+            response = jsonify(response_data)
 
             if is_from_browser(request.user_agent):
                 set_access_cookies(response, access_token)
@@ -256,7 +296,13 @@ class LoginResource(Resource, ArgsMixin):
                 events_service.create_login_log(
                     user["id"], ip_address, "script"
                 )
-            current_app.logger.info(f"User {email} is logged in.")
+            if requires_2fa_setup:
+                current_app.logger.info(
+                    f"User {email} logged in with restricted"
+                    " access - 2FA setup required."
+                )
+            else:
+                current_app.logger.info(f"User {email} is logged in.")
             return response
         except WrongUserException:
             current_app.logger.info(f"User {email} is not registered.")
@@ -325,19 +371,6 @@ class LoginResource(Resource, ArgsMixin):
                 },
                 400,
             )
-        except TwoFactorAuthenticationRequiredException:
-            current_app.logger.info(
-                f"User {email} can't log in because 2FA is required but not set up."
-            )
-            return (
-                {
-                    "error": True,
-                    "login": False,
-                    "two_factor_authentication_required": True,
-                    "message": "Two-factor authentication is required but not set up. Please configure 2FA to continue.",
-                },
-                403,
-            )
         except OperationalError as exception:
             current_app.logger.error(exception, exc_info=1)
             return (
@@ -398,11 +431,19 @@ class RefreshTokenResource(Resource):
             description: Access Token
         """
         user = persons_service.get_current_user()
+        additional_claims = {"identity_type": "person"}
+
+        if app.config["ENFORCE_2FA"]:
+            user_unsafe = persons_service.get_current_user(unsafe=True)
+            if not auth_service.is_user_exempt_from_2fa(user_unsafe, app):
+                if not auth_service.person_two_factor_authentication_enabled(
+                    user_unsafe
+                ):
+                    additional_claims["requires_2fa_setup"] = True
+
         access_token = create_access_token(
             identity=user["id"],
-            additional_claims={
-                "identity_type": "person",
-            },
+            additional_claims=additional_claims,
         )
         if is_from_browser(request.user_agent):
             response = jsonify({"refresh": True})
@@ -884,10 +925,14 @@ class TOTPResource(Resource, ArgsMixin):
         args = self.get_args([("totp", "", True)])
 
         try:
+            current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_totp(
-                persons_service.get_current_user()["id"], args["totp"]
+                current_user["id"], args["totp"]
             )
-            return {"otp_recovery_codes": otp_recovery_codes}
+            return _build_2fa_registration_response(
+                {"otp_recovery_codes": otp_recovery_codes},
+                current_user["id"],
+            )
         except TOTPAlreadyEnabledException:
             return (
                 {"error": True, "message": "TOTP already enabled."},
@@ -1089,11 +1134,15 @@ class EmailOTPResource(Resource, ArgsMixin):
         args = self.get_args([("email_otp", "", True)])
 
         try:
+            current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_email_otp(
-                persons_service.get_current_user()["id"],
+                current_user["id"],
                 args["email_otp"],
             )
-            return {"otp_recovery_codes": otp_recovery_codes}
+            return _build_2fa_registration_response(
+                {"otp_recovery_codes": otp_recovery_codes},
+                current_user["id"],
+            )
         except EmailOTPAlreadyEnabledException:
             return (
                 {"error": True, "message": "OTP by email already enabled."},
@@ -1300,12 +1349,16 @@ class FIDOResource(Resource, ArgsMixin):
                 ]
             )
 
+            current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.register_fido(
-                persons_service.get_current_user()["id"],
+                current_user["id"],
                 args["registration_response"],
                 args["device_name"],
             )
-            return {"otp_recovery_codes": otp_recovery_codes}
+            return _build_2fa_registration_response(
+                {"otp_recovery_codes": otp_recovery_codes},
+                current_user["id"],
+            )
         except FIDONoPreregistrationException:
             return (
                 {"error": True, "message": "No preregistration before."},

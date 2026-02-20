@@ -28,7 +28,6 @@ from zou.app.services.exception import (
     TOTPAlreadyEnabledException,
     TOTPNotEnabledException,
     TwoFactorAuthenticationNotEnabledException,
-    TwoFactorAuthenticationRequiredException,
     UnactiveUserException,
     UserCantConnectDueToNoFallback,
     WrongOTPException,
@@ -94,13 +93,6 @@ def check_auth(
             date_helpers.get_utc_now_datetime(),
         )
         raise WrongPasswordException()
-
-    # Check if 2FA is enforced and user doesn't have it set up
-    # This check happens after password verification to ensure user is authenticated
-    if app.config["ENFORCE_2FA"] and not no_otp:
-        if not _is_user_exempt_from_2fa(person, app):
-            if not person_two_factor_authentication_enabled(person):
-                raise TwoFactorAuthenticationRequiredException()
 
     if not no_otp and person_two_factor_authentication_enabled(person):
         if not check_two_factor_authentication(
@@ -268,7 +260,7 @@ def person_two_factor_authentication_enabled(person):
     )
 
 
-def _is_user_exempt_from_2fa(person, app):
+def is_user_exempt_from_2fa(person, app):
     """
     Check if user is exempt from mandatory 2FA requirement.
     """
@@ -501,7 +493,7 @@ def send_email_otp(person):
     html = f"""<p>Hello {person["first_name"]},</p>
 
 <p>
-Your verification code is : <strong>{otp}</strong>
+Your verification code is: <strong>{otp}</strong>
 </p>
 
 <p>
@@ -510,9 +502,7 @@ This email was sent at this date : {time_string}.
 The IP of the person who requested this is: {person_IP}.
 </p>
 """
-    subject = (
-        f"{organisation['name']} - Kitsu : your verification code is {otp}"
-    )
+    subject = f"{organisation['name']} - Kitsu : your verification code"
     title = "Your verification code"
     email_html_body = templates_service.generate_html_body(title, html)
     emails.send_email(subject, email_html_body, person["email"])

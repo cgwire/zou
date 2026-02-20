@@ -1,7 +1,7 @@
 import traceback
 import uuid
 
-from flask import Flask, jsonify, current_app
+from flask import Flask, jsonify, current_app, request
 from flasgger import Swagger
 from flask_jwt_extended import JWTManager
 from flask_principal import (
@@ -30,6 +30,7 @@ from zou.app.indexer import indexing
 from zou.app.services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
+    TwoFactorAuthenticationRequiredException,
     WrongIdFormatException,
     WrongParameterException,
     WrongTaskTypeForEntityException,
@@ -69,6 +70,7 @@ swagger = Swagger(
     app, template=swagger.swagger_template, config=swagger.swagger_config
 )
 configure_openapi_route(app, swagger)
+
 
 if config.SAML_ENABLED:
     app.extensions["saml_client"] = saml_client_for(config.SAML_METADATA_URL)
@@ -154,6 +156,19 @@ def indexer_key_error(error):
         raise error
 
 
+@app.errorhandler(TwoFactorAuthenticationRequiredException)
+def two_factor_auth_required(error):
+    return (
+        jsonify(
+            error=True,
+            two_factor_authentication_required=True,
+            message="Two-factor authentication setup is required. "
+            "Please configure 2FA before accessing the API.",
+        ),
+        403,
+    )
+
+
 if config.DEBUG:
 
     @app.errorhandler(Exception)
@@ -197,6 +212,20 @@ def configure_auth():
         except PersonNotFoundException:
             return wrong_auth_handler()
         check_active_identity(identity, identity_type, jti=payload["jti"])
+
+        if payload.get("requires_2fa_setup"):
+            allowed_paths = {
+                "/auth/totp",
+                "/auth/email-otp",
+                "/auth/fido",
+                "/auth/login",
+                "/auth/logout",
+                "/auth/authenticated",
+                "/auth/refresh-token",
+            }
+            if request.path not in allowed_paths:
+                raise TwoFactorAuthenticationRequiredException()
+
         identity_changed.send(
             current_app._get_current_object(),
             identity=Identity(identity.id, identity_type),
