@@ -654,7 +654,9 @@ def remove_asset(asset_id, force=False):
             {"asset_id": asset_id},
             project_id=str(asset.project_id),
         )
-        breakdown_service.refresh_casting_stats(asset.serialize(obj_type="Asset"))
+        breakdown_service.refresh_casting_stats(
+            asset.serialize(obj_type="Asset")
+        )
     else:
         from zou.app.services import tasks_service
 

@@ -103,7 +103,9 @@ def with_playlist_lock(playlist_id, timeout=30, wait_timeout=35):
     Context manager: acquire playlist lock, yield, then release.
     Yields True if lock was acquired, False if Redis unavailable or lock not acquired in time.
     """
-    with with_lock(f"playlist_lock:{playlist_id}", timeout, wait_timeout) as acquired:
+    with with_lock(
+        f"playlist_lock:{playlist_id}", timeout, wait_timeout
+    ) as acquired:
         yield acquired
 
 
@@ -114,6 +116,8 @@ def with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
     Yields True if lock was acquired, False if Redis unavailable or lock not acquired in time.
     """
     with with_lock(
-        f"preview_file_annotations_lock:{preview_file_id}", timeout, wait_timeout
+        f"preview_file_annotations_lock:{preview_file_id}",
+        timeout,
+        wait_timeout,
     ) as acquired:
         yield acquired

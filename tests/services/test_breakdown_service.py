@@ -394,7 +394,9 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         char.update({"ready_for": self.task_type_compositing_id})
         # Refresh casting stats for the temp asset to update the shot
         casting = breakdown_service.get_casting(self.shot_id)
-        breakdown_service.refresh_casting_stats(temp_asset.serialize(obj_type="Asset"))
+        breakdown_service.refresh_casting_stats(
+            temp_asset.serialize(obj_type="Asset")
+        )
         self.task_layout = tasks_service.get_task(self.task_layout["id"])
         self.task_animation = tasks_service.get_task(self.task_animation["id"])
         self.task_compositing = tasks_service.get_task(
