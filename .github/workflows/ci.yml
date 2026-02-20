@@ -43,10 +43,11 @@ jobs:
       - name: Install ffmpeg
         run: |
           if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
-            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || sudo apt-get install -y -f --no-install-recommends
+            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
           else
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends ffmpeg
+            sudo apt-get autoclean -y
             mkdir -p ~/apt-cache
             cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
             cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
@@ -159,10 +160,11 @@ jobs:
       - name: Install ffmpeg
         run: |
           if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
-            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || sudo apt-get install -y -f --no-install-recommends
+            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
           else
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends ffmpeg
+            sudo apt-get autoclean -y
             mkdir -p ~/apt-cache
             cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
             cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
