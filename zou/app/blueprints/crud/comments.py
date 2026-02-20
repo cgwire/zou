@@ -367,7 +367,9 @@ class CommentResource(BaseModelResource):
 
     def pre_update(self, instance_dict, data):
         self.task_status_change = False
-        if instance_dict["task_status_id"] != data.get("task_status_id", None):
+        new_task_status_id = data.get("task_status_id", None)
+        if new_task_status_id is not None and \
+            instance_dict["task_status_id"] != data.get("task_status_id", None):
             self.task_status_change = True
             self.previous_task_status_id = instance_dict["task_status_id"]
         return data
