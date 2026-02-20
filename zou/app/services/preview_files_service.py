@@ -11,6 +11,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
 from zou.app.stores import file_store
+from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
 from zou.app.models.preview_file import PreviewFile
@@ -419,27 +420,30 @@ def update_preview_file_annotations(
 ):
     """
     Update annotations for given preview file.
+    Uses a Redis lock to prevent race conditions when multiple processes update
+    annotations on the same preview file concurrently.
     """
-    preview_file = files_service.get_preview_file_raw(preview_file_id)
-    previous_annotations = preview_file.annotations or []
-    annotations = _clean_annotations(previous_annotations)
-    annotations = _apply_annotation_additions(previous_annotations, additions)
-    annotations = _apply_annotation_updates(annotations, updates)
-    annotations = _apply_annotation_deletions(annotations, deletions)
-    preview_file.update({"annotations": []})
-    preview_file.update({"annotations": annotations})
-    files_service.clear_preview_file_cache(preview_file_id)
-    preview_file = files_service.get_preview_file(preview_file_id)
-    events.emit(
-        "preview-file:annotation-update",
-        {
-            "preview_file_id": preview_file_id,
-            "person_id": person_id,
-            "updated_at": preview_file["updated_at"],
-        },
-        project_id=project_id,
-    )
-    return preview_file
+    with with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
+        preview_file = files_service.get_preview_file_raw(preview_file_id)
+        previous_annotations = preview_file.annotations or []
+        annotations = _clean_annotations(previous_annotations)
+        annotations = _apply_annotation_additions(previous_annotations, additions)
+        annotations = _apply_annotation_updates(annotations, updates)
+        annotations = _apply_annotation_deletions(annotations, deletions)
+        preview_file.update({"annotations": []})
+        preview_file.update({"annotations": annotations})
+        files_service.clear_preview_file_cache(preview_file_id)
+        preview_file = files_service.get_preview_file(preview_file_id)
+        events.emit(
+            "preview-file:annotation-update",
+            {
+                "preview_file_id": preview_file_id,
+                "person_id": person_id,
+                "updated_at": preview_file["updated_at"],
+            },
+            project_id=project_id,
+        )
+        return preview_file
 
 
 def _clean_annotations(annotations):
