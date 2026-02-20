@@ -204,6 +204,13 @@ def get_current_user(unsafe=False, relations=False):
     return data
 
 
+def get_current_user_fido_devices():
+    """
+    Return FIDO device names for the current user.
+    """
+    return current_user.fido_devices()
+
+
 def get_current_user_raw():
     """
     Return person from its auth token (the one that does the request) as an

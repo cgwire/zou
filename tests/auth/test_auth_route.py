@@ -672,3 +672,310 @@ class EmailOTPTestCase(ApiDBTestCase):
             200,
         )
         self.assertTrue(response["login"])
+
+    def test_send_email_otp_not_enabled(self):
+        """GET /auth/email-otp returns 400 if email OTP not enabled."""
+        response = self.app.get(
+            "auth/email-otp?email=%s" % self.credentials["email"]
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_send_email_otp_unknown_user(self):
+        """GET /auth/email-otp returns 404 for unknown email."""
+        response = self.app.get("auth/email-otp?email=unknown@test.com")
+        self.assertEqual(response.status_code, 404)
+
+
+class TOTPTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_person()
+        self.person.update(
+            {
+                "password": auth.encrypt_password("secretpassword"),
+                "role": "admin",
+            }
+        )
+        self.person_dict = self.person.serialize()
+        self.credentials = {
+            "email": self.person_dict["email"],
+            "password": "secretpassword",
+        }
+
+    def get_auth_headers(self, tokens):
+        return {
+            "Authorization": "Bearer %s" % tokens.get("access_token", None)
+        }
+
+    def login(self):
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+        return tokens, headers
+
+    def get_person(self):
+        return Person.get(self.person_dict["id"])
+
+    def enable_totp(self, headers):
+        """Pre-enable then enable TOTP, return the secret."""
+        response = self.app.put("auth/totp", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        otp_secret = data["otp_secret"]
+
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        return otp_secret
+
+    def test_pre_enable_totp_already_enabled(self):
+        """PUT /auth/totp returns 400 if TOTP already enabled."""
+        _, headers = self.login()
+        self.enable_totp(headers)
+
+        response = self.app.put("auth/totp", headers=headers)
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["error"])
+
+    def test_enable_totp_wrong_code(self):
+        """POST /auth/totp returns 400 with wrong code."""
+        _, headers = self.login()
+
+        self.app.put("auth/totp", headers=headers)
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": "000000"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["wrong_OTP"])
+
+    def test_enable_totp_already_enabled(self):
+        """POST /auth/totp returns 400 if TOTP already enabled."""
+        _, headers = self.login()
+        otp_secret = self.enable_totp(headers)
+
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.post(
+            "auth/totp",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["error"])
+
+    def test_disable_totp(self):
+        """DELETE /auth/totp disables TOTP with valid code."""
+        _, headers = self.login()
+        otp_secret = self.enable_totp(headers)
+
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.delete(
+            "auth/totp",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["success"])
+
+        person = self.get_person()
+        self.assertFalse(person.totp_enabled)
+        self.assertIsNone(person.totp_secret)
+
+    def test_disable_totp_not_enabled(self):
+        """DELETE /auth/totp returns 400 if TOTP not enabled."""
+        _, headers = self.login()
+        response = self.app.delete(
+            "auth/totp",
+            data=json.dumps({"totp": "123456"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_disable_totp_wrong_code(self):
+        """DELETE /auth/totp returns 400 with wrong code."""
+        _, headers = self.login()
+        self.enable_totp(headers)
+
+        response = self.app.delete(
+            "auth/totp",
+            data=json.dumps({"totp": "000000"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["wrong_OTP"])
+
+    def test_login_with_totp(self):
+        """Login with TOTP code after enabling."""
+        _, headers = self.login()
+        otp_secret = self.enable_totp(headers)
+        self.app.get("auth/logout", headers=headers)
+
+        # Login without TOTP should fail
+        self.post("auth/login", self.credentials, 400)
+
+        # Login with TOTP
+        totp = pyotp.TOTP(otp_secret)
+        response = self.post(
+            "auth/login",
+            {
+                "email": self.credentials["email"],
+                "password": self.credentials["password"],
+                "totp": totp.now(),
+            },
+            200,
+        )
+        self.assertTrue(response["login"])
+
+    def test_login_with_recovery_code(self):
+        """Login with recovery code after enabling TOTP."""
+        _, headers = self.login()
+        self.enable_totp(headers)
+
+        # Generate a known recovery code
+        import flask_bcrypt
+
+        person = self.get_person()
+        recovery_code = "testrecovery123"
+        hashed = flask_bcrypt.generate_password_hash(recovery_code)
+        person.update({"otp_recovery_codes": [hashed]})
+        person.save()
+
+        self.app.get("auth/logout", headers=headers)
+
+        # Login with recovery code
+        response = self.post(
+            "auth/login",
+            {
+                "email": self.credentials["email"],
+                "password": self.credentials["password"],
+                "recovery_code": recovery_code,
+            },
+            200,
+        )
+        self.assertTrue(response["login"])
+
+    def test_recovery_codes_regeneration(self):
+        """PUT /auth/recovery-codes regenerates codes with valid
+        TOTP."""
+        _, headers = self.login()
+        otp_secret = self.enable_totp(headers)
+
+        totp = pyotp.TOTP(otp_secret)
+        response = self.app.put(
+            "auth/recovery-codes",
+            data=json.dumps({"totp": totp.now()}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertIn("otp_recovery_codes", data)
+        self.assertIsNotNone(data["otp_recovery_codes"])
+
+    def test_recovery_codes_no_2fa(self):
+        """PUT /auth/recovery-codes returns 400 without 2FA."""
+        _, headers = self.login()
+        response = self.app.put(
+            "auth/recovery-codes",
+            data=json.dumps({"totp": "123456"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_recovery_codes_wrong_otp(self):
+        """PUT /auth/recovery-codes returns 400 with wrong code."""
+        _, headers = self.login()
+        self.enable_totp(headers)
+
+        response = self.app.put(
+            "auth/recovery-codes",
+            data=json.dumps({"totp": "000000"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["wrong_OTP"])
+
+
+class ChangePasswordErrorsTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_person()
+        self.person.update(
+            {
+                "password": auth.encrypt_password("secretpassword"),
+                "role": "admin",
+            }
+        )
+        self.person_dict = self.person.serialize()
+        self.credentials = {
+            "email": self.person_dict["email"],
+            "password": "secretpassword",
+        }
+
+    def get_auth_headers(self, tokens):
+        return {
+            "Authorization": "Bearer %s" % tokens.get("access_token", None)
+        }
+
+    def login(self):
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+        return tokens, headers
+
+    def test_change_password_wrong_old(self):
+        """Change password with wrong old password returns 400."""
+        _, headers = self.login()
+        response = self.app.post(
+            "auth/change-password",
+            data=json.dumps(
+                {
+                    "old_password": "wrongpassword",
+                    "password": "newpassword1",
+                    "password_2": "newpassword1",
+                }
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_change_password_mismatch(self):
+        """Change password with mismatched passwords returns 400."""
+        _, headers = self.login()
+        response = self.app.post(
+            "auth/change-password",
+            data=json.dumps(
+                {
+                    "old_password": "secretpassword",
+                    "password": "newpassword1",
+                    "password_2": "differentpass",
+                }
+            ),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_change_password_too_short(self):
+        """Change password with short password returns 400."""
+        _, headers = self.login()
+        response = self.app.post(
+            "auth/change-password",
+            data=json.dumps(
+                {
+                    "old_password": "secretpassword",
+                    "password": "123",
+                    "password_2": "123",
+                }
+            ),
+            headers=headers,
+        )

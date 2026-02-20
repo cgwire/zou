@@ -493,7 +493,7 @@ def send_email_otp(person):
     html = f"""<p>Hello {person["first_name"]},</p>
 
 <p>
-Your verification code is : <strong>{otp}</strong>
+Your verification code is: <strong>{otp}</strong>
 </p>
 
 <p>
@@ -502,9 +502,7 @@ This email was sent at this date : {time_string}.
 The IP of the person who requested this is: {person_IP}.
 </p>
 """
-    subject = (
-        f"{organisation['name']} - Kitsu : your verification code is {otp}"
-    )
+    subject = f"{organisation['name']} - Kitsu : your verification code"
     title = "Your verification code"
     email_html_body = templates_service.generate_html_body(title, html)
     emails.send_email(subject, email_html_body, person["email"])

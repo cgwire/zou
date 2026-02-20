@@ -102,7 +102,10 @@ class AuthenticatedResource(Resource):
           401:
             description: Person not found
         """
-        person = persons_service.get_current_user(unsafe=True, relations=True)
+        person = persons_service.get_current_user(relations=True)
+        person["fido_devices"] = (
+            persons_service.get_current_user_fido_devices()
+        )
         organisation = persons_service.get_organisation(
             sensitive=permissions.has_admin_permissions()
         )
