@@ -156,6 +156,31 @@ def remove_task(task_id, force=False):
     return task_serialized
 
 
+def remove_output_files_for_entity(entity_id):
+    """
+    Remove all OutputFile rows that reference the given entity (entity_id).
+    This avoids FK violation when deleting the entity. Clears PreviewFile
+    source_file_id references before deleting each OutputFile.
+    """
+    output_files = OutputFile.query.filter_by(entity_id=entity_id).all()
+    for output_file in output_files:
+        PreviewFile.query.filter_by(source_file_id=output_file.id).update(
+            {"source_file_id": None}
+        )
+        output_file.delete()
+
+
+def remove_output_files_for_project(project_id):
+    """
+    Remove all OutputFile rows that reference any entity in the project.
+    Called after preview files and tasks are already removed, so no need to
+    clear PreviewFile.source_file_id.
+    """
+    OutputFile.query.join(Entity, OutputFile.entity_id == Entity.id).filter(
+        Entity.project_id == project_id
+    ).delete(synchronize_session=False)
+
+
 def remove_preview_file_by_id(preview_file_id, force=False):
     preview_file = PreviewFile.get(preview_file_id)
     if preview_file is None:
@@ -377,6 +402,7 @@ def remove_project(project_id):
         playlists_service.remove_playlist(playlist.id)
 
     ApiEvent.delete_all_by(project_id=project_id)
+    remove_output_files_for_project(project_id)
     Entity.delete_all_by(project_id=project_id)
 
     descriptors = MetadataDescriptor.query.filter_by(project_id=project_id)
@@ -515,6 +541,7 @@ def remove_episode(episode_id, force=False):
         EntityLink.delete_all_by(entity_out_id=episode_id)
         EntityConceptLink.delete_all_by(entity_in_id=episode_id)
         EntityConceptLink.delete_all_by(entity_out_id=episode_id)
+        remove_output_files_for_entity(episode_id)
     try:
         episode.delete()
         events.emit(

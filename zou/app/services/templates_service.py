@@ -1,4 +1,6 @@
+from zou.app import config
 from zou.app.services import persons_service
+from zou.app.utils.email_i18n import get_email_translation
 
 notification_template_begin = """
 <!DOCTYPE html>
@@ -108,26 +110,28 @@ notification_template_end_title = """
 """
 
 
-def get_signature():
+def get_signature(locale=None):
     """
-    Build signature for Zou emails.
+    Build signature for Zou emails. If locale is provided, the signature
+    is translated (e.g. "Best regards" / "Cordialement").
     """
     organisation = persons_service.get_organisation()
-    return (
-        """
-<p>Best regards,</p>
-
-<p>%s Team</p>"""
-        % organisation["name"]
+    loc = locale or getattr(config, "DEFAULT_LOCALE", "en_US")
+    return get_email_translation(
+        loc, "email_signature", organisation_name=organisation["name"]
     )
 
 
-def generate_html_body(title, message):
+def generate_html_body(title, message, locale=None):
+    """
+    Generate the full HTML body for a notification email.
+    If locale is provided, the signature is translated.
+    """
     return (
         notification_template_begin
         + title
         + notification_template_end_title
         + message
-        + get_signature()
+        + get_signature(locale)
         + notification_template_end
     )

@@ -286,6 +286,66 @@ class EntityPreviewsResource(Resource):
         return playlists_service.get_preview_files_for_entity(entity_id)
 
 
+class PlaylistAddEntityResource(Resource, ArgsMixin):
+
+    @jwt_required()
+    def post(self, playlist_id):
+        """
+        Add entity to playlist
+        ---
+        description: Atomically add a single entity to the given playlist.
+        tags:
+          - Playlists
+        parameters:
+          - in: path
+            name: playlist_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Playlist unique identifier
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - entity_id
+                properties:
+                  entity_id:
+                    type: string
+                    format: uuid
+                    description: Entity unique identifier to add to playlist
+                  preview_file_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                    description: Optional preview file identifier associated to the entity
+        responses:
+          200:
+            description: Updated playlist
+            content:
+              application/json:
+                schema:
+                  type: object
+        """
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
+
+        args = self.get_args(
+            [
+                ("entity_id", None, True),
+                ("preview_file_id", None, False),
+            ]
+        )
+
+        updated_playlist = playlists_service.add_entity_to_playlist(
+            playlist_id, args["entity_id"], args["preview_file_id"]
+        )
+        return updated_playlist
+
+
 class PlaylistDownloadResource(Resource):
 
     @jwt_required()

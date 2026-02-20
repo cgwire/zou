@@ -25,6 +25,7 @@ from saml2 import entity, client_base
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import auth, emails, permissions, date_helpers
+from zou.app.utils.email_i18n import get_email_translation
 from zou.app.services import (
     persons_service,
     auth_service,
@@ -628,25 +629,34 @@ class ChangePasswordResource(Resource, ArgsMixin):
                 "User %s has changed his password" % user["email"]
             )
             organisation = persons_service.get_organisation()
+            locale = user.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+            if hasattr(locale, "language"):
+                locale = str(locale)
             time_string = format_datetime(
                 date_helpers.get_utc_now_datetime(),
                 tzinfo=user["timezone"],
                 locale=user["locale"],
             )
-            person_IP = request.headers.get("X-Forwarded-For", None)
-            html = f"""<p>Hello {user["first_name"]},</p>
-
-<p>
-You have successfully changed your password at this date: {time_string}.
-</p>
-<p>
-Your IP when you have changed your password is: {person_IP}.
-</p>
-"""
-            subject = f"{organisation['name']} - Kitsu: password changed"
-            title = "Password Changed"
-            email_html_body = templates_service.generate_html_body(title, html)
-            emails.send_email(subject, email_html_body, user["email"])
+            person_IP = request.headers.get("X-Forwarded-For", None) or ""
+            subject = get_email_translation(
+                locale,
+                "auth_password_changed_subject",
+                organisation_name=organisation["name"],
+            )
+            title = get_email_translation(locale, "auth_password_changed_title")
+            html = get_email_translation(
+                locale,
+                "auth_password_changed_body",
+                first_name=user["first_name"],
+                time_string=time_string,
+                person_IP=person_IP,
+            )
+            email_html_body = templates_service.generate_html_body(
+                title, html, locale=locale
+            )
+            emails.send_email(
+                subject, email_html_body, user["email"], locale=locale
+            )
             return {"success": True}
 
         except auth.PasswordsNoMatchException:
@@ -831,34 +841,36 @@ class ResetPasswordResource(Resource, ArgsMixin):
             config.DOMAIN_NAME,
             query,
         )
+        locale = user.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+        if hasattr(locale, "language"):
+            locale = str(locale)
         time_string = format_datetime(
             date_helpers.get_utc_now_datetime(),
             tzinfo=user["timezone"],
             locale=user["locale"],
         )
-        person_IP = request.headers.get("X-Forwarded-For", None)
+        person_IP = request.headers.get("X-Forwarded-For", None) or ""
         organisation = persons_service.get_organisation()
-        html = f"""<p>Hello {user["first_name"]},</p>
-
-<p>
-You have requested for a password reset. Click on the following button
-to change your password:
-</p>
-
-<p class="cta">
-<a class="button" href="{reset_url}">Change your password</a>
-</p>
-
-<p>
-This link will expire after 2 hours. After, you have to do a new request to reset your password.
-This email was sent at this date: {time_string}.
-The IP of the person who requested this is: {person_IP}.
-</p>
-"""
-        subject = f"{organisation['name']} - Kitsu: password recovery"
-        title = "Password Recovery"
-        email_html_body = templates_service.generate_html_body(title, html)
-        emails.send_email(subject, email_html_body, args["email"])
+        subject = get_email_translation(
+            locale,
+            "auth_password_recovery_subject",
+            organisation_name=organisation["name"],
+        )
+        title = get_email_translation(locale, "auth_password_recovery_title")
+        html = get_email_translation(
+            locale,
+            "auth_password_recovery_body",
+            first_name=user["first_name"],
+            reset_url=reset_url,
+            time_string=time_string,
+            person_IP=person_IP,
+        )
+        email_html_body = templates_service.generate_html_body(
+            title, html, locale=locale
+        )
+        emails.send_email(
+            subject, email_html_body, args["email"], locale=locale
+        )
         return {"success": "Reset token sent"}
 
 

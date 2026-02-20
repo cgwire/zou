@@ -32,6 +32,7 @@ from zou.app.services.exception import (
 from zou.app.utils import fields, events, cache
 
 from sqlalchemy.exc import StatementError
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import ObjectDeletedError
 from sqlalchemy import or_
 
@@ -107,6 +108,7 @@ def get_projects_with_extra_data(
         for project in projects_list
     ]
 
+
 def _fetch_metadata_descriptors_by_project(
     project_ids, for_client=False, vendor_departments=None
 ):
@@ -130,6 +132,10 @@ def _fetch_metadata_descriptors_by_project(
         descriptors_query = MetadataDescriptor.query.filter(
             MetadataDescriptor.project_id.in_(project_ids)
         )
+    # Eager-load departments to avoid N+1 when serializing descriptors
+    descriptors_query = descriptors_query.options(
+        joinedload(MetadataDescriptor.departments)
+    )
 
     all_descriptors = descriptors_query.all()
     descriptors_by_project = {}
@@ -609,6 +615,8 @@ def get_metadata_descriptors(project_id, for_client=False):
     if for_client:
         query = query.filter(MetadataDescriptor.for_client == True)
 
+    # Eager-load departments to avoid N+1 during serialization
+    query = query.options(joinedload(MetadataDescriptor.departments))
     descriptors = query.all()
     return fields.serialize_models(descriptors, relations=True)
 
@@ -725,6 +733,8 @@ def reorder_metadata_descriptors(project_id, entity_type, descriptor_ids):
         MetadataDescriptor.project_id == project_id,
         MetadataDescriptor.entity_type == entity_type,
     ).order_by(MetadataDescriptor.position, MetadataDescriptor.name)
+    # Eager-load departments to avoid N+1 during serialization
+    query = query.options(joinedload(MetadataDescriptor.departments))
     return fields.serialize_models(query.all(), relations=True)
 
 

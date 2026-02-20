@@ -77,12 +77,12 @@ AssetInstanceSchema = {
     },
 }
 
-AssetTypeSchema= {
+AssetTypeSchema = {
     "type": "object",
     "properties": {"name": {"type": "string"}},
 }
 
-AttachmentFileSchema= {
+AttachmentFileSchema = {
     "type": "object",
     "properties": {
         "name": {
@@ -106,7 +106,7 @@ AttachmentFileSchema= {
     },
 }
 
-BuildJobSchema= {
+BuildJobSchema = {
     "type": "object",
     "properties": {
         "status": {
@@ -126,7 +126,7 @@ BuildJobSchema= {
     },
 }
 
-CommentSchema= {
+CommentSchema = {
     "type": "object",
     "properties": {
         "shotgun_id": {
@@ -173,7 +173,7 @@ CommentSchema= {
     },
 }
 
-CustomActionSchema= {
+CustomActionSchema = {
     "type": "object",
     "properties": {
         "name": {
@@ -190,7 +190,7 @@ CustomActionSchema= {
     },
 }
 
-DataImportErrorSchema= {
+DataImportErrorSchema = {
     "type": "object",
     "properties": {
         "event_data": {
@@ -205,7 +205,7 @@ DataImportErrorSchema= {
     },
 }
 
-DayOffSchema= {
+DayOffSchema = {
     "type": "object",
     "properties": {
         "date": {"type": "string", "format": "date"},
@@ -217,7 +217,7 @@ DayOffSchema= {
     },
 }
 
-DepartmentSchema= {
+DepartmentSchema = {
     "type": "object",
     "properties": {
         "name": {
@@ -235,7 +235,7 @@ DepartmentSchema= {
     },
 }
 
-DesktopLoginLogSchema= {
+DesktopLoginLogSchema = {
     "type": "object",
     "properties": {
         "date": {"type": "string", "format": "date"},
@@ -247,7 +247,7 @@ DesktopLoginLogSchema= {
     },
 }
 
-EpisodeSchema= {
+EpisodeSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of episode"},
@@ -291,7 +291,7 @@ EpisodeSchema= {
     },
 }
 
-EventSchema= {
+EventSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of event"},
@@ -313,7 +313,7 @@ EventSchema= {
     },
 }
 
-FileStatusSchema= {
+FileStatusSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
@@ -321,7 +321,7 @@ FileStatusSchema= {
     },
 }
 
-LoginLogSchema= {
+LoginLogSchema = {
     "type": "object",
     "properties": {
         "origin": {"type": "string", "description": "web, script"},
@@ -337,7 +337,7 @@ LoginLogSchema= {
     },
 }
 
-MetadataSchema= {
+MetadataSchema = {
     "type": "object",
     "properties": {
         "project_id": {
@@ -366,7 +366,7 @@ MetadataSchema= {
     },
 }
 
-MilestoneSchema= {
+MilestoneSchema = {
     "type": "object",
     "properties": {
         "data": {
@@ -388,7 +388,7 @@ MilestoneSchema= {
     },
 }
 
-NewsSchema= {
+NewsSchema = {
     "type": "object",
     "properties": {
         "change": {"type": "boolean", "default": "False"},
@@ -415,7 +415,7 @@ NewsSchema= {
     },
 }
 
-NotificationSchema= {
+NotificationSchema = {
     "type": "object",
     "properties": {
         "read": {
@@ -458,7 +458,7 @@ NotificationSchema= {
     },
 }
 
-OrganisationSchema= {
+OrganisationSchema = {
     "type": "object",
     "properties": {
         "name": {
@@ -488,7 +488,7 @@ OrganisationSchema= {
     },
 }
 
-OutputFileSchema= {
+OutputFileSchema = {
     "type": "object",
     "properties": {
         "shotgun_id": {
@@ -591,7 +591,7 @@ OutputFileSchema= {
     },
 }
 
-OutputTypeSchema= {
+OutputTypeSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
@@ -599,7 +599,7 @@ OutputTypeSchema= {
     },
 }
 
-PersonSchema= {
+PersonSchema = {
     "type": "object",
     "properties": {
         "first_name": {"type": "string"},
@@ -661,7 +661,7 @@ PersonSchema= {
     },
 }
 
-PlaylistSchema= {
+PlaylistSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of playlist"},
@@ -691,7 +691,7 @@ PlaylistSchema= {
     },
 }
 
-PreviewFileSchema= {
+PreviewFileSchema = {
     "type": "object",
     "properties": {
         "shotgun_id": {
@@ -805,7 +805,7 @@ PreviewFileSchema= {
     },
 }
 
-ProjectSchema= {
+ProjectSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of project"},
@@ -866,7 +866,7 @@ ProjectSchema= {
     },
 }
 
-ProjectStatusSchema= {
+ProjectStatusSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
@@ -874,7 +874,7 @@ ProjectStatusSchema= {
     },
 }
 
-ScheduleItemSchema= {
+ScheduleItemSchema = {
     "type": "object",
     "properties": {
         "start_date": {"type": "string", "format": "date"},
@@ -898,7 +898,7 @@ ScheduleItemSchema= {
     },
 }
 
-SearchFilterSchema= {
+SearchFilterSchema = {
     "type": "object",
     "properties": {
         "list_type": {"type": "string", "description": "Type of list"},
@@ -924,7 +924,7 @@ SearchFilterSchema= {
     },
 }
 
-SequenceSchema= {
+SequenceSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of sequence"},
@@ -973,7 +973,7 @@ SequenceSchema= {
     },
 }
 
-ShotSchema= {
+ShotSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of shot"},
@@ -1024,7 +1024,7 @@ ShotSchema= {
     },
 }
 
-SoftwareSchema= {
+SoftwareSchema = {
     "type": "object",
     "properties": {
         "name": {"type": "string", "description": "Name of software"},
@@ -1044,7 +1044,7 @@ SoftwareSchema= {
     },
 }
 
-StatusAutomationSchema= {
+StatusAutomationSchema = {
     "type": "object",
     "properties": {
         "entity_type": {"type": "string", "default": "asset"},

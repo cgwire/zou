@@ -7,6 +7,7 @@ from zou.app.blueprints.playlists.resources import (
     BuildPlaylistMovieResource,
     EntityPreviewsResource,
     EpisodePlaylistsResource,
+    PlaylistAddEntityResource,
     NotifyClientsResource,
     ProjectPlaylistsResource,
     ProjectAllPlaylistsResource,
@@ -45,6 +46,10 @@ routes = [
         PlaylistZipDownloadResource,
     ),
     ("/data/projects/<project_id>/playlists/temp", TempPlaylistResource),
+    (
+        "/actions/playlists/<playlist_id>/add-entity",
+        PlaylistAddEntityResource,
+    ),
     ("/data/playlists/<playlist_id>/notify-clients", NotifyClientsResource),
 ]
 
