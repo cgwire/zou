@@ -14,7 +14,7 @@ from flask_fs.errors import FileNotFound
 from slugify import slugify
 from sqlalchemy import or_
 
-from zou.app import config
+from zou.app import config, db
 from zou.app.stores import file_store
 
 from zou.app.models.build_job import BuildJob
@@ -26,6 +26,7 @@ from zou.app.models.task_type import TaskType
 from zou.utils import movie
 from zou.app.utils import fields, events, remote_job, emails
 from zou.app.utils import query as query_utils
+from zou.app.stores.redis_lock import with_playlist_lock
 
 from zou.app.services import (
     assets_service,
@@ -406,6 +407,56 @@ def get_playlist(playlist_id):
     Return given playlist as a dict.
     """
     return get_playlist_raw(playlist_id).serialize()
+
+
+def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
+    """
+    Atomically append an entity to the playlist shots list.
+    This function is designed to be safe under concurrent access.
+
+    Uses a Redis-based distributed lock to prevent race conditions
+    when multiple processes try to add entities to the same playlist
+    concurrently. Falls back to database-level locking if Redis is
+    unavailable.
+    """
+    entity_id_str = str(entity_id)
+    with with_playlist_lock(playlist_id, timeout=30, wait_timeout=35) as _acquired:
+        playlist_dict = _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id)
+
+    events.emit(
+        "playlist:add_entity",
+        {
+            "playlist_id": playlist_dict["id"],
+            "entity_id": entity_id_str,
+            "preview_file_id": (
+                str(preview_file_id) if preview_file_id is not None else None
+            )
+        },
+        project_id=playlist_dict["project_id"],
+    )
+
+    return playlist_dict
+
+
+def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
+    """
+    Internal helper function to add an entity to playlist in the database.
+    Assumes the caller has acquired appropriate locking (Redis).
+    """
+    playlist = Playlist.get(playlist_id)
+    shots = playlist.shots.copy()
+
+    if not any(shot.get("entity_id") == entity_id_str for shot in shots):
+        shot = {
+            "entity_id": entity_id_str,
+        }
+        if preview_file_id is not None:
+            shot["preview_file_id"] = str(preview_file_id)
+        shots.append(shot)
+        playlist.shots = shots
+        playlist.update({"shots": shots})
+
+    return playlist.serialize()
 
 
 def playlist_previews(shots, only_movies=False):
