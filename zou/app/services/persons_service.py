@@ -196,6 +196,10 @@ def get_current_user(unsafe=False, relations=False):
     """
     data = current_user.serialize_safe(relations=relations)
     if unsafe:
+        data["totp_secret"] = current_user.totp_secret
+        data["email_otp_secret"] = current_user.email_otp_secret
+        data["otp_recovery_codes"] = current_user.otp_recovery_codes
+        data["fido_credentials"] = current_user.fido_credentials
         data["fido_devices"] = current_user.fido_devices()
     return data
 
@@ -210,7 +214,11 @@ def get_current_user_raw():
     # relationships might not be loaded. We need to ensure departments are loaded.
     # Accessing departments triggers lazy loading if not already loaded.
     # Convert to list to force evaluation and ensure departments are loaded
-    _ = list(current_user.departments) if hasattr(current_user, 'departments') else []
+    _ = (
+        list(current_user.departments)
+        if hasattr(current_user, "departments")
+        else []
+    )
     return current_user
 
 
@@ -275,12 +283,11 @@ def create_person(
 
     if expiration_date is not None:
         if type(expiration_date) is str:
-            expiration_date = date_helpers.get_date_from_string(expiration_date)
+            expiration_date = date_helpers.get_date_from_string(
+                expiration_date
+            )
         try:
-            if (
-                expiration_date.date()
-                < datetime.date.today()
-            ):
+            if expiration_date.date() < datetime.date.today():
                 raise WrongParameterException(
                     "Expiration date can't be in the past."
                 )

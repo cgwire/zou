@@ -4,6 +4,7 @@ import orjson as json
 from tests.base import ApiDBTestCase
 
 from zou.app.utils import auth, fields
+from zou.app.models.person import Person
 from zou.app.stores import auth_tokens_store
 from zou.app.services import persons_service
 
@@ -491,3 +492,183 @@ class Enforce2FATestCase(ApiDBTestCase):
         }
         response = self.post("auth/login", credentials, 400)
         self.assertFalse(response["login"])
+
+
+class EmailOTPTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_fixture_person()
+        self.person.update(
+            {
+                "password": auth.encrypt_password("secretpassword"),
+                "role": "admin",
+            }
+        )
+        self.person_dict = self.person.serialize()
+        self.credentials = {
+            "email": self.person_dict["email"],
+            "password": "secretpassword",
+        }
+
+    def get_auth_headers(self, tokens):
+        return {
+            "Authorization": "Bearer %s" % tokens.get("access_token", None)
+        }
+
+    def login(self):
+        tokens = self.post("auth/login", self.credentials, 200)
+        headers = self.get_auth_headers(tokens)
+        headers["Content-type"] = "application/json"
+        return tokens, headers
+
+    def get_person(self):
+        """Reload person from DB to get fresh state."""
+        return Person.get(self.person_dict["id"])
+
+    def enable_email_otp(self, headers):
+        """Pre-enable then enable email OTP, return the secret."""
+        # Pre-enable: generates secret and sends OTP email
+        response = self.app.put("auth/email-otp", headers=headers)
+        self.assertEqual(response.status_code, 200)
+
+        # Retrieve the secret and OTP counter from store
+        person = self.get_person().serialize()
+        secret = person["email_otp_secret"]
+        count = auth_tokens_store.get("email-otp-count-%s" % person["email"])
+        otp = pyotp.HOTP(secret).at(int(count))
+
+        # Enable with the OTP code
+        response = self.app.post(
+            "auth/email-otp",
+            data=json.dumps({"email_otp": otp}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        return secret
+
+    def test_pre_enable_email_otp(self):
+        """PUT /auth/email-otp pre-enables email OTP."""
+        _, headers = self.login()
+        response = self.app.put("auth/email-otp", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["success"])
+
+        # Secret should now be set on the person
+        person = self.get_person()
+        self.assertIsNotNone(person.email_otp_secret)
+        self.assertFalse(person.email_otp_enabled)
+
+    def test_pre_enable_email_otp_already_enabled(self):
+        """PUT /auth/email-otp returns 400 if already enabled."""
+        _, headers = self.login()
+        self.enable_email_otp(headers)
+
+        response = self.app.put("auth/email-otp", headers=headers)
+        self.assertEqual(response.status_code, 400)
+
+    def test_enable_email_otp(self):
+        """POST /auth/email-otp enables email OTP with valid code."""
+        _, headers = self.login()
+        self.enable_email_otp(headers)
+
+        person = self.get_person()
+        self.assertTrue(person.email_otp_enabled)
+        self.assertIsNotNone(person.preferred_two_factor_authentication)
+
+    def test_enable_email_otp_wrong_code(self):
+        """POST /auth/email-otp returns 400 with wrong code."""
+        _, headers = self.login()
+
+        # Pre-enable
+        self.app.put("auth/email-otp", headers=headers)
+
+        # Try to enable with wrong code
+        response = self.app.post(
+            "auth/email-otp",
+            data=json.dumps({"email_otp": "000000"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["wrong_OTP"])
+
+    def test_disable_email_otp(self):
+        """DELETE /auth/email-otp disables email OTP with valid
+        code."""
+        _, headers = self.login()
+        secret = self.enable_email_otp(headers)
+
+        # Manually store a counter and generate OTP for verification
+        email = self.person_dict["email"]
+        count = 42
+        auth_tokens_store.add("email-otp-count-%s" % email, count, ttl=300)
+        otp = pyotp.HOTP(secret).at(count)
+
+        response = self.app.delete(
+            "auth/email-otp",
+            data=json.dumps({"email_otp": otp}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["success"])
+
+        # Verify it's disabled
+        person = self.get_person()
+        self.assertFalse(person.email_otp_enabled)
+        self.assertIsNone(person.email_otp_secret)
+
+    def test_disable_email_otp_not_enabled(self):
+        """DELETE /auth/email-otp returns 400 if not enabled."""
+        _, headers = self.login()
+        response = self.app.delete(
+            "auth/email-otp",
+            data=json.dumps({"email_otp": "123456"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_disable_email_otp_wrong_code(self):
+        """DELETE /auth/email-otp returns 400 with wrong code."""
+        _, headers = self.login()
+        self.enable_email_otp(headers)
+
+        response = self.app.delete(
+            "auth/email-otp",
+            data=json.dumps({"email_otp": "000000"}),
+            headers=headers,
+        )
+        self.assertEqual(response.status_code, 400)
+        data = json.loads(response.data.decode("utf-8"))
+        self.assertTrue(data["wrong_OTP"])
+
+    def test_login_with_email_otp(self):
+        """Login with email OTP after it's enabled."""
+        tokens, headers = self.login()
+        secret = self.enable_email_otp(headers)
+        self.app.get("auth/logout", headers=headers)
+
+        # Login without OTP should fail (returns wrong OTP)
+        self.post("auth/login", self.credentials, 400)
+
+        # Request OTP via GET
+        email = self.credentials["email"]
+        response = self.app.get("auth/email-otp?email=%s" % email)
+        self.assertEqual(response.status_code, 200)
+
+        # Retrieve the counter from store and generate OTP
+        count = auth_tokens_store.get("email-otp-count-%s" % email)
+        otp = pyotp.HOTP(secret).at(int(count))
+
+        # Login with OTP
+        response = self.post(
+            "auth/login",
+            {
+                "email": email,
+                "password": self.credentials["password"],
+                "email_otp": otp,
+            },
+            200,
+        )
+        self.assertTrue(response["login"])
