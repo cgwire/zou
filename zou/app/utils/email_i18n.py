@@ -52,6 +52,47 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "the episode %(episode_name)s of ",
         "playlist_elements_count": "\n<p>%(count)s elements are listed in the playlist.</p>\n",
         "email_signature": "\n<p>Best regards,</p>\n\n<p>%(organisation_name)s Team</p>",
+        # Auth: Email OTP
+        "auth_otp_subject": "%(organisation_name)s - Kitsu: your verification code",
+        "auth_otp_title": "Your verification code",
+        "auth_otp_body": """<p>Hello %(first_name)s,</p>
+
+<p>Your verification code is: <strong>%(otp)s</strong></p>
+
+<p>This one time password will expire after 5 minutes. After, you will have to request a new one.
+This email was sent at this date: %(time_string)s.
+The IP of the person who requested this is: %(person_IP)s.</p>
+""",
+        # Auth: Password changed
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu: password changed",
+        "auth_password_changed_title": "Password Changed",
+        "auth_password_changed_body": """<p>Hello %(first_name)s,</p>
+
+<p>You have successfully changed your password at this date: %(time_string)s.</p>
+<p>Your IP when you have changed your password is: %(person_IP)s.</p>
+""",
+        # Auth: Password recovery
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu: password recovery",
+        "auth_password_recovery_title": "Password Recovery",
+        "auth_password_recovery_body": """<p>Hello %(first_name)s,</p>
+
+<p>You have requested a password reset. Click on the following button to change your password:</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">Change your password</a></p>
+
+<p>This link will expire after 2 hours. After, you have to do a new request to reset your password.
+This email was sent at this date: %(time_string)s.
+The IP of the person who requested this is: %(person_IP)s.</p>
+""",
+        # Auth: Invitation
+        "auth_invitation_subject": "You are invited by %(organisation_name)s to join their Kitsu platform",
+        "auth_invitation_title": "Welcome to Kitsu",
+        "auth_invitation_body": """<p>Hello %(first_name)s,</p>
+<p>You are invited by %(organisation_name)s to join their team on Kitsu.</p>
+<p>Your login is: <strong>%(email)s</strong></p>
+<p>Set your password to continue:</p>
+<p class="cta"><a class="button" href="%(reset_url)s">Set your password</a></p>
+""",
     },
     "fr_FR": {
         # Comment notification
@@ -90,6 +131,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "l'épisode %(episode_name)s du ",
         "playlist_elements_count": "\n<p>%(count)s éléments sont dans la playlist.</p>\n",
         "email_signature": "\n<p>Cordialement,</p>\n\n<p>L'équipe %(organisation_name)s</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu : votre code de vérification",
+        "auth_otp_title": "Votre code de vérification",
+        "auth_otp_body": """<p>Bonjour %(first_name)s,</p>
+
+<p>Votre code de vérification est : <strong>%(otp)s</strong></p>
+
+<p>Ce mot de passe à usage unique expire dans 5 minutes. Ensuite, vous devrez en demander un nouveau.
+Cet e-mail a été envoyé à la date : %(time_string)s.
+L'IP de la personne ayant fait la demande est : %(person_IP)s.</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu : mot de passe modifié",
+        "auth_password_changed_title": "Mot de passe modifié",
+        "auth_password_changed_body": """<p>Bonjour %(first_name)s,</p>
+
+<p>Vous avez modifié votre mot de passe avec succès à la date : %(time_string)s.</p>
+<p>Votre adresse IP lors du changement est : %(person_IP)s.</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu : récupération de mot de passe",
+        "auth_password_recovery_title": "Récupération de mot de passe",
+        "auth_password_recovery_body": """<p>Bonjour %(first_name)s,</p>
+
+<p>Vous avez demandé une réinitialisation de mot de passe. Cliquez sur le bouton suivant pour le modifier :</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">Changer votre mot de passe</a></p>
+
+<p>Ce lien expire dans 2 heures. Ensuite, vous devrez faire une nouvelle demande.
+Cet e-mail a été envoyé à la date : %(time_string)s.
+L'IP de la personne ayant fait la demande est : %(person_IP)s.</p>
+""",
+        "auth_invitation_subject": "Vous êtes invité par %(organisation_name)s à rejoindre leur plateforme Kitsu",
+        "auth_invitation_title": "Bienvenue sur Kitsu",
+        "auth_invitation_body": """<p>Bonjour %(first_name)s,</p>
+<p>Vous êtes invité par %(organisation_name)s à rejoindre leur équipe sur Kitsu.</p>
+<p>Votre identifiant : <strong>%(email)s</strong></p>
+<p>Définissez votre mot de passe pour continuer :</p>
+<p class="cta"><a class="button" href="%(reset_url)s">Définir votre mot de passe</a></p>
+""",
     },
     "es_ES": {
         # Comment notification
@@ -128,6 +206,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "el episodio %(episode_name)s de ",
         "playlist_elements_count": "\n<p>%(count)s elementos en la playlist.</p>\n",
         "email_signature": "\n<p>Saludos cordiales,</p>\n\n<p>El equipo de %(organisation_name)s</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu: tu código de verificación",
+        "auth_otp_title": "Tu código de verificación",
+        "auth_otp_body": """<p>Hola %(first_name)s,</p>
+
+<p>Tu código de verificación es: <strong>%(otp)s</strong></p>
+
+<p>Esta contraseña de un solo uso caduca en 5 minutos. Después tendrás que solicitar una nueva.
+Este correo se envió en esta fecha: %(time_string)s.
+La IP de la persona que lo solicitó es: %(person_IP)s.</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu: contraseña cambiada",
+        "auth_password_changed_title": "Contraseña cambiada",
+        "auth_password_changed_body": """<p>Hola %(first_name)s,</p>
+
+<p>Has cambiado tu contraseña correctamente en esta fecha: %(time_string)s.</p>
+<p>Tu IP al cambiar la contraseña es: %(person_IP)s.</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu: recuperación de contraseña",
+        "auth_password_recovery_title": "Recuperación de contraseña",
+        "auth_password_recovery_body": """<p>Hola %(first_name)s,</p>
+
+<p>Has solicitado restablecer tu contraseña. Haz clic en el siguiente botón para cambiarla:</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">Cambiar tu contraseña</a></p>
+
+<p>Este enlace caduca en 2 horas. Después tendrás que solicitar un nuevo restablecimiento.
+Este correo se envió en esta fecha: %(time_string)s.
+La IP de la persona que lo solicitó es: %(person_IP)s.</p>
+""",
+        "auth_invitation_subject": "Has sido invitado por %(organisation_name)s a unirte a su plataforma Kitsu",
+        "auth_invitation_title": "Bienvenido a Kitsu",
+        "auth_invitation_body": """<p>Hola %(first_name)s,</p>
+<p>Has sido invitado por %(organisation_name)s a unirte a su equipo en Kitsu.</p>
+<p>Tu inicio de sesión es: <strong>%(email)s</strong></p>
+<p>Establece tu contraseña para continuar:</p>
+<p class="cta"><a class="button" href="%(reset_url)s">Establecer tu contraseña</a></p>
+""",
     },
     "ja_JP": {
         # Comment notification
@@ -166,6 +281,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "エピソード %(episode_name)s の ",
         "playlist_elements_count": "\n<p>プレイリストに %(count)s 件の要素が含まれています。</p>\n",
         "email_signature": "\n<p>よろしくお願いいたします。</p>\n\n<p>%(organisation_name)s チーム</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu: 認証コード",
+        "auth_otp_title": "認証コード",
+        "auth_otp_body": """<p>%(first_name)s 様</p>
+
+<p>認証コードは <strong>%(otp)s</strong> です。</p>
+
+<p>このワンタイムパスワードは5分で失効します。その後は新しいコードをリクエストしてください。
+送信日時: %(time_string)s。
+リクエスト元のIP: %(person_IP)s。</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu: パスワードを変更しました",
+        "auth_password_changed_title": "パスワード変更完了",
+        "auth_password_changed_body": """<p>%(first_name)s 様</p>
+
+<p>パスワードを正常に変更しました。変更日時: %(time_string)s。</p>
+<p>変更時のIP: %(person_IP)s。</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu: パスワードのリセット",
+        "auth_password_recovery_title": "パスワードのリセット",
+        "auth_password_recovery_body": """<p>%(first_name)s 様</p>
+
+<p>パスワードのリセットをリクエストされました。以下のボタンからパスワードを変更してください。</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">パスワードを変更</a></p>
+
+<p>このリンクは2時間で失効します。その後は再度リセットをリクエストしてください。
+送信日時: %(time_string)s。
+リクエスト元のIP: %(person_IP)s。</p>
+""",
+        "auth_invitation_subject": "%(organisation_name)s から Kitsu への招待",
+        "auth_invitation_title": "Kitsu へようこそ",
+        "auth_invitation_body": """<p>%(first_name)s 様</p>
+<p>%(organisation_name)s より Kitsu のチームに参加する招待が届きました。</p>
+<p>ログイン: <strong>%(email)s</strong></p>
+<p>続行するにはパスワードを設定してください:</p>
+<p class="cta"><a class="button" href="%(reset_url)s">パスワードを設定</a></p>
+""",
     },
     "de_DE": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s hat %(task_name)s kommentiert",
@@ -199,6 +351,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "der Episode %(episode_name)s von ",
         "playlist_elements_count": "\n<p>%(count)s Elemente sind in der Playlist enthalten.</p>\n",
         "email_signature": "\n<p>Mit freundlichen Grüßen,</p>\n\n<p>%(organisation_name)s Team</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu: Ihr Bestätigungscode",
+        "auth_otp_title": "Ihr Bestätigungscode",
+        "auth_otp_body": """<p>Hallo %(first_name)s,</p>
+
+<p>Ihr Bestätigungscode lautet: <strong>%(otp)s</strong></p>
+
+<p>Dieses Einmalpasswort läuft nach 5 Minuten ab. Danach müssen Sie einen neuen anfordern.
+Diese E-Mail wurde am %(time_string)s gesendet.
+Die IP der anfragenden Person ist: %(person_IP)s.</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu: Passwort geändert",
+        "auth_password_changed_title": "Passwort geändert",
+        "auth_password_changed_body": """<p>Hallo %(first_name)s,</p>
+
+<p>Sie haben Ihr Passwort erfolgreich am %(time_string)s geändert.</p>
+<p>Ihre IP bei der Änderung war: %(person_IP)s.</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu: Passwort-Wiederherstellung",
+        "auth_password_recovery_title": "Passwort-Wiederherstellung",
+        "auth_password_recovery_body": """<p>Hallo %(first_name)s,</p>
+
+<p>Sie haben eine Passwort-Zurücksetzung angefordert. Klicken Sie auf die Schaltfläche unten, um Ihr Passwort zu ändern:</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">Passwort ändern</a></p>
+
+<p>Dieser Link läuft nach 2 Stunden ab. Danach müssen Sie eine neue Anfrage stellen.
+Diese E-Mail wurde am %(time_string)s gesendet.
+Die IP der anfragenden Person ist: %(person_IP)s.</p>
+""",
+        "auth_invitation_subject": "Sie wurden von %(organisation_name)s eingeladen, der Kitsu-Plattform beizutreten",
+        "auth_invitation_title": "Willkommen bei Kitsu",
+        "auth_invitation_body": """<p>Hallo %(first_name)s,</p>
+<p>Sie wurden von %(organisation_name)s eingeladen, ihrem Team auf Kitsu beizutreten.</p>
+<p>Ihre Anmeldung: <strong>%(email)s</strong></p>
+<p>Setzen Sie Ihr Passwort, um fortzufahren:</p>
+<p class="cta"><a class="button" href="%(reset_url)s">Passwort setzen</a></p>
+""",
     },
     "nl_NL": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s heeft gereageerd op %(task_name)s",
@@ -232,6 +421,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "de aflevering %(episode_name)s van ",
         "playlist_elements_count": "\n<p>%(count)s elementen staan in de playlist.</p>\n",
         "email_signature": "\n<p>Met vriendelijke groet,</p>\n\n<p>%(organisation_name)s Team</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu: uw verificatiecode",
+        "auth_otp_title": "Uw verificatiecode",
+        "auth_otp_body": """<p>Hallo %(first_name)s,</p>
+
+<p>Uw verificatiecode is: <strong>%(otp)s</strong></p>
+
+<p>Dit eenmalige wachtwoord verloopt na 5 minuten. Daarna moet u een nieuwe aanvragen.
+Deze e-mail is verzonden op: %(time_string)s.
+Het IP-adres van de aanvrager is: %(person_IP)s.</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu: wachtwoord gewijzigd",
+        "auth_password_changed_title": "Wachtwoord gewijzigd",
+        "auth_password_changed_body": """<p>Hallo %(first_name)s,</p>
+
+<p>U heeft uw wachtwoord succesvol gewijzigd op: %(time_string)s.</p>
+<p>Uw IP-adres bij de wijziging was: %(person_IP)s.</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu: wachtwoordherstel",
+        "auth_password_recovery_title": "Wachtwoordherstel",
+        "auth_password_recovery_body": """<p>Hallo %(first_name)s,</p>
+
+<p>U heeft een wachtwoordreset aangevraagd. Klik op de onderstaande knop om uw wachtwoord te wijzigen:</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">Wachtwoord wijzigen</a></p>
+
+<p>Deze link verloopt na 2 uur. Daarna moet u een nieuwe aanvraag doen.
+Deze e-mail is verzonden op: %(time_string)s.
+Het IP-adres van de aanvrager is: %(person_IP)s.</p>
+""",
+        "auth_invitation_subject": "U bent door %(organisation_name)s uitgenodigd om deel te nemen aan hun Kitsu-platform",
+        "auth_invitation_title": "Welkom bij Kitsu",
+        "auth_invitation_body": """<p>Hallo %(first_name)s,</p>
+<p>U bent door %(organisation_name)s uitgenodigd om deel te nemen aan hun team op Kitsu.</p>
+<p>Uw inloggegevens: <strong>%(email)s</strong></p>
+<p>Stel uw wachtwoord in om door te gaan:</p>
+<p class="cta"><a class="button" href="%(reset_url)s">Wachtwoord instellen</a></p>
+""",
     },
     "zh_CN": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s 在 %(task_name)s 上发表了评论",
@@ -265,6 +491,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "第 %(episode_name)s 集 ",
         "playlist_elements_count": "\n<p>播放列表中共 %(count)s 个元素。</p>\n",
         "email_signature": "\n<p>此致</p>\n\n<p>%(organisation_name)s 团队</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu：您的验证码",
+        "auth_otp_title": "您的验证码",
+        "auth_otp_body": """<p>您好 %(first_name)s，</p>
+
+<p>您的验证码是：<strong>%(otp)s</strong></p>
+
+<p>此一次性密码将在 5 分钟后失效，之后您需要重新请求。
+此邮件发送时间：%(time_string)s。
+请求者 IP：%(person_IP)s。</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu：密码已修改",
+        "auth_password_changed_title": "密码已修改",
+        "auth_password_changed_body": """<p>您好 %(first_name)s，</p>
+
+<p>您已成功于 %(time_string)s 修改密码。</p>
+<p>修改时的 IP：%(person_IP)s。</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu：找回密码",
+        "auth_password_recovery_title": "找回密码",
+        "auth_password_recovery_body": """<p>您好 %(first_name)s，</p>
+
+<p>您已请求重置密码。请点击下方按钮修改密码：</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">修改密码</a></p>
+
+<p>此链接将在 2 小时后失效，之后需重新请求。
+此邮件发送时间：%(time_string)s。
+请求者 IP：%(person_IP)s。</p>
+""",
+        "auth_invitation_subject": "%(organisation_name)s 邀请您加入 Kitsu 平台",
+        "auth_invitation_title": "欢迎使用 Kitsu",
+        "auth_invitation_body": """<p>您好 %(first_name)s，</p>
+<p>%(organisation_name)s 邀请您加入他们在 Kitsu 的团队。</p>
+<p>您的登录名：<strong>%(email)s</strong></p>
+<p>请设置密码以继续：</p>
+<p class="cta"><a class="button" href="%(reset_url)s">设置密码</a></p>
+""",
     },
     "pt_BR": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s comentou em %(task_name)s",
@@ -298,6 +561,43 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "o episódio %(episode_name)s de ",
         "playlist_elements_count": "\n<p>%(count)s elementos na playlist.</p>\n",
         "email_signature": "\n<p>Atenciosamente,</p>\n\n<p>Equipe %(organisation_name)s</p>",
+        "auth_otp_subject": "%(organisation_name)s - Kitsu: seu código de verificação",
+        "auth_otp_title": "Seu código de verificação",
+        "auth_otp_body": """<p>Olá %(first_name)s,</p>
+
+<p>Seu código de verificação é: <strong>%(otp)s</strong></p>
+
+<p>Esta senha de uso único expira em 5 minutos. Depois, você precisará solicitar uma nova.
+Este e-mail foi enviado em: %(time_string)s.
+O IP de quem solicitou é: %(person_IP)s.</p>
+""",
+        "auth_password_changed_subject": "%(organisation_name)s - Kitsu: senha alterada",
+        "auth_password_changed_title": "Senha alterada",
+        "auth_password_changed_body": """<p>Olá %(first_name)s,</p>
+
+<p>Você alterou sua senha com sucesso em: %(time_string)s.</p>
+<p>Seu IP ao alterar a senha foi: %(person_IP)s.</p>
+""",
+        "auth_password_recovery_subject": "%(organisation_name)s - Kitsu: recuperação de senha",
+        "auth_password_recovery_title": "Recuperação de senha",
+        "auth_password_recovery_body": """<p>Olá %(first_name)s,</p>
+
+<p>Você solicitou a redefinição de senha. Clique no botão abaixo para alterá-la:</p>
+
+<p class="cta"><a class="button" href="%(reset_url)s">Alterar sua senha</a></p>
+
+<p>Este link expira em 2 horas. Depois, você precisará fazer uma nova solicitação.
+Este e-mail foi enviado em: %(time_string)s.
+O IP de quem solicitou é: %(person_IP)s.</p>
+""",
+        "auth_invitation_subject": "Você foi convidado por %(organisation_name)s para participar da plataforma Kitsu",
+        "auth_invitation_title": "Bem-vindo ao Kitsu",
+        "auth_invitation_body": """<p>Olá %(first_name)s,</p>
+<p>Você foi convidado por %(organisation_name)s para participar da equipe no Kitsu.</p>
+<p>Seu login: <strong>%(email)s</strong></p>
+<p>Defina sua senha para continuar:</p>
+<p class="cta"><a class="button" href="%(reset_url)s">Definir sua senha</a></p>
+""",
     },
 }
 
