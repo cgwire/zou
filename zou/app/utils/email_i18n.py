@@ -6,6 +6,7 @@ Supported locales: en_US, fr_FR, es_ES, ja_JP, de_DE, nl_NL, zh_CN, pt_BR.
 To add a language: copy the en_US block, change the key (e.g. de_DE) and translate
 all values. Then add the 2-letter code to _normalize_locale's lang_map if desired.
 """
+
 from zou.app import config
 
 # Default locale used when user locale is missing or unsupported
@@ -44,7 +45,7 @@ EMAIL_TRANSLATIONS = {
 <p><em>%(reply_text)s</em></p>
 """,
         # Playlist ready notification
-        "playlist_subject": '[Kitsu] The playlist %(playlist_name)s in project %(project_name)s is ready for review',
+        "playlist_subject": "[Kitsu] The playlist %(playlist_name)s in project %(project_name)s is ready for review",
         "playlist_title": "New Playlist Ready",
         "playlist_body": """<p><strong>%(author_full_name)s</strong> notifies you that playlist <a href="%(playlist_url)s">%(playlist_name)s</a> is ready for a review under %(episode_segment)sthe project %(project_name)s.</p>
 """,
@@ -52,7 +53,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>%(count)s elements are listed in the playlist.</p>\n",
         "email_signature": "\n<p>Best regards,</p>\n\n<p>%(organisation_name)s Team</p>",
     },
-
     "fr_FR": {
         # Comment notification
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s a commenté %(task_name)s",
@@ -91,7 +91,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>%(count)s éléments sont dans la playlist.</p>\n",
         "email_signature": "\n<p>Cordialement,</p>\n\n<p>L'équipe %(organisation_name)s</p>",
     },
-
     "es_ES": {
         # Comment notification
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s comentó en %(task_name)s",
@@ -130,7 +129,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>%(count)s elementos en la playlist.</p>\n",
         "email_signature": "\n<p>Saludos cordiales,</p>\n\n<p>El equipo de %(organisation_name)s</p>",
     },
-
     "ja_JP": {
         # Comment notification
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s が %(task_name)s にコメントしました",
@@ -169,7 +167,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>プレイリストに %(count)s 件の要素が含まれています。</p>\n",
         "email_signature": "\n<p>よろしくお願いいたします。</p>\n\n<p>%(organisation_name)s チーム</p>",
     },
-
     "de_DE": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s hat %(task_name)s kommentiert",
         "comment_title": "Neuer Kommentar",
@@ -203,7 +200,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>%(count)s Elemente sind in der Playlist enthalten.</p>\n",
         "email_signature": "\n<p>Mit freundlichen Grüßen,</p>\n\n<p>%(organisation_name)s Team</p>",
     },
-
     "nl_NL": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s heeft gereageerd op %(task_name)s",
         "comment_title": "Nieuwe reactie",
@@ -237,7 +233,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>%(count)s elementen staan in de playlist.</p>\n",
         "email_signature": "\n<p>Met vriendelijke groet,</p>\n\n<p>%(organisation_name)s Team</p>",
     },
-
     "zh_CN": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s 在 %(task_name)s 上发表了评论",
         "comment_title": "新评论",
@@ -271,7 +266,6 @@ EMAIL_TRANSLATIONS = {
         "playlist_elements_count": "\n<p>播放列表中共 %(count)s 个元素。</p>\n",
         "email_signature": "\n<p>此致</p>\n\n<p>%(organisation_name)s 团队</p>",
     },
-
     "pt_BR": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s comentou em %(task_name)s",
         "comment_title": "Novo comentário",

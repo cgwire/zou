@@ -28,7 +28,9 @@ def send_notification(
     mattermost_message = messages["mattermost_message"]
     discord_message = messages["discord_message"]
     email_locale = locale or person.get("locale") or config.DEFAULT_LOCALE
-    email_html_body = generate_html_body(title, email_message, locale=email_locale)
+    email_html_body = generate_html_body(
+        title, email_message, locale=email_locale
+    )
 
     if person["notifications_enabled"] or force_email:
         if config.ENABLE_JOB_QUEUE:

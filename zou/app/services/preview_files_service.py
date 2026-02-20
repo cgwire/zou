@@ -427,7 +427,9 @@ def update_preview_file_annotations(
         preview_file = files_service.get_preview_file_raw(preview_file_id)
         previous_annotations = preview_file.annotations or []
         annotations = _clean_annotations(previous_annotations)
-        annotations = _apply_annotation_additions(previous_annotations, additions)
+        annotations = _apply_annotation_additions(
+            previous_annotations, additions
+        )
         annotations = _apply_annotation_updates(annotations, updates)
         annotations = _apply_annotation_deletions(annotations, deletions)
         preview_file.update({"annotations": []})

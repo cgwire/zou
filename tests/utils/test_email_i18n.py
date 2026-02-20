@@ -43,9 +43,7 @@ class EmailI18nTestCase(unittest.TestCase):
             author_first_name="John",
             task_name="Task 1",
         )
-        self.assertEqual(
-            result, "[Kitsu] WIP - John commented on Task 1"
-        )
+        self.assertEqual(result, "[Kitsu] WIP - John commented on Task 1")
 
     def test_get_email_translation_fallback_to_en_us(self):
         result = get_email_translation("it_IT", "comment_title")

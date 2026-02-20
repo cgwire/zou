@@ -255,6 +255,7 @@ class TwoFactorAuthenticationRequiredException(Exception):
     """
     Exception raised when 2FA is enforced but user has not set it up.
     """
+
     pass
 
 

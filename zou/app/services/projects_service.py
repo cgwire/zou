@@ -108,6 +108,7 @@ def get_projects_with_extra_data(
         for project in projects_list
     ]
 
+
 def _fetch_metadata_descriptors_by_project(
     project_ids, for_client=False, vendor_departments=None
 ):

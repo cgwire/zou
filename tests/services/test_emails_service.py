@@ -59,6 +59,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
 
     def test_send_notification_uses_user_locale(self):
         from zou.app.models.person import Person
+
         french_person = Person.create(
             first_name="Jean",
             last_name="Dupont",
@@ -68,7 +69,9 @@ class EmailsServiceTestCase(ApiDBTestCase):
         )
         french_person_id = str(french_person.id)
 
-        with patch("zou.app.services.emails_service.emails.send_email") as mock_send:
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
             messages = {
                 "email_message": "Test message",
                 "slack_message": "Test",
@@ -109,7 +112,9 @@ class EmailsServiceTestCase(ApiDBTestCase):
             object_type="task",
         )
 
-        with patch("zou.app.services.emails_service.emails.send_email") as mock_send:
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
             emails_service.send_comment_notification(
                 spanish_person_id,
                 self.person.id,
@@ -135,7 +140,9 @@ class EmailsServiceTestCase(ApiDBTestCase):
         )
         italian_person_id = str(italian_person.id)
 
-        with patch("zou.app.services.emails_service.emails.send_email") as mock_send:
+        with patch(
+            "zou.app.services.emails_service.emails.send_email"
+        ) as mock_send:
             messages = {
                 "email_message": "Test message",
                 "slack_message": "Test",

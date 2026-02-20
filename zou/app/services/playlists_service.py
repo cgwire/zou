@@ -420,8 +420,12 @@ def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
     unavailable.
     """
     entity_id_str = str(entity_id)
-    with with_playlist_lock(playlist_id, timeout=30, wait_timeout=35) as _acquired:
-        playlist_dict = _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id)
+    with with_playlist_lock(
+        playlist_id, timeout=30, wait_timeout=35
+    ) as _acquired:
+        playlist_dict = _add_entity_to_playlist_db(
+            playlist_id, entity_id_str, preview_file_id
+        )
 
     events.emit(
         "playlist:add_entity",
@@ -430,7 +434,7 @@ def add_entity_to_playlist(playlist_id, entity_id, preview_file_id=None):
             "entity_id": entity_id_str,
             "preview_file_id": (
                 str(preview_file_id) if preview_file_id is not None else None
-            )
+            ),
         },
         project_id=playlist_dict["project_id"],
     )
