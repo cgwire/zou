@@ -21,6 +21,7 @@ apt install curl -y
 curl -L https://install.meilisearch.com | sh
 # Make the binary accessible from anywhere in your system
 mv ./meilisearch /usr/local/bin/
+chown meilisearch: /usr/local/bin/meilisearch
 ```
 
 Create a folder for the index:
@@ -76,6 +77,8 @@ INDEXER_HOST="localhost"
 INDEXER_PORT="7700"
 ```
 
+Add these variables on the "export..." line.
+
 Once set, Kitsu will be able to connect to the indexer and will enable
 full-text search.
 
@@ -93,5 +96,5 @@ environment variables are correctly set).
 
 ```
 . /etc/zou/zou.env
-zou reset-search-index
+/opt/zou/zouenv/bin/zou reset-search-index
 ```
