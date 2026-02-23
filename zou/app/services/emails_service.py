@@ -1,5 +1,6 @@
 from zou.app import config
 from zou.app.utils import emails, chats
+from zou.app.utils.email_i18n import get_email_translation
 
 from zou.app.services import (
     entities_service,
@@ -14,18 +15,22 @@ from zou.app.services.templates_service import generate_html_body
 
 
 def send_notification(
-    person_id, subject, messages, title="", force_email=False
+    person_id, subject, messages, title="", force_email=False, locale=None
 ):
     """
     Send email notification to given person. Use the job queue if it is
-    activated.
+    activated. If locale is provided, the email Content-Language header
+    is set accordingly.
     """
     person = persons_service.get_person(person_id)
     email_message = messages["email_message"]
     slack_message = messages["slack_message"]
     mattermost_message = messages["mattermost_message"]
     discord_message = messages["discord_message"]
-    email_html_body = generate_html_body(title, email_message)
+    email_locale = locale or person.get("locale") or config.DEFAULT_LOCALE
+    email_html_body = generate_html_body(
+        title, email_message, locale=email_locale
+    )
 
     if person["notifications_enabled"] or force_email:
         if config.ENABLE_JOB_QUEUE:
@@ -36,9 +41,12 @@ def send_notification(
                     email_html_body,
                     person["email"],
                 ),
+                kwargs={"locale": email_locale},
             )
         else:
-            emails.send_email(subject, email_html_body, person["email"])
+            emails.send_email(
+                subject, email_html_body, person["email"], locale=email_locale
+            )
 
     if person["notifications_slack_enabled"]:
         organisation = persons_service.get_organisation(sensitive=True)
@@ -82,10 +90,12 @@ def send_notification(
 def send_comment_notification(person_id, author_id, comment, task):
     """
     Send a notification email telling that a new comment was posted to person
-    matching given person id.
+    matching given person id. Email content is translated according to the
+    recipient's locale.
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
+    locale = person.get("locale") or config.DEFAULT_LOCALE
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -95,21 +105,25 @@ def send_comment_notification(person_id, author_id, comment, task):
         task_status = tasks_service.get_task_status(task["task_status_id"])
         task_status_name = task_status["short_name"].upper()
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
-        subject = "[Kitsu] %s - %s commented on %s" % (
-            task_status_name,
-            author["first_name"],
-            task_name,
+        subject = get_email_translation(
+            locale,
+            "comment_subject",
+            task_status_name=task_status_name,
+            author_first_name=author["first_name"],
+            task_name=task_name,
         )
+        email_params = {
+            "author_full_name": author["full_name"],
+            "task_url": task_url,
+            "task_name": task_name,
+            "task_status_name": task_status_name,
+        }
         if len(comment["text"]) > 0:
-            email_message = """<p><strong>%s</strong> wrote a comment on <a href="%s">%s</a> and set the status to <strong>%s</strong>.</p>
-
-<p><em>%s</em></p>
-""" % (
-                author["full_name"],
-                task_url,
-                task_name,
-                task_status_name,
-                comment["text"],
+            email_message = get_email_translation(
+                locale,
+                "comment_body_with_text",
+                comment_text=comment["text"],
+                **email_params,
             )
             slack_message = """*%s* wrote a comment on <%s|%s> and set the status to *%s*.
 
@@ -134,12 +148,8 @@ _%s_
             )
 
         else:
-            email_message = """<p><strong>%s</strong> changed status of <a href="%s">%s</a> to <strong>%s</strong>.</p>
-""" % (
-                author["full_name"],
-                task_url,
-                task_name,
-                task_status_name,
+            email_message = get_email_translation(
+                locale, "comment_body_status_only", **email_params
             )
             slack_message = """*%s* changed status of <%s|%s> to *%s*.
 """ % (
@@ -157,7 +167,7 @@ _%s_
                 task_status_name,
             )
 
-        title = "New Comment"
+        title = get_email_translation(locale, "comment_title")
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -175,10 +185,12 @@ _%s_
 def send_mention_notification(person_id, author_id, comment, task):
     """
     Send a notification email telling that somenone mentioned the
-    person matching given person id.
+    person matching given person id. Email content is translated
+    according to the recipient's locale.
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
+    locale = person.get("locale") or config.DEFAULT_LOCALE
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -186,18 +198,19 @@ def send_mention_notification(person_id, author_id, comment, task):
         or person["notifications_discord_enabled"]
     ):
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
-        subject = "[Kitsu] %s mentioned you on %s" % (
-            author["first_name"],
-            task_name,
+        subject = get_email_translation(
+            locale,
+            "mention_subject",
+            author_first_name=author["first_name"],
+            task_name=task_name,
         )
-        email_message = """<p><strong>%s</strong> mentioned you in a comment on <a href="%s">%s</a>:</p>
-
-<p><em>%s</em></p>
-""" % (
-            author["full_name"],
-            task_url,
-            task_name,
-            comment["text"],
+        email_message = get_email_translation(
+            locale,
+            "mention_body",
+            author_full_name=author["full_name"],
+            task_url=task_url,
+            task_name=task_name,
+            comment_text=comment["text"],
         )
         slack_message = """*%s* mentioned you in a comment on <%s|%s>.
 
@@ -218,7 +231,7 @@ _%s_
             task_url,
             comment["text"],
         )
-        title = "New Mention"
+        title = get_email_translation(locale, "mention_title")
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -236,10 +249,12 @@ _%s_
 def send_assignation_notification(person_id, author_id, task):
     """
     Send a notification email telling that somenone assigned to a task the
-    person matching given person id.
+    person matching given person id. Email content is translated according
+    to the recipient's locale.
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
+    locale = person.get("locale") or config.DEFAULT_LOCALE
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -247,12 +262,15 @@ def send_assignation_notification(person_id, author_id, task):
         or person["notifications_discord_enabled"]
     ):
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
-        subject = "[Kitsu] You were assigned to %s" % task_name
-        email_message = """<p><strong>%s</strong> assigned you to <a href="%s">%s</a>.</p>
-""" % (
-            author["full_name"],
-            task_url,
-            task_name,
+        subject = get_email_translation(
+            locale, "assignation_subject", task_name=task_name
+        )
+        email_message = get_email_translation(
+            locale,
+            "assignation_body",
+            author_full_name=author["full_name"],
+            task_url=task_url,
+            task_name=task_name,
         )
         slack_message = """*%s* assigned you to <%s|%s>.
 """ % (
@@ -267,7 +285,7 @@ def send_assignation_notification(person_id, author_id, task):
             task_url,
         )
 
-        title = "New Assignation"
+        title = get_email_translation(locale, "assignation_title")
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -322,9 +340,11 @@ def get_task_descriptors(person_id, task):
 def send_reply_notification(person_id, author_id, comment, task, reply):
     """
     Send a notification email telling that a new reply was posted to person
-    matching given person id.
+    matching given person id. Email content is translated according to the
+    recipient's locale.
     """
     person = persons_service.get_person(person_id)
+    locale = person.get("locale") or config.DEFAULT_LOCALE
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -334,18 +354,19 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
         tasks_service.get_task_status(task["task_status_id"])
         project = projects_service.get_project(task["project_id"])
         (author, task_name, task_url) = get_task_descriptors(author_id, task)
-        subject = "[Kitsu] %s replied on %s" % (
-            author["first_name"],
-            task_name,
+        subject = get_email_translation(
+            locale,
+            "reply_subject",
+            author_first_name=author["first_name"],
+            task_name=task_name,
         )
-        email_message = """<p><strong>%s</strong> wrote a reply on <a href="%s">%s</a>.</p>
-
-<p><em>%s</em></p>
-""" % (
-            author["full_name"],
-            task_url,
-            task_name,
-            reply["text"],
+        email_message = get_email_translation(
+            locale,
+            "reply_body",
+            author_full_name=author["full_name"],
+            task_url=task_url,
+            task_name=task_name,
+            reply_text=reply["text"],
         )
         slack_message = """*%s* wrote a reply on <%s|%s>.
 
@@ -367,7 +388,7 @@ _%s_
             reply["text"],
         )
 
-        title = "New Reply"
+        title = get_email_translation(locale, "reply_title")
         messages = {
             "email_message": email_message,
             "slack_message": slack_message,
@@ -384,15 +405,17 @@ _%s_
 def send_playlist_ready_notification(person_id, author_id, playlist):
     """
     Send a notification email telling that a new playlist is ready to person
-    matching given person id.
+    matching given person id. Email content is translated according to the
+    recipient's locale.
     """
     person = persons_service.get_person(person_id)
     author = persons_service.get_person(author_id)
     project = projects_service.get_project(playlist["project_id"])
+    locale = person.get("locale") or config.DEFAULT_LOCALE
     episode = None
     try:
         episode = shots_service.get_episode(playlist["episode_id"])
-    except:
+    except Exception:
         pass
 
     if (
@@ -420,19 +443,39 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         else:
             playlist_url += f"playlists/{playlist['id']}"
 
-        title = "New Playlist Ready"
-        episode_segment = ""
         if episode is not None:
-            episode_segment = f"the episode {episode['name']} of "
-        subject = f'[Kitsu] The playlist {playlist["name"]} in project {project["name"]} is ready for review'
+            episode_segment = get_email_translation(
+                locale,
+                "playlist_episode_segment",
+                episode_name=episode["name"],
+            )
+        else:
+            episode_segment = ""
 
-        email_message = f"""<p><strong>{author["full_name"]}</strong> notifies you that playlist <a href="{playlist_url}">{playlist["name"]}</a> is ready for a review under {episode_segment}the project {project["name"]}.</p>
-        """
+        title = get_email_translation(locale, "playlist_title")
+        subject = get_email_translation(
+            locale,
+            "playlist_subject",
+            playlist_name=playlist["name"],
+            project_name=project["name"],
+        )
+
+        email_message = get_email_translation(
+            locale,
+            "playlist_body",
+            author_full_name=author["full_name"],
+            playlist_url=playlist_url,
+            playlist_name=playlist["name"],
+            episode_segment=episode_segment,
+            project_name=project["name"],
+        )
 
         if len(playlist["shots"]) > 1:
-            email_message += f"""
-<p>{len(playlist["shots"])} elements are listed in the playlist.</p>
-        """
+            email_message += get_email_translation(
+                locale,
+                "playlist_elements_count",
+                count=len(playlist["shots"]),
+            )
 
         slack_message = f"*{author['full_name']}* notifies you that a playlist <{playlist_url}|{playlist['name']}> is ready for a review under {episode_segment}the project {project['name']}."
 

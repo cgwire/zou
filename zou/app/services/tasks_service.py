@@ -1186,16 +1186,26 @@ def create_tasks(task_type, entities):
     except RuntimeError:
         pass
 
+    # Batch query existing tasks to avoid N+1 query problem
+    if not entities:
+        return []
+
+    entity_ids = [entity["id"] for entity in entities]
+    existing_tasks = Task.query.filter(
+        Task.entity_id.in_(entity_ids), Task.task_type_id == task_type["id"]
+    ).all()
+    # Normalize to str so comparison works when entity["id"] comes from JSON/serialize
+    existing_entity_ids = {str(task.entity_id) for task in existing_tasks}
+
+    # Statut défini une fois : soit on crée pour des concepts, soit pour d'autres types
+    task_status = get_default_status(
+        for_concept=entities[0]["entity_type_id"]
+        == concepts_service.get_concept_type()["id"]
+    )
+
     tasks = []
     for entity in entities:
-        existing_task = Task.query.filter_by(
-            entity_id=entity["id"], task_type_id=task_type["id"]
-        ).scalar()
-        if existing_task is None:
-            task_status = get_default_status(
-                for_concept=entity["entity_type_id"]
-                == concepts_service.get_concept_type()["id"]
-            )
+        if str(entity["id"]) not in existing_entity_ids:
             task = Task.create_no_commit(
                 name="main",
                 duration=0,

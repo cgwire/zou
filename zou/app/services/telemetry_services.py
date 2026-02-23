@@ -23,6 +23,7 @@ def send_main_infos():
 
     data = {
         "organisation_id": organisation["id"],
+        "organisation_name": organisation["name"],
         "nb_active_users": nb_active_users,
         "nb_movie_previews": stats["number_of_video_previews"],
         "nb_picture_previews": stats["number_of_picture_previews"],

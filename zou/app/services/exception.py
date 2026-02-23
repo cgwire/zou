@@ -113,6 +113,10 @@ class CommentNotFoundException(NotFound):
     pass
 
 
+class ReplyNotFoundException(NotFound):
+    pass
+
+
 class NewsNotFoundException(NotFound):
     pass
 
@@ -251,6 +255,7 @@ class TwoFactorAuthenticationRequiredException(Exception):
     """
     Exception raised when 2FA is enforced but user has not set it up.
     """
+
     pass
 
 

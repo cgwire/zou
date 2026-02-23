@@ -33,6 +33,7 @@ from zou.app.services.exception import (
     AttachmentFileNotFoundException,
     WrongParameterException,
     AssetNotFoundException,
+    ReplyNotFoundException,
 )
 
 from zou.app.utils import cache, date_helpers, events, fs, fields, date_helpers
@@ -553,8 +554,12 @@ def reply_comment(comment_id, text, person_id=None, files={}):
 
 def get_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
-    reply = next(reply for reply in comment.replies if reply["id"] == reply_id)
-    return reply
+    if comment.replies is None:
+        comment.replies = []
+    for reply in comment.replies:
+        if reply.get("id") == reply_id:
+            return reply
+    raise ReplyNotFoundException
 
 
 def delete_reply(comment_id, reply_id):

@@ -6,8 +6,6 @@ from dateutil import relativedelta
 
 from sqlalchemy.exc import StatementError
 
-from babel.dates import format_datetime
-
 from flask_jwt_extended import create_access_token, get_jti, current_user
 
 from zou.app.models.department import Department
@@ -18,6 +16,7 @@ from zou.app.models.time_spent import TimeSpent
 
 from zou.app import config, file_store, db
 from zou.app.utils import fields, events, cache, emails, date_helpers
+from zou.app.utils.email_i18n import get_email_translation
 from zou.app.services import index_service, auth_service, templates_service
 from zou.app.stores import auth_tokens_store
 from zou.app.services.exception import (
@@ -509,9 +508,6 @@ def invite_person(person_id):
     auth_tokens_store.add(
         "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 7
     )
-    subject = "You are invited by %s to join their Kitsu platform" % (
-        organisation["name"]
-    )
     params = {"email": person["email"], "token": token, "type": "new"}
     query = urllib.parse.urlencode(params)
     reset_url = "%s://%s/reset-change-password?%s" % (
@@ -520,29 +516,27 @@ def invite_person(person_id):
         query,
     )
 
-    time_string = format_datetime(
-        date_helpers.get_utc_now_datetime(),
-        tzinfo=person["timezone"],
-        locale=person["locale"],
+    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+    if hasattr(locale, "language"):
+        locale = str(locale)
+    subject = get_email_translation(
+        locale,
+        "auth_invitation_subject",
+        organisation_name=organisation["name"],
     )
-
-    html = f"""<p>Hello {person["first_name"]},</p>
-<p>
-You are invited by {organisation["name"]} to join their team on Kitsu.
-</p>
-<p>
-Your login is: <strong>{person["email"]}</strong>
-</p>
-<p>
-Set your password to continue:
-</p>
-<p class="cta">
-<a class="button" href="{reset_url}">Set your password</a>
-</p>
-"""
-    title = "Welcome to Kitsu"
-    email_html_body = templates_service.generate_html_body(title, html)
-    emails.send_email(subject, email_html_body, person["email"])
+    title = get_email_translation(locale, "auth_invitation_title")
+    html = get_email_translation(
+        locale,
+        "auth_invitation_body",
+        first_name=person["first_name"],
+        organisation_name=organisation["name"],
+        email=person["email"],
+        reset_url=reset_url,
+    )
+    email_html_body = templates_service.generate_html_body(
+        title, html, locale=locale
+    )
+    emails.send_email(subject, email_html_body, person["email"], locale=locale)
 
 
 @cache.memoize_function(120)

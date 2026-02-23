@@ -654,7 +654,9 @@ def remove_asset(asset_id, force=False):
             {"asset_id": asset_id},
             project_id=str(asset.project_id),
         )
-        breakdown_service.refresh_casting_stats(asset.serialize(obj_type="Asset"))
+        breakdown_service.refresh_casting_stats(
+            asset.serialize(obj_type="Asset")
+        )
     else:
         from zou.app.services import tasks_service
 
@@ -681,6 +683,7 @@ def remove_asset(asset_id, force=False):
         EntityLink.delete_all_by(entity_out_id=asset_id)
         EntityConceptLink.delete_all_by(entity_in_id=asset_id)
         EntityConceptLink.delete_all_by(entity_out_id=asset_id)
+        deletion_service.remove_output_files_for_entity(asset_id)
         asset.delete()
         clear_asset_cache(str(asset_id))
 
