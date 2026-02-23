@@ -10,40 +10,61 @@ The indexer is optional. Kitsu can run without it.
 Create a Meilisearch user:
 
 ```
-sudo useradd meilisearch 
+sudo useradd -d /var/lib/meilisearch -s /bin/false -m -r meilisearch
 ```
 
 Install the Meilisearch package:
 
 ```
-apt install curl -y
+sudo apt install curl -y
 # Install Meilisearch latest version from the script
 curl -L https://install.meilisearch.com | sh
 # Make the binary accessible from anywhere in your system
-mv ./meilisearch /usr/local/bin/
-chown meilisearch: /usr/local/bin/meilisearch
+sudo mv ./meilisearch /usr/local/bin/
+sudo chown meilisearch:meilisearch /usr/local/bin/meilisearch
 ```
 
-Create a folder for the index:
+Create the configuration folder:
 
 ```
-sudo mkdir /opt/meilisearch
-sudo chown -R meilisearch: /opt/meilisearch
+sudo mkdir /var/lib/meilisearch/data /var/lib/meilisearch/dumps /var/lib/meilisearch/snapshots
+sudo chown -R meilisearch: /var/lib/meilisearch
+sudo chmod 750 /var/lib/meilisearch
+sudo curl https://raw.githubusercontent.com/meilisearch/meilisearch/latest/config.toml > /etc/meilisearch.toml
 ```
 
-Define a master key (any alphanumeric string with 16 or more bytes) then create the service file for Meilisearch:
+Define a master key (any alphanumeric string with 16 or more bytes).
+
+Edit the configuration file:
+
+```
+sudo vim /etc/meilisearch.toml
+```
+
+```
+db_path = "/var/lib/meilisearch/data"
+env = "production"
+master_key = "masterkey"
+dump_dir = "/var/lib/meilisearch/dumps"
+snapshot_dir = "/var/lib/meilisearch/snapshots"
+```
+
+Then create the service file for Meilisearch:
 
 *Path: /etc/systemd/system/meilisearch.service*
 
 ```
 [Unit]
-Description=Meilisearch search engine
-After=network.target
+Description=Meilisearch
+After=systemd-user-sessions.service
 
 [Service]
+Type=simple
+WorkingDirectory=/var/lib/meilisearch
+ExecStart=/usr/local/bin/meilisearch --config-file-path /etc/meilisearch.toml
 User=meilisearch
 Group=meilisearch
-ExecStart=/usr/local/bin/meilisearch --master-key="masterkey"
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
