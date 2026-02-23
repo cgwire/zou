@@ -16,11 +16,11 @@ sudo useradd meilisearch
 Install the Meilisearch package:
 
 ```
-# Add Meilisearch package
-echo "deb [trusted=yes] https://apt.fury.io/meilisearch/ /" | sudo tee /etc/apt/sources.list.d/fury.list
-
-# Update APT and install Meilisearch
-sudo apt update && sudo apt install meilisearch
+apt install curl -y
+# Install Meilisearch latest version from the script
+curl -L https://install.meilisearch.com | sh
+# Make the binary accessible from anywhere in your system
+mv ./meilisearch /usr/local/bin/
 ```
 
 Create a folder for the index:
@@ -42,7 +42,7 @@ After=network.target
 [Service]
 User=meilisearch
 Group=meilisearch
-ExecStart=/usr/bin/meilisearch --master-key="masterkey"
+ExecStart=/usr/local/bin/meilisearch --master-key="masterkey"
 
 [Install]
 WantedBy=multi-user.target
