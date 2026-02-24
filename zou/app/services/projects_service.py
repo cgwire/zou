@@ -1,5 +1,7 @@
 import slugify
 
+from sqlalchemy.exc import IntegrityError
+
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -594,7 +596,7 @@ def add_metadata_descriptor(
             departments=departments_objects,
             field_name=slugify.slugify(name, separator="_"),
         )
-    except Exception:
+    except IntegrityError:
         raise WrongParameterException("Metadata descriptor already exists.")
     events.emit(
         "metadata-descriptor:new",

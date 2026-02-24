@@ -131,12 +131,11 @@ def get_entity_from_preview_file(preview_file_id):
 def update_preview_file(preview_file_id, data, silent=False):
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-    except BaseException:
-        # Dirty hack because sometimes the preview file retrieval crashes.
+    except Exception:
         try:
             time.sleep(1)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-        except BaseException:
+        except Exception:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)
@@ -432,7 +431,6 @@ def update_preview_file_annotations(
         )
         annotations = _apply_annotation_updates(annotations, updates)
         annotations = _apply_annotation_deletions(annotations, deletions)
-        preview_file.update({"annotations": []})
         preview_file.update({"annotations": annotations})
         files_service.clear_preview_file_cache(preview_file_id)
         preview_file = files_service.get_preview_file(preview_file_id)
@@ -903,7 +901,7 @@ def generate_preview_extra(
             ):
                 try:
                     os.remove(preview_file_path)
-                except:
+                except OSError:
                     pass
 
     print("Extra information generated.")

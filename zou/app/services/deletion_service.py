@@ -297,7 +297,7 @@ def clear_preview_background_files(preview_background_id, force=False):
         ]:
             try:
                 file_store.remove_picture(image_type, preview_background_id)
-            except BaseException:
+            except Exception:
                 pass
 
 
@@ -342,7 +342,7 @@ def clear_generic_files(preview_file_id):
     """
     try:
         file_store.remove_file("previews", preview_file_id)
-    except BaseException:
+    except Exception:
         pass
 
 

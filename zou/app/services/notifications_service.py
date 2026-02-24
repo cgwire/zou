@@ -61,11 +61,13 @@ def create_notification(
     return notification.serialize()
 
 
-def get_notification_recipients(task, replies=[]):
+def get_notification_recipients(task, replies=None):
     """
     Get the list of notification recipients for given task: assignees and
     every people who commented the task.
     """
+    if replies is None:
+        replies = []
     recipients = set()
     task_subscriptions = get_task_subscriptions(task)
     sequence_subscriptions = get_sequence_subscriptions(task)
@@ -423,7 +425,7 @@ def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
         Subscription.query.join(Entity)
         .join(Project)
         .filter(Project.id == project_id)
-        .filter(TaskType.id == task_type_id)
+        .filter(Subscription.task_type_id == task_type_id)
         .all()
     )
 
