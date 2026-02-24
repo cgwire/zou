@@ -177,9 +177,11 @@ def remove_output_files_for_project(project_id):
     Called after preview files and tasks are already removed, so no need to
     clear PreviewFile.source_file_id.
     """
-    output_files = OutputFile.query.join(Entity, OutputFile.entity_id == Entity.id).filter(
-        Entity.project_id == project_id
-    ).all()
+    output_files = (
+        OutputFile.query.join(Entity, OutputFile.entity_id == Entity.id)
+        .filter(Entity.project_id == project_id)
+        .all()
+    )
     for output_file in output_files:
         output_file.delete()
     return output_files
