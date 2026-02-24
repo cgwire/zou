@@ -59,9 +59,9 @@ def _get_project_department_ids_for_person_access(person_id):
     project_ids = [p["id"] for p in user_service.get_projects()]
     department_ids = None
     if permissions.has_supervisor_permissions():
-        department_ids = persons_service.get_current_user(
-            relations=True
-        ).get("departments", [])
+        department_ids = persons_service.get_current_user(relations=True).get(
+            "departments", []
+        )
     return (project_ids, department_ids)
 
 
@@ -179,7 +179,11 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             description: Invalid date format
         """
         body = validation.validate_request_body(DesktopLoginCreateSchema)
-        date = body.date if body.date is not None else date_helpers.get_utc_now_datetime()
+        date = (
+            body.date
+            if body.date is not None
+            else date_helpers.get_utc_now_datetime()
+        )
 
         current_user = persons_service.get_current_user()
         if (
@@ -392,8 +396,8 @@ class DateTimeSpentsResource(Resource):
             description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        project_ids, department_ids = _get_project_department_ids_for_person_access(
-            person_id
+        project_ids, department_ids = (
+            _get_project_department_ids_for_person_access(person_id)
         )
         try:
             return time_spents_service.get_time_spents(
@@ -477,8 +481,8 @@ class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
 
     def get_project_department_arguments(self, person_id):
         project_id = self.get_project_id()
-        project_ids, department_ids = _get_project_department_ids_for_person_access(
-            person_id
+        project_ids, department_ids = (
+            _get_project_department_ids_for_person_access(person_id)
         )
         if project_ids is not None:
             if project_id is None:

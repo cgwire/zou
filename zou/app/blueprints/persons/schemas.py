@@ -4,6 +4,7 @@ Pydantic schemas for request/response validation in the persons blueprint.
 Use these schemas to ensure incoming JSON bodies match the expected format
 and to return clear validation errors (e.g. 400 with field-level messages).
 """
+
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -16,6 +17,7 @@ def _parse_datetime(v):
     if v is None or isinstance(v, datetime):
         return v
     from zou.app.utils import date_helpers
+
     try:
         return date_helpers.get_datetime_from_string(v)
     except Exception:
@@ -29,6 +31,7 @@ def _parse_datetime(v):
 
 class DesktopLoginCreateSchema(BaseModel):
     """Body for creating a desktop login log. Date is optional (default: now)."""
+
     date: Optional[datetime] = None
 
     @field_validator("date", mode="before")
@@ -39,13 +42,17 @@ class DesktopLoginCreateSchema(BaseModel):
 
 class AddToDepartmentSchema(BaseModel):
     """Body for adding a person to a department."""
-    department_id: UUID = Field(..., description="Department unique identifier")
+
+    department_id: UUID = Field(
+        ..., description="Department unique identifier"
+    )
 
     @field_validator("department_id", mode="before")
     @classmethod
     def ensure_uuid(cls, v):
         if isinstance(v, str):
             from zou.app.utils.fields import is_valid_id
+
             if not is_valid_id(v):
                 raise ValueError("department_id must be a valid UUID")
             return v
@@ -54,8 +61,11 @@ class AddToDepartmentSchema(BaseModel):
 
 class ChangePasswordSchema(BaseModel):
     """Body for changing a person's password (admin)."""
+
     password: str = Field(..., min_length=1, description="New password")
-    password_2: str = Field(..., min_length=1, description="Password confirmation")
+    password_2: str = Field(
+        ..., min_length=1, description="Password confirmation"
+    )
 
     @field_validator("password_2")
     @classmethod

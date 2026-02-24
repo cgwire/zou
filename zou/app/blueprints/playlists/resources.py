@@ -905,7 +905,8 @@ class NotifyClientsResource(Resource, ArgsMixin):
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
         body = validation.validate_request_body(
-            NotifyClientsPlaylistSchema, data=request.get_json(silent=True) or {}
+            NotifyClientsPlaylistSchema,
+            data=request.get_json(silent=True) or {},
         )
         studio_id = str(body.studio_id) if body.studio_id else None
         department_id = str(body.department_id) if body.department_id else None
