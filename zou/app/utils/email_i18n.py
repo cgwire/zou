@@ -52,7 +52,7 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "the episode %(episode_name)s of ",
         "playlist_elements_count": "\n<p>%(count)s elements are listed in the playlist.</p>\n",
         "email_signature": "\n<p>Best regards,</p>\n\n<p>%(organisation_name)s Team</p>",
-        # Auth: Email OTP
+         # Auth: Email OTP
         "auth_otp_subject": "%(organisation_name)s - Kitsu: your verification code",
         "auth_otp_title": "Your verification code",
         "auth_otp_body": """<p>Hello %(first_name)s,</p>
@@ -92,6 +92,22 @@ The IP of the person who requested this is: %(person_IP)s.</p>
 <p>Your login is: <strong>%(email)s</strong></p>
 <p>Set your password to continue:</p>
 <p class="cta"><a class="button" href="%(reset_url)s">Set your password</a></p>
+""",
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu: password changed",
+        "auth_password_changed_by_admin_title": "Password Changed",
+        "auth_password_changed_by_admin_body": """<p>Hello %(first_name)s,</p>
+<p>Your password was changed at this date: %(time_string)s.</p>
+<p>The IP of the user who changed your password is: %(person_IP)s.</p>
+<p>If you don't know the person who changed the password, please contact our support team.</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu: two factor authentication disabled",
+        "auth_2fa_disabled_by_admin_title": "Two Factor Authentication Disabled",
+        "auth_2fa_disabled_by_admin_body": """<p>Hello %(first_name)s,</p>
+<p>Your two factor authentication was disabled at this date: %(time_string)s.</p>
+<p>The IP of the user who disabled your two factor authentication is: %(person_IP)s.</p>
+<p>If you don't know the person who disabled the two factor authentication, please contact our support team.</p>
 """,
     },
     "fr_FR": {
