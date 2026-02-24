@@ -52,7 +52,7 @@ EMAIL_TRANSLATIONS = {
         "playlist_episode_segment": "the episode %(episode_name)s of ",
         "playlist_elements_count": "\n<p>%(count)s elements are listed in the playlist.</p>\n",
         "email_signature": "\n<p>Best regards,</p>\n\n<p>%(organisation_name)s Team</p>",
-         # Auth: Email OTP
+        # Auth: Email OTP
         "auth_otp_subject": "%(organisation_name)s - Kitsu: your verification code",
         "auth_otp_title": "Your verification code",
         "auth_otp_body": """<p>Hello %(first_name)s,</p>
