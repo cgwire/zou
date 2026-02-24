@@ -4,8 +4,6 @@ from flask import abort, request, current_app
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
-from babel.dates import format_datetime
-
 from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
@@ -14,15 +12,19 @@ from zou.app.services import (
     time_spents_service,
     shots_service,
     user_service,
-    templates_service,
 )
 from zou.app.utils import (
     permissions,
     csv_utils,
     auth,
-    emails,
     fields,
     date_helpers,
+    validation,
+)
+from zou.app.blueprints.persons.schemas import (
+    DesktopLoginCreateSchema,
+    AddToDepartmentSchema,
+    ChangePasswordSchema,
 )
 from zou.app.services.exception import (
     DepartmentNotFoundException,
@@ -35,6 +37,32 @@ from zou.app.services.exception import (
 from zou.app.services.auth_service import (
     disable_two_factor_authentication_for_person,
 )
+
+
+def _get_project_department_ids_for_person_access(person_id):
+    """
+    Returns (project_ids, department_ids) for the current user when accessing
+    the given person_id. For admin or when person_id is the current user,
+    returns (None, None). For manager/supervisor returns (project_ids, department_ids).
+    Raises PermissionDenied otherwise.
+    """
+    if permissions.has_admin_permissions():
+        return (None, None)
+    current_user_id = persons_service.get_current_user()["id"]
+    if current_user_id == person_id:
+        return (None, None)
+    if not (
+        permissions.has_manager_permissions()
+        or permissions.has_supervisor_permissions()
+    ):
+        raise permissions.PermissionDenied
+    project_ids = [p["id"] for p in user_service.get_projects()]
+    department_ids = None
+    if permissions.has_supervisor_permissions():
+        department_ids = persons_service.get_current_user(
+            relations=True
+        ).get("departments", [])
+    return (project_ids, department_ids)
 
 
 class DesktopLoginsResource(Resource, ArgsMixin):
@@ -150,7 +178,8 @@ class DesktopLoginsResource(Resource, ArgsMixin):
           400:
             description: Invalid date format
         """
-        args = self.get_args([("date", date_helpers.get_utc_now_datetime())])
+        body = validation.validate_request_body(DesktopLoginCreateSchema)
+        date = body.date if body.date is not None else date_helpers.get_utc_now_datetime()
 
         current_user = persons_service.get_current_user()
         if (
@@ -160,7 +189,7 @@ class DesktopLoginsResource(Resource, ArgsMixin):
             raise permissions.PermissionDenied
 
         desktop_login_log = persons_service.create_desktop_login_logs(
-            person_id, args["date"]
+            person_id, date
         )
 
         return desktop_login_log, 201
@@ -198,7 +227,10 @@ class PresenceLogsResource(Resource):
             description: Invalid date format
         """
         permissions.check_admin_permissions()
-        date = datetime.datetime.strptime(month_date, "%Y-%m")
+        try:
+            date = datetime.datetime.strptime(month_date, "%Y-%m")
+        except ValueError:
+            raise WrongParameterException("Invalid month or year.")
         presence_logs = persons_service.get_presence_logs(
             date.year, date.month
         )
@@ -360,24 +392,9 @@ class DateTimeSpentsResource(Resource):
             description: Wrong date format
         """
         user_service.check_person_is_not_bot(person_id)
-        department_ids = None
-        project_ids = None
-        if not permissions.has_admin_permissions():
-            if persons_service.get_current_user()["id"] != person_id:
-                if (
-                    permissions.has_manager_permissions()
-                    or permissions.has_supervisor_permissions()
-                ):
-                    project_ids = [
-                        project["id"]
-                        for project in user_service.get_projects()
-                    ]
-                    if permissions.has_supervisor_permissions():
-                        department_ids = persons_service.get_current_user(
-                            True
-                        ).get("departments", [])
-                else:
-                    raise permissions.PermissionDenied
+        project_ids, department_ids = _get_project_department_ids_for_person_access(
+            person_id
+        )
         try:
             return time_spents_service.get_time_spents(
                 person_id,
@@ -386,7 +403,7 @@ class DateTimeSpentsResource(Resource):
                 department_ids=department_ids,
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid month or year.")
 
 
 class DayOffResource(Resource):
@@ -449,42 +466,25 @@ class DayOffResource(Resource):
         user_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
         if current_user["id"] != person_id:
-            try:
-                permissions.check_at_least_supervisor_permissions()
-            except permissions.PermissionDenied:
-                return []
+            permissions.check_at_least_supervisor_permissions()
         try:
             return time_spents_service.get_day_off(person_id, date)
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid date format.")
 
 
 class PersonDurationTimeSpentsResource(Resource, ArgsMixin):
 
     def get_project_department_arguments(self, person_id):
         project_id = self.get_project_id()
-        department_ids = None
-        if not permissions.has_admin_permissions():
-            if persons_service.get_current_user()["id"] != person_id:
-                if (
-                    permissions.has_manager_permissions()
-                    or permissions.has_supervisor_permissions()
-                ):
-                    project_ids = [
-                        project["id"]
-                        for project in user_service.get_projects()
-                    ]
-                    if project_id is None:
-                        project_id = project_ids
-                    elif project_id not in project_ids:
-                        raise permissions.PermissionDenied
-                    if permissions.has_supervisor_permissions():
-                        department_ids = persons_service.get_current_user(
-                            relations=True
-                        )["departments"]
-                else:
-                    raise permissions.PermissionDenied
-
+        project_ids, department_ids = _get_project_department_ids_for_person_access(
+            person_id
+        )
+        if project_ids is not None:
+            if project_id is None:
+                project_id = project_ids
+            elif project_id not in project_ids:
+                raise permissions.PermissionDenied
         return {
             "project_id": project_id,
             "department_ids": department_ids,
@@ -545,7 +545,7 @@ class PersonYearTimeSpentsResource(PersonDurationTimeSpentsResource):
                 **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid date format.")
 
 
 class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
@@ -616,7 +616,7 @@ class PersonMonthTimeSpentsResource(PersonDurationTimeSpentsResource):
                 **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid date format.")
 
 
 class PersonMonthAllTimeSpentsResource(Resource):
@@ -743,7 +743,7 @@ class PersonWeekTimeSpentsResource(PersonDurationTimeSpentsResource):
                 **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid month or year.")
 
 
 class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
@@ -828,7 +828,7 @@ class PersonDayTimeSpentsResource(PersonDurationTimeSpentsResource):
                 **self.get_project_department_arguments(person_id),
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid month or year.")
 
 
 class PersonQuotaMixin(ArgsMixin):
@@ -839,7 +839,7 @@ class PersonQuotaMixin(ArgsMixin):
         count_mode = self.get_text_parameter("count_mode", default="weighted")
         if count_mode not in ["weighted", "weighteddone", "feedback", "done"]:
             raise WrongParameterException(
-                "count_mode must be equal to weighted, weigtheddone, feedback"
+                "count_mode must be equal to weighted, weighteddone, feedback"
                 ", or done"
             )
         feedback = "done" not in count_mode
@@ -875,7 +875,7 @@ class PersonQuotaMixin(ArgsMixin):
                 weighted=weighted,
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Invalid month or year.")
 
 
 class PersonMonthQuotaShotsResource(Resource, PersonQuotaMixin):
@@ -1583,16 +1583,12 @@ class AddToDepartmentResource(Resource, ArgsMixin):
           400:
             description: Invalid department ID
         """
-        args = self.get_args(
-            [
-                ("department_id", None, True),
-            ]
-        )
-
         permissions.check_admin_permissions()
+        body = validation.validate_request_body(AddToDepartmentSchema)
+        department_id = str(body.department_id)
 
         try:
-            department = tasks_service.get_department(args["department_id"])
+            department = tasks_service.get_department(department_id)
         except DepartmentNotFoundException:
             raise WrongParameterException(
                 "Department ID matches no department"
@@ -1714,16 +1710,17 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
                       example: "Password is too short."
         """
         user_service.check_person_is_not_bot(person_id)
-        (password, password_2) = self.get_arguments()
         permissions.check_admin_permissions()
+        body = validation.validate_request_body(ChangePasswordSchema)
+        password, password_2 = body.password, body.password_2
+        current_user = persons_service.get_current_user()
         try:
             person = persons_service.get_person(person_id)
             if (
                 person["email"] in config.PROTECTED_ACCOUNTS
-                and person["id"] != persons_service.get_current_user()["id"]
+                and person["id"] != current_user["id"]
             ):
                 raise PersonInProtectedAccounts()
-            current_user = persons_service.get_current_user()
             auth.validate_password(password, password_2)
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
@@ -1731,28 +1728,10 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
                 "User %s has changed the password of %s"
                 % (current_user["email"], person["email"])
             )
-            organisation = persons_service.get_organisation()
-            time_string = format_datetime(
-                date_helpers.get_utc_now_datetime(),
-                tzinfo=person["timezone"],
-                locale=person["locale"],
-            )
             person_IP = request.headers.get("X-Forwarded-For", None)
-            html = f"""<p>Hello {person["first_name"]},</p>
-<p>
-Your password was changed at this date: {time_string}.
-</p>
-<p>
-The IP of the user who changed your password is: {person_IP}.
-</p>
-<p>
-If you don't know the person who changed the password, please contact our support team.
-</p>
-"""
-            subject = f"{organisation['name']} - Kitsu: password changed"
-            title = "Password Changed"
-            email_html_body = templates_service.generate_html_body(title, html)
-            emails.send_email(subject, email_html_body, person["email"])
+            persons_service.send_password_changed_by_admin_email(
+                person, current_user, person_IP=person_IP
+            )
             return {"success": True}
 
         except auth.PasswordsNoMatchException:
@@ -1775,24 +1754,6 @@ If you don't know the person who changed the password, please contact our suppor
                 },
                 400,
             )
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "password",
-                    "required": True,
-                    "help": "New password is missing.",
-                },
-                {
-                    "name": "password_2",
-                    "required": True,
-                    "help": "New password confirmation is missing.",
-                },
-            ]
-        )
-
-        return (args["password"], args["password_2"])
 
 
 class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
@@ -1846,36 +1807,18 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
         """
         user_service.check_person_is_not_bot(person_id)
         permissions.check_admin_permissions()
+        current_user = persons_service.get_current_user()
         try:
             person = persons_service.get_person(person_id)
-            current_user = persons_service.get_current_user()
             disable_two_factor_authentication_for_person(person["id"])
             current_app.logger.warning(
                 "User %s has disabled the two factor authentication of %s"
                 % (current_user["email"], person["email"])
             )
-            organisation = persons_service.get_organisation()
-            time_string = format_datetime(
-                date_helpers.get_utc_now_datetime(),
-                tzinfo=person["timezone"],
-                locale=person["locale"],
-            )
             person_IP = request.headers.get("X-Forwarded-For", None)
-            html = f"""<p>Hello {person["first_name"]},</p>
-<p>
-Your two factor authentication was disabled at this date: {time_string}.
-</p>
-<p>
-The IP of the user who disabled your two factor authentication is: {person_IP}.
-</p>
-<p>
-If you don't know the person who disabled the two factor authentication, please contact our support team.
-</p>
-"""
-            subject = f"{organisation['name']} - Kitsu: two factor authentication disabled"
-            title = "Two Factor Authentication Disabled"
-            email_html_body = templates_service.generate_html_body(title, html)
-            emails.send_email(subject, email_html_body, person["email"])
+            persons_service.send_2fa_disabled_by_admin_email(
+                person, current_user, person_IP=person_IP
+            )
             return {"success": True}
 
         except UnactiveUserException:
