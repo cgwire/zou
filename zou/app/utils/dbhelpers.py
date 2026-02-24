@@ -12,7 +12,7 @@ def get_db_uri():
 
 def reset_all():
     """
-    Check that database exist.
+    Drop all tables then recreate them.
     """
     drop_all()
     return create_all()
