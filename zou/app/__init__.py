@@ -23,7 +23,8 @@ from meilisearch.errors import (
     MeilisearchCommunicationError,
 )
 
-from zou.app import config, swagger
+from zou.app import config
+from zou.app import swagger as swagger_module
 from zou.app.swagger import configure_openapi_route
 from zou.app.stores import auth_tokens_store, file_store
 from zou.app.indexer import indexing
@@ -67,7 +68,9 @@ cache.cache.init_app(app)  # Function caching
 mail = Mail()
 mail.init_app(app)  # To send emails
 swagger = Swagger(
-    app, template=swagger.swagger_template, config=swagger.swagger_config
+    app,
+    template=swagger_module.swagger_template,
+    config=swagger_module.swagger_config,
 )
 configure_openapi_route(app, swagger)
 
@@ -196,11 +199,14 @@ def configure_auth():
 
     @jwt.token_in_blocklist_loader
     def check_if_token_is_revoked(_, payload):
+        jti = payload.get("jti")
+        if jti is None:
+            return True
         identity_type = payload.get("identity_type")
         if identity_type == "person":
-            return auth_tokens_store.is_revoked(payload["jti"])
+            return auth_tokens_store.is_revoked(jti)
         elif identity_type in ["bot", "person_api"]:
-            return persons_service.is_jti_revoked(payload["jti"])
+            return persons_service.is_jti_revoked(jti)
         else:
             return True
 
@@ -218,6 +224,7 @@ def configure_auth():
                 "/auth/totp",
                 "/auth/email-otp",
                 "/auth/fido",
+                "/auth/recovery-codes",
                 "/auth/login",
                 "/auth/logout",
                 "/auth/authenticated",
@@ -263,15 +270,13 @@ def configure_auth():
 
             return identity
 
+        except (PersonNotFoundException, UnactiveUserException):
+            return wrong_auth_handler()
+        except TimeoutError:
+            current_app.logger.error("Identity loading timed out")
+            return wrong_auth_handler()
         except Exception as e:
-            if isinstance(e, TimeoutError):
-                current_app.logger.error("Identity loading timed out")
-            if isinstance(e, (PersonNotFoundException, UnactiveUserException)):
-                pass
-            else:
-                current_app.logger.error(e, exc_info=1)
-                if hasattr(e, "message"):
-                    current_app.logger.error(e.message)
+            current_app.logger.error(e, exc_info=1)
             return wrong_auth_handler()
 
 
