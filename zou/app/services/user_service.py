@@ -15,9 +15,6 @@ from zou.app.models.search_filter_group import SearchFilterGroup
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
 
-from zou.app.services import plugins_service
-
-
 from zou.app.services import (
     assets_service,
     custom_actions_service,
@@ -27,6 +24,7 @@ from zou.app.services import (
     names_service,
     persons_service,
     playlists_service,
+    plugins_service,
     projects_service,
     shots_service,
     status_automations_service,
@@ -103,7 +101,6 @@ def related_projects():
     Return all projects related to current user: open projects of which the user
     is part of the team as dicts.
     """
-    persons_service.get_current_user()
     projects = related_projects_raw()
     return Project.serialize_list(projects)
 
@@ -597,7 +594,7 @@ def check_comment_access(comment_id):
             current_user = persons_service.get_current_user()
             project = projects_service.get_project(task["project_id"])
             if project.get("is_clients_isolated", False):
-                if not comment["person_id"] == current_user["id"]:
+                if comment["person_id"] != current_user["id"]:
                     raise permissions.PermissionDenied
             if persons_service.get_person(person_id)["role"] == "client":
                 return True
@@ -671,12 +668,14 @@ def check_supervisor_project_access(project_id):
     return is_allowed
 
 
-def check_supervisor_task_access(task, new_data={}):
+def check_supervisor_task_access(task, new_data=None):
     """
     Return true if current user is a manager and has a task assigned related
     to the project of this task or is a supervisor and can modify data accorded
     to his departments
     """
+    if new_data is None:
+        new_data = {}
     is_allowed = False
     if permissions.has_admin_permissions() or (
         permissions.has_manager_permissions()
@@ -688,9 +687,9 @@ def check_supervisor_task_access(task, new_data={}):
     ):
         # checks that the supervisor only modifies columns
         # for which he is authorized
-        allowed_columns = set(
-            ["priority", "start_date", "due_date", "estimation", "difficulty"]
-        )
+        allowed_columns = {
+            "priority", "start_date", "due_date", "estimation", "difficulty"
+        }
         if len(set(new_data.keys()) - allowed_columns) == 0:
             user_departments = persons_service.get_current_user(
                 relations=True
@@ -709,12 +708,14 @@ def check_supervisor_task_access(task, new_data={}):
     return is_allowed
 
 
-def check_metadata_department_access(entity, new_data={}):
+def check_metadata_department_access(entity, new_data=None):
     """
     Return true if current user is a manager and has a task assigned for this
     project or is a supervisor and is allowed to modify data accorded to
     his departments
     """
+    if new_data is None:
+        new_data = {}
     is_allowed = False
     if permissions.has_admin_permissions() or (
         (
@@ -729,7 +730,7 @@ def check_metadata_department_access(entity, new_data={}):
     ):
         # checks that the supervisor only modifies columns
         # for which he is authorized
-        allowed_columns = set(["data"])
+        allowed_columns = {"data"}
         if len(set(new_data.keys()) - allowed_columns) == 0:
             user_departments = persons_service.get_current_user(
                 relations=True
@@ -857,11 +858,13 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
     return is_allowed
 
 
-def check_all_departments_access(project_id, departments=[]):
+def check_all_departments_access(project_id, departments=None):
     """
     Return true if current user is admin or is manager and is in team or is
     supervisor and is in team and have access to all departments.
     """
+    if departments is None:
+        departments = []
     if not isinstance(departments, list):
         departments = [departments]
     is_allowed = False
@@ -1025,7 +1028,6 @@ def create_filter(
         search_filter_group_id=search_filter_group_id,
         department_id=department_id,
     )
-    search_filter.serialize()
     if search_filter.is_shared:
         clear_filter_cache()
     else:
@@ -1084,14 +1086,6 @@ def update_filter(search_filter_id, data):
         ):
             raise WrongParameterException(
                 "A search filter should have the same value for is_shared than its search filter group."
-            )
-
-    department_id = data.get("department_id", None)
-    if department_id is not None:
-        department = tasks_service.get_department(department_id)
-        if department is None:
-            raise WrongParameterException(
-                f"No department found with id: {department_id}"
             )
 
     search_filter.update(data)
@@ -1220,8 +1214,6 @@ def create_filter_group(
         is_shared=is_shared,
         department_id=department_id,
     )
-    search_filter_group.serialize()
-
     if search_filter_group.is_shared:
         clear_filter_group_cache()
     else:

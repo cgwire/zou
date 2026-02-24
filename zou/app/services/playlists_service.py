@@ -979,7 +979,7 @@ def generate_temp_playlist(task_ids, sort=True):
                 )
             else:
                 return entities
-        except BaseException:
+        except Exception:
             return entities
     else:
         return []

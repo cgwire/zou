@@ -239,10 +239,12 @@ def get_entity_links_for_project(
     return results
 
 
-def get_entities_and_tasks(criterions={}):
+def get_entities_and_tasks(criterions=None):
     """
     Get all entities for given criterions with related tasks for each entity.
     """
+    if criterions is None:
+        criterions = {}
     if "episode_id" in criterions and criterions["episode_id"] == "all":
         return []
 

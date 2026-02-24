@@ -426,6 +426,7 @@ def get_all_sequence_subscriptions(person_id, project_id, task_type_id):
         .join(Project)
         .filter(Project.id == project_id)
         .filter(Subscription.task_type_id == task_type_id)
+        .filter(Subscription.person_id == person_id)
         .all()
     )
 

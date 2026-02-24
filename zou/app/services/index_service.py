@@ -101,12 +101,14 @@ def reset_shot_index():
     )
 
 
-def search_assets(query, project_ids=[], limit=3, offset=0):
+def search_assets(query, project_ids=None, limit=3, offset=0):
     """
     Perform a search on the index. The query is a simple string. The result is
     a list of assets with extra data like the project name and the asset type
     name (3 results maximum by default).
     """
+    if project_ids is None:
+        project_ids = []
     index = get_asset_index()
     assets = []
 
@@ -131,12 +133,14 @@ def search_assets(query, project_ids=[], limit=3, offset=0):
     return assets
 
 
-def search_shots(query, project_ids=[], limit=3, offset=0):
+def search_shots(query, project_ids=None, limit=3, offset=0):
     """
     Perform a search on the index. The query is a simple string. The result is
     a list of shots with extra data like the project name and the asset type
     name (3 results maximum by default).
     """
+    if project_ids is None:
+        project_ids = []
     index = get_shot_index()
     shots = []
 
@@ -194,7 +198,7 @@ def index_asset(asset):
         return document
     except indexing.IndexerNotInitializedError:
         pass
-    except:
+    except Exception:
         app.logger.error("Indexer is not reachable, indexation failed.")
     return {}
 
@@ -210,7 +214,7 @@ def index_person(person):
         return document
     except indexing.IndexerNotInitializedError:
         pass
-    except:
+    except Exception:
         app.logger.error("Indexer is not reachable, indexation failed.")
     return {}
 
@@ -226,7 +230,7 @@ def index_shot(shot):
         return document
     except indexing.IndexerNotInitializedError:
         pass
-    except:
+    except Exception:
         app.logger.error("Indexer is not reachable, indexation failed.")
     return {}
 
@@ -327,7 +331,7 @@ def remove_asset_index(asset_id):
         return indexing.remove_document(get_asset_index(), asset_id)
     except indexing.IndexerNotInitializedError:
         pass
-    except:
+    except Exception:
         app.logger.error("Indexer is not reachable, indexation failed.")
     return {}
 
@@ -340,7 +344,7 @@ def remove_person_index(person_id):
         return indexing.remove_document(get_person_index(), person_id)
     except indexing.IndexerNotInitializedError:
         pass
-    except:
+    except Exception:
         app.logger.error("Indexer is not reachable, indexation failed.")
     return {}
 
@@ -353,6 +357,6 @@ def remove_shot_index(shot_id):
         return indexing.remove_document(get_shot_index(), shot_id)
     except indexing.IndexerNotInitializedError:
         pass
-    except:
+    except Exception:
         app.logger.error("Indexer is not reachable, indexation failed.")
     return {}
