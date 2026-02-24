@@ -76,15 +76,21 @@ def create_comment(
     task_id,
     task_status_id,
     text,
-    checklist=[],
-    files={},
+    checklist=None,
+    files=None,
     created_at="",
-    links=[],
+    links=None,
     with_hashtags=True,
 ):
     """
     Create a new comment and related: news, notifications and events.
     """
+    if checklist is None:
+        checklist = []
+    if files is None:
+        files = {}
+    if links is None:
+        links = []
     related_tasks = []
     author = _get_comment_author(person_id)
     task = tasks_service.get_task(task_id, relations=True)
@@ -321,15 +327,21 @@ def new_comment(
     person_id,
     text,
     object_type="Task",
-    files={},
-    checklist=[],
+    files=None,
+    checklist=None,
     created_at="",
-    links=[],
+    links=None,
 ):
     """
     Create a new comment for given object (by default, it considers this object
     as a Task).
     """
+    if files is None:
+        files = {}
+    if checklist is None:
+        checklist = []
+    if links is None:
+        links = []
     created_at_date = None
     task = tasks_service.get_task(task_id)
     if created_at is not None and len(created_at) > 0:
@@ -498,11 +510,13 @@ def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     )
 
 
-def reply_comment(comment_id, text, person_id=None, files={}):
+def reply_comment(comment_id, text, person_id=None, files=None):
     """
     Add a reply entry to the JSONB field of given comment model. Create
     notifications needed for this.
     """
+    if files is None:
+        files = {}
     person = None
     if person_id is None:
         person = persons_service.get_current_user()

@@ -413,15 +413,21 @@ def update_preview_file_annotations(
     person_id,
     project_id,
     preview_file_id,
-    additions=[],
-    updates=[],
-    deletions=[],
+    additions=None,
+    updates=None,
+    deletions=None,
 ):
     """
     Update annotations for given preview file.
     Uses a Redis lock to prevent race conditions when multiple processes update
     annotations on the same preview file concurrently.
     """
+    if additions is None:
+        additions = []
+    if updates is None:
+        updates = []
+    if deletions is None:
+        deletions = []
     with with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
         preview_file = files_service.get_preview_file_raw(preview_file_id)
         previous_annotations = preview_file.annotations or []

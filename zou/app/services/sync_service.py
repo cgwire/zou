@@ -233,7 +233,7 @@ def init(source, login, password, multithreaded=False, number_workers=30):
             ]:
                 try:
                     fs.backend.conn.head_container(fs.backend.name)
-                except:
+                except Exception:
                     pass
                 http_con = fs.backend.conn.http_conn[1]
                 url = http_con.parsed_url
@@ -797,7 +797,7 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
             for chunk in dl_func(prefix, preview_file_id):
                 tmp_file.write(chunk)
         logger.info("%s downloaded" % file_path)
-    except BaseException:
+    except Exception:
         pass
 
 
@@ -816,13 +816,13 @@ def download_preview(preview_file):
     file_key = "previews-%s" % preview_file_id
     if is_file:
         file_path = local_file.path(file_key)
-        dl_func = file_store.open_picture
+        dl_func = file_store.open_file
     elif is_movie:
         file_path = local_movie.path(file_key)
         dl_func = file_store.open_movie
     else:
         file_path = local_picture.path(file_key)
-        dl_func = file_store.open_file
+        dl_func = file_store.open_picture
 
     if is_movie or is_picture:
         for prefix in ["thumbnails", "thumbnails-square", "original"]:

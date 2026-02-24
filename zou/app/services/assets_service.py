@@ -84,10 +84,12 @@ def build_entity_type_asset_type_filter():
     return ~EntityType.id.in_(ids_to_exclude)
 
 
-def get_assets(criterions={}, is_admin=False):
+def get_assets(criterions=None, is_admin=False):
     """
     Get all assets for given criterions.
     """
+    if criterions is None:
+        criterions = {}
     query = Entity.query.filter(build_asset_type_filter())
     assigned_to = False
     episode_id = None
@@ -138,11 +140,13 @@ def get_all_raw_assets():
     return query.all()
 
 
-def get_full_assets(criterions={}):
+def get_full_assets(criterions=None):
     """
     Get all assets for given criterions with additional informations: project
     name and asset type name.
     """
+    if criterions is None:
+        criterions = {}
     assigned_to = False
     if "assigned_to" in criterions:
         assigned_to = True
@@ -169,10 +173,12 @@ def get_full_assets(criterions={}):
     return assets
 
 
-def get_assets_and_tasks(criterions={}, with_episode_ids=False):
+def get_assets_and_tasks(criterions=None, with_episode_ids=False):
     """
     Get all assets for given criterions with related tasks for each asset.
     """
+    if criterions is None:
+        criterions = {}
     asset_map = {}
     task_map = {}
     Episode = aliased(Entity, name="episode")
@@ -373,10 +379,12 @@ def get_assets_and_tasks(criterions={}, with_episode_ids=False):
 
 
 @cache.memoize_function(240)
-def get_asset_types(criterions={}):
+def get_asset_types(criterions=None):
     """
     Retrieve all asset types available.
     """
+    if criterions is None:
+        criterions = {}
     query = EntityType.query.filter(build_entity_type_asset_type_filter())
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     return EntityType.serialize_list(
