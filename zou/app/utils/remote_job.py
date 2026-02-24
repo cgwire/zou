@@ -34,10 +34,9 @@ def run_job(app, config, nomad_job_name, params):
             out = textwrap.indent(out, "\t")
             err = textwrap.indent(err, "\t")
             raise Exception(
-                "Job %s is 'Failed' or 'Lost':\nStatus: "
-                "%s\nerr:\n%s\nout:\n%s" % (nomad_jobid, status, err, out)
+                f"Job {nomad_jobid} is 'Failed' or 'Lost':\n"
+                f"Status: {status}\nerr:\n{err}\nout:\n{out}"
             )
-            return False
         if status["Complete"] == 1:
             app.logger.info("Nomad job %r: complete", nomad_jobid)
             break

@@ -3,21 +3,13 @@ import shutil
 import time
 from flask_fs.errors import FileNotFound
 
-import errno
-
 
 class DownloadFromStorageFailedException(Exception):
     pass
 
 
 def mkdir_p(path):
-    try:
-        os.makedirs(path)
-    except OSError as exception:
-        if exception.errno == errno.EEXIST and os.path.isdir(path):
-            pass
-        else:
-            raise
+    os.makedirs(path, exist_ok=True)
 
 
 def rm_rf(path):
@@ -34,6 +26,26 @@ def copyfile(src, dest):
     shutil.copyfile(src, dest)
 
 
+def _download_to_file(file_path, open_file, prefix, instance_id):
+    download_failed = False
+    exception = None
+    try:
+        with open(file_path, "wb") as tmp_file:
+            file_generator = open_file(prefix, instance_id)
+            try:
+                for chunk in file_generator:
+                    tmp_file.write(chunk)
+            finally:
+                try:
+                    file_generator.close()
+                except (StopIteration, Exception):
+                    pass
+    except Exception as e:
+        download_failed = True
+        exception = e
+    return download_failed, exception
+
+
 def get_file_path_and_file(
     config,
     get_local_path,
@@ -45,61 +57,26 @@ def get_file_path_and_file(
 ):
     if config.FS_BACKEND == "local":
         file_path = get_local_path(prefix, instance_id)
-        if is_unvalid_file(file_path, file_size):
+        if is_invalid_file(file_path, file_size):
             raise FileNotFound
     else:
         file_path = os.path.join(
-            config.TMP_DIR, "cache-%s-%s.%s" % (prefix, instance_id, extension)
+            config.TMP_DIR,
+            f"cache-{prefix}-{instance_id}.{extension}",
         )
 
-        if is_unvalid_file(file_path, file_size):
-            download_failed = False
-            exception = None
-            try:
-                with open(file_path, "wb") as tmp_file:
-                    file_generator = open_file(prefix, instance_id)
-                    try:
-                        for chunk in file_generator:
-                            tmp_file.write(chunk)
-                    finally:
-                        try:
-                            file_generator.close()
-                        except StopIteration:
-                            # Normal end of iteration, expected
-                            pass
-                        except Exception:
-                            pass
-            except Exception as e:
-                download_failed = True
-                exception = e
+        if is_invalid_file(file_path, file_size):
+            download_failed, exception = _download_to_file(
+                file_path, open_file, prefix, instance_id
+            )
 
-            if is_unvalid_file(
-                file_path, file_size, download_failed
-            ):  # download failed
+            if is_invalid_file(file_path, file_size, download_failed):
                 time.sleep(3)
-                download_failed = False
-                exception = None
-                try:
-                    with open(file_path, "wb") as tmp_file:
-                        file_generator = open_file(prefix, instance_id)
-                        try:
-                            for chunk in file_generator:
-                                tmp_file.write(chunk)
-                        finally:
-                            try:
-                                file_generator.close()
-                            except StopIteration:
-                                # Normal end of iteration, expected
-                                pass
-                            except Exception:
-                                pass
-                except Exception as e:
-                    download_failed = True
-                    exception = e
+                download_failed, exception = _download_to_file(
+                    file_path, open_file, prefix, instance_id
+                )
 
-                if is_unvalid_file(
-                    file_path, file_size, download_failed
-                ):  # download failed again
+                if is_invalid_file(file_path, file_size, download_failed):
                     rm_file(file_path)
                     if exception is not None:
                         raise exception
@@ -109,7 +86,7 @@ def get_file_path_and_file(
     return file_path
 
 
-def is_unvalid_file(file_path, file_size=None, download_failed=False):
+def is_invalid_file(file_path, file_size=None, download_failed=False):
     """
     Check if file is absent, is empty or does match given size.
     """
