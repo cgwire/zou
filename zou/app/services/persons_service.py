@@ -1,6 +1,8 @@
 import datetime
+import logging
 import urllib.parse
 
+from babel.dates import format_datetime
 from calendar import monthrange
 from dateutil import relativedelta
 
@@ -24,6 +26,8 @@ from zou.app.services.exception import (
     PersonInProtectedAccounts,
     WrongParameterException,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def clear_person_cache():
@@ -271,7 +275,7 @@ def create_person(
     phone="",
     role="user",
     desktop_login="",
-    departments=[],
+    departments=None,
     is_generated_from_ldap=False,
     ldap_uid=None,
     is_bot=False,
@@ -284,11 +288,13 @@ def create_person(
     Create a new person entry in the database. No operation are performed on
     password, so encrypted password is expected.
     """
+    if departments is None:
+        departments = []
     if email is not None:
         email = email.strip()
 
     if expiration_date is not None:
-        if type(expiration_date) is str:
+        if isinstance(expiration_date, str):
             expiration_date = date_helpers.get_date_from_string(
                 expiration_date
             )
@@ -299,7 +305,8 @@ def create_person(
                 )
         except WrongParameterException:
             raise
-        except:
+        except (ValueError, TypeError) as e:
+            logger.warning("Invalid expiration_date for create_person: %s", e)
             raise WrongParameterException("Expiration date is not valid.")
 
     person = Person.create(
@@ -323,6 +330,10 @@ def create_person(
     index_service.index_person(person)
     events.emit("person:new", {"person_id": person.id})
     clear_person_cache()
+    logger.info(
+        "Person created",
+        extra={"person_id": str(person.id), "email": email},
+    )
     if serialize:
         if is_bot:
             return {
@@ -342,6 +353,7 @@ def update_password(email, password):
     person = get_person_by_email_raw(email)
     person.update({"password": password})
     clear_person_cache()
+    logger.info("Password updated", extra={"email": email})
     return person.serialize()
 
 
@@ -382,7 +394,12 @@ def update_person(person_id, data, bypass_protected_accounts=False):
                 )
         except WrongParameterException:
             raise
-        except:
+        except (ValueError, TypeError) as e:
+            logger.warning(
+                "Invalid expiration_date for update_person %s: %s",
+                person_id,
+                e,
+            )
             raise WrongParameterException("Expiration date is not valid.")
 
     person.update(data)
@@ -413,6 +430,7 @@ def delete_person(person_id):
     index_service.remove_person_index(person_id)
     events.emit("person:delete", {"person_id": person_id})
     clear_person_cache()
+    logger.info("Person deleted", extra={"person_id": str(person_id)})
     return person_dict
 
 
@@ -440,10 +458,18 @@ def create_desktop_login_logs(person_id, date):
 def update_person_last_presence(person_id):
     """
     Update person presence field with the most recent time spent or
-    desktop login log.
+    desktop login log for this person.
     """
-    log = DesktopLoginLog.query.order_by(DesktopLoginLog.date.desc()).first()
-    time_spent = TimeSpent.query.order_by(TimeSpent.date.desc()).first()
+    log = (
+        DesktopLoginLog.query.filter(DesktopLoginLog.person_id == person_id)
+        .order_by(DesktopLoginLog.date.desc())
+        .first()
+    )
+    time_spent = (
+        TimeSpent.query.filter(TimeSpent.person_id == person_id)
+        .order_by(TimeSpent.date.desc())
+        .first()
+    )
     date = None
     if (
         log is not None
@@ -532,6 +558,76 @@ def invite_person(person_id):
         organisation_name=organisation["name"],
         email=person["email"],
         reset_url=reset_url,
+    )
+    email_html_body = templates_service.generate_html_body(
+        title, html, locale=locale
+    )
+    emails.send_email(subject, email_html_body, person["email"], locale=locale)
+
+
+def send_password_changed_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin changed their password.
+    """
+    organisation = get_organisation()
+    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+    if hasattr(locale, "language"):
+        locale = str(locale)
+    time_string = format_datetime(
+        date_helpers.get_utc_now_datetime(),
+        tzinfo=person.get("timezone"),
+        locale=person.get("locale"),
+    )
+    person_IP = person_IP or ""
+    subject = get_email_translation(
+        locale,
+        "auth_password_changed_by_admin_subject",
+        organisation_name=organisation["name"],
+    )
+    title = get_email_translation(
+        locale, "auth_password_changed_by_admin_title"
+    )
+    html = get_email_translation(
+        locale,
+        "auth_password_changed_by_admin_body",
+        first_name=person["first_name"],
+        time_string=time_string,
+        person_IP=person_IP,
+    )
+    email_html_body = templates_service.generate_html_body(
+        title, html, locale=locale
+    )
+    emails.send_email(subject, email_html_body, person["email"], locale=locale)
+
+
+def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
+    """
+    Send an email to the person notifying that an admin disabled their 2FA.
+    """
+    organisation = get_organisation()
+    locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+    if hasattr(locale, "language"):
+        locale = str(locale)
+    time_string = format_datetime(
+        date_helpers.get_utc_now_datetime(),
+        tzinfo=person.get("timezone"),
+        locale=person.get("locale"),
+    )
+    person_IP = person_IP or ""
+    subject = get_email_translation(
+        locale,
+        "auth_2fa_disabled_by_admin_subject",
+        organisation_name=organisation["name"],
+    )
+    title = get_email_translation(
+        locale, "auth_2fa_disabled_by_admin_title"
+    )
+    html = get_email_translation(
+        locale,
+        "auth_2fa_disabled_by_admin_body",
+        first_name=person["first_name"],
+        time_string=time_string,
+        person_IP=person_IP,
     )
     email_html_body = templates_service.generate_html_body(
         title, html, locale=locale
