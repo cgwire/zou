@@ -1,3 +1,4 @@
+import copy
 import os
 
 import re
@@ -430,7 +431,7 @@ def update_preview_file_annotations(
         deletions = []
     with with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-        previous_annotations = preview_file.annotations or []
+        previous_annotations = copy.deepcopy(preview_file.annotations or [])
         annotations = _clean_annotations(previous_annotations)
         annotations = _apply_annotation_additions(
             previous_annotations, additions
