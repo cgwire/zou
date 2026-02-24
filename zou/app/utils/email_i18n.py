@@ -184,6 +184,22 @@ L'IP de la personne ayant fait la demande est : %(person_IP)s.</p>
 <p>Définissez votre mot de passe pour continuer :</p>
 <p class="cta"><a class="button" href="%(reset_url)s">Définir votre mot de passe</a></p>
 """,
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu : mot de passe modifié par un administrateur",
+        "auth_password_changed_by_admin_title": "Mot de passe modifié",
+        "auth_password_changed_by_admin_body": """<p>Bonjour %(first_name)s,</p>
+<p>Votre mot de passe a été modifié à cette date : %(time_string)s.</p>
+<p>L'IP de la personne qui a modifié votre mot de passe est : %(person_IP)s.</p>
+<p>Si vous ne connaissez pas cette personne, veuillez contacter notre équipe de support.</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu : authentification à deux facteurs désactivée",
+        "auth_2fa_disabled_by_admin_title": "Authentification à deux facteurs désactivée",
+        "auth_2fa_disabled_by_admin_body": """<p>Bonjour %(first_name)s,</p>
+<p>Votre authentification à deux facteurs a été désactivée à cette date : %(time_string)s.</p>
+<p>L'IP de la personne qui a désactivé votre authentification à deux facteurs est : %(person_IP)s.</p>
+<p>Si vous ne connaissez pas cette personne, veuillez contacter notre équipe de support.</p>
+""",
     },
     "es_ES": {
         # Comment notification
@@ -258,6 +274,22 @@ La IP de la persona que lo solicitó es: %(person_IP)s.</p>
 <p>Tu inicio de sesión es: <strong>%(email)s</strong></p>
 <p>Establece tu contraseña para continuar:</p>
 <p class="cta"><a class="button" href="%(reset_url)s">Establecer tu contraseña</a></p>
+""",
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu: contraseña cambiada por un administrador",
+        "auth_password_changed_by_admin_title": "Contraseña cambiada",
+        "auth_password_changed_by_admin_body": """<p>Hola %(first_name)s,</p>
+<p>Tu contraseña fue cambiada en esta fecha: %(time_string)s.</p>
+<p>La IP de la persona que cambió tu contraseña es: %(person_IP)s.</p>
+<p>Si no conoces a esta persona, por favor contacta a nuestro equipo de soporte.</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu: autenticación de dos factores desactivada",
+        "auth_2fa_disabled_by_admin_title": "Autenticación de dos factores desactivada",
+        "auth_2fa_disabled_by_admin_body": """<p>Hola %(first_name)s,</p>
+<p>Tu autenticación de dos factores fue desactivada en esta fecha: %(time_string)s.</p>
+<p>La IP de la persona que desactivó tu autenticación de dos factores es: %(person_IP)s.</p>
+<p>Si no conoces a esta persona, por favor contacta a nuestro equipo de soporte.</p>
 """,
     },
     "ja_JP": {
@@ -334,6 +366,22 @@ La IP de la persona que lo solicitó es: %(person_IP)s.</p>
 <p>続行するにはパスワードを設定してください:</p>
 <p class="cta"><a class="button" href="%(reset_url)s">パスワードを設定</a></p>
 """,
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu: 管理者によりパスワードが変更されました",
+        "auth_password_changed_by_admin_title": "パスワード変更完了",
+        "auth_password_changed_by_admin_body": """<p>%(first_name)s 様</p>
+<p>あなたのパスワードが次の日時に変更されました: %(time_string)s。</p>
+<p>パスワードを変更した人のIPアドレス: %(person_IP)s。</p>
+<p>心当たりがない場合は、サポートチームにご連絡ください。</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu: 管理者により二要素認証が無効化されました",
+        "auth_2fa_disabled_by_admin_title": "二要素認証が無効化されました",
+        "auth_2fa_disabled_by_admin_body": """<p>%(first_name)s 様</p>
+<p>あなたの二要素認証が次の日時に無効化されました: %(time_string)s。</p>
+<p>二要素認証を無効化した人のIPアドレス: %(person_IP)s。</p>
+<p>心当たりがない場合は、サポートチームにご連絡ください。</p>
+""",
     },
     "de_DE": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s hat %(task_name)s kommentiert",
@@ -403,6 +451,22 @@ Die IP der anfragenden Person ist: %(person_IP)s.</p>
 <p>Ihre Anmeldung: <strong>%(email)s</strong></p>
 <p>Setzen Sie Ihr Passwort, um fortzufahren:</p>
 <p class="cta"><a class="button" href="%(reset_url)s">Passwort setzen</a></p>
+""",
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu: Passwort von einem Administrator geändert",
+        "auth_password_changed_by_admin_title": "Passwort geändert",
+        "auth_password_changed_by_admin_body": """<p>Hallo %(first_name)s,</p>
+<p>Ihr Passwort wurde zu diesem Zeitpunkt geändert: %(time_string)s.</p>
+<p>Die IP der Person, die Ihr Passwort geändert hat, ist: %(person_IP)s.</p>
+<p>Wenn Sie diese Person nicht kennen, kontaktieren Sie bitte unser Support-Team.</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu: Zwei-Faktor-Authentifizierung deaktiviert",
+        "auth_2fa_disabled_by_admin_title": "Zwei-Faktor-Authentifizierung deaktiviert",
+        "auth_2fa_disabled_by_admin_body": """<p>Hallo %(first_name)s,</p>
+<p>Ihre Zwei-Faktor-Authentifizierung wurde zu diesem Zeitpunkt deaktiviert: %(time_string)s.</p>
+<p>Die IP der Person, die Ihre Zwei-Faktor-Authentifizierung deaktiviert hat, ist: %(person_IP)s.</p>
+<p>Wenn Sie diese Person nicht kennen, kontaktieren Sie bitte unser Support-Team.</p>
 """,
     },
     "nl_NL": {
@@ -474,6 +538,22 @@ Het IP-adres van de aanvrager is: %(person_IP)s.</p>
 <p>Stel uw wachtwoord in om door te gaan:</p>
 <p class="cta"><a class="button" href="%(reset_url)s">Wachtwoord instellen</a></p>
 """,
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu: wachtwoord gewijzigd door een beheerder",
+        "auth_password_changed_by_admin_title": "Wachtwoord gewijzigd",
+        "auth_password_changed_by_admin_body": """<p>Hallo %(first_name)s,</p>
+<p>Uw wachtwoord is gewijzigd op: %(time_string)s.</p>
+<p>Het IP-adres van de persoon die uw wachtwoord heeft gewijzigd is: %(person_IP)s.</p>
+<p>Als u deze persoon niet kent, neem dan contact op met ons supportteam.</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu: tweefactorauthenticatie uitgeschakeld",
+        "auth_2fa_disabled_by_admin_title": "Tweefactorauthenticatie uitgeschakeld",
+        "auth_2fa_disabled_by_admin_body": """<p>Hallo %(first_name)s,</p>
+<p>Uw tweefactorauthenticatie is uitgeschakeld op: %(time_string)s.</p>
+<p>Het IP-adres van de persoon die uw tweefactorauthenticatie heeft uitgeschakeld is: %(person_IP)s.</p>
+<p>Als u deze persoon niet kent, neem dan contact op met ons supportteam.</p>
+""",
     },
     "zh_CN": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s 在 %(task_name)s 上发表了评论",
@@ -544,6 +624,22 @@ Het IP-adres van de aanvrager is: %(person_IP)s.</p>
 <p>请设置密码以继续：</p>
 <p class="cta"><a class="button" href="%(reset_url)s">设置密码</a></p>
 """,
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu：管理员已更改密码",
+        "auth_password_changed_by_admin_title": "密码已更改",
+        "auth_password_changed_by_admin_body": """<p>您好 %(first_name)s，</p>
+<p>您的密码已于此日期更改：%(time_string)s。</p>
+<p>更改您密码的人的 IP 地址为：%(person_IP)s。</p>
+<p>如果您不认识此人，请联系我们的支持团队。</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu：双因素认证已被管理员禁用",
+        "auth_2fa_disabled_by_admin_title": "双因素认证已禁用",
+        "auth_2fa_disabled_by_admin_body": """<p>您好 %(first_name)s，</p>
+<p>您的双因素认证已于此日期被禁用：%(time_string)s。</p>
+<p>禁用您双因素认证的人的 IP 地址为：%(person_IP)s。</p>
+<p>如果您不认识此人，请联系我们的支持团队。</p>
+""",
     },
     "pt_BR": {
         "comment_subject": "[Kitsu] %(task_status_name)s - %(author_first_name)s comentou em %(task_name)s",
@@ -613,6 +709,22 @@ O IP de quem solicitou é: %(person_IP)s.</p>
 <p>Seu login: <strong>%(email)s</strong></p>
 <p>Defina sua senha para continuar:</p>
 <p class="cta"><a class="button" href="%(reset_url)s">Definir sua senha</a></p>
+""",
+        # Auth: Password changed by admin
+        "auth_password_changed_by_admin_subject": "%(organisation_name)s - Kitsu: senha alterada por um administrador",
+        "auth_password_changed_by_admin_title": "Senha alterada",
+        "auth_password_changed_by_admin_body": """<p>Olá %(first_name)s,</p>
+<p>Sua senha foi alterada nesta data: %(time_string)s.</p>
+<p>O IP da pessoa que alterou sua senha é: %(person_IP)s.</p>
+<p>Se você não conhece esta pessoa, entre em contato com nossa equipe de suporte.</p>
+""",
+        # Auth: Two factor authentication disabled by admin
+        "auth_2fa_disabled_by_admin_subject": "%(organisation_name)s - Kitsu: autenticação de dois fatores desativada",
+        "auth_2fa_disabled_by_admin_title": "Autenticação de dois fatores desativada",
+        "auth_2fa_disabled_by_admin_body": """<p>Olá %(first_name)s,</p>
+<p>Sua autenticação de dois fatores foi desativada nesta data: %(time_string)s.</p>
+<p>O IP da pessoa que desativou sua autenticação de dois fatores é: %(person_IP)s.</p>
+<p>Se você não conhece esta pessoa, entre em contato com nossa equipe de suporte.</p>
 """,
     },
 }
