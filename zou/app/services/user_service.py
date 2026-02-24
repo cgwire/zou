@@ -637,14 +637,15 @@ def check_time_spent_access(task_id, person_id):
     the task.
     """
     task = tasks_service.get_task(task_id, relations=True)
-    is_allowed = person_id in task["assignees"] and (
-        persons_service.get_current_user()["id"] == person_id
+    is_allowed = (
+        permissions.has_admin_permissions()
         or (
-            permissions.has_admin_permissions()
-            or (
-                permissions.has_manager_permissions()
-                and check_belong_to_project(task["project_id"])
-            )
+            permissions.has_manager_permissions()
+            and check_belong_to_project(task["project_id"])
+        )
+        or (
+            person_id in task["assignees"]
+            and persons_service.get_current_user()["id"] == person_id
         )
     )
 

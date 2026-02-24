@@ -239,7 +239,7 @@ def get_last_news_for_project(
 
         for entry in result:
             key = f"{entry['task_id']}-{entry['preview_file_revision']}"
-            entry["preview_files"] = preview_files_map[key]
+            entry["preview_files"] = preview_files_map.get(key, [])
 
     return {
         "data": result,

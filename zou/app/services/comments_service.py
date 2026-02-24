@@ -36,7 +36,7 @@ from zou.app.services.exception import (
     ReplyNotFoundException,
 )
 
-from zou.app.utils import cache, date_helpers, events, fs, fields, date_helpers
+from zou.app.utils import cache, date_helpers, events, fs, fields
 from zou.app.stores import file_store
 from zou.app import config
 
@@ -147,7 +147,6 @@ def _check_retake_capping(task_status, task):
         project = projects_service.get_project(task["project_id"])
         project_max_retakes = project["max_retakes"] or 0
         if project_max_retakes > 0:
-            entity = entities_service.get_entity_raw(task["entity_id"])
             entity = entities_service.get_entity(task["entity_id"])
             entity_data = entity.get("data", {}) or {}
             entity_max_retakes = entity_data.get("max_retakes", None)
@@ -184,7 +183,7 @@ def _manage_status_change(task_status, task, comment):
         if status_changed:
             if task_status["is_retake"]:
                 retake_count = task["retake_count"]
-                if retake_count is None or retake_count == "NoneType":
+                if retake_count is None:
                     retake_count = 0
                 new_data["retake_count"] = retake_count + 1
 
@@ -566,12 +565,11 @@ def delete_reply(comment_id, reply_id):
     comment = tasks_service.get_comment_raw(comment_id)
     task = tasks_service.get_task(comment.object_id)
 
-    if comment.attachment_files is None:
-        comment.attachment_files = []
+    if comment.attachment_files is not None:
         for attachment_file in comment.attachment_files:
             if attachment_file.reply_id == reply_id:
                 deletion_service.remove_attachment_file_by_id(
-                    attachment_file["id"]
+                    str(attachment_file.id)
                 )
     if comment.replies is None:
         comment.replies = []

@@ -619,9 +619,7 @@ def send_2fa_disabled_by_admin_email(person, admin_user, person_IP=None):
         "auth_2fa_disabled_by_admin_subject",
         organisation_name=organisation["name"],
     )
-    title = get_email_translation(
-        locale, "auth_2fa_disabled_by_admin_title"
-    )
+    title = get_email_translation(locale, "auth_2fa_disabled_by_admin_title")
     html = get_email_translation(
         locale,
         "auth_2fa_disabled_by_admin_body",
@@ -705,7 +703,7 @@ def clear_avatar(person_id):
     if config.REMOVE_FILES:
         try:
             file_store.remove_picture("thumbnails", person_id)
-        except BaseException:
+        except Exception:
             pass
     return person.serialize()
 

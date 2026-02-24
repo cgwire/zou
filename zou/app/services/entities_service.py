@@ -3,7 +3,6 @@ from zou.app.services import (
     base_service,
     projects_service,
     notifications_service,
-    assets_service,
     shots_service,
     edits_service,
     tasks_service,
@@ -384,7 +383,7 @@ def remove_entity_link(link_id):
         link = EntityLink.get_by(id=link_id)
         link.delete()
         return link.serialize()
-    except BaseException:
+    except Exception:
         raise EntityLinkNotFoundException
 
 

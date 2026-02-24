@@ -56,8 +56,16 @@ PLAYLISTS_PAGE_SIZE = 20
 
 # Scalar attributes for playlist list dict (avoids serializing heavy shots JSON)
 _PLAYLIST_LIST_ATTRS = (
-    "id", "name", "project_id", "episode_id", "task_type_id",
-    "for_client", "for_entity", "is_for_all", "created_at", "updated_at",
+    "id",
+    "name",
+    "project_id",
+    "episode_id",
+    "task_type_id",
+    "for_client",
+    "for_entity",
+    "is_for_all",
+    "created_at",
+    "updated_at",
     "created_by",
 )
 
@@ -467,7 +475,7 @@ def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
     Assumes the caller has acquired appropriate locking (Redis).
     """
     playlist = Playlist.get(playlist_id)
-    shots = playlist.shots.copy()
+    shots = list(playlist.shots or [])
 
     if not any(shot.get("entity_id") == entity_id_str for shot in shots):
         shot = {
