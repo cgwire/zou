@@ -12,15 +12,52 @@ from flask_socketio import SocketIO, disconnect, join_room, leave_room, emit
 
 from zou.app import config, app
 from zou.app.utils.redis import get_redis_url
+from zou.app.services.playlists_service import get_playlist
+from zou.app.services.user_service import check_playlist_access
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}
+user_rooms = {}
+
+COMPARING_FIELDS = {"enable", "task_type", "revision", "mode",
+                    "comparison_preview_index"}
 
 redis_url = get_redis_url(config.KV_EVENTS_DB_INDEX)
 socketio = SocketIO(
     logger=True, cors_allowed_origins=[], cors_credentials=False
 )
 socketio.init_app(app, message_queue=redis_url, async_mode="gevent")
+
+
+def _check_room_access(playlist_id):
+    """
+    Check that the current user has access to the given playlist.
+    Returns True if access is granted, False otherwise.
+    """
+    try:
+        playlist = get_playlist(playlist_id)
+        check_playlist_access(playlist)
+        return True
+    except Exception:
+        return False
+
+
+def _add_user_to_room_index(user_id, room_id):
+    user_rooms.setdefault(user_id, set()).add(room_id)
+
+
+def _remove_user_from_room_index(user_id, room_id):
+    if user_id in user_rooms:
+        user_rooms[user_id].discard(room_id)
+        if not user_rooms[user_id]:
+            del user_rooms[user_id]
+
+
+def _validate_comparing(data):
+    """Sanitize the comparing dict to only keep known fields."""
+    if not isinstance(data, dict):
+        return None
+    return {k: v for k, v in data.items() if k in COMPARING_FIELDS}
 
 
 def _get_empty_room(current_frame=0):
@@ -60,7 +97,8 @@ def _get_room_from_data(data):
 
 def _leave_room(room_id, user_id):
     room = rooms_data.get(room_id, _get_empty_room())
-    room["people"] = list(set(room["people"]) - {user_id})
+    room["people"] = [p for p in room["people"] if p != user_id]
+    _remove_user_from_room_index(user_id, room_id)
     if len(room["people"]) > 0:
         rooms_data[room_id] = room
     elif room_id in rooms_data:
@@ -81,11 +119,11 @@ def _emit_people_updated(room_id, people):
 
 def _update_room_playing_status(data, room):
     room["playlist_id"] = data.get("playlist_id", "")
-    room["user_id"] = data.get("user_id", False)
-    room["local_id"] = data.get("local_id", False)
+    room["user_id"] = data.get("user_id", None)
+    room["local_id"] = data.get("local_id", None)
     room["is_playing"] = data.get("is_playing", False)
-    room["is_repeating"] = data.get("is_repeating", False)
-    room["is_laser_mode"] = data.get("is_laser_mode", False)
+    room["is_repeating"] = data.get("is_repeating", None)
+    room["is_laser_mode"] = data.get("is_laser_mode", None)
     room["is_annotations_displayed"] = data.get(
         "is_annotations_displayed", False
     )
@@ -102,8 +140,10 @@ def _update_room_playing_status(data, room):
     if "current_frame" in data:
         room["current_frame"] = data["current_frame"]
     if "comparing" in data:
-        room["comparing"] = data["comparing"]
-    if "speed" in data:
+        comparing = _validate_comparing(data["comparing"])
+        if comparing is not None:
+            room["comparing"] = comparing
+    if "speed" in data and isinstance(data["speed"], (int, float)):
         room["speed"] = data["speed"]
     return room
 
@@ -135,15 +175,16 @@ def disconnected(_):
     try:
         verify_jwt_in_request()
         user_id = get_jwt_identity()
-        # Needed to be able to clear empty rooms
-        tmp_rooms_data = dict(rooms_data)
-        for room_id in tmp_rooms_data:
+        room_ids = list(user_rooms.get(user_id, set()))
+        for room_id in room_ids:
             _leave_room(room_id, user_id)
             leave_room(room_id, user_id)
-        server_stats["nb_connections"] -= 1
         app.logger.info("Websocket client disconnected")
     except Exception:
-        pass
+        app.logger.info("Websocket client disconnected (no valid token)")
+    server_stats["nb_connections"] -= 1
+    if server_stats["nb_connections"] < 0:
+        server_stats["nb_connections"] = 0
 
 
 @socketio.on_error("/events")
@@ -170,9 +211,9 @@ def on_open_playlist(data):
     to actually be in sync with the other users.
     """
     room, room_id = _get_room_from_data(data)
+    if not _check_room_access(room_id):
+        return
     rooms_data[room_id] = room
-    # Connect to the socketio room but dont add the user to the data of
-    # the room.
     join_room(room_id)
     _emit_people_updated(room_id, room["people"])
 
@@ -184,9 +225,7 @@ def on_close_playlist(data):
     when a person closes the playlist page he immediately leaves the
     websocket room.
     """
-    room, room_id = _get_room_from_data(data)
-    # Leave only the socketio room but dont remove the user from the data of
-    # the room. This operation must be done via a leave event.
+    room_id = data.get("playlist_id", "0")
     leave_room(room_id)
 
 
@@ -199,11 +238,15 @@ def on_join(data):
     """
     user_id = get_jwt_identity()
     room, room_id = _get_room_from_data(data)
+    if not _check_room_access(room_id):
+        return
     if len(room["people"]) == 0:
         _update_room_playing_status(data, room)
-    room["people"] = list(set(room["people"] + [user_id]))
+    if user_id not in room["people"]:
+        room["people"].append(user_id)
     room["playlist_id"] = room_id
     rooms_data[room_id] = room
+    _add_user_to_room_index(user_id, room_id)
     _emit_people_updated(room_id, room["people"])
     emit("preview-room:room-updated", room, room=room_id)
 
@@ -255,14 +298,14 @@ def on_change_version(data):
 
 @socketio.on("preview-room:panzoom-changed", namespace="/events")
 @jwt_required()
-def on_change_version(data):
+def on_panzoom_changed(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:panzoom-changed", data, room=room_id)
 
 
 @socketio.on("preview-room:comparison-panzoom-changed", namespace="/events")
 @jwt_required()
-def on_change_version(data):
+def on_comparison_panzoom_changed(data):
     room_id = data.get("playlist_id", "")
     emit("preview-room:comparison-panzoom-changed", data, room=room_id)
 
