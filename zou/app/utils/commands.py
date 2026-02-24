@@ -60,29 +60,178 @@ def clear_all_auth_tokens():
         auth_tokens_store.delete(key)
 
 
-def init_data():
-    """
-    Put the minimum required data into the database to start with it.
-    """
-    with app.app_context():
-        projects_service.get_open_status()
-        projects_service.get_closed_status()
-        print("Project status initialized.")
+def _init_asset_types_for_domain(domain):
+    """Initialize asset types according to domain (2d, 3d, vfx, games)."""
+    if domain == "2d":
+        for name in ("Character", "Prop", "Background", "FX"):
+            assets_service.get_or_create_asset_type(name)
+    elif domain == "vfx":
+        for name in ("Character", "Prop", "Environment", "FX", "Vehicle"):
+            assets_service.get_or_create_asset_type(name)
+    elif domain == "games":
+        for name in ("Character", "Prop", "Environment", "FX", "UI"):
+            assets_service.get_or_create_asset_type(name)
+    else:
+        # 3d (default)
+        for name in ("Character", "Prop", "Environment", "FX"):
+            assets_service.get_or_create_asset_type(name)
 
-        assets_service.get_or_create_asset_type("Character")
-        assets_service.get_or_create_asset_type("Prop")
-        assets_service.get_or_create_asset_type("Environment")
-        assets_service.get_or_create_asset_type("FX")
-        print("Asset types initialized.")
 
-        shots_service.get_episode_type()
-        shots_service.get_sequence_type()
-        shots_service.get_shot_type()
-        print("Shot types initialized.")
+def _init_task_types_for_domain(domain):
+    """Initialize departments and task types according to domain."""
+    if domain == "2d":
+        concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
+        layout = tasks_service.get_or_create_department("Layout", "#7CB342")
+        animation = tasks_service.get_or_create_department(
+            "Animation", "#009688"
+        )
+        compositing = tasks_service.get_or_create_department(
+            "Compositing", "#F06292"
+        )
 
-        edits_service.get_edit_type()
-        print("Edit type initialized.")
+        tasks_service.get_or_create_task_type(
+            concept, "Concept", "#8D6E63", 1
+        )
+        tasks_service.get_or_create_task_type(
+            concept,
+            "Storyboard",
+            "#43A047",
+            priority=1,
+            for_entity="Shot",
+        )
+        tasks_service.get_or_create_task_type(
+            layout, "Layout", "#7CB342", priority=2, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            animation, "Animation", "#009688", priority=3, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            animation, "Clean-up", "#4DB6AC", priority=4, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Color", "#F9A825", priority=5, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Compositing", "#ff5252", priority=6, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Edit", "#9b298c", priority=7, for_entity="Edit"
+        )
+        tasks_service.get_or_create_task_type(
+            concept, "Concept", "#8D6E63", 1, for_entity="Concept"
+        )
 
+    elif domain == "vfx":
+        modeling = tasks_service.get_or_create_department(
+            "Modeling", "#78909C"
+        )
+        animation = tasks_service.get_or_create_department(
+            "Animation", "#009688"
+        )
+        fx = tasks_service.get_or_create_department("FX", "#26C6DA")
+        compositing = tasks_service.get_or_create_department(
+            "Compositing", "#F06292"
+        )
+        concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
+        layout = tasks_service.get_or_create_department("Layout", "#7CB342")
+        matchmove = tasks_service.get_or_create_department(
+            "Matchmove", "#5C6BC0"
+        )
+        dmp = tasks_service.get_or_create_department("DMP", "#8D6E63")
+
+        tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
+        tasks_service.get_or_create_task_type(
+            modeling, "Modeling", "#78909C", 2
+        )
+        tasks_service.get_or_create_task_type(
+            modeling, "Shading", "#64B5F6", 3
+        )
+        tasks_service.get_or_create_task_type(
+            animation, "Rigging", "#9CCC65", 4
+        )
+        tasks_service.get_or_create_task_type(
+            matchmove, "Matchmove", "#5C6BC0", 1, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            matchmove, "Rotomation", "#7986CB", 2, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            concept, "Storyboard", "#43A047", priority=1, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            layout, "Layout", "#7CB342", priority=2, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            animation, "Animation", "#009688", priority=3, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Lighting", "#F9A825", priority=4, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            fx, "FX", "#26C6DA", priority=5, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Rendering", "#F06292", priority=6, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Compositing", "#ff5252", priority=7, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            dmp, "DMP", "#A1887F", priority=8, for_entity="Shot"
+        )
+        tasks_service.get_or_create_task_type(
+            compositing, "Edit", "#9b298c", priority=9, for_entity="Edit"
+        )
+        tasks_service.get_or_create_task_type(
+            concept, "Concept", "#8D6E63", 1, for_entity="Concept"
+        )
+
+    elif domain == "games":
+        game_design = tasks_service.get_or_create_department(
+            "Game Design", "#7B1FA2"
+        )
+        level_design = tasks_service.get_or_create_department(
+            "Level Design", "#00897B"
+        )
+        character_art = tasks_service.get_or_create_department(
+            "Character Art", "#78909C"
+        )
+        environment_art = tasks_service.get_or_create_department(
+            "Environment Art", "#43A047"
+        )
+        animation = tasks_service.get_or_create_department(
+            "Animation", "#009688"
+        )
+        vfx = tasks_service.get_or_create_department("VFX", "#26C6DA")
+        qa = tasks_service.get_or_create_department("QA", "#E53935")
+
+        tasks_service.get_or_create_task_type(
+            game_design, "Game Design", "#7B1FA2", 1
+        )
+        tasks_service.get_or_create_task_type(
+            level_design, "Level Design", "#00897B", 2
+        )
+        tasks_service.get_or_create_task_type(
+            character_art, "Character Art", "#78909C", 3
+        )
+        tasks_service.get_or_create_task_type(
+            environment_art, "Environment Art", "#43A047", 4
+        )
+        tasks_service.get_or_create_task_type(
+            animation, "Animation", "#009688", 5
+        )
+        tasks_service.get_or_create_task_type(
+            vfx, "VFX", "#26C6DA", 6
+        )
+        tasks_service.get_or_create_task_type(
+            character_art, "Concept", "#8D6E63", 1, for_entity="Concept"
+        )
+        tasks_service.get_or_create_task_type(
+            qa, "QA", "#E53935", 1, for_entity="Shot"
+        )
+
+    else:
+        # 3d (default)
         modeling = tasks_service.get_or_create_department(
             "Modeling", "#78909C"
         )
@@ -164,6 +313,30 @@ def init_data():
             concept, "Concept", "#8D6E63", 1, for_entity="Concept"
         )
 
+
+def init_data(domain="3d"):
+    """
+    Put the minimum required data into the database to start with it.
+
+    domain: "2d" (2D production), "3d" (3D animation), "vfx", or "games"
+    """
+    with app.app_context():
+        projects_service.get_open_status()
+        projects_service.get_closed_status()
+        print("Project status initialized.")
+
+        _init_asset_types_for_domain(domain)
+        print(f"Asset types initialized (domain: {domain}).")
+
+        shots_service.get_episode_type()
+        shots_service.get_sequence_type()
+        shots_service.get_shot_type()
+        print("Shot types initialized.")
+
+        edits_service.get_edit_type()
+        print("Edit type initialized.")
+
+        _init_task_types_for_domain(domain)
         print("Task types initialized.")
 
         tasks_service.get_default_status()
