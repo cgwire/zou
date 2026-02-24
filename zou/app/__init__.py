@@ -247,16 +247,16 @@ def configure_auth():
                     identity.provides.add(RoleNeed("admin"))
                     identity.provides.add(RoleNeed("manager"))
 
-                if identity.user.role == "manager":
+                elif identity.user.role == "manager":
                     identity.provides.add(RoleNeed("manager"))
 
-                if identity.user.role == "supervisor":
+                elif identity.user.role == "supervisor":
                     identity.provides.add(RoleNeed("supervisor"))
 
-                if identity.user.role == "client":
+                elif identity.user.role == "client":
                     identity.provides.add(RoleNeed("client"))
 
-                if identity.user.role == "vendor":
+                elif identity.user.role == "vendor":
                     identity.provides.add(RoleNeed("vendor"))
 
                 identity.provides.add(RoleNeed(identity.auth_type))
