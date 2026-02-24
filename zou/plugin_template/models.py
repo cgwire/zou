@@ -16,4 +16,5 @@ class Count(PluginBase, BaseMixin, SerializerMixin):
     """
 
     __tablename__ = "hello_count"
+    __table_args__ = {"extend_existing": True}
     count = Column(Integer, nullable=False, default=0)

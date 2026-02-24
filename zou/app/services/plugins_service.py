@@ -150,10 +150,16 @@ def _import_plugin_module(plugin_id, plugin_path):
 
     try:
         if plugin_id in sys.modules:
-            return importlib.reload(sys.modules[plugin_id])
+            return sys.modules[plugin_id]
         return importlib.import_module(plugin_id)
     except ImportError as e:
         print(f"⚠️  [Plugins] Could not import plugin module: {e}")
+        return None
+    except Exception:
+        # Import can fail on reinstall (e.g. SQLAlchemy table already
+        # defined). Return the partially-loaded module if available.
+        if plugin_id in sys.modules:
+            return sys.modules[plugin_id]
         return None
     finally:
         if added_to_path and abs_plugin_path in sys.path:
@@ -164,16 +170,20 @@ def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
     """
     Run a lifecycle hook (pre_install, post_install, pre_uninstall,
     post_uninstall) on a plugin module if it exists.
+    Errors are logged but never block the install/uninstall flow.
     """
-    plugin_module = _import_plugin_module(plugin_id, plugin_path)
-    if plugin_module is None:
-        return
+    try:
+        plugin_module = _import_plugin_module(plugin_id, plugin_path)
+        if plugin_module is None:
+            return
 
-    hook = getattr(plugin_module, hook_name, None)
-    if hook is not None:
-        print(f"[Plugins] Running {hook_name} for {plugin_id}...")
-        hook(*args)
-        print(f"[Plugins] {hook_name} for {plugin_id} completed.")
+        hook = getattr(plugin_module, hook_name, None)
+        if hook is not None:
+            print(f"[Plugins] Running {hook_name} for {plugin_id}...")
+            hook(*args)
+            print(f"[Plugins] {hook_name} for {plugin_id} completed.")
+    except Exception as e:
+        print(f"⚠️  [Plugins] {hook_name} failed for {plugin_id}: {e}")
 
 
 def print_added_routes(plugin_id, plugin_path):

@@ -461,14 +461,20 @@ def add_static_routes(manifest, routes):
 
 
 def create_plugin_metadata(plugin_id):
+    """
+    Create a metadata that contains all existing tables EXCEPT the
+    plugin's own tables. This way the plugin model classes can define
+    their tables fresh, and Alembic won't try to create/drop Zou's
+    core tables.
+    """
     plugin_metadata = MetaData()
     with app.app_context():
         plugin_metadata.reflect(bind=db.engine)
 
-        plugin_tables = {
+        non_plugin_tables = {
             table: plugin_metadata.tables[table]
             for table in plugin_metadata.tables.keys()
-            if table.startswith(f"plugin_{plugin_id}_")
+            if not table.startswith(f"plugin_{plugin_id}_")
         }
-        plugin_metadata.tables = FacadeDict(plugin_tables)
+        plugin_metadata.tables = FacadeDict(non_plugin_tables)
     return plugin_metadata
