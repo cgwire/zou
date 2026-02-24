@@ -5,6 +5,7 @@ Use these schemas with validate_request_body() to ensure incoming JSON bodies
 match the expected format and to return clear validation errors (400 with
 field-level messages).
 """
+
 from typing import List, Optional
 from uuid import UUID
 
@@ -17,6 +18,7 @@ def _ensure_uuid(v, field_name: str):
         return v
     if isinstance(v, str):
         from zou.app.utils.fields import is_valid_id
+
         if not is_valid_id(v):
             raise ValueError(f"{field_name} must be a valid UUID")
         return v
@@ -25,6 +27,7 @@ def _ensure_uuid(v, field_name: str):
 
 class AddEntityToPlaylistSchema(BaseModel):
     """Body for adding an entity to a playlist."""
+
     entity_id: UUID = Field(..., description="Entity unique identifier to add")
     preview_file_id: Optional[UUID] = Field(
         None,
@@ -46,6 +49,7 @@ class AddEntityToPlaylistSchema(BaseModel):
 
 class TempPlaylistCreateSchema(BaseModel):
     """Body for generating a temporary playlist from task IDs."""
+
     task_ids: List[UUID] = Field(
         ...,
         min_length=0,
@@ -68,6 +72,7 @@ class TempPlaylistCreateSchema(BaseModel):
 
 class NotifyClientsPlaylistSchema(BaseModel):
     """Optional body for notifying clients that a playlist is ready."""
+
     studio_id: Optional[UUID] = Field(
         None,
         description="Studio unique identifier to notify",
