@@ -533,16 +533,6 @@ def get_asset_instances_for_shot(shot_id):
     return result
 
 
-def group_by(models, field):
-    result = {}
-    for asset_instance in models:
-        asset_id = asset_instance.serialize()
-        if asset_id not in result:
-            result[asset_id] = []
-        result[asset_id].append(asset_instance.serialize())
-    return result
-
-
 def get_shot_asset_instances_for_asset(asset_id):
     """
     Return asset instances casted in a shot for given asset.
@@ -810,8 +800,8 @@ def refresh_all_shot_casting_stats():
     available. It saves the result on the task level.
     """
     for project in projects_service.open_projects():
+        priority_map = _get_task_type_priority_map(project["id"])
         for shot in shots_service.get_shots_for_project(project["id"]):
-            priority_map = _get_task_type_priority_map(project["id"])
             refresh_shot_casting_stats(shot, priority_map)
 
 

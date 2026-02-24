@@ -477,7 +477,7 @@ def get_full_asset(asset_id):
     """
     assets = get_assets_and_tasks({"id": asset_id}, with_episode_ids=True)
     if len(assets) > 0:
-        asset = get_asset(asset_id, relations=True)
+        asset = dict(get_asset(asset_id, relations=True))
         asset_type_id = asset["entity_type_id"]
         asset_type = get_asset_type(asset_type_id)
         project = Project.get(asset["project_id"])
@@ -768,7 +768,7 @@ def set_shared_assets(
     Set all assets of a project to is_shared=True or False.
     """
 
-    query = Entity.query.filter(build_asset_type_filter()).filter()
+    query = Entity.query.filter(build_asset_type_filter())
 
     if project_id is not None:
         query = query.filter(Entity.project_id == project_id)
