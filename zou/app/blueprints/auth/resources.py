@@ -179,7 +179,7 @@ class LoginResource(Resource, ArgsMixin):
                   password:
                     type: string
                     format: password
-                    example: mysecretpassword
+                    example: "********"
                     description: User password
                     required: true
                   totp:
@@ -629,7 +629,9 @@ class ChangePasswordResource(Resource, ArgsMixin):
                 "User %s has changed his password" % user["email"]
             )
             organisation = persons_service.get_organisation()
-            locale = user.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+            locale = user.get("locale") or getattr(
+                config, "DEFAULT_LOCALE", "en_US"
+            )
             if hasattr(locale, "language"):
                 locale = str(locale)
             time_string = format_datetime(
@@ -643,7 +645,9 @@ class ChangePasswordResource(Resource, ArgsMixin):
                 "auth_password_changed_subject",
                 organisation_name=organisation["name"],
             )
-            title = get_email_translation(locale, "auth_password_changed_title")
+            title = get_email_translation(
+                locale, "auth_password_changed_title"
+            )
             html = get_email_translation(
                 locale,
                 "auth_password_changed_body",
@@ -841,7 +845,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
             config.DOMAIN_NAME,
             query,
         )
-        locale = user.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")
+        locale = user.get("locale") or getattr(
+            config, "DEFAULT_LOCALE", "en_US"
+        )
         if hasattr(locale, "language"):
             locale = str(locale)
         time_string = format_datetime(
