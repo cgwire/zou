@@ -259,11 +259,18 @@ def clear_all_auth_tokens():
 
 
 @cli.command()
-def init_data():
+@click.option(
+    "--domain",
+    "-d",
+    type=click.Choice(["2d", "3d", "vfx", "games"], case_sensitive=False),
+    default="3d",
+    help="Domain preset: 2d (2D production), 3d (3D animation), vfx (VFX), games (video games).",
+)
+def init_data(domain):
     "Generate minimal data set required to run Kitsu."
     from zou.app.utils import commands
 
-    commands.init_data()
+    commands.init_data(domain=domain.lower())
 
 
 @cli.command()
