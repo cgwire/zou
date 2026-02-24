@@ -36,6 +36,26 @@ def version():
 
 
 @cli.command()
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+def shell_completion(shell):
+    """
+    Print shell completion script.
+
+    To enable autocompletion, add the output to your shell config:
+
+    \b
+      zou shell-completion bash >> ~/.bashrc
+      zou shell-completion zsh >> ~/.zshrc
+      zou shell-completion fish > ~/.config/fish/completions/zou.fish
+    """
+    from click.shell_completion import get_completion_class
+
+    comp_cls = get_completion_class(shell)
+    comp = comp_cls(cli, {}, "zou", "_ZOU_COMPLETE")
+    click.echo(comp.source())
+
+
+@cli.command()
 def init_db():
     "Create database table (database must be created through PG client)."
 
