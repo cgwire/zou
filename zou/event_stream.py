@@ -19,8 +19,13 @@ server_stats = {"nb_connections": 0}
 rooms_data = {}
 user_rooms = {}
 
-COMPARING_FIELDS = {"enable", "task_type", "revision", "mode",
-                    "comparison_preview_index"}
+COMPARING_FIELDS = {
+    "enable",
+    "task_type",
+    "revision",
+    "mode",
+    "comparison_preview_index",
+}
 
 redis_url = get_redis_url(config.KV_EVENTS_DB_INDEX)
 socketio = SocketIO(

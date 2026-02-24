@@ -89,9 +89,7 @@ def _init_task_types_for_domain(domain):
             "Compositing", "#F06292"
         )
 
-        tasks_service.get_or_create_task_type(
-            concept, "Concept", "#8D6E63", 1
-        )
+        tasks_service.get_or_create_task_type(concept, "Concept", "#8D6E63", 1)
         tasks_service.get_or_create_task_type(
             concept,
             "Storyboard",
@@ -112,7 +110,11 @@ def _init_task_types_for_domain(domain):
             compositing, "Color", "#F9A825", priority=5, for_entity="Shot"
         )
         tasks_service.get_or_create_task_type(
-            compositing, "Compositing", "#ff5252", priority=6, for_entity="Shot"
+            compositing,
+            "Compositing",
+            "#ff5252",
+            priority=6,
+            for_entity="Shot",
         )
         tasks_service.get_or_create_task_type(
             compositing, "Edit", "#9b298c", priority=7, for_entity="Edit"
@@ -174,7 +176,11 @@ def _init_task_types_for_domain(domain):
             compositing, "Rendering", "#F06292", priority=6, for_entity="Shot"
         )
         tasks_service.get_or_create_task_type(
-            compositing, "Compositing", "#ff5252", priority=7, for_entity="Shot"
+            compositing,
+            "Compositing",
+            "#ff5252",
+            priority=7,
+            for_entity="Shot",
         )
         tasks_service.get_or_create_task_type(
             dmp, "DMP", "#A1887F", priority=8, for_entity="Shot"
@@ -220,9 +226,7 @@ def _init_task_types_for_domain(domain):
         tasks_service.get_or_create_task_type(
             animation, "Animation", "#009688", 5
         )
-        tasks_service.get_or_create_task_type(
-            vfx, "VFX", "#26C6DA", 6
-        )
+        tasks_service.get_or_create_task_type(vfx, "VFX", "#26C6DA", 6)
         tasks_service.get_or_create_task_type(
             character_art, "Concept", "#8D6E63", 1, for_entity="Concept"
         )

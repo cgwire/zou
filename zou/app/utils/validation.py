@@ -6,6 +6,7 @@ matches the schema. On success returns the validated model instance; on
 validation error raises WrongParameterException with a 400-style payload
 (message + optional data with field-level errors).
 """
+
 from flask import request
 
 from pydantic import ValidationError
