@@ -45,9 +45,6 @@ class StaticResource(Resource):
         if not file_path.exists() or not file_path.is_file():
             abort(404)
 
-        if filename == "":
-            filename = "index.html"
-
         return send_from_directory(
             str(static_folder), filename, conditional=True, max_age=0
         )
@@ -167,7 +164,8 @@ def load_plugin(app, plugin_path, init_plugin=True):
 
 def load_plugins(app):
     """
-    Load plugins from the plugin folder.
+    Load plugins from the plugin folder. The plugin folder is kept in
+    sys.path so that plugin modules remain importable at runtime.
     """
     plugin_folder = Path(app.config["PLUGIN_FOLDER"])
     if plugin_folder.exists():
@@ -178,17 +176,17 @@ def load_plugins(app):
         for plugin_id in os.listdir(plugin_folder):
             try:
                 load_plugin(app, plugin_folder / plugin_id)
-                app.logger.info(f"Plugin {plugin_id} loaded.")
+                app.logger.info(f"[Plugins] Plugin {plugin_id} loaded.")
             except ImportError as e:
-                app.logger.error(f"Plugin {plugin_id} failed to import: {e}")
+                app.logger.error(
+                    f"[Plugins] Plugin {plugin_id} failed to import: {e}"
+                )
             except Exception as e:
                 app.logger.error(
-                    f"Plugin {plugin_id} failed to initialize: {e}"
+                    f"[Plugins] Plugin {plugin_id}"
+                    f" failed to initialize: {e}"
                 )
                 app.logger.debug(traceback.format_exc())
-
-        if abs_plugin_path in sys.path:
-            sys.path.remove(abs_plugin_path)
 
 
 def migrate_plugin_db(plugin_path, message):
@@ -252,7 +250,7 @@ def run_plugin_migrations(plugin_path, plugin):
     script = command.ScriptDirectory.from_config(alembic_cfg)
     head_revision = script.get_current_head()
 
-    plugin.revision = head_revision
+    plugin.update({"revision": head_revision})
 
     return head_revision
 
@@ -278,8 +276,8 @@ def downgrade_plugin_migrations(plugin_path):
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
-        current_app.logger.warning(
-            f"Downgrade failed for plugin {manifest.id}: {e}"
+        print(
+            f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}"
         )
 
 
@@ -467,10 +465,10 @@ def create_plugin_metadata(plugin_id):
     with app.app_context():
         plugin_metadata.reflect(bind=db.engine)
 
-        new_tables = {
+        plugin_tables = {
             table: plugin_metadata.tables[table]
             for table in plugin_metadata.tables.keys()
-            if not table.startswith(f"plugin_{plugin_id}_")
+            if table.startswith(f"plugin_{plugin_id}_")
         }
-        plugin_metadata.tables = FacadeDict(new_tables)
+        plugin_metadata.tables = FacadeDict(plugin_tables)
     return plugin_metadata

@@ -29,29 +29,35 @@ def install_plugin(path, force=False):
     )
 
     temp_dir = None
-    if is_git_url:
-        cloned_path = clone_git_repo(path)
-        temp_dir = cloned_path.parent
-        path = cloned_path
-    else:
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Plugin path '{path}' does not exist.")
-
-    manifest = PluginManifest.from_plugin_path(path)
-    plugin = Plugin.get_by(plugin_id=manifest.id)
-
     try:
+        if is_git_url:
+            cloned_path = clone_git_repo(path)
+            temp_dir = cloned_path.parent
+            path = cloned_path
+        else:
+            path = Path(path)
+            if not path.exists():
+                raise FileNotFoundError(
+                    f"Plugin path '{path}' does not exist."
+                )
+
+        manifest = PluginManifest.from_plugin_path(path)
+        plugin = Plugin.get_by(plugin_id=manifest.id)
+
         _run_plugin_hook(manifest.id, path, "pre_install", manifest)
 
         if plugin is not None:
             current = semver.Version.parse(plugin.version)
             new = semver.Version.parse(str(manifest.version))
             print(
-                f"[Plugins] Upgrading plugin {manifest.id} from version {current} to {new}..."
+                f"[Plugins] Upgrading {manifest.id}"
+                f" from {current} to {new}..."
             )
             if not force and new <= current:
-                print(f"⚠️  Plugin version {new} is not newer than {current}.")
+                print(
+                    f"⚠️  [Plugins] Version {new} is not newer"
+                    f" than {current}."
+                )
             plugin.update(manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} upgraded.")
         else:
@@ -59,31 +65,37 @@ def install_plugin(path, force=False):
             plugin = Plugin.create(**manifest.to_model_dict())
             print(f"[Plugins] Plugin {manifest.id} installed.")
 
-        print(f"[Plugins] Running database migrations for {manifest.id}...")
+        print(
+            f"[Plugins] Running database migrations"
+            f" for {manifest.id}..."
+        )
         plugin_path = install_plugin_files(
             path, Path(config.PLUGIN_FOLDER) / manifest.id
         )
         run_plugin_migrations(plugin_path, plugin)
-        print(f"[Plugins] Database migrations for {manifest.id} applied.")
+        print(
+            f"[Plugins] Database migrations for {manifest.id} applied."
+        )
 
         # Re-query plugin instance after migrations
         # (Alembic operations may have detached it from the session)
         plugin = Plugin.get_by(plugin_id=manifest.id)
 
-        _run_plugin_hook(manifest.id, plugin_path, "post_install", manifest)
+        _run_plugin_hook(
+            manifest.id, plugin_path, "post_install", manifest
+        )
+
+        print_added_routes(plugin.plugin_id, plugin_path)
+        return plugin.serialize()
     except Exception:
         print(
-            f"❌ [Plugins] An error occurred while installing/updating {manifest.id}..."
+            f"❌ [Plugins] An error occurred while"
+            f" installing/updating plugin..."
         )
         raise
-
-    print_added_routes(plugin.plugin_id, plugin_path)
-
-    if is_git_url:
-        if temp_dir and temp_dir.exists():
+    finally:
+        if is_git_url and temp_dir and Path(temp_dir).exists():
             shutil.rmtree(temp_dir)
-
-    return plugin.serialize()
 
 
 def uninstall_plugin(plugin_id):
@@ -103,6 +115,10 @@ def uninstall_plugin(plugin_id):
     _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
 
     downgrade_plugin_migrations(plugin_path)
+
+    # Run post_uninstall before removing files (module must still exist)
+    _run_plugin_hook(plugin_id, plugin_path, "post_uninstall", manifest)
+
     installed = uninstall_plugin_files(plugin_path)
     plugin = Plugin.query.filter_by(plugin_id=plugin_id).one_or_none()
     if plugin is not None:
@@ -111,8 +127,6 @@ def uninstall_plugin(plugin_id):
 
     if not installed:
         raise ValueError(f"Plugin '{plugin_id}' is not installed.")
-
-    _run_plugin_hook(plugin_id, plugin_path, "post_uninstall", manifest)
 
     print(f"[Plugins] Plugin {plugin_id} uninstalled.")
     return True
@@ -139,7 +153,7 @@ def _import_plugin_module(plugin_id, plugin_path):
             return importlib.reload(sys.modules[plugin_id])
         return importlib.import_module(plugin_id)
     except ImportError as e:
-        print(f"  ⚠️  Could not import plugin module: {e}")
+        print(f"⚠️  [Plugins] Could not import plugin module: {e}")
         return None
     finally:
         if added_to_path and abs_plugin_path in sys.path:

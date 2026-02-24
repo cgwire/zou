@@ -803,8 +803,11 @@ def install_plugin(path, force=False):
     from zou.app.services import plugins_service
 
     with _get_app().app_context():
-        plugins_service.install_plugin(path, force)
-    print(f"✅ Plugin {path} installed. Restart the server to apply changes.")
+        result = plugins_service.install_plugin(path, force)
+    print(
+        f"✅ [Plugins] Plugin {result['plugin_id']} installed."
+        f" Restart the server to apply changes."
+    )
 
 
 @cli.command()
@@ -820,7 +823,10 @@ def uninstall_plugin(id):
 
     with _get_app().app_context():
         plugins_service.uninstall_plugin(id)
-    print(f"Plugin {id} uninstalled. Restart the server to apply changes.")
+    print(
+        f"✅ [Plugins] Plugin {id} uninstalled."
+        f" Restart the server to apply changes."
+    )
 
 
 @cli.command()
