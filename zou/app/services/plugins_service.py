@@ -16,7 +16,8 @@ from zou.app.utils.plugins import (
 
 def install_plugin(path, force=False):
     """
-    Install a plugin: create folder, copy files, run migrations.
+    Install a plugin: create folder, copy files, run migrations,
+    and call pre/post install hooks.
     Supports local paths, zip files, and git repository URLs.
     """
     is_git_url = (
@@ -41,6 +42,8 @@ def install_plugin(path, force=False):
     plugin = Plugin.get_by(plugin_id=manifest.id)
 
     try:
+        _run_plugin_hook(manifest.id, path, "pre_install", manifest)
+
         if plugin is not None:
             current = semver.Version.parse(plugin.version)
             new = semver.Version.parse(str(manifest.version))
@@ -66,6 +69,8 @@ def install_plugin(path, force=False):
         # Re-query plugin instance after migrations
         # (Alembic operations may have detached it from the session)
         plugin = Plugin.get_by(plugin_id=manifest.id)
+
+        _run_plugin_hook(manifest.id, plugin_path, "post_install", manifest)
     except Exception:
         print(
             f"❌ [Plugins] An error occurred while installing/updating {manifest.id}..."
@@ -83,11 +88,20 @@ def install_plugin(path, force=False):
 
 def uninstall_plugin(plugin_id):
     """
-    Uninstall a plugin: downgrade migrations, remove files,
-    delete from database and remove folder.
+    Uninstall a plugin: call pre/post uninstall hooks, downgrade
+    migrations, remove files, delete from database and remove folder.
     """
     print(f"[Plugins] Uninstalling plugin {plugin_id}...")
     plugin_path = Path(config.PLUGIN_FOLDER) / plugin_id
+
+    manifest = None
+    try:
+        manifest = PluginManifest.from_plugin_path(plugin_path)
+    except Exception:
+        pass
+
+    _run_plugin_hook(plugin_id, plugin_path, "pre_uninstall", manifest)
+
     downgrade_plugin_migrations(plugin_path)
     installed = uninstall_plugin_files(plugin_path)
     plugin = Plugin.query.filter_by(plugin_id=plugin_id).one_or_none()
@@ -98,38 +112,68 @@ def uninstall_plugin(plugin_id):
     if not installed:
         raise ValueError(f"Plugin '{plugin_id}' is not installed.")
 
+    _run_plugin_hook(plugin_id, plugin_path, "post_uninstall", manifest)
+
     print(f"[Plugins] Plugin {plugin_id} uninstalled.")
     return True
+
+
+def _import_plugin_module(plugin_id, plugin_path):
+    """
+    Import a plugin module dynamically from its install path.
+    Returns the module or None if import fails.
+    """
+    import importlib
+    import sys
+
+    plugin_path = Path(plugin_path)
+    plugin_folder = plugin_path.parent
+    abs_plugin_path = str(plugin_folder.absolute())
+    added_to_path = abs_plugin_path not in sys.path
+
+    if added_to_path:
+        sys.path.insert(0, abs_plugin_path)
+
+    try:
+        if plugin_id in sys.modules:
+            return importlib.reload(sys.modules[plugin_id])
+        return importlib.import_module(plugin_id)
+    except ImportError as e:
+        print(f"  ⚠️  Could not import plugin module: {e}")
+        return None
+    finally:
+        if added_to_path and abs_plugin_path in sys.path:
+            sys.path.remove(abs_plugin_path)
+
+
+def _run_plugin_hook(plugin_id, plugin_path, hook_name, *args):
+    """
+    Run a lifecycle hook (pre_install, post_install, pre_uninstall,
+    post_uninstall) on a plugin module if it exists.
+    """
+    plugin_module = _import_plugin_module(plugin_id, plugin_path)
+    if plugin_module is None:
+        return
+
+    hook = getattr(plugin_module, hook_name, None)
+    if hook is not None:
+        print(f"[Plugins] Running {hook_name} for {plugin_id}...")
+        hook(*args)
+        print(f"[Plugins] {hook_name} for {plugin_id} completed.")
 
 
 def print_added_routes(plugin_id, plugin_path):
     """
     Print the added routes for a plugin.
     """
-    import importlib
-    import sys
-
     print(f"[Plugins] Routes added by {plugin_id}:")
-    plugin_path = Path(plugin_path)
 
-    plugin_folder = plugin_path.parent
-    abs_plugin_path = str(plugin_folder.absolute())
-    if abs_plugin_path not in sys.path:
-        sys.path.insert(0, abs_plugin_path)
-
-    try:
-        plugin_module = importlib.import_module(plugin_id)
-        if hasattr(plugin_module, "routes"):
-            routes = plugin_module.routes
-            for route in routes:
-                print(f"  - /plugins/{plugin_id}{route[0]}")
-        else:
-            print("  (No routes variable found in plugin)")
-    except ImportError as e:
-        print(f"  ⚠️  Could not import plugin module: {e}")
-    finally:
-        if abs_plugin_path in sys.path:
-            sys.path.remove(abs_plugin_path)
+    plugin_module = _import_plugin_module(plugin_id, plugin_path)
+    if plugin_module is not None and hasattr(plugin_module, "routes"):
+        for route in plugin_module.routes:
+            print(f"  - /plugins/{plugin_id}{route[0]}")
+    else:
+        print("  (No routes variable found in plugin)")
 
     print("--------------------------------")
 
