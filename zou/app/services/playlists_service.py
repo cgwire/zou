@@ -1,4 +1,5 @@
 import base64
+import logging
 
 import orjson as json
 import os
@@ -13,6 +14,7 @@ from zipfile import ZipFile
 from flask_fs.errors import FileNotFound
 from slugify import slugify
 from sqlalchemy import or_
+from sqlalchemy.orm import joinedload
 
 from zou.app import config, db
 from zou.app.stores import file_store
@@ -47,6 +49,27 @@ from zou.app.services.exception import (
     PlaylistNotFoundException,
 )
 
+logger = logging.getLogger(__name__)
+
+# Page size for playlist list endpoints
+PLAYLISTS_PAGE_SIZE = 20
+
+# Scalar attributes for playlist list dict (avoids serializing heavy shots JSON)
+_PLAYLIST_LIST_ATTRS = (
+    "id", "name", "project_id", "episode_id", "task_type_id",
+    "for_client", "for_entity", "is_for_all", "created_at", "updated_at",
+    "created_by",
+)
+
+
+def _apply_playlist_pagination(query, page, sort_by, model=Playlist):
+    """Apply sort, normalize page, and apply limit/offset to the query."""
+    query = query_utils.apply_sort_by(model, query, sort_by)
+    if page < 1:
+        page = 1
+    offset = (page - 1) * PLAYLISTS_PAGE_SIZE
+    return query.limit(PLAYLISTS_PAGE_SIZE).offset(offset)
+
 
 def all_playlists_for_project(
     project_id,
@@ -66,13 +89,7 @@ def all_playlists_for_project(
     if task_type_id is not None and len(task_type_id) > 0:
         query = query.filter(Playlist.task_type_id == task_type_id)
 
-    query = query_utils.apply_sort_by(Playlist, query, sort_by)
-    if page < 1:
-        page = 1
-    limit = 20
-    offset = (page - 1) * limit
-    query = query.limit(limit)
-    query = query.offset(offset)
+    query = _apply_playlist_pagination(query, page, sort_by)
     playlists = query.all()
     for playlist in playlists:
         playlist_dict = build_playlist_dict(playlist)
@@ -116,13 +133,7 @@ def all_playlists_for_episode(
     else:
         query = query.filter(Playlist.episode_id == episode_id)
 
-    query = query_utils.apply_sort_by(Playlist, query, sort_by)
-    if page < 1:
-        page = 1
-    limit = 20
-    offset = (page - 1) * limit
-    query = query.limit(limit)
-    query = query.offset(offset)
+    query = _apply_playlist_pagination(query, page, sort_by)
     playlists = query.all()
     for playlist in playlists:
         playlist_dict = build_playlist_dict(playlist)
@@ -134,30 +145,27 @@ def build_playlist_dict(playlist):
     """
     Build a dictionary of a simplified version of the playlist. It just takes
     the information needed for displaying the list of playlists.
+    Does not mutate the playlist model. Uses scalar attributes only to avoid
+    serializing the potentially large shots JSON column.
     """
-    first_shot_preview_file_id = get_first_shot_preview_file_id(playlist)
-    updated_at = fields.serialize_value(playlist.updated_at)
-    playlist.shots = []
-    playlist_dict = fields.serialize_value(playlist)
-    del playlist_dict["shots"]
-    playlist_dict["updated_at"] = updated_at
-    if first_shot_preview_file_id is not None:
-        playlist_dict["first_preview_file_id"] = first_shot_preview_file_id
+    out = {"type": "Playlist"}
+    for attr in _PLAYLIST_LIST_ATTRS:
+        if hasattr(playlist, attr):
+            out[attr] = fields.serialize_value(getattr(playlist, attr))
     if playlist.for_entity is None:
-        playlist_dict["for_entity"] = "shot"
-    return playlist_dict
+        out["for_entity"] = "shot"
+    first_shot_preview_file_id = get_first_shot_preview_file_id(playlist)
+    if first_shot_preview_file_id is not None:
+        out["first_preview_file_id"] = first_shot_preview_file_id
+    return out
 
 
 def get_first_shot_preview_file_id(playlist):
-    first_shot_preview_file_id = None
-    if (
-        playlist.shots is not None
-        and len(playlist.shots) > 0
-        and isinstance(playlist.shots, list)
-        and "preview_file_id" in playlist.shots[0]
-    ):
-        first_shot_preview_file_id = playlist.shots[0]["preview_file_id"]
-    return first_shot_preview_file_id
+    """Return the first shot's preview_file_id if any, else None."""
+    if not playlist.shots or not isinstance(playlist.shots, list):
+        return None
+    first = playlist.shots[0]
+    return first.get("preview_file_id") if isinstance(first, dict) else None
 
 
 def get_playlist_with_preview_file_revisions(playlist_id):
@@ -165,7 +173,14 @@ def get_playlist_with_preview_file_revisions(playlist_id):
     Return given playlist. Shot list is augmented with all previews available
     for a given shot.
     """
-    playlist = get_playlist_raw(playlist_id)
+    # Eager load build_jobs to avoid N+1 when building build_jobs list
+    playlist = (
+        Playlist.query.options(joinedload(Playlist.build_jobs))
+        .filter(Playlist.id == playlist_id)
+        .first()
+    )
+    if playlist is None:
+        raise PlaylistNotFoundException()
     playlist_dict = playlist.serialize()
     playlist_dict = _add_build_job_infos_to_playlist_dict(
         playlist, playlist_dict
@@ -196,7 +211,11 @@ def get_playlist_with_preview_file_revisions(playlist_id):
             else:
                 del shot["preview_file_id"]
         except Exception as e:
-            print(e)
+            logger.warning(
+                "Failed to enrich shot with preview file: shot_id=%s, error=%s",
+                shot.get("id"),
+                e,
+            )
     return playlist_dict
 
 
@@ -466,26 +485,42 @@ def _add_entity_to_playlist_db(playlist_id, entity_id_str, preview_file_id):
 def playlist_previews(shots, only_movies=False):
     """
     Retrieve all preview id and extension for the given shots.
+    Uses a single batch query instead of N queries (avoids N+1).
     """
-    preview_files = []
+    preview_file_ids = []
     for entity in shots:
-        if (
-            "preview_file_id" in entity
-            and entity["preview_file_id"] is not None
-            and len(entity["preview_file_id"]) > 0
-        ):
-            preview_file = files_service.get_preview_file(
-                entity["preview_file_id"]
-            )
-            if preview_file is not None and (
-                (only_movies and preview_file["extension"] == "mp4")
-                or not only_movies
-            ):
-                preview_files.append(preview_file)
+        if not isinstance(entity, dict):
+            continue
+        pf_id = entity.get("preview_file_id")
+        if pf_id is not None and len(str(pf_id).strip()) > 0:
+            preview_file_ids.append(str(pf_id))
+    if not preview_file_ids:
+        return []
 
-    return [
-        {"id": x["id"], "extension": x["extension"]} for x in preview_files
-    ]
+    # Single query for all preview files (batch fetch)
+    preview_models = PreviewFile.query.filter(
+        PreviewFile.id.in_(preview_file_ids)
+    ).all()
+    id_to_preview = {
+        str(pf.id): {"id": str(pf.id), "extension": pf.extension}
+        for pf in preview_models
+    }
+
+    # Preserve order of shots and apply only_movies filter
+    result = []
+    for entity in shots:
+        if not isinstance(entity, dict):
+            continue
+        pf_id = entity.get("preview_file_id")
+        if not pf_id:
+            continue
+        preview = id_to_preview.get(str(pf_id))
+        if preview is None:
+            continue
+        if only_movies and preview["extension"] != "mp4":
+            continue
+        result.append(preview)
+    return result
 
 
 def retrieve_playlist_tmp_files(preview_files, full=False):
@@ -734,7 +769,7 @@ def end_build_job(playlist, job, success):
 def build_playlist_job(playlist, job, shots, params, email, full, remote):
     """
     Build playlist file (concatenate all movie previews). This function is
-    aimed at being runned as a job in a job queue.
+    aimed at being run as a job in a job queue.
     """
     build_playlist_movie_file(playlist, job, shots, params, full, remote)
 
@@ -761,6 +796,25 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
         title = "Playlist Download"
         email_html_body = templates_service.generate_html_body(title, html)
         emails.send_email(subject, email_html_body, email)
+
+
+def get_playlist_download_context_name(project, playlist):
+    """
+    Build the context name (slug) for playlist download filenames.
+    For tvshow projects, appends episode name (or "main pack" / "all assets").
+    """
+    context_name = slugify(project["name"], separator="_")
+    if project.get("production_type") == "tvshow":
+        episode_id = playlist.get("episode_id")
+        if episode_id is not None:
+            episode = shots_service.get_episode(episode_id)
+            episode_name = episode["name"]
+        elif playlist.get("is_for_all"):
+            episode_name = "all assets"
+        else:
+            episode_name = "main pack"
+        context_name += "_%s" % slugify(episode_name, separator="_")
+    return context_name
 
 
 def get_playlist_file_name(playlist):
@@ -813,9 +867,9 @@ def remove_playlist(playlist_id):
     """
     playlist = get_playlist_raw(playlist_id)
     playlist_dict = playlist.serialize()
-    query = BuildJob.query.filter_by(playlist_id=playlist_id)
-    for job in query.all():
-        remove_build_job(playlist_dict, job.id)
+    jobs = BuildJob.query.filter_by(playlist_id=playlist_id).all()
+    for job in jobs:
+        _remove_build_job_impl(playlist_dict, job.serialize())
     playlist.delete()
     events.emit(
         "playlist:delete",
@@ -825,13 +879,13 @@ def remove_playlist(playlist_id):
     return playlist_dict
 
 
-def remove_build_job(playlist, build_job_id):
+def _remove_build_job_impl(playlist, job_dict):
     """
-    Remove build job from database and remove related temporary file from
-    hard drive.
+    Remove one build job (file + DB record + event). Caller must pass
+    serialized job dict to avoid re-fetching when deleting multiple jobs.
     """
-    job = BuildJob.get(build_job_id)
-    movie_file_path = get_playlist_movie_file_path(job.serialize())
+    build_job_id = job_dict["id"]
+    movie_file_path = get_playlist_movie_file_path(job_dict)
     if os.path.exists(movie_file_path):
         os.remove(movie_file_path)
     if config.REMOVE_FILES:
@@ -841,13 +895,26 @@ def remove_build_job(playlist, build_job_id):
             current_app.logger.error(
                 "Playlist file can't be deleted: %s" % build_job_id
             )
-    job.delete()
+    job = BuildJob.get(build_job_id)
+    if job is not None:
+        job.delete()
     events.emit(
         "build-job:delete",
         {"build_job_id": build_job_id, "playlist_id": playlist["id"]},
         project_id=playlist["project_id"],
     )
     return movie_file_path
+
+
+def remove_build_job(playlist, build_job_id):
+    """
+    Remove build job from database and remove related temporary file from
+    hard drive.
+    """
+    job = BuildJob.get(build_job_id)
+    if job is None:
+        return None
+    return _remove_build_job_impl(playlist, job.serialize())
 
 
 def get_build_jobs_for_project(project_id):
@@ -979,8 +1046,12 @@ def get_base_sequence_for_playlist(entity, task_id):
     episode = None
     try:
         episode = shots_service.get_episode(sequence["parent_id"])
-    except:
-        pass
+    except Exception as e:
+        logger.debug(
+            "No episode for sequence parent_id=%s: %s",
+            sequence.get("parent_id"),
+            e,
+        )
     if episode is not None:
         playlisted_entity = {
             "id": sequence["id"],

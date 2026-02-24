@@ -1,12 +1,17 @@
 import slugify
 
-from flask import request, send_file as flask_send_file
+from flask import abort, request, send_file as flask_send_file
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
 
+from zou.app.blueprints.playlists.schemas import (
+    AddEntityToPlaylistSchema,
+    NotifyClientsPlaylistSchema,
+    TempPlaylistCreateSchema,
+)
 from zou.app.services import (
     entities_service,
     notifications_service,
@@ -18,7 +23,7 @@ from zou.app.services import (
     user_service,
 )
 from zou.app.stores import file_store, queue_store
-from zou.app.utils import fs, permissions
+from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters
 
 
@@ -333,15 +338,11 @@ class PlaylistAddEntityResource(Resource, ArgsMixin):
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_manager_project_access(playlist["project_id"])
 
-        args = self.get_args(
-            [
-                ("entity_id", None, True),
-                ("preview_file_id", None, False),
-            ]
-        )
-
+        body = validation.validate_request_body(AddEntityToPlaylistSchema)
         updated_playlist = playlists_service.add_entity_to_playlist(
-            playlist_id, args["entity_id"], args["preview_file_id"]
+            playlist_id,
+            str(body.entity_id),
+            str(body.preview_file_id) if body.preview_file_id else None,
         )
         return updated_playlist
 
@@ -400,47 +401,39 @@ class PlaylistDownloadResource(Resource):
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_playlist_access(playlist, supervisor_access=True)
-        project = projects_service.get_project(playlist["project_id"])
         build_job = playlists_service.get_build_job(build_job_id)
+        if str(build_job["playlist_id"]) != str(playlist_id):
+            abort(404)
 
         if build_job["status"] != "succeeded":
             return {"error": True, "message": "Build is not finished"}, 400
-        else:
-            movie_file_path = fs.get_file_path_and_file(
-                config,
-                file_store.get_local_movie_path,
-                file_store.open_movie,
-                "playlists",
-                build_job_id,
-                "mp4",
-            )
-            context_name = slugify.slugify(project["name"], separator="_")
-            if project["production_type"] == "tvshow":
-                episode_id = playlist["episode_id"]
-                if episode_id is not None:
-                    episode = shots_service.get_episode(playlist["episode_id"])
-                    episode_name = episode["name"]
-                elif playlist["is_for_all"]:
-                    episode_name = "all assets"
-                else:
-                    episode_name = "main pack"
-                context_name += "_%s" % slugify.slugify(
-                    episode_name, separator="_"
-                )
-            download_name = "%s_%s_%s.mp4" % (
-                slugify.slugify(build_job["created_at"], separator="").replace(
-                    "t", "_"
-                ),
-                context_name,
-                slugify.slugify(playlist["name"], separator="_"),
-            )
-            return flask_send_file(
-                movie_file_path,
-                conditional=True,
-                mimetype="video/mp4",
-                as_attachment=True,
-                download_name=download_name,
-            )
+
+        project = projects_service.get_project(playlist["project_id"])
+        movie_file_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_movie_path,
+            file_store.open_movie,
+            "playlists",
+            build_job_id,
+            "mp4",
+        )
+        context_name = playlists_service.get_playlist_download_context_name(
+            project, playlist
+        )
+        download_name = "%s_%s_%s.mp4" % (
+            slugify.slugify(build_job["created_at"], separator="").replace(
+                "t", "_"
+            ),
+            context_name,
+            slugify.slugify(playlist["name"], separator="_"),
+        )
+        return flask_send_file(
+            movie_file_path,
+            conditional=True,
+            mimetype="video/mp4",
+            as_attachment=True,
+            download_name=download_name,
+        )
 
 
 class BuildPlaylistMovieResource(Resource, ArgsMixin):
@@ -571,20 +564,9 @@ class PlaylistZipDownloadResource(Resource):
         user_service.check_playlist_access(playlist, supervisor_access=True)
         project = projects_service.get_project(playlist["project_id"])
         zip_file_path = playlists_service.build_playlist_zip_file(playlist)
-
-        context_name = slugify.slugify(project["name"], separator="_")
-        if project["production_type"] == "tvshow":
-            episode_id = playlist["episode_id"]
-            if episode_id is not None:
-                episode = shots_service.get_episode(playlist["episode_id"])
-                episode_name = episode["name"]
-            elif playlist["is_for_all"]:
-                episode_name = "all assets"
-            else:
-                episode_name = "main pack"
-            context_name += "_%s" % slugify.slugify(
-                episode_name, separator="_"
-            )
+        context_name = playlists_service.get_playlist_download_context_name(
+            project, playlist
+        )
         download_name = "%s_%s.zip" % (
             context_name,
             slugify.slugify(playlist["name"], separator="_"),
@@ -652,7 +634,10 @@ class BuildJobResource(Resource):
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_playlist_access(playlist)
-        return playlists_service.get_build_job(build_job_id)
+        build_job = playlists_service.get_build_job(build_job_id)
+        if str(build_job["playlist_id"]) != str(playlist_id):
+            abort(404)
+        return build_job
 
     @jwt_required()
     def delete(self, playlist_id, build_job_id):
@@ -686,6 +671,9 @@ class BuildJobResource(Resource):
         user_service.block_access_to_vendor()
         playlist = playlists_service.get_playlist(playlist_id)
         user_service.check_playlist_access(playlist)
+        build_job = playlists_service.get_build_job(build_job_id)
+        if str(build_job["playlist_id"]) != str(playlist_id):
+            abort(404)
         playlists_service.remove_build_job(playlist, build_job_id)
         return "", 204
 
@@ -857,7 +845,8 @@ class TempPlaylistResource(Resource, ArgsMixin):
             description: Invalid task IDs
         """
         user_service.check_project_access(project_id)
-        task_ids = request.json.get("task_ids", [])
+        body = validation.validate_request_body(TempPlaylistCreateSchema)
+        task_ids = [str(t) for t in body.task_ids]
         sort = self.get_bool_parameter("sort")
         return (
             playlists_service.generate_temp_playlist(task_ids, sort=sort) or []
@@ -913,11 +902,13 @@ class NotifyClientsResource(Resource, ArgsMixin):
                       description: Notification status
                       example: "success"
         """
-        studio_id = self.get_id_parameter("studio_id", None)
-        department_id = self.get_id_parameter("department_id", None)
         playlist = playlists_service.get_playlist(playlist_id)
-        project_id = playlist["project_id"]
-        user_service.check_manager_project_access(project_id)
+        user_service.check_manager_project_access(playlist["project_id"])
+        body = validation.validate_request_body(
+            NotifyClientsPlaylistSchema, data=request.get_json(silent=True) or {}
+        )
+        studio_id = str(body.studio_id) if body.studio_id else None
+        department_id = str(body.department_id) if body.department_id else None
         notifications_service.notify_clients_playlist_ready(
             playlist, studio_id, department_id
         )
