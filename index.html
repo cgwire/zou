@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="description" content="Documentation to install, configure and use the Kitsu API." /><meta name="author" content="CGWire" />
+      <link rel="shortcut icon" href="img/favicon.ico" />
+    <title>Kitsu API Documentation</title>
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="stylesheet" href="css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Home";
+        var mkdocs_page_input_path = "index.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="." class="icon icon-home"> Kitsu API Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Home</a>
+    <ul class="current">
+    </ul>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="api/">API</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="backup/">Backup</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="configuration/">Configuration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="development/">Development environment</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="events/">Events</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="file_trees/">File trees descriptors</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="indexer/">Data indexation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="jobs/">Job Queue</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="ldap/">LDAP</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="log_rotation/">Log rotation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="plugins/">Plugins</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="sync/">Data migration</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="troubleshooting/">Troubleshooting</a>
+                </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href=".">Kitsu API Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Home</li>
+    <li class="wy-breadcrumbs-aside">
+          <a href="https://github.com/cgwire/zou/edit/docs/docs/index.md">Edit on Zou</a>
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <p><a href="https://github.com/cgwire/zou"><img alt="Kitsu Logo" src="kitsu.png" /></a></p>
+<h1 id="welcome-to-the-kitsu-api-zou-documentation">Welcome to the Kitsu API (Zou) documentation</h1>
+<p>The Kitsu API allows you to store and manage the data of your animation/VFX production.
+Through it, you can link all the tools of your pipeline and make sure they are
+all synchronized. </p>
+<p>To integrate it into your tools, you can rely on the dedicated Python
+client named <a href="https://gazu.cg-wire.com">Gazu</a>. </p>
+<h1 id="who-is-it-for">Who is it for?</h1>
+<p>The Kitsu API is made for Technical Directors, ITs, and
+Software Engineers from animation and VFX studios. With this API, they can enhance
+the tools they provide to the studio departments.</p>
+<p>On top of the API, you can deploy the Kitsu frontend, which brings you the full
+bundle of the collaboration platform developed by CGWire.</p>
+<h1 id="features">Features</h1>
+<p>The Kitsu API can:</p>
+<ul>
+<li>Store production data: projects, shots, assets, tasks, files,
+  metadata, and validations.</li>
+<li>Store preview files of any kind.</li>
+<li>Publish an event stream of changes.</li>
+<li>Provide folder and file paths for any task.</li>
+<li>Export main data to CSV files.</li>
+</ul>
+<p>For more details, you can check <a href="https://api-docs.kitsu.cloud">the full specification</a>.</p>
+<h1 id="quickstart-docker-image">Quickstart (Docker Image)</h1>
+<p>To try Kitsu on your local machine, you can use Docker to run a local
+instance via this command:</p>
+<p><em>Warning: This image is not aimed at production usage.</em></p>
+<pre><code>docker run -d -p 80:80 --name cgwire cgwire/cgwire
+</code></pre>
+<p>Then you can access the Kitsu API, through <code>http://localhost/api</code> and
+enjoy the Kitsu web UI at <code>http://localhost</code>.</p>
+<p>The credentials are:</p>
+<ul>
+<li>login: admin@example.com</li>
+<li>password: mysecretpassword</li>
+</ul>
+<h1 id="install">Install</h1>
+<h2 id="hardware-prerequisites">Hardware prerequisites</h2>
+<table>
+<thead>
+<tr>
+<th>Users</th>
+<th>Cores</th>
+<th>RAM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1-10</td>
+<td>2</td>
+<td>4</td>
+</tr>
+<tr>
+<td>11 - 30</td>
+<td>2</td>
+<td>8</td>
+</tr>
+<tr>
+<td>31 - 80</td>
+<td>4</td>
+<td>15</td>
+</tr>
+<tr>
+<td>81 - 200</td>
+<td>8</td>
+<td>30</td>
+</tr>
+</tbody>
+</table>
+<p>That's the recommended minimum. But it depends on the activity of the production/studio.</p>
+<ul>
+<li>The size of the files/videos sent</li>
+<li>The frequency with which files/videos are sent</li>
+<li>The network speed available between the workstations and the instance.</li>
+</ul>
+<p>Regarding disk space, you need to allow for a factor of x2.5 x3 of all the files sent (large estimation).</p>
+<p>It is advisable to separate:</p>
+<ul>
+<li>The database on another VM</li>
+<li><code>PREVIEW_FOLDER</code> directory on a separate volume</li>
+</ul>
+<p>This simplifies migration/augmentation of volumes.</p>
+<h2 id="pre-requisites">Pre-requisites</h2>
+<p>The installation requires:</p>
+<ul>
+<li>Ubuntu (version &gt;= 22.04)</li>
+<li>Python (version &gt;= 3.10)</li>
+<li>An up-and-running Postgres instance (version &gt;= 9.2)</li>
+<li>An up-and-running Redis server instance (version &gt;= 2.0)</li>
+<li>A Nginx instance</li>
+</ul>
+<h2 id="setup">Setup</h2>
+<h3 id="dependencies">Dependencies</h3>
+<p>First, let's install third-party software:</p>
+<pre><code class="language-bash">sudo apt-get install postgresql postgresql-client postgresql-server-dev-all
+sudo apt-get install build-essential
+sudo apt-get install redis-server
+sudo apt-get install nginx
+sudo apt-get install xmlsec1
+sudo apt-get install ffmpeg
+</code></pre>
+<p><em>NB: We recommend installing Postgres on a separate machine.</em></p>
+<h3 id="install-python-312">Install Python 3.12</h3>
+<pre><code>sudo apt-get install software-properties-common
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+sudo apt-get update
+sudo apt-get install python3.12 python3.12-venv python3.12-dev
+</code></pre>
+<h3 id="get-sources">Get sources</h3>
+<p>Create zou user:</p>
+<pre><code class="language-bash">sudo useradd --home /opt/zou zou 
+sudo mkdir /opt/zou
+sudo mkdir /opt/zou/backups
+sudo chown zou: /opt/zou/backups
+</code></pre>
+<p>Install Zou and its dependencies:</p>
+<pre><code>sudo python3.12 -m venv /opt/zou/zouenv
+sudo /opt/zou/zouenv/bin/python -m pip install --upgrade pip
+sudo /opt/zou/zouenv/bin/python -m pip install zou
+</code></pre>
+<p>Create a folder to store the previews:</p>
+<pre><code>sudo mkdir /opt/zou/previews
+sudo chown -R zou:www-data /opt/zou/previews
+</code></pre>
+<p>Create a folder to store the temp files:</p>
+<pre><code>sudo mkdir /opt/zou/tmp
+sudo chown -R zou:www-data /opt/zou/tmp
+</code></pre>
+<h3 id="prepare-database">Prepare database</h3>
+<p>Create Zou database in Postgres:</p>
+<pre><code>sudo -u postgres psql -c 'create database zoudb;' -U postgres
+</code></pre>
+<p>Set a password for your postgres user. For that start the Postgres CLI:</p>
+<pre><code class="language-bash">sudo -u postgres psql
+</code></pre>
+<p>Then set the password (<em>mysecretpassword</em> if you want to do some tests).</p>
+<pre><code class="language-bash">psql (9.4.12)
+Type &quot;help&quot; for help.
+
+postgres=# \password postgres
+Enter new password: 
+Enter it again: 
+</code></pre>
+<p>Then, exit from the Postgres client console.</p>
+<p>Alternatively, if you want to set the password to avoid interactive prompts, use: </p>
+<pre><code class="language-bash">sudo -u postgres psql -U postgres -d postgres -c &quot;alter user postgres with password 'mysecretpassword';&quot;
+</code></pre>
+<p><code>SECRET_KEY</code> must be generated randomly
+(use <code>pwgen 16</code> command for that).</p>
+<p>Create the environment variables file for the database:</p>
+<p><em>Path: /etc/zou/zou.env</em></p>
+<pre><code class="language-bash">DB_PASSWORD=mysecretpassword
+PREVIEW_FOLDER=/opt/zou/previews
+TMP_DIR=/opt/zou/tmp
+SECRET_KEY=yourrandomsecretkey
+
+# If you add variables above, add the exports below
+export DB_PASSWORD SECRET_KEY PREVIEW_FOLDER TMP_DIR SECRET_KEY
+</code></pre>
+<p>You need to have these variables in memory when you run a <code>zou</code> command.
+The easiest way to do this is to run this command:</p>
+<p><code>. /etc/zou/zou.env</code></p>
+<p>This line is included with every command in the documentation so that you don't forget it. But you don't have to run it every time.</p>
+<p>Finally, create database tables (it is required to leave the Postgres console
+and to activate the Zou virtual environment):</p>
+<pre><code class="language-bash"># Run it in your bash console.
+. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou init-db
+</code></pre>
+<p><em>NB: You can specify a custom username and database. See the <a href="https://zou.cg-wire.com/configuration/">configuration section</a>.</em></p>
+<h3 id="prepare-the-key-value-store">Prepare the key-value store</h3>
+<p>Currently, Redis requires no extra configuration. </p>
+<p>To remove warnings in Redis logs and improve background saving success rate,
+you can add this to <code>/etc/sysctl.conf</code>:</p>
+<pre><code>vm.overcommit_memory = 1
+</code></pre>
+<p>If you want to do performance tuning, have a look at <a href="https://www.techandme.se/performance-tips-for-redis-cache-server/">this
+article</a>.</p>
+<h3 id="set-up-the-indexer-optional">Set up the indexer (optional)</h3>
+<p>To allow full-text search, Kitsu relies on an Indexing engine. It uses the
+<a href="https://www.meilisearch.com/docs">Meilisearch</a> technology.</p>
+<p>The indexer is optional. Kitsu can run without it.</p>
+<p>See <a href="https://zou.cg-wire.com/indexer/">Data Indexation</a></p>
+<h3 id="configure-gunicorn">Configure Gunicorn</h3>
+<h4 id="configure-the-main-api-server">Configure the main API server</h4>
+<p>First, create a configuration folder:</p>
+<pre><code>sudo mkdir /etc/zou
+</code></pre>
+<p>We need to run the application through <em>gunicorn</em>, a WSGI server that will run zou as a daemon. Let's write the <em>gunicorn</em> configuration:</p>
+<p><em>Path: /etc/zou/gunicorn.py</em></p>
+<pre><code>accesslog = &quot;/opt/zou/logs/gunicorn_access.log&quot;
+errorlog = &quot;/opt/zou/logs/gunicorn_error.log&quot;
+workers = 3
+worker_class = &quot;gevent&quot;
+</code></pre>
+<p>Let's create the log folder:</p>
+<pre><code>sudo mkdir /opt/zou/logs
+sudo chown zou: /opt/zou/logs
+</code></pre>
+<p>Then we daemonize the <em>gunicorn</em> process via Systemd. For that, we add a new
+file that will add a new daemon to be managed by Systemd:</p>
+<p><em>Path: /etc/systemd/system/zou.service</em></p>
+<pre><code>[Unit]
+Description=Gunicorn instance to serve the Zou API
+After=network.target
+
+[Service]
+User=zou
+Group=www-data
+WorkingDirectory=/opt/zou
+# ffmpeg must be in PATH
+Environment=&quot;PATH=/opt/zou/zouenv/bin:/usr/bin&quot;
+EnvironmentFile=/etc/zou/zou.env
+ExecStart=/opt/zou/zouenv/bin/gunicorn  -c /etc/zou/gunicorn.py -b 127.0.0.1:5000 zou.app:app
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<h4 id="configure-events-stream-api-server">Configure Events Stream API server</h4>
+<p>Let's write the <em>gunicorn</em> configuration:</p>
+<p><em>Path: /etc/zou/gunicorn-events.py</em></p>
+<pre><code>accesslog = &quot;/opt/zou/logs/gunicorn_events_access.log&quot;
+errorlog = &quot;/opt/zou/logs/gunicorn_events_error.log&quot;
+workers = 1
+worker_class = &quot;geventwebsocket.gunicorn.workers.GeventWebSocketWorker&quot;
+</code></pre>
+<p>Then we daemonize the <em>gunicorn</em> process via Systemd:</p>
+<p><em>Path: /etc/systemd/system/zou-events.service</em></p>
+<pre><code>[Unit]
+Description=Gunicorn instance to serve the Zou Events API
+After=network.target
+
+[Service]
+User=zou
+Group=www-data
+WorkingDirectory=/opt/zou
+Environment=&quot;PATH=/opt/zou/zouenv/bin&quot;
+EnvironmentFile=/etc/zou/zou.env
+ExecStart=/opt/zou/zouenv/bin/gunicorn -c /etc/zou/gunicorn-events.py -b 127.0.0.1:5001 zou.event_stream:app
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<h3 id="configure-nginx">Configure Nginx</h3>
+<p>Finally, we serve the API through a Nginx server. For that, add this
+configuration file to Nginx to redirect the traffic to the Gunicorn servers:</p>
+<p><em>Path: /etc/nginx/sites-available/zou</em></p>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name server_domain_or_IP;
+
+    location /api {
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_pass http://localhost:5000/;
+        client_max_body_size 500M;
+        proxy_connect_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+        send_timeout 600s;
+    }
+
+    location /socket.io {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection &quot;Upgrade&quot;;
+        proxy_pass http://localhost:5001;
+    }
+}
+</code></pre>
+<p><em>NB: We use the 80 port here to make this documentation simpler but the 443 port and https connection are highly recommended.</em></p>
+<p>Finally, make sure that the default configuration is removed: </p>
+<pre><code class="language-bash">sudo rm /etc/nginx/sites-enabled/default
+</code></pre>
+<p>We enable that Nginx configuration with this command:</p>
+<pre><code class="language-bash">sudo ln -s /etc/nginx/sites-available/zou /etc/nginx/sites-enabled/zou
+</code></pre>
+<p>Finally, we can start our daemon and restart Nginx:</p>
+<pre><code class="language-bash">sudo systemctl enable zou zou-events
+sudo systemctl start zou zou-events
+sudo systemctl restart nginx
+</code></pre>
+<h2 id="update">Update</h2>
+<h3 id="update-package">Update package</h3>
+<p>First, you have to upgrade the zou package:</p>
+<pre><code class="language-bash">sudo /opt/zou/zouenv/bin/python -m pip install --upgrade zou
+</code></pre>
+<h3 id="update-database-schema">Update database schema</h3>
+<p>Then, you need to upgrade the database schema:</p>
+<pre><code class="language-bash">DB_PASSWORD=mysecretpassword /opt/zou/zouenv/bin/zou upgrade-db
+</code></pre>
+<h3 id="restart-the-zou-service">Restart the Zou service</h3>
+<p>Finally, restart the Zou service:</p>
+<pre><code class="language-bash">sudo systemctl restart zou zou-events
+</code></pre>
+<p>That's it! Your Zou instance is now up to date. </p>
+<p><em>NB: Make it sure by getting the API version number from <code>https://myzoudomain.com/api</code>.</em></p>
+<h2 id="deploying-kitsu">Deploying Kitsu</h2>
+<p><a href="https://kitsu.cg-wire.com">Kitsu</a> is a javascript UI that allows to manage Zou
+data from the browser.</p>
+<p>Deploying Kitsu requires retrieving the built version. For that let's grab it
+from Github: </p>
+<pre><code>sudo mkdir -p /opt/kitsu/dist
+curl -L -o /tmp/kitsu.tgz $(curl -v https://api.github.com/repos/cgwire/kitsu/releases/latest | grep 'browser_download_url.*kitsu-.*.tgz' | cut -d : -f 2,3 | tr -d \&quot;)
+sudo tar xvzf /tmp/kitsu.tgz -C /opt/kitsu/dist/
+rm /tmp/kitsu.tgz
+</code></pre>
+<p>Then we need to adapt the Nginx configuration to allow it to serve it properly:</p>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name server_domain_or_IP;
+
+    location /api {
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_pass http://localhost:5000/;
+        client_max_body_size 500M;
+        proxy_connect_timeout 600s;
+        proxy_send_timeout 600s;
+        proxy_read_timeout 600s;
+        send_timeout 600s;
+    }
+
+    location /socket.io {
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection &quot;Upgrade&quot;;
+        proxy_pass http://localhost:5001;
+    }
+
+    location / {
+        autoindex on;
+        root  /opt/kitsu/dist;
+        try_files $uri $uri/ /index.html;
+    }
+}
+</code></pre>
+<p>Restart your Nginx server:</p>
+<pre><code class="language-bash">sudo systemctl restart nginx
+</code></pre>
+<p>You can now connect directly to your server IP through your browser and enjoy
+Kitsu!</p>
+<h3 id="update-kitsu">Update Kitsu</h3>
+<p>To update Kitsu, update the files:</p>
+<pre><code>sudo rm -rf /opt/kitsu/dist
+sudo mkdir /opt/kitsu/dist
+curl -L -o /tmp/kitsu.tgz $(curl -v https://api.github.com/repos/cgwire/kitsu/releases/latest | grep 'browser_download_url.*kitsu-.*.tgz' | cut -d : -f 2,3 | tr -d \&quot;)
+sudo tar xvzf /tmp/kitsu.tgz -C /opt/kitsu/dist/
+rm /tmp/kitsu.tgz
+</code></pre>
+<h2 id="initialise-data">Initialise data:</h2>
+<p>Some basic data are required by Kitsu to work properly (like project status) :</p>
+<pre><code>. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou init-data
+</code></pre>
+<p>If you have install the indexer, you can also index the data:</p>
+<pre><code>. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou reset-search-index
+</code></pre>
+<h2 id="admin-users">Admin users</h2>
+<p>To start with Zou you need to add an admin user. This user will be able to
+log in and create other users. For that go into the terminal and run the
+<code>zou</code> binary:</p>
+<pre><code>. /etc/zou/zou.env
+/opt/zou/zouenv/bin/zou create-admin --password 1SecretPass adminemail@yourstudio.com
+</code></pre>
+<p>It expects the password as the first argument. Then your user will be created with
+the email as login, <code>1SecretPass</code> as password, and "Super Admin" as first name and
+last name.</p>
+<h1 id="configuration">Configuration</h1>
+<p>To run properly, Zou requires a bunch of parameters you can give through
+environment variables. These variables can be set in your systemd script. 
+All variables are listed in the <a href="configuration/">configuration
+section</a>.</p>
+<h1 id="available-actions">Available actions</h1>
+<p>To know more about what is possible to do with the CGWire API, refer to the
+<a href="api/">API section</a>.</p>
+<h1 id="packaging">Packaging</h1>
+<p>Get the sources, and increment the version located in the <code>zou/__init__.py</code> file.
+Tag the repository with the new version and run the following commands:</p>
+<pre><code class="language-bash">pip install wheel twine
+python setup.py bdist_wheel
+twine upload dist/&lt;package&gt;.whl
+</code></pre>
+<p><em>NB: It requires access to Pypi CGWire repository.</em></p>
+<h1 id="about-authors">About authors</h1>
+<p>Kitsu is written by CGWire, a company based in France. We help animation and
+VFX studios collaborate better through efficient tooling.</p>
+<p>Visit <a href="https://cg-wire.com">cg-wire.com</a> for more information.</p>
+<p><a href="https://cg-wire.com"><img alt="CGWire Logo" src="cgwire.png" /></a></p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="api/" class="btn btn-neutral float-right" title="API">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+        <span>
+          <a href="https://github.com/cgwire/zou/" class="fa fa-code-fork" style="color: #fcfcfc"> Zou</a>
+        </span>
+    
+    
+    
+      <span><a href="api/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = ".";</script>
+    <script src="js/theme_extra.js"></script>
+    <script src="js/theme.js"></script>
+      <script src="search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.6.1
+Build Date UTC : 2026-02-26 08:45:30.614670+00:00
+-->
