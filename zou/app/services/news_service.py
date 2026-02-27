@@ -83,7 +83,7 @@ def delete_news_for_comment(comment_id):
 
 
 def get_last_news_for_project(
-    project_ids=[],
+    project_ids=None,
     project_id=None,
     news_id=None,
     entity_id=None,
@@ -119,7 +119,7 @@ def get_last_news_for_project(
     if project_id is not None:
         query = query.filter(Task.project_id == project_id)
 
-    if len(project_ids) > 0:
+    if project_ids and len(project_ids) > 0:
         query = query.filter(Project.id.in_(project_ids))
     elif current_user is not None:
         if current_user.role.code != "admin":
@@ -289,7 +289,7 @@ def get_news_stats_for_project(
     if project_id is not None:
         query = query.filter(Task.project_id == project_id)
 
-    if len(project_ids) > 0:
+    if project_ids and len(project_ids) > 0:
         query = query.filter(Project.id.in_(project_ids))
     elif current_user is not None:
         if current_user.role.code != "admin":
