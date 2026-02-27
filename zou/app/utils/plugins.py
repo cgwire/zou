@@ -202,14 +202,26 @@ def migrate_plugin_db(plugin_path, message):
     manifest = PluginManifest.from_plugin_path(plugin_path)
 
     module_name = f"_plugin_models_{manifest['id']}"
-    spec = importlib.util.spec_from_file_location(module_name, models_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load 'models.py' from '{plugin_path}'")
+    plugin_prefix = f"plugin_{manifest['id']}_"
 
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    try:
+    # Only load models if plugin tables aren't already in db.metadata
+    plugin_tables = [
+        t for t in db.metadata.tables if t.startswith(plugin_prefix)
+    ]
+    if not plugin_tables:
+        spec = importlib.util.spec_from_file_location(
+            module_name, models_path
+        )
+        if spec is None or spec.loader is None:
+            raise ImportError(
+                f"Could not load 'models.py' from '{plugin_path}'"
+            )
+
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
         spec.loader.exec_module(module)
+
+    try:
         migrations_dir = plugin_path / "migrations"
         versions_dir = migrations_dir / "versions"
         versions_dir.mkdir(parents=True, exist_ok=True)
@@ -225,7 +237,8 @@ def migrate_plugin_db(plugin_path, message):
 
         command.revision(alembic_cfg, autogenerate=True, message=message)
     finally:
-        del sys.modules[module_name]
+        if module_name in sys.modules:
+            del sys.modules[module_name]
 
 
 def run_plugin_migrations(plugin_path, plugin):
