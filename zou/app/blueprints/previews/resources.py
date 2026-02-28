@@ -41,8 +41,8 @@ from zou.app.services.exception import (
 )
 
 
-ALLOWED_PICTURE_EXTENSION = ["jpe", "jpeg", "jpg", "png"]
-ALLOWED_MOVIE_EXTENSION = [
+ALLOWED_PICTURE_EXTENSION = {"jpe", "jpeg", "jpg", "png"}
+ALLOWED_MOVIE_EXTENSION = {
     "avi",
     "m4v",
     "mkv",
@@ -50,8 +50,8 @@ ALLOWED_MOVIE_EXTENSION = [
     "mp4",
     "webm",
     "wmv",
-]
-ALLOWED_FILE_EXTENSION = [
+}
+ALLOWED_FILE_EXTENSION = {
     "ae",
     "ai",
     "blend",
@@ -84,8 +84,8 @@ ALLOWED_FILE_EXTENSION = [
     "tvpp",
     "wav",
     "zip",
-]
-ALLOWED_PREVIEW_BACKGROUND_EXTENSION = ["hdr"]
+}
+ALLOWED_PREVIEW_BACKGROUND_EXTENSION = {"hdr"}
 
 
 def send_standard_file(
@@ -137,6 +137,8 @@ def send_picture_file(
         mimetype = "image/png"
     elif extension == "hdr":
         mimetype = "image/vnd.radiance"
+    else:
+        mimetype = "application/octet-stream"
     return send_storage_file(
         file_store.get_local_picture_path,
         file_store.open_picture,
@@ -321,15 +323,15 @@ class BaseNewPreviewFilePicture:
         original_file_name = ".".join(file_name_parts)
         preview_file = None
         if extension in ALLOWED_PICTURE_EXTENSION:
-            metadada = self.save_picture_preview(instance_id, uploaded_file)
+            metadata = self.save_picture_preview(instance_id, uploaded_file)
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {
                     "extension": "png",
                     "original_name": original_file_name,
-                    "width": metadada["width"],
-                    "height": metadada["height"],
-                    "file_size": metadada["file_size"],
+                    "width": metadata["width"],
+                    "height": metadata["height"],
+                    "file_size": metadata["file_size"],
                     "status": "ready",
                 },
             )
@@ -346,6 +348,7 @@ class BaseNewPreviewFilePicture:
                 )
                 if abort_on_failed:
                     abort(400, "Normalization failed.")
+                return None
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
                 {"extension": "mp4", "original_name": original_file_name},
@@ -426,8 +429,10 @@ class CreatePreviewFilePictureResource(
           400:
             description: Wrong file format or normalization failed
         """
-        self.is_exist(instance_id)
         self.is_allowed(instance_id)
+
+        if "file" not in request.files:
+            abort(400, "File not provided.")
 
         return (
             self.process_uploaded_file(
@@ -443,18 +448,12 @@ class CreatePreviewFilePictureResource(
         preview_file = files_service.get_preview_file(preview_file_id)
         if preview_file["original_name"]:
             current_app.logger.info(
-                f"Reupload of an existing preview file ({preview_file_id} not allowed."
+                f"Reupload of an existing preview file ({preview_file_id}) not allowed."
             )
             raise PreviewFileReuploadNotAllowedException
 
         user_service.check_task_action_access(preview_file["task_id"])
         return True
-
-    def is_exist(self, preview_file_id):
-        """
-        Return true if preview file entry matching given id exists in database.
-        """
-        return files_service.get_preview_file(preview_file_id) is not None
 
 
 class BaseBatchComment(BaseNewPreviewFilePicture, ArgsMixin):
@@ -738,7 +737,7 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
             return send_movie_file(
                 instance_id, lowdef=True, last_modified=self.last_modified
             )
-        except Exception:
+        except FileNotFound:
             try:
                 return send_movie_file(
                     instance_id, last_modified=self.last_modified
@@ -840,6 +839,8 @@ class PreviewFileResource(BasePreviewFileResource):
 
         try:
             extension = extension.lower()
+            if extension not in ALLOWED_PICTURE_EXTENSION | ALLOWED_FILE_EXTENSION:
+                abort(400, "Extension not allowed: %s" % extension)
             if extension == "png":
                 return send_picture_file(
                     "original", instance_id, last_modified=self.last_modified
@@ -918,8 +919,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                     last_modified=self.last_modified,
                 )
             if extension == "mp4":
-                return send_picture_file(
-                    "original",
+                return send_movie_file(
                     instance_id,
                     as_attachment=True,
                     last_modified=self.last_modified,
@@ -1192,6 +1192,9 @@ class BaseThumbnailResource(Resource):
         self.check_allowed_to_post(instance_id)
 
         self.prepare_creation(instance_id)
+
+        if "file" not in request.files:
+            abort(400, "File not provided.")
 
         tmp_folder = config.TMP_DIR
         uploaded_file = request.files["file"]
@@ -1802,6 +1805,9 @@ class CreatePreviewBackgroundFileResource(Resource):
             instance_id
         )
 
+        if "file" not in request.files:
+            abort(400, "File not provided.")
+
         uploaded_file = request.files["file"]
 
         file_name_parts = uploaded_file.filename.split(".")
@@ -1809,7 +1815,7 @@ class CreatePreviewBackgroundFileResource(Resource):
         original_file_name = ".".join(file_name_parts)
 
         if extension in ALLOWED_PREVIEW_BACKGROUND_EXTENSION:
-            metadada = self.save_preview_background_file(
+            metadata = self.save_preview_background_file(
                 instance_id, uploaded_file, extension
             )
             preview_background_file = (
@@ -1818,7 +1824,7 @@ class CreatePreviewBackgroundFileResource(Resource):
                     {
                         "extension": extension,
                         "original_name": original_file_name,
-                        "file_size": metadada["file_size"],
+                        "file_size": metadata["file_size"],
                     },
                 )
             )
@@ -1848,6 +1854,7 @@ class CreatePreviewBackgroundFileResource(Resource):
         Get uploaded preview background file, build thumbnail then save
         everything in the file storage.
         """
+        thumbnail_path = None
         try:
             tmp_folder = config.TMP_DIR
             file_name = f"{instance_id}.{extension}"
@@ -1875,7 +1882,7 @@ class CreatePreviewBackgroundFileResource(Resource):
                 "preview_file_id": instance_id,
                 "file_size": file_size,
             }
-        except:
+        except Exception:
             current_app.logger.error(
                 f"Error while saving preview background file and thumbnail: {instance_id}"
             )
@@ -1890,9 +1897,9 @@ class CreatePreviewBackgroundFileResource(Resource):
             try:
                 if os.path.exists(preview_background_path):
                     os.remove(preview_background_path)
-                if os.path.exists(thumbnail_path):
+                if thumbnail_path and os.path.exists(thumbnail_path):
                     os.remove(thumbnail_path)
-            except:
+            except Exception:
                 pass
 
     def emit_preview_background_file_event(self, preview_background_file):
