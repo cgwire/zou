@@ -1,4 +1,5 @@
 import datetime
+import ipaddress
 
 from flask import abort, request, current_app
 from flask_restful import Resource
@@ -1720,9 +1721,9 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         try:
             person = persons_service.get_person(person_id)
-            if (
+            if person["id"] != current_user["id"] and (
                 person["email"] in config.PROTECTED_ACCOUNTS
-                and person["id"] != current_user["id"]
+                or person["role"] == "admin"
             ):
                 raise PersonInProtectedAccounts()
             auth.validate_password(password, password_2)
@@ -1733,6 +1734,12 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
                 % (current_user["email"], person["email"])
             )
             person_IP = request.headers.get("X-Forwarded-For", None)
+            if person_IP:
+                try:
+                    ipaddress.ip_address(person_IP.split(",")[0].strip())
+                    person_IP = person_IP.split(",")[0].strip()
+                except ValueError:
+                    person_IP = None
             persons_service.send_password_changed_by_admin_email(
                 person, current_user, person_IP=person_IP
             )
@@ -1814,12 +1821,26 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         try:
             person = persons_service.get_person(person_id)
+            if (
+                person["role"] == "admin"
+                and person["id"] != current_user["id"]
+            ):
+                return {
+                    "error": True,
+                    "message": "An admin can't disable 2FA for other admins.",
+                }, 400
             disable_two_factor_authentication_for_person(person["id"])
             current_app.logger.warning(
                 "User %s has disabled the two factor authentication of %s"
                 % (current_user["email"], person["email"])
             )
             person_IP = request.headers.get("X-Forwarded-For", None)
+            if person_IP:
+                try:
+                    ipaddress.ip_address(person_IP.split(",")[0].strip())
+                    person_IP = person_IP.split(",")[0].strip()
+                except ValueError:
+                    person_IP = None
             persons_service.send_2fa_disabled_by_admin_email(
                 person, current_user, person_IP=person_IP
             )

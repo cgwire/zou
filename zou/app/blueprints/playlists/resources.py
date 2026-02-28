@@ -1,6 +1,8 @@
 import slugify
 
-from flask import abort, request, send_file as flask_send_file
+import os
+
+from flask import abort, after_this_request, request, send_file as flask_send_file
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
@@ -286,6 +288,7 @@ class EntityPreviewsResource(Resource):
                           description: Preview file name
                           example: "preview_v001.png"
         """
+        user_service.block_access_to_vendor()
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
         return playlists_service.get_preview_files_for_entity(entity_id)
@@ -506,7 +509,11 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
         if config.ENABLE_JOB_QUEUE:
             remote = config.ENABLE_JOB_QUEUE_REMOTE
             # remote worker can not access files local to the web app
-            assert not remote or config.FS_BACKEND in ["s3", "swift"]
+            if remote and config.FS_BACKEND not in ["s3", "swift"]:
+                return {
+                    "error": True,
+                    "message": "Remote job queue requires s3 or swift backend",
+                }, 400
 
             current_user = persons_service.get_current_user()
             queue_store.job_queue.enqueue(
@@ -571,6 +578,14 @@ class PlaylistZipDownloadResource(Resource):
             context_name,
             slugify.slugify(playlist["name"], separator="_"),
         )
+
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(zip_file_path)
+            except OSError:
+                pass
+            return response
 
         return flask_send_file(
             zip_file_path,
@@ -844,6 +859,7 @@ class TempPlaylistResource(Resource, ArgsMixin):
           400:
             description: Invalid task IDs
         """
+        user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         body = validation.validate_request_body(TempPlaylistCreateSchema)
         task_ids = [str(t) for t in body.task_ids]

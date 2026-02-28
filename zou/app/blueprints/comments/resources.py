@@ -354,6 +354,8 @@ class AttachmentResource(Resource):
         """
         user = persons_service.get_current_user()
         comment = tasks_service.get_comment(comment_id)
+        if comment["object_id"] != task_id:
+            raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
             task = tasks_service.get_task(task_id)
             user_service.check_manager_project_access(task["project_id"])
@@ -438,6 +440,8 @@ class AddAttachmentToCommentResource(Resource):
         """
         user = persons_service.get_current_user()
         comment = tasks_service.get_comment(comment_id)
+        if comment["object_id"] != task_id:
+            raise permissions.PermissionDenied()
         if comment["person_id"] != user["id"]:
             task = tasks_service.get_task(task_id)
             user_service.check_manager_project_access(task["project_id"])
@@ -558,6 +562,8 @@ class CommentManyTasksResource(Resource):
                         example: "2023-01-01T12:00:00Z"
         """
         comments = request.json
+        if not isinstance(comments, list):
+            abort(400, "Request body must be a JSON array.")
         person = persons_service.get_current_user(relations=True)
         try:
             user_service.check_manager_project_access(project_id)
@@ -565,23 +571,26 @@ class CommentManyTasksResource(Resource):
             comments = self.get_allowed_comments_only(comments, person)
         result = []
         for comment in comments:
-            try:
-                user_service.check_task_status_access(
-                    comment["task_status_id"]
-                )
-                comment = comments_service.create_comment(
-                    person["id"],
-                    comment["object_id"],
-                    comment["task_status_id"],
-                    comment["comment"],
-                    [],
-                    {},
-                    None,
-                    comment.get("links", []),
-                )
-                result.append(comment)
-            except KeyError:
-                pass
+            if (
+                "task_status_id" not in comment
+                or "object_id" not in comment
+                or "comment" not in comment
+            ):
+                continue
+            user_service.check_task_status_access(
+                comment["task_status_id"]
+            )
+            comment = comments_service.create_comment(
+                person["id"],
+                comment["object_id"],
+                comment["task_status_id"],
+                comment["comment"],
+                [],
+                {},
+                None,
+                comment.get("links", []),
+            )
+            result.append(comment)
         return result, 201
 
     def get_allowed_comments_only(self, comments, person):
@@ -674,6 +683,8 @@ class ReplyCommentResource(Resource, ArgsMixin):
                       example: "2023-01-01T12:00:00Z"
         """
         comment = tasks_service.get_comment(comment_id)
+        if comment["object_id"] != task_id:
+            raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
         if comment["person_id"] != current_user["id"]:
             if permissions.has_client_permissions():
