@@ -350,6 +350,10 @@ def create_plugin_skeleton(
 
     shutil.copytree(plugin_template_path, plugin_path)
 
+    # Rename .template files to their real extensions
+    for template_file in plugin_path.rglob("*.template"):
+        template_file.rename(template_file.with_suffix(""))
+
     manifest = PluginManifest.from_file(plugin_path / "manifest.toml")
 
     manifest.id = id

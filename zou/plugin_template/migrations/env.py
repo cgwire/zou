@@ -19,7 +19,7 @@ plugin_prefix = f"plugin_{manifest['id']}_"
 
 # Load plugin models into db.metadata if not already registered
 plugin_tables = [t for t in db.metadata.tables if t.startswith(plugin_prefix)]
-if not plugin_tables:
+if not plugin_tables and models_path.exists():
     module_name = f"_plugin_models_{manifest['id']}"
     if module_name not in sys.modules:
         spec = importlib.util.spec_from_file_location(
