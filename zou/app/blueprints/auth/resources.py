@@ -1,3 +1,5 @@
+import hmac
+import secrets
 import urllib.parse
 
 from flask import request, jsonify, current_app, redirect, make_response
@@ -274,7 +276,7 @@ class LoginResource(Resource, ArgsMixin):
             )
 
             organisation = persons_service.get_organisation(
-                sensitive=user["role"] != "admin"
+                sensitive=user["role"] == "admin"
             )
 
             response_data = {
@@ -384,11 +386,11 @@ class LoginResource(Resource, ArgsMixin):
             )
         except Exception as exception:
             current_app.logger.error(exception, exc_info=1)
-            if hasattr(exception, "message"):
-                message = exception.message
-            else:
-                message = str(exception)
-            return {"error": True, "login": False, "message": message}, 500
+            return {
+                "error": True,
+                "login": False,
+                "message": "A server error occurred. Please contact your administrator.",
+            }, 500
 
     def get_arguments(self):
         args = self.get_args(
@@ -450,6 +452,7 @@ class RefreshTokenResource(Resource):
             response = jsonify({"refresh": True})
             set_access_cookies(response, access_token)
             unset_refresh_cookies(response)
+            return response
         else:
             return {"access_token": access_token}
 
@@ -763,7 +766,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
             token_from_store = auth_tokens_store.get(
                 "reset-token-%s" % args["email"]
             )
-            if token_from_store == args["token"]:
+            if token_from_store and hmac.compare_digest(
+                token_from_store, args["token"]
+            ):
                 auth.validate_password(args["password"], args["password2"])
                 password = auth.encrypt_password(args["password"])
                 persons_service.update_password(args["email"], password)
@@ -1422,6 +1427,10 @@ class FIDOResource(Resource, ArgsMixin):
         args = self.get_args(
             [
                 ("device_name", None, True),
+                ("totp", None, False),
+                ("email_otp", None, False),
+                ("fido_authentication_response", {}, False, dict),
+                ("recovery_code", None, False),
             ]
         )
 
@@ -1429,8 +1438,21 @@ class FIDOResource(Resource, ArgsMixin):
             person = persons_service.get_current_user(unsafe=True)
             if not person["fido_enabled"]:
                 raise FIDONotEnabledException
+            if not auth_service.check_two_factor_authentication(
+                person,
+                args["totp"],
+                args["email_otp"],
+                args["fido_authentication_response"],
+                args["recovery_code"],
+            ):
+                raise WrongOTPException
             auth_service.unregister_fido(person["id"], args["device_name"])
             return {"success": True}
+        except (WrongOTPException, MissingOTPException):
+            return (
+                {"error": True, "message": "Wrong OTP."},
+                400,
+            )
         except FIDONotEnabledException:
             return (
                 {"error": True, "message": "FIDO not enabled."},
@@ -1558,10 +1580,8 @@ class SAMLSSOResource(Resource, ArgsMixin):
                 "first_name",
                 "last_name",
                 "phone",
-                "role",
                 "departments",
                 "studio_id",
-                "active",
             ]
         }
         try:
@@ -1573,8 +1593,9 @@ class SAMLSSOResource(Resource, ArgsMixin):
                     )
                     break
         except PersonNotFoundException:
+            random_password = auth.encrypt_password(secrets.token_urlsafe(64))
             user = persons_service.create_person(
-                email, "default".encode("utf-8"), **person_info
+                email, random_password, **person_info
             )
 
         response = make_response(
