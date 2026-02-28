@@ -428,6 +428,8 @@ class TaskCommentResource(Resource):
                         example: "2024-01-15T11:00:00Z"
         """
         comment = tasks_service.get_comment(comment_id)
+        if comment["object_id"] != task_id:
+            abort(404)
         user_service.check_comment_access(comment)
         return comment
 
@@ -553,6 +555,9 @@ class PersonTasksResource(Resource):
                           example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         user_service.check_person_is_not_bot(person_id)
+        current_user = persons_service.get_current_user()
+        if person_id != current_user["id"]:
+            permissions.check_admin_permissions()
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -699,6 +704,9 @@ class PersonDoneTasksResource(Resource):
                           example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         user_service.check_person_is_not_bot(person_id)
+        current_user = persons_service.get_current_user()
+        if person_id != current_user["id"]:
+            permissions.check_admin_permissions()
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -800,7 +808,6 @@ class CreateShotTasksResource(Resource):
             criterions["project_id"] = project_id
             shots = shots_service.get_shots(criterions)
 
-        task_type = tasks_service.get_task_type(task_type_id)
         tasks = tasks_service.create_tasks(task_type, shots)
         return tasks, 201
 
@@ -901,7 +908,6 @@ class CreateConceptTasksResource(Resource):
         for concept in concepts:
             user_service.check_entity_access(concept["id"])
 
-        task_type = tasks_service.get_task_type(task_type_id)
         tasks = tasks_service.create_tasks(task_type, concepts)
         return tasks, 201
 
@@ -1887,9 +1893,9 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             )
             return time_spent, 201
         except ValueError:
-            abort(404)
+            abort(400)
         except WrongDateFormatException:
-            abort(404)
+            abort(400)
 
     @jwt_required()
     def delete(self, task_id, date, person_id):
@@ -1964,9 +1970,9 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             )
             return time_spent, 201
         except ValueError:
-            abort(404)
+            abort(400)
         except WrongDateFormatException:
-            abort(404)
+            abort(400)
 
 
 class AddTimeSpentResource(Resource, ArgsMixin):
@@ -2051,13 +2057,17 @@ class AddTimeSpentResource(Resource, ArgsMixin):
                 raise WrongParameterException("Duration must be positive")
             user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
-                task_id, person_id, date, args["duration"], add=True
+                task_id,
+                person_id,
+                date_helpers.get_date_from_string(date),
+                args["duration"],
+                add=True,
             )
             return time_spent, 201
         except ValueError:
-            abort(404)
+            abort(400)
         except WrongDateFormatException:
-            abort(404)
+            abort(400)
 
 
 class GetTimeSpentResource(Resource):
@@ -2252,6 +2262,8 @@ class DeleteTasksResource(Resource):
         """
         user_service.check_manager_project_access(project_id)
         task_ids = request.json
+        if not isinstance(task_ids, list):
+            abort(400, "Request body must be a JSON array.")
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
         for task_id in task_ids:
             tasks_service.clear_task_cache(task_id)
@@ -2474,6 +2486,7 @@ class ProjectTasksResource(Resource, ArgsMixin):
                           example: true
         """
         projects_service.get_project(project_id)
+        user_service.check_project_access(project_id)
         page = self.get_page()
         task_type_id = self.get_task_type_id()
         episode_id = self.get_episode_id()
