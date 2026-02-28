@@ -28,8 +28,16 @@ from zou.app.services import (
     user_service,
     concepts_service,
 )
-from zou.app.utils import events, query, permissions, date_helpers
+from zou.app.utils import events, query, permissions, date_helpers, validation
 from zou.app.mixin import ArgsMixin
+from zou.app.blueprints.tasks.schemas import (
+    CommentPreviewSchema,
+    ToReviewSchema,
+    UnassignTasksSchema,
+    AssignTasksSchema,
+    AssignPersonSchema,
+    TimeSpentSchema,
+)
 
 
 class AddPreviewResource(Resource, ArgsMixin):
@@ -104,13 +112,13 @@ class AddPreviewResource(Resource, ArgsMixin):
             400:
               description: Bad request
         """
-        args = self.get_args([("revision", 0, False, int)])
+        body = validation.validate_request_body(CommentPreviewSchema)
 
         user_service.check_task_action_access(task_id)
 
         person = persons_service.get_current_user()
         preview_file = tasks_service.add_preview_file_to_comment(
-            comment_id, person["id"], task_id, args["revision"]
+            comment_id, person["id"], task_id, body.revision
         )
         return preview_file, 201
 
@@ -1284,13 +1292,12 @@ class ToReviewResource(Resource, ArgsMixin):
             400:
                 description: Invalid person or parameters
         """
-        (
-            person_id,
-            comment,
-            name,
-            revision,
-            change_status,
-        ) = self.get_arguments()
+        body = validation.validate_request_body(ToReviewSchema)
+        person_id = body.person_id
+        comment = body.comment
+        name = body.name
+        revision = body.revision
+        change_status = body.change_status
 
         try:
             task = tasks_service.get_task(task_id)
@@ -1324,30 +1331,6 @@ class ToReviewResource(Resource, ArgsMixin):
             return {"folder_path": "", "file_name": ""}
 
         return {"folder_path": folder_path, "file_name": file_name}
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                "person_id",
-                ("comment", ""),
-                ("name", "main"),
-                {"name": "revision", "default": 1, "type": int},
-                {
-                    "name": "change_status",
-                    "default": True,
-                    "type": inputs.boolean,
-                },
-            ]
-        )
-
-        return (
-            args["person_id"],
-            args["comment"],
-            args["name"],
-            args["revision"],
-            args["change_status"],
-        )
-
 
 class ClearAssignationResource(Resource, ArgsMixin):
 
@@ -1392,15 +1375,17 @@ class ClearAssignationResource(Resource, ArgsMixin):
                         format: uuid
                       example: ["a24a6ea4-ce75-4665-a070-57453082c25"]
         """
-        (task_ids, person_id) = self.get_arguments()
+        body = validation.validate_request_body(UnassignTasksSchema)
 
         tasks = []
-        for task_id in task_ids:
+        for task_id in body.task_ids:
             try:
                 user_service.check_task_department_access_for_unassign(
-                    task_id, person_id
+                    task_id, body.person_id
                 )
-                tasks_service.clear_assignation(task_id, person_id=person_id)
+                tasks_service.clear_assignation(
+                    task_id, person_id=body.person_id
+                )
                 tasks.append(task_id)
             except permissions.PermissionDenied:
                 pass
@@ -1408,21 +1393,6 @@ class ClearAssignationResource(Resource, ArgsMixin):
                 pass
 
         return tasks
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "task_ids",
-                    "help": "Tasks list required.",
-                    "required": True,
-                    "action": "append",
-                },
-                "person_id",
-            ]
-        )
-
-        return args["task_ids"], args["person_id"]
 
 
 class TasksAssignResource(Resource, ArgsMixin):
@@ -1504,20 +1474,11 @@ class TasksAssignResource(Resource, ArgsMixin):
             400:
                 description: Assignee does not exist
         """
-        args = self.get_args(
-            [
-                {
-                    "name": "task_ids",
-                    "help": "Tasks list required.",
-                    "required": True,
-                    "action": "append",
-                },
-            ]
-        )
+        body = validation.validate_request_body(AssignTasksSchema)
 
         tasks = []
         current_user = persons_service.get_current_user()
-        for task_id in args["task_ids"]:
+        for task_id in body.task_ids:
             try:
                 user_service.check_person_is_not_bot(person_id)
                 user_service.check_task_department_access(task_id, person_id)
@@ -1610,16 +1571,8 @@ class TaskAssignResource(Resource, ArgsMixin):
             400:
                 description: Assignee does not exist
         """
-        args = self.get_args(
-            [
-                {
-                    "name": "person_id",
-                    "help": "Assignee ID required.",
-                    "required": True,
-                },
-            ]
-        )
-        person_id = args["person_id"]
+        body = validation.validate_request_body(AssignPersonSchema)
+        person_id = body.person_id
         current_user = persons_service.get_current_user()
         try:
             user_service.check_person_is_not_bot(person_id)
@@ -1880,16 +1833,14 @@ class SetTimeSpentResource(Resource, ArgsMixin):
                 description: Invalid parameters
         """
         user_service.check_person_is_not_bot(person_id)
-        args = self.get_args([("duration", 0, True, int)])
+        body = validation.validate_request_body(TimeSpentSchema)
         try:
-            if args["duration"] <= 0:
-                raise WrongParameterException("Duration must be positive")
             user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 date_helpers.get_date_from_string(date),
-                args["duration"],
+                body.duration,
             )
             return time_spent, 201
         except ValueError:
@@ -2051,16 +2002,14 @@ class AddTimeSpentResource(Resource, ArgsMixin):
                 description: Invalid parameters
         """
         user_service.check_person_is_not_bot(person_id)
-        args = self.get_args([("duration", 0, True, int)])
+        body = validation.validate_request_body(TimeSpentSchema)
         try:
-            if args["duration"] <= 0:
-                raise WrongParameterException("Duration must be positive")
             user_service.check_time_spent_access(task_id, person_id)
             time_spent = tasks_service.create_or_update_time_spent(
                 task_id,
                 person_id,
                 date_helpers.get_date_from_string(date),
-                args["duration"],
+                body.duration,
                 add=True,
             )
             return time_spent, 201

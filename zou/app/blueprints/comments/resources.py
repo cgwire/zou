@@ -5,7 +5,8 @@ from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions, date_helpers
+from zou.app.utils import permissions, date_helpers, validation
+from zou.app.blueprints.comments.schemas import CommentReplySchema
 
 from zou.app.services import (
     chats_service,
@@ -696,14 +697,10 @@ class ReplyCommentResource(Resource, ArgsMixin):
                     raise permissions.PermissionDenied()
             user_service.check_task_action_access(task_id)
 
-        args = self.get_args(
-            [
-                ("text", "", False),
-            ]
-        )
+        body = validation.validate_request_body(CommentReplySchema)
         files = request.files
         return comments_service.reply_comment(
-            comment_id, args["text"], files=files
+            comment_id, body.text, files=files
         )
 
 

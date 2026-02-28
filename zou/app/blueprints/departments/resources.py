@@ -1,10 +1,14 @@
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import permissions
+from zou.app.utils import permissions, validation
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     departments_service,
+)
+from zou.app.blueprints.departments.schemas import (
+    AddSoftwareToDepartmentSchema,
+    AddHardwareToDepartmentSchema,
 )
 
 
@@ -134,15 +138,12 @@ class AddSoftwareToDepartmentResource(Resource, ArgsMixin):
                       description: Creation timestamp
                       example: "2023-01-01T12:00:00Z"
         """
-        args = self.get_args(
-            [
-                ("software_id", None, True),
-            ]
+        body = validation.validate_request_body(
+            AddSoftwareToDepartmentSchema
         )
         self.check_id_parameter(department_id)
-        self.check_id_parameter(args["software_id"])
         software = departments_service.add_software_to_department(
-            department_id, args["software_id"]
+            department_id, str(body.software_id)
         )
         return software, 201
 
@@ -379,16 +380,13 @@ class AddHardwareItemToDepartmentResource(Resource, ArgsMixin):
             400:
                 description: Hardware item ID matches no hardware item
         """
-        args = self.get_args(
-            [
-                ("hardware_item_id", None, True),
-            ]
+        body = validation.validate_request_body(
+            AddHardwareToDepartmentSchema
         )
         self.check_id_parameter(department_id)
-        self.check_id_parameter(args["hardware_item_id"])
         hardware_item_link = (
             departments_service.add_hardware_item_to_department(
-                department_id, args["hardware_item_id"]
+                department_id, str(body.hardware_item_id)
             )
         )
         return hardware_item_link, 201

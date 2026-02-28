@@ -9,9 +9,13 @@ validation error raises WrongParameterException with a 400-style payload
 
 from flask import request
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from zou.app.services.exception import WrongParameterException
+
+
+class BaseSchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
 
 
 def _format_validation_errors(exc: ValidationError):
