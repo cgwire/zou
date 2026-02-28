@@ -138,9 +138,7 @@ class AddSoftwareToDepartmentResource(Resource, ArgsMixin):
                       description: Creation timestamp
                       example: "2023-01-01T12:00:00Z"
         """
-        body = validation.validate_request_body(
-            AddSoftwareToDepartmentSchema
-        )
+        body = validation.validate_request_body(AddSoftwareToDepartmentSchema)
         self.check_id_parameter(department_id)
         software = departments_service.add_software_to_department(
             department_id, str(body.software_id)
@@ -380,9 +378,7 @@ class AddHardwareItemToDepartmentResource(Resource, ArgsMixin):
             400:
                 description: Hardware item ID matches no hardware item
         """
-        body = validation.validate_request_body(
-            AddHardwareToDepartmentSchema
-        )
+        body = validation.validate_request_body(AddHardwareToDepartmentSchema)
         self.check_id_parameter(department_id)
         hardware_item_link = (
             departments_service.add_hardware_item_to_department(

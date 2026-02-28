@@ -910,9 +910,7 @@ class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
                       description: Project name
                       example: "My Project"
         """
-        body = validation.validate_request_body(
-            ProjectPreviewBackgroundSchema
-        )
+        body = validation.validate_request_body(ProjectPreviewBackgroundSchema)
 
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_preview_background_file_setting(
@@ -1087,9 +1085,7 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
         """
         body = validation.validate_request_body(MetadataDescriptorSchema)
 
-        user_service.check_all_departments_access(
-            project_id, body.departments
-        )
+        user_service.check_all_departments_access(project_id, body.departments)
 
         if body.entity_type not in [
             "Asset",
@@ -2193,9 +2189,7 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
         body = validation.validate_request_body(BudgetEntryUpdateSchema)
-        return budget_service.update_budget_entry(
-            entry_id, body.model_dump()
-        )
+        return budget_service.update_budget_entry(entry_id, body.model_dump())
 
     @jwt_required()
     def delete(self, project_id, budget_id, entry_id):

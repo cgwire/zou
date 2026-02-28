@@ -22,9 +22,7 @@ plugin_tables = [t for t in db.metadata.tables if t.startswith(plugin_prefix)]
 if not plugin_tables and models_path.exists():
     module_name = f"_plugin_models_{manifest['id']}"
     if module_name not in sys.modules:
-        spec = importlib.util.spec_from_file_location(
-            module_name, models_path
-        )
+        spec = importlib.util.spec_from_file_location(module_name, models_path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module
         spec.loader.exec_module(module)

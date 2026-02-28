@@ -811,9 +811,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         email_html_body = templates_service.generate_html_body(
             title, html, locale=locale
         )
-        emails.send_email(
-            subject, email_html_body, body.email, locale=locale
-        )
+        emails.send_email(subject, email_html_body, body.email, locale=locale)
         return {"success": "Reset token sent"}
 
 

@@ -159,7 +159,10 @@ class CastingResource(Resource):
         """
         casting = request.json
         if not isinstance(casting, list):
-            return {"error": True, "message": "Request body must be a JSON array"}, 400
+            return {
+                "error": True,
+                "message": "Request body must be a JSON array",
+            }, 400
         user_service.check_manager_project_access(project_id)
         return breakdown_service.update_casting(entity_id, casting)
 
