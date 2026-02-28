@@ -1332,6 +1332,7 @@ class ToReviewResource(Resource, ArgsMixin):
 
         return {"folder_path": folder_path, "file_name": file_name}
 
+
 class ClearAssignationResource(Resource, ArgsMixin):
 
     @jwt_required()

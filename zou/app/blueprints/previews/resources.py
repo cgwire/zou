@@ -844,7 +844,10 @@ class PreviewFileResource(BasePreviewFileResource):
 
         try:
             extension = extension.lower()
-            if extension not in ALLOWED_PICTURE_EXTENSION | ALLOWED_FILE_EXTENSION:
+            if (
+                extension
+                not in ALLOWED_PICTURE_EXTENSION | ALLOWED_FILE_EXTENSION
+            ):
                 abort(400, "Extension not allowed: %s" % extension)
             if extension == "png":
                 return send_picture_file(
@@ -1458,7 +1461,9 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
                       description: Preview position
                       example: 2
         """
-        body = validation_utils.validate_request_body(PreviewFilePositionSchema)
+        body = validation_utils.validate_request_body(
+            PreviewFilePositionSchema
+        )
         preview_file = files_service.get_preview_file(preview_file_id)
         user_service.check_task_action_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(

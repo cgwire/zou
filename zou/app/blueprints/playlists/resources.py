@@ -2,7 +2,12 @@ import slugify
 
 import os
 
-from flask import abort, after_this_request, request, send_file as flask_send_file
+from flask import (
+    abort,
+    after_this_request,
+    request,
+    send_file as flask_send_file,
+)
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 

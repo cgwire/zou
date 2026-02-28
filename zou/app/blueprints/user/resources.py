@@ -1569,9 +1569,7 @@ class FilterResource(Resource, ArgsMixin):
         """
         body = validation.validate_request_body(UpdateSearchFilterSchema)
         data = body.model_dump(exclude_none=True)
-        if "search_filter_group_id" in (
-            body.model_fields_set or set()
-        ):
+        if "search_filter_group_id" in (body.model_fields_set or set()):
             data["search_filter_group_id"] = body.search_filter_group_id
         user_filter = user_service.update_filter(filter_id, data)
         return user_filter, 200
@@ -1766,9 +1764,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
             400:
               description: Bad request
         """
-        body = validation.validate_request_body(
-            CreateSearchFilterGroupSchema
-        )
+        body = validation.validate_request_body(CreateSearchFilterGroupSchema)
         return (
             user_service.create_filter_group(
                 body.list_type,
@@ -1948,9 +1944,7 @@ class FilterGroupResource(Resource, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        body = validation.validate_request_body(
-            UpdateSearchFilterGroupSchema
-        )
+        body = validation.validate_request_body(UpdateSearchFilterGroupSchema)
         data = body.model_dump(exclude_none=True)
         user_filter = user_service.update_filter_group(filter_group_id, data)
         return user_filter, 200

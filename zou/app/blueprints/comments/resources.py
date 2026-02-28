@@ -578,9 +578,7 @@ class CommentManyTasksResource(Resource):
                 or "comment" not in comment
             ):
                 continue
-            user_service.check_task_status_access(
-                comment["task_status_id"]
-            )
+            user_service.check_task_status_access(comment["task_status_id"])
             comment = comments_service.create_comment(
                 person["id"],
                 comment["object_id"],
