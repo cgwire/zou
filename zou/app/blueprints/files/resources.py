@@ -8,7 +8,17 @@ from flask_fs.errors import FileNotFound
 from zou.app import config
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import fs, date_helpers
+from zou.app.utils import fs, date_helpers, validation
+from zou.app.blueprints.files.schemas import (
+    WorkingFilePathSchema,
+    OutputFilePathSchema,
+    NewWorkingFileSchema,
+    WorkingFileCommentSchema,
+    NewOutputFileSchema,
+    NextRevisionSchema,
+    SetTreeSchema,
+    GuessFilePathSchema,
+)
 from zou.app.stores import file_store
 from zou.app.services import (
     file_tree_service,
@@ -360,25 +370,16 @@ class WorkingFilePathResource(Resource, ArgsMixin):
         maxsoft = files_service.get_or_create_software(
             "3ds Max", "max", ".max"
         )
-
-        args = self.get_args(
-            [
-                ("name", "main"),
-                ("mode", "working"),
-                ("software_id", maxsoft["id"]),
-                ("comment", ""),
-                ("revision", 0),
-                ("sep", "/"),
-            ]
-        )
+        body = validation.validate_request_body(WorkingFilePathSchema)
+        software_id = body.software_id if body.software_id else maxsoft["id"]
 
         return (
-            args["name"],
-            args["mode"],
-            args["software_id"],
-            args["comment"],
-            args["revision"],
-            args["sep"],
+            body.name,
+            body.mode,
+            software_id,
+            body.comment,
+            body.revision,
+            body.sep,
         )
 
 
@@ -514,18 +515,8 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
         return {"folder_path": folder_path, "file_name": file_name}, 200
 
     def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "main", False),
-                ("mode", "output", False),
-                ("output_type_id", None, True),
-                ("task_type_id", None, True),
-                ("revision", 0, False),
-                ("extension", "", False),
-                ("representation", "", False),
-                ("separator", "/", False),
-            ]
-        )
+        body = validation.validate_request_body(OutputFilePathSchema)
+        return body.model_dump()
 
 
 class InstanceOutputFilePathResource(Resource, ArgsMixin):
@@ -663,18 +654,8 @@ class InstanceOutputFilePathResource(Resource, ArgsMixin):
         return {"folder_path": folder_path, "file_name": file_name}, 200
 
     def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "main", False),
-                ("mode", "output", False),
-                ("output_type_id", None, True),
-                ("task_type_id", None, True),
-                ("revision", 0, False),
-                ("extension", "", False),
-                ("representation", "", False),
-                ("separator", "/", False),
-            ]
-        )
+        body = validation.validate_request_body(OutputFilePathSchema)
+        return body.model_dump()
 
 
 class LastWorkingFilesResource(Resource):
@@ -955,39 +936,25 @@ class NewWorkingFileResource(Resource, ArgsMixin):
 
     def get_arguments(self):
         person = persons_service.get_current_user()
+        body = validation.validate_request_body(NewWorkingFileSchema)
 
-        args = self.get_args(
-            [
-                {
-                    "name": "name",
-                    "help": "The asset name is required.",
-                    "required": True,
-                },
-                ("description", ""),
-                ("mode", "working"),
-                ("comment", ""),
-                ("person_id", person["id"]),
-                ("software_id", None),
-                {"name": "revision", "default": 0, "type": int},
-                ("sep", "/"),
-            ]
-        )
-
-        if args["software_id"] is None:
+        person_id = body.person_id if body.person_id else person["id"]
+        software_id = body.software_id
+        if software_id is None:
             default_soft = files_service.get_or_create_software(
                 "Blender", "blender", ".blend"
             )
-            args["software_id"] = default_soft["id"]
+            software_id = default_soft["id"]
 
         return (
-            args["name"],
-            args["mode"],
-            args["description"],
-            args["comment"],
-            args["person_id"],
-            args["software_id"],
-            args["revision"],
-            args["sep"],
+            body.name,
+            body.mode,
+            body.description,
+            body.comment,
+            person_id,
+            software_id,
+            body.revision,
+            body.sep,
         )
 
 
@@ -1095,19 +1062,11 @@ class CommentWorkingFileResource(Resource, ArgsMixin):
                       description: Last update timestamp
                       example: "2023-01-01T12:30:00Z"
         """
-        args = self.get_args(
-            [
-                {
-                    "name": "comment",
-                    "required": True,
-                    "help": "Comment field expected.",
-                }
-            ]
-        )
+        body = validation.validate_request_body(WorkingFileCommentSchema)
 
         working_file = files_service.get_working_file(working_file_id)
         user_service.check_task_action_access(working_file["task_id"])
-        working_file = self.update_comment(working_file_id, args["comment"])
+        working_file = self.update_comment(working_file_id, body.comment)
         return working_file
 
     def update_comment(self, working_file_id, comment):
@@ -1315,23 +1274,8 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
         return output_file_dict, 201
 
     def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "main", False),
-                ("mode", "output", False),
-                ("output_type_id", None, True),
-                ("task_type_id", None, True),
-                ("person_id", None, False),
-                ("working_file_id", None, False),
-                ("comment", "", True),
-                ("revision", 0, False),
-                ("extension", "", False),
-                ("representation", "", False),
-                ("nb_elements", 1, False),
-                ("sep", "/", False),
-                ("file_status_id", None, False),
-            ]
-        )
+        body = validation.validate_request_body(NewOutputFileSchema)
+        return body.model_dump()
 
     def add_path_info(
         self,
@@ -1599,24 +1543,8 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
         return output_file_dict, 201
 
     def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "main", False),
-                ("mode", "output", False),
-                ("output_type_id", None, True),
-                ("task_type_id", None, True),
-                ("person_id", None, False),
-                ("working_file_id", None, False),
-                ("comment", "", True),
-                ("revision", 0, False),
-                ("extension", "", False),
-                ("representation", "", False),
-                ("is_sequence", False, False),
-                ("nb_elements", 1, False),
-                ("sep", "/", False),
-                ("file_status_id", None, False),
-            ]
-        )
+        body = validation.validate_request_body(NewOutputFileSchema)
+        return body.model_dump()
 
     def add_path_info(
         self,
@@ -1727,26 +1655,17 @@ class GetNextEntityOutputFileRevisionResource(Resource, ArgsMixin):
                       description: Next available revision number
                       example: 3
         """
-        args = self.get_arguments()
+        body = validation.validate_request_body(NextRevisionSchema)
         entity = entities_service.get_entity(entity_id)
-        output_type = files_service.get_output_type(args["output_type_id"])
-        task_type = tasks_service.get_task_type(args["task_type_id"])
+        output_type = files_service.get_output_type(body.output_type_id)
+        task_type = tasks_service.get_task_type(body.task_type_id)
         user_service.check_project_access(entity["project_id"])
 
         next_revision_number = files_service.get_next_output_file_revision(
-            entity["id"], output_type["id"], task_type["id"], args["name"]
+            entity["id"], output_type["id"], task_type["id"], body.name
         )
 
         return {"next_revision": next_revision_number}, 200
-
-    def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "main", False),
-                ("output_type_id", None, True),
-                ("task_type_id", None, True),
-            ]
-        )
 
 
 class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
@@ -1816,33 +1735,24 @@ class GetNextInstanceOutputFileRevisionResource(Resource, ArgsMixin):
                       description: Next available revision number
                       example: 2
         """
-        args = self.get_arguments()
+        body = validation.validate_request_body(NextRevisionSchema)
 
         asset_instance = assets_service.get_asset_instance(asset_instance_id)
         asset = entities_service.get_entity(asset_instance["asset_id"])
-        output_type = files_service.get_output_type(args["output_type_id"])
-        task_type = tasks_service.get_task_type(args["task_type_id"])
+        output_type = files_service.get_output_type(body.output_type_id)
+        task_type = tasks_service.get_task_type(body.task_type_id)
         user_service.check_project_access(asset["project_id"])
 
         next_revision_number = files_service.get_next_output_file_revision(
             asset["id"],
             output_type["id"],
             task_type["id"],
-            args["name"],
+            body.name,
             asset_instance_id=asset_instance["id"],
             temporal_entity_id=temporal_entity_id,
         )
 
         return {"next_revision": next_revision_number}, 200
-
-    def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "main", False),
-                ("output_type_id", None, True),
-                ("task_type_id", None, True),
-            ]
-        )
 
 
 class LastEntityOutputFilesResource(Resource, ArgsMixin):
@@ -2917,19 +2827,11 @@ class SetTreeResource(Resource, ArgsMixin):
                       description: Last update timestamp
                       example: "2023-01-01T12:30:00Z"
         """
-        args = self.get_args(
-            [
-                {
-                    "name": "tree_name",
-                    "help": "The name of the tree to set is required.",
-                    "required": True,
-                }
-            ]
-        )
+        body = validation.validate_request_body(SetTreeSchema)
 
         try:
             user_service.check_manager_project_access(project_id)
-            tree = file_tree_service.get_tree_from_file(args["tree_name"])
+            tree = file_tree_service.get_tree_from_file(body.tree_name)
             project = projects_service.update_project(
                 project_id, {"file_tree": tree}
             )
@@ -3111,28 +3013,11 @@ class GuessFromPathResource(Resource, ArgsMixin):
           400:
             description: Invalid project ID or file path
         """
-        data = self.get_arguments()
-        user_service.check_project_access(data["project_id"])
+        body = validation.validate_request_body(GuessFilePathSchema)
+        user_service.check_project_access(body.project_id)
 
         return file_tree_service.guess_from_path(
-            project_id=data["project_id"],
-            file_path=data["file_path"],
-            sep=data["sep"],
-        )
-
-    def get_arguments(self):
-        return self.get_args(
-            [
-                {
-                    "name": "project_id",
-                    "help": "The project id is required.",
-                    "required": True,
-                },
-                {
-                    "name": "file_path",
-                    "help": "The file path is required.",
-                    "required": True,
-                },
-                ["sep", "/"],
-            ]
+            project_id=body.project_id,
+            file_path=body.file_path,
+            sep=body.sep,
         )

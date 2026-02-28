@@ -3,8 +3,9 @@ from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions
+from zou.app.utils import permissions, validation
 from zou.app.services import index_service, projects_service, user_service
+from zou.app.blueprints.search.schemas import SearchSchema
 
 
 class SearchResource(Resource, ArgsMixin):
@@ -91,26 +92,12 @@ class SearchResource(Resource, ArgsMixin):
           400:
             description: Bad request
         """
-        args = self.get_args(
-            [
-                ("query", "", True),
-                ("project_id", None, False),
-                ("limit", 3, False, int),
-                ("offset", 0, False, int),
-                (
-                    "index_names",
-                    ["assets", "shots", "persons"],
-                    False,
-                    str,
-                    "append",
-                ),
-            ]
-        )
-        query = args["query"]
-        limit = args["limit"]
-        offset = args["offset"]
-        project_id = args["project_id"]
-        index_names = args["index_names"]
+        body = validation.validate_request_body(SearchSchema)
+        query = body.query
+        limit = body.limit
+        offset = body.offset
+        project_id = str(body.project_id) if body.project_id else None
+        index_names = body.index_names
         results = {}
         if len(query) < 3:
             return results

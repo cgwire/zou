@@ -10,6 +10,11 @@ from werkzeug.exceptions import NotFound
 
 from zou.app import config
 from zou.app.mixin import ArgsMixin
+from zou.app.utils import validation as validation_utils
+from zou.app.blueprints.previews.schemas import (
+    PreviewFileUploadSchema,
+    PreviewFilePositionSchema,
+)
 from zou.app.stores import file_store
 from zou.app.services import (
     comments_service,
@@ -1381,8 +1386,8 @@ class SetMainPreviewResource(Resource, ArgsMixin):
           400:
             description: Cannot use frame number on non-movie preview
         """
-        args = self.get_args([("frame_number", None, False, int)])
-        frame_number = args["frame_number"]
+        body = validation_utils.validate_request_body(PreviewFileUploadSchema)
+        frame_number = body.frame_number
         preview_file = files_service.get_preview_file(preview_file_id)
         task = tasks_service.get_task(preview_file["task_id"])
         user_service.check_project_access(task["project_id"])
@@ -1453,11 +1458,11 @@ class UpdatePreviewPositionResource(Resource, ArgsMixin):
                       description: Preview position
                       example: 2
         """
-        args = self.get_args([{"name": "position", "default": 0, "type": int}])
+        body = validation_utils.validate_request_body(PreviewFilePositionSchema)
         preview_file = files_service.get_preview_file(preview_file_id)
         user_service.check_task_action_access(preview_file["task_id"])
         return preview_files_service.update_preview_file_position(
-            preview_file_id, args["position"]
+            preview_file_id, body.position
         )
 
 

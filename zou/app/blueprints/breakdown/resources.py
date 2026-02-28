@@ -12,6 +12,11 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
+from zou.app.utils import validation
+from zou.app.blueprints.breakdown.schemas import (
+    AddAssetInstanceSchema,
+    AddSceneAssetInstanceSchema,
+)
 
 
 class CastingResource(Resource):
@@ -602,12 +607,12 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
                             description: Asset identifier
                             example: c46c8gc6-eg97-6887-c292-79675204e47
         """
-        args = self.get_args([("asset_instance_id", None, True)])
+        body = validation.validate_request_body(AddAssetInstanceSchema)
 
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
         shot = breakdown_service.add_asset_instance_to_shot(
-            shot_id, args["asset_instance_id"]
+            shot_id, str(body.asset_instance_id)
         )
         return shot, 201
 
@@ -769,14 +774,12 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
                       description: Instance description
                       example: "Main character instance"
         """
-        args = self.get_args(
-            [("asset_id", None, True), ("description", None, False)]
-        )
+        body = validation.validate_request_body(AddSceneAssetInstanceSchema)
 
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_scene(
-            scene_id, args["asset_id"], args["description"]
+            scene_id, str(body.asset_id), body.description
         )
         return asset_instance, 201
 
