@@ -22,7 +22,7 @@ def check_criterion_access(criterions):
         episode_id = criterions.get("episode_id", None)
         project_id = shots_service.get_episode(episode_id)["project_id"]
 
-    if "project_id" in criterions:
+    if project_id is not None:
         user_service.check_project_access(project_id)
     return True
 
@@ -795,6 +795,7 @@ class AssetTasksResource(Resource, ArgsMixin):
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset["id"])
         return tasks_service.get_tasks_for_asset(
             asset_id, relations=self.get_relations()
         )
@@ -852,6 +853,7 @@ class AssetTaskTypesResource(Resource):
         """
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
+        user_service.check_entity_access(asset["id"])
         return tasks_service.get_task_types_for_asset(asset_id)
 
 
@@ -1137,6 +1139,8 @@ class AssetCastingResource(Resource):
                             example: "SH001"
         """
         casting = request.json
+        if not isinstance(casting, list):
+            raise WrongParameterException("Request body must be a JSON array.")
         asset = assets_service.get_asset(asset_id)
         user_service.check_manager_project_access(asset["project_id"])
         return breakdown_service.update_casting(asset_id, casting)

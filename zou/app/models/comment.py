@@ -115,14 +115,18 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         secondary=CommentPreviewLink.__table__,
         backref="comments",
     )
-    mentions = db.relationship("Person", secondary=mentions_table)
+    mentions = db.relationship(
+        "Person", secondary=mentions_table, lazy="selectin"
+    )
     department_mentions = db.relationship(
-        "Department", secondary=department_mentions_table
+        "Department", secondary=department_mentions_table, lazy="selectin"
     )
     acknowledgements = db.relationship(
-        "Person", secondary=acknowledgements_table
+        "Person", secondary=acknowledgements_table, lazy="selectin"
     )
-    attachment_files = db.relationship("AttachmentFile", backref="comment")
+    attachment_files = db.relationship(
+        "AttachmentFile", backref="comment", lazy="selectin"
+    )
 
     def __repr__(self):
         return "<Comment of %s>" % self.object_id

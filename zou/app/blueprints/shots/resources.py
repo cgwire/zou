@@ -71,9 +71,6 @@ class ShotResource(Resource, ArgsMixin):
                           example: {"camera": "camA", "cut_in": 1001}
         """
         shot = shots_service.get_full_shot(shot_id)
-        if shot is None:
-            shots_service.clear_shot_cache(shot_id)
-            shot = shots_service.get_full_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
         user_service.check_entity_access(shot["id"])
         return shot
@@ -934,6 +931,7 @@ class SequenceTasksResource(Resource, ArgsMixin):
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
+        user_service.check_entity_access(sequence["id"])
         relations = self.get_relations()
         return tasks_service.get_tasks_for_sequence(
             sequence_id, relations=relations

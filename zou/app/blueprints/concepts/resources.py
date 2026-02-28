@@ -72,9 +72,6 @@ class ConceptResource(Resource, ArgsMixin):
                       example: "2023-01-01T12:30:00Z"
         """
         concept = concepts_service.get_full_concept(concept_id)
-        if concept is None:
-            concepts_service.clear_concept_cache(concept_id)
-            concept = concepts_service.get_full_concept(concept_id)
         user_service.check_project_access(concept["project_id"])
         user_service.check_entity_access(concept["id"])
         if permissions.has_client_permissions():
@@ -569,9 +566,7 @@ class ProjectConceptsResource(Resource, ArgsMixin):
             or permissions.has_client_permissions()
         ):
             raise permissions.PermissionDenied
-        return concepts_service.get_concepts_for_project(
-            project_id, only_assigned=permissions.has_vendor_permissions()
-        )
+        return concepts_service.get_concepts_for_project(project_id)
 
     @jwt_required()
     def post(self, project_id):

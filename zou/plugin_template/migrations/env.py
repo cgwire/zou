@@ -15,17 +15,19 @@ plugin_path = Path(__file__).resolve().parents[1]
 models_path = plugin_path / "models.py"
 manifest = PluginManifest.from_plugin_path(plugin_path)
 
-module_name = f"_plugin_models_{manifest['id']}"
-spec = importlib.util.spec_from_file_location(module_name, models_path)
-module = importlib.util.module_from_spec(spec)
-sys.modules[module_name] = module
-spec.loader.exec_module(module)
+plugin_prefix = f"plugin_{manifest['id']}_"
 
-# Add zou tables
-module.plugin_metadata.tables = {
-    **db.metadata.tables,
-    **module.plugin_metadata.tables,
-}
+# Load plugin models into db.metadata if not already registered
+plugin_tables = [t for t in db.metadata.tables if t.startswith(plugin_prefix)]
+if not plugin_tables and models_path.exists():
+    module_name = f"_plugin_models_{manifest['id']}"
+    if module_name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(
+            module_name, models_path
+        )
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
 
 # Database URL (passed by Alembic)
 config = context.config
@@ -39,7 +41,7 @@ logger = logging.getLogger("alembic.env")
 
 def include_object(object, name, type_, reflected, compare_to):
     if type_ == "table":
-        return not reflected or name in module.plugin_metadata.tables
+        return name.startswith(plugin_prefix)
     return True
 
 
@@ -63,7 +65,7 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=module.plugin_metadata,
+            target_metadata=db.metadata,
             version_table=f"alembic_version_{manifest['id']}",
             compare_type=True,
             include_object=include_object,

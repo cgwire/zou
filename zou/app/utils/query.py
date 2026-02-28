@@ -62,17 +62,17 @@ def apply_criterions_to_db_query(model, db_query, criterions):
             else:
                 filters[key] = cast_value(value, field_key)
 
-        if filters:
-            db_query = db_query.filter_by(**filters)
+    if filters:
+        db_query = db_query.filter_by(**filters)
 
-        for value in name_filter:
-            db_query = db_query.filter(model.name.ilike(value))
+    for value in name_filter:
+        db_query = db_query.filter(model.name.ilike(value))
 
-        for id_filter in in_filter:
-            db_query = db_query.filter(id_filter)
+    for id_filter in in_filter:
+        db_query = db_query.filter(id_filter)
 
-        for key, value in many_join_filter:
-            db_query = db_query.filter(getattr(model, key).any(id=value))
+    for key, value in many_join_filter:
+        db_query = db_query.filter(getattr(model, key).any(id=value))
 
     return db_query
 

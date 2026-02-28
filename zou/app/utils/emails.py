@@ -1,3 +1,4 @@
+import re
 import traceback
 from io import StringIO
 from html.parser import HTMLParser
@@ -86,6 +87,5 @@ def strip_html_tags(html):
     s.feed(html)
     text = s.get_data()
     # Clean up multiple consecutive newlines
-    import re
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()

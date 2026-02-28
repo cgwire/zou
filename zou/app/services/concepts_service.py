@@ -126,10 +126,12 @@ def remove_concept(concept_id, force=False):
     return deleted_concept
 
 
-def get_concepts(criterions={}):
+def get_concepts(criterions=None):
     """
     Get all concepts for given criterions.
     """
+    if criterions is None:
+        criterions = {}
     concept_type = get_concept_type()
     criterions["entity_type_id"] = concept_type["id"]
     is_only_assignation = "assigned_to" in criterions
@@ -162,10 +164,12 @@ def get_concepts(criterions={}):
     return concepts
 
 
-def get_concepts_and_tasks(criterions={}):
+def get_concepts_and_tasks(criterions=None):
     """
     Get all concepts for given criterions with related tasks for each concept.
     """
+    if criterions is None:
+        criterions = {}
     concept_type = get_concept_type()
     concept_map = {}
     task_map = {}

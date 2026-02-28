@@ -36,6 +36,26 @@ def version():
 
 
 @cli.command()
+@click.argument("shell", type=click.Choice(["bash", "zsh", "fish"]))
+def shell_completion(shell):
+    """
+    Print shell completion script.
+
+    To enable autocompletion, add the output to your shell config:
+
+    \b
+      zou shell-completion bash >> ~/.bashrc
+      zou shell-completion zsh >> ~/.zshrc
+      zou shell-completion fish > ~/.config/fish/completions/zou.fish
+    """
+    from click.shell_completion import get_completion_class
+
+    comp_cls = get_completion_class(shell)
+    comp = comp_cls(cli, {}, "zou", "_ZOU_COMPLETE")
+    click.echo(comp.source())
+
+
+@cli.command()
 def init_db():
     "Create database table (database must be created through PG client)."
 
@@ -259,11 +279,18 @@ def clear_all_auth_tokens():
 
 
 @cli.command()
-def init_data():
+@click.option(
+    "--domain",
+    "-d",
+    type=click.Choice(["2d", "3d", "vfx", "games"], case_sensitive=False),
+    default="3d",
+    help="Domain preset: 2d (2D production), 3d (3D animation), vfx (VFX), games (video games).",
+)
+def init_data(domain):
     "Generate minimal data set required to run Kitsu."
     from zou.app.utils import commands
 
-    commands.init_data()
+    commands.init_data(domain=domain.lower())
 
 
 @cli.command()
@@ -776,8 +803,11 @@ def install_plugin(path, force=False):
     from zou.app.services import plugins_service
 
     with _get_app().app_context():
-        plugins_service.install_plugin(path, force)
-    print(f"✅ Plugin {path} installed. Restart the server to apply changes.")
+        result = plugins_service.install_plugin(path, force)
+    print(
+        f"✅ [Plugins] Plugin {result['plugin_id']} installed."
+        f" Restart the server to apply changes."
+    )
 
 
 @cli.command()
@@ -793,7 +823,10 @@ def uninstall_plugin(id):
 
     with _get_app().app_context():
         plugins_service.uninstall_plugin(id)
-    print(f"Plugin {id} uninstalled. Restart the server to apply changes.")
+    print(
+        f"✅ [Plugins] Plugin {id} uninstalled."
+        f" Restart the server to apply changes."
+    )
 
 
 @cli.command()

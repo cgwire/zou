@@ -14,7 +14,7 @@ from zou.app.utils import permissions
 
 class NewsMixin(ArgsMixin):
 
-    def get_news(self, project_ids=[]):
+    def get_news(self, project_ids=None):
         (
             only_preview,
             task_type_id,
@@ -218,6 +218,8 @@ class ProjectNewsResource(Resource, NewsMixin, ArgsMixin):
           '404':
             description: Project not found
         """
+        projects_service.get_project(project_id)
+        user_service.check_project_access(project_id)
         return self.get_news([project_id])
 
 
@@ -338,6 +340,11 @@ class NewsResource(Resource, NewsMixin, ArgsMixin):
             open_project_ids = projects_service.open_project_ids()
         else:
             open_project_ids = user_service.get_open_project_ids()
+
+        project_id = self.get_text_parameter("project_id")
+        if project_id is not None and project_id in open_project_ids:
+            open_project_ids = [project_id]
+
         return self.get_news(project_ids=open_project_ids)
 
 

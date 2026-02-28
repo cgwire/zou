@@ -96,7 +96,8 @@ def leave_chat(entity_id, person_id):
     """
     chat = get_chat_raw(entity_id)
     person = persons_service.get_person_raw(person_id)
-    chat.participants.remove(person)
+    if person in chat.participants:
+        chat.participants.remove(person)
     chat.save()
     events.emit(
         "chat:left",

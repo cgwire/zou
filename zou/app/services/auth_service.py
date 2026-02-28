@@ -347,7 +347,7 @@ def check_fido(person, authentication_response):
             get_fido_attested_credential_data_from_person(fido_credentials),
             authentication_response,
         )
-    except BaseException:
+    except Exception:
         return False
     return True
 
@@ -513,9 +513,7 @@ def send_email_otp(person):
     email_html_body = templates_service.generate_html_body(
         title, html, locale=locale
     )
-    emails.send_email(
-        subject, email_html_body, person["email"], locale=locale
-    )
+    emails.send_email(subject, email_html_body, person["email"], locale=locale)
     return True
 
 
