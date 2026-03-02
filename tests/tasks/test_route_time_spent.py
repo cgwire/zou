@@ -68,7 +68,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
             "/actions/tasks/%s/time-spents/wrong-date/persons/%s"
             % (self.task.id, self.person.id),
             data,
-            404,
+            400,
         )
 
     def test_permissions(self):
