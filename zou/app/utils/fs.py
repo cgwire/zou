@@ -79,7 +79,11 @@ def get_file_path_and_file(
                 if is_invalid_file(file_path, file_size, download_failed):
                     rm_file(file_path)
                     if exception is not None:
-                        raise exception
+                        if isinstance(exception, FileNotFound):
+                            raise exception
+                        raise FileNotFound(
+                            f"{prefix}-{instance_id}"
+                        ) from exception
                     else:
                         raise DownloadFromStorageFailedException
 
