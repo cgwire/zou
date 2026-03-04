@@ -115,18 +115,63 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         secondary=CommentPreviewLink.__table__,
         backref="comments",
     )
-    mentions = db.relationship(
-        "Person", secondary=mentions_table, lazy="selectin"
-    )
+    mentions = db.relationship("Person", secondary=mentions_table)
     department_mentions = db.relationship(
-        "Department", secondary=department_mentions_table, lazy="selectin"
+        "Department", secondary=department_mentions_table
     )
     acknowledgements = db.relationship(
-        "Person", secondary=acknowledgements_table, lazy="selectin"
+        "Person", secondary=acknowledgements_table
     )
     attachment_files = db.relationship(
-        "AttachmentFile", backref="comment", lazy="selectin"
+        "AttachmentFile", backref="comment"
     )
+
+    # Relationships whose IDs can be fetched directly from join tables
+    # instead of loading full ORM objects.
+    _join_table_map = {
+        "mentions": (mentions_table, "person"),
+        "department_mentions": (department_mentions_table, "department"),
+        "acknowledgements": (acknowledgements_table, "person"),
+    }
+
+    def serialize(
+        self,
+        obj_type=None,
+        relations=False,
+        milliseconds=False,
+        ignored_attrs=[],
+    ):
+        obj_dict = super().serialize(
+            obj_type=obj_type,
+            relations=relations,
+            milliseconds=milliseconds,
+            ignored_attrs=(
+                list(ignored_attrs)
+                + list(self._join_table_map.keys())
+                + ["attachment_files"]
+                if relations
+                else ignored_attrs
+            ),
+        )
+        if relations:
+            for attr, (table, col) in self._join_table_map.items():
+                if attr not in ignored_attrs:
+                    rows = (
+                        db.session.query(table.c[col])
+                        .filter(table.c.comment == self.id)
+                        .all()
+                    )
+                    obj_dict[attr] = [str(row[0]) for row in rows]
+            if "attachment_files" not in ignored_attrs:
+                from zou.app.models.attachment_file import AttachmentFile
+
+                rows = (
+                    db.session.query(AttachmentFile.id)
+                    .filter(AttachmentFile.comment_id == self.id)
+                    .all()
+                )
+                obj_dict["attachment_files"] = [str(row[0]) for row in rows]
+        return obj_dict
 
     def __repr__(self):
         return "<Comment of %s>" % self.object_id

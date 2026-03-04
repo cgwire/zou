@@ -340,15 +340,16 @@ class CommentResource(BaseModelResource):
                 result["text"] = ""
                 result["attachment_files"] = []
                 result["checklist"] = []
-        attachment_files = []
         if (
             "attachment_files" in result
             and len(result["attachment_files"]) > 0
         ):
-            for attachment_file_id in result["attachment_files"]:
-                attachment_file = AttachmentFile.get(attachment_file_id)
-                attachment_files.append(attachment_file.present())
-            result["attachment_files"] = attachment_files
+            attachment_file_objs = AttachmentFile.query.filter(
+                AttachmentFile.id.in_(result["attachment_files"])
+            ).all()
+            result["attachment_files"] = [
+                af.present() for af in attachment_file_objs
+            ]
 
         with_previews = self.get_bool_parameter("with_previews", "false")
         if (
