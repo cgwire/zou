@@ -305,11 +305,20 @@ def prepare_and_store_movie(
             current_app.logger.error("Failed to create tile", exc_info=1)
 
         # Remove files and update status
-        os.remove(uploaded_movie_path)
+        try:
+            os.remove(uploaded_movie_path)
+        except FileNotFoundError:
+            pass
         if normalize:
-            os.remove(normalized_movie_path)
+            try:
+                os.remove(normalized_movie_path)
+            except FileNotFoundError:
+                pass
             if normalized_movie_low_path:
-                os.remove(normalized_movie_low_path)
+                try:
+                    os.remove(normalized_movie_low_path)
+                except FileNotFoundError:
+                    pass
 
         # Re-fetch preview file before updating (it may have been deleted during processing)
         try:

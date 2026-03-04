@@ -1,9 +1,12 @@
 import math
+import uuid
+
 import orjson as json
 import sqlalchemy.orm as orm
 
 from zou.app import app
 from zou.app.utils import fields, string
+from zou.app.services.exception import WrongParameterException
 from sqlalchemy import func
 from sqlalchemy.inspection import inspect
 
@@ -157,5 +160,11 @@ def apply_sort_by(model, query, sort_by):
 def cast_value(value, field_key):
     if field_key.type.python_type is bool:
         return string.strtobool(value)
+    elif field_key.type.python_type is uuid.UUID:
+        if value and not fields.is_valid_id(value):
+            raise WrongParameterException(
+                "Invalid UUID value: %s" % value
+            )
+        return func.cast(value, field_key.type)
     else:
         return func.cast(value, field_key.type)
