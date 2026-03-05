@@ -81,3 +81,4 @@ class ShotRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsInstance(result, dict)
+        self.assertIn("nb_frames", result)

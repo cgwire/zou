@@ -47,6 +47,9 @@ class AssetRoutesTestCase(ApiDBTestCase):
             ],
         )
         self.assertIsInstance(result, list)
+        casting = self.get(f"/data/assets/{self.asset_id}/casting")
+        asset_ids = [c["asset_id"] for c in casting]
+        self.assertIn(str(self.asset_character.id), asset_ids)
 
     def test_get_asset_cast_in(self):
         self._set_casting()
@@ -81,6 +84,10 @@ class AssetRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertIsNotNone(result.get("id"))
+        instances = self.get(
+            f"/data/assets/{self.asset_id}/asset-asset-instances"
+        )
+        self.assertEqual(len(instances), 1)
 
     def test_get_asset_assets(self):
         result = self.get(f"/data/assets/{self.asset_id}/assets")
@@ -96,6 +103,8 @@ class AssetRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsInstance(result, dict)
+        asset = self.get(f"/data/assets/{self.asset_id}")
+        self.assertTrue(asset.get("is_shared"))
 
     def test_share_project_assets(self):
         result = self.post(
@@ -104,6 +113,8 @@ class AssetRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsInstance(result, dict)
+        asset = self.get(f"/data/assets/{self.asset_id}")
+        self.assertTrue(asset.get("is_shared"))
 
     def test_share_project_asset_type_assets(self):
         result = self.post(
@@ -113,6 +124,8 @@ class AssetRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsInstance(result, dict)
+        asset = self.get(f"/data/assets/{self.asset_id}")
+        self.assertTrue(asset.get("is_shared"))
 
     def test_get_project_shared_used_assets(self):
         result = self.get(

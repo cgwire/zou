@@ -28,6 +28,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             {"asset_type_id": str(self.asset_type.id)},
         )
         self.assertIsNotNone(result.get("id"))
+        types = self.get(
+            f"/data/projects/{self.project_id}/settings/asset-types"
+        )
+        type_ids = [t["id"] for t in types]
+        self.assertIn(str(self.asset_type.id), type_ids)
 
     def test_delete_project_asset_type(self):
         self.post(
@@ -38,6 +43,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/asset-types/{self.asset_type.id}"
         )
+        types = self.get(
+            f"/data/projects/{self.project_id}/settings/asset-types"
+        )
+        type_ids = [t["id"] for t in types]
+        self.assertNotIn(str(self.asset_type.id), type_ids)
 
     # --- Task type settings ---
 
@@ -53,6 +63,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             {"task_type_id": str(self.task_type.id)},
         )
         self.assertIsNotNone(result.get("id"))
+        types = self.get(
+            f"/data/projects/{self.project_id}/settings/task-types"
+        )
+        type_ids = [t["id"] for t in types]
+        self.assertIn(str(self.task_type.id), type_ids)
 
     def test_delete_project_task_type(self):
         self.post(
@@ -63,6 +78,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/task-types/{self.task_type.id}"
         )
+        types = self.get(
+            f"/data/projects/{self.project_id}/settings/task-types"
+        )
+        type_ids = [t["id"] for t in types]
+        self.assertNotIn(str(self.task_type.id), type_ids)
 
     # --- Task status settings ---
 
@@ -78,6 +98,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             {"task_status_id": str(self.task_status.id)},
         )
         self.assertIsNotNone(result.get("id"))
+        statuses = self.get(
+            f"/data/projects/{self.project_id}/settings/task-status"
+        )
+        status_ids = [s["id"] for s in statuses]
+        self.assertIn(str(self.task_status.id), status_ids)
 
     def test_delete_project_task_status(self):
         self.post(
@@ -88,6 +113,11 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/task-status/{self.task_status.id}"
         )
+        statuses = self.get(
+            f"/data/projects/{self.project_id}/settings/task-status"
+        )
+        status_ids = [s["id"] for s in statuses]
+        self.assertNotIn(str(self.task_status.id), status_ids)
 
     # --- Status automations settings ---
 
@@ -110,6 +140,14 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertIsNotNone(result.get("id"))
+        automations = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/settings/status-automations"
+        )
+        automation_ids = [a["id"] for a in automations]
+        self.assertIn(
+            str(self.status_automation_to_status.id), automation_ids
+        )
 
     def test_delete_project_status_automation(self):
         self.generate_fixture_status_automation_to_status()
@@ -126,6 +164,14 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/status-automations"
             f"/{self.status_automation_to_status.id}"
+        )
+        automations = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/settings/status-automations"
+        )
+        automation_ids = [a["id"] for a in automations]
+        self.assertNotIn(
+            str(self.status_automation_to_status.id), automation_ids
         )
 
     # --- Preview background file settings ---
@@ -149,6 +195,14 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertIsNotNone(result.get("id"))
+        files = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/settings/preview-background-files"
+        )
+        file_ids = [f["id"] for f in files]
+        self.assertIn(
+            str(self.preview_background_file.id), file_ids
+        )
 
     def test_delete_project_preview_background_file(self):
         self.generate_fixture_preview_background_file()
@@ -165,6 +219,14 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/preview-background-files"
             f"/{self.preview_background_file.id}"
+        )
+        files = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/settings/preview-background-files"
+        )
+        file_ids = [f["id"] for f in files]
+        self.assertNotIn(
+            str(self.preview_background_file.id), file_ids
         )
 
 
@@ -228,6 +290,11 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             {"name": "Test Budget"},
         )
         self.assertEqual(result["name"], "Test Budget")
+        fetched = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/budgets/{result['id']}"
+        )
+        self.assertEqual(fetched["name"], "Test Budget")
 
     def test_get_project_budget(self):
         budget = self.post(
@@ -251,6 +318,11 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             {"name": "New Name"},
         )
         self.assertEqual(result["name"], "New Name")
+        fetched = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/budgets/{budget['id']}"
+        )
+        self.assertEqual(fetched["name"], "New Name")
 
     def test_delete_project_budget(self):
         budget = self.post(
@@ -288,6 +360,12 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             {"name": "VFX", "amount": 1000},
         )
         self.assertEqual(entry["name"], "VFX")
+        entries = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/budgets/{budget['id']}/entries"
+        )
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["name"], "VFX")
 
     def test_update_budget_entry(self):
         budget = self.post(
@@ -305,6 +383,11 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             {"name": "SFX"},
         )
         self.assertEqual(result["name"], "SFX")
+        fetched = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/budgets/{budget['id']}/entries"
+        )
+        self.assertEqual(fetched[0]["name"], "SFX")
 
     def test_delete_budget_entry(self):
         budget = self.post(
@@ -320,6 +403,11 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries/{entry['id']}"
         )
+        entries = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/budgets/{budget['id']}/entries"
+        )
+        self.assertEqual(len(entries), 0)
 
     def test_get_budgets_time_spents(self):
         result = self.get(

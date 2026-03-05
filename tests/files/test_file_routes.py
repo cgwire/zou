@@ -68,3 +68,5 @@ class FileRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsNotNone(result)
+        project = self.get(f"/data/projects/{self.project.id}")
+        self.assertIsNotNone(project.get("file_tree"))

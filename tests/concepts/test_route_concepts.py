@@ -133,6 +133,8 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(result["name"], "New Concept")
         self.assertEqual(result["project_id"], str(self.project.id))
+        fetched = self.get(f"/data/concepts/{result['id']}")
+        self.assertEqual(fetched["name"], "New Concept")
 
     def test_create_concept_with_description(self):
         result = self.post(
@@ -140,3 +142,5 @@ class ConceptRoutesTestCase(ApiDBTestCase):
             {"name": "Described", "description": "A cool concept"},
         )
         self.assertEqual(result["description"], "A cool concept")
+        fetched = self.get(f"/data/concepts/{result['id']}")
+        self.assertEqual(fetched["description"], "A cool concept")

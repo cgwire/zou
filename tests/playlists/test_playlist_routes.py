@@ -83,3 +83,11 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsNotNone(result)
+        playlist = self.get(
+            f"/data/projects/{self.project_id}"
+            f"/playlists/{playlist_id}"
+        )
+        shot_ids = [
+            s["entity_id"] for s in playlist.get("shots", [])
+        ]
+        self.assertIn(str(self.shot.id), shot_ids)

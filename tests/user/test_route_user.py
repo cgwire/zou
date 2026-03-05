@@ -42,3 +42,5 @@ class UserRoutesTestCase(ApiDBTestCase):
         self.delete(
             f"/actions/user/chats/{self.asset.id}/join"
         )
+        chat = self.get(f"/data/entities/{self.asset.id}/chat")
+        self.assertNotIn(str(self.user_id), chat["participants"])

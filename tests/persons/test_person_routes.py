@@ -49,18 +49,21 @@ class PersonRoutesTestCase(ApiDBTestCase):
             f"/data/persons/{self.person_id}/time-spents/year/2024"
         )
         self.assertIsInstance(result, dict)
+        self.assertTrue(len(result) > 0)
 
     def test_get_person_month_time_spents(self):
         result = self.get(
             f"/data/persons/{self.person_id}/time-spents/month/2024/06"
         )
         self.assertIsInstance(result, dict)
+        self.assertTrue(len(result) > 0)
 
     def test_get_person_week_time_spents(self):
         result = self.get(
             f"/data/persons/{self.person_id}/time-spents/week/2024/23"
         )
         self.assertIsInstance(result, dict)
+        self.assertTrue(len(result) > 0)
 
     def test_get_person_day_time_spents(self):
         result = self.get(
@@ -68,6 +71,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
             f"/time-spents/day/2024/06/04"
         )
         self.assertIsInstance(result, dict)
+        self.assertTrue(len(result) > 0)
 
     # --- Time spent tables ---
 
@@ -170,6 +174,8 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.delete(
             f"/actions/persons/{self.person_id}/clear-avatar"
         )
+        person = self.get(f"/data/persons/{self.person_id}")
+        self.assertFalse(person.get("has_avatar", False))
 
     def test_disable_two_factor_authentication(self):
         result = self.delete(
@@ -178,3 +184,5 @@ class PersonRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIsInstance(result, dict)
+        person = self.get(f"/data/persons/{self.person_id}")
+        self.assertFalse(person.get("totp_enabled", False))
