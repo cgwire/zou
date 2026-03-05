@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity_link import EntityLink
+from zou.app.models.entity import EntityLink
 from zou.app.models.time_spent import TimeSpent
 from zou.app.services import comments_service, tasks_service
 
