@@ -58,22 +58,43 @@ class AssetRoutesTestCase(ApiDBTestCase):
         self.assertTrue(len(result) > 0)
 
     def test_get_asset_shot_asset_instances(self):
+        self.generate_fixture_scene_asset_instance()
+        self.generate_fixture_shot_asset_instance(
+            self.shot, self.asset_instance
+        )
         result = self.get(
             f"/data/assets/{self.asset_id}/shot-asset-instances"
         )
-        self.assertIsInstance(result, list)
+        self.assertIn(self.shot_id, result)
+        instances = result[self.shot_id]
+        self.assertEqual(len(instances), 1)
+        self.assertEqual(instances[0]["asset_id"], self.asset_id)
 
     def test_get_asset_scene_asset_instances(self):
+        self.generate_fixture_scene_asset_instance()
+        scene_id = str(self.scene.id)
         result = self.get(
             f"/data/assets/{self.asset_id}/scene-asset-instances"
         )
-        self.assertIsInstance(result, list)
+        self.assertIn(scene_id, result)
+        instances = result[scene_id]
+        self.assertEqual(len(instances), 1)
+        self.assertEqual(instances[0]["asset_id"], self.asset_id)
 
     def test_get_asset_asset_instances(self):
+        self.generate_fixture_asset_asset_instance(
+            asset=self.asset_character, target_asset=self.asset
+        )
+        character_id = str(self.asset_character.id)
         result = self.get(
             f"/data/assets/{self.asset_id}/asset-asset-instances"
         )
-        self.assertIsInstance(result, list)
+        self.assertIn(character_id, result)
+        instances = result[character_id]
+        self.assertEqual(len(instances), 1)
+        self.assertEqual(
+            instances[0]["asset_id"], character_id
+        )
 
     def test_create_asset_asset_instance(self):
         result = self.post(
@@ -102,9 +123,10 @@ class AssetRoutesTestCase(ApiDBTestCase):
             },
             200,
         )
-        self.assertIsInstance(result, dict)
+        self.assertEqual(len(result), 1)
+        self.assertTrue(result[0]["is_shared"])
         asset = self.get(f"/data/assets/{self.asset_id}")
-        self.assertTrue(asset.get("is_shared"))
+        self.assertTrue(asset["is_shared"])
 
     def test_share_project_assets(self):
         result = self.post(
@@ -112,9 +134,10 @@ class AssetRoutesTestCase(ApiDBTestCase):
             {"is_shared": True},
             200,
         )
-        self.assertIsInstance(result, dict)
+        self.assertTrue(len(result) > 0)
+        self.assertTrue(all(a["is_shared"] for a in result))
         asset = self.get(f"/data/assets/{self.asset_id}")
-        self.assertTrue(asset.get("is_shared"))
+        self.assertTrue(asset["is_shared"])
 
     def test_share_project_asset_type_assets(self):
         result = self.post(
@@ -123,9 +146,10 @@ class AssetRoutesTestCase(ApiDBTestCase):
             {"is_shared": True},
             200,
         )
-        self.assertIsInstance(result, dict)
+        self.assertEqual(len(result), 1)
+        self.assertTrue(result[0]["is_shared"])
         asset = self.get(f"/data/assets/{self.asset_id}")
-        self.assertTrue(asset.get("is_shared"))
+        self.assertTrue(asset["is_shared"])
 
     def test_get_project_shared_used_assets(self):
         result = self.get(
