@@ -65,3 +65,8 @@ class NewsRoutesTestCase(ApiDBTestCase):
             % (self.task_dict["project_id"], news["id"])
         )
         self.assertIsNotNone(news["created_at"])
+
+    def test_get_global_news(self):
+        self.generate_fixture_comment()
+        news_list = self.get("/data/projects/news")
+        self.assertEqual(len(news_list["data"]), 1)
