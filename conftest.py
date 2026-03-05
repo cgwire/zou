@@ -42,8 +42,12 @@ def pytest_configure(config):
     from zou.app.utils import dbhelpers
 
     with app.app_context():
+        from zou.app import db
+
         dbhelpers.drop_all()
+        db.engine.dispose()
         dbhelpers.create_all()
+        db.engine.dispose()
 
 
 def pytest_unconfigure(config):
