@@ -166,5 +166,107 @@ class NotificationsServiceTestCase(ApiDBTestCase):
         )
         self.assertTrue(is_subscribed)
 
-    def test_get_subscriptions_for_user(self):
-        pass
+    def test_has_task_subscription(self):
+        self.generate_fixture_comment()
+        self.assertFalse(
+            notifications_service.has_task_subscription(
+                self.person_dict["id"], self.task_dict["id"]
+            )
+        )
+        notifications_service.subscribe_to_task(
+            self.person_dict["id"], self.task_dict["id"]
+        )
+        self.assertTrue(
+            notifications_service.has_task_subscription(
+                self.person_dict["id"], self.task_dict["id"]
+            )
+        )
+
+    def test_has_sequence_subscription(self):
+        self.generate_fixture_comment()
+        self.assertFalse(
+            notifications_service.has_sequence_subscription(
+                self.person_dict["id"],
+                self.sequence_dict["id"],
+                self.task_type_dict["id"],
+            )
+        )
+        notifications_service.subscribe_to_sequence(
+            self.person_dict["id"],
+            self.sequence_dict["id"],
+            self.task_type_dict["id"],
+        )
+        self.assertTrue(
+            notifications_service.has_sequence_subscription(
+                self.person_dict["id"],
+                self.sequence_dict["id"],
+                self.task_type_dict["id"],
+            )
+        )
+
+    def test_get_all_sequence_subscriptions(self):
+        self.generate_fixture_comment()
+        notifications_service.subscribe_to_sequence(
+            self.person_dict["id"],
+            self.sequence_dict["id"],
+            self.task_type_dict["id"],
+        )
+        result = notifications_service.get_all_sequence_subscriptions(
+            self.person_dict["id"],
+            str(self.project.id),
+            self.task_type_dict["id"],
+        )
+        self.assertEqual(len(result), 1)
+
+    def test_delete_notifications_for_comment(self):
+        self.generate_fixture_comment()
+        notifications_service.create_notification(
+            self.person.id,
+            comment_id=self.comment["id"],
+            author_id=self.comment["person_id"],
+            task_id=self.comment["object_id"],
+        )
+        result = notifications_service.delete_notifications_for_comment(
+            self.comment["id"]
+        )
+        self.assertEqual(len(result), 1)
+        notifications = Notification.get_all()
+        self.assertEqual(len(notifications), 0)
+
+    def test_get_last_notifications(self):
+        self.generate_fixture_comment()
+        notifications_service.create_notification(
+            self.person.id,
+            comment_id=self.comment["id"],
+            author_id=self.comment["person_id"],
+            task_id=self.comment["object_id"],
+            type="comment",
+        )
+        result = notifications_service.get_last_notifications()
+        self.assertEqual(len(result), 1)
+        result = notifications_service.get_last_notifications(
+            notification_type="assignation"
+        )
+        self.assertEqual(len(result), 0)
+
+    def test_get_subscriptions_for_project(self):
+        self.generate_fixture_comment()
+        notifications_service.subscribe_to_task(
+            self.person_dict["id"], self.task_dict["id"]
+        )
+        result = notifications_service.get_subscriptions_for_project(
+            str(self.project.id)
+        )
+        self.assertEqual(len(result), 1)
+
+    def test_get_mentioned_people(self):
+        self.generate_fixture_comment()
+        comment = {
+            "mentions": [str(self.person.id)],
+            "department_mentions": [],
+        }
+        result = notifications_service.get_mentioned_people(
+            str(self.project.id), comment
+        )
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], str(self.person.id))
