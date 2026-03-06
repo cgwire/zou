@@ -80,7 +80,7 @@ def has_at_least_supervisor_permissions():
 
 def check_at_least_supervisor_permissions():
     """
-    Return True if user is admin, manager or supervsior. It raises a
+    Return True if user is admin, manager or supervisor. It raises a
     PermissionDenied exception in case of failure.
     """
     if has_at_least_supervisor_permissions():

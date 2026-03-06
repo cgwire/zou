@@ -1225,7 +1225,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
         """
         args = self.get_args(
             [
-                ("name", "", False),
+                ("name", None, False),
                 ("for_client", "False", False),
                 ("data_type", "string", True),
                 ("choices", [], False, str, "append"),
@@ -1240,7 +1240,7 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
             + args["departments"],
         )
 
-        if len(args["name"]) == 0:
+        if args["name"] is not None and len(args["name"]) == 0:
             raise WrongParameterException("Name cannot be empty.")
 
         types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
@@ -1826,7 +1826,10 @@ class ProductionBudgetResource(Resource, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         user_service.check_manager_project_access(project_id)
-        return budget_service.get_budget(budget_id)
+        budget = budget_service.get_budget(budget_id)
+        if budget["project_id"] != project_id:
+            abort(404)
+        return budget
 
     @jwt_required()
     def put(self, project_id, budget_id):
@@ -2124,6 +2127,9 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
+        budget = budget_service.get_budget(budget_id)
+        if budget["project_id"] != project_id:
+            abort(404)
         return budget_service.get_budget_entry(entry_id)
 
     @jwt_required()

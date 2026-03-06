@@ -13,7 +13,6 @@ class EmailsServiceTestCase(ApiDBTestCase):
         self.generate_shot_suite()
         self.generate_assigned_task()
 
-
     def test_get_signature(self):
         signature = templates_service.get_signature()
         self.assertEqual(

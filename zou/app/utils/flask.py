@@ -69,6 +69,6 @@ def is_from_browser(user_agent):
 
 def wrong_auth_handler(identity_user=None):
     if request.path not in ["/auth/login", "/auth/logout"]:
-        raise abort(401)
+        abort(401)
     else:
         return identity_user

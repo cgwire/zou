@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import base64
 import orjson as json
-import logging
 import os
 import sys
 import tempfile
@@ -14,6 +13,7 @@ from zou.remote.config_payload import (
     get_file_from_storage,
     put_file_to_storage,
     make_key,
+    setup_logging,
 )
 
 from zou.utils.movie import (
@@ -23,15 +23,10 @@ from zou.utils.movie import (
     concat_filter,
 )
 
-logging.basicConfig(
-    format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
-    datefmt="%Y-%m-%d:%H:%M:%S",
-    level=logging.INFO,
-)
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 
-def fetch_inputs(storage, outdir, preview_file_ids):
+def _fetch_inputs(storage, outdir, preview_file_ids):
     """Fetch inputs from object storage, return a list of local paths"""
     input_paths = []
     for input_id in preview_file_ids:
@@ -61,6 +56,10 @@ def _run_build_playlist(input_paths, output_movie_path, enc_params, full):
             if result["success"] and os.path.exists(output_movie_path):
                 is_build_successful = True
         except Exception:
+            logger.warning(
+                "concat_demuxer failed, falling back to concat_filter",
+                exc_info=True,
+            )
             is_build_successful = False
 
     if not is_build_successful:
@@ -92,7 +91,7 @@ def main():
 
         input_zipped = base64.b64decode(config["input"])
         preview_file_ids = json.loads(zlib.decompress(input_zipped))
-        input_paths = fetch_inputs(storage, tmpdir, preview_file_ids)
+        input_paths = _fetch_inputs(storage, tmpdir, preview_file_ids)
 
         output_movie_path = os.path.join(tmpdir, config["output_filename"])
         result = _run_build_playlist(
@@ -108,7 +107,7 @@ def main():
             )
         else:
             logger.error(
-                "Playlist creation failed: %s" % result.get("message"),
+                f"Playlist creation failed: {result.get('message')}",
             )
             sys.exit(1)
 

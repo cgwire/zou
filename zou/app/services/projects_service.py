@@ -1,5 +1,7 @@
 import slugify
 
+from sqlalchemy.exc import IntegrityError
+
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -569,7 +571,7 @@ def add_metadata_descriptor(
     data_type,
     choices,
     for_client,
-    departments=[],
+    departments=None,
 ):
     if not departments:
         departments = []
@@ -594,7 +596,7 @@ def add_metadata_descriptor(
             departments=departments_objects,
             field_name=slugify.slugify(name, separator="_"),
         )
-    except Exception:
+    except IntegrityError:
         raise WrongParameterException("Metadata descriptor already exists.")
     events.emit(
         "metadata-descriptor:new",
@@ -795,7 +797,7 @@ def create_project_task_type_link(project_id, task_type_id, priority):
 
 
 def create_project_task_status_link(
-    project_id, task_status_id, priority, roles_for_board=[]
+    project_id, task_status_id, priority, roles_for_board=None
 ):
     if not task_status_id or not fields.is_valid_id(task_status_id):
         raise WrongParameterException(

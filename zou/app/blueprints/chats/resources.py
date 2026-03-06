@@ -292,7 +292,11 @@ class ChatMessageResource(Resource):
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
         user_service.check_entity_access(entity["id"])
-        return chats_service.get_chat_message(chat_message_id)
+        chat = chats_service.get_chat(entity_id)
+        chat_message = chats_service.get_chat_message(chat_message_id)
+        if chat_message["chat_id"] != chat["id"]:
+            raise permissions.PermissionDenied()
+        return chat_message
 
     @jwt_required()
     def delete(self, entity_id, chat_message_id):
@@ -326,13 +330,16 @@ class ChatMessageResource(Resource):
         user_service.check_project_access(entity["project_id"])
         user_service.check_entity_access(entity["id"])
 
+        chat = chats_service.get_chat(entity_id)
         chat_message = chats_service.get_chat_message(chat_message_id)
+        if chat_message["chat_id"] != chat["id"]:
+            raise permissions.PermissionDenied()
         current_user = persons_service.get_current_user()
         if (
             chat_message["person_id"] != current_user["id"]
-            or not permissions.has_admin_permissions
+            and not permissions.has_admin_permissions()
         ):
-            raise permissions.PermissionDenied
+            raise permissions.PermissionDenied()
         chats_service.delete_chat_message(chat_message_id)
 
         return "", 204

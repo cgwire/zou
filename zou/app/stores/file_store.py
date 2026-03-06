@@ -45,8 +45,13 @@ def configure_storages(app):
 def clear_bucket(bucket):
     for filename in bucket.list_files():
         if isinstance(bucket.backend, LocalBackend):
-            folder_one, _, _, file_name = filename.split("/")
-            bucket.delete(f"{folder_one}-{file_name}")
+            parts = filename.split("/")
+            if len(parts) >= 4:
+                folder_one = parts[0]
+                file_name = parts[-1]
+                bucket.delete(f"{folder_one}-{file_name}")
+            else:
+                bucket.delete(filename)
         else:
             bucket.delete(filename)
 
@@ -67,27 +72,12 @@ def make_read_generator(bucket, key):
         try:
             for chunk in read_stream:
                 yield chunk
-        except GeneratorExit:
-            try:
-                if hasattr(read_stream, "close"):
+        finally:
+            if hasattr(read_stream, "close"):
+                try:
                     read_stream.close()
-            except Exception:
-                pass
-            raise
-        except StopIteration:
-            try:
-                if hasattr(read_stream, "close"):
-                    read_stream.close()
-            except Exception:
-                pass
-            raise
-        except Exception:
-            try:
-                if hasattr(read_stream, "close"):
-                    read_stream.close()
-            except Exception:
-                pass
-            raise
+                except Exception:
+                    pass
 
     return read_generator(read_stream)
 

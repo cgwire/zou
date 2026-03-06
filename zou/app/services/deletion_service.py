@@ -177,9 +177,11 @@ def remove_output_files_for_project(project_id):
     Called after preview files and tasks are already removed, so no need to
     clear PreviewFile.source_file_id.
     """
-    output_files = OutputFile.query.join(Entity, OutputFile.entity_id == Entity.id).filter(
-        Entity.project_id == project_id
-    ).all()
+    output_files = (
+        OutputFile.query.join(Entity, OutputFile.entity_id == Entity.id)
+        .filter(Entity.project_id == project_id)
+        .all()
+    )
     for output_file in output_files:
         output_file.delete()
     return output_files
@@ -297,7 +299,7 @@ def clear_preview_background_files(preview_background_id, force=False):
         ]:
             try:
                 file_store.remove_picture(image_type, preview_background_id)
-            except BaseException:
+            except Exception:
                 pass
 
 
@@ -342,7 +344,7 @@ def clear_generic_files(preview_file_id):
     """
     try:
         file_store.remove_file("previews", preview_file_id)
-    except BaseException:
+    except Exception:
         pass
 
 

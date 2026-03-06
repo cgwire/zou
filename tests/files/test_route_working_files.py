@@ -105,7 +105,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(
             working_file["path"],
             "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
-            "3ds_max/cosmos_landromat_props_tree_shaders_main_v003",
+            "blender/cosmos_landromat_props_tree_shaders_main_v003",
         )
 
         working_file = self.post(
@@ -121,7 +121,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(
             working_file["path"],
             "/simple/productions/cosmos_landromat/assets/props/tree/shaders/"
-            "3ds_max/cosmos_landromat_props_tree_shaders_main_v066",
+            "blender/cosmos_landromat_props_tree_shaders_main_v066",
         )
 
     def test_create_same_working_file(self):

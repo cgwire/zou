@@ -56,7 +56,9 @@ def unregister_all():
     handlers = {}
 
 
-def emit(event, data={}, persist=True, project_id=None):
+def emit(event, data=None, persist=True, project_id=None):
+    if data is None:
+        data = {}
     """
     Emit an event which leads to the execution of all event handlers registered
     for that event name.
@@ -100,7 +102,7 @@ def save_event(event, data, project_id=None):
 
         person = get_current_user_raw()
         person_id = person.id
-    except BaseException:
+    except Exception:
         person_id = None
 
     if project_id == "None":

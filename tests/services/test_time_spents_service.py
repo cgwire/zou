@@ -181,3 +181,79 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
             self.person_id, 2021, 6
         )
         self.assertEqual(len(day_offs), 2)
+
+    def test_get_year_table(self):
+        year_table = time_spents_service.get_year_table()
+        self.assertIn("2018", year_table)
+        self.assertEqual(year_table["2018"][self.person_id], 2000)
+
+    def test_get_time_spents_for_entity(self):
+        time_spents = time_spents_service.get_time_spents_for_entity(
+            self.asset.id
+        )
+        self.assertGreater(len(time_spents), 0)
+
+    def test_get_time_spents_range(self):
+        time_spents = time_spents_service.get_time_spents_range(
+            self.person_id, "2018-06-01", "2018-06-30"
+        )
+        self.assertEqual(len(time_spents), 3)
+
+    def test_get_time_spent(self):
+        result = time_spents_service.get_time_spent(
+            self.person_id, self.task_id, "2018-06-04"
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result["duration"], 500)
+
+    def test_get_time_spent_not_found(self):
+        result = time_spents_service.get_time_spent(
+            self.person_id, self.task_id, "2020-01-01"
+        )
+        self.assertIsNone(result)
+
+    def test_get_day_off(self):
+        self.generate_fixture_day_off("2021-05-10")
+        result = time_spents_service.get_day_off(
+            self.person_id, "2021-05-10"
+        )
+        self.assertIsNotNone(result)
+        self.assertIn("id", result)
+
+    def test_get_day_off_empty(self):
+        result = time_spents_service.get_day_off(
+            self.person_id, "2020-01-01"
+        )
+        self.assertEqual(result, {})
+
+    def test_get_year_time_spents(self):
+        tasks = time_spents_service.get_year_time_spents(
+            self.person_id, 2018
+        )
+        self.assertGreater(len(tasks), 0)
+        entity_names = [t["entity_name"] for t in tasks]
+        self.assertIn("Tree", entity_names)
+
+    def test_get_day_offs_between(self):
+        self.generate_fixture_day_off("2021-03-01")
+        self.generate_fixture_day_off("2021-03-15")
+        result = time_spents_service.get_day_offs_between(
+            "2021-03-01", "2021-03-31", person_id=self.person_id
+        )
+        self.assertEqual(len(result), 2)
+
+    def test_get_project_month_time_spents(self):
+        result = time_spents_service.get_project_month_time_spents(
+            str(self.project.id)
+        )
+        self.assertIsInstance(result, dict)
+
+    def test_get_project_task_type_time_spents(self):
+        result = time_spents_service.get_project_task_type_time_spents(
+            str(self.project.id),
+            str(self.task_type.id),
+            "2018-01-01",
+            "2018-12-31",
+        )
+        self.assertIsInstance(result, dict)
+        self.assertIn(self.person_id, result)

@@ -15,13 +15,13 @@ def envtobool(key, default=False):
         )
 
 
-def env_with_semicolon_to_list(key, default=[]):
+def env_with_semicolon_to_list(key, default=None):
     """
     Convert an environment variable to a list.
     Items are separated by semicolon.
     """
     env_value = os.getenv(key, None)
     if env_value is None:
-        return default
+        return default if default is not None else []
     else:
         return env_value.split(";")

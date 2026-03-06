@@ -41,10 +41,12 @@ def get_edit_type():
     return entities_service.get_temporal_entity_type_by_name("Edit")
 
 
-def get_edits(criterions={}):
+def get_edits(criterions=None):
     """
     Get all edits for given criterions.
     """
+    if criterions is None:
+        criterions = {}
     edit_type = get_edit_type()
     criterions["entity_type_id"] = edit_type["id"]
     is_only_assignation = "assigned_to" in criterions
@@ -73,10 +75,12 @@ def get_edits(criterions={}):
     return edits
 
 
-def get_edits_and_tasks(criterions={}):
+def get_edits_and_tasks(criterions=None):
     """
     Get all edits for given criterions with related tasks for each edit.
     """
+    if criterions is None:
+        criterions = {}
     edit_type = get_edit_type()
     edit_map = {}
     task_map = {}

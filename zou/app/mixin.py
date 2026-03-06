@@ -60,10 +60,12 @@ class ArgsMixin(object):
 
         return parser.parse_args()
 
-    def clear_empty_fields(self, data, ignored_fields=[]):
+    def clear_empty_fields(self, data, ignored_fields=None):
         """
         Remove fields set to None from data dict.
         """
+        if ignored_fields is None:
+            ignored_fields = []
         for key in list(data.keys()):
             if key not in ignored_fields and data[key] is None:
                 del data[key]
@@ -97,13 +99,13 @@ class ArgsMixin(object):
 
     def get_relations(self):
         """
-        Returns force parameter.
+        Returns relations parameter.
         """
         return self.get_bool_parameter("relations")
 
     def get_project_id(self):
         """
-        Returns episode ID parameter.
+        Returns project ID parameter.
         """
         return self.get_text_parameter("project_id")
 
@@ -143,7 +145,7 @@ class ArgsMixin(object):
         """
         Returns date parameter value matching `field_name`.
         """
-        self.parse_date_parameter(self.get_text_parameter(field_name))
+        return self.parse_date_parameter(self.get_text_parameter(field_name))
 
     def parse_date_parameter(self, param):
         date = None

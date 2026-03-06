@@ -45,9 +45,6 @@ class StaticResource(Resource):
         if not file_path.exists() or not file_path.is_file():
             abort(404)
 
-        if filename == "":
-            filename = "index.html"
-
         return send_from_directory(
             str(static_folder), filename, conditional=True, max_age=0
         )
@@ -167,7 +164,8 @@ def load_plugin(app, plugin_path, init_plugin=True):
 
 def load_plugins(app):
     """
-    Load plugins from the plugin folder.
+    Load plugins from the plugin folder. The plugin folder is kept in
+    sys.path so that plugin modules remain importable at runtime.
     """
     plugin_folder = Path(app.config["PLUGIN_FOLDER"])
     if plugin_folder.exists():
@@ -178,17 +176,17 @@ def load_plugins(app):
         for plugin_id in os.listdir(plugin_folder):
             try:
                 load_plugin(app, plugin_folder / plugin_id)
-                app.logger.info(f"Plugin {plugin_id} loaded.")
+                app.logger.info(f"[Plugins] Plugin {plugin_id} loaded.")
             except ImportError as e:
-                app.logger.error(f"Plugin {plugin_id} failed to import: {e}")
+                app.logger.error(
+                    f"[Plugins] Plugin {plugin_id} failed to import: {e}"
+                )
             except Exception as e:
                 app.logger.error(
-                    f"Plugin {plugin_id} failed to initialize: {e}"
+                    f"[Plugins] Plugin {plugin_id}"
+                    f" failed to initialize: {e}"
                 )
                 app.logger.debug(traceback.format_exc())
-
-        if abs_plugin_path in sys.path:
-            sys.path.remove(abs_plugin_path)
 
 
 def migrate_plugin_db(plugin_path, message):
@@ -204,14 +202,26 @@ def migrate_plugin_db(plugin_path, message):
     manifest = PluginManifest.from_plugin_path(plugin_path)
 
     module_name = f"_plugin_models_{manifest['id']}"
-    spec = importlib.util.spec_from_file_location(module_name, models_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not load 'models.py' from '{plugin_path}'")
+    plugin_prefix = f"plugin_{manifest['id']}_"
 
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    try:
+    # Only load models if plugin tables aren't already in db.metadata
+    plugin_tables = [
+        t for t in db.metadata.tables if t.startswith(plugin_prefix)
+    ]
+    if not plugin_tables:
+        spec = importlib.util.spec_from_file_location(
+            module_name, models_path
+        )
+        if spec is None or spec.loader is None:
+            raise ImportError(
+                f"Could not load 'models.py' from '{plugin_path}'"
+            )
+
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
         spec.loader.exec_module(module)
+
+    try:
         migrations_dir = plugin_path / "migrations"
         versions_dir = migrations_dir / "versions"
         versions_dir.mkdir(parents=True, exist_ok=True)
@@ -227,7 +237,8 @@ def migrate_plugin_db(plugin_path, message):
 
         command.revision(alembic_cfg, autogenerate=True, message=message)
     finally:
-        del sys.modules[module_name]
+        if module_name in sys.modules:
+            del sys.modules[module_name]
 
 
 def run_plugin_migrations(plugin_path, plugin):
@@ -252,7 +263,7 @@ def run_plugin_migrations(plugin_path, plugin):
     script = command.ScriptDirectory.from_config(alembic_cfg)
     head_revision = script.get_current_head()
 
-    plugin.revision = head_revision
+    plugin.update({"revision": head_revision})
 
     return head_revision
 
@@ -278,8 +289,8 @@ def downgrade_plugin_migrations(plugin_path):
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
-        current_app.logger.warning(
-            f"Downgrade failed for plugin {manifest.id}: {e}"
+        print(
+            f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}"
         )
 
 
@@ -338,6 +349,10 @@ def create_plugin_skeleton(
             )
 
     shutil.copytree(plugin_template_path, plugin_path)
+
+    # Rename .template files to their real extensions
+    for template_file in plugin_path.rglob("*.template"):
+        template_file.rename(template_file.with_suffix(""))
 
     manifest = PluginManifest.from_file(plugin_path / "manifest.toml")
 
@@ -463,14 +478,20 @@ def add_static_routes(manifest, routes):
 
 
 def create_plugin_metadata(plugin_id):
+    """
+    Create a metadata that contains all existing tables EXCEPT the
+    plugin's own tables. This way the plugin model classes can define
+    their tables fresh, and Alembic won't try to create/drop Zou's
+    core tables.
+    """
     plugin_metadata = MetaData()
     with app.app_context():
         plugin_metadata.reflect(bind=db.engine)
 
-        new_tables = {
+        non_plugin_tables = {
             table: plugin_metadata.tables[table]
             for table in plugin_metadata.tables.keys()
             if not table.startswith(f"plugin_{plugin_id}_")
         }
-        plugin_metadata.tables = FacadeDict(new_tables)
+        plugin_metadata.tables = FacadeDict(non_plugin_tables)
     return plugin_metadata

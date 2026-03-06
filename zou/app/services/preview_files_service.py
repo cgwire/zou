@@ -1,3 +1,4 @@
+import copy
 import os
 
 import re
@@ -131,12 +132,11 @@ def get_entity_from_preview_file(preview_file_id):
 def update_preview_file(preview_file_id, data, silent=False):
     try:
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-    except BaseException:
-        # Dirty hack because sometimes the preview file retrieval crashes.
+    except Exception:
         try:
             time.sleep(1)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
-        except BaseException:
+        except Exception:
             time.sleep(5)
             preview_file = files_service.get_preview_file_raw(preview_file_id)
     return update_preview_file_raw(preview_file, data, silent=silent)
@@ -305,11 +305,20 @@ def prepare_and_store_movie(
             current_app.logger.error("Failed to create tile", exc_info=1)
 
         # Remove files and update status
-        os.remove(uploaded_movie_path)
+        try:
+            os.remove(uploaded_movie_path)
+        except FileNotFoundError:
+            pass
         if normalize:
-            os.remove(normalized_movie_path)
+            try:
+                os.remove(normalized_movie_path)
+            except FileNotFoundError:
+                pass
             if normalized_movie_low_path:
-                os.remove(normalized_movie_low_path)
+                try:
+                    os.remove(normalized_movie_low_path)
+                except FileNotFoundError:
+                    pass
 
         # Re-fetch preview file before updating (it may have been deleted during processing)
         try:
@@ -414,25 +423,30 @@ def update_preview_file_annotations(
     person_id,
     project_id,
     preview_file_id,
-    additions=[],
-    updates=[],
-    deletions=[],
+    additions=None,
+    updates=None,
+    deletions=None,
 ):
     """
     Update annotations for given preview file.
     Uses a Redis lock to prevent race conditions when multiple processes update
     annotations on the same preview file concurrently.
     """
+    if additions is None:
+        additions = []
+    if updates is None:
+        updates = []
+    if deletions is None:
+        deletions = []
     with with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
         preview_file = files_service.get_preview_file_raw(preview_file_id)
-        previous_annotations = preview_file.annotations or []
+        previous_annotations = copy.deepcopy(preview_file.annotations or [])
         annotations = _clean_annotations(previous_annotations)
         annotations = _apply_annotation_additions(
             previous_annotations, additions
         )
         annotations = _apply_annotation_updates(annotations, updates)
         annotations = _apply_annotation_deletions(annotations, deletions)
-        preview_file.update({"annotations": []})
         preview_file.update({"annotations": annotations})
         files_service.clear_preview_file_cache(preview_file_id)
         preview_file = files_service.get_preview_file(preview_file_id)
@@ -903,7 +917,7 @@ def generate_preview_extra(
             ):
                 try:
                     os.remove(preview_file_path)
-                except:
+                except OSError:
                     pass
 
     print("Extra information generated.")

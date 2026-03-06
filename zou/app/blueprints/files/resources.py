@@ -231,8 +231,10 @@ class WorkingFileFileResource(Resource):
         file_path = self.save_uploaded_file_in_temporary_folder(
             working_file_id
         )
-        file_store.add_file("working", working_file_id, file_path)
-        os.remove(file_path)
+        try:
+            file_store.add_file("working", working_file_id, file_path)
+        finally:
+            os.remove(file_path)
         return working_file, 201
 
 
@@ -474,12 +476,13 @@ class EntityOutputFilePathResource(Resource, ArgsMixin):
             user_service.check_entity_access(entity_id)
             output_type = files_service.get_output_type(args["output_type_id"])
             task_type = tasks_service.get_task_type(args["task_type_id"])
-            entity = entities_service.get_entity(entity_id)
-
             is_revision_set_by_user = args["revision"] != 0
             if not is_revision_set_by_user:
                 revision = files_service.get_next_output_file_revision(
-                    entity_id, args["name"]
+                    entity_id,
+                    args["output_type_id"],
+                    args["task_type_id"],
+                    args["name"],
                 )
             else:
                 revision = args["revision"]
@@ -952,9 +955,6 @@ class NewWorkingFileResource(Resource, ArgsMixin):
 
     def get_arguments(self):
         person = persons_service.get_current_user()
-        maxsoft = files_service.get_or_create_software(
-            "3ds Max", "max", ".max"
-        )
 
         args = self.get_args(
             [
@@ -967,11 +967,17 @@ class NewWorkingFileResource(Resource, ArgsMixin):
                 ("mode", "working"),
                 ("comment", ""),
                 ("person_id", person["id"]),
-                ("software_id", maxsoft["id"]),
+                ("software_id", None),
                 {"name": "revision", "default": 0, "type": int},
                 ("sep", "/"),
             ]
         )
+
+        if args["software_id"] is None:
+            default_soft = files_service.get_or_create_software(
+                "Blender", "blender", ".blend"
+            )
+            args["software_id"] = default_soft["id"]
 
         return (
             args["name"],
@@ -2922,7 +2928,7 @@ class SetTreeResource(Resource, ArgsMixin):
         )
 
         try:
-            user_service.check_project_access(project_id)
+            user_service.check_manager_project_access(project_id)
             tree = file_tree_service.get_tree_from_file(args["tree_name"])
             project = projects_service.update_project(
                 project_id, {"file_tree": tree}
@@ -3106,6 +3112,7 @@ class GuessFromPathResource(Resource, ArgsMixin):
             description: Invalid project ID or file path
         """
         data = self.get_arguments()
+        user_service.check_project_access(data["project_id"])
 
         return file_tree_service.guess_from_path(
             project_id=data["project_id"],

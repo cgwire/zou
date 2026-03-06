@@ -3,7 +3,6 @@ from zou.app.services import (
     base_service,
     projects_service,
     notifications_service,
-    assets_service,
     shots_service,
     edits_service,
     tasks_service,
@@ -240,10 +239,12 @@ def get_entity_links_for_project(
     return results
 
 
-def get_entities_and_tasks(criterions={}):
+def get_entities_and_tasks(criterions=None):
     """
     Get all entities for given criterions with related tasks for each entity.
     """
+    if criterions is None:
+        criterions = {}
     if "episode_id" in criterions and criterions["episode_id"] == "all":
         return []
 
@@ -384,7 +385,7 @@ def remove_entity_link(link_id):
         link = EntityLink.get_by(id=link_id)
         link.delete()
         return link.serialize()
-    except BaseException:
+    except Exception:
         raise EntityLinkNotFoundException
 
 

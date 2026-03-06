@@ -596,7 +596,7 @@ def get_folder_from_sequence(entity, field="name"):
         sequence_name = ""
 
     if "Seq" in sequence_name:
-        sequence_number = sequence.name[3:]
+        sequence_number = sequence_name[3:]
         sequence_name = "S%s" % sequence_number.zfill(3)
     return sequence_name
 
@@ -615,7 +615,7 @@ def get_folder_from_episode(entity, field="name"):
 
     try:
         episode_name = episode[field]
-    except BaseException:
+    except Exception:
         episode_name = "e001"
 
     return episode_name

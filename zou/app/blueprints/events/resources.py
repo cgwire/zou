@@ -117,7 +117,7 @@ class EventsResource(Resource, ArgsMixin):
         before = self.parse_date_parameter(args["before"])
         after = self.parse_date_parameter(args["after"])
         cursor_event_id = args["cursor_event_id"]
-        limit = args["limit"]
+        limit = min(args["limit"], 1000)
         only_files = args["only_files"] == "true"
         project_id = args.get("project_id", None)
         name = args["name"]
@@ -203,7 +203,7 @@ class LoginLogsResource(Resource, ArgsMixin):
                         description: Login timestamp
                         example: "2023-01-01T12:00:00Z"
         """
-        args = self.get_args(["before", ("limit", 100)])
+        args = self.get_args(["before", ("limit", 100, False, int)])
 
         permissions.check_manager_permissions()
         before = None

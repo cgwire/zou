@@ -523,3 +523,139 @@ class FileServiceTestCase(ApiDBTestCase):
             project_2_id
         )
         self.assertEqual(len(preview_files), 0)
+
+    def test_get_working_file_raw(self):
+        raw = files_service.get_working_file_raw(self.working_file.id)
+        self.assertEqual(raw.id, self.working_file.id)
+        self.assertRaises(
+            WorkingFileNotFoundException,
+            files_service.get_working_file_raw,
+            "unknown",
+        )
+
+    def test_get_output_file_raw(self):
+        raw = files_service.get_output_file_raw(self.output_file.id)
+        self.assertEqual(raw.id, self.output_file.id)
+        self.assertRaises(
+            OutputFileNotFoundException,
+            files_service.get_output_file_raw,
+            "unknown",
+        )
+
+    def test_get_software_raw(self):
+        raw = files_service.get_software_raw(self.software.id)
+        self.assertEqual(raw.id, self.software.id)
+        self.assertRaises(
+            SoftwareNotFoundException,
+            files_service.get_software_raw,
+            "unknown",
+        )
+
+    def test_get_output_type_raw(self):
+        from zou.app.services.exception import OutputTypeNotFoundException
+
+        raw = files_service.get_output_type_raw(self.output_type.id)
+        self.assertEqual(raw.id, self.output_type.id)
+        self.assertRaises(
+            OutputTypeNotFoundException,
+            files_service.get_output_type_raw,
+            "unknown",
+        )
+
+    def test_get_or_create_output_type(self):
+        ot = files_service.get_or_create_output_type("NewType", "nt")
+        self.assertEqual(ot["name"], "NewType")
+        ot_again = files_service.get_or_create_output_type("NewType", "nt")
+        self.assertEqual(ot["id"], ot_again["id"])
+
+    def test_get_preview_file_raw(self):
+        self.generate_fixture_preview_file()
+        raw = files_service.get_preview_file_raw(self.preview_file.id)
+        self.assertEqual(raw.id, self.preview_file.id)
+        self.assertRaises(
+            PreviewFileNotFoundException,
+            files_service.get_preview_file_raw,
+            "unknown",
+        )
+
+    def test_get_preview_files_for_task(self):
+        self.generate_fixture_preview_file()
+        previews = files_service.get_preview_files_for_task(self.task.id)
+        self.assertEqual(len(previews), 1)
+
+    def test_create_preview_file(self):
+        preview = files_service.create_preview_file(
+            "main", 1, self.task.id, self.person.id
+        )
+        self.assertEqual(preview["name"], "main")
+        self.assertEqual(preview["revision"], 1)
+        self.assertEqual(preview["status"], "processing")
+
+    def test_update_working_file(self):
+        result = files_service.update_working_file(
+            self.working_file.id, {"comment": "updated"}
+        )
+        self.assertEqual(result["comment"], "updated")
+
+    def test_update_output_file(self):
+        result = files_service.update_output_file(
+            self.output_file.id, {"comment": "updated"}
+        )
+        self.assertEqual(result["comment"], "updated")
+
+    def test_get_output_types_for_entity(self):
+        output_types = files_service.get_output_types_for_entity(
+            self.asset.id
+        )
+        self.assertEqual(len(output_types), 1)
+
+    def test_get_output_files_for_entity(self):
+        output_files = files_service.get_output_files_for_entity(
+            self.asset.id
+        )
+        self.assertEqual(len(output_files), 1)
+
+    def test_get_working_files_for_entity(self):
+        working_files = files_service.get_working_files_for_entity(
+            self.asset.id
+        )
+        self.assertEqual(len(working_files), 1)
+
+    def test_get_next_working_file_revision(self):
+        revision = files_service.get_next_working_file_revision(
+            self.task.id, "main"
+        )
+        self.assertEqual(revision, 2)
+
+    def test_get_preview_background_files(self):
+        result = files_service.get_preview_background_files()
+        self.assertEqual(len(result), 0)
+        self.generate_fixture_preview_background_file()
+        files_service.clear_preview_background_file_cache(
+            self.preview_background_file.id
+        )
+        result = files_service.get_preview_background_files()
+        self.assertEqual(len(result), 1)
+
+    def test_get_preview_background_file_raw(self):
+        from zou.app.services.exception import (
+            PreviewBackgroundFileNotFoundException,
+        )
+
+        self.generate_fixture_preview_background_file()
+        raw = files_service.get_preview_background_file_raw(
+            self.preview_background_file.id
+        )
+        self.assertEqual(raw.id, self.preview_background_file.id)
+        self.assertRaises(
+            PreviewBackgroundFileNotFoundException,
+            files_service.get_preview_background_file_raw,
+            "unknown",
+        )
+
+    def test_update_preview_background_file(self):
+        self.generate_fixture_preview_background_file()
+        result = files_service.update_preview_background_file(
+            self.preview_background_file.id, {"name": "updated"}
+        )
+        self.assertEqual(result["name"], "updated")

@@ -75,9 +75,6 @@ class EditResource(Resource, ArgsMixin):
                       example: "2023-01-01T12:30:00Z"
         """
         edit = edits_service.get_full_edit(edit_id)
-        if edit is None:
-            edits_service.clear_edit_cache(edit_id)
-            edit = edits_service.get_full_edit(edit_id)
         user_service.check_project_access(edit["project_id"])
         user_service.check_entity_access(edit["id"])
         return edit

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import logging
 import os
 import sys
 import tempfile
@@ -11,16 +10,12 @@ from zou.remote.config_payload import (
     get_file_from_storage,
     put_file_to_storage,
     make_key,
+    setup_logging,
 )
 
 from zou.utils.movie import normalize_movie
 
-logging.basicConfig(
-    format="%(asctime)s,%(msecs)d %(levelname)-8s [%(filename)s:%(lineno)d] %(message)s",
-    datefmt="%Y-%m-%d:%H:%M:%S",
-    level=logging.INFO,
-)
-logger = logging.getLogger(__name__)
+logger = setup_logging()
 
 
 def main():
@@ -48,11 +43,10 @@ def main():
             put_file_to_storage(
                 storage, low_def_path, make_key("lowdef", preview_file_id)
             )
-            logger.info(f"Normalization succeded {high_def_path}")
+            logger.info(f"Normalization succeeded {high_def_path}")
         else:
             logger.error(f"Normalization failed: {err}")
             sys.exit(1)
-    return None
 
 
 def _fetch_movie_file(storage, outdir, preview_file_id):

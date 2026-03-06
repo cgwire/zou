@@ -116,10 +116,9 @@ class SearchResource(Resource, ArgsMixin):
             return results
 
         if permissions.has_admin_permissions():
-            projects = projects_service.open_projects()
+            project_ids = projects_service.open_project_ids()
         else:
-            projects = user_service.get_open_projects()
-        project_ids = [project["id"] for project in projects]
+            project_ids = user_service.get_open_project_ids()
 
         if project_id is not None and len(project_id) > 0:
             if project_id in project_ids:

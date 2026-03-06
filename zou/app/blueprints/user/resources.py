@@ -1810,7 +1810,7 @@ class FilterGroupsResource(Resource, ArgsMixin):
 
 class FilterGroupResource(Resource, ArgsMixin):
 
-    def get(self, search_filter_group_id):
+    def get(self, filter_group_id):
         """
         Get filter group
         ---
@@ -1876,7 +1876,7 @@ class FilterGroupResource(Resource, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        return user_service.get_filter_group(search_filter_group_id)
+        return user_service.get_filter_group(filter_group_id)
 
     def put(self, filter_group_id):
         """
@@ -2116,7 +2116,7 @@ class DesktopLoginLogsResource(Resource, ArgsMixin):
               description: Bad request
         """
         arguments = self.get_args(
-            ["date", date_helpers.get_utc_now_datetime()]
+            [("date", date_helpers.get_utc_now_datetime())]
         )
         current_user = persons_service.get_current_user()
         desktop_login_log = persons_service.create_desktop_login_logs(
@@ -2254,6 +2254,7 @@ class NotificationsResource(Resource, ArgsMixin):
         if request.args.get("watching", None) is not None:
             watching = self.get_bool_parameter("watching")
         notifications = user_service.get_last_notifications(
+            after=after,
             before=before,
             task_type_id=task_type_id,
             task_status_id=task_status_id,
@@ -2757,7 +2758,7 @@ class SequenceSubscriptionsResource(Resource):
         )
 
 
-class TimeSpentsResource(Resource):
+class TimeSpentsResource(Resource, ArgsMixin):
     """
     Get all time spents for the current user.
     Optionnaly can accept date range parameters.

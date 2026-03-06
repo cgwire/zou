@@ -4,15 +4,15 @@ import email_validator
 from zou.app import config
 
 
-class PasswordTooShortException(BaseException):
+class PasswordTooShortException(Exception):
     pass
 
 
-class PasswordsNoMatchException(BaseException):
+class PasswordsNoMatchException(Exception):
     pass
 
 
-class EmailNotValidException(BaseException):
+class EmailNotValidException(Exception):
     pass
 
 

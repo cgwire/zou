@@ -28,7 +28,7 @@ AssetSchema = {
         "source_id": {
             "type": "string",
             "format": "UUID",
-            "description": "Field uset to set the episode_id",
+            "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
@@ -272,7 +272,7 @@ EpisodeSchema = {
         "source_id": {
             "type": "string",
             "format": "UUID",
-            "description": "Field uset to set the episode_id",
+            "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
@@ -360,7 +360,7 @@ MetadataSchema = {
         "choices": {
             "type": "string",
             "format": "json",
-            "description": "Array of string that represents the available values for this metadate (this metatada is considered as a free field if this array is empty)",
+            "description": "Array of string that represents the available values for this metadata (this metadata is considered as a free field if this array is empty)",
         },
         "for_client": {"type": "boolean"},
     },
@@ -463,18 +463,18 @@ OrganisationSchema = {
     "properties": {
         "name": {
             "type": "string",
-            "description": "Name of organisaition",
+            "description": "Name of organisation",
         },
         "hours_by_day": {"type": "float"},
         "has_avatar": {
             "type": "boolean",
             "default": "False",
-            "description": "True if the organisation has an avatar, Flase otherwise",
+            "description": "True if the organisation has an avatar, False otherwise",
         },
         "use_original_file_name": {
             "type": "boolean",
             "default": "False",
-            "description": "True if the organisation uses original file names, Flase otherwise",
+            "description": "True if the organisation uses original file names, False otherwise",
         },
         "timesheets_locked": {
             "type": "boolean",
@@ -635,7 +635,7 @@ PersonSchema = {
         "has_avatar": {
             "type": "boolean",
             "default": "False",
-            "description": "True if user has an avatar, Flase otherwise",
+            "description": "True if user has an avatar, False otherwise",
         },
         "notifications_enabled": {
             "type": "boolean",
@@ -879,7 +879,7 @@ ScheduleItemSchema = {
     "properties": {
         "start_date": {"type": "string", "format": "date"},
         "end_date": {"type": "string", "format": "date"},
-        "man_days": {"type": "string", "format": "date"},
+        "man_days": {"type": "integer"},
         "project_id": {
             "type": "string",
             "format": "UUID",
@@ -954,7 +954,7 @@ SequenceSchema = {
         "source_id": {
             "type": "string",
             "format": "UUID",
-            "description": "Field uset to set the episode_id",
+            "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",
@@ -1005,7 +1005,7 @@ ShotSchema = {
         "source_id": {
             "type": "string",
             "format": "UUID",
-            "description": "Field uset to set the episode_id",
+            "description": "Field used to set the episode_id",
         },
         "preview_file_id": {
             "type": "string",

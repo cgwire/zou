@@ -3,6 +3,8 @@ import os
 import flask_bcrypt
 import pytest
 
+collect_ignore = ["plugins", "zou/plugin_template"]
+
 # Must be set before zou.app is imported.
 os.environ.setdefault("CACHE_TYPE", "simple")
 os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
@@ -40,8 +42,12 @@ def pytest_configure(config):
     from zou.app.utils import dbhelpers
 
     with app.app_context():
+        from zou.app import db
+
         dbhelpers.drop_all()
+        db.engine.dispose()
         dbhelpers.create_all()
+        db.engine.dispose()
 
 
 def pytest_unconfigure(config):

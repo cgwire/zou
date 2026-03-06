@@ -419,8 +419,7 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         pass
 
     if (
-        True
-        or person["notifications_enabled"]
+        person["notifications_enabled"]
         or person["notifications_slack_enabled"]
         or person["notifications_mattermost_enabled"]
         or person["notifications_discord_enabled"]
