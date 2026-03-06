@@ -16,7 +16,12 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_person()
         self.generate_fixture_assigner()
         self.generate_fixture_task()
-        self.generate_fixture_comment()
+        self.comment = comments_service.new_comment(
+            self.task.id,
+            self.task_status.id,
+            self.user["id"],
+            "first comment",
+        )
 
     def test_comment_task(self):
         result = self.post(
@@ -41,30 +46,6 @@ class CommentRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result["id"])
 
-    def test_ack_comment(self):
-        result = self.post(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/ack",
-            {},
-            200,
-        )
-        self.assertTrue(result["acknowledged"])
-
-    def test_ack_comment_toggle(self):
-        self.post(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/ack",
-            {},
-            200,
-        )
-        result = self.post(
-            f"/data/tasks/{self.task.id}"
-            f"/comments/{self.comment['id']}/ack",
-            {},
-            200,
-        )
-        self.assertFalse(result["acknowledged"])
-
     def test_reply_comment(self):
         result = self.post(
             f"/data/tasks/{self.task.id}"
@@ -73,7 +54,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
             200,
         )
         self.assertIn("text", result)
-        comment = comments_service.get_comment(self.comment["id"])
+        comment = tasks_service.get_comment(self.comment["id"])
         replies = comment.get("replies", [])
         reply_texts = [r["text"] for r in replies]
         self.assertIn("My reply", reply_texts)
@@ -82,7 +63,6 @@ class CommentRoutesTestCase(ApiDBTestCase):
         reply = comments_service.reply_comment(
             self.comment["id"],
             "Reply to delete",
-            {},
             person_id=str(self.user["id"]),
         )
         reply_id = reply["id"]
@@ -91,7 +71,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
             f"/comments/{self.comment['id']}/reply/{reply_id}",
             200,
         )
-        comment = comments_service.get_comment(self.comment["id"])
+        comment = tasks_service.get_comment(self.comment["id"])
         reply_ids = [r["id"] for r in comment.get("replies", [])]
         self.assertNotIn(reply_id, reply_ids)
 

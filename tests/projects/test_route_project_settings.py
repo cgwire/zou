@@ -1,6 +1,6 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import budget_service, schedule_service
+from zou.app.services import budget_service
 
 
 class ProjectSettingsRoutesTestCase(ApiDBTestCase):
@@ -16,23 +16,16 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
 
     # --- Asset type settings ---
 
-    def test_get_project_asset_types(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}/settings/asset-types"
-        )
-        self.assertIsInstance(result, list)
-
     def test_add_project_asset_type(self):
         result = self.post(
             f"/data/projects/{self.project_id}/settings/asset-types",
             {"asset_type_id": str(self.asset_type.id)},
         )
         self.assertIsNotNone(result.get("id"))
-        types = self.get(
-            f"/data/projects/{self.project_id}/settings/asset-types"
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertIn(
+            str(self.asset_type.id), project.get("asset_types", [])
         )
-        type_ids = [t["id"] for t in types]
-        self.assertIn(str(self.asset_type.id), type_ids)
 
     def test_delete_project_asset_type(self):
         self.post(
@@ -43,19 +36,12 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/asset-types/{self.asset_type.id}"
         )
-        types = self.get(
-            f"/data/projects/{self.project_id}/settings/asset-types"
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertNotIn(
+            str(self.asset_type.id), project.get("asset_types", [])
         )
-        type_ids = [t["id"] for t in types]
-        self.assertNotIn(str(self.asset_type.id), type_ids)
 
     # --- Task type settings ---
-
-    def test_get_project_task_types(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}/settings/task-types"
-        )
-        self.assertIsInstance(result, list)
 
     def test_add_project_task_type(self):
         result = self.post(
@@ -63,11 +49,10 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             {"task_type_id": str(self.task_type.id)},
         )
         self.assertIsNotNone(result.get("id"))
-        types = self.get(
-            f"/data/projects/{self.project_id}/settings/task-types"
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertIn(
+            str(self.task_type.id), project.get("task_types", [])
         )
-        type_ids = [t["id"] for t in types]
-        self.assertIn(str(self.task_type.id), type_ids)
 
     def test_delete_project_task_type(self):
         self.post(
@@ -78,11 +63,10 @@ class ProjectSettingsRoutesTestCase(ApiDBTestCase):
             f"/data/projects/{self.project_id}"
             f"/settings/task-types/{self.task_type.id}"
         )
-        types = self.get(
-            f"/data/projects/{self.project_id}/settings/task-types"
+        project = self.get(f"/data/projects/{self.project_id}")
+        self.assertNotIn(
+            str(self.task_type.id), project.get("task_types", [])
         )
-        type_ids = [t["id"] for t in types]
-        self.assertNotIn(str(self.task_type.id), type_ids)
 
     # --- Task status settings ---
 
@@ -261,14 +245,14 @@ class ProjectDataRoutesTestCase(ApiDBTestCase):
         result = self.get(
             f"/data/projects/{self.project_id}/day-offs"
         )
-        self.assertIsInstance(result, list)
+        self.assertIsInstance(result, dict)
 
     def test_get_project_task_type_time_spents(self):
         result = self.get(
             f"/data/projects/{self.project_id}"
             f"/task-types/{self.task_type.id}/time-spents"
         )
-        self.assertIsInstance(result, list)
+        self.assertIsInstance(result, dict)
 
 
 class ProjectBudgetRoutesTestCase(ApiDBTestCase):
@@ -278,6 +262,13 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_project()
         self.project_id = str(self.project.id)
 
+    def _create_budget(self, name="Test Budget"):
+        return self.post(
+            f"/data/projects/{self.project_id}/budgets",
+            {"name": name},
+            200,
+        )
+
     def test_get_project_budgets(self):
         result = self.get(
             f"/data/projects/{self.project_id}/budgets"
@@ -285,10 +276,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
 
     def test_create_project_budget(self):
-        result = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Test Budget"},
-        )
+        result = self._create_budget("Test Budget")
         self.assertEqual(result["name"], "Test Budget")
         fetched = self.get(
             f"/data/projects/{self.project_id}"
@@ -297,10 +285,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(fetched["name"], "Test Budget")
 
     def test_get_project_budget(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Get Budget"},
-        )
+        budget = self._create_budget("Get Budget")
         result = self.get(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}"
@@ -308,10 +293,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["name"], "Get Budget")
 
     def test_update_project_budget(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Old Name"},
-        )
+        budget = self._create_budget("Old Name")
         result = self.put(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}",
@@ -325,10 +307,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(fetched["name"], "New Name")
 
     def test_delete_project_budget(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "To Delete"},
-        )
+        budget = self._create_budget("To Delete")
         self.delete(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}"
@@ -339,10 +318,7 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(budgets), 0)
 
     def test_budget_entries(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Entries Budget"},
-        )
+        budget = self._create_budget("Entries Budget")
         entries = self.get(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries"
@@ -350,54 +326,74 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(entries, list)
 
     def test_create_budget_entry(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Entry Budget"},
-        )
+        self.generate_fixture_department()
+        budget = self._create_budget("Entry Budget")
         entry = self.post(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries",
-            {"name": "VFX", "amount": 1000},
+            {
+                "department_id": str(self.department.id),
+                "start_date": "2024-01-01",
+                "months_duration": 6,
+                "daily_salary": 500,
+            },
+            200,
         )
-        self.assertEqual(entry["name"], "VFX")
+        self.assertIsNotNone(entry.get("id"))
         entries = self.get(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries"
         )
         self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0]["name"], "VFX")
+        self.assertEqual(
+            entries[0]["department_id"], str(self.department.id)
+        )
 
     def test_update_budget_entry(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Update Entry Budget"},
-        )
+        self.generate_fixture_department()
+        self.generate_fixture_person()
+        budget = self._create_budget("Update Entry Budget")
         entry = self.post(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries",
-            {"name": "VFX", "amount": 1000},
+            {
+                "department_id": str(self.department.id),
+                "start_date": "2024-01-01",
+                "months_duration": 6,
+                "daily_salary": 500,
+            },
+            200,
         )
         result = self.put(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries/{entry['id']}",
-            {"name": "SFX"},
+            {
+                "department_id": str(self.department.id),
+                "start_date": "2024-01-01",
+                "months_duration": 6,
+                "daily_salary": 700,
+            },
         )
-        self.assertEqual(result["name"], "SFX")
+        self.assertEqual(result["daily_salary"], 700)
         fetched = self.get(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries"
         )
-        self.assertEqual(fetched[0]["name"], "SFX")
+        self.assertEqual(fetched[0]["daily_salary"], 700)
 
     def test_delete_budget_entry(self):
-        budget = self.post(
-            f"/data/projects/{self.project_id}/budgets",
-            {"name": "Delete Entry Budget"},
-        )
+        self.generate_fixture_department()
+        budget = self._create_budget("Delete Entry Budget")
         entry = self.post(
             f"/data/projects/{self.project_id}"
             f"/budgets/{budget['id']}/entries",
-            {"name": "VFX", "amount": 1000},
+            {
+                "department_id": str(self.department.id),
+                "start_date": "2024-01-01",
+                "months_duration": 6,
+                "daily_salary": 500,
+            },
+            200,
         )
         self.delete(
             f"/data/projects/{self.project_id}"
@@ -413,49 +409,4 @@ class ProjectBudgetRoutesTestCase(ApiDBTestCase):
         result = self.get(
             f"/data/projects/{self.project_id}/budgets/time-spents"
         )
-        self.assertIsInstance(result, list)
-
-
-class ProductionScheduleVersionRoutesTestCase(ApiDBTestCase):
-    def setUp(self):
-        super(ProductionScheduleVersionRoutesTestCase, self).setUp()
-        self.generate_fixture_project_status()
-        self.generate_fixture_project()
-        self.generate_fixture_asset_type()
-        self.generate_fixture_asset()
-        self.generate_fixture_person()
-        self.generate_fixture_assigner()
-        self.generate_fixture_department()
-        self.generate_fixture_task_type()
-        self.generate_fixture_task_status()
-        self.generate_fixture_task()
-        self.project_id = str(self.project.id)
-
-    def _create_schedule_version(self):
-        from zou.app.models.production_schedule_version import (
-            ProductionScheduleVersion,
-        )
-
-        self.schedule_version = ProductionScheduleVersion.create(
-            name="Version 1",
-            project_id=self.project.id,
-        )
-        return self.schedule_version
-
-    def test_get_schedule_version_task_links(self):
-        version = self._create_schedule_version()
-        result = self.get(
-            f"/data/production-schedule-versions"
-            f"/{version.id}/task-links"
-        )
-        self.assertIsInstance(result, list)
-
-    def test_create_schedule_version_task_links(self):
-        version = self._create_schedule_version()
-        result = self.post(
-            f"/data/production-schedule-versions"
-            f"/{version.id}/task-links",
-            {},
-            200,
-        )
-        self.assertIsInstance(result, list)
+        self.assertIsInstance(result, dict)

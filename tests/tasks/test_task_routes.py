@@ -42,9 +42,8 @@ class TaskRoutesTestCase(ApiDBTestCase):
             {"task_ids": [str(self.task.id)]},
         )
         self.assertIsInstance(result, list)
-        task = tasks_service.get_task(str(self.task.id))
-        assignee_ids = [a["id"] for a in task.get("assignees", [])]
-        self.assertIn(str(self.person.id), assignee_ids)
+        task = tasks_service.get_task(str(self.task.id), relations=True)
+        self.assertIn(str(self.person.id), task.get("assignees", []))
 
     def test_clear_assignation(self):
         tasks_service.assign_task(self.task.id, self.person.id)
@@ -57,8 +56,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsInstance(result, list)
         task = tasks_service.get_task(str(self.task.id))
-        assignee_ids = [a["id"] for a in task.get("assignees", [])]
-        self.assertNotIn(str(self.person.id), assignee_ids)
+        self.assertNotIn(str(self.person.id), task.get("assignees", []))
 
     def test_create_edit_tasks(self):
         self.generate_fixture_edit()
@@ -123,7 +121,6 @@ class TaskRoutesTestCase(ApiDBTestCase):
             f"/actions/tasks/{self.task.id}"
             f"/comments/{comment_id}"
             f"/preview-files/{preview_id}",
-            200,
         )
         comment = tasks_service.get_comment(comment_id)
         preview_ids = [

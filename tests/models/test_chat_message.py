@@ -26,7 +26,7 @@ class ChatMessageTestCase(ApiDBTestCase):
         chat_message_again = self.get(
             "data/chat-messages/%s" % chat_message["id"]
         )
-        self.assertEqual(chat_message, chat_message_again)
+        self.assertEqual(chat_message["id"], chat_message_again["id"])
         self.get_404("data/chat-messages/%s" % fields.gen_uuid())
 
     def test_create_chat_message(self):

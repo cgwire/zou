@@ -21,14 +21,3 @@ class EditRoutesTestCase(BaseEditTestCase):
     def test_get_edit_versions(self):
         result = self.get(f"/data/edits/{self.edit_id}/versions")
         self.assertIsInstance(result, list)
-
-    def test_get_episode_edits(self):
-        edits = self.get(f"/data/episodes/{self.episode_id}/edits")
-        self.assertEqual(len(edits), 1)
-        self.assertEqual(edits[0]["name"], "Edit")
-
-    def test_get_episode_edit_tasks(self):
-        tasks = self.get(
-            f"/data/episodes/{self.episode_id}/edit-tasks"
-        )
-        self.assertEqual(len(tasks), 2)

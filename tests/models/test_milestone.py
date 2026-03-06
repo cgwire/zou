@@ -13,7 +13,7 @@ class MilestoneTestCase(ApiDBTestCase):
                 "data/milestones",
                 {
                     "name": "MS%d" % i,
-                    "date": "2024-0%d-30" % (i + 1),
+                    "date": "2024-0%d-15" % (i + 1),
                     "project_id": self.project_id,
                     "task_type_id": self.task_type_id,
                 },

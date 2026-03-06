@@ -59,7 +59,7 @@ class FileRoutesTestCase(ApiDBTestCase):
             },
             200,
         )
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result, list)
 
     def test_set_file_tree(self):
         result = self.post(

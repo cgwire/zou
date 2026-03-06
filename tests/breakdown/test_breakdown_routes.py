@@ -36,13 +36,17 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         )
 
     def test_get_asset_type_casting(self):
-        self._set_shot_casting()
+        self.put(
+            f"/data/projects/{self.project_id}"
+            f"/entities/{self.asset_character_id}/casting",
+            [{"asset_id": self.asset_id, "nb_occurences": 1}],
+        )
         result = self.get(
             f"/data/projects/{self.project_id}"
-            f"/asset-types/{self.asset_type.id}/casting"
+            f"/asset-types/{self.asset_type_character.id}/casting"
         )
         self.assertIsInstance(result, dict)
-        self.assertTrue(len(result) > 0)
+        self.assertIn(self.asset_character_id, result)
 
     def test_get_episodes_casting(self):
         self._set_shot_casting()
@@ -87,7 +91,8 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self.assertTrue(initial_count > 0)
         link_id = links[0]["id"]
         self.delete(
-            f"/data/projects/{self.project_id}/entity-links/{link_id}"
+            f"/data/projects/{self.project_id}/entity-links/{link_id}",
+            200,
         )
         links_after = self.get(
             f"/data/projects/{self.project_id}/entity-links?limit=100"

@@ -1,8 +1,12 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.models.entity import EntityLink
 from zou.app.models.time_spent import TimeSpent
-from zou.app.services import comments_service, tasks_service
+from zou.app.models.entity import EntityConceptLink
+from zou.app.services import (
+    comments_service,
+    news_service,
+    tasks_service,
+)
 
 
 class EntityRoutesTestCase(ApiDBTestCase):
@@ -24,12 +28,15 @@ class EntityRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(result["data"]), 0)
 
     def test_get_entity_news_with_comment(self):
-        self.generate_fixture_task_status_wip()
-        comments_service.new_comment(
+        comment = comments_service.new_comment(
             str(self.task.id),
             str(self.task_status.id),
             str(self.user["id"]),
             "Test comment",
+        )
+        task_dict = self.task.serialize()
+        news_service.create_news_for_task_and_comment(
+            task_dict, comment
         )
         result = self.get(f"/data/entities/{self.asset.id}/news")
         self.assertEqual(len(result["data"]), 1)
@@ -38,7 +45,8 @@ class EntityRoutesTestCase(ApiDBTestCase):
         result = self.get(
             f"/data/entities/{self.asset.id}/preview-files"
         )
-        self.assertIsInstance(result, dict)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 0)
 
     def test_get_entity_preview_files_with_data(self):
         self.generate_fixture_preview_file()
@@ -76,10 +84,9 @@ class EntityRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_sequence()
         self.generate_fixture_shot()
         self.generate_fixture_shot_task()
-        EntityLink.create(
-            entity_in_id=self.asset.id,
-            entity_out_id=self.shot.id,
-            nb_occurences=1,
+        EntityConceptLink.create(
+            entity_in_id=self.shot.id,
+            entity_out_id=self.asset.id,
         )
         result = self.get(
             f"/data/entities/{self.asset.id}/entities-linked/with-tasks"
