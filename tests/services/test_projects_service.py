@@ -418,14 +418,14 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         link = projects_service.create_project_task_type_link(
-            self.project.id, self.task_type.id, 1
+            str(self.project.id), str(self.task_type.id), 1
         )
         self.assertEqual(link["project_id"], str(self.project.id))
         self.assertEqual(link["task_type_id"], str(self.task_type.id))
         self.assertEqual(link["priority"], 1)
         # Update existing link
         link2 = projects_service.create_project_task_type_link(
-            self.project.id, self.task_type.id, 5
+            str(self.project.id), str(self.task_type.id), 5
         )
         self.assertEqual(link2["priority"], 5)
 
@@ -433,7 +433,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertRaises(
             WrongParameterException,
             projects_service.create_project_task_type_link,
-            self.project.id,
+            str(self.project.id),
             "not-a-uuid",
             1,
         )
@@ -441,13 +441,14 @@ class ProjectServiceTestCase(ApiDBTestCase):
     def test_create_project_task_status_link(self):
         self.generate_fixture_task_status()
         link = projects_service.create_project_task_status_link(
-            self.project.id, self.task_status.id, 1
+            str(self.project.id), str(self.task_status.id), 1
         )
         self.assertEqual(link["project_id"], str(self.project.id))
         self.assertEqual(link["task_status_id"], str(self.task_status.id))
         # Update existing link
         link2 = projects_service.create_project_task_status_link(
-            self.project.id, self.task_status.id, 3, roles_for_board=["admin"]
+            str(self.project.id), str(self.task_status.id), 3,
+            roles_for_board=["admin"],
         )
         self.assertEqual(link2["priority"], 3)
 
@@ -455,7 +456,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertRaises(
             WrongParameterException,
             projects_service.create_project_task_status_link,
-            self.project.id,
+            str(self.project.id),
             "not-a-uuid",
             1,
         )
@@ -528,7 +529,7 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         projects_service.create_project_task_type_link(
-            self.project.id, self.task_type.id, 3
+            str(self.project.id), str(self.task_type.id), 3
         )
         priority_map = projects_service.get_task_type_priority_map(
             self.project.id
@@ -540,12 +541,13 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.generate_fixture_department()
         self.generate_fixture_task_type()
         projects_service.create_project_task_type_link(
-            self.project.id, self.task_type.id, 2
+            str(self.project.id), str(self.task_type.id), 2
         )
         links = projects_service.get_task_type_links(self.project.id)
         self.assertEqual(len(links), 1)
 
     def test_get_department_team(self):
+        self.generate_fixture_department()
         self.generate_fixture_person()
         projects_service.add_team_member(self.project.id, self.person.id)
         from zou.app.services import persons_service

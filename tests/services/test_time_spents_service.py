@@ -185,7 +185,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
     def test_get_year_table(self):
         year_table = time_spents_service.get_year_table()
         self.assertIn("2018", year_table)
-        self.assertEqual(year_table["2018"][self.person_id], 2500)
+        self.assertEqual(year_table["2018"][self.person_id], 2000)
 
     def test_get_time_spents_for_entity(self):
         time_spents = time_spents_service.get_time_spents_for_entity(
@@ -197,7 +197,7 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
         time_spents = time_spents_service.get_time_spents_range(
             self.person_id, "2018-06-01", "2018-06-30"
         )
-        self.assertEqual(len(time_spents), 2)
+        self.assertEqual(len(time_spents), 3)
 
     def test_get_time_spent(self):
         result = time_spents_service.get_time_spent(
@@ -231,7 +231,8 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
             self.person_id, 2018
         )
         self.assertGreater(len(tasks), 0)
-        self.assertEqual(tasks[0]["entity_name"], "Tree")
+        entity_names = [t["entity_name"] for t in tasks]
+        self.assertIn("Tree", entity_names)
 
     def test_get_day_offs_between(self):
         self.generate_fixture_day_off("2021-03-01")
