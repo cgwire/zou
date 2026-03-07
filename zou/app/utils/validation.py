@@ -15,7 +15,7 @@ from zou.app.services.exception import WrongParameterException
 
 
 class BaseSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
 
 def _format_validation_errors(exc: ValidationError):
