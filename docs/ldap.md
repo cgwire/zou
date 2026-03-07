@@ -1,3 +1,6 @@
+\!\!\! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # LDAP
 
 Authentication can be managed through a LDAP (or Active Directory) server. It

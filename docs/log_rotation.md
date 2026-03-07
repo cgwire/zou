@@ -1,3 +1,6 @@
+!!! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # Log rotation
 
 Log produced by the API grow quickly and lead to big log files. You will need

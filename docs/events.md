@@ -1,3 +1,6 @@
+\!\!\! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # Events
 
 Events are a mechanism to allow other programs to react to the change happening

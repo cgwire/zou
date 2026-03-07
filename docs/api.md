@@ -1,3 +1,6 @@
+!!! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # API
 
 The Zou API is REST-based. If you are looking for a Python client, see [Gazu](https://github.com/cgwire/gazu).

@@ -1,3 +1,6 @@
+!!! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # Backup
 
 It's a good practice to backup your database and your preview files. Here is a

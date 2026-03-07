@@ -1,3 +1,6 @@
+!!! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # Troubleshooting
 
 To solve issues related to your installation, you can do several actions to

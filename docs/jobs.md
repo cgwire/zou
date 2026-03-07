@@ -1,3 +1,6 @@
+\!\!\! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # Job Queue
 
 To run jobs asynchronously in a job queue, an additional service

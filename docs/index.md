@@ -1,3 +1,6 @@
+!!! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 [![Kitsu Logo](kitsu.png)](https://github.com/cgwire/zou)
 
 # Welcome to the Kitsu API (Zou) documentation

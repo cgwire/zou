@@ -5,3 +5,5 @@ edit_uri: edit/docs/docs
 site_author: CGWire 
 site_description: Documentation to install, configure and use the Kitsu API.
 theme: readthedocs
+markdown_extensions:
+  - admonition

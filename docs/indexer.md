@@ -1,3 +1,6 @@
+!!! warning
+    This documentation is no longer maintained. The new documentation is available at [dev.kitsu.cloud](https://dev.kitsu.cloud/).
+
 # Data indexation
 
 To allow full-text search, Kitsu relies on an Indexing engine. It uses the
