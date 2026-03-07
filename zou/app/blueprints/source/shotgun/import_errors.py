@@ -1,8 +1,9 @@
-from flask import request, abort
+from flask import request
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import StatementError
+from werkzeug.exceptions import NotFound
 
 from zou.app.models.data_import_error import DataImportError
 
@@ -160,10 +161,10 @@ class ShotgunImportErrorResource(Resource):
         try:
             error = DataImportError.get(error_id)
         except StatementError:
-            abort(404)
+            raise NotFound
 
         if error is None:
-            abort(404)
+            raise NotFound
         error.delete()
 
         return {"deletion_success": True}, 204

@@ -20,7 +20,10 @@ from zou.app.blueprints.user.schemas import (
     UpdateSearchFilterGroupSchema,
     NotificationUpdateSchema,
 )
-from zou.app.services.exception import WrongDateFormatException
+from zou.app.services.exception import (
+    WrongDateFormatException,
+    WrongParameterException,
+)
 
 
 class AssetTasksResource(Resource):
@@ -2805,10 +2808,9 @@ class TimeSpentsResource(Resource, ArgsMixin):
             return time_spents_service.get_time_spents(current_user["id"])
 
         if None in [start_date, end_date]:
-            abort(
-                400,
+            raise WrongParameterException(
                 "If querying for a range of dates, both a `start_date` and"
-                " an `end_date` must be given.",
+                " an `end_date` must be given."
             )
 
         try:
@@ -2816,9 +2818,8 @@ class TimeSpentsResource(Resource, ArgsMixin):
                 current_user["id"], start_date, end_date
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )
 
 
@@ -2891,7 +2892,7 @@ class DateTimeSpentsResource(Resource):
                 current_user["id"], date
             )
         except WrongDateFormatException:
-            abort(400)
+            raise WrongParameterException("Wrong date format.")
 
 
 class TaskTimeSpentResource(Resource):
@@ -2970,7 +2971,7 @@ class TaskTimeSpentResource(Resource):
                 current_user["id"], task_id, date
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Wrong date format.")
 
 
 class DayOffResource(Resource):
@@ -3030,7 +3031,7 @@ class DayOffResource(Resource):
             current_user = persons_service.get_current_user()
             return time_spents_service.get_day_off(current_user["id"], date)
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Wrong date format.")
 
 
 class ContextResource(Resource):

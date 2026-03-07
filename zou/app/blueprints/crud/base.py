@@ -252,7 +252,7 @@ class BaseModelsResource(Resource, ArgsMixin):
             else:
                 raise exception
         except permissions.PermissionDenied:
-            abort(403)
+            raise
 
     @jwt_required()
     def post(self):
@@ -342,9 +342,11 @@ class BaseModelResource(Resource, ArgsMixin):
     def get_model_or_404(self, instance_id):
         if not fields.is_valid_id(instance_id):
             raise WrongParameterException("Malformed ID.")
+        from werkzeug.exceptions import NotFound
+
         instance = self.model.get(instance_id)
         if instance is None:
-            abort(404)
+            raise NotFound
         return instance
 
     def get_serialized_instance(self, instance_id, relations=True):
@@ -439,7 +441,7 @@ class BaseModelResource(Resource, ArgsMixin):
             return {"message": str(exception)}, 400
 
         except ValueError:
-            abort(404)
+            raise WrongParameterException("Invalid value.")
 
         return result, 200
 

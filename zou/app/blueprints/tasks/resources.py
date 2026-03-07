@@ -6,6 +6,7 @@ from flask_restful import Resource, inputs
 from flask_jwt_extended import jwt_required
 
 from zou.app.services.exception import (
+    CommentNotFoundException,
     TaskNotFoundException,
     PersonNotFoundException,
     MalformedFileTreeException,
@@ -437,7 +438,7 @@ class TaskCommentResource(Resource):
         """
         comment = tasks_service.get_comment(comment_id)
         if comment["object_id"] != task_id:
-            abort(404)
+            raise CommentNotFoundException
         user_service.check_comment_access(comment)
         return comment
 
@@ -1845,9 +1846,9 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             )
             return time_spent, 201
         except ValueError:
-            abort(400)
+            raise WrongParameterException("Invalid date format.")
         except WrongDateFormatException:
-            abort(400)
+            raise WrongParameterException("Wrong date format.")
 
     @jwt_required()
     def delete(self, task_id, date, person_id):
@@ -1922,9 +1923,9 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             )
             return time_spent, 201
         except ValueError:
-            abort(400)
+            raise WrongParameterException("Invalid date format.")
         except WrongDateFormatException:
-            abort(400)
+            raise WrongParameterException("Wrong date format.")
 
 
 class AddTimeSpentResource(Resource, ArgsMixin):
@@ -2015,9 +2016,9 @@ class AddTimeSpentResource(Resource, ArgsMixin):
             )
             return time_spent, 201
         except ValueError:
-            abort(400)
+            raise WrongParameterException("Invalid date format.")
         except WrongDateFormatException:
-            abort(400)
+            raise WrongParameterException("Wrong date format.")
 
 
 class GetTimeSpentResource(Resource):
@@ -2137,7 +2138,7 @@ class GetTimeSpentDateResource(Resource):
             user_service.check_task_access(task_id)
             return tasks_service.get_time_spents(task_id, date)
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Wrong date format.")
 
 
 class DeleteAllTasksForTaskTypeResource(Resource):
@@ -2213,7 +2214,7 @@ class DeleteTasksResource(Resource):
         user_service.check_manager_project_access(project_id)
         task_ids = request.json
         if not isinstance(task_ids, list):
-            abort(400, "Request body must be a JSON array.")
+            raise WrongParameterException("Request body must be a JSON array.")
         task_ids = deletion_service.remove_tasks(project_id, task_ids)
         for task_id in task_ids:
             tasks_service.clear_task_cache(task_id)

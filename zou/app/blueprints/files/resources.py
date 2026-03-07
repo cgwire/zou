@@ -32,12 +32,13 @@ from zou.app.services import (
 )
 
 from zou.app.services.exception import (
-    WorkingFileNotFoundException,
+    EntryAlreadyExistsException,
+    MalformedFileTreeException,
     OutputTypeNotFoundException,
     PersonNotFoundException,
     WrongFileTreeFileException,
-    MalformedFileTreeException,
-    EntryAlreadyExistsException,
+    WrongParameterException,
+    WorkingFileNotFoundException,
 )
 
 
@@ -2836,7 +2837,7 @@ class SetTreeResource(Resource, ArgsMixin):
                 project_id, {"file_tree": tree}
             )
         except WrongFileTreeFileException:
-            abort(400, "Selected tree is not available")
+            raise WrongParameterException("Selected tree is not available")
 
         return project
 
