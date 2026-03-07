@@ -13,8 +13,6 @@ files = None
 def path(self, filename):
     folder_one = filename.split("-")[0]
     file_name = "-".join(filename.split("-")[1:])
-    folder_two = file_name[:3]
-    folder_three = file_name[3:6]
 
     # Ensure root is absolute to avoid issues with relative paths
     root = (
@@ -23,9 +21,14 @@ def path(self, filename):
         else self.root
     )
 
-    file_path = os.path.join(
-        root, folder_one, folder_two, folder_three, file_name
-    )
+    if folder_one == "dbbackup":
+        file_path = os.path.join(root, folder_one, file_name)
+    else:
+        folder_two = file_name[:3]
+        folder_three = file_name[3:6]
+        file_path = os.path.join(
+            root, folder_one, folder_two, folder_three, file_name
+        )
     # Normalize path to handle any remaining relative components
     return os.path.normpath(file_path)
 
@@ -46,10 +49,8 @@ def clear_bucket(bucket):
     for filename in bucket.list_files():
         if isinstance(bucket.backend, LocalBackend):
             parts = filename.split("/")
-            if len(parts) >= 4:
-                folder_one = parts[0]
-                file_name = parts[-1]
-                bucket.delete(f"{folder_one}-{file_name}")
+            if len(parts) >= 2:
+                bucket.delete(f"{parts[0]}-{parts[-1]}")
             else:
                 bucket.delete(filename)
         else:
