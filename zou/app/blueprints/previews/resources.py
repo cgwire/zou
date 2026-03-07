@@ -40,9 +40,10 @@ from zou.app.utils import (
     date_helpers,
 )
 from zou.app.services.exception import (
-    WrongParameterException,
     PreviewBackgroundFileNotFoundException,
+    PreviewFileNotFoundException,
     PreviewFileReuploadNotAllowedException,
+    WrongParameterException,
 )
 
 
@@ -352,7 +353,7 @@ class BaseNewPreviewFilePicture:
                     instance_id, force=True
                 )
                 if abort_on_failed:
-                    abort(400, "Normalization failed.")
+                    raise WrongParameterException("Normalization failed.")
                 return None
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
@@ -375,7 +376,9 @@ class BaseNewPreviewFilePicture:
             )
             deletion_service.remove_preview_file_by_id(instance_id)
             if abort_on_failed:
-                abort(400, "Wrong file format, extension: %s" % extension)
+                raise WrongParameterException(
+                    "Wrong file format, extension: %s" % extension
+                )
         else:
             self.emit_app_preview_event(instance_id)
         return preview_file
@@ -437,7 +440,7 @@ class CreatePreviewFilePictureResource(
         self.is_allowed(instance_id)
 
         if "file" not in request.files:
-            abort(400, "File not provided.")
+            raise WrongParameterException("File not provided.")
 
         return (
             self.process_uploaded_file(
@@ -701,7 +704,7 @@ class PreviewFileMovieResource(BasePreviewFileResource):
                 current_app.logger.error(
                     "Movie file was not found for: %s" % instance_id
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class PreviewFileLowMovieResource(BasePreviewFileResource):
@@ -752,7 +755,7 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
                     current_app.logger.error(
                         "Movie file was not found for: %s" % instance_id
                     )
-                abort(404)
+                raise PreviewFileNotFoundException
 
 
 class PreviewFileMovieDownloadResource(BasePreviewFileResource):
@@ -799,7 +802,7 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
                 current_app.logger.error(
                     "Movie file was not found for: %s" % instance_id
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class PreviewFileResource(BasePreviewFileResource):
@@ -848,7 +851,9 @@ class PreviewFileResource(BasePreviewFileResource):
                 extension
                 not in ALLOWED_PICTURE_EXTENSION | ALLOWED_FILE_EXTENSION
             ):
-                abort(400, "Extension not allowed: %s" % extension)
+                raise WrongParameterException(
+                    "Extension not allowed: %s" % extension
+                )
             if extension == "png":
                 return send_picture_file(
                     "original", instance_id, last_modified=self.last_modified
@@ -871,7 +876,7 @@ class PreviewFileResource(BasePreviewFileResource):
                 current_app.logger.error(
                     "Non-movie file was not found for: %s" % instance_id
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class PreviewFileDownloadResource(BasePreviewFileResource):
@@ -944,7 +949,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
                 current_app.logger.error(
                     "Standard file was not found for: %s" % instance_id
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class AttachmentThumbnailResource(Resource):
@@ -1016,7 +1021,7 @@ class AttachmentThumbnailResource(Resource):
                     "Picture file was not found for attachment: %s"
                     % (attachment_file_id)
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class BasePreviewPictureResource(BasePreviewFileResource):
@@ -1067,7 +1072,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
                 current_app.logger.error(
                     "Picture file was not found for: %s" % instance_id
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class BasePreviewFileThumbnailResource(BasePreviewPictureResource):
@@ -1202,7 +1207,7 @@ class BaseThumbnailResource(Resource):
         self.prepare_creation(instance_id)
 
         if "file" not in request.files:
-            abort(400, "File not provided.")
+            raise WrongParameterException("File not provided.")
 
         tmp_folder = config.TMP_DIR
         uploaded_file = request.files["file"]
@@ -1266,10 +1271,10 @@ class BaseThumbnailResource(Resource):
                 current_app.logger.error(
                     "Thumbnail file was not found for: %s" % instance_id
                 )
-            abort(404)
+            raise PreviewFileNotFoundException
         except IOError as e:
             current_app.logger.error(e)
-            abort(404)
+            raise PreviewFileNotFoundException
 
 
 class PersonThumbnailResource(BaseThumbnailResource):
@@ -1816,7 +1821,7 @@ class CreatePreviewBackgroundFileResource(Resource):
         )
 
         if "file" not in request.files:
-            abort(400, "File not provided.")
+            raise WrongParameterException("File not provided.")
 
         uploaded_file = request.files["file"]
 
@@ -1849,7 +1854,9 @@ class CreatePreviewBackgroundFileResource(Resource):
             deletion_service.remove_preview_background_file_by_id(
                 instance_id, force=True
             )
-            abort(400, f"Wrong file format, extension: {extension}")
+            raise WrongParameterException(
+                f"Wrong file format, extension: {extension}"
+            )
 
     def check_permissions(self, instance_id):
         """
@@ -1899,9 +1906,8 @@ class CreatePreviewBackgroundFileResource(Resource):
             deletion_service.remove_preview_background_file_by_id(
                 instance_id, force=True
             )
-            abort(
-                400,
-                f"Error while saving preview background file and thumbnail: {instance_id}",
+            raise WrongParameterException(
+                f"Error while saving preview background file and thumbnail: {instance_id}"
             )
         finally:
             try:

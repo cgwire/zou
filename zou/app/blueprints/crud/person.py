@@ -283,7 +283,7 @@ class PersonsResource(BaseModelsResource):
                     )
             except WrongParameterException:
                 raise
-            except:
+            except Exception:
                 raise WrongParameterException("Expiration date is not valid.")
 
         if "email" in data:
@@ -569,7 +569,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
                     )
             except WrongParameterException:
                 raise
-            except:
+            except Exception:
                 raise WrongParameterException("Expiration date is not valid.")
 
         if "email" in data:

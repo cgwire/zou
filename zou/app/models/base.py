@@ -98,7 +98,7 @@ class BaseMixin(object):
         try:
             instance = cls.create_no_commit(**kw)
             db.session.commit()
-        except BaseException:
+        except Exception:
             db.session.rollback()
             db.session.remove()
             raise
@@ -197,7 +197,7 @@ class BaseMixin(object):
     def commit(cls):
         try:
             db.session.commit()
-        except BaseException:
+        except Exception:
             db.session.rollback()
             db.session.remove()
             raise
@@ -211,7 +211,7 @@ class BaseMixin(object):
             self.updated_at = date_helpers.get_utc_now_datetime()
             db.session.add(self)
             db.session.commit()
-        except BaseException:
+        except Exception:
             db.session.rollback()
             db.session.remove()
             raise
@@ -224,7 +224,7 @@ class BaseMixin(object):
         try:
             self.delete_no_commit()
             db.session.commit()
-        except BaseException:
+        except Exception:
             db.session.rollback()
             db.session.remove()
             raise
@@ -245,7 +245,7 @@ class BaseMixin(object):
         try:
             self.update_no_commit(data)
             db.session.commit()
-        except BaseException:
+        except Exception:
             db.session.rollback()
             db.session.remove()
             raise

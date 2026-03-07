@@ -31,8 +31,9 @@ from zou.app.blueprints.projects.schemas import (
     ScheduleVersionCopySchema,
 )
 from zou.app.services.exception import (
-    WrongParameterException,
+    BudgetNotFoundException,
     WrongDateFormatException,
+    WrongParameterException,
 )
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 
@@ -1807,7 +1808,7 @@ class ProductionBudgetResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(project_id)
         budget = budget_service.get_budget(budget_id)
         if budget["project_id"] != project_id:
-            abort(404)
+            raise BudgetNotFoundException
         return budget
 
     @jwt_required()
@@ -2096,7 +2097,7 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         self.check_id_parameter(entry_id)
         budget = budget_service.get_budget(budget_id)
         if budget["project_id"] != project_id:
-            abort(404)
+            raise BudgetNotFoundException
         return budget_service.get_budget_entry(entry_id)
 
     @jwt_required()
@@ -2599,9 +2600,8 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
                 project_id, task_type_id, start_date, end_date
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )
 
 
@@ -2697,7 +2697,6 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
                 current_user_id=persons_service.get_current_user()["id"],
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )

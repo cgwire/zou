@@ -5,6 +5,10 @@ from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
+from zou.app.services.exception import (
+    AttachmentFileNotFoundException,
+    WrongParameterException,
+)
 from zou.app.utils import permissions, date_helpers, validation
 from zou.app.blueprints.comments.schemas import CommentReplySchema
 
@@ -95,7 +99,7 @@ class DownloadAttachmentResource(Resource):
                 current_app.logger.error(
                     f"Attachment file was not found for: {attachment_file_id}"
                 )
-            abort(404)
+            raise AttachmentFileNotFoundException
 
 
 class AckCommentResource(Resource):
@@ -564,7 +568,7 @@ class CommentManyTasksResource(Resource):
         """
         comments = request.json
         if not isinstance(comments, list):
-            abort(400, "Request body must be a JSON array.")
+            raise WrongParameterException("Request body must be a JSON array.")
         person = persons_service.get_current_user(relations=True)
         try:
             user_service.check_manager_project_access(project_id)

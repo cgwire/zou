@@ -616,7 +616,7 @@ def sync_with_ldap_server():
                 print(
                     f"User {user['desktop_login']} update failed (limit reached, limit {config.USER_LIMIT})."
                 )
-            except BaseException:
+            except Exception:
                 print(
                     f"User {user['desktop_login']} update failed (email duplicated?)."
                 )
@@ -644,7 +644,7 @@ def sync_with_ldap_server():
                     print(
                         f"User {user['desktop_login']} creation failed (limit reached, limit {config.USER_LIMIT})."
                     )
-                except BaseException:
+                except Exception:
                     print(
                         f"User {user['desktop_login']} creation failed (email duplicated?)."
                     )
@@ -994,7 +994,7 @@ def renormalize_movie_preview_files(
                                 file_store.open_movie,
                                 str(preview_file_id),
                             )
-                    except:
+                    except Exception:
                         pass
                     if config.ENABLE_JOB_QUEUE:
                         queue_store.job_queue.enqueue(

@@ -29,6 +29,7 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
+from zou.app.services.exception import BuildJobNotFoundException
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters
@@ -411,7 +412,7 @@ class PlaylistDownloadResource(Resource):
         user_service.check_playlist_access(playlist, supervisor_access=True)
         build_job = playlists_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
-            abort(404)
+            raise BuildJobNotFoundException
 
         if build_job["status"] != "succeeded":
             return {"error": True, "message": "Build is not finished"}, 400
@@ -656,7 +657,7 @@ class BuildJobResource(Resource):
         user_service.check_playlist_access(playlist)
         build_job = playlists_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
-            abort(404)
+            raise BuildJobNotFoundException
         return build_job
 
     @jwt_required()
@@ -693,7 +694,7 @@ class BuildJobResource(Resource):
         user_service.check_playlist_access(playlist)
         build_job = playlists_service.get_build_job(build_job_id)
         if str(build_job["playlist_id"]) != str(playlist_id):
-            abort(404)
+            raise BuildJobNotFoundException
         playlists_service.remove_build_job(playlist, build_job_id)
         return "", 204
 
