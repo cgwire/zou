@@ -43,6 +43,8 @@ from zou.app.services.exception import (
 )
 from zou.app.utils import fs
 
+REMOTE_NORMALIZE_VERSION = 2
+
 
 def get_preview_file_dimensions(project, entity=None):
     """
@@ -218,15 +220,17 @@ def prepare_and_store_movie(
                 return preview_file
 
         fps = get_preview_file_fps(project, entity)
-        (width, height) = get_preview_file_dimensions(project, entity)
+        width, height = get_preview_file_dimensions(project, entity)
+
+        is_remote = (
+            config.ENABLE_JOB_QUEUE_REMOTE
+            and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
+        )
 
         if normalize:
             current_app.logger.info("start normalization")
             try:
-                if (
-                    config.ENABLE_JOB_QUEUE_REMOTE
-                    and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
-                ):
+                if is_remote:
                     result = _run_remote_normalize_movie(
                         current_app, preview_file_id, fps, width, height
                     )
@@ -285,24 +289,31 @@ def prepare_and_store_movie(
             )
             normalized_movie_path = uploaded_movie_path
 
-        # Build thumbnails
+        # Build thumbnails (skipped when remote v2+, done by Nomad job)
         size = movie.get_movie_size(normalized_movie_path)
         width, height = size
-        original_picture_path = movie.generate_thumbnail(normalized_movie_path)
-        thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
-        save_variants(preview_file_id, original_picture_path)
         file_size = os.path.getsize(normalized_movie_path)
         duration = movie.get_movie_duration(normalized_movie_path)
-        current_app.logger.info("thumbnail created %s" % original_picture_path)
 
-        # Build tiles
-        try:
-            tile_path = movie.generate_tile(normalized_movie_path)
-            file_store.add_picture("tiles", preview_file_id, tile_path)
-            os.remove(tile_path)
-            current_app.logger.info("tile created %s" % tile_path)
-        except Exception:
-            current_app.logger.error("Failed to create tile", exc_info=1)
+        remote_handles_thumbnails = is_remote and REMOTE_NORMALIZE_VERSION >= 2
+        if not remote_handles_thumbnails:
+            original_picture_path = movie.generate_thumbnail(
+                normalized_movie_path
+            )
+            thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
+            save_variants(preview_file_id, original_picture_path)
+            current_app.logger.info(
+                "thumbnail created %s" % original_picture_path
+            )
+
+            # Build tiles
+            try:
+                tile_path = movie.generate_tile(normalized_movie_path)
+                file_store.add_picture("tiles", preview_file_id, tile_path)
+                os.remove(tile_path)
+                current_app.logger.info("tile created %s" % tile_path)
+            except Exception:
+                current_app.logger.error("Failed to create tile", exc_info=1)
 
         # Remove files and update status
         try:
@@ -346,7 +357,7 @@ def prepare_and_store_movie(
 
 def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
     params = {
-        "version": "1",
+        "version": str(REMOTE_NORMALIZE_VERSION),
         "preview_file_id": preview_file_id,
         "width": width,
         "height": height,

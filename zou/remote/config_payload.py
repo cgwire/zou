@@ -29,7 +29,7 @@ def check_config_version(config):
         version = int(config["version"])
     except (ValueError, KeyError):
         version = None
-    if version is None or version > 1:
+    if version is None or version > 2:
         print(
             f"Input parameters: unsupported format (version: {version!r})",
             file=sys.stderr,
