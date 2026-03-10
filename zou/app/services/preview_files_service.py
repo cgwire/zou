@@ -43,6 +43,8 @@ from zou.app.services.exception import (
 )
 from zou.app.utils import fs
 
+REMOTE_NORMALIZE_VERSION = 2
+
 
 def get_preview_file_dimensions(project, entity=None):
     """
@@ -351,9 +353,6 @@ def prepare_and_store_movie(
                 f"Preview file {preview_file_id} was deleted during processing"
             )
             return {"id": preview_file_id, "status": "broken"}
-
-
-REMOTE_NORMALIZE_VERSION = 2
 
 
 def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
