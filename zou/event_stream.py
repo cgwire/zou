@@ -13,7 +13,7 @@ from flask_socketio import SocketIO, disconnect, join_room, leave_room, emit
 from zou.app import config, app
 from zou.app.utils.redis import get_redis_url
 from zou.app.services.playlists_service import get_playlist
-from zou.app.services.user_service import check_playlist_access
+from zou.app.services.user_service import check_project_access
 
 server_stats = {"nb_connections": 0}
 rooms_data = {}
@@ -41,7 +41,7 @@ def _check_room_access(playlist_id):
     """
     try:
         playlist = get_playlist(playlist_id)
-        check_playlist_access(playlist)
+        check_project_access(playlist["project_id"])
         return True
     except Exception:
         return False
