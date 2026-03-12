@@ -476,8 +476,8 @@ class ConfigResource(Resource):
             "indexer_configured": config.INDEXER["key"] is not None,
             "saml_enabled": config.SAML_ENABLED,
             "saml_idp_name": config.SAML_IDP_NAME,
-            "default_locale": config.DEFAULT_LOCALE,
-            "default_timezone": config.DEFAULT_TIMEZONE,
+            "default_locale": persons_service.get_default_locale(),
+            "default_timezone": persons_service.get_default_timezone(),
             "enforce_2fa": config.ENFORCE_2FA,
         }
         if config.SENTRY_KITSU_ENABLED:

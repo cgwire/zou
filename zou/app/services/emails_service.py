@@ -27,7 +27,9 @@ def send_notification(
     slack_message = messages["slack_message"]
     mattermost_message = messages["mattermost_message"]
     discord_message = messages["discord_message"]
-    email_locale = locale or person.get("locale") or config.DEFAULT_LOCALE
+    email_locale = (
+        locale or person.get("locale") or persons_service.get_default_locale()
+    )
     email_html_body = generate_html_body(
         title, email_message, locale=email_locale
     )
@@ -95,7 +97,7 @@ def send_comment_notification(person_id, author_id, comment, task):
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    locale = person.get("locale") or config.DEFAULT_LOCALE
+    locale = person.get("locale") or persons_service.get_default_locale()
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -104,7 +106,7 @@ def send_comment_notification(person_id, author_id, comment, task):
     ):
         task_status = tasks_service.get_task_status(task["task_status_id"])
         task_status_name = task_status["short_name"].upper()
-        (author, task_name, task_url) = get_task_descriptors(author_id, task)
+        author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
             locale,
             "comment_subject",
@@ -190,14 +192,14 @@ def send_mention_notification(person_id, author_id, comment, task):
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    locale = person.get("locale") or config.DEFAULT_LOCALE
+    locale = person.get("locale") or persons_service.get_default_locale()
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
         or person["notifications_mattermost_enabled"]
         or person["notifications_discord_enabled"]
     ):
-        (author, task_name, task_url) = get_task_descriptors(author_id, task)
+        author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
             locale,
             "mention_subject",
@@ -254,14 +256,14 @@ def send_assignation_notification(person_id, author_id, task):
     """
     person = persons_service.get_person(person_id)
     project = projects_service.get_project(task["project_id"])
-    locale = person.get("locale") or config.DEFAULT_LOCALE
+    locale = person.get("locale") or persons_service.get_default_locale()
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
         or person["notifications_mattermost_enabled"]
         or person["notifications_discord_enabled"]
     ):
-        (author, task_name, task_url) = get_task_descriptors(author_id, task)
+        author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
             locale, "assignation_subject", task_name=task_name
         )
@@ -344,7 +346,7 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
     recipient's locale.
     """
     person = persons_service.get_person(person_id)
-    locale = person.get("locale") or config.DEFAULT_LOCALE
+    locale = person.get("locale") or persons_service.get_default_locale()
     if (
         person["notifications_enabled"]
         or person["notifications_slack_enabled"]
@@ -353,7 +355,7 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
     ):
         tasks_service.get_task_status(task["task_status_id"])
         project = projects_service.get_project(task["project_id"])
-        (author, task_name, task_url) = get_task_descriptors(author_id, task)
+        author, task_name, task_url = get_task_descriptors(author_id, task)
         subject = get_email_translation(
             locale,
             "reply_subject",
@@ -411,7 +413,7 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
     person = persons_service.get_person(person_id)
     author = persons_service.get_person(author_id)
     project = projects_service.get_project(playlist["project_id"])
-    locale = person.get("locale") or config.DEFAULT_LOCALE
+    locale = person.get("locale") or persons_service.get_default_locale()
     episode = None
     try:
         episode = shots_service.get_episode(playlist["episode_id"])

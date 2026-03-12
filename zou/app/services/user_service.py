@@ -1,7 +1,6 @@
 from sqlalchemy.orm import aliased
 from sqlalchemy import func, or_, and_
 
-from zou.app import config
 from zou.app.models.comment import Comment
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -1461,7 +1460,7 @@ def get_last_notifications(
         playlist_for_entity = ""
         playlist_is_for_all = False
         if notification.playlist_id is None:
-            (full_entity_name, episode_id, entity_preview_file_id) = (
+            full_entity_name, episode_id, entity_preview_file_id = (
                 names_service.get_full_entity_name(task_entity_id)
             )
         else:
@@ -1645,8 +1644,8 @@ def get_timezone():
     try:
         timezone = persons_service.get_current_user()["timezone"]
     except Exception:
-        timezone = config.DEFAULT_TIMEZONE
-    return timezone or config.DEFAULT_TIMEZONE
+        timezone = persons_service.get_default_timezone()
+    return timezone or persons_service.get_default_timezone()
 
 
 def get_context():
@@ -1671,5 +1670,5 @@ def get_context():
     }
 
     if permissions.has_admin_permissions():
-        context["user_limit"] = config.USER_LIMIT
+        context["user_limit"] = persons_service.get_user_limit()
     return context

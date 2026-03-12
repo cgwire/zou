@@ -15,7 +15,8 @@ from babel import Locale
 from zou.app.models.serializer import SerializerMixin
 from zou.app.models.department import Department
 from zou.app.models.base import BaseMixin
-from zou.app import config, db
+from zou.app import db
+from zou.app.stores import config_store
 
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
@@ -113,9 +114,12 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     shotgun_id = db.Column(db.Integer, unique=True)
     timezone = db.Column(
         TimezoneType(backend="pytz"),
-        default=pytz_timezone(config.DEFAULT_TIMEZONE),
+        default=lambda: pytz_timezone(config_store.get_default_timezone()),
     )
-    locale = db.Column(LocaleType, default=Locale(config.DEFAULT_LOCALE))
+    locale = db.Column(
+        LocaleType,
+        default=lambda: Locale(config_store.get_default_locale()),
+    )
     data = db.Column(JSONB)
     role = db.Column(ChoiceType(ROLE_TYPES), default="user", nullable=False)
     position = db.Column(ChoiceType(POSITION_TYPES), default="artist")

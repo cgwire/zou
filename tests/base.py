@@ -44,7 +44,7 @@ from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.models.software import Software
 from zou.app.models.working_file import WorkingFile
-from zou.app.stores import auth_tokens_store
+from zou.app.stores import auth_tokens_store, config_store
 
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -55,6 +55,7 @@ TEST_FOLDER = os.path.join("tests", "tmp")
 auth_tokens_store.revoked_tokens_store = fakeredis.FakeStrictRedis(
     decode_responses=True
 )
+config_store.config_store = fakeredis.FakeStrictRedis(decode_responses=True)
 
 # Pre-compute the bcrypt hash once for the default test password.
 # Avoids calling bcrypt.generate_password_hash per user per test.

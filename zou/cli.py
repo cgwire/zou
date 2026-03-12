@@ -213,7 +213,6 @@ def create_admin(email, password):
     """
     from sqlalchemy.exc import IntegrityError
 
-    from zou.app import config
     from zou.app.utils import auth
     from zou.app.services import persons_service
     from zou.app.services.exception import (
@@ -258,7 +257,9 @@ def create_admin(email, password):
                 print(f"Email is not valid: {e}")
                 sys.exit(1)
             except IsUserLimitReachedException:
-                print(f"User limit reached (limit {config.USER_LIMIT}).")
+                print(
+                    f"User limit reached (limit {persons_service.get_user_limit()})."
+                )
                 sys.exit(1)
 
 
@@ -354,7 +355,6 @@ def set_person_as_active(email, unactive):
     """
     Set a person as active.
     """
-    from zou.app import config
     from zou.app.services import persons_service
     from zou.app.services.exception import (
         IsUserLimitReachedException,
@@ -371,7 +371,9 @@ def set_person_as_active(email, unactive):
                 f'Person {email} is set as an {"active" if not unactive else "unactive"} user.'
             )
         except IsUserLimitReachedException:
-            print(f"User limit reached (limit {config.USER_LIMIT}).")
+            print(
+                f"User limit reached (limit {persons_service.get_user_limit()})."
+            )
             sys.exit(1)
         except PersonNotFoundException:
             print(f"Email ({email}) not listed in database.")
@@ -383,18 +385,32 @@ def sync_with_ldap_server():
     """
     For each user account in your LDAP server, it creates a new user.
     """
-    from zou.app import config
     from zou.app.utils import commands
     from zou.app.services import persons_service
 
     with _get_app().app_context():
         if persons_service.is_user_limit_reached():
             print(
-                "User limit reached (limit %i). New users will not be added."
-                % config.USER_LIMIT
+                f"User limit reached (limit {persons_service.get_user_limit()}). New users will not be added."
             )
             sys.exit(1)
         commands.sync_with_ldap_server()
+
+
+@cli.command()
+def reload_config():
+    """
+    Read USER_LIMIT, DEFAULT_TIMEZONE, and DEFAULT_LOCALE from
+    environment variables and push them to Redis so that all workers
+    pick up the new values immediately.
+    """
+    from zou.app.stores.config_store import sync_config
+
+    with _get_app().app_context():
+        values = sync_config()
+        for key, value in values.items():
+            print(f"  {key} = {value}")
+        print("Config synced to Redis.")
 
 
 @cli.command()
