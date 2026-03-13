@@ -62,7 +62,7 @@ def generate_thumbnail(movie_path):
     except ffmpeg._run.Error as e:
         log_ffmpeg_error(e, "an error occured during generate_thumbnail")
         raise (e)
-    except:
+    except Exception:
         print("Error while generating thumbnail")
         raise
     return file_target_path
@@ -309,7 +309,7 @@ def add_empty_soundtrack(file_path, try_count=1):
     try:
         probe = ffmpeg.probe(tmp_file_path, select_streams="v")
         duration = probe["format"]["duration"]
-    except:
+    except Exception:
         pass
     args = [
         "ffmpeg",

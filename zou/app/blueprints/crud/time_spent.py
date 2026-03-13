@@ -1,4 +1,3 @@
-from flask import abort
 from flask_jwt_extended import jwt_required
 
 from sqlalchemy import func
@@ -10,6 +9,7 @@ from zou.app.services import user_service, tasks_service
 
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.task import Task
+from zou.app.services.exception import WrongParameterException
 
 
 class TimeSpentsResource(BaseModelsResource):
@@ -187,10 +187,9 @@ class TimeSpentsResource(BaseModelsResource):
             return query
 
         if None in [start_date, end_date]:
-            abort(
-                400,
+            raise WrongParameterException(
                 "If querying for a range of dates, both a `start_date` and an "
-                "`end_date` must be given.",
+                "`end_date` must be given."
             )
 
         return query.filter(

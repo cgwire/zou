@@ -12,7 +12,8 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import query, permissions
+from zou.app.utils import query, permissions, validation
+from zou.app.blueprints.concepts.schemas import NewConceptSchema
 
 
 class ConceptResource(Resource, ArgsMixin):
@@ -659,7 +660,7 @@ class ProjectConceptsResource(Resource, ArgsMixin):
                       description: Last update timestamp
                       example: "2023-01-01T12:00:00Z"
         """
-        (name, data, description, entity_concept_links) = self.get_arguments()
+        body = validation.validate_request_body(NewConceptSchema)
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
         if (
@@ -670,33 +671,10 @@ class ProjectConceptsResource(Resource, ArgsMixin):
 
         concept = concepts_service.create_concept(
             project_id,
-            name,
-            data=data,
-            description=description,
-            entity_concept_links=entity_concept_links,
+            body.name,
+            data=body.data,
+            description=body.description,
+            entity_concept_links=body.entity_concept_links,
             created_by=persons_service.get_current_user()["id"],
         )
         return concept, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {"name": "name", "required": True},
-                {"name": "data", "type": dict},
-                "description",
-                (
-                    "entity_concept_links",
-                    [],
-                    False,
-                    str,
-                    "append",
-                ),
-            ]
-        )
-
-        return (
-            args["name"],
-            args["data"],
-            args["description"],
-            args["entity_concept_links"],
-        )
