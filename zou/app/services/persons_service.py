@@ -655,6 +655,36 @@ def update_organisation(organisation_id, data):
     return organisation.present()
 
 
+def get_user_limit():
+    """
+    Returns the current user limit, reading from Redis first (shared
+    across workers) and falling back to the config file value.
+    """
+    from zou.app.stores.config_store import get_user_limit
+
+    return get_user_limit()
+
+
+def get_default_timezone():
+    """
+    Returns the default timezone, reading from Redis first (shared
+    across workers) and falling back to the config file value.
+    """
+    from zou.app.stores.config_store import get_default_timezone
+
+    return get_default_timezone()
+
+
+def get_default_locale():
+    """
+    Returns the default locale, reading from Redis first (shared
+    across workers) and falling back to the config file value.
+    """
+    from zou.app.stores.config_store import get_default_locale
+
+    return get_default_locale()
+
+
 def is_user_limit_reached():
     """
     Returns true if the number of active users is equal and superior to the
@@ -663,7 +693,7 @@ def is_user_limit_reached():
     nb_active_users = Person.query.filter(
         Person.active, Person.is_bot.isnot(True)
     ).count()
-    return nb_active_users >= config.USER_LIMIT
+    return nb_active_users >= get_user_limit()
 
 
 def add_to_department(department_id, person_id):

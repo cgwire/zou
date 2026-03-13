@@ -614,7 +614,7 @@ def sync_with_ldap_server():
                     print(f"User {user['desktop_login']} updated.")
             except IsUserLimitReachedException:
                 print(
-                    f"User {user['desktop_login']} update failed (limit reached, limit {config.USER_LIMIT})."
+                    f"User {user['desktop_login']} update failed (limit reached, limit {persons_service.get_user_limit()})."
                 )
             except BaseException:
                 print(
@@ -642,7 +642,7 @@ def sync_with_ldap_server():
                     print(f"User {user['desktop_login']} created.")
                 except IsUserLimitReachedException:
                     print(
-                        f"User {user['desktop_login']} creation failed (limit reached, limit {config.USER_LIMIT})."
+                        f"User {user['desktop_login']} creation failed (limit reached, limit {persons_service.get_user_limit()})."
                     )
                 except BaseException:
                     print(

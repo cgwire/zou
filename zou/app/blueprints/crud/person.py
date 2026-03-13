@@ -248,7 +248,7 @@ class PersonsResource(BaseModelsResource):
             raise WrongParameterException(
                 "User limit reached.",
                 {
-                    "limit": config.USER_LIMIT,
+                    "limit": persons_service.get_user_limit(),
                 },
             )
         return permissions.check_admin_permissions()
