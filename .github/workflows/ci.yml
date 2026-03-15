@@ -7,130 +7,58 @@ on:
     tags: ["*"]
   pull_request:
 
+env:
+  PYTHON_REF: "3.12"
+  PG_REF: "18"
+  PYTHON_VERSIONS: '["3.10", "3.11", "3.12", "3.13", "3.14"]'
+  PG_VERSIONS: '["12", "14", "15", "16", "17", "18"]'
+  INDEXER_KEY: testkey0123456789
+  PGPASSWORD: mysecretpassword
+
 jobs:
-  ci:
-    name: Test with Python 3.12 / PG 18 🐍
+  setup:
+    name: Build test matrices 🔧
     runs-on: ubuntu-latest
-    env:
-      INDEXER_KEY: testkey0123456789
-      PGPASSWORD: mysecretpassword
-    services:
-      postgres:
-        image: "postgres:18"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
-      meilisearch:
-        image: getmeili/meilisearch:v1.1
-        ports:
-          - 7700:7700
-        env:
-          MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+    outputs:
+      full-matrix: ${{ steps.matrix.outputs.full }}
+      extra-matrix: ${{ steps.matrix.outputs.extra }}
     steps:
-      - uses: actions/checkout@v6
-      - name: Cache APT packages
-        uses: actions/cache@v4
-        id: apt-cache
-        with:
-          path: ~/apt-cache
-          key: apt-ffmpeg-${{ runner.os }}
-      - name: Install ffmpeg
+      - name: Generate matrices
+        id: matrix
         run: |
-          if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
-            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
-          else
-            sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends ffmpeg
-            sudo apt-get autoclean -y
-            mkdir -p ~/apt-cache
-            cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
-            cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
-          fi
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
-      - name: Upgrade pip 📦
-        run: >-
-          pip install --upgrade pip setuptools
-      - name: Install packages 📦
-        run: >-
-          pip install -r requirements.txt
-      - name: Create database 🗄
-        run: >-
-          psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
-      - name: Run tests 🧪
-        run: >-
-          py.test
-        env:
-          DEBUG: 1
-          MAIL_DEBUG_BODY: 1
-          MAIL_ENABLED: False
+          python3 -c "
+          import json, os
 
-  publish:
-    name: Build and publish Python 🐍 distributions 📦 to PyPI
-    needs: ci
-    if: startsWith(github.ref, 'refs/tags')
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/checkout@v6
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.x"
-      - name: Install pypa/build
-        run: >-
-          python3 -m pip install build --user
-      - name: Build a binary wheel
-        run: >-
-          python3 -m build
-      - name: Publish distribution 📦 to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+          py_ref = os.environ['PYTHON_REF']
+          pg_ref = os.environ['PG_REF']
+          py_all = json.loads(os.environ['PYTHON_VERSIONS'])
+          pg_all = json.loads(os.environ['PG_VERSIONS'])
 
-  matrix:
+          full = []
+          for py in py_all:
+              full.append({'python-version': py, 'pg-version': pg_ref})
+          for pg in pg_all:
+              if pg != pg_ref:
+                  full.append({'python-version': py_ref, 'pg-version': pg})
+
+          extra = [e for e in full if not (e['python-version'] == py_ref and e['pg-version'] == pg_ref)]
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f'full={json.dumps({\"include\": full})}\n')
+              f.write(f'extra={json.dumps({\"include\": extra})}\n')
+          "
+
+  # --- PR and main: full matrix ---
+
+  test:
     name: >-
-      Test with Python ${{ matrix.python-version }} / PG ${{ matrix.pg-version }} 🐍
-    needs: publish
-    if: startsWith(github.ref, 'refs/tags')
+      Test Python ${{ matrix.python-version }} / PG ${{ matrix.pg-version }} 🐍
+    needs: setup
+    if: "!startsWith(github.ref, 'refs/tags')"
     runs-on: ubuntu-latest
-    env:
-      INDEXER_KEY: testkey0123456789
-      PGPASSWORD: mysecretpassword
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # All Python versions with PG 18 (except 3.12 already tested)
-          - python-version: "3.10"
-            pg-version: "18"
-          - python-version: "3.11"
-            pg-version: "18"
-          - python-version: "3.13"
-            pg-version: "18"
-          - python-version: "3.14"
-            pg-version: "18"
-          # All PG versions with Python 3.12 (except PG 18 already tested)
-          - python-version: "3.12"
-            pg-version: "12"
-          - python-version: "3.12"
-            pg-version: "14"
-          - python-version: "3.12"
-            pg-version: "15"
-          - python-version: "3.12"
-            pg-version: "16"
-          - python-version: "3.12"
-            pg-version: "17"
+      matrix: ${{ fromJSON(needs.setup.outputs.full-matrix) }}
     services:
       postgres:
         image: "postgres:${{ matrix.pg-version }}"
@@ -171,7 +99,194 @@ jobs:
             cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
             cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
           fi
-      - name: Set up Python
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Upgrade pip 📦
+        run: >-
+          pip install --upgrade pip setuptools
+      - name: Install packages 📦
+        run: >-
+          pip install -r requirements.txt
+      - name: Create database 🗄
+        run: >-
+          psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
+      - name: Run tests 🧪
+        run: >-
+          py.test
+        env:
+          DEBUG: 1
+          MAIL_DEBUG_BODY: 1
+          MAIL_ENABLED: False
+
+  publish-test:
+    name: Publish to TestPyPI 📦
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment: testpypi
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Install pypa/build
+        run: >-
+          python3 -m pip install build --user
+      - name: Build a binary wheel 🏗️
+        run: >-
+          python3 -m build
+      - name: Publish to TestPyPI 📦
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # --- Tag pipeline: gate test → publish → rest of matrix ---
+
+  gate-test:
+    name: Gate test Python 3.12 / PG 18 🐍
+    needs: setup
+    if: startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: "postgres:18"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+      meilisearch:
+        image: getmeili/meilisearch:v1.1
+        ports:
+          - 7700:7700
+        env:
+          MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        id: apt-cache
+        with:
+          path: ~/apt-cache
+          key: apt-ffmpeg-${{ runner.os }}
+      - name: Install ffmpeg
+        run: |
+          if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
+            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+            sudo apt-get autoclean -y
+            mkdir -p ~/apt-cache
+            cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
+          fi
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_REF }}
+          cache: pip
+      - name: Upgrade pip 📦
+        run: >-
+          pip install --upgrade pip setuptools
+      - name: Install packages 📦
+        run: >-
+          pip install -r requirements.txt
+      - name: Create database 🗄
+        run: >-
+          psql -c 'create database zoudb;' -U postgres -h 127.0.0.1
+      - name: Run tests 🧪
+        run: >-
+          py.test
+        env:
+          DEBUG: 1
+          MAIL_DEBUG_BODY: 1
+          MAIL_ENABLED: False
+
+  publish:
+    name: Publish to PyPI 📦
+    needs: gate-test
+    if: startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+      - name: Install pypa/build
+        run: >-
+          python3 -m pip install build --user
+      - name: Build a binary wheel 🏗️
+        run: >-
+          python3 -m build
+      - name: Publish to PyPI 📦
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  matrix:
+    name: >-
+      Test Python ${{ matrix.python-version }} / PG ${{ matrix.pg-version }} 🐍
+    needs: [setup, publish]
+    if: startsWith(github.ref, 'refs/tags')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.setup.outputs.extra-matrix) }}
+    services:
+      postgres:
+        image: "postgres:${{ matrix.pg-version }}"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: ${{ env.PGPASSWORD }}
+      meilisearch:
+        image: getmeili/meilisearch:v1.1
+        ports:
+          - 7700:7700
+        env:
+          MEILI_MASTER_KEY: ${{ env.INDEXER_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        id: apt-cache
+        with:
+          path: ~/apt-cache
+          key: apt-ffmpeg-${{ runner.os }}
+      - name: Install ffmpeg
+        run: |
+          if [ -d ~/apt-cache ] && ls ~/apt-cache/*.deb 1>/dev/null 2>&1; then
+            sudo dpkg -i ~/apt-cache/*.deb 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y -f --no-install-recommends)
+          else
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends ffmpeg
+            sudo apt-get autoclean -y
+            mkdir -p ~/apt-cache
+            cp /var/cache/apt/archives/ffmpeg*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libav*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libsw*.deb ~/apt-cache/ 2>/dev/null || true
+            cp /var/cache/apt/archives/libpostproc*.deb ~/apt-cache/ 2>/dev/null || true
+          fi
+      - name: Set up Python 🐍
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
