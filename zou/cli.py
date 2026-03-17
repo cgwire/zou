@@ -400,9 +400,11 @@ def sync_with_ldap_server():
 @cli.command()
 def reload_config():
     """
-    Read USER_LIMIT, DEFAULT_TIMEZONE, and DEFAULT_LOCALE from
-    environment variables and push them to Redis so that all workers
-    pick up the new values immediately.
+    Read USER_LIMIT, DEFAULT_TIMEZONE, DEFAULT_LOCALE,
+    JOB_QUEUE_NOMAD_HOST, JOB_QUEUE_NOMAD_NORMALIZE_JOB, and
+    JOB_QUEUE_NOMAD_PLAYLIST_JOB from environment variables and push
+    them to Redis so that all workers pick up the new values
+    immediately.
     """
     from zou.app.stores.config_store import sync_config
 

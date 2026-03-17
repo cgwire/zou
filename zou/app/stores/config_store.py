@@ -7,6 +7,9 @@ from zou.app import config
 USER_LIMIT_KEY = "config:user_limit"
 DEFAULT_TIMEZONE_KEY = "config:default_timezone"
 DEFAULT_LOCALE_KEY = "config:default_locale"
+NOMAD_HOST_KEY = "config:nomad_host"
+NOMAD_NORMALIZE_JOB_KEY = "config:nomad_normalize_job"
+NOMAD_PLAYLIST_JOB_KEY = "config:nomad_playlist_job"
 
 try:
     config_store = redis.StrictRedis(
@@ -57,6 +60,18 @@ def get_default_locale():
     return _get(DEFAULT_LOCALE_KEY, config.DEFAULT_LOCALE)
 
 
+def get_nomad_host():
+    return _get(NOMAD_HOST_KEY, config.JOB_QUEUE_NOMAD_HOST)
+
+
+def get_nomad_normalize_job():
+    return _get(NOMAD_NORMALIZE_JOB_KEY, config.JOB_QUEUE_NOMAD_NORMALIZE_JOB)
+
+
+def get_nomad_playlist_job():
+    return _get(NOMAD_PLAYLIST_JOB_KEY, config.JOB_QUEUE_NOMAD_PLAYLIST_JOB)
+
+
 def sync_config():
     """
     Read config values from environment variables and push them to
@@ -70,4 +85,13 @@ def sync_config():
             DEFAULT_TIMEZONE_KEY, config.DEFAULT_TIMEZONE
         ),
         "default_locale": _sync(DEFAULT_LOCALE_KEY, config.DEFAULT_LOCALE),
+        "nomad_host": _sync(NOMAD_HOST_KEY, config.JOB_QUEUE_NOMAD_HOST),
+        "nomad_normalize_job": _sync(
+            NOMAD_NORMALIZE_JOB_KEY,
+            config.JOB_QUEUE_NOMAD_NORMALIZE_JOB,
+        ),
+        "nomad_playlist_job": _sync(
+            NOMAD_PLAYLIST_JOB_KEY,
+            config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+        ),
     }

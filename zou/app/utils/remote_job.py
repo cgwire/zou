@@ -4,9 +4,11 @@ import orjson as json
 import textwrap
 import time
 
+from zou.app.stores import config_store
+
 
 def run_job(app, config, nomad_job_name, params):
-    nomad_host = config.JOB_QUEUE_NOMAD_HOST
+    nomad_host = config_store.get_nomad_host()
 
     params.update(
         {
