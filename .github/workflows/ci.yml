@@ -131,6 +131,12 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.x"
+      - name: Append short commit hash to version
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          DEV_NUM=$(printf '%d' "0x${SHORT_SHA}")
+          sed -i "s/^__version__ = \"\\(.*\\)\"/__version__ = \"\\1.dev${DEV_NUM}\"/" zou/__init__.py
+          grep __version__ zou/__init__.py
       - name: Install pypa/build
         run: >-
           python3 -m pip install build --user
