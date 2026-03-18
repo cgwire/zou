@@ -8,15 +8,24 @@ from zou.app.services import persons_service
 class ConfigStoreTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
-        config_store.config_store.delete(config_store.USER_LIMIT_KEY)
-        config_store.config_store.delete(config_store.DEFAULT_TIMEZONE_KEY)
-        config_store.config_store.delete(config_store.DEFAULT_LOCALE_KEY)
+        for key in self._all_keys():
+            config_store.config_store.delete(key)
 
     def tearDown(self):
-        config_store.config_store.delete(config_store.USER_LIMIT_KEY)
-        config_store.config_store.delete(config_store.DEFAULT_TIMEZONE_KEY)
-        config_store.config_store.delete(config_store.DEFAULT_LOCALE_KEY)
+        for key in self._all_keys():
+            config_store.config_store.delete(key)
         super().tearDown()
+
+    @staticmethod
+    def _all_keys():
+        return [
+            config_store.USER_LIMIT_KEY,
+            config_store.DEFAULT_TIMEZONE_KEY,
+            config_store.DEFAULT_LOCALE_KEY,
+            config_store.NOMAD_HOST_KEY,
+            config_store.NOMAD_NORMALIZE_JOB_KEY,
+            config_store.NOMAD_PLAYLIST_JOB_KEY,
+        ]
 
     # --- USER_LIMIT ---
 
@@ -127,6 +136,56 @@ class ConfigStoreTestCase(ApiDBTestCase):
         conf = self.get("config")
         self.assertEqual(conf["default_locale"], "ja_JP")
 
+    # --- NOMAD_HOST ---
+
+    def test_get_nomad_host_fallback(self):
+        """When Redis has no value, fall back to config."""
+        self.assertEqual(
+            config_store.get_nomad_host(),
+            config.JOB_QUEUE_NOMAD_HOST,
+        )
+
+    def test_get_nomad_host_from_redis(self):
+        """When Redis has a value, return it."""
+        config_store.config_store.set(
+            config_store.NOMAD_HOST_KEY, "nomad.example.com"
+        )
+        self.assertEqual(config_store.get_nomad_host(), "nomad.example.com")
+
+    # --- NOMAD_NORMALIZE_JOB ---
+
+    def test_get_nomad_normalize_job_fallback(self):
+        """When Redis has no value, fall back to config."""
+        self.assertEqual(
+            config_store.get_nomad_normalize_job(),
+            config.JOB_QUEUE_NOMAD_NORMALIZE_JOB,
+        )
+
+    def test_get_nomad_normalize_job_from_redis(self):
+        """When Redis has a value, return it."""
+        config_store.config_store.set(
+            config_store.NOMAD_NORMALIZE_JOB_KEY, "zou-norm-v2"
+        )
+        self.assertEqual(config_store.get_nomad_normalize_job(), "zou-norm-v2")
+
+    # --- NOMAD_PLAYLIST_JOB ---
+
+    def test_get_nomad_playlist_job_fallback(self):
+        """When Redis has no value, fall back to config."""
+        self.assertEqual(
+            config_store.get_nomad_playlist_job(),
+            config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+        )
+
+    def test_get_nomad_playlist_job_from_redis(self):
+        """When Redis has a value, return it."""
+        config_store.config_store.set(
+            config_store.NOMAD_PLAYLIST_JOB_KEY, "zou-playlist-v2"
+        )
+        self.assertEqual(
+            config_store.get_nomad_playlist_job(), "zou-playlist-v2"
+        )
+
     # --- sync_config ---
 
     def test_sync_config_sets_all_values(self):
@@ -135,6 +194,15 @@ class ConfigStoreTestCase(ApiDBTestCase):
         self.assertEqual(values["user_limit"], config.USER_LIMIT)
         self.assertEqual(values["default_timezone"], config.DEFAULT_TIMEZONE)
         self.assertEqual(values["default_locale"], config.DEFAULT_LOCALE)
+        self.assertEqual(values["nomad_host"], config.JOB_QUEUE_NOMAD_HOST)
+        self.assertEqual(
+            values["nomad_normalize_job"],
+            config.JOB_QUEUE_NOMAD_NORMALIZE_JOB,
+        )
+        self.assertEqual(
+            values["nomad_playlist_job"],
+            config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+        )
         self.assertEqual(
             config_store.config_store.get(config_store.USER_LIMIT_KEY),
             str(config.USER_LIMIT),
@@ -147,6 +215,20 @@ class ConfigStoreTestCase(ApiDBTestCase):
             config_store.config_store.get(config_store.DEFAULT_LOCALE_KEY),
             config.DEFAULT_LOCALE,
         )
+        self.assertEqual(
+            config_store.config_store.get(config_store.NOMAD_HOST_KEY),
+            config.JOB_QUEUE_NOMAD_HOST,
+        )
+        self.assertEqual(
+            config_store.config_store.get(
+                config_store.NOMAD_NORMALIZE_JOB_KEY
+            ),
+            config.JOB_QUEUE_NOMAD_NORMALIZE_JOB,
+        )
+        self.assertEqual(
+            config_store.config_store.get(config_store.NOMAD_PLAYLIST_JOB_KEY),
+            config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+        )
 
     def test_sync_config_updates_when_different(self):
         """sync_config overwrites Redis when values differ."""
@@ -154,14 +236,19 @@ class ConfigStoreTestCase(ApiDBTestCase):
         config_store.config_store.set(
             config_store.DEFAULT_TIMEZONE_KEY, "Old/Zone"
         )
+        config_store.config_store.set(config_store.NOMAD_HOST_KEY, "old-host")
         original_limit = config.USER_LIMIT
         original_tz = config.DEFAULT_TIMEZONE
+        original_host = config.JOB_QUEUE_NOMAD_HOST
         config.USER_LIMIT = 50
         config.DEFAULT_TIMEZONE = "UTC"
+        config.JOB_QUEUE_NOMAD_HOST = "new-nomad-host"
         try:
             config_store.sync_config()
             self.assertEqual(config_store.get_user_limit(), 50)
             self.assertEqual(config_store.get_default_timezone(), "UTC")
+            self.assertEqual(config_store.get_nomad_host(), "new-nomad-host")
         finally:
             config.USER_LIMIT = original_limit
             config.DEFAULT_TIMEZONE = original_tz
+            config.JOB_QUEUE_NOMAD_HOST = original_host

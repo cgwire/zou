@@ -11,7 +11,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
 
 from zou.app import config
-from zou.app.stores import file_store
+from zou.app.stores import config_store, file_store
 from zou.app.stores.redis_lock import with_preview_file_lock
 
 from zou.app.models.entity import Entity
@@ -224,7 +224,7 @@ def prepare_and_store_movie(
 
         is_remote = (
             config.ENABLE_JOB_QUEUE_REMOTE
-            and len(config.JOB_QUEUE_NOMAD_NORMALIZE_JOB) > 0
+            and len(config_store.get_nomad_normalize_job()) > 0
         )
 
         if normalize:
@@ -363,7 +363,7 @@ def _run_remote_normalize_movie(app, preview_file_id, fps, width, height):
         "height": height,
         "fps": fps,
     }
-    nomad_job = app.config["JOB_QUEUE_NOMAD_NORMALIZE_JOB"]
+    nomad_job = config_store.get_nomad_normalize_job()
     result = remote_job.run_job(app, config, nomad_job, params)
     return result
 
