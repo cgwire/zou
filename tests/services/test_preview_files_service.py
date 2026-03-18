@@ -1,3 +1,7 @@
+import os
+import tempfile
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
 
@@ -267,3 +271,108 @@ class PlaylistTestCase(ApiDBTestCase):
             self.task_id
         )
         self.assertEqual(preview_file["revision"], 3)
+
+    @patch("zou.app.services.preview_files_service.movie.generate_tile")
+    @patch("zou.app.services.preview_files_service.save_variants")
+    @patch(
+        "zou.app.services.preview_files_service.thumbnail_utils"
+        ".turn_into_thumbnail"
+    )
+    @patch("zou.app.services.preview_files_service.movie.generate_thumbnail")
+    @patch("zou.app.services.preview_files_service.movie.normalize_movie")
+    @patch("zou.app.services.preview_files_service.file_store.add_movie")
+    def test_prepare_and_store_movie_saves_original_metadata(
+        self,
+        mock_add_movie,
+        mock_normalize,
+        mock_gen_thumbnail,
+        mock_turn_thumbnail,
+        mock_save_variants,
+        mock_gen_tile,
+    ):
+        preview_file = self.generate_fixture_preview_file(
+            status="processing"
+        )
+        preview_file_id = str(preview_file.id)
+
+        # Create a small temp file to act as the uploaded movie
+        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        tmp.write(b"\x00" * 1024)
+        tmp.close()
+        uploaded_path = tmp.name
+
+        # Create temp files for normalized outputs
+        norm_path = uploaded_path + "_norm.mp4"
+        norm_low_path = uploaded_path + "_norm_low.mp4"
+        for p in (norm_path, norm_low_path):
+            with open(p, "wb") as f:
+                f.write(b"\x00" * 512)
+
+        mock_normalize.return_value = (norm_path, norm_low_path, None)
+        mock_gen_thumbnail.return_value = norm_path
+        mock_gen_tile.return_value = norm_path
+
+        original_width = 720
+        original_height = 1280
+        original_duration = 42.5
+        normalized_width = 1920
+        normalized_height = 1080
+
+        with patch(
+            "zou.app.services.preview_files_service.movie.get_movie_size"
+        ) as mock_size, patch(
+            "zou.app.services.preview_files_service.movie.get_movie_duration"
+        ) as mock_duration:
+
+            call_count = {"size": 0}
+
+            def size_side_effect(path, **kwargs):
+                call_count["size"] += 1
+                if call_count["size"] == 1:
+                    # First call: reading original file metadata
+                    return (original_width, original_height)
+                else:
+                    # Second call: reading normalized file metadata
+                    return (normalized_width, normalized_height)
+
+            mock_size.side_effect = size_side_effect
+
+            duration_call_count = {"n": 0}
+
+            def duration_side_effect(path=None, **kwargs):
+                duration_call_count["n"] += 1
+                if duration_call_count["n"] == 1:
+                    return original_duration
+                else:
+                    return 40.0
+
+            mock_duration.side_effect = duration_side_effect
+
+            preview_files_service.prepare_and_store_movie(
+                preview_file_id,
+                uploaded_path,
+                normalize=True,
+                add_source_to_file_store=False,
+            )
+
+        persisted = files_service.get_preview_file(preview_file_id)
+
+        # The width/height fields reflect the normalized output
+        self.assertEqual(persisted["width"], normalized_width)
+        self.assertEqual(persisted["height"], normalized_height)
+
+        # The data field preserves the original metadata
+        self.assertIsNotNone(persisted["data"])
+        self.assertEqual(persisted["data"]["original_width"], original_width)
+        self.assertEqual(
+            persisted["data"]["original_height"], original_height
+        )
+        self.assertEqual(
+            persisted["data"]["original_duration"], original_duration
+        )
+        self.assertEqual(persisted["data"]["original_file_size"], 1024)
+
+        # Clean up
+        for p in (uploaded_path, norm_path, norm_low_path):
+            if os.path.exists(p):
+                os.remove(p)
