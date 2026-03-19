@@ -12,7 +12,8 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions, query
+from zou.app.utils import permissions, query, validation
+from zou.app.blueprints.edits.schemas import NewEditSchema
 
 
 class EditResource(Resource, ArgsMixin):
@@ -911,40 +912,19 @@ class ProjectEditsResource(Resource, ArgsMixin):
                       description: Last update timestamp
                       example: "2023-01-01T12:00:00Z"
         """
-        (name, description, data, parent_id) = self.get_arguments()
+        body = validation.validate_request_body(NewEditSchema)
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
 
         edit = edits_service.create_edit(
             project_id,
-            name,
-            data=data,
-            description=description,
-            parent_id=parent_id,
+            body.name,
+            data=body.data,
+            description=body.description,
+            parent_id=str(body.episode_id) if body.episode_id else None,
             created_by=persons_service.get_current_user()["id"],
         )
         return edit, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "name",
-                    "help": "The edit name is required.",
-                    "required": True,
-                },
-                "description",
-                {"name": "data", "type": dict},
-                "episode_id",
-            ]
-        )
-
-        return (
-            args["name"],
-            args.get("description", ""),
-            args["data"],
-            args["episode_id"],
-        )
 
 
 class EditVersionsResource(Resource):

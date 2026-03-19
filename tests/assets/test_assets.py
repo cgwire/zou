@@ -106,6 +106,20 @@ class AssetsTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         self.get(path, 404)
 
+    def test_remove_asset_with_children(self):
+        self.generate_fixture_asset_types()
+        self.generate_fixture_asset_character()
+        child = Entity.create(
+            name="Child",
+            entity_type_id=self.asset_type_character.id,
+            project_id=self.project.id,
+            parent_id=self.asset_character.id,
+        )
+        path = "data/assets/%s" % self.asset_character.id
+        self.delete(path)
+        child_again = Entity.get(child.id)
+        self.assertIsNone(child_again.parent_id)
+
     def test_remove_asset_with_tasks(self):
         path = "data/assets/%s" % self.asset_dict["id"]
         self.delete(path)

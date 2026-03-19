@@ -2,7 +2,7 @@ from flask import request
 from flask_restful import Resource, inputs
 from flask_jwt_extended import jwt_required
 
-from zou.app.utils import permissions, query
+from zou.app.utils import permissions, query, validation
 from zou.app.mixin import ArgsMixin
 from zou.app.services import (
     assets_service,
@@ -11,6 +11,11 @@ from zou.app.services import (
     shots_service,
     tasks_service,
     user_service,
+)
+from zou.app.blueprints.assets.schemas import (
+    NewAssetSchema,
+    AssetInstanceSchema,
+    SetSharedAssetsSchema,
 )
 
 
@@ -963,48 +968,20 @@ class NewAssetResource(Resource, ArgsMixin):
                       description: Last update timestamp
                       example: "2023-01-01T12:30:00Z"
         """
-        (name, description, data, is_shared, source_id) = self.get_arguments()
+        body = validation.validate_request_body(NewAssetSchema)
 
         user_service.check_manager_project_access(project_id)
         asset = assets_service.create_asset(
             project_id,
             asset_type_id,
-            name,
-            description,
-            data,
-            is_shared,
-            source_id,
+            body.name,
+            body.description,
+            body.data,
+            body.is_shared,
+            str(body.episode_id) if body.episode_id else None,
             created_by=persons_service.get_current_user()["id"],
         )
         return asset, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "name",
-                    "required": True,
-                    "help": "The asset name is required.",
-                },
-                "description",
-                ("data", {}, False, dict),
-                (
-                    "is_shared",
-                    False,
-                    False,
-                    inputs.boolean,
-                ),
-                "episode_id",
-            ]
-        )
-
-        return (
-            args["name"],
-            args.get("description", ""),
-            args["data"],
-            args["is_shared"],
-            args["episode_id"],
-        )
 
 
 class AssetCastingResource(Resource):
@@ -1451,17 +1428,12 @@ class AssetAssetInstancesResource(Resource, ArgsMixin):
                       description: Creation timestamp
                       example: "2023-01-01T12:00:00Z"
         """
-        args = self.get_args(
-            [
-                ("asset_to_instantiate_id", None, True),
-                ("description", None, False),
-            ]
-        )
+        body = validation.validate_request_body(AssetInstanceSchema)
 
         asset = assets_service.get_asset(asset_id)
         user_service.check_project_access(asset["project_id"])
         asset_instance = breakdown_service.add_asset_instance_to_asset(
-            asset_id, args["asset_to_instantiate_id"], args["description"]
+            asset_id, str(body.asset_to_instantiate_id), body.description
         )
         return asset_instance, 201
 
@@ -1470,18 +1442,9 @@ class BaseSetSharedAssetsResource(Resource, ArgsMixin):
 
     @jwt_required()
     def post(self, project_id=None, asset_type_id=None, asset_ids=None):
-        args = self.get_args(
-            [
-                (
-                    "is_shared",
-                    True,
-                    False,
-                    inputs.boolean,
-                ),
-            ]
-        )
+        body = validation.validate_request_body(SetSharedAssetsSchema)
         return assets_service.set_shared_assets(
-            is_shared=args["is_shared"],
+            is_shared=body.is_shared,
             project_id=project_id,
             asset_type_id=asset_type_id,
             asset_ids=asset_ids,
@@ -1542,19 +1505,12 @@ class SetSharedProjectAssetsResource(BaseSetSharedAssetsResource):
                       description: Project identifier
                       example: b35b7fb5-df86-5776-b181-68564193d36
         """
-        args = self.get_args(
-            [
-                (
-                    "asset_ids",
-                    None,
-                    False,
-                    str,
-                    "append",
-                ),
-            ]
-        )
+        body = validation.validate_request_body(SetSharedAssetsSchema)
         user_service.check_manager_project_access(project_id)
-        return super().post(project_id=project_id, asset_ids=args["asset_ids"])
+        asset_ids = (
+            [str(a) for a in body.asset_ids] if body.asset_ids else None
+        )
+        return super().post(project_id=project_id, asset_ids=asset_ids)
 
 
 class SetSharedProjectAssetTypeAssetsResource(BaseSetSharedAssetsResource):
@@ -1670,18 +1626,8 @@ class SetSharedAssetsResource(BaseSetSharedAssetsResource):
                       description: List of updated asset IDs
                       example: ["a24a6ea4-ce75-4665-a070-57453082c25", "b35b7fb5-df86-5776-b181-68564193d36"]
         """
-        args = self.get_args(
-            [
-                (
-                    "asset_ids",
-                    [],
-                    True,
-                    str,
-                    "append",
-                ),
-            ]
-        )
-        asset_ids = args["asset_ids"]
+        body = validation.validate_request_body(SetSharedAssetsSchema)
+        asset_ids = [str(a) for a in body.asset_ids] if body.asset_ids else []
         project_ids = set()
         for asset_id in asset_ids:
             project_ids.add(assets_service.get_asset(asset_id)["project_id"])

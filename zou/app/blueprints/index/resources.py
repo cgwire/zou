@@ -414,7 +414,7 @@ class StatsResource(Resource):
                       example: 45
         """
         if not permissions.has_admin_permissions():
-            abort(403)
+            raise permissions.PermissionDenied
         return stats_service.get_main_stats()
 
 

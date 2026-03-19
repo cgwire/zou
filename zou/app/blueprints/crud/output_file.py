@@ -1,6 +1,8 @@
-from flask import abort, current_app
+from flask import current_app
 
 from sqlalchemy.exc import StatementError
+
+from zou.app.services.exception import WrongParameterException
 from flask_jwt_extended import jwt_required
 
 from zou.app.utils import events
@@ -116,7 +118,7 @@ class OutputFileResource(BaseModelResource):
             return {"message": str(exception)}, 400
 
         except ValueError:
-            abort(404)
+            raise WrongParameterException("Invalid value.")
 
     def post_update(self, instance_dict, data):
         files_service.clear_output_file_cache(instance_dict["id"])

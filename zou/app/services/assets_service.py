@@ -692,6 +692,8 @@ def remove_asset(asset_id, force=False):
         EntityConceptLink.delete_all_by(entity_in_id=asset_id)
         EntityConceptLink.delete_all_by(entity_out_id=asset_id)
         deletion_service.remove_output_files_for_entity(asset_id)
+        for child in Entity.get_all_by(parent_id=asset_id):
+            child.update({"parent_id": None})
         asset.delete()
         clear_asset_cache(str(asset_id))
 

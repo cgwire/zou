@@ -319,10 +319,9 @@ class TimeSpentsResource(Resource, ArgsMixin):
             return time_spents_service.get_time_spents(person_id)
 
         if None in [start_date, end_date]:
-            abort(
-                400,
+            raise WrongParameterException(
                 "If querying for a range of dates, both a `start_date` and"
-                " an `end_date` must be given.",
+                " an `end_date` must be given."
             )
 
         try:
@@ -330,9 +329,8 @@ class TimeSpentsResource(Resource, ArgsMixin):
                 person_id, start_date, end_date
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )
 
 
