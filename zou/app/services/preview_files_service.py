@@ -202,6 +202,25 @@ def prepare_and_store_movie(
                 "source", preview_file_id, uploaded_movie_path
             )
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
+
+        original_width, original_height = movie.get_movie_size(
+            uploaded_movie_path
+        )
+        original_duration = movie.get_movie_duration(uploaded_movie_path)
+        original_file_size = os.path.getsize(uploaded_movie_path)
+        update_preview_file_raw(
+            preview_file_raw,
+            {
+                "data": {
+                    **(preview_file_raw.data or {}),
+                    "original_width": original_width,
+                    "original_height": original_height,
+                    "original_duration": original_duration,
+                    "original_file_size": original_file_size,
+                }
+            },
+        )
+
         normalized_movie_low_path = None
         try:
             project = get_project_from_preview_file(preview_file_id)
