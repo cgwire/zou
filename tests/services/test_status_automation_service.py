@@ -1,6 +1,7 @@
 # -*- coding: UTF-8 -*-
 from tests.base import ApiDBTestCase
 
+from zou.app.models.entity import Entity
 from zou.app.models.status_automation import StatusAutomation
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -61,6 +62,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
             {},
             None,
         )
+        self.task_modeling = Task.get(self.task_modeling.id)
         self.assertEqual(
             str(self.task_modeling.task_status_id), wip_status["id"]
         )
@@ -75,6 +77,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
             {},
             None,
         )
+        self.asset = Entity.get(self.asset.id)
         self.assertEqual(self.asset.ready_for, self.task_type_layout.id)
 
     def test_status_automation_sequence(self):
@@ -144,7 +147,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         )
 
         # Verify the target task status was changed
-        task_seq_review.reload()
+        task_seq_review = Task.get(task_seq_review.id)
         self.assertEqual(
             str(task_seq_review.task_status_id), wip_status["id"]
         )
@@ -218,7 +221,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         )
 
         # Verify the target task status was changed
-        task_ep_final.reload()
+        task_ep_final = Task.get(task_ep_final.id)
         self.assertEqual(
             str(task_ep_final.task_status_id), wip_status["id"]
         )
@@ -274,7 +277,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
             None,
         )
 
-        self.task_modeling.reload()
+        self.task_modeling = Task.get(self.task_modeling.id)
         self.assertEqual(
             str(self.task_modeling.task_status_id), initial_status
         )
