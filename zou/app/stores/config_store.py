@@ -26,6 +26,15 @@ except redis.ConnectionError:
         print("Cannot access to the required Redis instance")
 
 
+def _get_redis_raw(key):
+    if config_store is not None:
+        try:
+            return config_store.get(key)
+        except redis.ConnectionError:
+            pass
+    return None
+
+
 def _get(key, fallback):
     if config_store is not None:
         try:
@@ -70,6 +79,35 @@ def get_nomad_normalize_job():
 
 def get_nomad_playlist_job():
     return _get(NOMAD_PLAYLIST_JOB_KEY, config.JOB_QUEUE_NOMAD_PLAYLIST_JOB)
+
+
+def get_config_comparison():
+    return {
+        "user_limit": {
+            "env": config.USER_LIMIT,
+            "redis": _get_redis_raw(USER_LIMIT_KEY),
+        },
+        "default_timezone": {
+            "env": config.DEFAULT_TIMEZONE,
+            "redis": _get_redis_raw(DEFAULT_TIMEZONE_KEY),
+        },
+        "default_locale": {
+            "env": config.DEFAULT_LOCALE,
+            "redis": _get_redis_raw(DEFAULT_LOCALE_KEY),
+        },
+        "nomad_host": {
+            "env": config.JOB_QUEUE_NOMAD_HOST,
+            "redis": _get_redis_raw(NOMAD_HOST_KEY),
+        },
+        "nomad_normalize_job": {
+            "env": config.JOB_QUEUE_NOMAD_NORMALIZE_JOB,
+            "redis": _get_redis_raw(NOMAD_NORMALIZE_JOB_KEY),
+        },
+        "nomad_playlist_job": {
+            "env": config.JOB_QUEUE_NOMAD_PLAYLIST_JOB,
+            "redis": _get_redis_raw(NOMAD_PLAYLIST_JOB_KEY),
+        },
+    }
 
 
 def sync_config():
