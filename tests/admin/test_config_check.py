@@ -15,6 +15,16 @@ class ConfigCheckTestCase(ApiDBTestCase):
 
     def tearDown(self):
         config.ADMIN_TOKEN = self._original_token
+        if config_store.config_store is not None:
+            for key in [
+                config_store.USER_LIMIT_KEY,
+                config_store.DEFAULT_TIMEZONE_KEY,
+                config_store.DEFAULT_LOCALE_KEY,
+                config_store.NOMAD_HOST_KEY,
+                config_store.NOMAD_NORMALIZE_JOB_KEY,
+                config_store.NOMAD_PLAYLIST_JOB_KEY,
+            ]:
+                config_store.config_store.delete(key)
         super().tearDown()
 
     def test_403_without_token(self):
