@@ -327,6 +327,7 @@ def get_preview_files_for_entity(entity_id):
             PreviewFile.annotations,
             PreviewFile.created_at,
             PreviewFile.task_id,
+            PreviewFile.data,
         )
         .join(PreviewFile, Task.id == PreviewFile.task_id)
         .join(TaskType)
@@ -351,6 +352,7 @@ def get_preview_files_for_entity(entity_id):
         preview_file_annotations,
         preview_file_created_at,
         preview_file_task_id,
+        preview_file_data,
     ) in query.all():
         task_id = str(task.id)
         if task_id not in task_previews:
@@ -371,6 +373,7 @@ def get_preview_files_for_entity(entity_id):
                     "created_at": preview_file_created_at,
                     "task_id": task_id,
                     "task_type_id": str(task.task_type_id),
+                    "data": preview_file_data,
                 }
             )
         )
@@ -395,6 +398,7 @@ def get_preview_files_for_entity(entity_id):
                     "previews": preview_file["previews"],
                     "created_at": preview_file["created_at"],
                     "task_id": preview_file["task_id"],
+                    "data": preview_file.get("data"),
                 }
                 for preview_file in preview_files
             ]  # Do not add too much field to avoid building too big responses
