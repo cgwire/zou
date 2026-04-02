@@ -66,24 +66,19 @@ def install_plugin(path, force=False):
             print(f"[Plugins] Plugin {manifest.id} installed.")
 
         print(
-            f"[Plugins] Running database migrations"
-            f" for {manifest.id}..."
+            f"[Plugins] Running database migrations" f" for {manifest.id}..."
         )
         plugin_path = install_plugin_files(
             path, Path(config.PLUGIN_FOLDER) / manifest.id
         )
         run_plugin_migrations(plugin_path, plugin)
-        print(
-            f"[Plugins] Database migrations for {manifest.id} applied."
-        )
+        print(f"[Plugins] Database migrations for {manifest.id} applied.")
 
         # Re-query plugin instance after migrations
         # (Alembic operations may have detached it from the session)
         plugin = Plugin.get_by(plugin_id=manifest.id)
 
-        _run_plugin_hook(
-            manifest.id, plugin_path, "post_install", manifest
-        )
+        _run_plugin_hook(manifest.id, plugin_path, "post_install", manifest)
 
         print_added_routes(plugin.plugin_id, plugin_path)
         return plugin.serialize()

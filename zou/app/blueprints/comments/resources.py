@@ -5,7 +5,12 @@ from flask_restful import Resource, reqparse
 from flask_jwt_extended import jwt_required
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import permissions, date_helpers
+from zou.app.services.exception import (
+    AttachmentFileNotFoundException,
+    WrongParameterException,
+)
+from zou.app.utils import permissions, date_helpers, validation
+from zou.app.blueprints.comments.schemas import CommentReplySchema
 
 from zou.app.services import (
     chats_service,
@@ -94,7 +99,7 @@ class DownloadAttachmentResource(Resource):
                 current_app.logger.error(
                     f"Attachment file was not found for: {attachment_file_id}"
                 )
-            abort(404)
+            raise AttachmentFileNotFoundException
 
 
 class AckCommentResource(Resource):
@@ -563,7 +568,7 @@ class CommentManyTasksResource(Resource):
         """
         comments = request.json
         if not isinstance(comments, list):
-            abort(400, "Request body must be a JSON array.")
+            raise WrongParameterException("Request body must be a JSON array.")
         person = persons_service.get_current_user(relations=True)
         try:
             user_service.check_manager_project_access(project_id)
@@ -577,9 +582,7 @@ class CommentManyTasksResource(Resource):
                 or "comment" not in comment
             ):
                 continue
-            user_service.check_task_status_access(
-                comment["task_status_id"]
-            )
+            user_service.check_task_status_access(comment["task_status_id"])
             comment = comments_service.create_comment(
                 person["id"],
                 comment["object_id"],
@@ -696,14 +699,10 @@ class ReplyCommentResource(Resource, ArgsMixin):
                     raise permissions.PermissionDenied()
             user_service.check_task_action_access(task_id)
 
-        args = self.get_args(
-            [
-                ("text", "", False),
-            ]
-        )
+        body = validation.validate_request_body(CommentReplySchema)
         files = request.files
         return comments_service.reply_comment(
-            comment_id, args["text"], files=files
+            comment_id, body.text, files=files
         )
 
 

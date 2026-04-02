@@ -46,7 +46,7 @@ class BaseCsvExport(Resource):
             for result in results:
                 csv_content.append(self.build_row(result))
         except permissions.PermissionDenied:
-            abort(403)
+            raise
 
         return csv_utils.build_csv_response(
             csv_content, file_name=self.file_name

@@ -36,6 +36,15 @@ class FileStoreTestCase(unittest.TestCase):
             ),
         )
 
+    def test_path_dbbackup(self):
+        file_name = "dbbackup-zou-db-backup-2026-02-24T09:42:21.sql.gz"
+        result = file_store.path(file_store.files, file_name)
+        self.assertTrue(result.endswith(os.path.join(
+            "files", "dbbackup",
+            "zou-db-backup-2026-02-24T09:42:21.sql.gz",
+        )))
+        self.assertNotIn("/-db/", result)
+
     def test_add_and_open_picture(self):
         file_path_fixture = self.get_fixture_file_path("thumbnails/th01.png")
         file_store.add_picture(

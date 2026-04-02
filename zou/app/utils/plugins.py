@@ -209,9 +209,7 @@ def migrate_plugin_db(plugin_path, message):
         t for t in db.metadata.tables if t.startswith(plugin_prefix)
     ]
     if not plugin_tables:
-        spec = importlib.util.spec_from_file_location(
-            module_name, models_path
-        )
+        spec = importlib.util.spec_from_file_location(module_name, models_path)
         if spec is None or spec.loader is None:
             raise ImportError(
                 f"Could not load 'models.py' from '{plugin_path}'"
@@ -289,9 +287,7 @@ def downgrade_plugin_migrations(plugin_path):
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
-        print(
-            f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}"
-        )
+        print(f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}")
 
 
 def create_plugin_package(path, output_path, force=False):
