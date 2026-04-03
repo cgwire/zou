@@ -141,7 +141,7 @@ def get_full_entity_names(entity_ids):
     # Batch fetch asset types
     asset_types_map = {}
     if asset_type_ids:
-        from zou.app.models.entity import EntityType
+        from zou.app.models.entity_type import EntityType
 
         types_raw = EntityType.query.filter(
             EntityType.id.in_(list(asset_type_ids))
