@@ -629,7 +629,7 @@ def get_comments(task_id, is_client=False, is_manager=False):
     """
     comments = []
     query = _prepare_query(task_id, is_client, is_manager)
-    (comments, comment_ids) = _run_task_comments_query(query)
+    comments, comment_ids = _run_task_comments_query(query)
     if len(comments) > 0:
         ack_map = _build_ack_map_for_comments(comment_ids)
         mention_map = _build_mention_map_for_comments(comment_ids)
@@ -936,7 +936,7 @@ def get_person_tasks(person_id, projects, is_done=None):
     """
     Retrieve all tasks for given person and projects.
     """
-    person = Person.get(person_id)
+    Person.get(person_id)
     project_ids = [project["id"] for project in projects]
 
     Sequence = aliased(Entity, name="sequence")
@@ -1728,10 +1728,7 @@ def get_full_task(task_id, user_id):
     is_subscribed = notifications_service.is_person_subscribed(
         user_id, task_id
     )
-    assignees = [
-        persons_service.get_person(assignee_id)
-        for assignee_id in task["assignees"]
-    ]
+    assignees = persons_service.get_persons_by_ids(task["assignees"])
 
     task.update(
         {
