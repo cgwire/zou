@@ -14,6 +14,7 @@ from zou.app.models.department import Department
 from zou.app.models.notification import Notification
 from zou.app.models.project import Project
 from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
 
 from zou.app.services import (
     assets_service,
@@ -91,7 +92,6 @@ def create_comment(
         files = {}
     if links is None:
         links = []
-    related_tasks = []
     author = _get_comment_author(person_id)
     task = tasks_service.get_task(task_id, relations=True)
     task_status = tasks_service.get_task_status(task_status_id)
@@ -134,15 +134,22 @@ def _handle_hashtags(person, task_type, task, text):
         tasks = entities_service.get_entity_tasks(entity)
         tasks = filter_tasks_by_hashtags(tasks, hashtags, task_type)
         if len(tasks) > 0:
+            status_ids = set(t["task_status_id"] for t in tasks)
+            statuses_map = {
+                str(s.id): s.serialize()
+                for s in TaskStatus.query.filter(
+                    TaskStatus.id.in_(list(status_ids))
+                ).all()
+            }
             for _task in tasks:
-                task_status = tasks_service.get_task_status(
-                    _task["task_status_id"]
+                task_status = statuses_map.get(
+                    str(_task["task_status_id"]), {}
                 )
                 create_comment(
                     person_id=person["id"],
                     task_id=_task["id"],
                     text=text + f"\n\n____\nFrom {task_type['name']} task",
-                    task_status_id=task_status["id"],
+                    task_status_id=task_status.get("id"),
                     with_hashtags=False,
                 )
     return hashtags
