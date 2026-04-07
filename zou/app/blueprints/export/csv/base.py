@@ -40,14 +40,14 @@ class BaseCsvExport(Resource):
         self.prepare_import()
         try:
             self.check_permissions()
-            csv_content = []
-            csv_content.append(self.build_headers())
-            results = self.build_query().all()
-            for result in results:
-                csv_content.append(self.build_row(result))
         except permissions.PermissionDenied:
             raise
 
-        return csv_utils.build_csv_response(
-            csv_content, file_name=self.file_name
+        def row_generator():
+            yield self.build_headers()
+            for result in self.build_query().yield_per(500):
+                yield self.build_row(result)
+
+        return csv_utils.build_csv_stream_response(
+            row_generator(), file_name=self.file_name
         )
