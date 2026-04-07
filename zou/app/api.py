@@ -25,6 +25,7 @@ from zou.app.blueprints.user import blueprint as user_blueprint
 from zou.app.blueprints.edits import blueprint as edits_blueprint
 from zou.app.blueprints.concepts import blueprint as concepts_blueprint
 
+from zou.app import config
 from zou.app.utils.plugins import load_plugins
 from zou.app.utils import events
 
@@ -70,6 +71,12 @@ def configure_api_routes(app):
     app.register_blueprint(edits_blueprint)
     app.register_blueprint(search_blueprint)
     app.register_blueprint(concepts_blueprint)
+
+    if config.ADMIN_TOKEN:
+        from zou.app.blueprints.admin import blueprint as admin_blueprint
+
+        app.register_blueprint(admin_blueprint)
+
     return app
 
 

@@ -1593,7 +1593,7 @@ class SAMLSSOResource(Resource, ArgsMixin):
                     )
                     break
         except PersonNotFoundException:
-            random_password = auth.encrypt_password(secrets.token_urlsafe(64))
+            random_password = auth.encrypt_password(secrets.token_urlsafe(48))
             user = persons_service.create_person(
                 email, random_password, **person_info
             )

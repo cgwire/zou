@@ -173,6 +173,7 @@ DEFAULT_TIMEZONE = os.getenv("DEFAULT_TIMEZONE", "Europe/Paris")
 DEFAULT_LOCALE = os.getenv("DEFAULT_LOCALE", "en_US")
 
 USER_LIMIT = int(os.getenv("USER_LIMIT", "100"))
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 MIN_PASSWORD_LENGTH = int(os.getenv("MIN_PASSWORD_LENGTH", 8))
 PROTECTED_ACCOUNTS = env_with_semicolon_to_list("PROTECTED_ACCOUNTS")
 ENFORCE_2FA = envtobool("ENFORCE_2FA", False)

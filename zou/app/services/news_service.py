@@ -156,7 +156,7 @@ def get_last_news_for_project(
             News.created_at < func.cast(before, News.created_at.type)
         )
 
-    (total, nb_pages) = _get_news_total(query, limit)
+    total, nb_pages = _get_news_total(query, limit)
 
     query = query.add_columns(
         Project.id,
@@ -176,6 +176,14 @@ def get_last_news_for_project(
     news_list = query.all()
     result = []
 
+    entity_ids = list(
+        set(
+            task_entity_id
+            for (_, _, _, _, _, _, task_entity_id, _, _, _, _) in news_list
+        )
+    )
+    entity_names_map = names_service.get_full_entity_names(entity_ids)
+
     for (
         news,
         project_id,
@@ -189,9 +197,11 @@ def get_last_news_for_project(
         preview_file_revision,
         entity_preview_file_id,
     ) in news_list:
-        full_entity_name, episode_id, _ = names_service.get_full_entity_name(
-            task_entity_id
-        )
+        entity_name_data = entity_names_map.get(str(task_entity_id))
+        if entity_name_data:
+            full_entity_name, episode_id, _ = entity_name_data
+        else:
+            full_entity_name, episode_id = "", None
 
         result.append(
             fields.serialize_dict(

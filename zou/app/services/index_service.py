@@ -1,12 +1,17 @@
 from zou.app import app
 from zou.app.indexer import indexing
 
+from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
+from zou.app.models.person import Person
+from zou.app.models.preview_file import PreviewFile
+from zou.app.models.project import Project
+
 from zou.app.services import (
     assets_service,
     persons_service,
     projects_service,
     shots_service,
-    files_service,
 )
 
 
@@ -110,22 +115,65 @@ def search_assets(query, project_ids=None, limit=3, offset=0):
     if project_ids is None:
         project_ids = []
     index = get_asset_index()
-    assets = []
 
     results = indexing.search(
         index, query, project_ids, limit=limit, offset=offset
     )
-    for asset_id, matched_terms in results:
-        asset = assets_service.get_asset(asset_id)
-        asset_type = assets_service.get_asset_type(asset["entity_type_id"])
-        project = projects_service.get_project(asset["project_id"])
-        asset["project_name"] = project["name"]
-        asset["asset_type_name"] = asset_type["name"]
+    if not results:
+        return []
+
+    asset_ids = [asset_id for asset_id, _ in results]
+
+    # Batch-fetch assets, then collect related IDs
+    assets_raw = Entity.query.filter(Entity.id.in_(asset_ids)).all()
+    assets_map = {str(e.id): e.serialize(obj_type="Asset") for e in assets_raw}
+
+    project_ids_set = set()
+    type_ids_set = set()
+    preview_ids = set()
+    for asset in assets_map.values():
+        project_ids_set.add(asset["project_id"])
+        type_ids_set.add(asset["entity_type_id"])
         if asset["preview_file_id"] is not None:
-            preview_file = files_service.get_preview_file(
-                asset["preview_file_id"]
+            preview_ids.add(asset["preview_file_id"])
+
+    # Batch-fetch projects, asset types, preview files
+    projects_map = {
+        str(p.id): p.serialize()
+        for p in Project.query.filter(
+            Project.id.in_(list(project_ids_set))
+        ).all()
+    }
+    types_map = {
+        str(t.id): t.serialize(obj_type="AssetType")
+        for t in EntityType.query.filter(
+            EntityType.id.in_(list(type_ids_set))
+        ).all()
+    }
+    previews_map = {}
+    if preview_ids:
+        previews_map = {
+            str(p.id): p.serialize()
+            for p in PreviewFile.query.filter(
+                PreviewFile.id.in_(list(preview_ids))
+            ).all()
+        }
+
+    # Assemble results in search order
+    assets = []
+    for asset_id, matched_terms in results:
+        asset = assets_map.get(str(asset_id))
+        if asset is None:
+            continue
+        asset_type = types_map.get(str(asset["entity_type_id"]), {})
+        project = projects_map.get(str(asset["project_id"]), {})
+        asset["project_name"] = project.get("name", "")
+        asset["asset_type_name"] = asset_type.get("name", "")
+        if asset["preview_file_id"] is not None:
+            preview = previews_map.get(str(asset["preview_file_id"]))
+            asset["preview_file_extension"] = (
+                preview["extension"] if preview else None
             )
-            asset["preview_file_extension"] = preview_file["extension"]
         else:
             asset["preview_file_extension"] = None
         asset["matched_terms"] = matched_terms
@@ -142,31 +190,96 @@ def search_shots(query, project_ids=None, limit=3, offset=0):
     if project_ids is None:
         project_ids = []
     index = get_shot_index()
-    shots = []
 
     results = indexing.search(
         index, query, project_ids, limit=limit, offset=offset
     )
+    if not results:
+        return []
 
-    for shot_id, matched_terms in results:
-        shot = shots_service.get_shot(shot_id)
-        sequence = shots_service.get_sequence(shot["parent_id"])
-        project = projects_service.get_project(shot["project_id"])
-        shot["project_name"] = project["name"]
-        shot["sequence_name"] = sequence["name"]
+    shot_ids = [shot_id for shot_id, _ in results]
+
+    # Batch-fetch shots
+    shots_raw = Entity.query.filter(Entity.id.in_(shot_ids)).all()
+    shots_map = {str(e.id): e.serialize(obj_type="Shot") for e in shots_raw}
+
+    # Collect sequence IDs and project IDs
+    sequence_ids = set()
+    project_ids_set = set()
+    preview_ids = set()
+    for shot in shots_map.values():
+        if shot["parent_id"] is not None:
+            sequence_ids.add(shot["parent_id"])
+        project_ids_set.add(shot["project_id"])
         if shot["preview_file_id"] is not None:
-            preview_file = files_service.get_preview_file(
-                shot["preview_file_id"]
+            preview_ids.add(shot["preview_file_id"])
+
+    # Batch-fetch sequences
+    sequences_map = {}
+    if sequence_ids:
+        sequences_map = {
+            str(e.id): e.serialize(obj_type="Sequence")
+            for e in Entity.query.filter(
+                Entity.id.in_(list(sequence_ids))
+            ).all()
+        }
+
+    # Collect episode IDs from sequences
+    episode_ids = set()
+    for seq in sequences_map.values():
+        if seq.get("parent_id") is not None:
+            episode_ids.add(seq["parent_id"])
+
+    # Batch-fetch episodes
+    episodes_map = {}
+    if episode_ids:
+        episodes_map = {
+            str(e.id): e.serialize(obj_type="Episode")
+            for e in Entity.query.filter(
+                Entity.id.in_(list(episode_ids))
+            ).all()
+        }
+
+    # Batch-fetch projects and preview files
+    projects_map = {
+        str(p.id): p.serialize()
+        for p in Project.query.filter(
+            Project.id.in_(list(project_ids_set))
+        ).all()
+    }
+    previews_map = {}
+    if preview_ids:
+        previews_map = {
+            str(p.id): p.serialize()
+            for p in PreviewFile.query.filter(
+                PreviewFile.id.in_(list(preview_ids))
+            ).all()
+        }
+
+    # Assemble results in search order
+    shots = []
+    for shot_id, matched_terms in results:
+        shot = shots_map.get(str(shot_id))
+        if shot is None:
+            continue
+        sequence = sequences_map.get(str(shot["parent_id"]), {})
+        project = projects_map.get(str(shot["project_id"]), {})
+        shot["project_name"] = project.get("name", "")
+        shot["sequence_name"] = sequence.get("name", "")
+        if shot["preview_file_id"] is not None:
+            preview = previews_map.get(str(shot["preview_file_id"]))
+            shot["preview_file_extension"] = (
+                preview["extension"] if preview else None
             )
-            shot["preview_file_extension"] = preview_file["extension"]
         else:
             shot["preview_file_extension"] = None
         if projects_service.is_tv_show(project):
             episode_id = sequence.get("parent_id", None)
             if episode_id is not None:
-                episode = shots_service.get_episode(episode_id)
-                shot["episode"] = episode["name"]
-                shot["episode_id"] = episode["id"]
+                episode = episodes_map.get(str(episode_id))
+                if episode:
+                    shot["episode"] = episode["name"]
+                    shot["episode_id"] = episode["id"]
         shot["matched_terms"] = matched_terms
         shots.append(shot)
     return shots
@@ -178,10 +291,21 @@ def search_persons(query, limit=3, offset=0):
     a list of persons (3 results maximum by default).
     """
     index = get_person_index()
-    persons = []
     results = indexing.search(index, query, limit=limit, offset=offset)
+    if not results:
+        return []
+
+    person_ids = [person_id for person_id, _ in results]
+    persons_map = {
+        str(p.id): p.serialize_safe()
+        for p in Person.query.filter(Person.id.in_(person_ids)).all()
+    }
+
+    persons = []
     for person_id, matched_terms in results:
-        person = persons_service.get_person(person_id)
+        person = persons_map.get(str(person_id))
+        if person is None:
+            continue
         person["matched_terms"] = matched_terms
         persons.append(person)
     return persons

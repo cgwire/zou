@@ -400,9 +400,11 @@ def sync_with_ldap_server():
 @cli.command()
 def reload_config():
     """
-    Read USER_LIMIT, DEFAULT_TIMEZONE, and DEFAULT_LOCALE from
-    environment variables and push them to Redis so that all workers
-    pick up the new values immediately.
+    Read USER_LIMIT, DEFAULT_TIMEZONE, DEFAULT_LOCALE,
+    JOB_QUEUE_NOMAD_HOST, JOB_QUEUE_NOMAD_NORMALIZE_JOB, and
+    JOB_QUEUE_NOMAD_PLAYLIST_JOB from environment variables and push
+    them to Redis so that all workers pick up the new values
+    immediately.
     """
     from zou.app.stores.config_store import sync_config
 
@@ -411,6 +413,101 @@ def reload_config():
         for key, value in values.items():
             print(f"  {key} = {value}")
         print("Config synced to Redis.")
+
+
+if os.getenv("ADMIN_TOKEN"):
+
+    @cli.command()
+    @click.option(
+        "--host",
+        default="http://localhost:5000",
+        help="Zou API host URL.",
+    )
+    def get_current_config(host):
+        """
+        Fetch the current config from the API and display env-cli,
+        redis, and env-api values side by side.
+
+        Checks that env-cli == redis for every key.  Exits with code 1
+        if any mismatch is found.
+        """
+        import requests
+
+        ENV_VAR_MAP = {
+            "user_limit": "USER_LIMIT",
+            "default_timezone": "DEFAULT_TIMEZONE",
+            "default_locale": "DEFAULT_LOCALE",
+            "nomad_host": "JOB_QUEUE_NOMAD_HOST",
+            "nomad_normalize_job": "JOB_QUEUE_NOMAD_NORMALIZE_JOB",
+            "nomad_playlist_job": "JOB_QUEUE_NOMAD_PLAYLIST_JOB",
+        }
+
+        token = os.getenv("ADMIN_TOKEN")
+        url = f"{host}/admin/config/check"
+        try:
+            response = requests.get(
+                url, headers={"Authorization": f"Bearer {token}"}
+            )
+            response.raise_for_status()
+        except requests.ConnectionError:
+            click.secho(f"Cannot connect to {host}", fg="red")
+            sys.exit(1)
+        except requests.HTTPError:
+            click.secho(
+                f"Error {response.status_code}: {response.text}",
+                fg="red",
+            )
+            sys.exit(1)
+
+        data = response.json()
+        active_users = data.pop("active_users", None)
+
+        click.secho("Config check", fg="cyan", bold=True)
+        click.echo()
+
+        col = 22
+        name_width = max(len(k) for k in data)
+        header = (
+            f"  {'Key':<{name_width}}"
+            f"  {'Env (CLI)':<{col}}"
+            f"  {'Redis':<{col}}"
+            f"  {'Env (API)':<{col}}"
+            f"  Status"
+        )
+        click.secho(header, bold=True)
+        click.echo(f"  {'─' * (name_width + 3 * col + 10)}")
+
+        has_error = False
+        for key, values in data.items():
+            env_var = ENV_VAR_MAP.get(key, "")
+            env_cli = os.getenv(env_var, "")
+            redis_val = values.get("redis")
+            redis_str = str(redis_val) if redis_val is not None else "∅"
+            env_api = str(values.get("env", ""))
+
+            match = env_cli == redis_str
+            if not match:
+                has_error = True
+            symbol = "✓" if match else "✗"
+            color = "green" if match else "red"
+
+            click.echo(
+                f"  {key:<{name_width}}"
+                f"  {env_cli:<{col}}"
+                f"  {redis_str:<{col}}"
+                f"  {env_api:<{col}}  ",
+                nl=False,
+            )
+            click.secho(symbol, fg=color)
+
+        if active_users is not None:
+            click.echo()
+            click.secho(f"  Active users: {active_users}", fg="cyan")
+
+        if has_error:
+            click.echo()
+            click.secho("  env-cli and redis are out of sync!", fg="red")
+            sys.exit(1)
 
 
 @cli.command()

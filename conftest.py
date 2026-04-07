@@ -41,6 +41,12 @@ def pytest_configure(config):
     from zou.app import app
     from zou.app.utils import dbhelpers
 
+    # Register the admin blueprint so it can be tested.
+    from zou.app.blueprints.admin import blueprint as admin_blueprint
+
+    if "admin" not in app.blueprints:
+        app.register_blueprint(admin_blueprint)
+
     with app.app_context():
         from zou.app import db
 

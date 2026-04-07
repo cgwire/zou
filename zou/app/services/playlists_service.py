@@ -16,8 +16,8 @@ from slugify import slugify
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload
 
-from zou.app import config, db
-from zou.app.stores import file_store
+from zou.app import config
+from zou.app.stores import config_store, file_store
 
 from zou.app.models.build_job import BuildJob
 from zou.app.models.playlist import Playlist
@@ -196,7 +196,7 @@ def get_playlist_with_preview_file_revisions(playlist_id):
 
     if playlist_dict["shots"] is None:
         playlist_dict["shots"] = []
-    (playlist_dict, preview_file_map) = set_preview_files_for_entities(
+    playlist_dict, preview_file_map = set_preview_files_for_entities(
         playlist_dict
     )
 
@@ -720,7 +720,7 @@ def _run_remote_job_build_playlist(
         "fps": params.fps,
         "full": str(full).lower(),
     }
-    nomad_job = config.JOB_QUEUE_NOMAD_PLAYLIST_JOB
+    nomad_job = config_store.get_nomad_playlist_job()
     remote_job.run_job(app, config, nomad_job, params)
 
     with open(movie_file_path, "wb") as movie_file:
