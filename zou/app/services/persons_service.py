@@ -153,6 +153,17 @@ def get_person(person_id, unsafe=False, relations=True):
         return person.serialize_safe(relations=relations)
 
 
+def get_persons_by_ids(person_ids):
+    """
+    Return persons matching given ids as a list of safe dictionaries.
+    Single query instead of one per person.
+    """
+    if not person_ids:
+        return []
+    persons = Person.query.filter(Person.id.in_(person_ids)).all()
+    return [person.serialize_safe() for person in persons]
+
+
 def get_person_by_email_raw(email):
     """
     Return person that matches given email as an active record.
