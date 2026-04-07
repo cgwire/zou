@@ -19,8 +19,12 @@ class EmailNotValidException(Exception):
 def encrypt_password(password):
     """
     Encrypt given string password using bcrypt algorithm.
+    bcrypt only uses the first 72 bytes, so truncate to avoid
+    ValueError on newer bcrypt versions.
     """
-    return flask_bcrypt.generate_password_hash(password)
+    if isinstance(password, str):
+        password = password.encode("utf-8")
+    return flask_bcrypt.generate_password_hash(password[:72])
 
 
 def validate_email(
