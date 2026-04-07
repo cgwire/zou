@@ -2,6 +2,7 @@
 import os
 import tempfile
 import shutil
+import zipfile
 
 from pathlib import Path
 from unittest.mock import patch
@@ -98,6 +99,34 @@ class PluginsServiceTestCase(ApiDBTestCase):
         result = plugins_service.install_plugin(str(plugin_path), force=True)
         self.assertIsNotNone(result)
         self.assertEqual(result["version"], "0.1.0")
+
+    @patch("zou.app.services.plugins_service.download_zip_url")
+    def test_install_plugin_from_zip_url(self, mock_download):
+        plugin_path = self._create_test_plugin("test_plugin", "0.1.0")
+
+        zip_path = Path(self.temp_dir) / "download" / "plugin.zip"
+        zip_path.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            for file in plugin_path.rglob("*"):
+                if file.is_file():
+                    zf.write(file, file.relative_to(plugin_path))
+
+        mock_download.return_value = zip_path
+
+        url = (
+            "https://github.com/org/repo/releases/"
+            "download/v0.1.0/test_plugin.zip"
+        )
+        result = plugins_service.install_plugin(url)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["plugin_id"], "test_plugin")
+        self.assertEqual(result["version"], "0.1.0")
+        mock_download.assert_called_once_with(url)
+
+        installed_path = self.plugin_folder / "test_plugin"
+        self.assertTrue(installed_path.exists())
+        self.assertTrue((installed_path / "manifest.toml").exists())
 
     def test_install_plugin_nonexistent_path(self):
         with self.assertRaises(FileNotFoundError):

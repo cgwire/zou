@@ -5,6 +5,7 @@ import shutil
 import zipfile
 
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 from tests.base import ApiDBTestCase
 
@@ -15,6 +16,7 @@ from zou.app.utils.plugins import (
     create_plugin_package,
     create_plugin_skeleton,
     add_static_routes,
+    download_zip_url,
 )
 
 
@@ -240,6 +242,60 @@ class PluginFilesTestCase(ApiDBTestCase):
         nonexistent_path = Path(self.temp_dir) / "nonexistent"
         result = uninstall_plugin_files(nonexistent_path)
         self.assertFalse(result)
+
+
+class PluginDownloadTestCase(ApiDBTestCase):
+    def setUp(self):
+        super(PluginDownloadTestCase, self).setUp()
+        self.temp_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        super(PluginDownloadTestCase, self).tearDown()
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    @patch("zou.app.utils.plugins.requests")
+    def test_download_zip_url(self, mock_requests):
+        zip_content = self._create_test_zip()
+        mock_response = MagicMock()
+        mock_response.iter_content.return_value = [zip_content]
+        mock_response.raise_for_status = MagicMock()
+        mock_requests.get.return_value = mock_response
+
+        url = "https://github.com/org/repo/releases/download/v0.1.0/plugin.zip"
+        result = download_zip_url(url, self.temp_dir)
+
+        self.assertTrue(result.exists())
+        self.assertEqual(result.name, "plugin.zip")
+        self.assertTrue(zipfile.is_zipfile(result))
+        mock_requests.get.assert_called_once_with(
+            url, stream=True, timeout=300
+        )
+
+    @patch("zou.app.utils.plugins.requests")
+    def test_download_zip_url_http_error(self, mock_requests):
+        import requests
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = (
+            requests.exceptions.HTTPError("404 Not Found")
+        )
+        mock_requests.get.return_value = mock_response
+
+        with self.assertRaises(requests.exceptions.HTTPError):
+            download_zip_url(
+                "https://example.com/nonexistent.zip",
+                self.temp_dir,
+            )
+
+    def _create_test_zip(self):
+        import io
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            zf.writestr("manifest.toml", 'id = "test"\nversion = "0.1.0"')
+            zf.writestr("__init__.py", "routes = []")
+        return buffer.getvalue()
 
 
 class PluginPackageTestCase(ApiDBTestCase):
