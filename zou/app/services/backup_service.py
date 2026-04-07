@@ -69,7 +69,7 @@ def upload_preview_files_to_storage(days=None):
         limit_date = date_helpers.get_date_from_now(int(days))
         query = query.filter(PreviewFile.updated_at >= limit_date)
 
-    for preview_file in query.all():
+    for preview_file in query.yield_per(500):
         upload_preview(preview_file)
 
 

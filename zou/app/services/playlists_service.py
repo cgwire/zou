@@ -520,12 +520,14 @@ def playlist_previews(shots, only_movies=False):
         return []
 
     # Single query for all preview files (batch fetch)
-    preview_models = PreviewFile.query.filter(
-        PreviewFile.id.in_(preview_file_ids)
-    ).all()
+    preview_rows = (
+        PreviewFile.query.with_entities(PreviewFile.id, PreviewFile.extension)
+        .filter(PreviewFile.id.in_(preview_file_ids))
+        .all()
+    )
     id_to_preview = {
-        str(pf.id): {"id": str(pf.id), "extension": pf.extension}
-        for pf in preview_models
+        str(pf_id): {"id": str(pf_id), "extension": ext}
+        for pf_id, ext in preview_rows
     }
 
     # Preserve order of shots and apply only_movies filter

@@ -1,5 +1,6 @@
 import slugify
 
+from collections import defaultdict
 from sqlalchemy.exc import IntegrityError
 
 from zou.app.models.preview_background_file import PreviewBackgroundFile
@@ -140,10 +141,8 @@ def _fetch_metadata_descriptors_by_project(
     )
 
     all_descriptors = descriptors_query.all()
-    descriptors_by_project = {}
+    descriptors_by_project = defaultdict(list)
     for desc in all_descriptors:
-        if desc.project_id not in descriptors_by_project:
-            descriptors_by_project[desc.project_id] = []
         descriptors_by_project[desc.project_id].append(desc)
     return descriptors_by_project
 
@@ -152,10 +151,8 @@ def _fetch_task_type_links_by_project(project_ids):
     task_type_links = ProjectTaskTypeLink.query.filter(
         ProjectTaskTypeLink.project_id.in_(project_ids)
     ).all()
-    task_types_by_project = {}
+    task_types_by_project = defaultdict(dict)
     for link in task_type_links:
-        if link.project_id not in task_types_by_project:
-            task_types_by_project[link.project_id] = {}
         task_types_by_project[link.project_id][
             str(link.task_type_id)
         ] = link.priority
@@ -166,10 +163,8 @@ def _fetch_task_status_links_by_project(project_ids):
     task_status_links = ProjectTaskStatusLink.query.filter(
         ProjectTaskStatusLink.project_id.in_(project_ids)
     ).all()
-    task_statuses_by_project = {}
+    task_statuses_by_project = defaultdict(dict)
     for link in task_status_links:
-        if link.project_id not in task_statuses_by_project:
-            task_statuses_by_project[link.project_id] = {}
         task_statuses_by_project[link.project_id][str(link.task_status_id)] = {
             "priority": link.priority,
             "roles_for_board": fields.serialize_list(link.roles_for_board),
@@ -277,7 +272,7 @@ def get_projects():
 
     result = []
     for entry in query.all():
-        (project, project_status_name) = entry
+        project, project_status_name = entry
         data = project.serialize()
         data["project_status_name"] = project_status_name
         result.append(data)

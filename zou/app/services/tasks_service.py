@@ -655,10 +655,14 @@ def get_comments(task_id, is_client=False, is_manager=False):
         project = projects_service.get_project(task["project_id"])
         current_user = persons_service.get_current_user()
         is_clients_isolated = project.get("is_clients_isolated", False)
+        person_ids = list({c["person_id"] for c in comments})
+        persons_map = {
+            p["id"]: p for p in persons_service.get_persons_by_ids(person_ids)
+        }
         for comment in comments:
-            person = persons_service.get_person(comment["person_id"])
+            person = persons_map.get(comment["person_id"], {})
             is_author = comment["person_id"] == current_user["id"]
-            is_author_client = person["role"] == "client"
+            is_author_client = person.get("role") == "client"
             is_allowed = (is_clients_isolated and is_author) or (
                 not is_clients_isolated and is_author_client
             )
