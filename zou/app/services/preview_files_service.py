@@ -203,23 +203,42 @@ def prepare_and_store_movie(
             )
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
 
-        original_width, original_height = movie.get_movie_size(
-            uploaded_movie_path
-        )
-        original_duration = movie.get_movie_duration(uploaded_movie_path)
-        original_file_size = os.path.getsize(uploaded_movie_path)
-        update_preview_file_raw(
-            preview_file_raw,
-            {
-                "data": {
-                    **(preview_file_raw.data or {}),
-                    "original_width": original_width,
-                    "original_height": original_height,
-                    "original_duration": original_duration,
-                    "original_file_size": original_file_size,
-                }
-            },
-        )
+        # Capture original metadata before normalization. This is a
+        # nice-to-have, so any failure here must not block the main pipeline.
+        # silent=True avoids emitting a second preview-file:update event
+        # alongside the final "ready" update at the end of this function.
+        try:
+            original_width, original_height = movie.get_movie_size(
+                uploaded_movie_path
+            )
+            original_duration = movie.get_movie_duration(uploaded_movie_path)
+            original_file_size = os.path.getsize(uploaded_movie_path)
+            update_preview_file_raw(
+                preview_file_raw,
+                {
+                    "data": {
+                        **(preview_file_raw.data or {}),
+                        "original_width": original_width,
+                        "original_height": original_height,
+                        "original_duration": original_duration,
+                        "original_file_size": original_file_size,
+                    }
+                },
+                silent=True,
+            )
+        except PreviewFileNotFoundException:
+            current_app.logger.warning(
+                "Preview file %s was deleted while capturing original "
+                "video metadata; skipping metadata capture",
+                preview_file_id,
+            )
+        except Exception:
+            current_app.logger.warning(
+                "Failed to capture original video metadata for %s; "
+                "continuing without it",
+                uploaded_movie_path,
+                exc_info=1,
+            )
 
         normalized_movie_low_path = None
         try:
