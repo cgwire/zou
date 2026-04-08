@@ -1,6 +1,9 @@
 import os
 import flask_fs
 
+from flask import current_app
+from werkzeug.utils import cached_property
+
 from zou.app import config
 
 from flask_fs.backends.local import LocalBackend
@@ -34,6 +37,24 @@ def path(self, filename):
 
 
 LocalBackend.path = path
+
+
+@cached_property
+def _default_root(self):
+    """
+    Read the storage default root without opening a nested app context.
+
+    The upstream LocalBackend wraps this in ``with current_app.app_context():``
+    which, on teardown, triggers Flask-SQLAlchemy's ``db.session.remove()``
+    handler. Since storage operations always happen inside a request that
+    already has an app context, the nested context only serves to wipe the
+    outer request's session and detach every loaded ORM instance.
+    """
+    default_root = current_app.config.get("FS_ROOT")
+    return current_app.config.get("FS_LOCAL_ROOT", default_root)
+
+
+LocalBackend.default_root = _default_root
 
 
 def configure_storages(app):
