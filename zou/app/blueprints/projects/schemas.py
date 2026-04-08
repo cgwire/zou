@@ -95,8 +95,8 @@ class BudgetEntrySchema(BaseSchema):
     department_id: str = Field(..., min_length=1)
     person_id: Optional[str] = None
     start_date: Optional[str] = None
-    months_duration: Optional[str] = None
-    daily_salary: Optional[str] = None
+    months_duration: Optional[int] = None
+    daily_salary: Optional[float] = None
     position: Optional[str] = None
     seniority: Optional[str] = None
 
@@ -107,8 +107,8 @@ class BudgetEntryUpdateSchema(BaseSchema):
     department_id: Optional[str] = None
     person_id: Optional[str] = None
     start_date: Optional[str] = None
-    months_duration: Optional[str] = None
-    daily_salary: Optional[str] = None
+    months_duration: Optional[int] = None
+    daily_salary: Optional[float] = None
     position: Optional[str] = None
     seniority: Optional[str] = None
     exceptions: Optional[dict] = Field(default={})
