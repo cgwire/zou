@@ -161,10 +161,12 @@ def cast_value(value, field_key):
     if field_key.type.python_type is bool:
         return string.strtobool(value)
     elif field_key.type.python_type is uuid.UUID:
-        if value and not isinstance(value, uuid.UUID) and not fields.is_valid_id(value):
-            raise WrongParameterException(
-                "Invalid UUID value: %s" % value
-            )
+        if (
+            value
+            and not isinstance(value, uuid.UUID)
+            and not fields.is_valid_id(value)
+        ):
+            raise WrongParameterException("Invalid UUID value: %s" % value)
         return func.cast(value, field_key.type)
     else:
         return func.cast(value, field_key.type)

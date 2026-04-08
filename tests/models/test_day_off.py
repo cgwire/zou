@@ -54,9 +54,7 @@ class DayOffTestCase(ApiDBTestCase):
         data = {"description": "Vacation"}
         self.put("data/day-offs/%s" % day_off["id"], data)
         day_off_again = self.get("data/day-offs/%s" % day_off["id"])
-        self.assertEqual(
-            data["description"], day_off_again["description"]
-        )
+        self.assertEqual(data["description"], day_off_again["description"])
         self.put_404("data/day-offs/%s" % fields.gen_uuid(), data)
 
     def test_delete_day_off(self):

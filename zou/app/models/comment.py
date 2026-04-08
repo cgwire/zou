@@ -122,9 +122,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
     acknowledgements = db.relationship(
         "Person", secondary=acknowledgements_table
     )
-    attachment_files = db.relationship(
-        "AttachmentFile", backref="comment"
-    )
+    attachment_files = db.relationship("AttachmentFile", backref="comment")
 
     # Relationships whose IDs can be fetched directly from join tables
     # instead of loading full ORM objects.

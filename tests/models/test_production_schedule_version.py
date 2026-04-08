@@ -41,9 +41,7 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
             "name": "Version 3",
             "project_id": self.project_id,
         }
-        version = self.post(
-            "data/production-schedule-versions", data
-        )
+        version = self.post("data/production-schedule-versions", data)
         self.assertIsNotNone(version["id"])
         versions = self.get(self._list_url())
         self.assertEqual(len(versions), 4)
@@ -68,9 +66,7 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
         versions = self.get(self._list_url())
         self.assertEqual(len(versions), 3)
         version = versions[0]
-        self.delete(
-            "data/production-schedule-versions/%s" % version["id"]
-        )
+        self.delete("data/production-schedule-versions/%s" % version["id"])
         versions = self.get(self._list_url())
         self.assertEqual(len(versions), 2)
         self.delete_404(

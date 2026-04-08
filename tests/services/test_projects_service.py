@@ -447,7 +447,9 @@ class ProjectServiceTestCase(ApiDBTestCase):
         self.assertEqual(link["task_status_id"], str(self.task_status.id))
         # Update existing link
         link2 = projects_service.create_project_task_status_link(
-            str(self.project.id), str(self.task_status.id), 3,
+            str(self.project.id),
+            str(self.task_status.id),
+            3,
             roles_for_board=["admin"],
         )
         self.assertEqual(link2["priority"], 3)

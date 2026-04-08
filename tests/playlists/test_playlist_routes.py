@@ -23,9 +23,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
 
     def test_get_all_project_playlists(self):
         self.generate_fixture_playlist("Playlist 1")
-        result = self.get(
-            f"/data/projects/{self.project_id}/playlists/all"
-        )
+        result = self.get(f"/data/projects/{self.project_id}/playlists/all")
         self.assertIsInstance(result, list)
         self.assertTrue(len(result) > 0)
 
@@ -41,13 +39,10 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
 
     def test_get_project_playlist(self):
         self.generate_fixture_playlist("Single Playlist")
-        playlists = self.get(
-            f"/data/projects/{self.project_id}/playlists"
-        )
+        playlists = self.get(f"/data/projects/{self.project_id}/playlists")
         playlist_id = playlists[0]["id"]
         result = self.get(
-            f"/data/projects/{self.project_id}"
-            f"/playlists/{playlist_id}"
+            f"/data/projects/{self.project_id}" f"/playlists/{playlist_id}"
         )
         self.assertEqual(result["id"], playlist_id)
 
@@ -58,9 +53,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, dict)
 
     def test_get_project_build_jobs(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}/build-jobs"
-        )
+        result = self.get(f"/data/projects/{self.project_id}/build-jobs")
         self.assertIsInstance(result, list)
 
     def test_create_temp_playlist(self):
@@ -73,9 +66,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
 
     def test_add_entity_to_playlist(self):
         self.generate_fixture_playlist("Add Entity Playlist")
-        playlists = self.get(
-            f"/data/projects/{self.project_id}/playlists"
-        )
+        playlists = self.get(f"/data/projects/{self.project_id}/playlists")
         playlist_id = playlists[0]["id"]
         result = self.post(
             f"/actions/playlists/{playlist_id}/add-entity",
@@ -84,10 +75,7 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsNotNone(result)
         playlist = self.get(
-            f"/data/projects/{self.project_id}"
-            f"/playlists/{playlist_id}"
+            f"/data/projects/{self.project_id}" f"/playlists/{playlist_id}"
         )
-        shot_ids = [
-            s["entity_id"] for s in playlist.get("shots", [])
-        ]
+        shot_ids = [s["entity_id"] for s in playlist.get("shots", [])]
         self.assertIn(str(self.shot.id), shot_ids)

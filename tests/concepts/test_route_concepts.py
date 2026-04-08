@@ -11,9 +11,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_asset_type()
 
     def create_concept(self, name="Test Concept"):
-        return concepts_service.create_concept(
-            str(self.project.id), name
-        )
+        return concepts_service.create_concept(str(self.project.id), name)
 
     def test_get_all_concepts(self):
         self.create_concept("Concept A")
@@ -65,9 +63,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
 
     def test_get_concept_task_types(self):
         concept = self.create_concept("Task Types Concept")
-        result = self.get(
-            f"/data/concepts/{concept['id']}/task-types"
-        )
+        result = self.get(f"/data/concepts/{concept['id']}/task-types")
         self.assertEqual(len(result), 0)
 
     def test_get_concept_task_types_with_task(self):
@@ -81,9 +77,7 @@ class ConceptRoutesTestCase(ApiDBTestCase):
             entity_id=concept["id"],
             task_type_id=self.task_type.id,
         )
-        result = self.get(
-            f"/data/concepts/{concept['id']}/task-types"
-        )
+        result = self.get(f"/data/concepts/{concept['id']}/task-types")
         self.assertEqual(len(result), 1)
 
     def test_get_concept_tasks(self):
@@ -107,23 +101,17 @@ class ConceptRoutesTestCase(ApiDBTestCase):
 
     def test_get_concept_preview_files(self):
         concept = self.create_concept("Preview Concept")
-        result = self.get(
-            f"/data/concepts/{concept['id']}/preview-files"
-        )
+        result = self.get(f"/data/concepts/{concept['id']}/preview-files")
         self.assertIsInstance(result, dict)
 
     def test_get_project_concepts(self):
         self.create_concept("Project Concept")
-        result = self.get(
-            f"/data/projects/{self.project.id}/concepts"
-        )
+        result = self.get(f"/data/projects/{self.project.id}/concepts")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["name"], "Project Concept")
 
     def test_get_project_concepts_empty(self):
-        result = self.get(
-            f"/data/projects/{self.project.id}/concepts"
-        )
+        result = self.get(f"/data/projects/{self.project.id}/concepts")
         self.assertEqual(len(result), 0)
 
     def test_create_concept(self):

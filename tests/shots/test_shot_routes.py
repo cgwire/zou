@@ -20,18 +20,14 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
 
     def test_get_shot_preview_files(self):
-        result = self.get(
-            f"/data/shots/{self.shot.id}/preview-files"
-        )
+        result = self.get(f"/data/shots/{self.shot.id}/preview-files")
         self.assertIsInstance(result, dict)
 
     def test_get_shot_preview_files_with_data(self):
         self.generate_fixture_preview_file(
             task_id=self.shot_task.id,
         )
-        result = self.get(
-            f"/data/shots/{self.shot.id}/preview-files"
-        )
+        result = self.get(f"/data/shots/{self.shot.id}/preview-files")
         self.assertTrue(len(result) > 0)
 
     def test_get_shot_versions(self):
@@ -39,22 +35,16 @@ class ShotRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
 
     def test_get_episode_shot_tasks(self):
-        result = self.get(
-            f"/data/episodes/{self.episode.id}/shot-tasks"
-        )
+        result = self.get(f"/data/episodes/{self.episode.id}/shot-tasks")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
 
     def test_get_episode_asset_tasks(self):
-        result = self.get(
-            f"/data/episodes/{self.episode.id}/asset-tasks"
-        )
+        result = self.get(f"/data/episodes/{self.episode.id}/asset-tasks")
         self.assertIsInstance(result, list)
 
     def test_get_sequence_shot_tasks(self):
-        result = self.get(
-            f"/data/sequences/{self.sequence.id}/shot-tasks"
-        )
+        result = self.get(f"/data/sequences/{self.sequence.id}/shot-tasks")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
 

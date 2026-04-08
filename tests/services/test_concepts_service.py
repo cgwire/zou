@@ -57,19 +57,13 @@ class ConceptsServiceTestCase(ApiDBTestCase):
         self.assertEqual(result["name"], "Concept Get")
 
     def test_get_concepts(self):
-        concepts_service.create_concept(
-            str(self.project.id), "Concept A"
-        )
-        concepts_service.create_concept(
-            str(self.project.id), "Concept B"
-        )
+        concepts_service.create_concept(str(self.project.id), "Concept A")
+        concepts_service.create_concept(str(self.project.id), "Concept B")
         concepts = concepts_service.get_concepts()
         self.assertEqual(len(concepts), 2)
 
     def test_get_concepts_for_project(self):
-        concepts_service.create_concept(
-            str(self.project.id), "Concept P"
-        )
+        concepts_service.create_concept(str(self.project.id), "Concept P")
         concepts = concepts_service.get_concepts_for_project(
             str(self.project.id)
         )
@@ -137,9 +131,7 @@ class ConceptsServiceTestCase(ApiDBTestCase):
             entity_id=concept["id"],
             task_type_id=self.task_type.id,
         )
-        result = concepts_service.remove_concept(
-            concept["id"], force=True
-        )
+        result = concepts_service.remove_concept(concept["id"], force=True)
         self.assertEqual(result["id"], concept["id"])
         with self.assertRaises(ConceptNotFoundException):
             concepts_service.get_concept_raw(concept["id"])

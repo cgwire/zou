@@ -34,7 +34,9 @@ class HardwareItemTestCase(ApiDBTestCase):
         hardware_item_again = self.get(
             "data/hardware-items/%s" % hardware_item["id"]
         )
-        self.assertEqual(data["monthly_cost"], hardware_item_again["monthly_cost"])
+        self.assertEqual(
+            data["monthly_cost"], hardware_item_again["monthly_cost"]
+        )
         self.put_404("data/hardware-items/%s" % fields.gen_uuid(), data)
 
     def test_delete_hardware_item(self):
