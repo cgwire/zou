@@ -13,6 +13,7 @@ from zou.app.services import (
     user_service,
     persons_service,
     files_service,
+    preview_files_service,
 )
 from zou.app.utils import events, permissions, fields
 
@@ -181,7 +182,8 @@ class ProjectsResource(BaseModelsResource):
 
     def check_creation_integrity(self, data):
         """
-        Check if the data descriptor has a valid production_style.
+        Check if the data descriptor has a valid production_style and
+        resolution.
         """
         if "production_style" in data:
             if data["production_style"] is None:
@@ -190,6 +192,8 @@ class ProjectsResource(BaseModelsResource):
                 type_name for type_name, _ in PROJECT_STYLES
             ]:
                 raise WrongParameterException("Invalid production_style")
+        if "resolution" in data:
+            preview_files_service.validate_resolution(data["resolution"])
         return True
 
     def update_data(self, data):
@@ -392,6 +396,9 @@ class ProjectResource(BaseModelResource, ArgsMixin):
         return user_service.check_manager_project_access(project["id"])
 
     def pre_update(self, project_dict, data):
+        if "resolution" in data:
+            preview_files_service.validate_resolution(data["resolution"])
+
         if "preview_background_files" in data:
             data["preview_background_files"] = [
                 files_service.get_preview_background_file_raw(

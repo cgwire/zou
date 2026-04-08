@@ -64,15 +64,25 @@ def get_preview_file_dimensions(project, entity=None):
     if _is_valid_resolution(entity_resolution):
         resolution = entity_resolution
 
-    if _is_valid_resolution(resolution):
-        [width, height] = resolution.split("x")
-        width = int(width)
-        height = int(height)
+    try:
+        if _is_valid_resolution(resolution):
+            [width, height] = resolution.split("x")
+            width = int(width)
+            height = int(height)
+        elif _is_valid_partial_resolution(resolution):
+            [_, height] = resolution.split("x")
+            width = None
+            height = int(height)
+    except (ValueError, TypeError):
+        # Defensive fallback: a malformed resolution string should not
+        # crash the normalization worker, just use the default 1080.
+        from zou.app import app as current_app
 
-    if _is_valid_partial_resolution(resolution):
-        [width, height] = resolution.split("x")
+        current_app.logger.warning(
+            "Invalid resolution %r, falling back to default", resolution
+        )
         width = None
-        height = int(height)
+        height = 1080
 
     return (width, height)
 
@@ -82,7 +92,7 @@ def _is_valid_resolution(resolution):
     Return true if the dimension follows the 1920x1080 pattern.
     """
     return resolution is not None and bool(
-        re.match(r"\d{3,4}x\d{3,4}", resolution)
+        re.match(r"^\d{3,4}x\d{3,4}$", resolution)
     )
 
 
@@ -90,7 +100,30 @@ def _is_valid_partial_resolution(resolution):
     """
     Return true if the dimension follows the x1080 pattern.
     """
-    return resolution is not None and bool(re.match(r"x\d{3,4}", resolution))
+    return resolution is not None and bool(
+        re.match(r"^x\d{3,4}$", resolution)
+    )
+
+
+def validate_resolution(resolution):
+    """
+    Raise WrongParameterException if the resolution is set but doesn't
+    match the canonical "WIDTHxHEIGHT" or "xHEIGHT" format. Empty values
+    (None or "") are accepted: the runtime falls back to 1080p.
+
+    Used at the CRUD boundary so users get an immediate 400 instead of
+    a silent fallback at normalization time.
+    """
+    if resolution in (None, ""):
+        return
+    if not (
+        _is_valid_resolution(resolution)
+        or _is_valid_partial_resolution(resolution)
+    ):
+        raise WrongParameterException(
+            "Invalid resolution %r. Expected format: '1920x1080' or "
+            "'x1080'." % resolution
+        )
 
 
 def get_preview_file_fps(project, entity=None):
