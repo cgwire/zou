@@ -26,21 +26,15 @@ class UserRoutesTestCase(ApiDBTestCase):
         project.save()
 
     def test_get_asset_task_types(self):
-        result = self.get(
-            f"/data/user/assets/{self.asset.id}/task-types"
-        )
+        result = self.get(f"/data/user/assets/{self.asset.id}/task-types")
         self.assertIsInstance(result, list)
         self.assertTrue(len(result) > 0)
 
     def test_join_and_leave_chat(self):
-        self.post(
-            f"/actions/user/chats/{self.asset.id}/join", {}, 200
-        )
+        self.post(f"/actions/user/chats/{self.asset.id}/join", {}, 200)
         chat = self.get(f"/data/entities/{self.asset.id}/chat")
         self.assertIn(str(self.user_id), chat["participants"])
 
-        self.delete(
-            f"/actions/user/chats/{self.asset.id}/join"
-        )
+        self.delete(f"/actions/user/chats/{self.asset.id}/join")
         chat = self.get(f"/data/entities/{self.asset.id}/chat")
         self.assertNotIn(str(self.user_id), chat["participants"])

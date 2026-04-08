@@ -604,15 +604,11 @@ class FileServiceTestCase(ApiDBTestCase):
         self.assertEqual(result["comment"], "updated")
 
     def test_get_output_types_for_entity(self):
-        output_types = files_service.get_output_types_for_entity(
-            self.asset.id
-        )
+        output_types = files_service.get_output_types_for_entity(self.asset.id)
         self.assertEqual(len(output_types), 1)
 
     def test_get_output_files_for_entity(self):
-        output_files = files_service.get_output_files_for_entity(
-            self.asset.id
-        )
+        output_files = files_service.get_output_files_for_entity(self.asset.id)
         self.assertEqual(len(output_files), 1)
 
     def test_get_working_files_for_entity(self):

@@ -82,9 +82,7 @@ class DepartmentRoutesTestCase(ApiDBTestCase):
             f"/data/departments/{self.department.id}/hardware-items",
             {"hardware_item_id": str(self.hardware_item.id)},
         )
-        self.assertEqual(
-            result["department_id"], str(self.department.id)
-        )
+        self.assertEqual(result["department_id"], str(self.department.id))
         self.assertEqual(
             result["hardware_item_id"], str(self.hardware_item.id)
         )

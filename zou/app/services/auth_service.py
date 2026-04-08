@@ -575,7 +575,7 @@ def register_fido(person_id, registration_response, device_name):
         auth_data = current_app.extensions["fido_server"].register_complete(
             state, registration_response
         )
-    except BaseException:
+    except Exception:
         raise FIDOServerException()
     credential_data = {
         "device_name": device_name,

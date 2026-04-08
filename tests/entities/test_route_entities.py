@@ -35,30 +35,22 @@ class EntityRoutesTestCase(ApiDBTestCase):
             "Test comment",
         )
         task_dict = self.task.serialize()
-        news_service.create_news_for_task_and_comment(
-            task_dict, comment
-        )
+        news_service.create_news_for_task_and_comment(task_dict, comment)
         result = self.get(f"/data/entities/{self.asset.id}/news")
         self.assertEqual(len(result["data"]), 1)
 
     def test_get_entity_preview_files(self):
-        result = self.get(
-            f"/data/entities/{self.asset.id}/preview-files"
-        )
+        result = self.get(f"/data/entities/{self.asset.id}/preview-files")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 0)
 
     def test_get_entity_preview_files_with_data(self):
         self.generate_fixture_preview_file()
-        result = self.get(
-            f"/data/entities/{self.asset.id}/preview-files"
-        )
+        result = self.get(f"/data/entities/{self.asset.id}/preview-files")
         self.assertTrue(len(result) > 0)
 
     def test_get_entity_time_spents(self):
-        result = self.get(
-            f"/data/entities/{self.asset.id}/time-spents"
-        )
+        result = self.get(f"/data/entities/{self.asset.id}/time-spents")
         self.assertEqual(len(result), 0)
 
     def test_get_entity_time_spents_with_data(self):
@@ -68,9 +60,7 @@ class EntityRoutesTestCase(ApiDBTestCase):
             date="2024-01-15",
             duration=120,
         )
-        result = self.get(
-            f"/data/entities/{self.asset.id}/time-spents"
-        )
+        result = self.get(f"/data/entities/{self.asset.id}/time-spents")
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["duration"], 120)
 

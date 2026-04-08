@@ -37,26 +37,20 @@ class ChatsServiceTestCase(ApiDBTestCase):
         self.assertEqual(result["id"], str(chat.id))
 
     def test_join_chat(self):
-        chat = chats_service.join_chat(
-            self.asset.id, str(self.person.id)
-        )
+        chat = chats_service.join_chat(self.asset.id, str(self.person.id))
         self.assertIsNotNone(chat)
         chat_raw = Chat.get(chat["id"])
         self.assertIn(self.person, chat_raw.participants)
 
     def test_leave_chat(self):
         chats_service.join_chat(self.asset.id, str(self.person.id))
-        chat = chats_service.leave_chat(
-            self.asset.id, str(self.person.id)
-        )
+        chat = chats_service.leave_chat(self.asset.id, str(self.person.id))
         chat_raw = Chat.get(chat["id"])
         self.assertNotIn(self.person, chat_raw.participants)
 
     def test_leave_chat_not_participant(self):
         # Leaving a chat you never joined should not raise
-        chat = chats_service.leave_chat(
-            self.asset.id, str(self.person.id)
-        )
+        chat = chats_service.leave_chat(self.asset.id, str(self.person.id))
         self.assertIsNotNone(chat)
 
     def test_create_chat_message(self):
@@ -86,9 +80,7 @@ class ChatsServiceTestCase(ApiDBTestCase):
         chats_service.create_chat_message(
             chat.id, str(self.person.id), "Hello"
         )
-        messages = chats_service.get_chat_messages_for_entity(
-            self.asset.id
-        )
+        messages = chats_service.get_chat_messages_for_entity(self.asset.id)
         self.assertEqual(len(messages), 1)
         self.assertEqual(messages[0]["text"], "Hello")
 

@@ -96,20 +96,14 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         self.assertEqual(result.id, psv.id)
 
     def test_get_production_schedule_version_raw_not_found(self):
-        with self.assertRaises(
-            ProductionScheduleVersionNotFoundException
-        ):
-            schedule_service.get_production_schedule_version_raw(
-                "wrong-id"
-            )
+        with self.assertRaises(ProductionScheduleVersionNotFoundException):
+            schedule_service.get_production_schedule_version_raw("wrong-id")
 
     def test_get_production_schedule_version(self):
         psv = ProductionScheduleVersion.create(
             name="v1", project_id=self.project.id
         )
-        result = schedule_service.get_production_schedule_version(
-            str(psv.id)
-        )
+        result = schedule_service.get_production_schedule_version(str(psv.id))
         self.assertEqual(result["id"], str(psv.id))
         self.assertEqual(result["name"], "v1")
 
@@ -126,10 +120,8 @@ class ScheduleServiceTestCase(ApiDBTestCase):
         psv = ProductionScheduleVersion.create(
             name="v1", project_id=self.project.id
         )
-        links = (
-            schedule_service.get_production_schedule_version_task_links(
-                str(psv.id)
-            )
+        links = schedule_service.get_production_schedule_version_task_links(
+            str(psv.id)
         )
         self.assertEqual(len(links), 0)
 

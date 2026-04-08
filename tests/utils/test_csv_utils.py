@@ -11,9 +11,7 @@ class CsvUtilsTestCase(unittest.TestCase):
         )
 
     def test_build_csv_file_name_special_chars(self):
-        self.assertEqual(
-            build_csv_file_name("é à ü"), "kitsu_e_a_u"
-        )
+        self.assertEqual(build_csv_file_name("é à ü"), "kitsu_e_a_u")
 
     def test_build_csv_string_simple(self):
         content = [["Name", "Status"], ["SH01", "Done"], ["SH02", "WIP"]]

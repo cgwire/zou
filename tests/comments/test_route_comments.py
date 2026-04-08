@@ -32,9 +32,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertEqual(result["text"], "A new comment")
-        self.assertEqual(
-            result["task_status_id"], str(self.task_status.id)
-        )
+        self.assertEqual(result["task_status_id"], str(self.task_status.id))
         comments = tasks_service.get_comments(str(self.task.id))
         texts = [c["text"] for c in comments]
         self.assertIn("A new comment", texts)
@@ -76,15 +74,11 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.assertNotIn(reply_id, reply_ids)
 
     def test_get_project_attachment_files(self):
-        result = self.get(
-            f"/data/projects/{self.project.id}/attachment-files"
-        )
+        result = self.get(f"/data/projects/{self.project.id}/attachment-files")
         self.assertIsInstance(result, list)
 
     def test_get_task_attachment_files(self):
-        result = self.get(
-            f"/data/tasks/{self.task.id}/attachment-files"
-        )
+        result = self.get(f"/data/tasks/{self.task.id}/attachment-files")
         self.assertIsInstance(result, list)
 
     def test_comment_many_tasks(self):

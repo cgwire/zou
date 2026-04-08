@@ -27,9 +27,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, dict)
 
     def test_get_project_subscriptions(self):
-        result = self.get(
-            f"/data/projects/{self.project_id}/subscriptions"
-        )
+        result = self.get(f"/data/projects/{self.project_id}/subscriptions")
         self.assertIsInstance(result, list)
 
     def test_get_persons_task_dates(self):
@@ -123,7 +121,5 @@ class TaskRoutesTestCase(ApiDBTestCase):
             f"/preview-files/{preview_id}",
         )
         comment = tasks_service.get_comment(comment_id)
-        preview_ids = [
-            p["id"] for p in comment.get("previews", [])
-        ]
+        preview_ids = [p["id"] for p in comment.get("previews", [])]
         self.assertNotIn(preview_id, preview_ids)

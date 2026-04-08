@@ -50,9 +50,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
 
     def test_get_episodes_casting(self):
         self._set_shot_casting()
-        result = self.get(
-            f"/data/projects/{self.project_id}/episodes/casting"
-        )
+        result = self.get(f"/data/projects/{self.project_id}/episodes/casting")
         self.assertIsInstance(result, dict)
         self.assertTrue(len(result) > 0)
 
@@ -100,9 +98,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(links_after), initial_count - 1)
 
     def test_get_scene_asset_instances(self):
-        result = self.get(
-            f"/data/scenes/{self.scene_id}/asset-instances"
-        )
+        result = self.get(f"/data/scenes/{self.scene_id}/asset-instances")
         self.assertIsInstance(result, dict)
 
     def test_create_scene_asset_instance(self):
@@ -114,21 +110,15 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertIsNotNone(result.get("id"))
-        instances = self.get(
-            f"/data/scenes/{self.scene_id}/asset-instances"
-        )
+        instances = self.get(f"/data/scenes/{self.scene_id}/asset-instances")
         self.assertIn(self.asset_id, instances)
 
     def test_get_scene_camera_instances(self):
-        result = self.get(
-            f"/data/scenes/{self.scene_id}/camera-instances"
-        )
+        result = self.get(f"/data/scenes/{self.scene_id}/camera-instances")
         self.assertIsInstance(result, dict)
 
     def test_get_shot_asset_instances(self):
-        result = self.get(
-            f"/data/shots/{self.shot_id}/asset-instances"
-        )
+        result = self.get(f"/data/shots/{self.shot_id}/asset-instances")
         self.assertIsInstance(result, dict)
 
     def test_add_asset_instance_to_shot(self):
@@ -138,9 +128,7 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             {"asset_instance_id": str(self.asset_instance.id)},
         )
         self.assertIsNotNone(result.get("id"))
-        instances = self.get(
-            f"/data/shots/{self.shot_id}/asset-instances"
-        )
+        instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
         self.assertTrue(len(instances) > 0)
 
     def test_remove_asset_instance_from_shot(self):
@@ -153,7 +141,5 @@ class BreakdownRoutesTestCase(ApiDBTestCase):
             f"/data/shots/{self.shot_id}"
             f"/asset-instances/{self.asset_instance.id}"
         )
-        instances = self.get(
-            f"/data/shots/{self.shot_id}/asset-instances"
-        )
+        instances = self.get(f"/data/shots/{self.shot_id}/asset-instances")
         self.assertEqual(len(instances), 0)

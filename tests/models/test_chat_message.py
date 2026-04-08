@@ -43,26 +43,18 @@ class ChatMessageTestCase(ApiDBTestCase):
     def test_update_chat_message(self):
         chat_message = self.get_first("data/chat-messages")
         data = {"text": "Updated message"}
-        self.put(
-            "data/chat-messages/%s" % chat_message["id"], data
-        )
+        self.put("data/chat-messages/%s" % chat_message["id"], data)
         chat_message_again = self.get(
             "data/chat-messages/%s" % chat_message["id"]
         )
         self.assertEqual(data["text"], chat_message_again["text"])
-        self.put_404(
-            "data/chat-messages/%s" % fields.gen_uuid(), data
-        )
+        self.put_404("data/chat-messages/%s" % fields.gen_uuid(), data)
 
     def test_delete_chat_message(self):
         chat_messages = self.get("data/chat-messages")
         self.assertEqual(len(chat_messages), 3)
         chat_message = chat_messages[0]
-        self.delete(
-            "data/chat-messages/%s" % chat_message["id"]
-        )
+        self.delete("data/chat-messages/%s" % chat_message["id"])
         chat_messages = self.get("data/chat-messages")
         self.assertEqual(len(chat_messages), 2)
-        self.delete_404(
-            "data/chat-messages/%s" % fields.gen_uuid()
-        )
+        self.delete_404("data/chat-messages/%s" % fields.gen_uuid())

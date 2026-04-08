@@ -229,20 +229,14 @@ class PersonServiceTestCase(ApiDBTestCase):
         )
 
     def test_get_presence_logs(self):
-        persons_service.create_desktop_login_logs(
-            self.person_id, "2021-03-15"
-        )
+        persons_service.create_desktop_login_logs(self.person_id, "2021-03-15")
         logs = persons_service.get_presence_logs(2021, 3)
         self.assertGreater(len(logs), 0)
         self.assertEqual(logs[0][0], "2021")
 
     def test_is_admin(self):
-        self.assertFalse(
-            persons_service.is_admin({"role": "user"})
-        )
-        self.assertTrue(
-            persons_service.is_admin({"role": "admin"})
-        )
+        self.assertFalse(persons_service.is_admin({"role": "user"}))
+        self.assertTrue(persons_service.is_admin({"role": "admin"}))
 
     def test_get_organisation(self):
         org = persons_service.get_organisation()
@@ -261,9 +255,7 @@ class PersonServiceTestCase(ApiDBTestCase):
         self.assertFalse(result["has_avatar"])
 
     def test_update_person_last_presence(self):
-        persons_service.create_desktop_login_logs(
-            self.person_id, "2021-06-15"
-        )
+        persons_service.create_desktop_login_logs(self.person_id, "2021-06-15")
         result = persons_service.update_person_last_presence(self.person_id)
         self.assertIsNotNone(result)
 

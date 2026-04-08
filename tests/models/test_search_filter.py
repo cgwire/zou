@@ -48,16 +48,12 @@ class SearchFilterTestCase(ApiDBTestCase):
     def test_update_search_filter(self):
         search_filter = self.get_first("data/search-filters")
         data = {"name": "Updated Filter"}
-        self.put(
-            "data/search-filters/%s" % search_filter["id"], data
-        )
+        self.put("data/search-filters/%s" % search_filter["id"], data)
         search_filter_again = self.get(
             "data/search-filters/%s" % search_filter["id"]
         )
         self.assertEqual(data["name"], search_filter_again["name"])
-        self.put_404(
-            "data/search-filters/%s" % fields.gen_uuid(), data
-        )
+        self.put_404("data/search-filters/%s" % fields.gen_uuid(), data)
 
     def test_delete_search_filter(self):
         filters = self.get("data/search-filters")
@@ -66,6 +62,4 @@ class SearchFilterTestCase(ApiDBTestCase):
         self.delete("data/search-filters/%s" % search_filter["id"])
         filters = self.get("data/search-filters")
         self.assertEqual(len(filters), 2)
-        self.delete_404(
-            "data/search-filters/%s" % fields.gen_uuid()
-        )
+        self.delete_404("data/search-filters/%s" % fields.gen_uuid())

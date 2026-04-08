@@ -73,9 +73,7 @@ class DeletionServiceTestCase(ApiDBTestCase):
 
     def test_remove_tasks(self):
         task_id = str(self.task.id)
-        result = deletion_service.remove_tasks(
-            str(self.project.id), [task_id]
-        )
+        result = deletion_service.remove_tasks(str(self.project.id), [task_id])
         self.assertIn(task_id, result)
         self.assertIsNone(Task.get(task_id))
 
