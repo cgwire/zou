@@ -327,6 +327,7 @@ def get_preview_files_for_entity(entity_id):
             PreviewFile.annotations,
             PreviewFile.created_at,
             PreviewFile.task_id,
+            PreviewFile.data,
         )
         .join(PreviewFile, Task.id == PreviewFile.task_id)
         .join(TaskType)
@@ -351,10 +352,12 @@ def get_preview_files_for_entity(entity_id):
         preview_file_annotations,
         preview_file_created_at,
         preview_file_task_id,
+        preview_file_data,
     ) in query.all():
         task_id = str(task.id)
         if task_id not in task_previews:
             task_previews[task_id] = []
+        data = preview_file_data or {}
         task_previews[task_id].append(
             fields.serialize_dict(
                 {
@@ -371,6 +374,10 @@ def get_preview_files_for_entity(entity_id):
                     "created_at": preview_file_created_at,
                     "task_id": task_id,
                     "task_type_id": str(task.task_type_id),
+                    "original_width": data.get("original_width"),
+                    "original_height": data.get("original_height"),
+                    "original_duration": data.get("original_duration"),
+                    "original_file_size": data.get("original_file_size"),
                 }
             )
         )
@@ -395,6 +402,14 @@ def get_preview_files_for_entity(entity_id):
                     "previews": preview_file["previews"],
                     "created_at": preview_file["created_at"],
                     "task_id": preview_file["task_id"],
+                    "original_width": preview_file.get("original_width"),
+                    "original_height": preview_file.get("original_height"),
+                    "original_duration": preview_file.get(
+                        "original_duration"
+                    ),
+                    "original_file_size": preview_file.get(
+                        "original_file_size"
+                    ),
                 }
                 for preview_file in preview_files
             ]  # Do not add too much field to avoid building too big responses
