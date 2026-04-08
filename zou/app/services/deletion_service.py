@@ -407,6 +407,14 @@ def remove_project(project_id):
         EntityLink.entity_in_id == Entity.id,
         Entity.project_id == project_id,
     ).delete()
+    EntityConceptLink.query.filter(
+        EntityConceptLink.entity_in_id == Entity.id,
+        Entity.project_id == project_id,
+    ).delete()
+    EntityConceptLink.query.filter(
+        EntityConceptLink.entity_out_id == Entity.id,
+        Entity.project_id == project_id,
+    ).delete()
     EntityVersion.query.filter(
         EntityVersion.entity_id == Entity.id, Entity.project_id == project_id
     ).delete()
