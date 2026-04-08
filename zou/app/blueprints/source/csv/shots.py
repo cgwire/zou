@@ -248,10 +248,13 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
             shot_new_values["description"] = description
 
         nb_frames = row.get("Nb Frames", None) or row.get("Frames", None)
-        if nb_frames is not None:
-            shot_new_values["nb_frames"] = (
-                nb_frames if nb_frames != "" else None
-            )
+        if nb_frames is not None and nb_frames != "":
+            try:
+                shot_new_values["nb_frames"] = int(nb_frames)
+            except (ValueError, TypeError):
+                raise RowException(
+                    "nb_frames must be an integer, got '%s'" % nb_frames
+                )
 
         if entity is None or not entity.data:
             shot_new_values["data"] = {}
