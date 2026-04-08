@@ -7,6 +7,12 @@ When using SimpleCache (in-memory), memoized results are returned by
 reference. A deepcopy wrapper is applied so that callers cannot corrupt
 the cached objects by mutating them. With Redis the serialization round-
 trip already produces a fresh copy, so no extra work is needed.
+
+SQLAlchemy ORM instances are returned as-is without deepcopy: copying
+their internal InstanceState is unsafe and produces objects that merge()
+rejects as "dirty". Callers holding ORM instances are expected to
+session.merge() them, which already creates a session-owned copy and
+leaves the cached object untouched.
 """
 
 import copy
@@ -55,7 +61,13 @@ def memoize_function(timeout=120):
 
         @wraps(func)
         def wrapper(*args, **kwargs):
-            return copy.deepcopy(cached_func(*args, **kwargs))
+            result = cached_func(*args, **kwargs)
+            if hasattr(result, "_sa_instance_state"):
+                # ORM instances: returning the detached cached object is
+                # safe because callers merge() it into their own session,
+                # which produces a fresh copy and never mutates the cache.
+                return result
+            return copy.deepcopy(result)
 
         # Copy flask-caching attributes so delete_memoized works
         wrapper.make_cache_key = cached_func.make_cache_key
