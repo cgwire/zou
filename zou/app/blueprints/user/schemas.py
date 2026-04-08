@@ -37,7 +37,7 @@ class CreateSearchFilterGroupSchema(BaseSchema):
     """Body for creating a search filter group."""
 
     name: str = Field(..., min_length=1)
-    color: str = Field(..., min_length=1)
+    color: Optional[str] = ""
     list_type: str = Field("todo")
     project_id: Optional[str] = None
     is_shared: Optional[bool] = False
