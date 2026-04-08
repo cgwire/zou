@@ -347,7 +347,7 @@ def get_asset_tasks_for_episode(episode_id, relations=False):
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
 
-def get_task_dicts_for_entity(entity_id, relations=False):
+def get_task_dicts_for_entity(entity_id, relations=True):
     """
     Return all tasks related to given entity. Add extra information like
     project name, task type name, etc.

@@ -9,15 +9,16 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import Field, field_validator, model_validator
+
+from zou.app.utils import date_helpers
+from zou.app.utils.validation import BaseSchema
 
 
 def _parse_datetime(v):
     """Parse date string (YYYY-MM-DD or ISO datetime) to datetime."""
     if v is None or isinstance(v, datetime):
         return v
-    from zou.app.utils import date_helpers
-
     try:
         return date_helpers.get_datetime_from_string(v)
     except Exception:
@@ -29,7 +30,7 @@ def _parse_datetime(v):
             )
 
 
-class DesktopLoginCreateSchema(BaseModel):
+class DesktopLoginCreateSchema(BaseSchema):
     """Body for creating a desktop login log. Date is optional (default: now)."""
 
     date: Optional[datetime] = None
@@ -40,26 +41,15 @@ class DesktopLoginCreateSchema(BaseModel):
         return _parse_datetime(v) if v else v
 
 
-class AddToDepartmentSchema(BaseModel):
+class AddToDepartmentSchema(BaseSchema):
     """Body for adding a person to a department."""
 
     department_id: UUID = Field(
         ..., description="Department unique identifier"
     )
 
-    @field_validator("department_id", mode="before")
-    @classmethod
-    def ensure_uuid(cls, v):
-        if isinstance(v, str):
-            from zou.app.utils.fields import is_valid_id
 
-            if not is_valid_id(v):
-                raise ValueError("department_id must be a valid UUID")
-            return v
-        return v
-
-
-class ChangePasswordSchema(BaseModel):
+class ChangePasswordSchema(BaseSchema):
     """Body for changing a person's password (admin)."""
 
     password: str = Field(..., min_length=1, description="New password")
@@ -67,9 +57,8 @@ class ChangePasswordSchema(BaseModel):
         ..., min_length=1, description="Password confirmation"
     )
 
-    @field_validator("password_2")
-    @classmethod
-    def passwords_match(cls, v, info):
-        if "password" in info.data and info.data["password"] != v:
+    @model_validator(mode="after")
+    def passwords_match(self):
+        if self.password != self.password_2:
             raise ValueError("Confirmation password doesn't match.")
-        return v
+        return self

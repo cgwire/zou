@@ -184,6 +184,24 @@ def set_preview_file_as_ready(preview_file_id):
     return update_preview_file(preview_file_id, {"status": "ready"})
 
 
+def _abort_on_storage_failure(preview_file_id, operation, exc):
+    """
+    Log a file store backend failure (Swift 401, S3 timeout, network error,
+    etc.) and mark the preview file as broken so the worker does not crash on
+    transient or auth issues.
+    """
+    from zou.app import app as current_app
+
+    current_app.logger.error(
+        "Storage failure for preview %s during %s: %s",
+        preview_file_id,
+        operation,
+        exc,
+        exc_info=1,
+    )
+    return set_preview_file_as_broken(preview_file_id)
+
+
 def prepare_and_store_movie(
     preview_file_id,
     uploaded_movie_path,
@@ -198,9 +216,14 @@ def prepare_and_store_movie(
 
     with current_app.app_context():
         if add_source_to_file_store:
-            file_store.add_movie(
-                "source", preview_file_id, uploaded_movie_path
-            )
+            try:
+                file_store.add_movie(
+                    "source", preview_file_id, uploaded_movie_path
+                )
+            except Exception as exc:
+                return _abort_on_storage_failure(
+                    preview_file_id, "source movie upload", exc
+                )
         preview_file_raw = files_service.get_preview_file_raw(preview_file_id)
 
         # Capture original metadata before normalization. This is a
@@ -319,12 +342,17 @@ def prepare_and_store_movie(
                 preview_file = set_preview_file_as_broken(preview_file_id)
                 return preview_file
         else:
-            file_store.add_movie(
-                "previews", preview_file_id, uploaded_movie_path
-            )
-            file_store.add_movie(
-                "lowdef", preview_file_id, uploaded_movie_path
-            )
+            try:
+                file_store.add_movie(
+                    "previews", preview_file_id, uploaded_movie_path
+                )
+                file_store.add_movie(
+                    "lowdef", preview_file_id, uploaded_movie_path
+                )
+            except Exception as exc:
+                return _abort_on_storage_failure(
+                    preview_file_id, "movie upload", exc
+                )
             normalized_movie_path = uploaded_movie_path
 
         # Build thumbnails (skipped when remote v2+, done by Nomad job)
@@ -339,7 +367,12 @@ def prepare_and_store_movie(
                 normalized_movie_path
             )
             thumbnail_utils.turn_into_thumbnail(original_picture_path, size)
-            save_variants(preview_file_id, original_picture_path)
+            try:
+                save_variants(preview_file_id, original_picture_path)
+            except Exception as exc:
+                return _abort_on_storage_failure(
+                    preview_file_id, "thumbnail variants upload", exc
+                )
             current_app.logger.info(
                 "thumbnail created %s" % original_picture_path
             )

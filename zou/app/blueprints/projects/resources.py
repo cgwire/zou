@@ -13,10 +13,27 @@ from zou.app.services import (
     time_spents_service,
     user_service,
 )
-from zou.app.utils import permissions
+from zou.app.utils import permissions, validation
+from zou.app.blueprints.projects.schemas import (
+    ProjectTeamSchema,
+    ProjectAssetTypeSchema,
+    ProjectTaskTypeSchema,
+    ProjectTaskStatusSchema,
+    ProjectStatusAutomationSchema,
+    ProjectPreviewBackgroundSchema,
+    MetadataDescriptorSchema,
+    MetadataDescriptorUpdateSchema,
+    MetadataDescriptorOrderSchema,
+    BudgetSchema,
+    BudgetUpdateSchema,
+    BudgetEntrySchema,
+    BudgetEntryUpdateSchema,
+    ScheduleVersionCopySchema,
+)
 from zou.app.services.exception import (
-    WrongParameterException,
+    BudgetNotFoundException,
     WrongDateFormatException,
+    WrongParameterException,
 )
 from zou.app.models.metadata_descriptor import METADATA_DESCRIPTOR_TYPES
 
@@ -250,11 +267,11 @@ class ProductionTeamResource(Resource, ArgsMixin):
           400:
             description: Invalid parameters
         """
-        args = self.get_args([("person_id", "", True)])
+        body = validation.validate_request_body(ProjectTeamSchema)
 
         user_service.check_manager_project_access(project_id)
         return (
-            projects_service.add_team_member(project_id, args["person_id"]),
+            projects_service.add_team_member(project_id, body.person_id),
             201,
         )
 
@@ -351,11 +368,11 @@ class ProductionAssetTypeResource(Resource, ArgsMixin):
           400:
             description: Invalid parameters
         """
-        args = self.get_args([("asset_type_id", "", True)])
+        body = validation.validate_request_body(ProjectAssetTypeSchema)
 
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_asset_type_setting(
-            project_id, args["asset_type_id"]
+            project_id, body.asset_type_id
         )
         return project, 201
 
@@ -492,13 +509,11 @@ class ProductionTaskTypeResource(Resource, ArgsMixin):
           400:
             description: Invalid parameters
         """
-        args = self.get_args(
-            [("task_type_id", "", True), ("priority", None, False)]
-        )
+        body = validation.validate_request_body(ProjectTaskTypeSchema)
 
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_type_setting(
-            project_id, args["task_type_id"], args["priority"]
+            project_id, body.task_type_id, body.priority
         )
         return project, 201
 
@@ -628,11 +643,11 @@ class ProductionTaskStatusResource(Resource, ArgsMixin):
           400:
             description: Invalid parameters
         """
-        args = self.get_args([("task_status_id", "", True)])
+        body = validation.validate_request_body(ProjectTaskStatusSchema)
 
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_task_status_setting(
-            project_id, args["task_status_id"]
+            project_id, body.task_status_id
         )
         return project, 201
 
@@ -760,11 +775,11 @@ class ProductionStatusAutomationResource(Resource, ArgsMixin):
                       description: Project name
                       example: "My Project"
         """
-        args = self.get_args([("status_automation_id", "", True)])
+        body = validation.validate_request_body(ProjectStatusAutomationSchema)
 
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_status_automation_setting(
-            project_id, args["status_automation_id"]
+            project_id, body.status_automation_id
         )
         return project, 201
 
@@ -896,11 +911,11 @@ class ProductionPreviewBackgroundFileResource(Resource, ArgsMixin):
                       description: Project name
                       example: "My Project"
         """
-        args = self.get_args([("preview_background_file_id", "", True)])
+        body = validation.validate_request_body(ProjectPreviewBackgroundSchema)
 
         user_service.check_manager_project_access(project_id)
         project = projects_service.add_preview_background_file_setting(
-            project_id, args["preview_background_file_id"]
+            project_id, body.preview_background_file_id
         )
         return project, 201
 
@@ -1069,24 +1084,11 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
           400:
             description: Invalid parameters
         """
-        args = self.get_args(
-            [
-                ("entity_type", "Asset", False),
-                ("name", "", True),
-                ("data_type", "string", True),
-                ("for_client", "False", False),
-                ("choices", [], False, str, "append"),
-                ("departments", [], False, str, "append"),
-            ]
-        )
+        body = validation.validate_request_body(MetadataDescriptorSchema)
 
-        user_service.check_all_departments_access(
-            project_id, args["departments"]
-        )
+        user_service.check_all_departments_access(project_id, body.departments)
 
-        args["for_client"] = args["for_client"] == "True"
-
-        if args["entity_type"] not in [
+        if body.entity_type not in [
             "Asset",
             "Shot",
             "Edit",
@@ -1097,22 +1099,19 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                 "Wrong entity type. Please select Asset, Shot, Sequence, Episode or Edit."
             )
 
-        if len(args["name"]) == 0:
-            raise WrongParameterException("Name cannot be empty.")
-
         types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if args["data_type"] not in types:
+        if body.data_type not in types:
             raise WrongParameterException("Invalid data_type")
 
         return (
             projects_service.add_metadata_descriptor(
                 project_id,
-                args["entity_type"],
-                args["name"],
-                args["data_type"],
-                args["choices"],
-                args["for_client"],
-                args["departments"],
+                body.entity_type,
+                body.name,
+                body.data_type,
+                body.choices,
+                body.for_client,
+                body.departments,
             ),
             201,
         )
@@ -1223,32 +1222,23 @@ class ProductionMetadataDescriptorResource(Resource, ArgsMixin):
                 schema:
                   type: object
         """
-        args = self.get_args(
-            [
-                ("name", None, False),
-                ("for_client", "False", False),
-                ("data_type", "string", True),
-                ("choices", [], False, str, "append"),
-                ("departments", [], False, str, "append"),
-            ]
-        )
+        body = validation.validate_request_body(MetadataDescriptorUpdateSchema)
         user_service.check_all_departments_access(
             project_id,
             projects_service.get_metadata_descriptor(descriptor_id)[
                 "departments"
             ]
-            + args["departments"],
+            + body.departments,
         )
 
-        if args["name"] is not None and len(args["name"]) == 0:
+        if body.name is not None and len(body.name) == 0:
             raise WrongParameterException("Name cannot be empty.")
 
         types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
-        if args["data_type"] not in types:
+        if body.data_type not in types:
             raise WrongParameterException("Invalid data_type")
 
-        args["for_client"] = args["for_client"] == "True"
-
+        args = body.model_dump()
         return projects_service.update_metadata_descriptor(descriptor_id, args)
 
     @jwt_required()
@@ -1366,16 +1356,11 @@ class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
           400:
             description: Invalid parameters or descriptor not found
         """
-        args = self.get_args(
-            [
-                ("entity_type", "", True),
-                ("descriptor_ids", [], True, str, "append"),
-            ]
-        )
+        body = validation.validate_request_body(MetadataDescriptorOrderSchema)
 
         user_service.check_manager_project_access(project_id)
 
-        if args["entity_type"] not in [
+        if body.entity_type not in [
             "Asset",
             "Shot",
             "Edit",
@@ -1386,11 +1371,8 @@ class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
                 "Wrong entity type. Please select Asset, Shot, Sequence, Episode or Edit."
             )
 
-        if not args["descriptor_ids"]:
-            raise WrongParameterException("descriptor_ids cannot be empty.")
-
         return projects_service.reorder_metadata_descriptors(
-            project_id, args["entity_type"], args["descriptor_ids"]
+            project_id, body.entity_type, body.descriptor_ids
         )
 
 
@@ -1777,11 +1759,9 @@ class ProductionBudgetsResource(Resource, ArgsMixin):
         """
         self.check_id_parameter(project_id)
         user_service.check_manager_project_access(project_id)
-        data = self.get_args([("name", None, True), ("currency", None, False)])
-        if data["currency"] is None:
-            data["currency"] = "USD"
+        body = validation.validate_request_body(BudgetSchema)
         return budget_service.create_budget(
-            project_id, data["name"], data["currency"]
+            project_id, body.name, body.currency
         )
 
 
@@ -1828,7 +1808,7 @@ class ProductionBudgetResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(project_id)
         budget = budget_service.get_budget(budget_id)
         if budget["project_id"] != project_id:
-            abort(404)
+            raise BudgetNotFoundException
         return budget
 
     @jwt_required()
@@ -1882,11 +1862,9 @@ class ProductionBudgetResource(Resource, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         user_service.check_manager_project_access(project_id)
-        data = self.get_args(
-            [("name", None, False), ("currency", None, False)]
-        )
+        body = validation.validate_request_body(BudgetUpdateSchema)
         return budget_service.update_budget(
-            budget_id, name=data["name"], currency=data["currency"]
+            budget_id, name=body.name, currency=body.currency
         )
 
     @jwt_required()
@@ -2057,26 +2035,16 @@ class ProductionBudgetEntriesResource(Resource, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         user_service.check_manager_project_access(project_id)
-        data = self.get_args(
-            [
-                ("department_id", None, True),
-                ("person_id", None, False),
-                ("start_date", None, False),
-                ("months_duration", None, False),
-                ("daily_salary", None, False),
-                ("position", None, False),
-                ("seniority", None, False),
-            ]
-        )
+        body = validation.validate_request_body(BudgetEntrySchema)
         return budget_service.create_budget_entry(
             budget_id,
-            data["department_id"],
-            data["start_date"],
-            data["months_duration"],
-            data["daily_salary"],
-            data["position"],
-            data["seniority"],
-            person_id=data["person_id"],
+            body.department_id,
+            body.start_date,
+            body.months_duration,
+            body.daily_salary,
+            body.position,
+            body.seniority,
+            person_id=body.person_id,
         )
 
 
@@ -2129,7 +2097,7 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         self.check_id_parameter(entry_id)
         budget = budget_service.get_budget(budget_id)
         if budget["project_id"] != project_id:
-            abort(404)
+            raise BudgetNotFoundException
         return budget_service.get_budget_entry(entry_id)
 
     @jwt_required()
@@ -2221,25 +2189,8 @@ class ProductionBudgetEntryResource(Resource, ArgsMixin):
         self.check_id_parameter(project_id)
         self.check_id_parameter(budget_id)
         self.check_id_parameter(entry_id)
-        data = self.get_args(
-            [
-                ("department_id", None, False),
-                ("person_id", None, False),
-                ("start_date", None, False),
-                ("months_duration", None, False),
-                ("daily_salary", None, False),
-                ("position", None, False),
-                ("seniority", None, False),
-                {
-                    "name": "exceptions",
-                    "required": False,
-                    "default": {},
-                    "type": dict,
-                    "help": "Map of amount exceptions. Key is the date and value is the amount. Example: {'2025-01-01': 1000, '2025-02-01': 2000}",
-                },
-            ]
-        )
-        return budget_service.update_budget_entry(entry_id, data)
+        body = validation.validate_request_body(BudgetEntryUpdateSchema)
+        return budget_service.update_budget_entry(entry_id, body.model_dump())
 
     @jwt_required()
     def delete(self, project_id, budget_id, entry_id):
@@ -2538,15 +2489,11 @@ class ProductionScheduleVersionSetTaskLinksFromProductionScheduleVersionResource
             production_schedule_version["project_id"]
         )
 
-        args = self.get_args(
-            [
-                ("production_schedule_version_id", None, True),
-            ]
-        )
+        body = validation.validate_request_body(ScheduleVersionCopySchema)
 
         other_production_schedule_version = (
             schedule_service.get_production_schedule_version(
-                args["production_schedule_version_id"]
+                body.production_schedule_version_id
             )
         )
 
@@ -2653,9 +2600,8 @@ class ProductionTaskTypesTimeSpentsResource(Resource, ArgsMixin):
                 project_id, task_type_id, start_date, end_date
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )
 
 
@@ -2751,7 +2697,6 @@ class ProductionDayOffsResource(Resource, ArgsMixin):
                 current_user_id=persons_service.get_current_user()["id"],
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )

@@ -20,16 +20,12 @@ class FileRoutesTestCase(ApiDBTestCase):
 
     def test_get_working_file(self):
         self.generate_fixture_working_file()
-        result = self.get(
-            f"/data/files/{self.working_file.id}"
-        )
+        result = self.get(f"/data/files/{self.working_file.id}")
         self.assertEqual(result["id"], str(self.working_file.id))
 
     def test_get_task_working_files(self):
         self.generate_fixture_working_file()
-        result = self.get(
-            f"/data/tasks/{self.task.id}/working-files"
-        )
+        result = self.get(f"/data/tasks/{self.task.id}/working-files")
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
 
@@ -37,9 +33,7 @@ class FileRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_file_status()
         self.generate_fixture_output_type()
         self.generate_fixture_output_file()
-        result = self.get(
-            f"/data/files/{self.output_file.id}"
-        )
+        result = self.get(f"/data/files/{self.output_file.id}")
         self.assertEqual(result["id"], str(self.output_file.id))
 
     def test_get_instance_output_types(self):

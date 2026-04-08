@@ -72,12 +72,8 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         result = departments_service.add_software_to_department(
             str(self.department.id), str(self.software.id)
         )
-        self.assertEqual(
-            result["department_id"], str(self.department.id)
-        )
-        self.assertEqual(
-            result["software_id"], str(self.software.id)
-        )
+        self.assertEqual(result["department_id"], str(self.department.id))
+        self.assertEqual(result["software_id"], str(self.software.id))
 
     def test_add_software_to_department_idempotent(self):
         departments_service.add_software_to_department(
@@ -134,9 +130,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         result = departments_service.add_hardware_item_to_department(
             str(self.department.id), str(self.hardware_item.id)
         )
-        self.assertEqual(
-            result["department_id"], str(self.department.id)
-        )
+        self.assertEqual(result["department_id"], str(self.department.id))
         self.assertEqual(
             result["hardware_item_id"], str(self.hardware_item.id)
         )
@@ -156,7 +150,8 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
     def test_add_hardware_item_to_department_not_found(self):
         with self.assertRaises(DepartmentNotFoundException):
             departments_service.add_hardware_item_to_department(
-                "00000000-0000-0000-0000-000000000000", str(self.hardware_item.id)
+                "00000000-0000-0000-0000-000000000000",
+                str(self.hardware_item.id),
             )
         with self.assertRaises(HardwareItemNotFoundException):
             departments_service.add_hardware_item_to_department(
@@ -171,10 +166,8 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
             str(self.department.id), str(self.hardware_item.id)
         )
         self.assertIsNotNone(result)
-        hardware_list = (
-            departments_service.get_hardware_items_for_department(
-                str(self.department.id)
-            )
+        hardware_list = departments_service.get_hardware_items_for_department(
+            str(self.department.id)
         )
         self.assertEqual(len(hardware_list), 0)
 
@@ -187,7 +180,8 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
     def test_remove_hardware_item_from_department_not_found(self):
         with self.assertRaises(DepartmentNotFoundException):
             departments_service.remove_hardware_item_from_department(
-                "00000000-0000-0000-0000-000000000000", str(self.hardware_item.id)
+                "00000000-0000-0000-0000-000000000000",
+                str(self.hardware_item.id),
             )
         with self.assertRaises(HardwareItemNotFoundException):
             departments_service.remove_hardware_item_from_department(
@@ -211,9 +205,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(result[self.department.id]), 1)
 
     def test_get_all_hardware_items_for_departments(self):
-        result = (
-            departments_service.get_all_hardware_items_for_departments()
-        )
+        result = departments_service.get_all_hardware_items_for_departments()
         self.assertEqual(len(result), 0)
 
         departments_service.add_hardware_item_to_department(
@@ -223,9 +215,7 @@ class DepartmentsServiceTestCase(ApiDBTestCase):
             str(self.department_animation.id),
             str(self.hardware_item_2.id),
         )
-        result = (
-            departments_service.get_all_hardware_items_for_departments()
-        )
+        result = departments_service.get_all_hardware_items_for_departments()
         self.assertEqual(len(result), 2)
         self.assertIn(self.department.id, result)
         self.assertIn(self.department_animation.id, result)

@@ -17,7 +17,14 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import fields, query, permissions
+from zou.app.utils import fields, query, permissions, validation
+from zou.app.blueprints.shots.schemas import (
+    NewShotSchema,
+    NewSequenceSchema,
+    NewEpisodeSchema,
+    NewSceneSchema,
+    AddShotToSceneSchema,
+)
 from zou.app.services.exception import (
     WrongParameterException,
 )
@@ -1332,45 +1339,20 @@ class ProjectShotsResource(Resource, ArgsMixin):
                           type: string
                           example: A short description of the shot
         """
-        (
-            sequence_id,
-            name,
-            data,
-            nb_frames,
-            description,
-        ) = self.get_arguments()
+        body = validation.validate_request_body(NewShotSchema)
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
 
         shot = shots_service.create_shot(
             project_id,
-            sequence_id,
-            name,
-            data=data,
-            nb_frames=nb_frames,
-            description=description,
+            str(body.sequence_id) if body.sequence_id else None,
+            body.name,
+            data=body.data,
+            nb_frames=body.nb_frames,
+            description=body.description,
             created_by=persons_service.get_current_user()["id"],
         )
         return shot, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {"name": "name", "required": True},
-                "sequence_id",
-                {"name": "data", "type": dict},
-                {"name": "nb_frames", "type": int},
-                "description",
-            ]
-        )
-
-        return (
-            args["sequence_id"],
-            args["name"],
-            args["data"],
-            args["nb_frames"],
-            args["description"],
-        )
 
 
 class ProjectSequencesResource(Resource, ArgsMixin):
@@ -1483,35 +1465,18 @@ class ProjectSequencesResource(Resource, ArgsMixin):
                           type: string
                           example: A sequence description
         """
-        (episode_id, name, description, data) = self.get_arguments()
+        body = validation.validate_request_body(NewSequenceSchema)
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
         sequence = shots_service.create_sequence(
             project_id,
-            episode_id,
-            name,
-            description=description,
-            data=data,
+            str(body.episode_id) if body.episode_id else None,
+            body.name,
+            description=body.description,
+            data=body.data,
             created_by=persons_service.get_current_user()["id"],
         )
         return sequence, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {"name": "name", "required": True},
-                "episode_id",
-                {"name": "description", "default": ""},
-                {"name": "data", "type": dict, "default": {}},
-            ]
-        )
-
-        return (
-            args["episode_id"],
-            args["name"],
-            args["description"],
-            args["data"],
-        )
 
 
 class ProjectEpisodesResource(Resource, ArgsMixin):
@@ -1629,32 +1594,20 @@ class ProjectEpisodesResource(Resource, ArgsMixin):
                           type: string
                           example: running
         """
-        name, status, description, data = self.get_arguments()
+        body = validation.validate_request_body(NewEpisodeSchema)
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
         return (
             shots_service.create_episode(
                 project_id,
-                name,
-                status,
-                description,
-                data,
+                body.name,
+                body.status,
+                body.description,
+                body.data,
                 created_by=persons_service.get_current_user()["id"],
             ),
             201,
         )
-
-    def get_arguments(self):
-        args = self.get_args(
-            [
-                {"name": "name", "required": True},
-                {"name": "status", "default": "running"},
-                {"name": "description", "default": ""},
-                {"name": "data", "type": dict, "default": {}},
-            ]
-        )
-
-        return args["name"], args["status"], args["description"], args["data"]
 
 
 class ProjectEpisodeStatsResource(Resource):
@@ -2445,23 +2398,16 @@ class ProjectScenesResource(Resource, ArgsMixin):
                           format: uuid
                           example: c24a6ea4-ce75-4665-a070-57453082c25
         """
-        (sequence_id, name) = self.get_arguments()
+        body = validation.validate_request_body(NewSceneSchema)
         projects_service.get_project(project_id)
         user_service.check_manager_project_access(project_id)
         scene = shots_service.create_scene(
             project_id,
-            sequence_id,
-            name,
+            str(body.sequence_id) if body.sequence_id else None,
+            body.name,
             created_by=persons_service.get_current_user()["id"],
         )
         return scene, 201
-
-    def get_arguments(self):
-        args = self.get_args(
-            [{"name": "name", "required": True}, "sequence_id"]
-        )
-
-        return (args["sequence_id"], args["name"])
 
 
 class SequenceScenesResource(Resource):
@@ -2694,11 +2640,11 @@ class SceneShotsResource(Resource, ArgsMixin):
                           format: uuid
                           example: b24a6ea4-ce75-4665-a070-57453082c25
         """
-        args = self.get_args([("shot_id", None, True)])
+        body = validation.validate_request_body(AddShotToSceneSchema)
 
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
-        shot = shots_service.get_shot(args["shot_id"])
+        shot = shots_service.get_shot(str(body.shot_id))
         return scenes_service.add_shot_to_scene(scene, shot), 201
 
 

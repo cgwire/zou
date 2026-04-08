@@ -214,22 +214,16 @@ class TimeSpentsServiceTestCase(ApiDBTestCase):
 
     def test_get_day_off(self):
         self.generate_fixture_day_off("2021-05-10")
-        result = time_spents_service.get_day_off(
-            self.person_id, "2021-05-10"
-        )
+        result = time_spents_service.get_day_off(self.person_id, "2021-05-10")
         self.assertIsNotNone(result)
         self.assertIn("id", result)
 
     def test_get_day_off_empty(self):
-        result = time_spents_service.get_day_off(
-            self.person_id, "2020-01-01"
-        )
+        result = time_spents_service.get_day_off(self.person_id, "2020-01-01")
         self.assertEqual(result, {})
 
     def test_get_year_time_spents(self):
-        tasks = time_spents_service.get_year_time_spents(
-            self.person_id, 2018
-        )
+        tasks = time_spents_service.get_year_time_spents(self.person_id, 2018)
         self.assertGreater(len(tasks), 0)
         entity_names = [t["entity_name"] for t in tasks]
         self.assertIn("Tree", entity_names)

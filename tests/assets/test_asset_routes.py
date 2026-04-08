@@ -62,9 +62,7 @@ class AssetRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_shot_asset_instance(
             self.shot, self.asset_instance
         )
-        result = self.get(
-            f"/data/assets/{self.asset_id}/shot-asset-instances"
-        )
+        result = self.get(f"/data/assets/{self.asset_id}/shot-asset-instances")
         self.assertIn(self.shot_id, result)
         instances = result[self.shot_id]
         self.assertEqual(len(instances), 1)
@@ -92,9 +90,7 @@ class AssetRoutesTestCase(ApiDBTestCase):
         self.assertIn(character_id, result)
         instances = result[character_id]
         self.assertEqual(len(instances), 1)
-        self.assertEqual(
-            instances[0]["asset_id"], character_id
-        )
+        self.assertEqual(instances[0]["asset_id"], character_id)
 
     def test_create_asset_asset_instance(self):
         result = self.post(

@@ -2,6 +2,7 @@ import email.utils
 import importlib
 import importlib.util
 import os
+import requests
 import tomlkit
 import traceback
 import semver
@@ -209,9 +210,7 @@ def migrate_plugin_db(plugin_path, message):
         t for t in db.metadata.tables if t.startswith(plugin_prefix)
     ]
     if not plugin_tables:
-        spec = importlib.util.spec_from_file_location(
-            module_name, models_path
-        )
+        spec = importlib.util.spec_from_file_location(module_name, models_path)
         if spec is None or spec.loader is None:
             raise ImportError(
                 f"Could not load 'models.py' from '{plugin_path}'"
@@ -289,9 +288,7 @@ def downgrade_plugin_migrations(plugin_path):
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
-        print(
-            f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}"
-        )
+        print(f"⚠️  [Plugins] Downgrade failed for {manifest.id}: {e}")
 
 
 def create_plugin_package(path, output_path, force=False):
@@ -418,6 +415,30 @@ def uninstall_plugin_files(plugin_path):
         shutil.rmtree(plugin_path)
         return True
     return False
+
+
+def download_zip_url(url, temp_dir=None):
+    """
+    Download a zip file from a URL to a temporary directory.
+    Returns the path to the downloaded zip file.
+    """
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp(prefix="zou_plugin_")
+
+    temp_dir = Path(temp_dir)
+    zip_path = temp_dir / "plugin.zip"
+
+    print(f"[Plugins] Downloading {url}...")
+
+    response = requests.get(url, stream=True, timeout=300)
+    response.raise_for_status()
+
+    with open(zip_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+
+    print(f"[Plugins] Successfully downloaded {url}")
+    return zip_path
 
 
 def clone_git_repo(git_url, temp_dir=None):

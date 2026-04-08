@@ -9,9 +9,13 @@ validation error raises WrongParameterException with a 400-style payload
 
 from flask import request
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from zou.app.services.exception import WrongParameterException
+
+
+class BaseSchema(BaseModel):
+    model_config = ConfigDict(extra="ignore")
 
 
 def _format_validation_errors(exc: ValidationError):
@@ -40,12 +44,17 @@ def validate_request_body(SchemaClass, *, data=None):
         WrongParameterException: If body is missing or validation fails.
             The exception's .dict can contain a "errors" list with field/message.
     """
-    payload = data if data is not None else request.get_json(silent=True)
-    if payload is None:
-        raise WrongParameterException(
-            "Data are empty. Please verify that you sent JSON data and "
-            "that you set the right headers (Content-Type: application/json)."
-        )
+    if data is not None:
+        payload = data
+    else:
+        payload = request.get_json(silent=True)
+        if payload is None:
+            # Fall back to form / query parameters so clients that still
+            # POST credentials or params as URL args keep working (matches
+            # the legacy ArgsMixin.get_args behavior). When both are absent
+            # we pass an empty dict so schemas with only optional fields
+            # still validate and required fields raise field-level errors.
+            payload = request.values.to_dict() if request.values else {}
     try:
         return SchemaClass.model_validate(payload)
     except ValidationError as e:

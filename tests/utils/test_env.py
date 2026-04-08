@@ -25,7 +25,9 @@ class EnvTestCase(unittest.TestCase):
 
     def test_env_with_semicolon_to_list(self):
         os.environ["TEST_LIST"] = "a;b;c"
-        self.assertEqual(env_with_semicolon_to_list("TEST_LIST"), ["a", "b", "c"])
+        self.assertEqual(
+            env_with_semicolon_to_list("TEST_LIST"), ["a", "b", "c"]
+        )
 
     def test_env_with_semicolon_to_list_single(self):
         os.environ["TEST_LIST"] = "only"

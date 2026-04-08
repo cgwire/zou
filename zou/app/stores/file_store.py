@@ -1,6 +1,9 @@
 import os
 import flask_fs
 
+from flask import current_app
+from werkzeug.utils import cached_property
+
 from zou.app import config
 
 from flask_fs.backends.local import LocalBackend
@@ -13,8 +16,6 @@ files = None
 def path(self, filename):
     folder_one = filename.split("-")[0]
     file_name = "-".join(filename.split("-")[1:])
-    folder_two = file_name[:3]
-    folder_three = file_name[3:6]
 
     # Ensure root is absolute to avoid issues with relative paths
     root = (
@@ -23,14 +24,37 @@ def path(self, filename):
         else self.root
     )
 
-    file_path = os.path.join(
-        root, folder_one, folder_two, folder_three, file_name
-    )
+    if folder_one == "dbbackup":
+        file_path = os.path.join(root, folder_one, file_name)
+    else:
+        folder_two = file_name[:3]
+        folder_three = file_name[3:6]
+        file_path = os.path.join(
+            root, folder_one, folder_two, folder_three, file_name
+        )
     # Normalize path to handle any remaining relative components
     return os.path.normpath(file_path)
 
 
 LocalBackend.path = path
+
+
+@cached_property
+def _default_root(self):
+    """
+    Read the storage default root without opening a nested app context.
+
+    The upstream LocalBackend wraps this in ``with current_app.app_context():``
+    which, on teardown, triggers Flask-SQLAlchemy's ``db.session.remove()``
+    handler. Since storage operations always happen inside a request that
+    already has an app context, the nested context only serves to wipe the
+    outer request's session and detach every loaded ORM instance.
+    """
+    default_root = current_app.config.get("FS_ROOT")
+    return current_app.config.get("FS_LOCAL_ROOT", default_root)
+
+
+LocalBackend.default_root = _default_root
 
 
 def configure_storages(app):
@@ -46,10 +70,8 @@ def clear_bucket(bucket):
     for filename in bucket.list_files():
         if isinstance(bucket.backend, LocalBackend):
             parts = filename.split("/")
-            if len(parts) >= 4:
-                folder_one = parts[0]
-                file_name = parts[-1]
-                bucket.delete(f"{folder_one}-{file_name}")
+            if len(parts) >= 2:
+                bucket.delete(f"{parts[0]}-{parts[-1]}")
             else:
                 bucket.delete(filename)
         else:

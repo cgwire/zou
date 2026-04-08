@@ -70,8 +70,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     def test_get_person_day_time_spents(self):
         result = self.get(
-            f"/data/persons/{self.person_id}"
-            f"/time-spents/day/2024/06/04"
+            f"/data/persons/{self.person_id}" f"/time-spents/day/2024/06/04"
         )
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
@@ -83,29 +82,21 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, dict)
 
     def test_get_time_spents_month_table(self):
-        result = self.get(
-            "/data/persons/time-spents/month-table/2024"
-        )
+        result = self.get("/data/persons/time-spents/month-table/2024")
         self.assertIsInstance(result, dict)
 
     def test_get_time_spents_week_table(self):
-        result = self.get(
-            "/data/persons/time-spents/week-table/2024"
-        )
+        result = self.get("/data/persons/time-spents/week-table/2024")
         self.assertIsInstance(result, dict)
 
     def test_get_time_spents_day_table(self):
-        result = self.get(
-            "/data/persons/time-spents/day-table/2024/06"
-        )
+        result = self.get("/data/persons/time-spents/day-table/2024/06")
         self.assertIsInstance(result, dict)
 
     # --- Day offs ---
 
     def test_get_person_day_offs(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}/day-offs"
-        )
+        result = self.get(f"/data/persons/{self.person_id}/day-offs")
         self.assertIsInstance(result, list)
 
     def test_get_person_day_off_for_date(self):
@@ -132,9 +123,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertIsInstance(result, list)
 
     def test_get_person_day_offs_year(self):
-        result = self.get(
-            f"/data/persons/{self.person_id}/day-offs/year/2024"
-        )
+        result = self.get(f"/data/persons/{self.person_id}/day-offs/year/2024")
         self.assertIsInstance(result, list)
 
     def test_get_day_offs_for_month(self):
@@ -145,22 +134,19 @@ class PersonRoutesTestCase(ApiDBTestCase):
 
     def test_get_person_quota_shots_month(self):
         result = self.get(
-            f"/data/persons/{self.person_id}"
-            f"/quota-shots/month/2024/06"
+            f"/data/persons/{self.person_id}" f"/quota-shots/month/2024/06"
         )
         self.assertIsInstance(result, list)
 
     def test_get_person_quota_shots_week(self):
         result = self.get(
-            f"/data/persons/{self.person_id}"
-            f"/quota-shots/week/2024/23"
+            f"/data/persons/{self.person_id}" f"/quota-shots/week/2024/23"
         )
         self.assertIsInstance(result, list)
 
     def test_get_person_quota_shots_day(self):
         result = self.get(
-            f"/data/persons/{self.person_id}"
-            f"/quota-shots/day/2024/06/04"
+            f"/data/persons/{self.person_id}" f"/quota-shots/day/2024/06/04"
         )
         self.assertIsInstance(result, list)
 
@@ -175,9 +161,7 @@ class PersonRoutesTestCase(ApiDBTestCase):
         self.assertTrue(result.get("success"))
 
     def test_clear_avatar(self):
-        self.delete(
-            f"/actions/persons/{self.person_id}/clear-avatar"
-        )
+        self.delete(f"/actions/persons/{self.person_id}/clear-avatar")
         person = self.get(f"/data/persons/{self.person_id}")
         self.assertFalse(person.get("has_avatar", False))
 

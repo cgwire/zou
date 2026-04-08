@@ -26,7 +26,19 @@ from saml2 import entity, client_base
 
 from zou.app import app, config
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import auth, emails, permissions, date_helpers
+from zou.app.utils import auth, emails, permissions, date_helpers, validation
+from zou.app.blueprints.auth.schemas import (
+    LoginSchema,
+    RegisterSchema,
+    ChangePasswordSchema,
+    ResetPasswordSchema,
+    SendPasswordResetSchema,
+    TotpSchema,
+    TwoFactorAuthSchema,
+    EmailOtpSchema,
+    FidoRegisterSchema,
+    FidoUnregisterSchema,
+)
 from zou.app.utils.email_i18n import get_email_translation
 from zou.app.services import (
     persons_service,
@@ -209,23 +221,18 @@ class LoginResource(Resource, ArgsMixin):
           400:
             description: Login failed
         """
-        (
-            email,
-            password,
-            totp,
-            email_otp,
-            fido_authentication_response,
-            recovery_code,
-        ) = self.get_arguments()
+        body = validation.validate_request_body(LoginSchema)
+        email = body.email
+        password = body.password
         try:
             user = auth_service.check_auth(
                 app,
                 email,
                 password,
-                totp,
-                email_otp,
-                fido_authentication_response,
-                recovery_code,
+                body.totp,
+                body.email_otp,
+                body.fido_authentication_response,
+                body.recovery_code,
             )
 
             if auth_service.is_default_password(app, password):
@@ -393,28 +400,14 @@ class LoginResource(Resource, ArgsMixin):
             }, 500
 
     def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "email",
-                    "required": True,
-                    "help": "User email is missing.",
-                },
-                ("password", "default"),
-                "totp",
-                "email_otp",
-                ("fido_authentication_response", None, False, dict),
-                "recovery_code",
-            ]
-        )
-
+        body = validation.validate_request_body(LoginSchema)
         return (
-            args["email"],
-            args["password"],
-            args["totp"],
-            args["email_otp"],
-            args["fido_authentication_response"],
-            args["recovery_code"],
+            body.email,
+            body.password,
+            body.totp,
+            body.email_otp,
+            body.fido_authentication_response,
+            body.recovery_code,
         )
 
 
@@ -507,20 +500,14 @@ class RegistrationResource(Resource, ArgsMixin):
           400:
             description: Invalid password or email
         """
-        (
-            email,
-            password,
-            password_2,
-            first_name,
-            last_name,
-        ) = self.get_arguments()
+        body = validation.validate_request_body(RegisterSchema)
 
         try:
-            email = auth.validate_email(email)
-            auth.validate_password(password, password_2)
-            password = auth.encrypt_password(password)
+            email = auth.validate_email(body.email)
+            auth.validate_password(body.password, body.password_2)
+            password = auth.encrypt_password(body.password)
             persons_service.create_person(
-                email, password, first_name, last_name
+                email, password, body.first_name, body.last_name
             )
             return {"registration_success": True}, 201
         except auth.PasswordsNoMatchException:
@@ -537,42 +524,13 @@ class RegistrationResource(Resource, ArgsMixin):
             return {"error": True, "message": str(exception)}, 400
 
     def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "email",
-                    "required": True,
-                    "help": "User email is missing.",
-                },
-                {
-                    "name": "first_name",
-                    "required": True,
-                    "help": "First name is missing.",
-                },
-                {
-                    "name": "last_name",
-                    "required": True,
-                    "help": "Last name is missing.",
-                },
-                {
-                    "name": "password",
-                    "required": True,
-                    "help": "Password is missing.",
-                },
-                {
-                    "name": "password_2",
-                    "required": True,
-                    "help": "Confirmation password is missing.",
-                },
-            ]
-        )
-
+        body = validation.validate_request_body(RegisterSchema)
         return (
-            args["email"],
-            args["password"],
-            args["password_2"],
-            args["first_name"],
-            args["last_name"],
+            body.email,
+            body.password,
+            body.password_2,
+            body.first_name,
+            body.last_name,
         )
 
 
@@ -618,15 +576,15 @@ class ChangePasswordResource(Resource, ArgsMixin):
           400:
             description: Invalid password or inactive user
         """
-        old_password, password, password_2 = self.get_arguments()
+        body = validation.validate_request_body(ChangePasswordSchema)
 
         try:
             user = persons_service.get_current_user()
             auth_service.check_auth(
-                app, user["email"], old_password, no_otp=True
+                app, user["email"], body.old_password, no_otp=True
             )
-            auth.validate_password(password, password_2)
-            password = auth.encrypt_password(password)
+            auth.validate_password(body.password, body.password_2)
+            password = auth.encrypt_password(body.password)
             persons_service.update_password(user["email"], password)
             current_app.logger.info(
                 "User %s has changed his password" % user["email"]
@@ -682,27 +640,8 @@ class ChangePasswordResource(Resource, ArgsMixin):
             return {"error": True, "message": "Old password is wrong."}, 400
 
     def get_arguments(self):
-        args = self.get_args(
-            [
-                {
-                    "name": "old_password",
-                    "required": True,
-                    "help": "Old password is missing.",
-                },
-                {
-                    "name": "password",
-                    "required": True,
-                    "help": "New password is missing.",
-                },
-                {
-                    "name": "password_2",
-                    "required": True,
-                    "help": "New password confirmation is missing.",
-                },
-            ]
-        )
-
-        return (args["old_password"], args["password"], args["password_2"])
+        body = validation.validate_request_body(ChangePasswordSchema)
+        return (body.old_password, body.password, body.password_2)
 
 
 class ResetPasswordResource(Resource, ArgsMixin):
@@ -753,28 +692,21 @@ class ResetPasswordResource(Resource, ArgsMixin):
                          Wrong or expired token
                          Inactive user
         """
-        args = self.get_args(
-            [
-                ("email", "", True),
-                ("token", "", True),
-                ("password", "", True),
-                ("password2", "", True),
-            ]
-        )
+        body = validation.validate_request_body(ResetPasswordSchema)
 
         try:
             token_from_store = auth_tokens_store.get(
-                "reset-token-%s" % args["email"]
+                "reset-token-%s" % body.email
             )
             if token_from_store and hmac.compare_digest(
-                token_from_store, args["token"]
+                token_from_store, body.token
             ):
-                auth.validate_password(args["password"], args["password2"])
-                password = auth.encrypt_password(args["password"])
-                persons_service.update_password(args["email"], password)
-                auth_tokens_store.delete("reset-token-%s" % args["email"])
+                auth.validate_password(body.password, body.password2)
+                password = auth.encrypt_password(body.password)
+                persons_service.update_password(body.email, password)
+                auth_tokens_store.delete("reset-token-%s" % body.email)
                 current_app.logger.info(
-                    "User %s has reset his password" % args["email"]
+                    "User %s has reset his password" % body.email
                 )
                 return {"success": True}
             else:
@@ -824,10 +756,10 @@ class ResetPasswordResource(Resource, ArgsMixin):
           400:
             description: Email not listed in database
         """
-        args = self.get_args([("email", "", True)])
+        body = validation.validate_request_body(SendPasswordResetSchema)
 
         try:
-            user = persons_service.get_person_by_email(args["email"])
+            user = persons_service.get_person_by_email(body.email)
             if not user["active"]:
                 return (
                     {"error": True, "message": "This user is inactive."},
@@ -841,9 +773,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
 
         token = auth_service.generate_reset_token()
         auth_tokens_store.add(
-            "reset-token-%s" % args["email"], token, ttl=3600 * 2
+            "reset-token-%s" % body.email, token, ttl=3600 * 2
         )
-        params = {"email": args["email"], "token": token}
+        params = {"email": body.email, "token": token}
         query = urllib.parse.urlencode(params)
         reset_url = "%s://%s/reset-change-password?%s" % (
             config.DOMAIN_PROTOCOL,
@@ -879,9 +811,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
         email_html_body = templates_service.generate_html_body(
             title, html, locale=locale
         )
-        emails.send_email(
-            subject, email_html_body, args["email"], locale=locale
-        )
+        emails.send_email(subject, email_html_body, body.email, locale=locale)
         return {"success": "Reset token sent"}
 
 
@@ -945,12 +875,12 @@ class TOTPResource(Resource, ArgsMixin):
           400:
             description: TOTP already enabled or verification failed
         """
-        args = self.get_args([("totp", "", True)])
+        body = validation.validate_request_body(TotpSchema)
 
         try:
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_totp(
-                current_user["id"], args["totp"]
+                current_user["id"], body.totp
             )
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
@@ -1006,14 +936,7 @@ class TOTPResource(Resource, ArgsMixin):
           400:
             description: TOTP not enabled or verification failed
         """
-        args = self.get_args(
-            [
-                ("totp", None, False),
-                ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, dict),
-                ("recovery_code", None, False),
-            ]
-        )
+        body = validation.validate_request_body(TwoFactorAuthSchema)
 
         try:
             person = persons_service.get_current_user(unsafe=True)
@@ -1023,10 +946,10 @@ class TOTPResource(Resource, ArgsMixin):
                 raise TOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
-                args["totp"],
-                args["email_otp"],
-                args["fido_authentication_response"],
-                args["recovery_code"],
+                body.totp,
+                body.email_otp,
+                body.fido_authentication_response,
+                body.recovery_code,
             ):
                 raise WrongOTPException
             auth_service.disable_totp(person["id"])
@@ -1154,13 +1077,13 @@ class EmailOTPResource(Resource, ArgsMixin):
           400:
             description: Email OTP already enabled or verification failed
         """
-        args = self.get_args([("email_otp", "", True)])
+        body = validation.validate_request_body(EmailOtpSchema)
 
         try:
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.enable_email_otp(
                 current_user["id"],
-                args["email_otp"],
+                body.email_otp,
             )
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
@@ -1216,14 +1139,7 @@ class EmailOTPResource(Resource, ArgsMixin):
           400:
             description: Email OTP not enabled or verification failed
         """
-        args = self.get_args(
-            [
-                ("totp", None, False),
-                ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, dict),
-                ("recovery_code", None, False),
-            ]
-        )
+        body = validation.validate_request_body(TwoFactorAuthSchema)
 
         try:
             person = persons_service.get_current_user(unsafe=True)
@@ -1233,10 +1149,10 @@ class EmailOTPResource(Resource, ArgsMixin):
                 raise EmailOTPNotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
-                args["totp"],
-                args["email_otp"],
-                args["fido_authentication_response"],
-                args["recovery_code"],
+                body.totp,
+                body.email_otp,
+                body.fido_authentication_response,
+                body.recovery_code,
             ):
                 raise WrongOTPException
             auth_service.disable_email_otp(person["id"])
@@ -1365,18 +1281,13 @@ class FIDOResource(Resource, ArgsMixin):
             description: Registration failed or no preregistration
         """
         try:
-            args = self.get_args(
-                [
-                    ("registration_response", {}, True, dict),
-                    ("device_name", "", True),
-                ]
-            )
+            body = validation.validate_request_body(FidoRegisterSchema)
 
             current_user = persons_service.get_current_user()
             otp_recovery_codes = auth_service.register_fido(
                 current_user["id"],
-                args["registration_response"],
-                args["device_name"],
+                body.registration_response,
+                body.device_name,
             )
             return _build_2fa_registration_response(
                 {"otp_recovery_codes": otp_recovery_codes},
@@ -1424,15 +1335,7 @@ class FIDOResource(Resource, ArgsMixin):
           400:
             description: FIDO not enabled
         """
-        args = self.get_args(
-            [
-                ("device_name", None, True),
-                ("totp", None, False),
-                ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, dict),
-                ("recovery_code", None, False),
-            ]
-        )
+        body = validation.validate_request_body(FidoUnregisterSchema)
 
         try:
             person = persons_service.get_current_user(unsafe=True)
@@ -1440,13 +1343,13 @@ class FIDOResource(Resource, ArgsMixin):
                 raise FIDONotEnabledException
             if not auth_service.check_two_factor_authentication(
                 person,
-                args["totp"],
-                args["email_otp"],
-                args["fido_authentication_response"],
-                args["recovery_code"],
+                body.totp,
+                body.email_otp,
+                body.fido_authentication_response,
+                body.recovery_code,
             ):
                 raise WrongOTPException
-            auth_service.unregister_fido(person["id"], args["device_name"])
+            auth_service.unregister_fido(person["id"], body.device_name)
             return {"success": True}
         except (WrongOTPException, MissingOTPException):
             return (
@@ -1497,14 +1400,7 @@ class RecoveryCodesResource(Resource, ArgsMixin):
           400:
             description: No two-factor authentication enabled or verification failed
         """
-        args = self.get_args(
-            [
-                ("totp", None, False),
-                ("email_otp", None, False),
-                ("fido_authentication_response", {}, False, dict),
-                ("recovery_code", None, False),
-            ]
-        )
+        body = validation.validate_request_body(TwoFactorAuthSchema)
 
         try:
             person = persons_service.get_current_user(unsafe=True)
@@ -1514,10 +1410,10 @@ class RecoveryCodesResource(Resource, ArgsMixin):
                 raise NoTwoFactorAuthenticationEnabled
             if not auth_service.check_two_factor_authentication(
                 person,
-                args["totp"],
-                args["email_otp"],
-                args["fido_authentication_response"],
-                args["recovery_code"],
+                body.totp,
+                body.email_otp,
+                body.fido_authentication_response,
+                body.recovery_code,
             ):
                 raise WrongOTPException
             otp_recovery_codes = auth_service.generate_new_recovery_codes(

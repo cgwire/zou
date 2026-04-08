@@ -97,6 +97,8 @@ def remove_task(task_id, force=False):
     from zou.app.services import tasks_service
 
     task = Task.get(task_id)
+    if task is None:
+        return None
     if force:
         working_files = WorkingFile.query.filter_by(task_id=task_id)
         for working_file in working_files:
@@ -316,7 +318,7 @@ def clear_picture_files(preview_file_id):
     ]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
-        except BaseException:
+        except Exception:
             pass
 
 
@@ -328,12 +330,12 @@ def clear_movie_files(preview_file_id):
     for movie_type in ["previews", "lowdef", "source"]:
         try:
             file_store.remove_movie(movie_type, preview_file_id)
-        except BaseException:
+        except Exception:
             pass
     for image_type in ["thumbnails", "thumbnails-square", "previews", "tiles"]:
         try:
             file_store.remove_picture(image_type, preview_file_id)
-        except BaseException:
+        except Exception:
             pass
 
 
@@ -387,9 +389,14 @@ def remove_project(project_id):
     for preview_file in preview_files:
         remove_preview_file(preview_file, force=True)
 
-    tasks = Task.query.filter_by(project_id=project_id)
-    for task in tasks:
-        remove_task(task.id, force=True)
+    task_ids = [
+        str(row[0])
+        for row in Task.query.with_entities(Task.id)
+        .filter_by(project_id=project_id)
+        .all()
+    ]
+    for task_id in task_ids:
+        remove_task(task_id, force=True)
 
     budgets = Budget.get_all_by(project_id=project_id)
     for budget in budgets:
@@ -398,6 +405,14 @@ def remove_project(project_id):
 
     EntityLink.query.filter(
         EntityLink.entity_in_id == Entity.id,
+        Entity.project_id == project_id,
+    ).delete()
+    EntityConceptLink.query.filter(
+        EntityConceptLink.entity_in_id == Entity.id,
+        Entity.project_id == project_id,
+    ).delete()
+    EntityConceptLink.query.filter(
+        EntityConceptLink.entity_out_id == Entity.id,
         Entity.project_id == project_id,
     ).delete()
     EntityVersion.query.filter(

@@ -25,9 +25,7 @@ class MilestoneTestCase(ApiDBTestCase):
 
     def test_get_milestone(self):
         milestone = self.get_first("data/milestones")
-        milestone_again = self.get(
-            "data/milestones/%s" % milestone["id"]
-        )
+        milestone_again = self.get("data/milestones/%s" % milestone["id"])
         self.assertEqual(milestone, milestone_again)
         self.get_404("data/milestones/%s" % fields.gen_uuid())
 
@@ -47,9 +45,7 @@ class MilestoneTestCase(ApiDBTestCase):
         milestone = self.get_first("data/milestones")
         data = {"name": "Updated Milestone"}
         self.put("data/milestones/%s" % milestone["id"], data)
-        milestone_again = self.get(
-            "data/milestones/%s" % milestone["id"]
-        )
+        milestone_again = self.get("data/milestones/%s" % milestone["id"])
         self.assertEqual(data["name"], milestone_again["name"])
         self.put_404("data/milestones/%s" % fields.gen_uuid(), data)
 

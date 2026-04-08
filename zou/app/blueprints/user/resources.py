@@ -12,8 +12,18 @@ from zou.app.services import (
     time_spents_service,
     user_service,
 )
-from zou.app.utils import date_helpers
-from zou.app.services.exception import WrongDateFormatException
+from zou.app.utils import date_helpers, validation
+from zou.app.blueprints.user.schemas import (
+    CreateSearchFilterSchema,
+    UpdateSearchFilterSchema,
+    CreateSearchFilterGroupSchema,
+    UpdateSearchFilterGroupSchema,
+    NotificationUpdateSchema,
+)
+from zou.app.services.exception import (
+    WrongDateFormatException,
+    WrongParameterException,
+)
 
 
 class AssetTasksResource(Resource):
@@ -1441,34 +1451,20 @@ class FiltersResource(Resource, ArgsMixin):
             400:
               description: Bad request
         """
-        arguments = self.get_arguments()
+        body = validation.validate_request_body(CreateSearchFilterSchema)
 
         return (
             user_service.create_filter(
-                arguments["list_type"],
-                arguments["name"],
-                arguments["query"],
-                arguments["project_id"],
-                arguments["entity_type"],
-                arguments["is_shared"],
-                arguments["search_filter_group_id"],
-                department_id=arguments["department_id"],
+                body.list_type,
+                body.name,
+                body.query,
+                body.project_id,
+                body.entity_type,
+                body.is_shared,
+                body.search_filter_group_id,
+                department_id=body.department_id,
             ),
             201,
-        )
-
-    def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "", True),
-                ("query", "", True),
-                ("list_type", "todo", True),
-                ("project_id", None, False),
-                ("entity_type", None, False),
-                ("is_shared", False, False, inputs.boolean),
-                ("search_filter_group_id", None, False),
-                ("department_id", None, False),
-            ]
         )
 
 
@@ -1574,19 +1570,10 @@ class FilterResource(Resource, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        data = self.get_args(
-            [
-                ("name", None, False),
-                ("search_query", None, False),
-                ("search_filter_group_id", None, False),
-                ("is_shared", None, False, inputs.boolean),
-                ("project_id", None, None),
-                ("department_id", None, None),
-            ]
-        )
-        data = self.clear_empty_fields(
-            data, ignored_fields=["search_filter_group_id"]
-        )
+        body = validation.validate_request_body(UpdateSearchFilterSchema)
+        data = body.model_dump(exclude_none=True)
+        if "search_filter_group_id" in (body.model_fields_set or set()):
+            data["search_filter_group_id"] = body.search_filter_group_id
         user_filter = user_service.update_filter(filter_id, data)
         return user_filter, 200
 
@@ -1780,31 +1767,18 @@ class FilterGroupsResource(Resource, ArgsMixin):
             400:
               description: Bad request
         """
-        arguments = self.get_arguments()
+        body = validation.validate_request_body(CreateSearchFilterGroupSchema)
         return (
             user_service.create_filter_group(
-                arguments["list_type"],
-                arguments["name"],
-                arguments["color"],
-                arguments["project_id"],
-                arguments["entity_type"],
-                arguments["is_shared"],
-                arguments["department_id"],
+                body.list_type,
+                body.name,
+                body.color,
+                body.project_id,
+                body.entity_type,
+                body.is_shared,
+                body.department_id,
             ),
             201,
-        )
-
-    def get_arguments(self):
-        return self.get_args(
-            [
-                ("name", "", True),
-                ("color", "", True),
-                ("list_type", "todo", True),
-                ("project_id", None, False),
-                ("is_shared", False, False, inputs.boolean),
-                ("entity_type", None, False),
-                ("department_id", None, False),
-            ]
         )
 
 
@@ -1973,17 +1947,8 @@ class FilterGroupResource(Resource, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        data = self.get_args(
-            [
-                ("name", None, False),
-                ("color", None, False),
-                ("is_shared", None, False, inputs.boolean),
-                ("project_id", None, None),
-                ("department_id", None, None),
-            ]
-        )
-
-        data = self.clear_empty_fields(data)
+        body = validation.validate_request_body(UpdateSearchFilterGroupSchema)
+        data = body.model_dump(exclude_none=True)
         user_filter = user_service.update_filter_group(filter_group_id, data)
         return user_filter, 200
 
@@ -2417,8 +2382,8 @@ class NotificationResource(Resource, ArgsMixin):
                         description: Last update timestamp
                         example: "2023-01-01T12:30:00Z"
         """
-        data = self.get_args([("read", None, False, inputs.boolean)])
-        return user_service.update_notification(notification_id, data["read"])
+        body = validation.validate_request_body(NotificationUpdateSchema)
+        return user_service.update_notification(notification_id, body.read)
 
 
 class MarkAllNotificationsAsReadResource(Resource):
@@ -2843,10 +2808,9 @@ class TimeSpentsResource(Resource, ArgsMixin):
             return time_spents_service.get_time_spents(current_user["id"])
 
         if None in [start_date, end_date]:
-            abort(
-                400,
+            raise WrongParameterException(
                 "If querying for a range of dates, both a `start_date` and"
-                " an `end_date` must be given.",
+                " an `end_date` must be given."
             )
 
         try:
@@ -2854,9 +2818,8 @@ class TimeSpentsResource(Resource, ArgsMixin):
                 current_user["id"], start_date, end_date
             )
         except WrongDateFormatException:
-            abort(
-                400,
-                f"Wrong date format for {start_date} and/or {end_date}",
+            raise WrongParameterException(
+                f"Wrong date format for {start_date} and/or {end_date}"
             )
 
 
@@ -2929,7 +2892,7 @@ class DateTimeSpentsResource(Resource):
                 current_user["id"], date
             )
         except WrongDateFormatException:
-            abort(400)
+            raise WrongParameterException("Wrong date format.")
 
 
 class TaskTimeSpentResource(Resource):
@@ -3008,7 +2971,7 @@ class TaskTimeSpentResource(Resource):
                 current_user["id"], task_id, date
             )
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Wrong date format.")
 
 
 class DayOffResource(Resource):
@@ -3068,7 +3031,7 @@ class DayOffResource(Resource):
             current_user = persons_service.get_current_user()
             return time_spents_service.get_day_off(current_user["id"], date)
         except WrongDateFormatException:
-            abort(404)
+            raise WrongParameterException("Wrong date format.")
 
 
 class ContextResource(Resource):

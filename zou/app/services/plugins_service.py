@@ -2,7 +2,7 @@ import semver
 import shutil
 from pathlib import Path
 
-from zou.app import config, db
+from zou.app import config
 from zou.app.models.plugin import Plugin
 from zou.app.utils.plugins import (
     PluginManifest,
@@ -11,6 +11,7 @@ from zou.app.utils.plugins import (
     uninstall_plugin_files,
     install_plugin_files,
     clone_git_repo,
+    download_zip_url,
 )
 
 
@@ -20,7 +21,10 @@ def install_plugin(path, force=False):
     and call pre/post install hooks.
     Supports local paths, zip files, and git repository URLs.
     """
-    is_git_url = (
+    is_zip_url = (
+        path.startswith("http://") or path.startswith("https://")
+    ) and path.endswith(".zip")
+    is_git_url = not is_zip_url and (
         path.startswith("http://")
         or path.startswith("https://")
         or path.startswith("git://")
@@ -30,7 +34,11 @@ def install_plugin(path, force=False):
 
     temp_dir = None
     try:
-        if is_git_url:
+        if is_zip_url:
+            zip_path = download_zip_url(path)
+            temp_dir = zip_path.parent
+            path = zip_path
+        elif is_git_url:
             cloned_path = clone_git_repo(path)
             temp_dir = cloned_path.parent
             path = cloned_path
@@ -66,24 +74,19 @@ def install_plugin(path, force=False):
             print(f"[Plugins] Plugin {manifest.id} installed.")
 
         print(
-            f"[Plugins] Running database migrations"
-            f" for {manifest.id}..."
+            f"[Plugins] Running database migrations" f" for {manifest.id}..."
         )
         plugin_path = install_plugin_files(
             path, Path(config.PLUGIN_FOLDER) / manifest.id
         )
         run_plugin_migrations(plugin_path, plugin)
-        print(
-            f"[Plugins] Database migrations for {manifest.id} applied."
-        )
+        print(f"[Plugins] Database migrations for {manifest.id} applied.")
 
         # Re-query plugin instance after migrations
         # (Alembic operations may have detached it from the session)
         plugin = Plugin.get_by(plugin_id=manifest.id)
 
-        _run_plugin_hook(
-            manifest.id, plugin_path, "post_install", manifest
-        )
+        _run_plugin_hook(manifest.id, plugin_path, "post_install", manifest)
 
         print_added_routes(plugin.plugin_id, plugin_path)
         return plugin.serialize()
@@ -94,7 +97,7 @@ def install_plugin(path, force=False):
         )
         raise
     finally:
-        if is_git_url and temp_dir and Path(temp_dir).exists():
+        if temp_dir and Path(temp_dir).exists():
             shutil.rmtree(temp_dir)
 
 
