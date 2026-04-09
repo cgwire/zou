@@ -95,6 +95,25 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - Examples: `[projects] Avoid ObjectDeletedError when removing project tasks`, `[auth] Fix 2FA token expiration`, `[tasks] Allow bulk status update`
 - Use `[tests]`, `[qa]`, `[docs]` only for changes that are purely test/lint/documentation with no domain
 
+### Pull request descriptions
+PR bodies follow a strict two-paragraph format. Do **not** use `## Summary` / `## Test plan` headers — match the existing repo convention exactly:
+
+```markdown
+**Problem**
+- Concise bullet point describing the issue
+- Another bullet if there are multiple related issues
+
+**Solution**
+- Concise bullet point describing what was changed to fix it
+- Another bullet for related changes
+```
+
+Rules:
+- Bullets are short and factual — no narrative paragraphs, no marketing language
+- One PR = one logical change (or a small bundle of tightly related fixes); each problem bullet maps to one or more solution bullets
+- Reference issues with `Fix #1234` or `cgwire/gazu#395` on a final line if applicable
+- No `🤖 Generated with` footer, no `## Test plan` checklist — tests are listed in commit messages, not PR bodies
+
 ## Blueprints & Resources
 
 ### Adding a new feature endpoint
