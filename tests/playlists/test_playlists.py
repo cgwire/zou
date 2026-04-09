@@ -1,6 +1,7 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import projects_service
+from zou.app.models.notification import Notification
+from zou.app.services import playlists_service, projects_service
 
 
 class PlaylistTestCase(ApiDBTestCase):
@@ -56,6 +57,39 @@ class PlaylistTestCase(ApiDBTestCase):
         self.delete("data/playlists/%s" % playlists[0]["id"])
         playlists = self.get("data/projects/%s/playlists" % self.project_id)
         self.assertEqual(len(playlists), 0)
+
+    def test_delete_playlist_with_notifications(self):
+        self.generate_fixture_playlist("Playlist 1")
+        Notification.create(
+            type="playlist-ready",
+            person_id=self.user["id"],
+            author_id=self.user["id"],
+            playlist_id=self.playlist.id,
+        )
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.delete("data/playlists/%s" % playlists[0]["id"])
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.assertEqual(len(playlists), 0)
+        notifications = Notification.query.filter_by(
+            playlist_id=self.playlist.id
+        ).all()
+        self.assertEqual(len(notifications), 0)
+
+    def test_remove_playlist_with_notifications(self):
+        self.generate_fixture_playlist("Playlist 1")
+        Notification.create(
+            type="playlist-ready",
+            person_id=self.user["id"],
+            author_id=self.user["id"],
+            playlist_id=self.playlist.id,
+        )
+        playlists_service.remove_playlist(str(self.playlist.id))
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.assertEqual(len(playlists), 0)
+        notifications = Notification.query.filter_by(
+            playlist_id=self.playlist.id
+        ).all()
+        self.assertEqual(len(notifications), 0)
 
     def test_download_playlist(self):
         self.generate_fixture_playlist("Playlist 1", for_client=False)

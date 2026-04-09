@@ -20,6 +20,7 @@ from zou.app import config
 from zou.app.stores import config_store, file_store
 
 from zou.app.models.build_job import BuildJob
+from zou.app.models.notification import Notification
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
@@ -404,9 +405,7 @@ def get_preview_files_for_entity(entity_id):
                     "task_id": preview_file["task_id"],
                     "original_width": preview_file.get("original_width"),
                     "original_height": preview_file.get("original_height"),
-                    "original_duration": preview_file.get(
-                        "original_duration"
-                    ),
+                    "original_duration": preview_file.get("original_duration"),
                     "original_file_size": preview_file.get(
                         "original_file_size"
                     ),
@@ -890,6 +889,9 @@ def remove_playlist(playlist_id):
     """
     playlist = get_playlist_raw(playlist_id)
     playlist_dict = playlist.serialize()
+    notifications = Notification.query.filter_by(playlist_id=playlist_id).all()
+    for notification in notifications:
+        notification.delete()
     jobs = BuildJob.query.filter_by(playlist_id=playlist_id).all()
     for job in jobs:
         _remove_build_job_impl(playlist_dict, job.serialize())
