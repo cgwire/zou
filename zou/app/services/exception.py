@@ -77,6 +77,10 @@ class ProjectNotFoundException(NotFound):
     pass
 
 
+class ProjectTemplateNotFoundException(NotFound):
+    pass
+
+
 class WorkingFileNotFoundException(NotFound):
     pass
 

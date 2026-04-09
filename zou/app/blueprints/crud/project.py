@@ -8,6 +8,7 @@ from zou.app.models.project import Project, PROJECT_STYLES
 from zou.app.models.project_status import ProjectStatus
 from zou.app.services import (
     deletion_service,
+    project_templates_service,
     projects_service,
     shots_service,
     user_service,
@@ -25,6 +26,11 @@ from zou.app.services.exception import WrongParameterException
 class ProjectsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Project)
+        # Stash template state between update_data() and post_creation()
+        # so we know what to apply after the project is inserted, and which
+        # explicit fields the caller passed (those override template values).
+        self._template_id_to_apply = None
+        self._template_overrides = {}
 
     @jwt_required()
     def get(self):
@@ -199,6 +205,17 @@ class ProjectsResource(BaseModelsResource):
     def update_data(self, data):
         data = super().update_data(data)
 
+        # Pull project_template_id out of the payload before it reaches the
+        # Project model, but remember which fields the caller provided so
+        # apply_template_to_project() can skip them (explicit > template).
+        self._template_id_to_apply = data.pop("project_template_id", None)
+        if self._template_id_to_apply:
+            self._template_overrides = {
+                key: value
+                for key, value in data.items()
+                if value is not None
+            }
+
         if "project_status_id" not in data:
             data["project_status_id"] = (
                 projects_service.get_or_create_open_status()["id"]
@@ -227,6 +244,13 @@ class ProjectsResource(BaseModelsResource):
 
     def post_creation(self, project):
         project_dict = project.serialize()
+        if self._template_id_to_apply is not None:
+            project_templates_service.apply_template_to_project(
+                str(project.id),
+                self._template_id_to_apply,
+                override_settings=self._template_overrides,
+            )
+            project_dict = project.serialize()
         if project.production_type == "tvshow":
             episode = shots_service.create_episode(
                 project.id,
