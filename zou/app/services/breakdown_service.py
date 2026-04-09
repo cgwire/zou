@@ -274,6 +274,21 @@ def update_casting(entity_id, casting):
 
     entity = entities_service.get_entity_raw(entity_id)
     entity_dict = entity.serialize(relations=True)
+
+    # Snapshot the casting before mutating so the emitted event can carry
+    # an explicit added/removed diff. Listeners would otherwise have to
+    # keep their own client-side snapshot to know what changed.
+    previous_asset_ids = {
+        str(asset_id) for asset_id in entity_dict.get("entities_out") or []
+    }
+    new_asset_ids = {
+        str(cast["asset_id"])
+        for cast in casting
+        if "asset_id" in cast and "nb_occurences" in cast
+    }
+    added_asset_ids = sorted(new_asset_ids - previous_asset_ids)
+    removed_asset_ids = sorted(previous_asset_ids - new_asset_ids)
+
     if shots_service.is_episode(entity_dict):
         assets = _extract_removal(entity_dict, casting)
         for asset_id in assets:
@@ -298,23 +313,28 @@ def update_casting(entity_id, casting):
     nb_entities_out = len(casting)
     entity.update({"nb_entities_out": nb_entities_out})
     entity_dict = entity.serialize()
+    casting_diff = {
+        "nb_entities_out": nb_entities_out,
+        "added_asset_ids": added_asset_ids,
+        "removed_asset_ids": removed_asset_ids,
+    }
     if shots_service.is_shot(entity_dict):
         refresh_shot_casting_stats(entity_dict)
         events.emit(
             "shot:casting-update",
-            {"shot_id": entity_id, "nb_entities_out": nb_entities_out},
+            {"shot_id": entity_id, **casting_diff},
             project_id=str(entity.project_id),
         )
     elif shots_service.is_episode(entity_dict):
         events.emit(
             "episode:casting-update",
-            {"episode_id": entity_id, "nb_entities_out": nb_entities_out},
+            {"episode_id": entity_id, **casting_diff},
             project_id=str(entity.project_id),
         )
     else:
         events.emit(
             "asset:casting-update",
-            {"asset_id": entity_id},
+            {"asset_id": entity_id, **casting_diff},
             project_id=str(entity.project_id),
         )
     return casting
@@ -394,7 +414,12 @@ def _remove_asset_from_episode_shots(asset_id, episode_id):
         link.delete()
         events.emit(
             "shot:casting-update",
-            {"shot_id": str(shot.id), "nb_entities_out": shot.nb_entities_out},
+            {
+                "shot_id": str(shot.id),
+                "nb_entities_out": shot.nb_entities_out,
+                "added_asset_ids": [],
+                "removed_asset_ids": [str(asset_id)],
+            },
             project_id=str(shot.project_id),
         )
     return shots

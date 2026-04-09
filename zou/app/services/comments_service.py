@@ -222,6 +222,23 @@ def _manage_status_change(task_status, task, comment):
                 },
                 project_id=task["project_id"],
             )
+            if task_status["is_feedback_request"]:
+                # Backwards-compatible: the legacy /actions/tasks/<id>/to-review
+                # endpoint emitted task:to-review whenever a task moved to a
+                # feedback-request status. Modern Kitsu posts a comment with
+                # the new task_status_id instead, so we re-emit the event from
+                # here to keep existing gazu listeners working.
+                events.emit(
+                    "task:to-review",
+                    {
+                        "task_id": task["id"],
+                        "new_task_status_id": new_data["task_status_id"],
+                        "previous_task_status_id": task["task_status_id"],
+                        "person_id": comment["person_id"],
+                        "comment_id": comment["id"],
+                    },
+                    project_id=task["project_id"],
+                )
         task.update(new_data)
     return task, status_changed
 

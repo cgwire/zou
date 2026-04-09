@@ -7,6 +7,7 @@ from zou.app.services import (
     tasks_service,
     exception,
 )
+from zou.app.utils import events
 
 
 class CommentsServiceTestCase(ApiDBTestCase):
@@ -123,6 +124,42 @@ class CommentsServiceTestCase(ApiDBTestCase):
             self.wfa_status, task, comment
         )
         self.assertTrue(task["end_date"] is not None)
+
+    def test_manage_status_change_emits_to_review(self):
+        """
+        Moving a task to a feedback-request status via a comment must
+        re-emit the legacy task:to-review event so existing gazu listeners
+        keep working after the deprecation of /actions/tasks/<id>/to-review.
+        """
+        self.fired_events = []
+
+        class _Handler:
+            __name__ = "to_review_handler"
+
+            def __init__(self, sink):
+                self.sink = sink
+
+            def handle_event(self, data=None):
+                self.sink.append(data or {})
+
+        events.unregister_all()
+        handler = _Handler(self.fired_events)
+        events.register("task:to-review", "to_review_handler", handler)
+
+        comment = comments_service.new_comment(
+            self.task.id, self.task_status.id, self.user["id"], "to wfa"
+        )
+        task = self.task.serialize()
+
+        comments_service._manage_status_change(self.wfa_status, task, comment)
+
+        self.assertEqual(len(self.fired_events), 1)
+        payload = self.fired_events[0]
+        self.assertEqual(payload["task_id"], str(self.task.id))
+        self.assertEqual(
+            payload["new_task_status_id"], self.wfa_status["id"]
+        )
+        self.assertEqual(payload["comment_id"], comment["id"])
 
     def test_manage_subscriptions(self):
         # TODO
