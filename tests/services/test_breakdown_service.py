@@ -6,6 +6,7 @@ from zou.app.services import (
     projects_service,
     tasks_service,
 )
+from zou.app.utils import events
 
 
 class BreakdownServiceTestCase(ApiDBTestCase):
@@ -157,6 +158,61 @@ class BreakdownServiceTestCase(ApiDBTestCase):
         self.assertEqual(cast_in[0]["shot_name"], self.shot.name)
         self.assertEqual(cast_in[0]["sequence_name"], self.sequence.name)
         self.assertEqual(cast_in[0]["episode_name"], self.episode.name)
+
+    def test_update_casting_event_payload_diff(self):
+        """
+        casting-update events must include added_asset_ids and
+        removed_asset_ids so listeners know what changed without having
+        to keep a client-side snapshot (cgwire/gazu#393).
+        """
+        captured = []
+
+        class _Handler:
+            __name__ = "casting_update_handler"
+
+            def __init__(self, sink):
+                self.sink = sink
+
+            def handle_event(self, data=None):
+                self.sink.append(data or {})
+
+        events.unregister_all()
+        handler = _Handler(captured)
+        events.register("shot:casting-update", "casting_update_handler", handler)
+
+        shot_id = str(self.shot.id)
+        asset_id = str(self.asset.id)
+        asset_character_id = str(self.asset_character.id)
+
+        # Initial casting: both assets added.
+        breakdown_service.update_casting(
+            self.shot.id,
+            [
+                {"asset_id": asset_id, "nb_occurences": 1},
+                {"asset_id": asset_character_id, "nb_occurences": 3},
+            ],
+        )
+        self.assertEqual(len(captured), 1)
+        first = captured[0]
+        self.assertEqual(first["shot_id"], shot_id)
+        self.assertEqual(first["nb_entities_out"], 2)
+        self.assertEqual(
+            sorted(first["added_asset_ids"]),
+            sorted([asset_id, asset_character_id]),
+        )
+        self.assertEqual(first["removed_asset_ids"], [])
+
+        # Replace casting: drop asset_character, keep asset.
+        breakdown_service.update_casting(
+            self.shot.id,
+            [{"asset_id": asset_id, "nb_occurences": 1}],
+        )
+        self.assertEqual(len(captured), 2)
+        second = captured[1]
+        self.assertEqual(second["shot_id"], shot_id)
+        self.assertEqual(second["nb_entities_out"], 1)
+        self.assertEqual(second["added_asset_ids"], [])
+        self.assertEqual(second["removed_asset_ids"], [asset_character_id])
 
     def test_add_instance_to_shot(self):
         instances = breakdown_service.get_asset_instances_for_shot(
