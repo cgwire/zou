@@ -26,7 +26,7 @@ class ProjectTaskTypeSchema(BaseSchema):
     """Body for adding a task type to a project."""
 
     task_type_id: str = Field(..., min_length=1)
-    priority: Optional[str] = None
+    priority: Optional[int] = None
 
 
 class ProjectTaskStatusSchema(BaseSchema):
