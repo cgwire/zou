@@ -242,7 +242,7 @@ class OTIOBaseResource(Resource, ArgsMixin):
                     try:
                         try:
                             data["frame_in"] = (
-                                track.trimmed_range_in_parent().start_time.to_frames()
+                                track.range_in_parent().start_time.to_frames()
                             )
                         except Exception:
                             data["frame_in"] = (
@@ -255,7 +255,7 @@ class OTIOBaseResource(Resource, ArgsMixin):
                     try:
                         try:
                             data["frame_out"] = (
-                                track.trimmed_range_in_parent()
+                                track.range_in_parent()
                                 .end_time_inclusive()
                                 .to_frames()
                             )
