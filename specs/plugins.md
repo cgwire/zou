@@ -6,16 +6,16 @@ Plugins are Python packages in the `PLUGIN_FOLDER` directory. Each plugin can pr
 
 ```
 my-plugin/
-├── manifest.toml       # Required: metadata
+├── manifest.toml        # Required: metadata
 ├── __init__.py          # Required: routes list
 ├── models.py            # Optional: SQLAlchemy models
-├── migrations/          # Optional: Alembic migrations
-│   ├── alembic.ini
-│   ├── env.py
-│   └── versions/
+├── migrations/          # Optional: Alembic revisions only
+│   └── versions/        # Plugin's revision files (.py)
 └── frontend/            # Optional: Vue.js SPA
     └── dist/
 ```
+
+> **Note** — plugins do **not** ship `env.py`, `alembic.ini` or `script.py.mako`. Zou owns those files under `zou/app/utils/plugin_alembic_template/` and points alembic at them via `script_location` while overriding `version_locations` to the plugin's own `migrations/versions/` directory. This avoids the "Table is already defined for this MetaData instance" class of bugs that comes from re-executing `models.py` from a plugin-owned `env.py` after the install hook has already imported the plugin module. See `zou/app/utils/plugins.py:_build_plugin_alembic_config` for the wiring.
 
 ## Manifest
 
@@ -54,7 +54,17 @@ Routes are mounted at `/plugins/<plugin-id>/`.
 
 ## Database
 
-Plugin tables are prefixed `plugin_<plugin_id>_` to avoid collisions. Migrations use Alembic and are run via `run_plugin_migrations()`.
+Plugin tables are prefixed `plugin_<plugin_id>_` to avoid collisions. Each plugin has its own alembic version table named `alembic_version_<plugin_id>` so different plugins can advance independently.
+
+Migrations use Alembic and are run via `run_plugin_migrations()`. The shared `env.py` (in `zou/app/utils/plugin_alembic_template/`) loads the plugin's `models.py` lazily — it skips re-execution if the plugin's tables are already in `db.metadata`, which is the normal case after `install_plugin` has already imported the plugin package to call its lifecycle hooks. The plugin path is passed in via `alembic_cfg.attributes["plugin_path"]` so the shared env.py knows which manifest to load.
+
+To create a new revision after changing `models.py`:
+
+```bash
+zou migrate-plugin --path /path/to/my-plugin --message "Add foo column"
+```
+
+This calls `migrate_plugin_db()`, which uses the same shared template via `_build_plugin_alembic_config()` and writes the new revision file into `migrations/versions/`.
 
 ## Loading
 
