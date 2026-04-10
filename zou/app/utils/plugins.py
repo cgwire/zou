@@ -190,9 +190,42 @@ def load_plugins(app):
                 app.logger.debug(traceback.format_exc())
 
 
+PLUGIN_ALEMBIC_TEMPLATE_DIR = Path(__file__).parent / "plugin_alembic_template"
+
+
+def _build_plugin_alembic_config(plugin_path):
+    """
+    Build an Alembic Config that uses the shared template (env.py,
+    script.py.mako, alembic.ini live under
+    ``zou/app/utils/plugin_alembic_template/``) but stores revisions in the
+    plugin's own ``migrations/versions/`` directory.
+
+    The plugin path is passed to env.py via ``config.attributes`` so the
+    shared env.py knows which manifest to load and which models.py to
+    register.
+    """
+    plugin_path = Path(plugin_path).absolute()
+    versions_dir = plugin_path / "migrations" / "versions"
+    versions_dir.mkdir(parents=True, exist_ok=True)
+
+    alembic_cfg = Config()
+    alembic_cfg.config_file_name = str(
+        PLUGIN_ALEMBIC_TEMPLATE_DIR / "alembic.ini"
+    )
+    alembic_cfg.set_main_option(
+        "script_location", str(PLUGIN_ALEMBIC_TEMPLATE_DIR)
+    )
+    alembic_cfg.set_main_option("version_locations", str(versions_dir))
+    alembic_cfg.set_main_option(
+        "sqlalchemy.url", current_app.config["SQLALCHEMY_DATABASE_URI"]
+    )
+    alembic_cfg.attributes["plugin_path"] = str(plugin_path)
+    return alembic_cfg
+
+
 def migrate_plugin_db(plugin_path, message):
     """
-    Generates Alembic migration files in path/migrations.
+    Generates Alembic migration files in path/migrations/versions.
     """
     plugin_path = Path(plugin_path).absolute()
     models_path = plugin_path / "models.py"
@@ -201,11 +234,11 @@ def migrate_plugin_db(plugin_path, message):
         raise FileNotFoundError(f"'models.py' not found in '{plugin_path}'")
 
     manifest = PluginManifest.from_plugin_path(plugin_path)
-
     module_name = f"_plugin_models_{manifest['id']}"
     plugin_prefix = f"plugin_{manifest['id']}_"
 
-    # Only load models if plugin tables aren't already in db.metadata
+    # Only load models if plugin tables aren't already in db.metadata.
+    # The shared env.py performs the same check at upgrade time.
     plugin_tables = [
         t for t in db.metadata.tables if t.startswith(plugin_prefix)
     ]
@@ -221,19 +254,7 @@ def migrate_plugin_db(plugin_path, message):
         spec.loader.exec_module(module)
 
     try:
-        migrations_dir = plugin_path / "migrations"
-        versions_dir = migrations_dir / "versions"
-        versions_dir.mkdir(parents=True, exist_ok=True)
-
-        alembic_cfg = Config()
-        alembic_cfg.config_file_name = str(
-            plugin_path / "migrations" / "alembic.ini"
-        )
-        alembic_cfg.set_main_option("script_location", str(migrations_dir))
-        alembic_cfg.set_main_option(
-            "sqlalchemy.url", current_app.config["SQLALCHEMY_DATABASE_URI"]
-        )
-
+        alembic_cfg = _build_plugin_alembic_config(plugin_path)
         command.revision(alembic_cfg, autogenerate=True, message=message)
     finally:
         if module_name in sys.modules:
@@ -242,21 +263,9 @@ def migrate_plugin_db(plugin_path, message):
 
 def run_plugin_migrations(plugin_path, plugin):
     """
-    Run plugin migrations.
+    Run plugin migrations using the shared Alembic template.
     """
-    plugin_path = Path(plugin_path)
-
-    alembic_cfg = Config()
-    alembic_cfg.config_file_name = str(
-        plugin_path / "migrations" / "alembic.ini"
-    )
-    alembic_cfg.set_main_option(
-        "script_location", str(plugin_path / "migrations")
-    )
-    alembic_cfg.set_main_option(
-        "sqlalchemy.url", current_app.config["SQLALCHEMY_DATABASE_URI"]
-    )
-
+    alembic_cfg = _build_plugin_alembic_config(plugin_path)
     command.upgrade(alembic_cfg, "head")
 
     script = command.ScriptDirectory.from_config(alembic_cfg)
@@ -274,17 +283,7 @@ def downgrade_plugin_migrations(plugin_path):
     plugin_path = Path(plugin_path)
     manifest = PluginManifest.from_plugin_path(plugin_path)
 
-    alembic_cfg = Config()
-    alembic_cfg.config_file_name = str(
-        plugin_path / "migrations" / "alembic.ini"
-    )
-    alembic_cfg.set_main_option(
-        "script_location", str(plugin_path / "migrations")
-    )
-    alembic_cfg.set_main_option(
-        "sqlalchemy.url", current_app.config["SQLALCHEMY_DATABASE_URI"]
-    )
-
+    alembic_cfg = _build_plugin_alembic_config(plugin_path)
     try:
         command.downgrade(alembic_cfg, "base")
     except Exception as e:
