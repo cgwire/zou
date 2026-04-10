@@ -28,17 +28,17 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         shots = shots_service.get_shots()
         self.assertEqual(len(shots), 3)
 
-        shots_by_name = {s["name"]: s for s in shots}
+        shots = sorted(shots, key=lambda s: s["data"]["frame_in"])
 
-        shot1 = shots_by_name["sc010"]
-        self.assertEqual(shot1["nb_frames"], 130)
-        self.assertEqual(shot1["data"]["frame_in"], 0)
-        self.assertEqual(shot1["data"]["frame_out"], 129)
+        self.assertEqual(shots[0]["name"], "sc010")
+        self.assertEqual(shots[0]["nb_frames"], 130)
+        self.assertEqual(shots[0]["data"]["frame_in"], 0)
+        self.assertEqual(shots[0]["data"]["frame_out"], 129)
 
-        shot2 = shots_by_name["sc020"]
-        self.assertEqual(shot2["nb_frames"], 73)
-        self.assertEqual(shot2["data"]["frame_in"], 130)
-        self.assertEqual(shot2["data"]["frame_out"], 202)
+        self.assertEqual(shots[1]["name"], "sc020")
+        self.assertEqual(shots[1]["nb_frames"], 73)
+        self.assertEqual(shots[1]["data"]["frame_in"], 130)
+        self.assertEqual(shots[1]["data"]["frame_out"], 202)
 
     def test_import_edl_with_tc_offset(self):
         self.import_edl("tc_offset.edl")
@@ -49,17 +49,17 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         shots = shots_service.get_shots()
         self.assertEqual(len(shots), 3)
 
-        shots_by_name = {s["name"]: s for s in shots}
+        shots = sorted(shots, key=lambda s: s["data"]["frame_in"])
 
-        shot1 = shots_by_name["sc010"]
-        self.assertEqual(shot1["nb_frames"], 130)
-        self.assertEqual(shot1["data"]["frame_in"], 0)
-        self.assertEqual(shot1["data"]["frame_out"], 129)
+        self.assertEqual(shots[0]["name"], "sc010")
+        self.assertEqual(shots[0]["nb_frames"], 130)
+        self.assertEqual(shots[0]["data"]["frame_in"], 0)
+        self.assertEqual(shots[0]["data"]["frame_out"], 129)
 
-        shot2 = shots_by_name["sc020"]
-        self.assertEqual(shot2["nb_frames"], 73)
-        self.assertEqual(shot2["data"]["frame_in"], 130)
-        self.assertEqual(shot2["data"]["frame_out"], 202)
+        self.assertEqual(shots[1]["name"], "sc020")
+        self.assertEqual(shots[1]["nb_frames"], 73)
+        self.assertEqual(shots[1]["data"]["frame_in"], 130)
+        self.assertEqual(shots[1]["data"]["frame_out"], 202)
 
     def test_import_edl_creates_sequences(self):
         self.import_edl("tc_offset.edl")
