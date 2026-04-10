@@ -2,6 +2,7 @@ from flask_jwt_extended import jwt_required
 
 from zou.app.models.playlist import Playlist
 from zou.app.models.build_job import BuildJob
+from zou.app.models.notification import Notification
 from zou.app.services import user_service, playlists_service, persons_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
@@ -358,6 +359,11 @@ class PlaylistResource(BaseModelResource):
         return super().delete(instance_id)
 
     def pre_delete(self, playlist):
+        notifications = Notification.query.filter_by(
+            playlist_id=playlist["id"]
+        ).all()
+        for notification in notifications:
+            notification.delete()
         query = BuildJob.query.filter_by(playlist_id=playlist["id"])
         for job in query.all():
             playlists_service.remove_build_job(playlist, job.id)
