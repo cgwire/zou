@@ -1,0 +1,11 @@
+TITLE: TestProject_EDL
+FCM: NON-DROP FRAME
+
+001  AX       V     C        00:00:00:00 00:00:05:05 00:00:00:00 00:00:05:05
+* FROM CLIP NAME: TestProject_SQ010-sc010.mp4
+
+002  AX       V     C        00:00:00:00 00:00:02:23 00:00:05:05 00:00:08:03
+* FROM CLIP NAME: TestProject_SQ010-sc020.mp4
+
+003  AX       V     C        00:00:00:00 00:00:06:24 00:00:08:03 00:00:15:02
+* FROM CLIP NAME: TestProject_SQ020-sc010.mp4
