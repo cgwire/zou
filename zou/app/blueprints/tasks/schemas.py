@@ -54,4 +54,4 @@ class AssignPersonSchema(BaseSchema):
 class TimeSpentSchema(BaseSchema):
     """Body for creating/updating time spent on a task."""
 
-    duration: int = Field(..., gt=0, description="Duration in minutes")
+    duration: float = Field(..., gt=0, description="Duration in minutes")
