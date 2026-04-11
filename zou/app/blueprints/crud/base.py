@@ -1,3 +1,4 @@
+import datetime
 import math
 import orjson as json
 import sqlalchemy.orm as orm
@@ -8,6 +9,7 @@ from flask_jwt_extended import jwt_required
 
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.inspection import inspect
+from sqlalchemy import types as sa_types
 
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import events, fields, permissions, query
@@ -369,7 +371,41 @@ class BaseModelResource(Resource, ArgsMixin):
         for field in self.protected_fields:
             if (data is not None) and field in data:
                 data.pop(field, None)
+        self._validate_date_fields(data)
         return data
+
+    def _validate_date_fields(self, data):
+        """
+        Check that any incoming string destined for a Date / DateTime column
+        can actually be parsed. Raises WrongParameterException with a clean
+        message instead of letting a malformed value like ``"2026-04-"``
+        crash inside PostgreSQL.
+        """
+        if data is None:
+            return
+        columns = {
+            col.name: col
+            for col in self.model.__table__.columns
+            if isinstance(col.type, (sa_types.DateTime, sa_types.Date))
+        }
+        for key, value in data.items():
+            if key in columns and isinstance(value, str) and value != "":
+                for fmt in (
+                    "%Y-%m-%dT%H:%M:%S.%f",
+                    "%Y-%m-%dT%H:%M:%S",
+                    "%Y-%m-%d",
+                ):
+                    try:
+                        datetime.datetime.strptime(value, fmt)
+                        break
+                    except ValueError:
+                        continue
+                else:
+                    raise WrongParameterException(
+                        "Invalid date format for '%s': '%s'. "
+                        "Expected YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS."
+                        % (key, value)
+                    )
 
     def serialize_instance(self, data, relations=True):
         return data.serialize(relations=relations)
