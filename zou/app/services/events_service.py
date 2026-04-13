@@ -81,26 +81,46 @@ def create_login_log(person_id, ip_address, origin):
     return login_log.serialize()
 
 
-def get_last_login_logs(before=None, limit=100):
+def get_last_login_logs(
+    after=None,
+    before=None,
+    cursor_login_log_id=None,
+    limit=100,
+):
     """
-    Return last 100 login logs published. If before parameter is set, it returns
-    last 100 login logs before this date.
+    Return paginated login logs using cursor-based pagination.
+    If cursor_login_log_id is set, it returns login logs older than this log.
     """
-    query = LoginLog.query.order_by(LoginLog.created_at.desc()).with_entities(
-        LoginLog.created_at, LoginLog.ip_address, LoginLog.person_id
-    )
+    query = LoginLog.query.order_by(LoginLog.created_at.desc())
+
+    if after is not None:
+        query = query.filter(
+            LoginLog.created_at > func.cast(after, LoginLog.created_at.type)
+        )
 
     if before is not None:
         query = query.filter(
             LoginLog.created_at < func.cast(before, LoginLog.created_at.type)
         )
 
+    if cursor_login_log_id is not None:
+        cursor_log = LoginLog.query.get(cursor_login_log_id)
+        if cursor_log is None:
+            raise WrongParameterException(
+                f"No login log found with id: {cursor_login_log_id}"
+            )
+        query = query.filter(LoginLog.created_at < cursor_log.created_at)
+
     login_logs = query.limit(limit).all()
     return [
-        {
-            "created_at": fields.serialize_value(created_at),
-            "ip_address": fields.serialize_value(ip_address),
-            "person_id": fields.serialize_value(person_id),
-        }
-        for (created_at, ip_address, person_id) in login_logs
+        fields.serialize_dict(
+            {
+                "id": log.id,
+                "created_at": log.created_at,
+                "ip_address": log.ip_address,
+                "person_id": log.person_id,
+                "origin": log.origin,
+            }
+        )
+        for log in login_logs
     ]
