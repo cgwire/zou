@@ -1,4 +1,3 @@
-import time
 from datetime import datetime, timedelta
 
 from tests.base import ApiDBTestCase
@@ -17,23 +16,18 @@ class EventsRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_asset_type()
 
     def test_get_last_events(self):
-        asset = assets_service.create_asset(
-            self.project.id, self.asset_type.id, "test 1", "", {}
-        )
-        after = asset["created_at"]
-        time.sleep(1)
-        asset = assets_service.create_asset(
-            self.project.id, self.asset_type.id, "test 2", "", {}
-        )
-        time.sleep(1)
-        asset = assets_service.create_asset(
-            self.project.id, self.asset_type.id, "test 3", "", {}
-        )
-        before = asset["created_at"]
-        time.sleep(1)
-        asset = assets_service.create_asset(
-            self.project.id, self.asset_type.id, "test 4", "", {}
-        )
+        now = datetime.now().replace(microsecond=0)
+        for name in ["test 1", "test 2", "test 3", "test 4"]:
+            assets_service.create_asset(
+                self.project.id, self.asset_type.id, name, "", {}
+            )
+
+        events_db = ApiEvent.query.order_by(ApiEvent.created_at).all()
+        for i, event in enumerate(events_db):
+            event.update({"created_at": now - timedelta(seconds=4 - i)})
+
+        after = (now - timedelta(seconds=5)).isoformat()
+        before = (now - timedelta(seconds=2)).isoformat()
 
         events = self.get("/data/events/last")
         self.assertEqual(len(events), 4)
