@@ -7,12 +7,12 @@ from zou.app import config
 from zou.app.utils import permissions
 from zou import __version__ as zou_version
 
-
 if config.SENTRY_ENABLED:
     try:
         import sentry_sdk
         from sentry_sdk.integrations.flask import FlaskIntegration
         from sentry_sdk.integrations.rq import RqIntegration
+        from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
     except ModuleNotFoundError:
         print("sentry_sdk module not found.")
 
@@ -31,6 +31,7 @@ def init_monitoring(app):
             integrations=[
                 FlaskIntegration(),
                 RqIntegration(),
+                SqlalchemyIntegration(),
             ],
             traces_sample_rate=config.SENTRY_SR,
             ignore_errors=[
