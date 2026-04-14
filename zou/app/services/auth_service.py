@@ -303,7 +303,7 @@ def check_totp(person, totp):
     """
     Check TOTP for a person.
     """
-    return pyotp.TOTP(person["totp_secret"]).verify(totp)
+    return pyotp.TOTP(person["totp_secret"]).verify(totp, valid_window=1)
 
 
 def check_email_otp(person, email_otp):

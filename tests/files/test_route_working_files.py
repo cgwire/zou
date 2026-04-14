@@ -1,4 +1,4 @@
-import time
+import datetime
 
 from tests.base import ApiDBTestCase
 
@@ -148,15 +148,17 @@ class WorkingFilesTestCase(ApiDBTestCase):
 
     def test_update_modification_date(self):
         path = "/actions/working-files/%s/modified" % self.working_file.id
+        past = datetime.datetime.now().replace(
+            microsecond=0
+        ) - datetime.timedelta(seconds=2)
+        self.working_file.update({"updated_at": past})
         previous_date = self.working_file.serialize()["updated_at"]
-        time.sleep(1)
         working_file = self.put(path, {})
         current_date = working_file["updated_at"]
         self.assertTrue(previous_date < current_date)
 
-        time.sleep(1)
         now = self.now()
-        self.assertTrue(current_date < now)
+        self.assertTrue(current_date <= now)
 
     def test_get_untyped_file(self):
         working_file_id = str(self.working_file.id)
