@@ -24,9 +24,22 @@ class BaseModelsResource(Resource, ArgsMixin):
         self.model = model
         self.protected_fields = ["id", "created_at", "updated_at"]
 
+    def get_relations_eager_load(self):
+        """
+        Return a list of relationship attributes to selectinload when the
+        client requests ?relations=true. Subclasses override this for models
+        that have collection relationships without lazy="selectin" on the
+        model itself, so the bulk list endpoint doesn't fall into N+1.
+        """
+        return []
+
     def all_entries(self, query=None, relations=False):
         if query is None:
             query = self.model.query
+
+        if relations:
+            for relationship in self.get_relations_eager_load():
+                query = query.options(orm.selectinload(relationship))
 
         return self.serialize_list(query.all(), relations=relations)
 
