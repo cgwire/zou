@@ -89,22 +89,28 @@ def _get_person_raw_for_cache(person_id):
     Expunges the object from session so it can be safely cached.
     This function is cached - it returns a detached Person object.
 
-    Note: We don't pre-load departments here to avoid stale department data.
-    Departments will be loaded fresh after merging into the session.
+    Departments are eagerly loaded here so the cached instance carries them
+    in its state. Once expunged and later merged with load=False, the
+    instance is effectively detached from DB attribute refresh, so any
+    relationship that still needs a lazy load would crash with
+    DetachedInstanceError on access. ``clear_person_cache()`` is called on
+    every department change (add_to_department / remove_from_department),
+    so staleness is bounded by the memoize TTL.
     """
     if person_id is None:
         raise PersonNotFoundException()
 
     try:
-        person = Person.get(person_id)
+        person = (
+            Person.query.options(selectinload(Person.departments))
+            .filter(Person.id == person_id)
+            .one_or_none()
+        )
     except StatementError:
         raise PersonNotFoundException()
 
     if person is None:
         raise PersonNotFoundException()
-
-    # Don't load departments here - we'll load them fresh after merging
-    # This ensures departments are always up-to-date even if cached
 
     # Expunge from session so it can be cached without session conflicts
     # This is cheap - just removes from identity map, no DB query
