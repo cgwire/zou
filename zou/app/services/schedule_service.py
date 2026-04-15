@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from sqlalchemy.exc import StatementError
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import selectinload
 from sqlalchemy import update
 
 
@@ -312,6 +313,7 @@ def set_production_schedule_version_task_links_from_production(
 
     tasks = (
         db.session.query(Task)
+        .options(selectinload(Task.assignees))
         .filter(Task.project_id == production_schedule_version["project_id"])
         .all()
     )

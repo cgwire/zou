@@ -28,6 +28,14 @@ class TasksResource(BaseModelsResource, ArgsMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Task)
 
+    def get_relations_eager_load(self):
+        """
+        Batch-load assignees when the client asks for relations. Replaces
+        the previous lazy="selectin" default on Task.assignees so that Task
+        loads that don't need assignees (~70-80% of them) pay nothing.
+        """
+        return [Task.assignees]
+
     def check_read_permissions(self, options=None):
         return True
 

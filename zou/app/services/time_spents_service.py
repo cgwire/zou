@@ -236,9 +236,7 @@ def get_table_from_time_spents(time_spents, detail_level="month"):
 
         person_id = str(time_spent.person_id)
         if unit not in result:
-            result[unit] = {}
-        if person_id not in result[unit]:
-            result[unit][person_id] = 0
+            result[unit] = defaultdict(int)
         result[unit][person_id] += time_spent.duration
     return result
 

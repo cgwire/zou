@@ -65,13 +65,18 @@ def reset_entry_index(
     )
     indexing.clear_index(index_name)
     entries = get_entries()
+    total = 0
     documents = []
-    for chunk in chunks(entries, 3000):
-        for entry in chunk:
-            document = prepare_entry(entry)
-            documents.append(document)
+    for entry in entries:
+        documents.append(prepare_entry(entry))
+        if len(documents) >= 3000:
+            indexing.index_documents(index, documents)
+            total += len(documents)
+            documents = []
+    if documents:
         indexing.index_documents(index, documents)
-    print(len(entries), "%s indexed" % index_name)
+        total += len(documents)
+    print(total, "%s indexed" % index_name)
     return entries
 
 
