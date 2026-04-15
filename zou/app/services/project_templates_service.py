@@ -4,9 +4,11 @@ from sqlalchemy.exc import IntegrityError, StatementError
 
 from zou.app.models.entity_type import EntityType
 from zou.app.models.metadata_descriptor import MetadataDescriptor
+from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.project_template import (
     ProjectTemplate,
     ProjectTemplateAssetTypeLink,
+    ProjectTemplatePreviewBackgroundFileLink,
     ProjectTemplateStatusAutomationLink,
     ProjectTemplateTaskStatusLink,
     ProjectTemplateTaskTypeLink,
@@ -189,7 +191,9 @@ def get_template_task_types(template_id):
     links = ProjectTemplateTaskTypeLink.get_all_by(
         project_template_id=template_id
     )
-    link_map = {str(link.task_type_id): link for link in links}
+    link_map = {
+        str(link.task_type_id): link for link in links
+    }
     result = []
     for task_type in template.task_types:
         data = task_type.serialize()
@@ -250,7 +254,9 @@ def get_template_task_statuses(template_id):
     links = ProjectTemplateTaskStatusLink.get_all_by(
         project_template_id=template_id
     )
-    link_map = {str(link.task_status_id): link for link in links}
+    link_map = {
+        str(link.task_status_id): link for link in links
+    }
     result = []
     for task_status in template.task_statuses:
         data = task_status.serialize()
@@ -262,7 +268,9 @@ def get_template_task_statuses(template_id):
                 for role in (link.roles_for_board or [])
             ]
         result.append(data)
-    result.sort(key=lambda s: (s.get("priority") or 0, s.get("name", "")))
+    result.sort(
+        key=lambda s: (s.get("priority") or 0, s.get("name", ""))
+    )
     return result
 
 
@@ -412,6 +420,94 @@ def remove_status_automation_from_template(template_id, status_automation_id):
     )
 
 
+def get_template_preview_background_files(template_id):
+    template = _ensure_template_exists(template_id)
+    return [
+        {
+            "id": str(bg.id),
+            "name": bg.name,
+            "is_default": bool(bg.is_default),
+        }
+        for bg in template.preview_background_files
+    ]
+
+
+def add_preview_background_file_to_template(
+    template_id, preview_background_file_id
+):
+    if not preview_background_file_id or not fields.is_valid_id(
+        preview_background_file_id
+    ):
+        raise WrongParameterException(
+            "preview_background_file_id is required and must be a valid UUID"
+        )
+    background = PreviewBackgroundFile.get(preview_background_file_id)
+    if background is None:
+        raise WrongParameterException(
+            f"Preview background file {preview_background_file_id} does not exist"
+        )
+    template = _ensure_template_exists(template_id)
+    if str(background.id) not in [
+        str(b.id) for b in template.preview_background_files
+    ]:
+        template.preview_background_files.append(background)
+        template.save()
+    clear_project_template_cache()
+    events.emit(
+        "project-template:update",
+        {"project_template_id": str(template_id)},
+    )
+    return {
+        "id": str(background.id),
+        "name": background.name,
+        "is_default": bool(background.is_default),
+    }
+
+
+def remove_preview_background_file_from_template(
+    template_id, preview_background_file_id
+):
+    template = _ensure_template_exists(template_id)
+    background = PreviewBackgroundFile.get(preview_background_file_id)
+    if background is not None:
+        try:
+            template.preview_background_files.remove(background)
+            template.save()
+        except ValueError:
+            pass
+    # Clear default if it was the removed one
+    if str(template.default_preview_background_file_id or "") == str(
+        preview_background_file_id
+    ):
+        template.update({"default_preview_background_file_id": None})
+    clear_project_template_cache()
+    events.emit(
+        "project-template:update",
+        {"project_template_id": str(template_id)},
+    )
+
+
+def set_template_default_preview_background_file(
+    template_id, preview_background_file_id
+):
+    template = _ensure_template_exists(template_id)
+    if preview_background_file_id is not None:
+        linked_ids = [str(b.id) for b in template.preview_background_files]
+        if str(preview_background_file_id) not in linked_ids:
+            raise WrongParameterException(
+                "Preview background file is not linked to this template"
+            )
+    template.update(
+        {"default_preview_background_file_id": preview_background_file_id}
+    )
+    clear_project_template_cache()
+    events.emit(
+        "project-template:update",
+        {"project_template_id": str(template_id)},
+    )
+    return template.serialize()
+
+
 def set_template_metadata_descriptors(template_id, descriptors):
     """
     Replace the JSONB metadata descriptor snapshot on the template.
@@ -540,6 +636,18 @@ def create_template_from_project(project_id, name, description=None):
                 project_template_id=template.id,
                 status_automation_id=automation.id,
             )
+        )
+
+    for background in project.preview_background_files:
+        db.session.add(
+            ProjectTemplatePreviewBackgroundFileLink(
+                project_template_id=template.id,
+                preview_background_file_id=background.id,
+            )
+        )
+    if project.default_preview_background_file_id is not None:
+        template.default_preview_background_file_id = (
+            project.default_preview_background_file_id
         )
     db.session.commit()
 
@@ -687,9 +795,41 @@ def apply_template_to_project(
 
             db.session.add(new_link)
 
+    from zou.app.models.project import ProjectPreviewBackgroundFileLink
+
+    for link in ProjectTemplatePreviewBackgroundFileLink.query.filter_by(
+        project_template_id=template.id
+    ).all():
+        existing = ProjectPreviewBackgroundFileLink.query.filter_by(
+            project_id=project.id,
+            preview_background_file_id=link.preview_background_file_id,
+        ).first()
+        if existing is None:
+            new_link = ProjectPreviewBackgroundFileLink(
+                project_id=project.id,
+                preview_background_file_id=link.preview_background_file_id,
+            )
+            from zou.app import db
+
+            db.session.add(new_link)
+
     from zou.app import db
 
     db.session.commit()
+
+    # Apply default background if template has one and target doesn't
+    if (
+        template.default_preview_background_file_id is not None
+        and "default_preview_background_file_id" not in override_settings
+        and project.default_preview_background_file_id is None
+    ):
+        project.update(
+            {
+                "default_preview_background_file_id": (
+                    template.default_preview_background_file_id
+                )
+            }
+        )
 
     # Apply metadata descriptors snapshot
     descriptors_snapshot = template.metadata_descriptors or []

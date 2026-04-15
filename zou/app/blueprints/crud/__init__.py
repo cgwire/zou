@@ -83,19 +83,8 @@ from zou.app.blueprints.crud.project_status import (
     ProjectStatussResource,
 )
 from zou.app.blueprints.crud.project_template import (
-    ApplyProjectTemplateResource,
-    ProjectTemplateAssetTypeResource,
-    ProjectTemplateAssetTypesResource,
-    ProjectTemplateFromProjectResource,
-    ProjectTemplateMetadataDescriptorsResource,
     ProjectTemplateResource,
     ProjectTemplatesResource,
-    ProjectTemplateStatusAutomationResource,
-    ProjectTemplateStatusAutomationsResource,
-    ProjectTemplateTaskStatusResource,
-    ProjectTemplateTaskStatusesResource,
-    ProjectTemplateTaskTypeResource,
-    ProjectTemplateTaskTypesResource,
 )
 from zou.app.blueprints.crud.schedule_item import (
     ScheduleItemsResource,
@@ -169,50 +158,6 @@ routes = [
     ("/data/project-status/<instance_id>", ProjectStatusResource),
     ("/data/project-templates", ProjectTemplatesResource),
     ("/data/project-templates/<instance_id>", ProjectTemplateResource),
-    (
-        "/data/project-templates/<template_id>/task-types",
-        ProjectTemplateTaskTypesResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/task-types/<task_type_id>",
-        ProjectTemplateTaskTypeResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/task-statuses",
-        ProjectTemplateTaskStatusesResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/task-statuses/<task_status_id>",
-        ProjectTemplateTaskStatusResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/asset-types",
-        ProjectTemplateAssetTypesResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/asset-types/<asset_type_id>",
-        ProjectTemplateAssetTypeResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/status-automations",
-        ProjectTemplateStatusAutomationsResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/status-automations/<status_automation_id>",
-        ProjectTemplateStatusAutomationResource,
-    ),
-    (
-        "/data/project-templates/<template_id>/metadata-descriptors",
-        ProjectTemplateMetadataDescriptorsResource,
-    ),
-    (
-        "/data/project-templates/from-project/<project_id>",
-        ProjectTemplateFromProjectResource,
-    ),
-    (
-        "/data/projects/<project_id>/apply-template/<template_id>",
-        ApplyProjectTemplateResource,
-    ),
     ("/data/entity-types", EntityTypesResource),
     ("/data/entity-types/<instance_id>", EntityTypeResource),
     ("/data/entities", EntitiesResource),

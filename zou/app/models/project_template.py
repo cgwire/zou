@@ -96,6 +96,22 @@ class ProjectTemplateStatusAutomationLink(db.Model):
     )
 
 
+class ProjectTemplatePreviewBackgroundFileLink(db.Model):
+    __tablename__ = "project_template_preview_background_file_link"
+    project_template_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("project_template.id"),
+        primary_key=True,
+        index=True,
+    )
+    preview_background_file_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("preview_background_file.id"),
+        primary_key=True,
+        index=True,
+    )
+
+
 class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
     """
     A reusable snapshot of a project's configuration (task types, task
@@ -141,6 +157,13 @@ class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
     #   }
     metadata_descriptors = db.Column(JSONB, default=list)
 
+    default_preview_background_file_id = db.Column(
+        UUIDType(binary=False),
+        db.ForeignKey("preview_background_file.id"),
+        default=None,
+        index=True,
+    )
+
     # Relationships
     task_types = db.relationship(
         "TaskType", secondary=ProjectTemplateTaskTypeLink.__table__
@@ -154,6 +177,10 @@ class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
     status_automations = db.relationship(
         "StatusAutomation",
         secondary=ProjectTemplateStatusAutomationLink.__table__,
+    )
+    preview_background_files = db.relationship(
+        "PreviewBackgroundFile",
+        secondary=ProjectTemplatePreviewBackgroundFileLink.__table__,
     )
 
     def set_task_types(self, task_type_ids):
@@ -186,4 +213,12 @@ class ProjectTemplate(db.Model, BaseMixin, SerializerMixin):
             ProjectTemplateStatusAutomationLink,
             "project_template_id",
             "status_automation_id",
+        )
+
+    def set_preview_background_files(self, preview_background_files_ids):
+        return self.set_links(
+            preview_background_files_ids,
+            ProjectTemplatePreviewBackgroundFileLink,
+            "project_template_id",
+            "preview_background_file_id",
         )
