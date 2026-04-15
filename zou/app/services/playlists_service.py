@@ -14,7 +14,7 @@ from zipfile import ZipFile
 from flask_fs.errors import FileNotFound
 from slugify import slugify
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import defer, joinedload
 
 from zou.app import config
 from zou.app.stores import config_store, file_store
@@ -54,6 +54,15 @@ logger = logging.getLogger(__name__)
 
 # Page size for playlist list endpoints
 PLAYLISTS_PAGE_SIZE = 20
+
+# First entry's preview_file_id for list rows (PostgreSQL jsonb path), avoids
+# loading the full `shots` column when paired with defer(Playlist.shots).
+_FIRST_SHOT_PREVIEW_FILE_ID_SQL = Playlist.shots[0]["preview_file_id"].astext.label(
+    "first_preview_file_id"
+)
+
+# Sentinel: build_playlist_dict() should read shots on the model (tests / legacy).
+_FIRST_PREVIEW_FILE_ID_FROM_QUERY_UNSET = object()
 
 # Scalar attributes for playlist list dict (avoids serializing heavy shots JSON)
 _PLAYLIST_LIST_ATTRS = (
@@ -99,10 +108,13 @@ def all_playlists_for_project(
         query = query.filter(Playlist.task_type_id == task_type_id)
 
     query = _apply_playlist_pagination(query, page, sort_by)
-    playlists = query.all()
-    for playlist in playlists:
-        playlist_dict = build_playlist_dict(playlist)
-        result.append(playlist_dict)
+    query = query.options(defer(Playlist.shots)).add_columns(
+        _FIRST_SHOT_PREVIEW_FILE_ID_SQL
+    )
+    for playlist, first_preview_file_id in query.all():
+        result.append(
+            build_playlist_dict(playlist, first_preview_file_id=first_preview_file_id)
+        )
     return result
 
 
@@ -143,14 +155,19 @@ def all_playlists_for_episode(
         query = query.filter(Playlist.episode_id == episode_id)
 
     query = _apply_playlist_pagination(query, page, sort_by)
-    playlists = query.all()
-    for playlist in playlists:
-        playlist_dict = build_playlist_dict(playlist)
-        result.append(playlist_dict)
+    query = query.options(defer(Playlist.shots)).add_columns(
+        _FIRST_SHOT_PREVIEW_FILE_ID_SQL
+    )
+    for playlist, first_preview_file_id in query.all():
+        result.append(
+            build_playlist_dict(playlist, first_preview_file_id=first_preview_file_id)
+        )
     return result
 
 
-def build_playlist_dict(playlist):
+def build_playlist_dict(
+    playlist, first_preview_file_id=_FIRST_PREVIEW_FILE_ID_FROM_QUERY_UNSET
+):
     """
     Build a dictionary of a simplified version of the playlist. It just takes
     the information needed for displaying the list of playlists.
@@ -163,9 +180,15 @@ def build_playlist_dict(playlist):
             out[attr] = fields.serialize_value(getattr(playlist, attr))
     if playlist.for_entity is None:
         out["for_entity"] = "shot"
-    first_shot_preview_file_id = get_first_shot_preview_file_id(playlist)
-    if first_shot_preview_file_id is not None:
-        out["first_preview_file_id"] = first_shot_preview_file_id
+    if first_preview_file_id is not _FIRST_PREVIEW_FILE_ID_FROM_QUERY_UNSET:
+        if first_preview_file_id:
+            out["first_preview_file_id"] = fields.serialize_value(
+                first_preview_file_id
+            )
+    else:
+        first_shot_preview_file_id = get_first_shot_preview_file_id(playlist)
+        if first_shot_preview_file_id is not None:
+            out["first_preview_file_id"] = first_shot_preview_file_id
     return out
 
 
