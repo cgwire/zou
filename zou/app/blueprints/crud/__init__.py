@@ -82,6 +82,10 @@ from zou.app.blueprints.crud.project_status import (
     ProjectStatusResource,
     ProjectStatussResource,
 )
+from zou.app.blueprints.crud.project_template import (
+    ProjectTemplateResource,
+    ProjectTemplatesResource,
+)
 from zou.app.blueprints.crud.schedule_item import (
     ScheduleItemsResource,
     ScheduleItemResource,
@@ -152,6 +156,8 @@ routes = [
     ("/data/projects/<instance_id>", ProjectResource),
     ("/data/project-status", ProjectStatussResource),
     ("/data/project-status/<instance_id>", ProjectStatusResource),
+    ("/data/project-templates", ProjectTemplatesResource),
+    ("/data/project-templates/<instance_id>", ProjectTemplateResource),
     ("/data/entity-types", EntityTypesResource),
     ("/data/entity-types/<instance_id>", EntityTypeResource),
     ("/data/entities", EntitiesResource),
