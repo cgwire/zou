@@ -1,6 +1,6 @@
 from zou.app.blueprints.export.csv.base import BaseCsvExport
 from flask_jwt_extended import jwt_required
-from sqlalchemy.orm import aliased, selectinload
+from sqlalchemy.orm import aliased
 
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
@@ -88,7 +88,6 @@ class TasksCsvExport(BaseCsvExport):
             Person.first_name,
             Person.last_name,
         )
-        query = query.options(selectinload(Task.assignees))
         query = query.filter(Project.project_status_id == open_status["id"])
         query = query.order_by(
             Project.name,

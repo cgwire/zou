@@ -66,7 +66,9 @@ class Task(db.Model, BaseMixin, SerializerMixin):
     assigner_id = db.Column(
         UUIDType(binary=False), db.ForeignKey("person.id"), index=True
     )
-    assignees = db.relationship("Person", secondary=TaskPersonLink.__table__)
+    assignees = db.relationship(
+        "Person", secondary=TaskPersonLink.__table__, lazy="selectin"
+    )
 
     __table_args__ = (
         db.UniqueConstraint(

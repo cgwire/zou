@@ -7,6 +7,7 @@ from calendar import monthrange
 from dateutil import relativedelta
 
 from sqlalchemy.exc import StatementError
+from sqlalchemy.orm import selectinload
 
 from flask_jwt_extended import create_access_token, get_jti, current_user
 
@@ -51,7 +52,8 @@ def get_persons(minimal=False):
     Return all person stored in database.
     """
     persons = []
-    for person in Person.query.all():
+    query = Person.query.options(selectinload(Person.departments))
+    for person in query.all():
         if minimal:
             persons.append(person.present_minimal(relations=True))
         else:

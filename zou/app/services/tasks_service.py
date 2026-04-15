@@ -655,7 +655,9 @@ def get_comments(task_id, is_client=False, is_manager=False):
         project = projects_service.get_project(task["project_id"])
         current_user = persons_service.get_current_user()
         is_clients_isolated = project.get("is_clients_isolated", False)
-        person_ids = list({c["person_id"] for c in comments})
+        person_ids = list(
+            {c["person_id"] for c in comments if c.get("person_id")}
+        )
         persons_map = {
             p["id"]: p for p in persons_service.get_persons_by_ids(person_ids)
         }
