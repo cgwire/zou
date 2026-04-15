@@ -1,5 +1,6 @@
 import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from zou.app.models.attachment_file import AttachmentFile
 from zou.app.models.budget import Budget
@@ -478,7 +479,9 @@ def remove_person(person_id, force=True):
                 if str(member.id) != person_id
             ]
             project.save()
-        for task in Task.query.filter(Task.assignees.contains(person)):
+        for task in Task.query.options(selectinload(Task.assignees)).filter(
+            Task.assignees.contains(person)
+        ):
             task.assignees = [
                 assignee
                 for assignee in task.assignees
