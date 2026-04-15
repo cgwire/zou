@@ -186,7 +186,19 @@ def _ensure_template_exists(template_id):
 
 def get_template_task_types(template_id):
     template = _ensure_template_exists(template_id)
-    return ProjectTemplate.serialize_list(template.task_types)
+    links = ProjectTemplateTaskTypeLink.get_all_by(
+        project_template_id=template_id
+    )
+    link_map = {str(link.task_type_id): link for link in links}
+    result = []
+    for task_type in template.task_types:
+        data = task_type.serialize()
+        link = link_map.get(str(task_type.id))
+        if link:
+            data["priority"] = link.priority
+        result.append(data)
+    result.sort(key=lambda t: (t.get("priority") or 0, t.get("name", "")))
+    return result
 
 
 def add_task_type_to_template(template_id, task_type_id, priority=None):
@@ -210,7 +222,7 @@ def add_task_type_to_template(template_id, task_type_id, priority=None):
             task_type_id=task_type_id,
             priority=priority,
         )
-    else:
+    elif priority is not None:
         link.update({"priority": priority})
     clear_project_template_cache()
     events.emit(
@@ -235,7 +247,23 @@ def remove_task_type_from_template(template_id, task_type_id):
 
 def get_template_task_statuses(template_id):
     template = _ensure_template_exists(template_id)
-    return ProjectTemplate.serialize_list(template.task_statuses)
+    links = ProjectTemplateTaskStatusLink.get_all_by(
+        project_template_id=template_id
+    )
+    link_map = {str(link.task_status_id): link for link in links}
+    result = []
+    for task_status in template.task_statuses:
+        data = task_status.serialize()
+        link = link_map.get(str(task_status.id))
+        if link:
+            data["priority"] = link.priority
+            data["roles_for_board"] = [
+                role.code if hasattr(role, "code") else str(role)
+                for role in (link.roles_for_board or [])
+            ]
+        result.append(data)
+    result.sort(key=lambda s: (s.get("priority") or 0, s.get("name", "")))
+    return result
 
 
 def add_task_status_to_template(
@@ -263,9 +291,13 @@ def add_task_status_to_template(
             roles_for_board=roles_for_board,
         )
     else:
-        link.update(
-            {"priority": priority, "roles_for_board": roles_for_board}
-        )
+        update_data = {}
+        if priority is not None:
+            update_data["priority"] = priority
+        if roles_for_board is not None:
+            update_data["roles_for_board"] = roles_for_board
+        if update_data:
+            link.update(update_data)
     clear_project_template_cache()
     events.emit(
         "project-template:update",
