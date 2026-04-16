@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.person import Person
 from zou.app.services import comments_service, tasks_service
 
 
@@ -15,6 +16,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_task_status()
         self.generate_fixture_person()
         self.generate_fixture_assigner()
+        self.generate_fixture_user_client()
         self.generate_fixture_task()
         self.comment = comments_service.new_comment(
             self.task.id,
@@ -97,3 +99,57 @@ class CommentRoutesTestCase(ApiDBTestCase):
         comments = tasks_service.get_comments(str(self.task.id))
         texts = [c["text"] for c in comments]
         self.assertIn("Batch comment", texts)
+
+    def test_comment_for_client_visible_to_client(self):
+        """A manager-authored comment marked for_client must be visible to
+        client users (text not blanked, listed in comments endpoint)."""
+        client_person = Person.get(self.user_client["id"])
+        self.project.team = [client_person, self.person]
+        self.project.save()
+        result = self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {
+                "task_status_id": str(self.task_status.id),
+                "comment": "Visible to client",
+                "for_client": True,
+            },
+        )
+        self.assertTrue(result["for_client"])
+
+        self.log_in_client()
+        comments = tasks_service.get_comments(
+            str(self.task.id), is_client=True
+        )
+        texts = [c["text"] for c in comments]
+        self.assertIn("Visible to client", texts)
+
+    def test_comment_without_for_client_hidden_from_client(self):
+        """A manager-authored comment without for_client stays hidden from
+        clients (default behavior preserved)."""
+        client_person = Person.get(self.user_client["id"])
+        self.project.team = [client_person, self.person]
+        self.project.save()
+        self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {
+                "task_status_id": str(self.task_status.id),
+                "comment": "Internal only",
+            },
+        )
+
+        self.log_in_client()
+        comments = tasks_service.get_comments(
+            str(self.task.id), is_client=True
+        )
+        texts = [c["text"] for c in comments]
+        self.assertNotIn("Internal only", texts)
+
+    def test_for_client_default_false(self):
+        result = self.post(
+            f"/actions/tasks/{self.task.id}/comment",
+            {
+                "task_status_id": str(self.task_status.id),
+                "comment": "default flag",
+            },
+        )
+        self.assertFalse(result["for_client"])

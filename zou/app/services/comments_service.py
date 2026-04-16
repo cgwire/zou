@@ -82,6 +82,7 @@ def create_comment(
     created_at="",
     links=None,
     with_hashtags=True,
+    for_client=False,
 ):
     """
     Create a new comment and related: news, notifications and events.
@@ -108,6 +109,7 @@ def create_comment(
         checklist=checklist,
         created_at=created_at,
         links=links,
+        for_client=for_client,
     )
 
     if with_hashtags:
@@ -355,6 +357,7 @@ def new_comment(
     checklist=None,
     created_at="",
     links=None,
+    for_client=False,
 ):
     """
     Create a new comment for given object (by default, it considers this object
@@ -392,6 +395,7 @@ def new_comment(
         text=text,
         created_at=created_at_date,
         links=links,
+        for_client=for_client,
     )
 
     comment = comment.serialize(relations=True)

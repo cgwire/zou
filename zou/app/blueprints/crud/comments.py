@@ -22,6 +22,15 @@ class CommentsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Comment)
 
+    def get_relations_eager_load(self):
+        return [
+            Comment.previews,
+            Comment.mentions,
+            Comment.department_mentions,
+            Comment.acknowledgements,
+            Comment.attachment_files,
+        ]
+
     @jwt_required()
     def get(self):
         """
@@ -336,7 +345,9 @@ class CommentResource(BaseModelResource):
         is_client = permissions.has_client_permissions()
         if is_client:
             person = persons_service.get_person(result["person_id"])
-            if person["role"] != "client":
+            if person["role"] != "client" and not result.get(
+                "for_client", False
+            ):
                 result["text"] = ""
                 result["attachment_files"] = []
                 result["checklist"] = []
@@ -425,6 +436,13 @@ class CommentResource(BaseModelResource):
                 "checklist" in data.keys()
                 and data["checklist"] != instance["checklist"]
             )
+            change_for_client = (
+                "for_client" in data.keys()
+                and data["for_client"] != instance.get("for_client", False)
+            )
+            if change_for_client:
+                # Only managers (handled above) may toggle for_client.
+                raise permissions.PermissionDenied
             is_supervisor = permissions.has_supervisor_permissions()
             is_supervisor_in_department = (
                 current_user["departments"] == []

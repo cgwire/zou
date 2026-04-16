@@ -31,6 +31,9 @@ class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
 
+    def get_relations_eager_load(self):
+        return [Person.departments]
+
     @jwt_required()
     def get(self):
         """

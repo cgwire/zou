@@ -254,6 +254,7 @@ class CommentTaskResource(Resource):
             created_at,
             checklist,
             links,
+            for_client,
         ) = self.get_arguments()
 
         user_service.check_task_action_access(task_id)
@@ -263,6 +264,7 @@ class CommentTaskResource(Resource):
         if not permissions.has_manager_permissions():
             person_id = None
             created_at = None
+            for_client = False
         comment = comments_service.create_comment(
             person_id,
             task_id,
@@ -272,6 +274,7 @@ class CommentTaskResource(Resource):
             files,
             created_at,
             links,
+            for_client=for_client,
         )
         return comment, 201
 
@@ -306,6 +309,9 @@ class CommentTaskResource(Resource):
         parser.add_argument("comment", default="", location=location)
         parser.add_argument("person_id", default="", location=location)
         parser.add_argument("created_at", default="", location=location)
+        parser.add_argument(
+            "for_client", type=bool, default=False, location=location
+        )
         args = parser.parse_args()
         return (
             args["task_status_id"],
@@ -318,6 +324,7 @@ class CommentTaskResource(Resource):
                 else json.loads(args["checklist"])
             ),
             (args["links"] if request.is_json else json.loads(args["links"])),
+            args["for_client"],
         )
 
 

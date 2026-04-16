@@ -55,6 +55,9 @@ class EntitiesResource(BaseModelsResource, EntityEventMixin):
     def __init__(self):
         BaseModelsResource.__init__(self, Entity)
 
+    def get_relations_eager_load(self):
+        return [Entity.entities_out, Entity.instance_casting]
+
     def check_create_permissions(self, entity):
         user_service.check_manager_project_access(entity["project_id"])
 
