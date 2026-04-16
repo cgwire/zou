@@ -665,10 +665,17 @@ def get_comments(task_id, is_client=False, is_manager=False):
             person = persons_map.get(comment["person_id"], {})
             is_author = comment["person_id"] == current_user["id"]
             is_author_client = person.get("role") == "client"
-            is_allowed = (is_clients_isolated and is_author) or (
-                not is_clients_isolated and is_author_client
+            is_for_client = comment.get("for_client", False)
+            is_allowed = (
+                is_for_client
+                or (is_clients_isolated and is_author)
+                or (not is_clients_isolated and is_author_client)
             )
-            if len(comment["previews"]) > 0 and not is_author_client:
+            if (
+                len(comment["previews"]) > 0
+                and not is_author_client
+                and not is_for_client
+            ):
                 comment["text"] = ""
                 comment["attachment_files"] = []
                 comment["checklist"] = []
