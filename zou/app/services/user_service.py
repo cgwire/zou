@@ -593,9 +593,15 @@ def check_comment_access(comment_id):
             current_user = persons_service.get_current_user()
             project = projects_service.get_project(task["project_id"])
             if project.get("is_clients_isolated", False):
-                if comment["person_id"] != current_user["id"]:
+                if (
+                    comment["person_id"] != current_user["id"]
+                    and not comment.get("for_client", False)
+                ):
                     raise permissions.PermissionDenied
-            if persons_service.get_person(person_id)["role"] == "client":
+            if (
+                persons_service.get_person(person_id)["role"] == "client"
+                or comment.get("for_client", False)
+            ):
                 return True
             else:
                 raise permissions.PermissionDenied

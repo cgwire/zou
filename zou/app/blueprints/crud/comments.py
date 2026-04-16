@@ -389,8 +389,9 @@ class CommentResource(BaseModelResource):
 
     def post_update(self, instance_dict, data):
         comment = comments_service.reset_mentions(instance_dict)
+        task_id = comment["object_id"]
+        task = tasks_service.get_task(task_id)
         if self.task_status_change:
-            task_id = comment["object_id"]
             task = tasks_service.reset_task_data(task_id)
             events.emit(
                 "task:status-changed",
@@ -405,6 +406,11 @@ class CommentResource(BaseModelResource):
 
         tasks_service.clear_comment_cache(comment["id"])
         notifications_service.reset_notifications_for_mentions(comment)
+        events.emit(
+            "comment:update",
+            {"comment_id": comment["id"], "task_id": task_id},
+            project_id=task["project_id"],
+        )
         return comment
 
     def check_read_permissions(self, instance):
