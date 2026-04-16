@@ -32,6 +32,15 @@ class ProjectsResource(BaseModelsResource):
         self._template_id_to_apply = None
         self._template_overrides = {}
 
+    def get_relations_eager_load(self):
+        return [
+            Project.asset_types,
+            Project.task_statuses,
+            Project.task_types,
+            Project.status_automations,
+            Project.preview_background_files,
+        ]
+
     @jwt_required()
     def get(self):
         """

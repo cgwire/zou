@@ -335,6 +335,9 @@ class ProductionScheduleVersionTaskLinksResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, ProductionScheduleVersionTaskLink)
 
+    def get_relations_eager_load(self):
+        return [ProductionScheduleVersionTaskLink.assignees]
+
     def check_read_permissions(self, options=None):
         if (
             permissions.has_vendor_permissions()

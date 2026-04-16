@@ -18,6 +18,15 @@ class ProjectTemplatesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, ProjectTemplate)
 
+    def get_relations_eager_load(self):
+        return [
+            ProjectTemplate.asset_types,
+            ProjectTemplate.task_statuses,
+            ProjectTemplate.task_types,
+            ProjectTemplate.status_automations,
+            ProjectTemplate.preview_background_files,
+        ]
+
     def check_read_permissions(self, options=None):
         return permissions.check_manager_permissions()
 

@@ -18,6 +18,9 @@ class WorkingFilesResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, WorkingFile)
 
+    def get_relations_eager_load(self):
+        return [WorkingFile.outputs]
+
     def check_read_permissions(self, options=None):
         """
         Overriding so that people without admin credentials can still access
