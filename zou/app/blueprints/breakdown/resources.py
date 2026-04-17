@@ -281,6 +281,8 @@ class EpisodeSequenceAllCastingResource(Resource):
                               example: "Main Character"
         """
         user_service.check_project_access(project_id)
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         return breakdown_service.get_all_sequences_casting(
             project_id, episode_id=episode_id
         )

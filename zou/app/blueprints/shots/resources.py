@@ -1102,6 +1102,8 @@ class SceneAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_scene_type()["id"]
         return entities_service.get_entities_and_tasks(criterions)
 
@@ -1159,6 +1161,8 @@ class SequenceAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_sequence_type()["id"]
         return entities_service.get_entities_and_tasks(criterions)
 
@@ -1216,6 +1220,8 @@ class EpisodeAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_episode_type()["id"]
         return entities_service.get_entities_and_tasks(criterions)
 
@@ -1865,6 +1871,7 @@ class EpisodeResource(Resource, ArgsMixin):
         """
         episode = shots_service.get_full_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
         return episode
 
     @jwt_required()
@@ -1944,6 +1951,14 @@ class EpisodesResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            project_id = criterions.get("project_id", None)
+            if project_id is not None:
+                return shots_service.get_episodes_for_project(
+                    project_id,
+                    only_assigned=True,
+                )
+            return []
         return shots_service.get_episodes(criterions)
 
 
@@ -2105,6 +2120,9 @@ class EpisodeTasksResource(Resource):
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
+        if permissions.has_vendor_permissions():
+            return user_service.get_tasks_for_entity(episode["id"])
         return tasks_service.get_tasks_for_episode(episode_id)
 
 

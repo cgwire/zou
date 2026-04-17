@@ -103,6 +103,47 @@ class SequenceTestCase(ApiDBTestCase):
             "data/sequences?project_id=%s&name=SE01" % self.project_id, 403
         )
 
+    def _setup_vendor(self):
+        self.generate_fixture_shot_task(name="VendorTask")
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
+        )
+        projects_service.clear_project_cache(str(self.project_id))
+        self.log_in_vendor()
+
+    def test_get_sequences_vendor_unassigned(self):
+        self._setup_vendor()
+        sequences = self.get(
+            "data/sequences?project_id=%s" % self.project_id
+        )
+        self.assertEqual(len(sequences), 0)
+
+    def test_get_sequences_vendor_assigned(self):
+        self._setup_vendor()
+        tasks_service.assign_task(
+            self.shot_task.id, self.user_vendor["id"]
+        )
+        sequences = self.get(
+            "data/sequences?project_id=%s" % self.project_id
+        )
+        self.assertEqual(len(sequences), 1)
+
+    def test_get_sequence_vendor_no_task(self):
+        self._setup_vendor()
+        self.get("data/sequences/%s" % self.sequence_02_id, 403)
+
+    def test_get_sequence_tasks_vendor_no_task(self):
+        self._setup_vendor()
+        self.get("data/sequences/%s/tasks" % self.sequence_id, 403)
+
+    def test_get_sequences_with_tasks_vendor_blocked(self):
+        self._setup_vendor()
+        self.get(
+            "data/sequences/with-tasks?project_id=%s" % self.project_id,
+            403,
+        )
+
     def test_force_delete_sequence(self):
         self.get("data/sequences/%s" % self.sequence_id)
         self.delete("data/sequences/%s?force=true" % self.sequence_id)

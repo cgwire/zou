@@ -126,6 +126,49 @@ class EpisodeTestCase(ApiDBTestCase):
             "data/episodes?project_id=%s&name=E01" % self.project_id, 403
         )
 
+    def _setup_vendor(self):
+        self.generate_fixture_department()
+        self.generate_fixture_task_status()
+        self.generate_fixture_person()
+        self.generate_fixture_assigner()
+        self.generate_fixture_task_type()
+        self.generate_fixture_shot_task(name="VendorTask")
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project_id, self.user_vendor["id"]
+        )
+        projects_service.clear_project_cache(str(self.project_id))
+        self.log_in_vendor()
+
+    def test_get_episodes_vendor_filters(self):
+        self._setup_vendor()
+        episodes = self.get(
+            "data/episodes?project_id=%s" % self.project_id
+        )
+        self.assertEqual(len(episodes), 0)
+        tasks_service.assign_task(
+            self.shot_task.id, self.user_vendor["id"]
+        )
+        episodes = self.get(
+            "data/episodes?project_id=%s" % self.project_id
+        )
+        self.assertEqual(len(episodes), 1)
+
+    def test_get_episode_vendor_no_task(self):
+        self._setup_vendor()
+        self.get("data/episodes/%s" % self.episode_02_id, 403)
+
+    def test_get_episode_tasks_vendor_blocked_no_task(self):
+        self._setup_vendor()
+        self.get("data/episodes/%s/tasks" % self.episode_id, 403)
+
+    def test_get_episodes_with_tasks_vendor_blocked(self):
+        self._setup_vendor()
+        self.get(
+            "data/episodes/with-tasks?project_id=%s" % self.project_id,
+            403,
+        )
+
     def test_force_delete_episode(self):
         self.get("data/episodes/%s" % self.episode_id)
         self.delete("data/episodes/%s?force=true" % self.episode_id)
