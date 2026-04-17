@@ -77,6 +77,8 @@ class CastingResource(Resource):
                             example: "Main Character"
         """
         user_service.check_project_access(project_id)
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         return breakdown_service.get_casting(entity_id)
 
     @jwt_required()
@@ -219,6 +221,8 @@ class EpisodesCastingResource(Resource):
                               example: "Main Character"
         """
         user_service.check_project_access(project_id)
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         return breakdown_service.get_production_episodes_casting(project_id)
 
 
@@ -492,6 +496,8 @@ class AssetTypeCastingResource(Resource):
                               example: "shot"
         """
         user_service.check_project_access(project_id)
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         assets_service.get_asset_type(asset_type_id)
         return breakdown_service.get_asset_type_casting(
             project_id, asset_type_id
@@ -551,6 +557,7 @@ class ShotAssetInstancesResource(Resource, ArgsMixin):
         """
         shot = shots_service.get_shot(shot_id)
         user_service.check_project_access(shot["project_id"])
+        user_service.check_entity_access(shot_id)
         return breakdown_service.get_asset_instances_for_shot(shot_id)
 
     @jwt_required()
@@ -715,6 +722,7 @@ class SceneAssetInstancesResource(Resource, ArgsMixin):
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
+        user_service.check_entity_access(scene_id)
         return breakdown_service.get_asset_instances_for_scene(scene_id)
 
     @jwt_required()
@@ -846,6 +854,7 @@ class SceneCameraInstancesResource(Resource):
         """
         scene = shots_service.get_scene(scene_id)
         user_service.check_project_access(scene["project_id"])
+        user_service.check_entity_access(scene_id)
         return breakdown_service.get_camera_instances_for_scene(scene_id)
 
 
