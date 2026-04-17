@@ -940,6 +940,8 @@ class SequenceTasksResource(Resource, ArgsMixin):
         user_service.check_project_access(sequence["project_id"])
         user_service.check_entity_access(sequence["id"])
         relations = self.get_relations()
+        if permissions.has_vendor_permissions():
+            return user_service.get_tasks_for_entity(sequence["id"])
         return tasks_service.get_tasks_for_sequence(
             sequence_id, relations=relations
         )
@@ -2148,6 +2150,7 @@ class SequenceResource(Resource, ArgsMixin):
         """
         sequence = shots_service.get_full_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
+        user_service.check_entity_access(sequence["id"])
         return sequence
 
     @jwt_required()
@@ -2230,6 +2233,14 @@ class SequencesResource(Resource):
             criterions["parent_id"] = episode["id"]
             del criterions["episode_id"]
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            project_id = criterions.get("project_id", None)
+            if project_id is not None:
+                return shots_service.get_sequences_for_project(
+                    project_id,
+                    only_assigned=True,
+                )
+            return []
         return shots_service.get_sequences(criterions)
 
 

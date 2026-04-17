@@ -12,7 +12,7 @@ from zou.app.services import (
 )
 
 from zou.app.mixin import ArgsMixin
-from zou.app.utils import validation
+from zou.app.utils import permissions, validation
 from zou.app.blueprints.breakdown.schemas import (
     AddAssetInstanceSchema,
     AddSceneAssetInstanceSchema,
@@ -347,6 +347,8 @@ class SequenceAllCastingResource(Resource):
                               example: "Main Character"
         """
         user_service.check_project_access(project_id)
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         return breakdown_service.get_all_sequences_casting(project_id)
 
 
@@ -414,6 +416,8 @@ class SequenceCastingResource(Resource):
                               example: "Main Character"
         """
         user_service.check_project_access(project_id)
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         shots_service.get_sequence(sequence_id)
         return breakdown_service.get_sequence_casting(sequence_id)
 
