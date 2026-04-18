@@ -243,16 +243,14 @@ def _run_status_automation(automation, task, person_id):
     ):
         return
 
-    # Verify entity type matches the automation's target entity type, use is_asset_type() for the "asset" case.
     entity = entities_service.get_entity(task["entity_id"])
     entity_type = entities_service.get_entity_type(entity["entity_type_id"])
-    automation_entity_type = automation["entity_type"]
-    if automation_entity_type == "asset":
+    wanted = (automation.get("entity_type") or "").lower()
+    if wanted == "asset":
         if not assets_service.is_asset_type(entity_type):
             return
-    else:
-        if entity_type["name"].lower() != automation_entity_type:
-            return
+    elif entity_type["name"].lower() != wanted:
+        return
 
     priorities = projects_service.get_task_type_priority_map(
         task["project_id"], automation["entity_type"].capitalize()
