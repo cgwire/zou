@@ -452,6 +452,8 @@ class ScenesResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         return shots_service.get_scenes(criterions)
 
 
@@ -940,6 +942,8 @@ class SequenceTasksResource(Resource, ArgsMixin):
         user_service.check_project_access(sequence["project_id"])
         user_service.check_entity_access(sequence["id"])
         relations = self.get_relations()
+        if permissions.has_vendor_permissions():
+            return user_service.get_tasks_for_entity(sequence["id"])
         return tasks_service.get_tasks_for_sequence(
             sequence_id, relations=relations
         )
@@ -981,6 +985,7 @@ class SequenceTaskTypesResource(Resource):
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
+        user_service.check_entity_access(sequence_id)
         return tasks_service.get_task_types_for_sequence(sequence_id)
 
 
@@ -1100,6 +1105,8 @@ class SceneAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_scene_type()["id"]
         return entities_service.get_entities_and_tasks(criterions)
 
@@ -1157,6 +1164,8 @@ class SequenceAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_sequence_type()["id"]
         return entities_service.get_entities_and_tasks(criterions)
 
@@ -1214,6 +1223,8 @@ class EpisodeAndTasksResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            raise permissions.PermissionDenied
         criterions["entity_type_id"] = shots_service.get_episode_type()["id"]
         return entities_service.get_entities_and_tasks(criterions)
 
@@ -1863,6 +1874,7 @@ class EpisodeResource(Resource, ArgsMixin):
         """
         episode = shots_service.get_full_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
         return episode
 
     @jwt_required()
@@ -1942,6 +1954,14 @@ class EpisodesResource(Resource):
         """
         criterions = query.get_query_criterions_from_request(request)
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            project_id = criterions.get("project_id", None)
+            if project_id is not None:
+                return shots_service.get_episodes_for_project(
+                    project_id,
+                    only_assigned=True,
+                )
+            return []
         return shots_service.get_episodes(criterions)
 
 
@@ -2043,6 +2063,7 @@ class EpisodeTaskTypesResource(Resource):
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode_id)
         return tasks_service.get_task_types_for_episode(episode_id)
 
 
@@ -2103,6 +2124,9 @@ class EpisodeTasksResource(Resource):
         """
         episode = shots_service.get_episode(episode_id)
         user_service.check_project_access(episode["project_id"])
+        user_service.check_entity_access(episode["id"])
+        if permissions.has_vendor_permissions():
+            return user_service.get_tasks_for_entity(episode["id"])
         return tasks_service.get_tasks_for_episode(episode_id)
 
 
@@ -2148,6 +2172,7 @@ class SequenceResource(Resource, ArgsMixin):
         """
         sequence = shots_service.get_full_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
+        user_service.check_entity_access(sequence["id"])
         return sequence
 
     @jwt_required()
@@ -2230,6 +2255,14 @@ class SequencesResource(Resource):
             criterions["parent_id"] = episode["id"]
             del criterions["episode_id"]
         user_service.check_project_access(criterions.get("project_id", None))
+        if permissions.has_vendor_permissions():
+            project_id = criterions.get("project_id", None)
+            if project_id is not None:
+                return shots_service.get_sequences_for_project(
+                    project_id,
+                    only_assigned=True,
+                )
+            return []
         return shots_service.get_sequences(criterions)
 
 
@@ -2337,7 +2370,10 @@ class ProjectScenesResource(Resource, ArgsMixin):
         """
         projects_service.get_project(project_id)
         user_service.check_project_access(project_id)
-        return shots_service.get_scenes_for_project(project_id)
+        only_assigned = permissions.has_vendor_permissions()
+        return shots_service.get_scenes_for_project(
+            project_id, only_assigned=only_assigned
+        )
 
     @jwt_required()
     def post(self, project_id):
@@ -2454,6 +2490,7 @@ class SequenceScenesResource(Resource):
         """
         sequence = shots_service.get_sequence(sequence_id)
         user_service.check_project_access(sequence["project_id"])
+        user_service.check_entity_access(sequence_id)
         return shots_service.get_scenes_for_sequence(sequence_id)
 
 
