@@ -16,6 +16,7 @@ from zou.app.blueprints.search import blueprint as search_blueprint
 from zou.app.blueprints.news import blueprint as news_blueprint
 from zou.app.blueprints.persons import blueprint as persons_blueprint
 from zou.app.blueprints.playlists import blueprint as playlists_blueprint
+from zou.app.blueprints.shared import blueprint as shared_blueprint
 from zou.app.blueprints.projects import blueprint as projects_blueprint
 from zou.app.blueprints.project_templates import (
     blueprint as project_templates_blueprint,
@@ -66,6 +67,7 @@ def configure_api_routes(app):
     app.register_blueprint(news_blueprint)
     app.register_blueprint(persons_blueprint)
     app.register_blueprint(playlists_blueprint)
+    app.register_blueprint(shared_blueprint)
     app.register_blueprint(projects_blueprint)
     app.register_blueprint(project_templates_blueprint)
     app.register_blueprint(shots_blueprint)

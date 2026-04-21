@@ -22,6 +22,7 @@ from zou.app.blueprints.playlists.schemas import (
 from zou.app.services import (
     entities_service,
     notifications_service,
+    playlist_sharing_service,
     playlists_service,
     persons_service,
     preview_files_service,
@@ -936,3 +937,41 @@ class NotifyClientsResource(Resource, ArgsMixin):
             playlist, studio_id, department_id
         )
         return {"status": "success"}
+
+
+class PlaylistShareLinksResource(Resource):
+    """
+    Manage share links for a playlist (supervisor+).
+    """
+
+    @jwt_required()
+    def get(self, playlist_id):
+        permissions.check_manager_permissions()
+        return playlist_sharing_service.get_share_links_for_playlist(
+            playlist_id
+        )
+
+    @jwt_required()
+    def post(self, playlist_id):
+        permissions.check_manager_permissions()
+        person = persons_service.get_current_user()
+        data = request.get_json(silent=True) or {}
+        share_link = playlist_sharing_service.create_share_link(
+            playlist_id,
+            person["id"],
+            expiration_date=data.get("expiration_date"),
+            can_comment=data.get("can_comment", True),
+            password=data.get("password"),
+        )
+        return share_link, 201
+
+
+class PlaylistShareLinkResource(Resource):
+    """
+    Revoke a specific share link (supervisor+).
+    """
+
+    @jwt_required()
+    def delete(self, playlist_id, token):
+        permissions.check_manager_permissions()
+        return playlist_sharing_service.revoke_share_link(token)

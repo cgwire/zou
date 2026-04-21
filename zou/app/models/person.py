@@ -137,6 +137,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     notifications_discord_userid = db.Column(db.String(60), default="")
 
     is_bot = db.Column(db.Boolean(), default=False, nullable=False)
+    is_guest = db.Column(db.Boolean(), default=False, nullable=False)
     jti = db.Column(db.String(60), nullable=True, unique=True)
     expiration_date = db.Column(db.Date(), nullable=True)
 
