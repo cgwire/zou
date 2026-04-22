@@ -1,14 +1,18 @@
-from flask import request, send_file as flask_send_file
+from flask import request
 from flask_restful import Resource
 
+from zou.app.blueprints.previews.resources import (
+    send_movie_file,
+    send_picture_file,
+)
 from zou.app.services import (
     comments_service,
+    files_service,
     playlist_sharing_service,
     playlists_service,
     preview_files_service,
     tasks_service,
 )
-from zou.app.stores import file_store
 
 
 class SharedPlaylistResource(Resource):
@@ -23,8 +27,13 @@ class SharedPlaylistResource(Resource):
         share_link = playlist_sharing_service.validate_share_token(
             token, password=password
         )
-        return playlists_service.get_playlist_with_preview_file_revisions(
-            share_link["playlist_id"]
+        playlist = (
+            playlists_service.get_playlist_with_preview_file_revisions(
+                share_link["playlist_id"]
+            )
+        )
+        return playlist_sharing_service.enrich_shots_with_entity_info(
+            playlist
         )
 
 
@@ -140,9 +149,7 @@ class SharedPlaylistAnnotationsResource(Resource):
 
         playlist_sharing_service.get_guest(guest_id)
 
-        preview_file = preview_files_service.get_preview_file(
-            preview_file_id
-        )
+        files_service.get_preview_file(preview_file_id)
         preview_files_service.update_preview_file(
             preview_file_id, {"annotations": annotations}
         )
@@ -157,7 +164,7 @@ class SharedPlaylistPreviewFileResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        return preview_files_service.get_preview_file(preview_file_id)
+        return files_service.get_preview_file(preview_file_id)
 
 
 class SharedPlaylistPreviewFileMovieResource(Resource):
@@ -169,21 +176,7 @@ class SharedPlaylistPreviewFileMovieResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        preview_file = preview_files_service.get_preview_file(
-            preview_file_id
-        )
-        extension = preview_file.get("extension", "mp4")
-        file_path = file_store.get_local_movie_path(
-            "previews", preview_file_id
-        )
-        try:
-            return flask_send_file(
-                file_path,
-                conditional=True,
-                mimetype=f"video/{extension}",
-            )
-        except FileNotFoundError:
-            return {"error": "Preview file not found"}, 404
+        return send_movie_file(preview_file_id)
 
 
 class SharedPlaylistPreviewFileThumbnailResource(Resource):
@@ -195,17 +188,7 @@ class SharedPlaylistPreviewFileThumbnailResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        file_path = file_store.get_local_picture_path(
-            "thumbnails", preview_file_id
-        )
-        try:
-            return flask_send_file(
-                file_path,
-                conditional=True,
-                mimetype="image/png",
-            )
-        except FileNotFoundError:
-            return {"error": "Thumbnail not found"}, 404
+        return send_picture_file("thumbnails", preview_file_id)
 
 
 class SharedPlaylistPreviewFileOriginalResource(Resource):
@@ -217,17 +200,7 @@ class SharedPlaylistPreviewFileOriginalResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        file_path = file_store.get_local_picture_path(
-            "originals", preview_file_id
-        )
-        try:
-            return flask_send_file(
-                file_path,
-                conditional=True,
-                mimetype="image/png",
-            )
-        except FileNotFoundError:
-            return {"error": "Original not found"}, 404
+        return send_picture_file("original", preview_file_id)
 
 
 class SharedPlaylistContextResource(Resource):

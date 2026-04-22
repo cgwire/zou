@@ -1,8 +1,12 @@
 import datetime
 import uuid
 
+from zou.app.models.entity import Entity
+from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.playlist_share_link import PlaylistShareLink
+from zou.app.models.task import Task
+from zou.app.models.task_type import TaskType
 from zou.app.services import (
     persons_service,
     playlists_service,
@@ -112,6 +116,85 @@ def get_shared_playlist(token):
         share_link["playlist_id"]
     )
     return playlist
+
+
+def enrich_shots_with_entity_info(playlist_dict):
+    """
+    Augment each shot entry in the playlist with `name` and `parent_name`
+    (sequence/episode/asset_type name). The stored `playlist.shots` only
+    keeps preview/entity references — in the shared context, consumers
+    have no auth'd access to entity/asset/shot stores, so names must be
+    inlined here.
+    """
+    shots = playlist_dict.get("shots") or []
+    entity_ids = [
+        shot["id"] for shot in shots if shot.get("id")
+    ]
+    if not entity_ids:
+        return playlist_dict
+
+    entities = Entity.query.filter(Entity.id.in_(entity_ids)).all()
+    entity_map = {str(e.id): e for e in entities}
+
+    parent_ids = {
+        str(e.parent_id) for e in entities if e.parent_id is not None
+    }
+    type_ids = {
+        str(e.entity_type_id) for e in entities if e.entity_type_id
+    }
+
+    parent_map = {}
+    if parent_ids:
+        parents = Entity.query.filter(Entity.id.in_(parent_ids)).all()
+        parent_map = {str(p.id): p.name for p in parents}
+
+    type_map = {}
+    if type_ids:
+        types = EntityType.query.filter(
+            EntityType.id.in_(type_ids)
+        ).all()
+        type_map = {str(t.id): t.name for t in types}
+
+    shot_type_names = {"Shot", "Sequence", "Episode", "Edit", "Concept"}
+
+    task_ids = {
+        shot["preview_file_task_id"]
+        for shot in shots
+        if shot.get("preview_file_task_id")
+    }
+    task_type_name_by_task_id = {}
+    if task_ids:
+        rows = (
+            Task.query.join(TaskType, TaskType.id == Task.task_type_id)
+            .filter(Task.id.in_(task_ids))
+            .add_columns(Task.id, TaskType.name)
+            .all()
+        )
+        task_type_name_by_task_id = {
+            str(task_id): task_type_name
+            for (_, task_id, task_type_name) in rows
+        }
+
+    for shot in shots:
+        entity = entity_map.get(str(shot.get("id")))
+        if entity is None:
+            continue
+        shot["name"] = entity.name
+        entity_type_name = type_map.get(str(entity.entity_type_id), "")
+        if entity_type_name in shot_type_names:
+            # Shots/sequences/episodes: parent is another entity.
+            shot["parent_name"] = parent_map.get(
+                str(entity.parent_id), ""
+            )
+        else:
+            # Assets: "parent" is the asset type name.
+            shot["parent_name"] = entity_type_name
+        task_id = shot.get("preview_file_task_id")
+        if task_id:
+            shot["preview_file_task_type_name"] = (
+                task_type_name_by_task_id.get(str(task_id), "")
+            )
+    return playlist_dict
 
 
 def create_guest(token, first_name, last_name=""):
