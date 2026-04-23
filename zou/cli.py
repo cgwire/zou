@@ -14,17 +14,10 @@ def _get_app():
     return app
 
 
-def _get_alembic_config():
-    """Build an Alembic config that talks directly to the DB.
-
-    Bypasses Flask/Flask-SQLAlchemy/Flask-Migrate entirely — only needs
-    Alembic + the DB driver.  env.py detects the absence of a Flask app
-    context and reads the URL from the Alembic config instead.
-    """
-    from alembic.config import Config
+def _get_db_uri():
     from sqlalchemy.engine.url import URL
 
-    db_uri = URL.create(
+    return URL.create(
         drivername=os.getenv("DB_DRIVER", "postgresql+psycopg"),
         host=os.getenv("DB_HOST", "localhost"),
         port=os.getenv("DB_PORT", "5432"),
@@ -33,9 +26,37 @@ def _get_alembic_config():
         database=os.getenv("DB_DATABASE", "zoudb"),
     ).render_as_string(hide_password=False)
 
+
+def _get_alembic_config():
+    """Build an Alembic config that talks directly to the DB.
+
+    Bypasses Flask/Flask-SQLAlchemy/Flask-Migrate entirely — only needs
+    Alembic + the DB driver.  env.py detects the absence of a Flask app
+    context and reads the URL from the Alembic config instead.
+    """
+    from alembic.config import Config
+
     cfg = Config(os.path.join(_get_migrations_path(), "alembic.ini"))
     cfg.set_main_option("script_location", _get_migrations_path())
-    cfg.set_main_option("sqlalchemy.url", db_uri)
+    cfg.set_main_option("sqlalchemy.url", _get_db_uri())
+    return cfg
+
+
+def _get_alembic_config_legacy():
+    """Alembic config that includes both current and legacy migrations.
+
+    Used as fallback when an instance is on a pre-squash revision.
+    """
+    from alembic.config import Config
+
+    migrations_path = _get_migrations_path()
+    versions_path = os.path.join(migrations_path, "versions")
+    legacy_path = os.path.join(versions_path, "legacy")
+
+    cfg = Config(os.path.join(migrations_path, "alembic.ini"))
+    cfg.set_main_option("script_location", migrations_path)
+    cfg.set_main_option("sqlalchemy.url", _get_db_uri())
+    cfg.set_main_option("version_locations", f"{versions_path} {legacy_path}")
     return cfg
 
 
@@ -178,8 +199,36 @@ def upgrade_db(no_telemetry=False):
     import traceback
 
     from alembic import command
+    from alembic.script import ScriptDirectory
+    from sqlalchemy import create_engine, text, pool
 
-    command.upgrade(_get_alembic_config(), "head")
+    cfg = _get_alembic_config()
+
+    # Detect if the instance is on a pre-squash revision and needs
+    # the legacy migrations to catch up first.
+    db_uri = cfg.get_main_option("sqlalchemy.url")
+    engine = create_engine(db_uri, poolclass=pool.NullPool)
+    with engine.connect() as conn:
+        try:
+            row = conn.execute(
+                text("SELECT version_num FROM alembic_version")
+            ).first()
+            current_rev = row[0] if row else None
+        except Exception:
+            current_rev = None
+    engine.dispose()
+
+    if current_rev is not None:
+        script = ScriptDirectory.from_config(cfg)
+        known = {r.revision for r in script.walk_revisions()}
+        if current_rev not in known:
+            print(
+                f"Revision {current_rev} not in current migrations, "
+                "using legacy migrations to catch up..."
+            )
+            command.upgrade(_get_alembic_config_legacy(), "a1b2c3d4e5f6")
+
+    command.upgrade(cfg, "head")
 
     is_self_hosted = os.getenv("IS_SELF_HOSTED", "true").lower() in (
         "y",
