@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, pool
 from logging.config import fileConfig
 from flask import current_app
 
-from zou.app import db
+db = current_app.extensions["migrate"].db
 
 # Database URL (passed by Alembic)
 config = context.config

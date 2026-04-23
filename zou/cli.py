@@ -14,6 +14,20 @@ def _get_app():
     return app
 
 
+def _get_db_app():
+    """Lightweight Flask app with only SQLAlchemy + Migrate for DB commands."""
+    from flask import Flask
+    from flask_sqlalchemy import SQLAlchemy
+    from flask_migrate import Migrate
+    from zou.app import config
+
+    app = Flask(__name__)
+    app.config.from_object(config)
+    db = SQLAlchemy(app)
+    Migrate(app, db)
+    return app
+
+
 def _get_migrations_path():
     from zou import __file__ as root_path
 
@@ -62,7 +76,7 @@ def init_db():
     import flask_migrate
 
     print("Creating database and tables...")
-    with _get_app().app_context():
+    with _get_db_app().app_context():
         flask_migrate.upgrade(directory=_get_migrations_path())
     print("Database and tables created.")
 
@@ -109,7 +123,7 @@ def downgrade_db(revision):
     """
     import flask_migrate
 
-    with _get_app().app_context():
+    with _get_db_app().app_context():
         flask_migrate.downgrade(
             directory=_get_migrations_path(), revision=revision
         )
@@ -161,9 +175,10 @@ def upgrade_db(no_telemetry=False):
 
     from zou.app import config
 
-    with _get_app().app_context():
+    with _get_db_app().app_context():
         flask_migrate.upgrade(directory=_get_migrations_path())
-        if not no_telemetry and config.IS_SELF_HOSTED:
+    if not no_telemetry and config.IS_SELF_HOSTED:
+        with _get_app().app_context():
             from zou.app.services import telemetry_services
 
             try:
@@ -179,7 +194,7 @@ def stamp_db(revision):
     import flask_migrate
 
     migrations_path = _get_migrations_path()
-    with _get_app().app_context():
+    with _get_db_app().app_context():
         if revision is None:
             flask_migrate.stamp(directory=migrations_path)
         else:
@@ -200,7 +215,7 @@ def reset_migrations():
     "Set the database schema revision to first one."
     import flask_migrate
 
-    with _get_app().app_context():
+    with _get_db_app().app_context():
         flask_migrate.stamp(directory=_get_migrations_path(), revision="base")
 
 
