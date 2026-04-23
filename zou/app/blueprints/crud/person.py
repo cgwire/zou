@@ -1,5 +1,6 @@
 import datetime
 
+import sqlalchemy.orm as orm
 from flask_jwt_extended import jwt_required
 
 from zou.app.models.person import (
@@ -221,6 +222,10 @@ class PersonsResource(BaseModelsResource):
     def all_entries(self, query=None, relations=False):
         if query is None:
             query = self.model.query
+
+        if relations:
+            for relationship in self.get_relations_eager_load():
+                query = query.options(orm.selectinload(relationship))
 
         if permissions.has_admin_permissions():
             if self.get_bool_parameter("with_pass_hash"):
