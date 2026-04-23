@@ -3,23 +3,34 @@ import logging
 from alembic import context
 from sqlalchemy import create_engine, pool
 from logging.config import fileConfig
-from flask import current_app
 
-db = current_app.extensions["migrate"].db
-
-# Database URL (passed by Alembic)
 config = context.config
-url = current_app.config.get("SQLALCHEMY_DATABASE_URI")
 
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
-fileConfig(config.config_file_name)
+# Detect whether we're running inside a Flask app context
+# (flask_migrate.upgrade) or standalone (alembic.command.upgrade).
+try:
+    from flask import current_app
+
+    url = current_app.config["SQLALCHEMY_DATABASE_URI"]
+    db = current_app.extensions["migrate"].db
+    target_metadata = db.metadata
+    migrate_args = current_app.extensions["migrate"].configure_args
+except RuntimeError:
+    # No Flask app context — read URL from Alembic config.
+    # target_metadata is only needed for autogenerate (migrate_db),
+    # which always runs with a Flask context.
+    url = config.get_main_option("sqlalchemy.url")
+    target_metadata = None
+    migrate_args = {}
+
+if config.config_file_name:
+    fileConfig(config.config_file_name)
 logger = logging.getLogger("alembic.env")
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "table":
-        return not reflected or name in db.metadata.tables
+    if target_metadata is not None and type_ == "table":
+        return not reflected or name in target_metadata.tables
     return True
 
 
@@ -51,11 +62,11 @@ def run_migrations_online():
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=db.metadata,
+            target_metadata=target_metadata,
             process_revision_directives=process_revision_directives,
             render_item=render_item,
             include_object=include_object,
-            **current_app.extensions["migrate"].configure_args,
+            **migrate_args,
         )
         with context.begin_transaction():
             context.run_migrations()

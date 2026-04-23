@@ -14,18 +14,29 @@ def _get_app():
     return app
 
 
-def _get_db_app():
-    """Lightweight Flask app with only SQLAlchemy + Migrate for DB commands."""
-    from flask import Flask
-    from flask_sqlalchemy import SQLAlchemy
-    from flask_migrate import Migrate
-    from zou.app import config
+def _get_alembic_config():
+    """Build an Alembic config that talks directly to the DB.
 
-    app = Flask(__name__)
-    app.config.from_object(config)
-    db = SQLAlchemy(app)
-    Migrate(app, db)
-    return app
+    Bypasses Flask/Flask-SQLAlchemy/Flask-Migrate entirely — only needs
+    Alembic + the DB driver.  env.py detects the absence of a Flask app
+    context and reads the URL from the Alembic config instead.
+    """
+    from alembic.config import Config
+    from sqlalchemy.engine.url import URL
+
+    db_uri = URL.create(
+        drivername=os.getenv("DB_DRIVER", "postgresql+psycopg"),
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        username=os.getenv("DB_USERNAME", "postgres"),
+        password=os.getenv("DB_PASSWORD", "mysecretpassword"),
+        database=os.getenv("DB_DATABASE", "zoudb"),
+    ).render_as_string(hide_password=False)
+
+    cfg = Config(os.path.join(_get_migrations_path(), "alembic.ini"))
+    cfg.set_main_option("script_location", _get_migrations_path())
+    cfg.set_main_option("sqlalchemy.url", db_uri)
+    return cfg
 
 
 def _get_migrations_path():
@@ -72,12 +83,10 @@ def shell_completion(shell):
 @cli.command()
 def init_db():
     "Create database table (database must be created through PG client)."
-
-    import flask_migrate
+    from alembic import command
 
     print("Creating database and tables...")
-    with _get_db_app().app_context():
-        flask_migrate.upgrade(directory=_get_migrations_path())
+    command.upgrade(_get_alembic_config(), "head")
     print("Database and tables created.")
 
 
@@ -121,12 +130,9 @@ def downgrade_db(revision):
     Downgrade db to previous revision of the database schema
     (for development only). For revision you can use an hash or a relative migration identifier.
     """
-    import flask_migrate
+    from alembic import command
 
-    with _get_db_app().app_context():
-        flask_migrate.downgrade(
-            directory=_get_migrations_path(), revision=revision
-        )
+    command.downgrade(_get_alembic_config(), revision)
 
 
 @cli.command()
@@ -171,13 +177,19 @@ def upgrade_db(no_telemetry=False):
     """
     import traceback
 
-    import flask_migrate
+    from alembic import command
 
-    from zou.app import config
+    command.upgrade(_get_alembic_config(), "head")
 
-    with _get_db_app().app_context():
-        flask_migrate.upgrade(directory=_get_migrations_path())
-    if not no_telemetry and config.IS_SELF_HOSTED:
+    is_self_hosted = os.getenv("IS_SELF_HOSTED", "true").lower() in (
+        "y",
+        "yes",
+        "t",
+        "true",
+        "on",
+        "1",
+    )
+    if not no_telemetry and is_self_hosted:
         with _get_app().app_context():
             from zou.app.services import telemetry_services
 
@@ -191,14 +203,10 @@ def upgrade_db(no_telemetry=False):
 @click.option("--revision", default=None)
 def stamp_db(revision):
     "Set the database schema revision to current one."
-    import flask_migrate
+    from alembic import command
 
-    migrations_path = _get_migrations_path()
-    with _get_db_app().app_context():
-        if revision is None:
-            flask_migrate.stamp(directory=migrations_path)
-        else:
-            flask_migrate.stamp(directory=migrations_path, revision=revision)
+    cfg = _get_alembic_config()
+    command.stamp(cfg, revision if revision is not None else "head")
 
 
 @cli.command()
@@ -213,10 +221,9 @@ def clear_memory_cache():
 @cli.command()
 def reset_migrations():
     "Set the database schema revision to first one."
-    import flask_migrate
+    from alembic import command
 
-    with _get_db_app().app_context():
-        flask_migrate.stamp(directory=_get_migrations_path(), revision="base")
+    command.stamp(_get_alembic_config(), "base")
 
 
 @cli.command()
