@@ -94,9 +94,7 @@ def validate_share_token(token, password=None):
         now = datetime.datetime.now(datetime.timezone.utc)
         expiration = share_link.expiration_date
         if expiration.tzinfo is None:
-            expiration = expiration.replace(
-                tzinfo=datetime.timezone.utc
-            )
+            expiration = expiration.replace(tzinfo=datetime.timezone.utc)
         if now > expiration:
             raise PlaylistShareLinkNotFoundException
 
@@ -113,10 +111,120 @@ def get_shared_playlist(token):
     Validates the token first.
     """
     share_link = validate_share_token(token)
-    playlist = playlists_service.get_playlist(
-        share_link["playlist_id"]
-    )
+    playlist = playlists_service.get_playlist(share_link["playlist_id"])
     return playlist
+
+
+def get_shared_task_comments(task_id):
+    """
+    Return comments visible in the shared context for a task: those flagged
+    `for_client=True` plus those posted by a guest. Bypasses
+    tasks_service.get_comments which requires a JWT-authenticated current
+    user.
+    """
+    from zou.app.services.tasks_service import (
+        _prepare_query,
+        _run_task_comments_query,
+    )
+
+    query = _prepare_query(task_id, is_client=True, is_manager=False)
+    comments, _ = _run_task_comments_query(query)
+
+    guest_ids = {
+        str(person_id)
+        for (person_id,) in Person.query.filter_by(is_guest=True)
+        .with_entities(Person.id)
+        .all()
+    }
+    visible = []
+    for comment in comments:
+        author_id = str(comment.get("person_id", ""))
+        is_guest_author = author_id in guest_ids
+        if not (comment.get("for_client") or is_guest_author):
+            continue
+        if comment.get("person"):
+            comment["person"]["is_guest"] = is_guest_author
+        visible.append(comment)
+    return visible
+
+
+# Entity types for which "parent" is a parent record (shot/seq/episode/…).
+# For other types, we show the entity type name as the logical parent
+# (e.g. assets).
+_SHOT_LIKE_ENTITY_TYPE_NAMES = frozenset(
+    ("Shot", "Sequence", "Episode", "Edit", "Concept")
+)
+
+
+def _enrich_shared_playlist_project_line(playlist_dict):
+    project_id = playlist_dict.get("project_id")
+    if not project_id:
+        return
+    project = projects_service.get_project(str(project_id))
+    playlist_dict["project_fps"] = project.get("fps")
+    playlist_dict["project_name"] = project.get("name")
+
+
+def _load_task_styling_by_task_id(task_ids):
+    """Return (task_type_by_task_id, task_status_color_by_task_id) dicts."""
+    if not task_ids:
+        return {}, {}
+
+    rows = (
+        Task.query.join(TaskType, TaskType.id == Task.task_type_id)
+        .join(TaskStatus, TaskStatus.id == Task.task_status_id)
+        .filter(Task.id.in_(task_ids))
+        .add_columns(
+            Task.id,
+            TaskType.id,
+            TaskType.name,
+            TaskType.color,
+            TaskType.for_entity,
+            TaskStatus.color,
+        )
+        .all()
+    )
+    task_type_by_task_id = {}
+    task_status_color_by_task_id = {}
+    for (
+        _,
+        task_id,
+        task_type_id,
+        task_type_name,
+        task_type_color,
+        task_type_for_entity,
+        task_status_color,
+    ) in rows:
+        tid = str(task_id)
+        task_type_by_task_id[tid] = {
+            "id": str(task_type_id),
+            "name": task_type_name,
+            "color": task_type_color,
+            "for_entity": task_type_for_entity,
+        }
+        task_status_color_by_task_id[tid] = task_status_color
+    return task_type_by_task_id, task_status_color_by_task_id
+
+
+def _parent_name_for_shot_entry(entity, entity_type_name, parent_map):
+    if entity_type_name in _SHOT_LIKE_ENTITY_TYPE_NAMES:
+        if entity.parent_id is None:
+            return ""
+        return parent_map.get(str(entity.parent_id), "")
+    return entity_type_name
+
+
+def _apply_task_styling_to_shot(
+    shot, task_id, task_type_by_task_id, task_status_color_by_task_id
+):
+    tid = str(task_id)
+    task_type = task_type_by_task_id.get(tid)
+    if task_type:
+        shot["preview_file_task_type"] = task_type
+        shot["preview_file_task_type_name"] = task_type["name"]
+    color = task_status_color_by_task_id.get(tid)
+    if color:
+        shot["task_status_color"] = color
 
 
 def enrich_shots_with_entity_info(playlist_dict):
@@ -127,81 +235,40 @@ def enrich_shots_with_entity_info(playlist_dict):
     have no auth'd access to entity/asset/shot stores, so names must be
     inlined here.
     """
-    project_id = playlist_dict.get("project_id")
-    if project_id:
-        project = projects_service.get_project(str(project_id))
-        playlist_dict["project_fps"] = project.get("fps")
-        playlist_dict["project_name"] = project.get("name")
+    _enrich_shared_playlist_project_line(playlist_dict)
 
     shots = playlist_dict.get("shots") or []
-    entity_ids = [
-        shot["id"] for shot in shots if shot.get("id")
-    ]
+    entity_ids = [shot["id"] for shot in shots if shot.get("id")]
     if not entity_ids:
         return playlist_dict
 
     entities = Entity.query.filter(Entity.id.in_(entity_ids)).all()
     entity_map = {str(e.id): e for e in entities}
 
-    parent_ids = {
-        str(e.parent_id) for e in entities if e.parent_id is not None
-    }
-    type_ids = {
-        str(e.entity_type_id) for e in entities if e.entity_type_id
-    }
-
+    parent_ids = {str(e.parent_id) for e in entities if e.parent_id}
     parent_map = {}
     if parent_ids:
-        parents = Entity.query.filter(Entity.id.in_(parent_ids)).all()
-        parent_map = {str(p.id): p.name for p in parents}
+        parent_map = {
+            str(p.id): p.name
+            for p in Entity.query.filter(Entity.id.in_(parent_ids)).all()
+        }
 
+    type_ids = {str(e.entity_type_id) for e in entities if e.entity_type_id}
     type_map = {}
     if type_ids:
-        types = EntityType.query.filter(
-            EntityType.id.in_(type_ids)
-        ).all()
-        type_map = {str(t.id): t.name for t in types}
-
-    shot_type_names = {"Shot", "Sequence", "Episode", "Edit", "Concept"}
+        type_map = {
+            str(t.id): t.name
+            for t in EntityType.query.filter(EntityType.id.in_(type_ids)).all()
+        }
 
     task_ids = {
-        shot["preview_file_task_id"]
-        for shot in shots
-        if shot.get("preview_file_task_id")
+        s["preview_file_task_id"]
+        for s in shots
+        if s.get("preview_file_task_id")
     }
-    task_type_by_task_id = {}
-    task_status_color_by_task_id = {}
-    if task_ids:
-        rows = (
-            Task.query.join(TaskType, TaskType.id == Task.task_type_id)
-            .join(TaskStatus, TaskStatus.id == Task.task_status_id)
-            .filter(Task.id.in_(task_ids))
-            .add_columns(
-                Task.id,
-                TaskType.id,
-                TaskType.name,
-                TaskType.color,
-                TaskType.for_entity,
-                TaskStatus.color,
-            )
-            .all()
-        )
-        for (
-            _,
-            task_id,
-            task_type_id,
-            task_type_name,
-            task_type_color,
-            task_type_for_entity,
-            task_status_color,
-        ) in rows:
-            task_type_by_task_id[str(task_id)] = {
-                "id": str(task_type_id),
-                "name": task_type_name,
-                "color": task_type_color,
-                "for_entity": task_type_for_entity,
-            }
-            task_status_color_by_task_id[str(task_id)] = task_status_color
+    task_type_by_task_id, task_status_color_by_task_id = (
+        _load_task_styling_by_task_id(task_ids)
+    )
 
     for shot in shots:
         entity = entity_map.get(str(shot.get("id")))
@@ -209,25 +276,18 @@ def enrich_shots_with_entity_info(playlist_dict):
             continue
         shot["name"] = entity.name
         entity_type_name = type_map.get(str(entity.entity_type_id), "")
-        if entity_type_name in shot_type_names:
-            # Shots/sequences/episodes: parent is another entity.
-            shot["parent_name"] = parent_map.get(
-                str(entity.parent_id), ""
-            )
-        else:
-            # Assets: "parent" is the asset type name.
-            shot["parent_name"] = entity_type_name
+        shot["parent_name"] = _parent_name_for_shot_entry(
+            entity, entity_type_name, parent_map
+        )
         task_id = shot.get("preview_file_task_id")
-        if task_id:
-            task_type = task_type_by_task_id.get(str(task_id))
-            if task_type:
-                shot["preview_file_task_type"] = task_type
-                shot["preview_file_task_type_name"] = task_type["name"]
-            task_status_color = task_status_color_by_task_id.get(
-                str(task_id)
-            )
-            if task_status_color:
-                shot["task_status_color"] = task_status_color
+        if not task_id:
+            continue
+        _apply_task_styling_to_shot(
+            shot,
+            task_id,
+            task_type_by_task_id,
+            task_status_color_by_task_id,
+        )
     return playlist_dict
 
 
@@ -264,16 +324,12 @@ def get_shared_playlist_context(token):
     by the playlist.
     """
     share_link = validate_share_token(token)
-    playlist = playlists_service.get_playlist(
-        share_link["playlist_id"]
-    )
+    playlist = playlists_service.get_playlist(share_link["playlist_id"])
     project_id = playlist["project_id"]
     project = projects_service.get_project(project_id)
 
     task_types = projects_service.get_project_task_types(project_id)
-    task_statuses = projects_service.get_project_task_statuses(
-        project_id
-    )
+    task_statuses = projects_service.get_project_task_statuses(project_id)
 
     # Collect entity names from playlist shots
     entity_names = {}
@@ -287,9 +343,7 @@ def get_shared_playlist_context(token):
                 entity_names[entity_id] = {
                     "id": entity_id,
                     "name": entity.get("name", ""),
-                    "preview_file_id": entity.get(
-                        "preview_file_id"
-                    ),
+                    "preview_file_id": entity.get("preview_file_id"),
                 }
             except Exception:
                 pass
@@ -303,7 +357,13 @@ def get_shared_playlist_context(token):
             "resolution": project.get("resolution"),
         },
         "task_types": [
-            {"id": tt["id"], "name": tt["name"], "color": tt["color"]}
+            {
+                "id": tt["id"],
+                "name": tt["name"],
+                "color": tt["color"],
+                "for_entity": tt.get("for_entity"),
+                "department_id": tt.get("department_id"),
+            }
             for tt in task_types
         ],
         "task_statuses": [
@@ -312,6 +372,9 @@ def get_shared_playlist_context(token):
                 "name": ts["name"],
                 "short_name": ts["short_name"],
                 "color": ts["color"],
+                "is_client_allowed": ts.get("is_client_allowed", False),
+                "is_default": ts.get("is_default", False),
+                "for_concept": ts.get("for_concept", False),
             }
             for ts in task_statuses
         ],
