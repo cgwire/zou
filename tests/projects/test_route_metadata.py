@@ -16,6 +16,36 @@ class ProjectMetadataRouteTestCase(ApiDBTestCase):
         self.project_id = self.project.id
         self.asset_id = self.asset.id
 
+    def test_add_project_metadata_descriptor(self):
+        descriptor = self.post(
+            "data/projects/%s/metadata-descriptors" % self.project_id,
+            {
+                "entity_type": "Project",
+                "name": "Delivery code",
+                "data_type": "string",
+            },
+        )
+        self.assertEqual(descriptor["entity_type"], "Project")
+        self.assertEqual(descriptor["field_name"], "delivery_code")
+        self.put(
+            "data/projects/%s" % self.project_id,
+            {"data": {"delivery_code": "X-12"}},
+        )
+        self.put(
+            "data/projects/%s/metadata-descriptors/%s"
+            % (self.project_id, descriptor["id"]),
+            {"name": "Ship code", "data_type": "string"},
+        )
+        project = self.get("data/projects/%s" % self.project_id)
+        self.assertEqual(project["data"].get("ship_code"), "X-12")
+        self.assertIsNone((project.get("data") or {}).get("delivery_code"))
+        self.delete(
+            "data/projects/%s/metadata-descriptors/%s"
+            % (self.project_id, descriptor["id"])
+        )
+        project = self.get("data/projects/%s" % self.project_id)
+        self.assertIsNone((project.get("data") or {}).get("ship_code"))
+
     def test_add_asset_metadata_descriptor(self):
         descriptor = self.post(
             "data/projects/%s/metadata-descriptors" % self.project_id,

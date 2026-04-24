@@ -559,6 +559,86 @@ def _save_project(project):
     return project.serialize()
 
 
+def _migrate_metadata_field_name(model, old_key, new_key, *, use_no_commit):
+    """
+    Move a value from old_key to new_key in model.data. No-op if old_key
+    is absent. Returns whether an update was applied.
+    """
+    metadata = fields.serialize_value(model.data) or {}
+    value = metadata.pop(old_key, None)
+    if value is None:
+        return False
+    metadata[new_key] = value
+    if use_no_commit:
+        model.update_no_commit({"data": metadata})
+    else:
+        model.update({"data": metadata})
+    return True
+
+
+def _entity_query_for_descriptor_entity_type(descriptor):
+    """
+    Entities whose `data` may hold values for this descriptor (non-Project).
+    """
+    query = Entity.query.filter(Entity.project_id == descriptor.project_id)
+    if descriptor.entity_type == "Shot":
+        shot_type = shots_service.get_shot_type()
+        return query.filter(Entity.entity_type_id == shot_type["id"])
+    if descriptor.entity_type == "Asset":
+        return query.filter(assets_service.build_asset_type_filter())
+    if descriptor.entity_type == "Edit":
+        edit_type = edits_service.get_edit_type()
+        return query.filter(Entity.entity_type_id == edit_type["id"])
+    return query
+
+
+def _strip_metadata_field_from_model_data(model, field_name):
+    """
+    Remove field_name from model.data when `data` is not null.
+    """
+    metadata = fields.serialize_value(model.data)
+    if metadata is not None:
+        metadata.pop(field_name, None)
+        model.update({"data": metadata})
+
+
+def _migrate_descriptor_field_rename(descriptor, new_field_name):
+    """
+    Apply a metadata field rename to Project.data or matching Entity rows.
+    """
+    if descriptor.entity_type == "Project":
+        project = get_project_raw(descriptor.project_id)
+        _migrate_metadata_field_name(
+            project,
+            descriptor.field_name,
+            new_field_name,
+            use_no_commit=False,
+        )
+        return
+    entities = _entity_query_for_descriptor_entity_type(descriptor).all()
+    for entity in entities:
+        _migrate_metadata_field_name(
+            entity,
+            descriptor.field_name,
+            new_field_name,
+            use_no_commit=True,
+        )
+    Entity.commit()
+
+
+def _remove_stored_values_for_metadata_descriptor(descriptor):
+    """
+    Remove descriptor field values from Project.data (Project type) or from
+    all Entity.data rows in the project (other types).
+    """
+    if descriptor.entity_type == "Project":
+        project = get_project_raw(descriptor.project_id)
+        _strip_metadata_field_from_model_data(project, descriptor.field_name)
+        return
+    for entity in Entity.get_all_by(project_id=descriptor.project_id):
+        _strip_metadata_field_from_model_data(entity, descriptor.field_name)
+
+
 def add_metadata_descriptor(
     project_id,
     entity_type,
@@ -568,6 +648,11 @@ def add_metadata_descriptor(
     for_client,
     departments=None,
 ):
+    """
+    Register a custom field for the given `entity_type` in this project.
+    Values are stored in `Entity.data` (Asset, Shot, …) or in `Project.data`
+    when `entity_type` is ``Project``.
+    """
     if not departments:
         departments = []
 
@@ -647,26 +732,7 @@ def update_metadata_descriptor(metadata_descriptor_id, changes):
     if "name" in changes and len(changes["name"]) > 0:
         changes["field_name"] = slugify.slugify(changes["name"], separator="_")
         if descriptor.field_name != changes["field_name"]:
-            query = Entity.query.filter(
-                Entity.project_id == descriptor.project_id
-            )
-            if descriptor.entity_type == "Shot":
-                shot_type = shots_service.get_shot_type()
-                query = query.filter(Entity.entity_type_id == shot_type["id"])
-            elif descriptor.entity_type == "Asset":
-                query = query.filter(assets_service.build_asset_type_filter())
-            elif descriptor.entity_type == "Edit":
-                edit_type = edits_service.get_edit_type()
-                query = query.filter(Entity.entity_type_id == edit_type["id"])
-
-            entities = query.all()
-            for entity in entities:
-                metadata = fields.serialize_value(entity.data) or {}
-                value = metadata.pop(descriptor.field_name, None)
-                if value is not None:
-                    metadata[changes["field_name"]] = value
-                    entity.update_no_commit({"data": metadata})
-            Entity.commit()
+            _migrate_descriptor_field_rename(descriptor, changes["field_name"])
 
     if "departments" in changes:
         if not changes["departments"]:
@@ -740,12 +806,7 @@ def remove_metadata_descriptor(metadata_descriptor_id):
     Delete metadata descriptor and related informations.
     """
     descriptor = get_metadata_descriptor_raw(metadata_descriptor_id)
-    entities = Entity.get_all_by(project_id=descriptor.project_id)
-    for entity in entities:
-        metadata = fields.serialize_value(entity.data)
-        if metadata is not None:
-            metadata.pop(descriptor.field_name, None)
-            entity.update({"data": metadata})
+    _remove_stored_values_for_metadata_descriptor(descriptor)
     try:
         descriptor.delete()
     except ObjectDeletedError:

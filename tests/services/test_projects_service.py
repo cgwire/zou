@@ -210,6 +210,59 @@ class ProjectServiceTestCase(ApiDBTestCase):
         asset = Entity.get(asset.id)
         self.assertEqual(asset.data.get("team"), "contractor 1")
 
+    def test_update_project_metadata_descriptor_renames_project_data(self):
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project.id, "Project", "Studio code", "string", [], False
+        )
+        self.project.update({"data": {"studio_code": "A1"}})
+        projects_service.update_metadata_descriptor(
+            descriptor["id"], {"name": "Code", "for_client": False}
+        )
+        self.project = Project.get(self.project.id)
+        self.assertEqual(self.project.data.get("code"), "A1")
+        self.assertIsNone(self.project.data.get("studio_code"))
+
+    def test_remove_project_metadata_descriptor_clears_project_data(self):
+        descriptor = projects_service.add_metadata_descriptor(
+            self.project.id, "Project", "Studio code", "string", [], False
+        )
+        self.project.update({"data": {"studio_code": "A1"}})
+        projects_service.remove_metadata_descriptor(descriptor["id"])
+        self.project = Project.get(self.project.id)
+        self.assertIsNone((self.project.data or {}).get("studio_code"))
+        self.assertEqual(
+            len(
+                [
+                    d
+                    for d in projects_service.get_metadata_descriptors(
+                        self.project.id
+                    )
+                    if d["entity_type"] == "Project"
+                ]
+            ),
+            0,
+        )
+
+    def test_reorder_project_metadata_descriptors(self):
+        d1 = projects_service.add_metadata_descriptor(
+            self.project.id, "Project", "Alpha", "string", [], False
+        )
+        d2 = projects_service.add_metadata_descriptor(
+            self.project.id, "Project", "Beta", "string", [], False
+        )
+        d3 = projects_service.add_metadata_descriptor(
+            self.project.id, "Project", "Gamma", "string", [], False
+        )
+        reordered = projects_service.reorder_metadata_descriptors(
+            self.project.id,
+            "Project",
+            [str(d3["id"]), str(d1["id"]), str(d2["id"])],
+        )
+        self.assertEqual(reordered[0]["id"], d3["id"])
+        self.assertEqual(reordered[0]["position"], 1)
+        self.assertEqual(reordered[1]["id"], d1["id"])
+        self.assertEqual(reordered[2]["id"], d2["id"])
+
     def test_add_delete_metadata_descriptor(self):
         asset = self.generate_fixture_asset_type()
         asset = self.generate_fixture_asset()
