@@ -6,6 +6,7 @@ from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
 from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.task import Task
+from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
     persons_service,
@@ -126,6 +127,12 @@ def enrich_shots_with_entity_info(playlist_dict):
     have no auth'd access to entity/asset/shot stores, so names must be
     inlined here.
     """
+    project_id = playlist_dict.get("project_id")
+    if project_id:
+        project = projects_service.get_project(str(project_id))
+        playlist_dict["project_fps"] = project.get("fps")
+        playlist_dict["project_name"] = project.get("name")
+
     shots = playlist_dict.get("shots") or []
     entity_ids = [
         shot["id"] for shot in shots if shot.get("id")
@@ -162,18 +169,39 @@ def enrich_shots_with_entity_info(playlist_dict):
         for shot in shots
         if shot.get("preview_file_task_id")
     }
-    task_type_name_by_task_id = {}
+    task_type_by_task_id = {}
+    task_status_color_by_task_id = {}
     if task_ids:
         rows = (
             Task.query.join(TaskType, TaskType.id == Task.task_type_id)
+            .join(TaskStatus, TaskStatus.id == Task.task_status_id)
             .filter(Task.id.in_(task_ids))
-            .add_columns(Task.id, TaskType.name)
+            .add_columns(
+                Task.id,
+                TaskType.id,
+                TaskType.name,
+                TaskType.color,
+                TaskType.for_entity,
+                TaskStatus.color,
+            )
             .all()
         )
-        task_type_name_by_task_id = {
-            str(task_id): task_type_name
-            for (_, task_id, task_type_name) in rows
-        }
+        for (
+            _,
+            task_id,
+            task_type_id,
+            task_type_name,
+            task_type_color,
+            task_type_for_entity,
+            task_status_color,
+        ) in rows:
+            task_type_by_task_id[str(task_id)] = {
+                "id": str(task_type_id),
+                "name": task_type_name,
+                "color": task_type_color,
+                "for_entity": task_type_for_entity,
+            }
+            task_status_color_by_task_id[str(task_id)] = task_status_color
 
     for shot in shots:
         entity = entity_map.get(str(shot.get("id")))
@@ -191,9 +219,15 @@ def enrich_shots_with_entity_info(playlist_dict):
             shot["parent_name"] = entity_type_name
         task_id = shot.get("preview_file_task_id")
         if task_id:
-            shot["preview_file_task_type_name"] = (
-                task_type_name_by_task_id.get(str(task_id), "")
+            task_type = task_type_by_task_id.get(str(task_id))
+            if task_type:
+                shot["preview_file_task_type"] = task_type
+                shot["preview_file_task_type_name"] = task_type["name"]
+            task_status_color = task_status_color_by_task_id.get(
+                str(task_id)
             )
+            if task_status_color:
+                shot["task_status_color"] = task_status_color
     return playlist_dict
 
 

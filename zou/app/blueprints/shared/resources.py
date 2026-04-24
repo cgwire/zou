@@ -1,4 +1,5 @@
 from flask import request
+from flask_fs.errors import FileNotFound
 from flask_restful import Resource
 
 from zou.app.blueprints.previews.resources import (
@@ -176,7 +177,10 @@ class SharedPlaylistPreviewFileMovieResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        return send_movie_file(preview_file_id)
+        try:
+            return send_movie_file(preview_file_id)
+        except FileNotFound:
+            return {"error": "Preview file not found"}, 404
 
 
 class SharedPlaylistPreviewFileThumbnailResource(Resource):
@@ -188,7 +192,10 @@ class SharedPlaylistPreviewFileThumbnailResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        return send_picture_file("thumbnails", preview_file_id)
+        try:
+            return send_picture_file("thumbnails", preview_file_id)
+        except FileNotFound:
+            return {"error": "Thumbnail not found"}, 404
 
 
 class SharedPlaylistPreviewFileOriginalResource(Resource):
@@ -200,7 +207,26 @@ class SharedPlaylistPreviewFileOriginalResource(Resource):
 
     def get(self, token, preview_file_id):
         playlist_sharing_service.validate_share_token(token)
-        return send_picture_file("original", preview_file_id)
+        try:
+            return send_picture_file("original", preview_file_id)
+        except FileNotFound:
+            return {"error": "Original not found"}, 404
+
+
+class SharedPlaylistPreviewFileTileResource(Resource):
+    """
+    GET /api/shared/playlists/<token>/movies/tiles/
+        preview-files/<preview_file_id>.png
+    Serve a movie preview tile sprite (used by the playlist timeline to show
+    thumbnails on hover).
+    """
+
+    def get(self, token, preview_file_id):
+        playlist_sharing_service.validate_share_token(token)
+        try:
+            return send_picture_file("tiles", preview_file_id)
+        except FileNotFound:
+            return {"error": "Tile not found"}, 404
 
 
 class SharedPlaylistContextResource(Resource):
