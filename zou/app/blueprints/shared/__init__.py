@@ -6,6 +6,10 @@ from zou.app.blueprints.shared.resources import (
     SharedPlaylistResource,
     SharedPlaylistGuestResource,
     SharedPlaylistCommentsResource,
+    SharedPlaylistCommentResource,
+    SharedPlaylistCommentAttachmentsResource,
+    SharedPlaylistCommentAttachmentResource,
+    SharedPlaylistAttachmentFileResource,
     SharedPlaylistAnnotationsResource,
     SharedPlaylistPreviewFileResource,
     SharedPlaylistPreviewFileMovieResource,
@@ -27,6 +31,24 @@ routes = [
     (
         "/shared/playlists/<token>/comments",
         SharedPlaylistCommentsResource,
+    ),
+    (
+        "/shared/playlists/<token>/comments/<comment_id>",
+        SharedPlaylistCommentResource,
+    ),
+    (
+        "/shared/playlists/<token>/comments/<comment_id>/attachments",
+        SharedPlaylistCommentAttachmentsResource,
+    ),
+    (
+        "/shared/playlists/<token>/comments/<comment_id>/"
+        "attachments/<attachment_id>",
+        SharedPlaylistCommentAttachmentResource,
+    ),
+    (
+        "/shared/playlists/<token>/attachment-files/"
+        "<attachment_id>/file/<file_name>",
+        SharedPlaylistAttachmentFileResource,
     ),
     (
         "/shared/playlists/<token>/annotations",

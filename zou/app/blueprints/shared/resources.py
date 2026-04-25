@@ -15,6 +15,7 @@ from zou.app.services import (
     playlist_sharing_service,
     playlists_service,
     preview_files_service,
+    tasks_service,
 )
 
 
@@ -279,14 +280,152 @@ class SharedPlaylistCommentsResource(Resource):
         return comment, 201
 
 
+class SharedPlaylistCommentResource(Resource):
+    """Edit or delete a single comment authored by a guest."""
+
+    @require_valid_playlist_share_link()
+    def put(self, token, comment_id):
+        """
+        Edit guest-owned comment
+        ---
+        description: Update the text / checklist / task status of a comment
+          previously posted by the same guest.
+        tags:
+          - Playlists
+        """
+        share_link = g.playlist_share_link
+        if not share_link.get("can_comment", True):
+            return {"error": "Comments are disabled for this link"}, 403
+
+        data = request.get_json(silent=True) or {}
+        try:
+            return playlist_sharing_service.update_guest_comment(
+                comment_id, data.get("guest_id"), data
+            )
+        except playlist_sharing_service.GuestCommentForbidden:
+            return {"error": "Forbidden"}, 403
+        except playlist_sharing_service.GuestCommentNotFound:
+            return {"error": "Comment not found"}, 404
+
+    @require_valid_playlist_share_link()
+    def delete(self, token, comment_id):
+        """
+        Delete guest-owned comment
+        ---
+        description: Delete a comment previously posted by the same guest.
+        tags:
+          - Playlists
+        """
+        share_link = g.playlist_share_link
+        if not share_link.get("can_comment", True):
+            return {"error": "Comments are disabled for this link"}, 403
+
+        guest_id = request.args.get("guest_id") or (
+            request.get_json(silent=True) or {}
+        ).get("guest_id")
+        try:
+            playlist_sharing_service.delete_guest_comment(
+                comment_id, guest_id
+            )
+            return "", 204
+        except playlist_sharing_service.GuestCommentForbidden:
+            return {"error": "Forbidden"}, 403
+        except playlist_sharing_service.GuestCommentNotFound:
+            return {"error": "Comment not found"}, 404
+
+
+class SharedPlaylistCommentAttachmentsResource(Resource):
+    """Add an attachment file to a guest-owned comment."""
+
+    @require_valid_playlist_share_link()
+    def post(self, token, comment_id):
+        """
+        Attach files to a guest-owned comment
+        ---
+        description: Upload one or more files as attachments to a comment the
+          same guest previously posted.
+        tags:
+          - Playlists
+        """
+        share_link = g.playlist_share_link
+        if not share_link.get("can_comment", True):
+            return {"error": "Comments are disabled for this link"}, 403
+
+        guest_id = request.form.get("guest_id") or (
+            request.args.get("guest_id")
+        )
+        try:
+            comment = playlist_sharing_service.add_guest_comment_attachments(
+                comment_id, guest_id, request.files
+            )
+            return comment, 201
+        except playlist_sharing_service.GuestCommentForbidden:
+            return {"error": "Forbidden"}, 403
+        except playlist_sharing_service.GuestCommentNotFound:
+            return {"error": "Comment not found"}, 404
+
+
+class SharedPlaylistCommentAttachmentResource(Resource):
+    """Delete one attachment from a guest-owned comment."""
+
+    @require_valid_playlist_share_link()
+    def delete(self, token, comment_id, attachment_id):
+        """
+        Delete an attachment from a guest-owned comment
+        ---
+        tags:
+          - Playlists
+        """
+        share_link = g.playlist_share_link
+        if not share_link.get("can_comment", True):
+            return {"error": "Comments are disabled for this link"}, 403
+
+        guest_id = request.args.get("guest_id") or (
+            request.get_json(silent=True) or {}
+        ).get("guest_id")
+        try:
+            playlist_sharing_service.remove_guest_comment_attachment(
+                comment_id, guest_id, attachment_id
+            )
+            return "", 204
+        except playlist_sharing_service.GuestCommentForbidden:
+            return {"error": "Forbidden"}, 403
+        except playlist_sharing_service.GuestCommentNotFound:
+            return {"error": "Comment not found"}, 404
+
+
+class SharedPlaylistAttachmentFileResource(Resource):
+    """Download an attachment that belongs to a visible shared comment."""
+
+    @require_valid_playlist_share_link()
+    def get(self, token, attachment_id, file_name):
+        """
+        Download attachment file
+        ---
+        description: Serve an attachment file linked to a comment visible in
+          this shared playlist (either `for_client=True` or authored by a
+          guest).
+        tags:
+          - Playlists
+        """
+        try:
+            return playlist_sharing_service.download_shared_attachment(
+                token, attachment_id, file_name
+            )
+        except playlist_sharing_service.GuestCommentNotFound:
+            return {"error": "Attachment not found"}, 404
+
+
 class SharedPlaylistAnnotationsResource(Resource):
     @require_valid_playlist_share_link()
-    def post(self, token):
+    def put(self, token):
         """
-        Save guest annotations for preview
+        Update guest annotations for a preview file
         ---
         description: Update preview file annotations in the context of a shared
-          playlist. Only allowed when the link permits commenting/annotations.
+          playlist. Reuses the same additions/updates/deletions diff format as
+          the manager-facing /actions/preview-files/<id>/update-annotations
+          route, so concurrent edits stay safe via the Redis lock.
         tags:
           - Playlists
         parameters:
@@ -312,39 +451,31 @@ class SharedPlaylistAnnotationsResource(Resource):
                   preview_file_id:
                     type: string
                     format: uuid
-                  annotations:
+                  additions:
                     type: array
                     items:
                       type: object
+                  updates:
+                    type: array
+                    items:
+                      type: object
+                  deletions:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
         responses:
           200:
-            description: Annotations stored
+            description: Updated preview file with the new annotations
             content:
               application/json:
                 schema:
                   type: object
-                  properties:
-                    status:
-                      type: string
-                      example: success
           400:
             description: Missing required body fields
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
           403:
-            description: Annotations disabled for this share link
-            content:
-              application/json:
-                schema:
-                  type: object
-                  properties:
-                    error:
-                      type: string
+            description: Annotations disabled for this share link, or the
+              preview file is not part of the shared playlist
         """
         share_link = g.playlist_share_link
         if not share_link.get("can_comment", True):
@@ -353,18 +484,46 @@ class SharedPlaylistAnnotationsResource(Resource):
         data = request.get_json(silent=True) or {}
         guest_id = data.get("guest_id")
         preview_file_id = data.get("preview_file_id")
-        annotations = data.get("annotations", [])
+        additions = data.get("additions", [])
+        updates = data.get("updates", [])
+        deletions = data.get("deletions", [])
 
         if not guest_id or not preview_file_id:
             return {"error": "Missing required fields"}, 400
 
         playlist_sharing_service.get_guest(guest_id)
 
-        files_service.get_preview_file(preview_file_id)
-        preview_files_service.update_preview_file(
-            preview_file_id, {"annotations": annotations}
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            return {
+                "error": "Preview file not part of this shared playlist"
+            }, 403
+
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        return preview_files_service.update_preview_file_annotations(
+            guest_id,
+            task["project_id"],
+            preview_file_id,
+            additions=additions,
+            updates=updates,
+            deletions=deletions,
         )
-        return {"status": "success"}
+
+
+def _is_preview_file_in_shared_playlist(token, preview_file_id):
+    """
+    Ensure the given preview file id belongs to a shot (or one of its
+    revisions) of the playlist exposed by the share token.
+    """
+    playlist = playlist_sharing_service.get_shared_playlist(token)
+    pid = str(preview_file_id)
+    for shot in playlist.get("shots", []) or []:
+        if str(shot.get("preview_file_id") or "") == pid:
+            return True
+        for sub in shot.get("preview_file_previews", []) or []:
+            if str(sub.get("id") or "") == pid:
+                return True
+    return False
 
 
 class SharedPlaylistPreviewFileResource(Resource):

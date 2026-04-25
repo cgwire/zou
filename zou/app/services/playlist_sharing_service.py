@@ -29,7 +29,7 @@ def create_share_link(
     password=None,
 ):
     """
-    Generate a share link for a playlist. Only supervisors and above
+    Generate a share link for a playlist. Only managers and above
     should call this (enforced at the resource level).
     """
     playlists_service.get_playlist(playlist_id)
@@ -113,6 +113,222 @@ def get_shared_playlist(token):
     share_link = validate_share_token(token)
     playlist = playlists_service.get_playlist(share_link["playlist_id"])
     return playlist
+
+
+class GuestCommentForbidden(Exception):
+    pass
+
+
+class GuestCommentNotFound(Exception):
+    pass
+
+
+def _load_guest_comment(comment_id, guest_id):
+    """
+    Fetch a comment by id and ensure it was authored by the given guest.
+    Raises :class:`GuestCommentForbidden` or :class:`GuestCommentNotFound`.
+    """
+    if not guest_id:
+        raise GuestCommentForbidden
+    # Ensure the guest actually exists.
+    get_guest(guest_id)
+    try:
+        comment = tasks_service.get_comment(comment_id)
+    except Exception:
+        raise GuestCommentNotFound
+    if str(comment.get("person_id")) != str(guest_id):
+        raise GuestCommentForbidden
+    return comment
+
+
+def update_guest_comment(comment_id, guest_id, data):
+    """
+    Update a comment authored by a guest. Accepts ``text``, ``checklist`` and
+    ``task_status_id`` in ``data``. Triggers the same post-update side effects
+    as the regular CRUD path (reset mentions, cache, events, task status
+    reset when needed).
+    """
+    from zou.app.models.comment import Comment
+    from zou.app.services import comments_service, notifications_service
+    from zou.app.utils import events
+
+    instance = _load_guest_comment(comment_id, guest_id)
+
+    new_status_id = data.get("task_status_id")
+    status_changed = bool(
+        new_status_id and instance.get("task_status_id") != new_status_id
+    )
+    previous_status_id = instance.get("task_status_id")
+
+    comment_row = Comment.get(comment_id)
+    if "text" in data:
+        comment_row.text = data["text"] or ""
+    if "checklist" in data:
+        comment_row.checklist = data["checklist"] or []
+    if new_status_id:
+        comment_row.task_status_id = new_status_id
+    comment_row.editor_id = guest_id
+    comment_row.save()
+
+    # reset_mentions walks the mentions table; feed it the relations-loaded
+    # dict so it has the `mentions` / `department_mentions` keys it expects.
+    tasks_service.clear_comment_cache(comment_id)
+    updated = tasks_service.get_comment(comment_id, relations=True)
+    comments_service.reset_mentions(updated)
+
+    task_id = updated["object_id"]
+    task = tasks_service.get_task(task_id)
+    if status_changed:
+        tasks_service.reset_task_data(task_id)
+        events.emit(
+            "task:status-changed",
+            {
+                "task_id": task_id,
+                "new_task_status_id": new_status_id,
+                "previous_task_status_id": previous_status_id,
+                "person_id": guest_id,
+            },
+            project_id=task["project_id"],
+        )
+    tasks_service.clear_comment_cache(comment_id)
+    try:
+        notifications_service.reset_notifications_for_mentions(updated)
+    except KeyError:
+        # Some serialized dicts lack the `mentions` key; guest comments
+        # never carry mentions anyway, so ignore.
+        pass
+    events.emit(
+        "comment:update",
+        {"comment_id": updated["id"], "task_id": task_id},
+        project_id=task["project_id"],
+    )
+    return _serialize_enriched_comment(comment_id)
+
+
+def delete_guest_comment(comment_id, guest_id):
+    """
+    Delete a comment authored by a guest. Triggers the same side effects as
+    the regular CRUD delete: removal via ``deletion_service``, task data
+    reset and task status event if the status changed.
+    """
+    from zou.app.services import deletion_service
+    from zou.app.utils import events
+
+    instance = _load_guest_comment(comment_id, guest_id)
+
+    task_id = instance["object_id"]
+    task_before = tasks_service.get_task(task_id)
+    previous_status_id = task_before["task_status_id"]
+
+    deletion_service.remove_comment(comment_id)
+    tasks_service.reset_task_data(task_id)
+    tasks_service.clear_comment_cache(comment_id)
+
+    task_after = tasks_service.get_task(task_id)
+    new_status_id = task_after["task_status_id"]
+    if previous_status_id != new_status_id:
+        events.emit(
+            "task:status-changed",
+            {
+                "task_id": task_id,
+                "new_task_status_id": new_status_id,
+                "previous_task_status_id": previous_status_id,
+                "person_id": guest_id,
+            },
+            project_id=task_after["project_id"],
+        )
+
+
+def _serialize_enriched_comment(comment_id):
+    """
+    Return a comment dict with `attachment_files` expanded to full objects
+    (same shape as `_run_task_comments_query`'s output), so the shared client
+    can render filenames/sizes without extra lookups.
+    """
+    from zou.app.models.attachment_file import AttachmentFile
+
+    comment = tasks_service.get_comment(comment_id, relations=True)
+    ids = comment.get("attachment_files") or []
+    if ids and all(isinstance(item, str) for item in ids):
+        attachments = AttachmentFile.query.filter(
+            AttachmentFile.id.in_(ids)
+        ).all()
+        comment["attachment_files"] = [af.present() for af in attachments]
+    return comment
+
+
+def add_guest_comment_attachments(comment_id, guest_id, files):
+    """
+    Attach uploaded files to a comment authored by the given guest.
+    Returns the updated comment dict (with relations).
+    """
+    from zou.app.services import comments_service
+
+    comment = _load_guest_comment(comment_id, guest_id)
+    comments_service.add_attachments_to_comment(comment, files)
+    return _serialize_enriched_comment(comment_id)
+
+
+def download_shared_attachment(token, attachment_id, file_name):
+    """
+    Serve an attachment file linked to a comment that is visible to this
+    share link (guest-posted or for_client=True on a task that's part of the
+    playlist). Raises ``GuestCommentNotFound`` if the attachment is not
+    served by this link.
+    """
+    from flask import send_file as flask_send_file
+    from zou.app.services import comments_service
+
+    attachment = comments_service.get_attachment_file(attachment_id)
+    comment_id = attachment.get("comment_id")
+    if not comment_id:
+        raise GuestCommentNotFound
+
+    comment = tasks_service.get_comment(comment_id)
+    task_id = comment.get("object_id")
+    if not task_id:
+        raise GuestCommentNotFound
+
+    # The comment must belong to a task in the playlist that this token
+    # shares, and must be visible (guest or for_client).
+    playlist = get_shared_playlist(token)
+    task_ids = {
+        str(shot.get("preview_file_task_id"))
+        for shot in playlist.get("shots", [])
+        if shot.get("preview_file_task_id")
+    }
+    if str(task_id) not in task_ids:
+        raise GuestCommentNotFound
+
+    author_is_guest = False
+    if comment.get("person_id"):
+        person = persons_service.get_person(comment["person_id"])
+        author_is_guest = bool(person.get("is_guest"))
+    if not (comment.get("for_client") or author_is_guest):
+        raise GuestCommentNotFound
+
+    file_path = comments_service.get_attachment_file_path(attachment)
+    return flask_send_file(
+        file_path,
+        conditional=True,
+        mimetype=attachment["mimetype"],
+        as_attachment=False,
+        download_name=attachment["name"],
+    )
+
+
+def remove_guest_comment_attachment(comment_id, guest_id, attachment_id):
+    """
+    Remove a single attachment from a comment authored by the given guest.
+    """
+    from zou.app.models.attachment_file import AttachmentFile
+    from zou.app.services import deletion_service
+
+    _load_guest_comment(comment_id, guest_id)
+    attachment = AttachmentFile.get(attachment_id)
+    if attachment is None or str(attachment.comment_id) != str(comment_id):
+        raise GuestCommentNotFound
+    deletion_service.remove_attachment_file(attachment)
 
 
 def get_shared_task_comments(task_id):
@@ -293,10 +509,26 @@ def enrich_shots_with_entity_info(playlist_dict):
 
 def create_guest(token, first_name, last_name=""):
     """
-    Create a guest Person tied to a shared playlist session.
-    The guest has is_guest=True, role=client, and no password.
+    Return or create a guest Person tied to a shared playlist session.
+
+    If a guest already exists with the same first/last name, we reuse it so
+    that a returning reviewer recovers ownership of their previous comments
+    (the UUID is otherwise volatile since the link itself is the credential
+    and no persistent account backs a guest). The guest always has
+    `is_guest=True` and `role=client`.
     """
     validate_share_token(token)
+    first_name = (first_name or "Guest").strip()
+    last_name = (last_name or "").strip()
+
+    existing = Person.query.filter_by(
+        is_guest=True,
+        first_name=first_name,
+        last_name=last_name,
+    ).first()
+    if existing is not None:
+        return existing.serialize()
+
     guest = Person.create(
         first_name=first_name,
         last_name=last_name,
@@ -356,13 +588,16 @@ def get_shared_playlist_context(token):
             "ratio": project.get("ratio"),
             "resolution": project.get("resolution"),
         },
+        # Task types are sent without `department_id` on purpose: the shared
+        # client never populates the department map, and several widgets
+        # (EditCommentModal, comment mentions) crash when they try to look
+        # up an unknown department.
         "task_types": [
             {
                 "id": tt["id"],
                 "name": tt["name"],
                 "color": tt["color"],
                 "for_entity": tt.get("for_entity"),
-                "department_id": tt.get("department_id"),
             }
             for tt in task_types
         ],
