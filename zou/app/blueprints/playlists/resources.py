@@ -941,7 +941,7 @@ class NotifyClientsResource(Resource, ArgsMixin):
 
 class PlaylistShareLinksResource(Resource):
     """
-    Manage share links for a playlist (supervisor+).
+    Manage share links for a playlist (manager+).
     """
 
     @jwt_required()
@@ -968,7 +968,7 @@ class PlaylistShareLinksResource(Resource):
 
 class PlaylistShareLinkResource(Resource):
     """
-    Revoke a specific share link (supervisor+).
+    Revoke a specific share link (manager+).
     """
 
     @jwt_required()
