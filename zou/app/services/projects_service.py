@@ -260,7 +260,8 @@ def _build_project_dict_with_extra_data(
 
 def get_projects():
     """
-    Return all projects. Allow to filter projects by name.
+    Return all projects, with their Project-scoped metadata descriptors so the
+    admin productions view can render Project metadata columns.
     """
     query = (
         Project.query.join(
@@ -270,14 +271,36 @@ def get_projects():
         .order_by(Project.name)
     )
 
+    entries = query.all()
+    if not entries:
+        return []
+
+    descriptors_by_project = _fetch_all_project_descriptors_by_project()
+
     result = []
-    for entry in query.all():
-        project, project_status_name = entry
+    for project, project_status_name in entries:
         data = project.serialize()
         data["project_status_name"] = project_status_name
+        data["descriptors"] = [
+            _serialize_descriptor(descriptor)
+            for descriptor in descriptors_by_project.get(project.id, [])
+        ]
         result.append(data)
-
     return result
+
+
+def _fetch_all_project_descriptors_by_project():
+    descriptors = (
+        MetadataDescriptor.query.filter(
+            MetadataDescriptor.entity_type == "Project"
+        )
+        .options(joinedload(MetadataDescriptor.departments))
+        .all()
+    )
+    by_project = defaultdict(list)
+    for descriptor in descriptors:
+        by_project[descriptor.project_id].append(descriptor)
+    return by_project
 
 
 @cache.memoize_function(480)
