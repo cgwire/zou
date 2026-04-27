@@ -38,7 +38,10 @@ def _get_alembic_config():
 
     cfg = Config(os.path.join(_get_migrations_path(), "alembic.ini"))
     cfg.set_main_option("script_location", _get_migrations_path())
-    cfg.set_main_option("sqlalchemy.url", _get_db_uri())
+    # Escape % for configparser, which Alembic uses internally and would
+    # otherwise treat percent-encoded characters in the URI (e.g. a "=" in
+    # the DB password rendered as "%3D") as interpolation tokens.
+    cfg.set_main_option("sqlalchemy.url", _get_db_uri().replace("%", "%%"))
     return cfg
 
 
@@ -55,7 +58,7 @@ def _get_alembic_config_legacy():
 
     cfg = Config(os.path.join(migrations_path, "alembic.ini"))
     cfg.set_main_option("script_location", migrations_path)
-    cfg.set_main_option("sqlalchemy.url", _get_db_uri())
+    cfg.set_main_option("sqlalchemy.url", _get_db_uri().replace("%", "%%"))
     cfg.set_main_option("version_locations", f"{versions_path} {legacy_path}")
     return cfg
 

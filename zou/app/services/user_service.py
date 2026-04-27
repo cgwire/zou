@@ -792,6 +792,8 @@ def check_task_department_access(task_id, person_id):
     """
     user = persons_service.get_current_user(relations=True)
     task = tasks_service.get_task(task_id)
+    if not task or not user:
+        raise permissions.PermissionDenied
     task_type = tasks_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(task["project_id"])
@@ -844,6 +846,8 @@ def check_task_department_access_for_unassign(task_id, person_id=None):
     """
     user = persons_service.get_current_user(relations=True)
     task = tasks_service.get_task(task_id)
+    if not task or not user:
+        raise permissions.PermissionDenied
     task_type = tasks_service.get_task_type(task["task_type_id"])
     is_allowed = permissions.has_admin_permissions() or (
         check_belong_to_project(task["project_id"])
