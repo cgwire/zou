@@ -102,3 +102,8 @@ restore.sh
 
 # Meilisearch folder
 data.ms
+
+# Meilisearch
+.venv
+additions
+previews-test

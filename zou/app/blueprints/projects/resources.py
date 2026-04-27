@@ -1032,7 +1032,13 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
                   entity_type:
                     type: string
                     description: Entity type for the metadata descriptor
-                    enum: ["Asset", "Shot", "Edit", "Episode", "Sequence"]
+                    enum:
+                      - Asset
+                      - Shot
+                      - Edit
+                      - Episode
+                      - Sequence
+                      - Project
                     default: "Asset"
                     example: "Asset"
                   name:
@@ -1094,9 +1100,11 @@ class ProductionMetadataDescriptorsResource(Resource, ArgsMixin):
             "Edit",
             "Episode",
             "Sequence",
+            "Project",
         ]:
             raise WrongParameterException(
-                "Wrong entity type. Please select Asset, Shot, Sequence, Episode or Edit."
+                "Wrong entity type. Please select Asset, Shot, Sequence, "
+                "Episode, Edit, or Project."
             )
 
         types = [type_name for type_name, _ in METADATA_DESCRIPTOR_TYPES]
@@ -1316,7 +1324,13 @@ class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
                   entity_type:
                     type: string
                     description: Entity type for the metadata descriptors
-                    enum: ["Asset", "Shot", "Edit", "Episode", "Sequence"]
+                    enum:
+                      - Asset
+                      - Shot
+                      - Edit
+                      - Episode
+                      - Sequence
+                      - Project
                     example: "Asset"
                   descriptor_ids:
                     type: array
@@ -1366,9 +1380,11 @@ class ProductionMetadataDescriptorsReorderResource(Resource, ArgsMixin):
             "Edit",
             "Episode",
             "Sequence",
+            "Project",
         ]:
             raise WrongParameterException(
-                "Wrong entity type. Please select Asset, Shot, Sequence, Episode or Edit."
+                "Wrong entity type. Please select Asset, Shot, Sequence, "
+                "Episode, Edit, or Project."
             )
 
         return projects_service.reorder_metadata_descriptors(

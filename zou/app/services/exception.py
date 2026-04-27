@@ -145,6 +145,10 @@ class PlaylistNotFoundException(NotFound):
     pass
 
 
+class PlaylistShareLinkNotFoundException(NotFound):
+    pass
+
+
 class SearchFilterNotFoundException(NotFound):
     pass
 
