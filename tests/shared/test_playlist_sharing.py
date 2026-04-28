@@ -1,10 +1,5 @@
 from tests.base import ApiDBTestCase
 
-from zou.app.services import (
-    playlist_sharing_service,
-    playlists_service,
-)
-
 
 class PlaylistSharingTestCase(ApiDBTestCase):
     def setUp(self):
@@ -19,11 +14,7 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         self.generate_fixture_person()
         self.generate_fixture_assigner()
         self.generate_fixture_task()
-        self.playlist = playlists_service.create_playlist(
-            self.project.id,
-            "Test Playlist",
-            self.user["id"],
-        )
+        self.playlist = self.generate_fixture_playlist("Test Playlist")
 
     # --- Authenticated share link management (manager+) ---
 
@@ -43,9 +34,7 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             {},
             201,
         )
-        result = self.get(
-            f"/data/playlists/{self.playlist['id']}/share"
-        )
+        result = self.get(f"/data/playlists/{self.playlist['id']}/share")
         self.assertEqual(len(result), 1)
 
     def test_revoke_share_link(self):
@@ -55,11 +44,10 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             201,
         )
         self.delete(
-            f"/data/playlists/{self.playlist['id']}/share/{link['token']}"
+            f"/data/playlists/{self.playlist['id']}/share/{link['token']}",
+            200,
         )
-        result = self.get(
-            f"/data/playlists/{self.playlist['id']}/share"
-        )
+        result = self.get(f"/data/playlists/{self.playlist['id']}/share")
         self.assertEqual(len(result), 0)
 
     # --- Public shared playlist routes ---
@@ -85,7 +73,8 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             201,
         )
         self.delete(
-            f"/data/playlists/{self.playlist['id']}/share/{link['token']}"
+            f"/data/playlists/{self.playlist['id']}/share/{link['token']}",
+            200,
         )
         self.log_out()
         self.get(f"/shared/playlists/{link['token']}", 404)
@@ -97,9 +86,7 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             201,
         )
         self.log_out()
-        result = self.get(
-            f"/shared/playlists/{link['token']}/context"
-        )
+        result = self.get(f"/shared/playlists/{link['token']}/context")
         self.assertIn("project", result)
         self.assertIn("task_types", result)
         self.assertIn("task_statuses", result)
@@ -136,6 +123,7 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         guest2 = self.post(
             f"/shared/playlists/{link['token']}/guest",
             {"first_name": "Jane", "guest_id": guest["id"]},
+            200,
         )
         self.assertEqual(guest["id"], guest2["id"])
 
