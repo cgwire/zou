@@ -135,8 +135,13 @@ def _load_guest_comment(comment_id, guest_id, token):
     """
     if not guest_id:
         raise GuestCommentForbidden
-    # Ensure the guest actually exists.
-    get_guest(guest_id)
+    # Ensure the guest exists AND was created from this very share link;
+    # rejects replayed guest UUIDs leaked from another link.
+    share_link = validate_share_token(token)
+    try:
+        get_guest_for_share_link(guest_id, share_link)
+    except Exception:
+        raise GuestCommentForbidden
     try:
         comment = tasks_service.get_comment(comment_id)
     except Exception:
@@ -146,7 +151,7 @@ def _load_guest_comment(comment_id, guest_id, token):
     task_id = comment.get("object_id")
     if task_id is None:
         raise GuestCommentForbidden
-    playlist = get_shared_playlist(token)
+    playlist = playlists_service.get_playlist(share_link["playlist_id"])
     playlist_task_ids = {
         str(shot.get("preview_file_task_id"))
         for shot in playlist.get("shots", []) or []
@@ -543,23 +548,29 @@ def enrich_shots_with_entity_info(playlist_dict):
 
 def create_guest(token, first_name, last_name=""):
     """
-    Return or create a guest Person tied to a shared playlist session.
+    Return or create a guest Person scoped to the share link of ``token``.
 
-    If a guest already exists with the same first/last name, we reuse it so
-    that a returning reviewer recovers ownership of their previous comments
-    (the UUID is otherwise volatile since the link itself is the credential
-    and no persistent account backs a guest). The guest always has
-    `is_guest=True` and `role=client`.
+    Each guest is bound to the share link that created it (via
+    ``Person.data['share_link_id']``). Reuse by first/last name only matches
+    guests created from the same share link, so a reviewer named "John
+    Smith" who has commented through link A cannot be impersonated by an
+    attacker who later creates a guest with the same name through link B.
+    The guest always has ``is_guest=True`` and ``role=client``.
     """
-    validate_share_token(token)
+    share_link = validate_share_token(token)
+    share_link_id = str(share_link["id"])
     first_name = (first_name or "Guest").strip()
     last_name = (last_name or "").strip()
 
-    existing = Person.query.filter_by(
-        is_guest=True,
-        first_name=first_name,
-        last_name=last_name,
-    ).first()
+    existing = (
+        Person.query.filter_by(
+            is_guest=True,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        .filter(Person.data["share_link_id"].astext == share_link_id)
+        .first()
+    )
     if existing is not None:
         return existing.serialize()
 
@@ -569,6 +580,7 @@ def create_guest(token, first_name, last_name=""):
         email=f"guest-{uuid.uuid4().hex[:8]}@guest.kitsu",
         role="client",
         is_guest=True,
+        data={"share_link_id": share_link_id},
     )
     return guest.serialize()
 
@@ -579,6 +591,20 @@ def get_guest(guest_id):
     """
     person = persons_service.get_person(guest_id)
     if not person.get("is_guest", False):
+        raise PlaylistShareLinkNotFoundException
+    return person
+
+
+def get_guest_for_share_link(guest_id, share_link):
+    """
+    Retrieve a guest person, but only if it was created from the supplied
+    share link. Used everywhere a ``guest_id`` is read from a request body
+    so that an attacker holding one share token cannot replay another
+    reviewer's guest UUID (leaked from a different link) to impersonate
+    them. Raises :class:`PlaylistShareLinkNotFoundException` otherwise.
+    """
+    person = get_guest(guest_id)
+    if person.get("data", {}).get("share_link_id") != str(share_link["id"]):
         raise PlaylistShareLinkNotFoundException
     return person
 

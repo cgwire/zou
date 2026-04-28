@@ -114,10 +114,14 @@ class SharedPlaylistGuestResource(Resource):
         """
         body = validation.validate_request_body(CreateGuestSchema)
 
-        # If a guest_id is provided, try to reuse it
+        # If a guest_id is provided, try to reuse it — but only if it was
+        # created from this same share link. A guest UUID leaked from
+        # another link must not grant access here.
         if body.guest_id is not None:
             try:
-                guest = playlist_sharing_service.get_guest(str(body.guest_id))
+                guest = playlist_sharing_service.get_guest_for_share_link(
+                    str(body.guest_id), g.playlist_share_link
+                )
                 return guest
             except Exception:
                 pass
@@ -268,7 +272,12 @@ class SharedPlaylistCommentsResource(Resource):
         task_id = str(body.task_id)
         task_status_id = str(body.task_status_id)
 
-        playlist_sharing_service.get_guest(guest_id)
+        try:
+            playlist_sharing_service.get_guest_for_share_link(
+                guest_id, g.playlist_share_link
+            )
+        except Exception:
+            return {"error": "Guest not part of this shared playlist"}, 403
 
         if not _is_task_in_shared_playlist(token, task_id):
             return {"error": "Task not part of this shared playlist"}, 403
@@ -495,7 +504,12 @@ class SharedPlaylistAnnotationsResource(Resource):
         updates = body.updates or []
         deletions = body.deletions or []
 
-        playlist_sharing_service.get_guest(guest_id)
+        try:
+            playlist_sharing_service.get_guest_for_share_link(
+                guest_id, share_link
+            )
+        except Exception:
+            return {"error": "Guest not part of this shared playlist"}, 403
 
         if not _is_preview_file_in_shared_playlist(token, preview_file_id):
             return {

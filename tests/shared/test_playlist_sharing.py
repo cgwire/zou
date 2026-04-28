@@ -146,6 +146,59 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         )
         self.assertEqual(guest["id"], guest2["id"])
 
+    def test_create_guest_same_name_different_link(self):
+        """A guest created via link A must not be reused via link B even
+        if both submit the same name. Otherwise an attacker holding link B
+        could impersonate any reviewer who used the same name on link A."""
+        link_a = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        link_b = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        guest_a = self.post(
+            f"/shared/playlists/{link_a['token']}/guest",
+            {"first_name": "John", "last_name": "Smith"},
+            201,
+        )
+        guest_b = self.post(
+            f"/shared/playlists/{link_b['token']}/guest",
+            {"first_name": "John", "last_name": "Smith"},
+            201,
+        )
+        self.assertNotEqual(guest_a["id"], guest_b["id"])
+
+    def test_reuse_guest_id_other_link_rejected(self):
+        """A guest_id leaked from link A must not be reusable on link B —
+        the server must ignore it and create a fresh guest instead."""
+        link_a = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        link_b = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        guest_a = self.post(
+            f"/shared/playlists/{link_a['token']}/guest",
+            {"first_name": "Alice"},
+            201,
+        )
+        guest_b = self.post(
+            f"/shared/playlists/{link_b['token']}/guest",
+            {"first_name": "Bob", "guest_id": guest_a["id"]},
+            201,
+        )
+        self.assertNotEqual(guest_a["id"], guest_b["id"])
+
     # --- Guest comments ---
 
     def test_guest_comment(self):
@@ -171,6 +224,36 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             201,
         )
         self.assertEqual(comment["text"], "Great work!")
+
+    def test_guest_comment_rejects_foreign_guest(self):
+        """A guest_id from share link A cannot be replayed to post a
+        comment via share link B."""
+        link_a = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+        link_b = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+        self.log_out()
+        guest_a = self.post(
+            f"/shared/playlists/{link_a['token']}/guest",
+            {"first_name": "Alice"},
+            201,
+        )
+        self.post(
+            f"/shared/playlists/{link_b['token']}/comments",
+            {
+                "guest_id": guest_a["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "should be rejected",
+            },
+            403,
+        )
 
     def test_guest_comment_rejects_foreign_task(self):
         """A guest cannot post a comment on a task that is not part of the
