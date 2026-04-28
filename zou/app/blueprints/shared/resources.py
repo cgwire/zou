@@ -557,7 +557,13 @@ class SharedPlaylistPreviewFileResource(Resource):
               application/json:
                 schema:
                   type: object
+          403:
+            description: Preview file is not part of this shared playlist
         """
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            return {
+                "error": "Preview file not part of this shared playlist"
+            }, 403
         return files_service.get_preview_file(preview_file_id)
 
 
@@ -594,6 +600,8 @@ class SharedPlaylistPreviewFileMovieResource(Resource):
                 schema:
                   type: string
                   format: binary
+          403:
+            description: Preview file is not part of this shared playlist
           404:
             description: Preview file not on disk
             content:
@@ -604,6 +612,10 @@ class SharedPlaylistPreviewFileMovieResource(Resource):
                     error:
                       type: string
         """
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            return {
+                "error": "Preview file not part of this shared playlist"
+            }, 403
         try:
             return send_movie_file(preview_file_id)
         except FileNotFound:
@@ -642,6 +654,8 @@ class SharedPlaylistPreviewFileThumbnailResource(Resource):
                 schema:
                   type: string
                   format: binary
+          403:
+            description: Preview file is not part of this shared playlist
           404:
             description: Thumbnail file missing
             content:
@@ -652,6 +666,10 @@ class SharedPlaylistPreviewFileThumbnailResource(Resource):
                     error:
                       type: string
         """
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            return {
+                "error": "Preview file not part of this shared playlist"
+            }, 403
         try:
             return send_picture_file("thumbnails", preview_file_id)
         except FileNotFound:
@@ -690,6 +708,8 @@ class SharedPlaylistPreviewFileOriginalResource(Resource):
                 schema:
                   type: string
                   format: binary
+          403:
+            description: Preview file is not part of this shared playlist
           404:
             description: Original file missing
             content:
@@ -700,6 +720,10 @@ class SharedPlaylistPreviewFileOriginalResource(Resource):
                     error:
                       type: string
         """
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            return {
+                "error": "Preview file not part of this shared playlist"
+            }, 403
         try:
             return send_picture_file("original", preview_file_id)
         except FileNotFound:
@@ -738,6 +762,8 @@ class SharedPlaylistPreviewFileTileResource(Resource):
                 schema:
                   type: string
                   format: binary
+          403:
+            description: Preview file is not part of this shared playlist
           404:
             description: Tile file missing
             content:
@@ -748,6 +774,10 @@ class SharedPlaylistPreviewFileTileResource(Resource):
                     error:
                       type: string
         """
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            return {
+                "error": "Preview file not part of this shared playlist"
+            }, 403
         try:
             return send_picture_file("tiles", preview_file_id)
         except FileNotFound:
