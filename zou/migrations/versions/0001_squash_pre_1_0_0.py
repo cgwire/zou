@@ -61,11 +61,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["scene_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["entity_type_id"], ["entity_type.id"]),
-        sa.ForeignKeyConstraint(["asset_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["target_asset_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "asset_id",
@@ -162,7 +157,7 @@ def upgrade():
         sa.Column("nb_entities_out", sa.Integer()),
         sa.Column("is_casting_standby", sa.Boolean()),
         sa.Column("is_shared", sa.Boolean(), nullable=False),
-        sa.Column("status", ChoiceType(length=255), nullable=False),
+        sa.Column("status", sa.String(length=255), nullable=False),
         sa.Column(
             "project_id",
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
@@ -203,13 +198,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["parent_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["created_by"], ["person.id"]),
-        sa.ForeignKeyConstraint(["preview_file_id"], ["preview_file.id"]),
-        sa.ForeignKeyConstraint(["entity_type_id"], ["entity_type.id"]),
-        sa.ForeignKeyConstraint(["ready_for"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["source_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name",
@@ -357,14 +345,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["source_file_id"], ["working_file.id"]),
-        sa.ForeignKeyConstraint(["file_status_id"], ["file_status.id"]),
-        sa.ForeignKeyConstraint(["output_type_id"], ["output_type.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["asset_instance_id"], ["asset_instance.id"]),
-        sa.ForeignKeyConstraint(["temporal_entity_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name",
@@ -399,8 +379,8 @@ def upgrade():
         sa.Column("description", sa.String(length=None)),
         sa.Column("version", sa.String(length=50), nullable=False),
         sa.Column("maintainer_name", sa.String(length=200), nullable=False),
-        sa.Column("maintainer_email", EmailType(length=255)),
-        sa.Column("website", URLType()),
+        sa.Column("maintainer_email", sa.String(length=255)),
+        sa.Column("website", sa.Text()),
         sa.Column("license", sa.String(length=80), nullable=False),
         sa.Column("revision", sa.String(length=12)),
         sa.Column(
@@ -442,8 +422,8 @@ def upgrade():
         sa.Column("path", sa.String(length=400)),
         sa.Column("source", sa.String(length=40)),
         sa.Column("file_size", sa.BigInteger()),
-        sa.Column("status", ChoiceType(length=255), nullable=False),
-        sa.Column("validation_status", ChoiceType(length=255), nullable=False),
+        sa.Column("status", sa.String(length=255), nullable=False),
+        sa.Column("validation_status", sa.String(length=255), nullable=False),
         sa.Column("annotations", postgresql.JSONB(astext_type=sa.Text())),
         sa.Column("width", sa.Integer()),
         sa.Column("height", sa.Integer()),
@@ -476,9 +456,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["source_file_id"], ["output_file.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name", "task_id", "revision", name="preview_uc"),
         sa.UniqueConstraint("shotgun_id"),
@@ -595,11 +572,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_status_id"], ["task_status.id"]),
-        sa.ForeignKeyConstraint(["assigner_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name", "project_id", "task_type_id", "entity_id", name="task_uc"
@@ -673,10 +645,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["software_id"], ["software.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name", "task_id", "entity_id", "revision", name="working_file_uc"
@@ -696,8 +664,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["asset_instance_id"], ["asset_instance.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("entity_id", "asset_instance_id"),
     )
     op.create_table(
@@ -722,8 +688,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["entity_out_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["entity_in_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("entity_in_id", "entity_out_id", "id"),
     )
     op.create_table(
@@ -751,8 +715,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["entity_out_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["entity_in_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("entity_in_id", "entity_out_id", "id"),
         sa.UniqueConstraint(
             "entity_in_id", "entity_out_id", name="entity_link_uc"
@@ -780,8 +742,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["hardware_item_id"], ["hardware_item.id"]),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
         sa.PrimaryKeyConstraint("department_id", "hardware_item_id", "id"),
         sa.UniqueConstraint(
             "hardware_item_id",
@@ -793,9 +753,9 @@ def upgrade():
         "person",
         sa.Column("first_name", sa.String(length=80), nullable=False),
         sa.Column("last_name", sa.String(length=80), nullable=False),
-        sa.Column("email", EmailType(length=255)),
+        sa.Column("email", sa.String(length=255)),
         sa.Column("phone", sa.String(length=30)),
-        sa.Column("contract_type", ChoiceType(length=255), nullable=False),
+        sa.Column("contract_type", sa.String(length=255), nullable=False),
         sa.Column("active", sa.Boolean()),
         sa.Column("archived", sa.Boolean()),
         sa.Column("last_presence", sa.Date()),
@@ -808,18 +768,23 @@ def upgrade():
         sa.Column("email_otp_enabled", sa.Boolean()),
         sa.Column("email_otp_secret", sa.String(length=32)),
         sa.Column("fido_enabled", sa.Boolean()),
-        sa.Column("fido_credentials", ARRAY(JSONB(astext_type=Text()))),
-        sa.Column("otp_recovery_codes", ARRAY(LargeBinary(length=60))),
         sa.Column(
-            "preferred_two_factor_authentication", ChoiceType(length=255)
+            "fido_credentials",
+            postgresql.ARRAY(postgresql.JSONB(astext_type=sa.Text())),
+        ),
+        sa.Column(
+            "otp_recovery_codes", postgresql.ARRAY(sa.LargeBinary(length=60))
+        ),
+        sa.Column(
+            "preferred_two_factor_authentication", sa.String(length=255)
         ),
         sa.Column("shotgun_id", sa.Integer()),
-        sa.Column("timezone", TimezoneType(length=50)),
-        sa.Column("locale", LocaleType(length=10)),
+        sa.Column("timezone", sa.String(length=50)),
+        sa.Column("locale", sa.String(length=10)),
         sa.Column("data", postgresql.JSONB(astext_type=sa.Text())),
-        sa.Column("role", ChoiceType(length=255), nullable=False),
-        sa.Column("position", ChoiceType(length=255)),
-        sa.Column("seniority", ChoiceType(length=255)),
+        sa.Column("role", sa.String(length=255), nullable=False),
+        sa.Column("position", sa.String(length=255)),
+        sa.Column("seniority", sa.String(length=255)),
         sa.Column("daily_salary", sa.Integer()),
         sa.Column("has_avatar", sa.Boolean()),
         sa.Column("notifications_enabled", sa.Boolean()),
@@ -847,7 +812,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["studio_id"], ["studio.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("jti"),
         sa.UniqueConstraint("shotgun_id"),
@@ -866,7 +830,7 @@ def upgrade():
         sa.Column("ratio", sa.String(length=10)),
         sa.Column("resolution", sa.String(length=12)),
         sa.Column("production_type", sa.String(length=20)),
-        sa.Column("production_style", ChoiceType(length=255), nullable=False),
+        sa.Column("production_style", sa.String(length=255), nullable=False),
         sa.Column("start_date", sa.Date()),
         sa.Column("end_date", sa.Date()),
         sa.Column("man_days", sa.Integer()),
@@ -903,14 +867,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_status_id"], ["project_status.id"]),
-        sa.ForeignKeyConstraint(
-            ["from_schedule_version_id"], ["production_schedule_version.id"]
-        ),
-        sa.ForeignKeyConstraint(
-            ["default_preview_background_file_id"],
-            ["preview_background_file.id"],
-        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -921,8 +877,8 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.Column("position", ChoiceType(length=255)),
-        sa.Column("seniority", ChoiceType(length=255)),
+        sa.Column("position", sa.String(length=255)),
+        sa.Column("seniority", sa.String(length=255)),
         sa.Column("salary", sa.Integer(), nullable=False),
         sa.Column(
             "id",
@@ -932,7 +888,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -957,8 +912,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
-        sa.ForeignKeyConstraint(["software_id"], ["software.id"]),
         sa.PrimaryKeyConstraint("department_id", "software_id", "id"),
         sa.UniqueConstraint(
             "department_id", "software_id", name="software_department_link_uc"
@@ -988,7 +941,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name", "for_entity", "department_id", name="task_type_uc"
@@ -1016,8 +968,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1038,7 +988,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1064,8 +1013,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["chat_id"], ["chat.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1082,8 +1029,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["chat_id"], ["chat.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("chat_id", "person_id"),
     )
     op.create_table(
@@ -1101,7 +1046,7 @@ def upgrade():
         sa.Column("replies", postgresql.JSONB(astext_type=sa.Text())),
         sa.Column("checklist", postgresql.JSONB(astext_type=sa.Text())),
         sa.Column("pinned", sa.Boolean()),
-        sa.Column("links", ARRAY(String())),
+        sa.Column("links", postgresql.ARRAY(sa.String())),
         sa.Column(
             "task_status_id",
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
@@ -1131,10 +1076,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_status_id"], ["task_status.id"]),
-        sa.ForeignKeyConstraint(["editor_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["preview_file_id"], ["preview_file.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1155,7 +1096,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("person_id", "date", name="day_off_uc"),
     )
@@ -1173,8 +1113,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
         sa.PrimaryKeyConstraint("person_id", "department_id"),
         sa.UniqueConstraint(
             "person_id", "department_id", name="department_link_uc"
@@ -1197,7 +1135,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1222,8 +1159,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1234,8 +1169,8 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.Column("ip_address", IPAddressType(length=50)),
-        sa.Column("origin", ChoiceType(length=255)),
+        sa.Column("ip_address", sa.String(length=50)),
+        sa.Column("origin", sa.String(length=255)),
         sa.Column(
             "id",
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
@@ -1244,7 +1179,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1257,7 +1191,7 @@ def upgrade():
         ),
         sa.Column("entity_type", sa.String(length=60), nullable=False),
         sa.Column("name", sa.String(length=120), nullable=False),
-        sa.Column("data_type", ChoiceType(length=255)),
+        sa.Column("data_type", sa.String(length=255)),
         sa.Column("field_name", sa.String(length=120), nullable=False),
         sa.Column("choices", postgresql.JSONB(astext_type=sa.Text())),
         sa.Column("for_client", sa.Boolean()),
@@ -1270,7 +1204,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "project_id",
@@ -1304,8 +1237,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1338,10 +1269,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["episode_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["created_by"], ["person.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name", "project_id", "episode_id", name="playlist_uc"
@@ -1371,10 +1298,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(
-            ["production_schedule_from"], ["production_schedule_version.id"]
-        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "name", "project_id", name="production_schedule_version_uc"
@@ -1394,8 +1317,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["asset_type_id"], ["entity_type.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("project_id", "asset_type_id"),
     )
     op.create_table(
@@ -1413,8 +1334,6 @@ def upgrade():
             nullable=False,
         ),
         sa.Column("shotgun_id", sa.Integer()),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("project_id", "person_id"),
     )
     op.create_table(
@@ -1430,10 +1349,6 @@ def upgrade():
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
             default=uuid.uuid4,
             nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(
-            ["preview_background_file_id"], ["preview_background_file.id"]
         ),
         sa.PrimaryKeyConstraint("project_id", "preview_background_file_id"),
     )
@@ -1452,7 +1367,7 @@ def upgrade():
             nullable=False,
         ),
         sa.Column("priority", sa.Integer()),
-        sa.Column("roles_for_board", ARRAY(ChoiceType(length=255))),
+        sa.Column("roles_for_board", postgresql.ARRAY(sa.String(length=255))),
         sa.Column(
             "id",
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
@@ -1461,8 +1376,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_status_id"], ["task_status.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("project_id", "task_status_id", "id"),
         sa.UniqueConstraint(
             "project_id", "task_status_id", name="project_taskstatus_uc"
@@ -1491,8 +1404,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
         sa.PrimaryKeyConstraint("project_id", "task_type_id", "id"),
         sa.UniqueConstraint(
             "project_id", "task_type_id", name="project_tasktype_uc"
@@ -1526,8 +1437,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "project_id", "task_type_id", "object_id", name="schedule_item_uc"
@@ -1568,9 +1477,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1586,7 +1492,7 @@ def upgrade():
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
             default=uuid.uuid4,
         ),
-        sa.Column("out_field_type", ChoiceType(length=255), nullable=False),
+        sa.Column("out_field_type", sa.String(length=255), nullable=False),
         sa.Column(
             "out_task_type_id",
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
@@ -1607,10 +1513,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["in_task_status_id"], ["task_status.id"]),
-        sa.ForeignKeyConstraint(["out_task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["out_task_status_id"], ["task_status.id"]),
-        sa.ForeignKeyConstraint(["in_task_type_id"], ["task_type.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1644,10 +1546,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["entity_id"], ["entity.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "person_id",
@@ -1673,8 +1571,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("task_id", "person_id"),
     )
     op.create_table(
@@ -1691,8 +1587,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["task_type_id"], ["task_type.id"]),
-        sa.ForeignKeyConstraint(["asset_type_id"], ["entity_type.id"]),
         sa.PrimaryKeyConstraint("asset_type_id", "task_type_id"),
         sa.UniqueConstraint(
             "asset_type_id",
@@ -1722,8 +1616,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "person_id", "task_id", "date", name="time_spent_uc"
@@ -1758,8 +1650,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["chat_message_id"], ["chat_message.id"]),
-        sa.ForeignKeyConstraint(["comment_id"], ["comment.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1784,8 +1674,8 @@ def upgrade():
         sa.Column("start_date", sa.Date(), nullable=False),
         sa.Column("months_duration", sa.Integer(), nullable=False),
         sa.Column("daily_salary", sa.Float(), nullable=False),
-        sa.Column("position", ChoiceType(length=255)),
-        sa.Column("seniority", ChoiceType(length=255)),
+        sa.Column("position", sa.String(length=255)),
+        sa.Column("seniority", sa.String(length=255)),
         sa.Column("exceptions", postgresql.JSONB(astext_type=sa.Text())),
         sa.Column(
             "id",
@@ -1795,15 +1685,12 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["budget_id"], ["budget.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
         "build_job",
-        sa.Column("status", ChoiceType(length=255), nullable=False),
-        sa.Column("job_type", ChoiceType(length=255), nullable=False),
+        sa.Column("status", sa.String(length=255), nullable=False),
+        sa.Column("job_type", sa.String(length=255), nullable=False),
         sa.Column("ended_at", sa.DateTime(timezone=False)),
         sa.Column(
             "playlist_id",
@@ -1819,7 +1706,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["playlist_id"], ["playlist.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -1836,8 +1722,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["comment"], ["comment.id"]),
-        sa.ForeignKeyConstraint(["person"], ["person.id"]),
         sa.PrimaryKeyConstraint("comment", "person"),
     )
     op.create_table(
@@ -1854,8 +1738,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["department"], ["department.id"]),
-        sa.ForeignKeyConstraint(["comment"], ["comment.id"]),
         sa.PrimaryKeyConstraint("comment", "department"),
     )
     op.create_table(
@@ -1872,8 +1754,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["person"], ["person.id"]),
-        sa.ForeignKeyConstraint(["comment"], ["comment.id"]),
         sa.PrimaryKeyConstraint("comment", "person"),
     )
     op.create_table(
@@ -1890,8 +1770,6 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["preview_file"], ["preview_file.id"]),
-        sa.ForeignKeyConstraint(["comment"], ["comment.id"]),
         sa.PrimaryKeyConstraint("comment", "preview_file"),
     )
     op.create_table(
@@ -1907,10 +1785,6 @@ def upgrade():
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
             default=uuid.uuid4,
             nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
-        sa.ForeignKeyConstraint(
-            ["metadata_descriptor_id"], ["metadata_descriptor.id"]
         ),
         sa.PrimaryKeyConstraint("metadata_descriptor_id", "department_id"),
         sa.UniqueConstraint(
@@ -1952,17 +1826,13 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["author_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
-        sa.ForeignKeyConstraint(["preview_file_id"], ["preview_file.id"]),
-        sa.ForeignKeyConstraint(["comment_id"], ["comment.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
         "notification",
         sa.Column("read", sa.Boolean(), nullable=False),
         sa.Column("change", sa.Boolean(), nullable=False),
-        sa.Column("type", ChoiceType(length=255), nullable=False),
+        sa.Column("type", sa.String(length=255), nullable=False),
         sa.Column(
             "person_id",
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
@@ -2003,11 +1873,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["author_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
-        sa.ForeignKeyConstraint(["comment_id"], ["comment.id"]),
-        sa.ForeignKeyConstraint(["playlist_id"], ["playlist.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "person_id",
@@ -2044,11 +1909,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(
-            ["production_schedule_version_id"],
-            ["production_schedule_version.id"],
-        ),
-        sa.ForeignKeyConstraint(["task_id"], ["task.id"]),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "production_schedule_version_id",
@@ -2069,10 +1929,6 @@ def upgrade():
             sqlalchemy_utils.types.uuid.UUIDType(binary=False),
             default=uuid.uuid4,
             nullable=False,
-        ),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(
-            ["status_automation_id"], ["status_automation.id"]
         ),
         sa.PrimaryKeyConstraint("project_id", "status_automation_id"),
     )
@@ -2116,12 +1972,6 @@ def upgrade():
         ),
         sa.Column("created_at", sa.DateTime(timezone=False)),
         sa.Column("updated_at", sa.DateTime(timezone=False)),
-        sa.ForeignKeyConstraint(
-            ["search_filter_group_id"], ["search_filter_group.id"]
-        ),
-        sa.ForeignKeyConstraint(["project_id"], ["project.id"]),
-        sa.ForeignKeyConstraint(["department_id"], ["department.id"]),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -2138,14 +1988,455 @@ def upgrade():
             default=uuid.uuid4,
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(["person_id"], ["person.id"]),
-        sa.ForeignKeyConstraint(
-            ["production_schedule_version_task_link_id"],
-            ["production_schedule_version_task_link.id"],
-        ),
         sa.PrimaryKeyConstraint(
             "production_schedule_version_task_link_id", "person_id"
         ),
+    )
+    op.create_foreign_key(
+        None, "asset_instance", "entity", ["scene_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "asset_instance", "entity_type", ["entity_type_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "asset_instance", "entity", ["asset_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "asset_instance", "entity", ["entity_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "asset_instance", "entity", ["target_asset_id"], ["id"]
+    )
+    op.create_foreign_key(None, "entity", "entity", ["parent_id"], ["id"])
+    op.create_foreign_key(None, "entity", "person", ["created_by"], ["id"])
+    op.create_foreign_key(
+        None, "entity", "preview_file", ["preview_file_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity", "entity_type", ["entity_type_id"], ["id"]
+    )
+    op.create_foreign_key(None, "entity", "task_type", ["ready_for"], ["id"])
+    op.create_foreign_key(None, "entity", "entity", ["source_id"], ["id"])
+    op.create_foreign_key(None, "entity", "project", ["project_id"], ["id"])
+    op.create_foreign_key(
+        None, "output_file", "task_type", ["task_type_id"], ["id"]
+    )
+    op.create_foreign_key(None, "output_file", "entity", ["entity_id"], ["id"])
+    op.create_foreign_key(
+        None, "output_file", "working_file", ["source_file_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "output_file", "file_status", ["file_status_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "output_file", "output_type", ["output_type_id"], ["id"]
+    )
+    op.create_foreign_key(None, "output_file", "person", ["person_id"], ["id"])
+    op.create_foreign_key(
+        None, "output_file", "asset_instance", ["asset_instance_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "output_file", "entity", ["temporal_entity_id"], ["id"]
+    )
+    op.create_foreign_key(None, "preview_file", "task", ["task_id"], ["id"])
+    op.create_foreign_key(
+        None, "preview_file", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "preview_file", "output_file", ["source_file_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "task", "task_status", ["task_status_id"], ["id"]
+    )
+    op.create_foreign_key(None, "task", "person", ["assigner_id"], ["id"])
+    op.create_foreign_key(None, "task", "project", ["project_id"], ["id"])
+    op.create_foreign_key(None, "task", "task_type", ["task_type_id"], ["id"])
+    op.create_foreign_key(None, "task", "entity", ["entity_id"], ["id"])
+    op.create_foreign_key(
+        None, "working_file", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(None, "working_file", "task", ["task_id"], ["id"])
+    op.create_foreign_key(
+        None, "working_file", "entity", ["entity_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "working_file", "software", ["software_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "asset_instance_link",
+        "asset_instance",
+        ["asset_instance_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "asset_instance_link", "entity", ["entity_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity_concept_link", "entity", ["entity_out_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity_concept_link", "entity", ["entity_in_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity_link", "entity", ["entity_out_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity_link", "entity", ["entity_in_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "hardware_item_department_link",
+        "hardware_item",
+        ["hardware_item_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "hardware_item_department_link",
+        "department",
+        ["department_id"],
+        ["id"],
+    )
+    op.create_foreign_key(None, "person", "studio", ["studio_id"], ["id"])
+    op.create_foreign_key(
+        None, "project", "project_status", ["project_status_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "project",
+        "production_schedule_version",
+        ["from_schedule_version_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "project",
+        "preview_background_file",
+        ["default_preview_background_file_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "salary_scale", "department", ["department_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "software_department_link",
+        "department",
+        ["department_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "software_department_link", "software", ["software_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "task_type", "department", ["department_id"], ["id"]
+    )
+    op.create_foreign_key(None, "api_event", "project", ["project_id"], ["id"])
+    op.create_foreign_key(None, "api_event", "person", ["user_id"], ["id"])
+    op.create_foreign_key(None, "budget", "project", ["project_id"], ["id"])
+    op.create_foreign_key(
+        None, "chat_message", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(None, "chat_message", "chat", ["chat_id"], ["id"])
+    op.create_foreign_key(
+        None, "chat_participant", "chat", ["chat_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "chat_participant", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment", "task_status", ["task_status_id"], ["id"]
+    )
+    op.create_foreign_key(None, "comment", "person", ["editor_id"], ["id"])
+    op.create_foreign_key(None, "comment", "person", ["person_id"], ["id"])
+    op.create_foreign_key(
+        None, "comment", "preview_file", ["preview_file_id"], ["id"]
+    )
+    op.create_foreign_key(None, "day_off", "person", ["person_id"], ["id"])
+    op.create_foreign_key(
+        None, "department_link", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "department_link", "department", ["department_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "desktop_login_log", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity_version", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "entity_version", "entity", ["entity_id"], ["id"]
+    )
+    op.create_foreign_key(None, "login_log", "person", ["person_id"], ["id"])
+    op.create_foreign_key(
+        None, "metadata_descriptor", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "milestone", "task_type", ["task_type_id"], ["id"]
+    )
+    op.create_foreign_key(None, "milestone", "project", ["project_id"], ["id"])
+    op.create_foreign_key(None, "playlist", "entity", ["episode_id"], ["id"])
+    op.create_foreign_key(
+        None, "playlist", "task_type", ["task_type_id"], ["id"]
+    )
+    op.create_foreign_key(None, "playlist", "project", ["project_id"], ["id"])
+    op.create_foreign_key(
+        None, "production_schedule_version", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "production_schedule_version",
+        "production_schedule_version",
+        ["production_schedule_from"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "project_asset_type_link",
+        "entity_type",
+        ["asset_type_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "project_asset_type_link", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "project_person_link", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "project_person_link", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "project_preview_background_file_link",
+        "project",
+        ["project_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "project_preview_background_file_link",
+        "preview_background_file",
+        ["preview_background_file_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "project_task_status_link",
+        "task_status",
+        ["task_status_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "project_task_status_link", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "project_task_type_link", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "project_task_type_link", "task_type", ["task_type_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "schedule_item", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "schedule_item", "task_type", ["task_type_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "search_filter_group", "department", ["department_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "search_filter_group", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "search_filter_group", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "status_automation", "task_status", ["in_task_status_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "status_automation", "task_type", ["out_task_type_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "status_automation",
+        "task_status",
+        ["out_task_status_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "status_automation", "task_type", ["in_task_type_id"], ["id"]
+    )
+    op.create_foreign_key(None, "subscription", "task", ["task_id"], ["id"])
+    op.create_foreign_key(
+        None, "subscription", "task_type", ["task_type_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "subscription", "entity", ["entity_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "subscription", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "task_person_link", "task", ["task_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "task_person_link", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "task_type_asset_type_link",
+        "task_type",
+        ["task_type_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "task_type_asset_type_link",
+        "entity_type",
+        ["asset_type_id"],
+        ["id"],
+    )
+    op.create_foreign_key(None, "time_spent", "person", ["person_id"], ["id"])
+    op.create_foreign_key(None, "time_spent", "task", ["task_id"], ["id"])
+    op.create_foreign_key(
+        None, "attachment_file", "chat_message", ["chat_message_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "attachment_file", "comment", ["comment_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "budget_entry", "budget", ["budget_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "budget_entry", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "budget_entry", "department", ["department_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "build_job", "playlist", ["playlist_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment_acknoledgments", "comment", ["comment"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment_acknoledgments", "person", ["person"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "comment_department_mentions",
+        "department",
+        ["department"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "comment_department_mentions", "comment", ["comment"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment_mentions", "person", ["person"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment_mentions", "comment", ["comment"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment_preview_link", "preview_file", ["preview_file"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "comment_preview_link", "comment", ["comment"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "department_metadata_descriptor_link",
+        "department",
+        ["department_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "department_metadata_descriptor_link",
+        "metadata_descriptor",
+        ["metadata_descriptor_id"],
+        ["id"],
+    )
+    op.create_foreign_key(None, "news", "person", ["author_id"], ["id"])
+    op.create_foreign_key(None, "news", "task", ["task_id"], ["id"])
+    op.create_foreign_key(
+        None, "news", "preview_file", ["preview_file_id"], ["id"]
+    )
+    op.create_foreign_key(None, "news", "comment", ["comment_id"], ["id"])
+    op.create_foreign_key(
+        None, "notification", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "notification", "person", ["author_id"], ["id"]
+    )
+    op.create_foreign_key(None, "notification", "task", ["task_id"], ["id"])
+    op.create_foreign_key(
+        None, "notification", "comment", ["comment_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "notification", "playlist", ["playlist_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "production_schedule_version_task_link",
+        "production_schedule_version",
+        ["production_schedule_version_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "production_schedule_version_task_link",
+        "task",
+        ["task_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "project_status_automation_link",
+        "project",
+        ["project_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "project_status_automation_link",
+        "status_automation",
+        ["status_automation_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "search_filter",
+        "search_filter_group",
+        ["search_filter_group_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None, "search_filter", "project", ["project_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "search_filter", "department", ["department_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None, "search_filter", "person", ["person_id"], ["id"]
+    )
+    op.create_foreign_key(
+        None,
+        "production_schedule_version_task_link_person_link",
+        "person",
+        ["person_id"],
+        ["id"],
+    )
+    op.create_foreign_key(
+        None,
+        "production_schedule_version_task_link_person_link",
+        "production_schedule_version_task_link",
+        ["production_schedule_version_task_link_id"],
+        ["id"],
     )
     op.create_index(
         "ix_asset_instance_asset_id",
@@ -2730,7 +3021,7 @@ def upgrade():
         unique=False,
     )
     op.create_index(
-        "ix_production_schedule_version_task_link_production_schedule_version_id",
+        "ix_production_schedule_version_task_link_production_sch_9cee",
         "production_schedule_version_task_link",
         ["production_schedule_version_id"],
         unique=False,
@@ -2789,7 +3080,7 @@ def downgrade():
     )
     op.drop_table("project_status_automation_link")
     op.drop_index(
-        "ix_production_schedule_version_task_link_production_schedule_version_id",
+        "ix_production_schedule_version_task_link_production_sch_9cee",
         table_name="production_schedule_version_task_link",
     )
     op.drop_index(
