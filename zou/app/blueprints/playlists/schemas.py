@@ -59,3 +59,27 @@ class NotifyClientsPlaylistSchema(BaseSchema):
         if v == "":
             return None
         return v
+
+
+class CreatePlaylistShareLinkSchema(BaseSchema):
+    """Body for creating a playlist share link."""
+
+    expiration_date: Optional[str] = Field(
+        None,
+        description="Optional ISO 8601 date after which the link expires",
+    )
+    can_comment: bool = Field(
+        True,
+        description="Whether guests are allowed to comment / annotate",
+    )
+    password: Optional[str] = Field(
+        None,
+        description="Optional password required to access the link",
+    )
+
+    @field_validator("expiration_date", "password", mode="before")
+    @classmethod
+    def coerce_empty_to_none(cls, v):
+        if v == "":
+            return None
+        return v

@@ -16,6 +16,7 @@ from zou.app.mixin import ArgsMixin
 
 from zou.app.blueprints.playlists.schemas import (
     AddEntityToPlaylistSchema,
+    CreatePlaylistShareLinkSchema,
     NotifyClientsPlaylistSchema,
     TempPlaylistCreateSchema,
 )
@@ -955,13 +956,13 @@ class PlaylistShareLinksResource(Resource):
     def post(self, playlist_id):
         permissions.check_manager_permissions()
         person = persons_service.get_current_user()
-        data = request.get_json(silent=True) or {}
+        body = validation.validate_request_body(CreatePlaylistShareLinkSchema)
         share_link = playlist_sharing_service.create_share_link(
             playlist_id,
             person["id"],
-            expiration_date=data.get("expiration_date"),
-            can_comment=data.get("can_comment", True),
-            password=data.get("password"),
+            expiration_date=body.expiration_date,
+            can_comment=body.can_comment,
+            password=body.password,
         )
         return share_link, 201
 
