@@ -311,7 +311,7 @@ class SharedPlaylistCommentResource(Resource):
         data = request.get_json(silent=True) or {}
         try:
             return playlist_sharing_service.update_guest_comment(
-                comment_id, data.get("guest_id"), data
+                comment_id, data.get("guest_id"), data, token
             )
         except playlist_sharing_service.GuestCommentForbidden:
             return {"error": "Forbidden"}, 403
@@ -334,7 +334,7 @@ class SharedPlaylistCommentResource(Resource):
         body = validation.validate_request_body(GuestActionSchema)
         try:
             playlist_sharing_service.delete_guest_comment(
-                comment_id, str(body.guest_id)
+                comment_id, str(body.guest_id), token
             )
             return "", 204
         except playlist_sharing_service.GuestCommentForbidden:
@@ -365,7 +365,7 @@ class SharedPlaylistCommentAttachmentsResource(Resource):
         )
         try:
             comment = playlist_sharing_service.add_guest_comment_attachments(
-                comment_id, guest_id, request.files
+                comment_id, guest_id, request.files, token
             )
             return comment, 201
         except playlist_sharing_service.GuestCommentForbidden:
@@ -392,7 +392,7 @@ class SharedPlaylistCommentAttachmentResource(Resource):
         body = validation.validate_request_body(GuestActionSchema)
         try:
             playlist_sharing_service.remove_guest_comment_attachment(
-                comment_id, str(body.guest_id), attachment_id
+                comment_id, str(body.guest_id), attachment_id, token
             )
             return "", 204
         except playlist_sharing_service.GuestCommentForbidden:

@@ -123,9 +123,14 @@ class GuestCommentNotFound(Exception):
     pass
 
 
-def _load_guest_comment(comment_id, guest_id):
+def _load_guest_comment(comment_id, guest_id, token):
     """
-    Fetch a comment by id and ensure it was authored by the given guest.
+    Fetch a comment by id and ensure (a) it was authored by the given guest
+    and (b) it lives on a task that is part of the playlist exposed by the
+    share token. Without (b), a guest who has commented on tasks across
+    several playlists could mutate any of those comments through any
+    single share link they hold.
+
     Raises :class:`GuestCommentForbidden` or :class:`GuestCommentNotFound`.
     """
     if not guest_id:
@@ -138,26 +143,48 @@ def _load_guest_comment(comment_id, guest_id):
         raise GuestCommentNotFound
     if str(comment.get("person_id")) != str(guest_id):
         raise GuestCommentForbidden
+    task_id = comment.get("object_id")
+    if task_id is None:
+        raise GuestCommentForbidden
+    playlist = get_shared_playlist(token)
+    playlist_task_ids = {
+        str(shot.get("preview_file_task_id"))
+        for shot in playlist.get("shots", []) or []
+        if shot.get("preview_file_task_id")
+    }
+    if str(task_id) not in playlist_task_ids:
+        raise GuestCommentForbidden
     return comment
 
 
-def update_guest_comment(comment_id, guest_id, data):
+def update_guest_comment(comment_id, guest_id, data, token):
     """
     Update a comment authored by a guest. Accepts ``text``, ``checklist`` and
     ``task_status_id`` in ``data``. Triggers the same post-update side effects
     as the regular CRUD path (reset mentions, cache, events, task status
     reset when needed).
+
+    The ``token`` is used to scope the comment to the share link's playlist,
+    and also to reject ``task_status_id`` values that are not flagged as
+    client-allowed (a guest must not be able to set a manager-only status).
     """
     from zou.app.models.comment import Comment
     from zou.app.services import comments_service, notifications_service
     from zou.app.utils import events
 
-    instance = _load_guest_comment(comment_id, guest_id)
+    instance = _load_guest_comment(comment_id, guest_id, token)
 
     new_status_id = data.get("task_status_id")
     status_changed = bool(
         new_status_id and instance.get("task_status_id") != new_status_id
     )
+    if status_changed:
+        try:
+            new_status = tasks_service.get_task_status(new_status_id)
+        except Exception:
+            raise GuestCommentForbidden
+        if not new_status.get("is_client_allowed", False):
+            raise GuestCommentForbidden
     previous_status_id = instance.get("task_status_id")
 
     comment_row = Comment.get(comment_id)
@@ -205,16 +232,19 @@ def update_guest_comment(comment_id, guest_id, data):
     return _serialize_enriched_comment(comment_id)
 
 
-def delete_guest_comment(comment_id, guest_id):
+def delete_guest_comment(comment_id, guest_id, token):
     """
     Delete a comment authored by a guest. Triggers the same side effects as
     the regular CRUD delete: removal via ``deletion_service``, task data
     reset and task status event if the status changed.
+
+    Scoped to the share link via ``token`` so a guest cannot delete a
+    comment they authored on a task that is not part of this playlist.
     """
     from zou.app.services import deletion_service
     from zou.app.utils import events
 
-    instance = _load_guest_comment(comment_id, guest_id)
+    instance = _load_guest_comment(comment_id, guest_id, token)
 
     task_id = instance["object_id"]
     task_before = tasks_service.get_task(task_id)
@@ -257,14 +287,15 @@ def _serialize_enriched_comment(comment_id):
     return comment
 
 
-def add_guest_comment_attachments(comment_id, guest_id, files):
+def add_guest_comment_attachments(comment_id, guest_id, files, token):
     """
-    Attach uploaded files to a comment authored by the given guest.
+    Attach uploaded files to a comment authored by the given guest, scoped
+    to the share link's playlist via ``token``.
     Returns the updated comment dict (with relations).
     """
     from zou.app.services import comments_service
 
-    comment = _load_guest_comment(comment_id, guest_id)
+    comment = _load_guest_comment(comment_id, guest_id, token)
     comments_service.add_attachments_to_comment(comment, files)
     return _serialize_enriched_comment(comment_id)
 
@@ -317,14 +348,17 @@ def download_shared_attachment(token, attachment_id, file_name):
     )
 
 
-def remove_guest_comment_attachment(comment_id, guest_id, attachment_id):
+def remove_guest_comment_attachment(
+    comment_id, guest_id, attachment_id, token
+):
     """
-    Remove a single attachment from a comment authored by the given guest.
+    Remove a single attachment from a comment authored by the given guest,
+    scoped to the share link's playlist via ``token``.
     """
     from zou.app.models.attachment_file import AttachmentFile
     from zou.app.services import deletion_service
 
-    _load_guest_comment(comment_id, guest_id)
+    _load_guest_comment(comment_id, guest_id, token)
     attachment = AttachmentFile.get(attachment_id)
     if attachment is None or str(attachment.comment_id) != str(comment_id):
         raise GuestCommentNotFound

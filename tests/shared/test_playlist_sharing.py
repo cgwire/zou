@@ -14,7 +14,26 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         self.generate_fixture_person()
         self.generate_fixture_assigner()
         self.generate_fixture_task()
+        # Guest comment endpoints reject statuses that are not flagged as
+        # client-allowed, so make the default status reachable from a guest.
+        self.task_status.update({"is_client_allowed": True})
         self.playlist = self.generate_fixture_playlist("Test Playlist")
+        # Scope guest mutations to this playlist by listing the task as one
+        # of its shots.
+        self.playlist_record = self.playlist  # already a serialized dict
+        from zou.app.models.playlist import Playlist as PlaylistModel
+
+        playlist_row = PlaylistModel.get(self.playlist["id"])
+        playlist_row.update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "preview_file_task_id": str(self.task.id),
+                    }
+                ]
+            }
+        )
 
     # --- Authenticated share link management (manager+) ---
 
@@ -152,6 +171,72 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             201,
         )
         self.assertEqual(comment["text"], "Great work!")
+
+    def test_guest_comment_rejects_foreign_task(self):
+        """A guest cannot post a comment on a task that is not part of the
+        playlist they hold a share link to."""
+        from zou.app.models.task import Task
+
+        foreign_task = Task.create(
+            name="Foreign",
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            task_status_id=self.task_status.id,
+            entity_id=self.asset.id,
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+        self.log_out()
+        guest = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": "Reviewer"},
+            201,
+        )
+        self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(foreign_task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "should be rejected",
+            },
+            403,
+        )
+
+    def test_guest_comment_rejects_non_client_status(self):
+        """A guest cannot set a task status that is not client-allowed."""
+        from zou.app.models.task_status import TaskStatus
+
+        manager_status = TaskStatus.create(
+            name="Approved",
+            short_name="apr",
+            color="#000000",
+            is_client_allowed=False,
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+        self.log_out()
+        guest = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": "Reviewer"},
+            201,
+        )
+        self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(manager_status.id),
+                "text": "should be rejected",
+            },
+            400,
+        )
 
     def test_guest_comment_disabled(self):
         link = self.post(
