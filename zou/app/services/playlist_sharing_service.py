@@ -1,6 +1,8 @@
 import datetime
 import uuid
 
+import flask_bcrypt
+
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
@@ -18,7 +20,7 @@ from zou.app.services.exception import (
     PlaylistShareLinkNotFoundException,
     PlaylistNotFoundException,
 )
-from zou.app.utils import fields
+from zou.app.utils import auth as auth_utils, fields
 
 
 def create_share_link(
@@ -34,6 +36,17 @@ def create_share_link(
     """
     playlists_service.get_playlist(playlist_id)
     token = str(uuid.uuid4())
+    # Hash the password at rest so a DB leak (or a manager fetching the
+    # share link list) never exposes the cleartext credential. An empty
+    # or missing password is stored as NULL — the validate path then
+    # treats the link as unprotected. encrypt_password returns bytes;
+    # decode to str so it lands in the String column as a real hash
+    # rather than the literal bytes repr.
+    password_hash = (
+        auth_utils.encrypt_password(password).decode("utf-8")
+        if password
+        else None
+    )
     share_link = PlaylistShareLink.create(
         token=token,
         playlist_id=playlist_id,
@@ -44,7 +57,7 @@ def create_share_link(
             else None
         ),
         can_comment=can_comment,
-        password=password,
+        password=password_hash,
     )
     return share_link.serialize()
 
@@ -99,7 +112,15 @@ def validate_share_token(token, password=None):
             raise PlaylistShareLinkNotFoundException
 
     if share_link.password is not None and share_link.password != "":
-        if password != share_link.password:
+        # Constant-time bcrypt verify; never a plain `!=`.
+        if not password:
+            raise PlaylistShareLinkNotFoundException
+        try:
+            if not flask_bcrypt.check_password_hash(
+                share_link.password, password
+            ):
+                raise PlaylistShareLinkNotFoundException
+        except (ValueError, TypeError):
             raise PlaylistShareLinkNotFoundException
 
     return share_link.serialize()

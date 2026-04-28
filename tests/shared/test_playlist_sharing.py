@@ -56,6 +56,46 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         result = self.get(f"/data/playlists/{self.playlist['id']}/share")
         self.assertEqual(len(result), 1)
 
+    def test_share_link_password_is_hashed_and_not_serialized(self):
+        """Manager-facing endpoints must never return the share link
+        password, and the value stored at rest must be a bcrypt hash, not
+        plaintext."""
+        from zou.app.models.playlist_share_link import PlaylistShareLink
+
+        plaintext = "topsecret123"
+        result = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"password": plaintext},
+            201,
+        )
+        self.assertNotIn("password", result)
+        self.assertTrue(result.get("has_password"))
+
+        listing = self.get(f"/data/playlists/{self.playlist['id']}/share")
+        self.assertEqual(len(listing), 1)
+        self.assertNotIn("password", listing[0])
+        self.assertTrue(listing[0].get("has_password"))
+
+        stored = PlaylistShareLink.get_by(token=result["token"])
+        self.assertIsNotNone(stored.password)
+        self.assertNotEqual(stored.password, plaintext)
+        self.assertTrue(stored.password.startswith("$2"))
+
+    def test_share_link_password_validates_with_bcrypt(self):
+        """The shared playlist endpoint must accept the correct password
+        (verified against the bcrypt hash) and reject incorrect ones."""
+        plaintext = "topsecret123"
+        result = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"password": plaintext},
+            201,
+        )
+        token = result["token"]
+        self.log_out()
+        self.get(f"/shared/playlists/{token}", 404)
+        self.get(f"/shared/playlists/{token}?password=wrong", 404)
+        self.get(f"/shared/playlists/{token}?password={plaintext}")
+
     def test_revoke_share_link(self):
         link = self.post(
             f"/data/playlists/{self.playlist['id']}/share",
