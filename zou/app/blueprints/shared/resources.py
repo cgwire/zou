@@ -12,6 +12,7 @@ from zou.app.blueprints.shared.decorators import (
 from zou.app.blueprints.shared.schemas import (
     CreateGuestCommentSchema,
     CreateGuestSchema,
+    EditGuestCommentSchema,
     GuestActionSchema,
     UpdateGuestAnnotationsSchema,
 )
@@ -317,10 +318,20 @@ class SharedPlaylistCommentResource(Resource):
         if not share_link.get("can_comment", True):
             return {"error": "Comments are disabled for this link"}, 403
 
-        data = request.get_json(silent=True) or {}
+        body = validation.validate_request_body(EditGuestCommentSchema)
+        # Build the trimmed dict the service expects, dropping unset
+        # fields so its `if "text" in data` / `if "checklist" in data`
+        # branches don't overwrite the existing value with None.
+        update_data = {"guest_id": str(body.guest_id)}
+        if body.text is not None:
+            update_data["text"] = body.text
+        if body.checklist is not None:
+            update_data["checklist"] = body.checklist
+        if body.task_status_id is not None:
+            update_data["task_status_id"] = str(body.task_status_id)
         try:
             return playlist_sharing_service.update_guest_comment(
-                comment_id, data.get("guest_id"), data, token
+                comment_id, str(body.guest_id), update_data, token
             )
         except playlist_sharing_service.GuestCommentForbidden:
             return {"error": "Forbidden"}, 403
