@@ -9,6 +9,12 @@ from zou.app.blueprints.previews.resources import (
 from zou.app.blueprints.shared.decorators import (
     require_valid_playlist_share_link,
 )
+from zou.app.blueprints.shared.schemas import (
+    CreateGuestCommentSchema,
+    CreateGuestSchema,
+    GuestActionSchema,
+    UpdateGuestAnnotationsSchema,
+)
 from zou.app.services import (
     comments_service,
     files_service,
@@ -17,6 +23,7 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
 )
+from zou.app.utils import validation
 
 
 class SharedPlaylistResource(Resource):
@@ -105,21 +112,18 @@ class SharedPlaylistGuestResource(Resource):
                 schema:
                   type: object
         """
-        data = request.get_json(silent=True) or {}
-        first_name = data.get("first_name", "Guest")
-        last_name = data.get("last_name", "")
+        body = validation.validate_request_body(CreateGuestSchema)
 
         # If a guest_id is provided, try to reuse it
-        guest_id = data.get("guest_id")
-        if guest_id:
+        if body.guest_id is not None:
             try:
-                guest = playlist_sharing_service.get_guest(guest_id)
+                guest = playlist_sharing_service.get_guest(str(body.guest_id))
                 return guest
             except Exception:
                 pass
 
         guest = playlist_sharing_service.create_guest(
-            token, first_name, last_name
+            token, body.first_name, body.last_name
         )
         return guest, 201
 
@@ -235,7 +239,8 @@ class SharedPlaylistCommentsResource(Resource):
                 schema:
                   type: object
           400:
-            description: Missing required body fields
+            description: Missing required body fields, unknown task status, or
+              task status not allowed for guest reviewers
             content:
               application/json:
                 schema:
@@ -244,7 +249,8 @@ class SharedPlaylistCommentsResource(Resource):
                     error:
                       type: string
           403:
-            description: Comments disabled for this share link
+            description: Comments disabled for this share link, or the task
+              is not part of this shared playlist
             content:
               application/json:
                 schema:
@@ -257,24 +263,29 @@ class SharedPlaylistCommentsResource(Resource):
         if not share_link.get("can_comment", True):
             return {"error": "Comments are disabled for this link"}, 403
 
-        data = request.get_json(silent=True) or {}
-        guest_id = data.get("guest_id")
-        task_id = data.get("task_id")
-        task_status_id = data.get("task_status_id")
-        text = data.get("text", "")
-        checklist = data.get("checklist") or []
-
-        if not guest_id or not task_id or not task_status_id:
-            return {"error": "Missing required fields"}, 400
+        body = validation.validate_request_body(CreateGuestCommentSchema)
+        guest_id = str(body.guest_id)
+        task_id = str(body.task_id)
+        task_status_id = str(body.task_status_id)
 
         playlist_sharing_service.get_guest(guest_id)
+
+        if not _is_task_in_shared_playlist(token, task_id):
+            return {"error": "Task not part of this shared playlist"}, 403
+
+        try:
+            task_status = tasks_service.get_task_status(task_status_id)
+        except Exception:
+            return {"error": "Task status not found"}, 400
+        if not task_status.get("is_client_allowed", False):
+            return {"error": "Task status not allowed for guests"}, 400
 
         comment = comments_service.create_comment(
             person_id=guest_id,
             task_id=task_id,
             task_status_id=task_status_id,
-            text=text,
-            checklist=checklist,
+            text=body.text or "",
+            checklist=body.checklist or [],
             for_client=True,
         )
         return comment, 201
@@ -320,12 +331,10 @@ class SharedPlaylistCommentResource(Resource):
         if not share_link.get("can_comment", True):
             return {"error": "Comments are disabled for this link"}, 403
 
-        guest_id = request.args.get("guest_id") or (
-            request.get_json(silent=True) or {}
-        ).get("guest_id")
+        body = validation.validate_request_body(GuestActionSchema)
         try:
             playlist_sharing_service.delete_guest_comment(
-                comment_id, guest_id
+                comment_id, str(body.guest_id)
             )
             return "", 204
         except playlist_sharing_service.GuestCommentForbidden:
@@ -380,12 +389,10 @@ class SharedPlaylistCommentAttachmentResource(Resource):
         if not share_link.get("can_comment", True):
             return {"error": "Comments are disabled for this link"}, 403
 
-        guest_id = request.args.get("guest_id") or (
-            request.get_json(silent=True) or {}
-        ).get("guest_id")
+        body = validation.validate_request_body(GuestActionSchema)
         try:
             playlist_sharing_service.remove_guest_comment_attachment(
-                comment_id, guest_id, attachment_id
+                comment_id, str(body.guest_id), attachment_id
             )
             return "", 204
         except playlist_sharing_service.GuestCommentForbidden:
@@ -481,15 +488,12 @@ class SharedPlaylistAnnotationsResource(Resource):
         if not share_link.get("can_comment", True):
             return {"error": "Annotations are disabled"}, 403
 
-        data = request.get_json(silent=True) or {}
-        guest_id = data.get("guest_id")
-        preview_file_id = data.get("preview_file_id")
-        additions = data.get("additions", [])
-        updates = data.get("updates", [])
-        deletions = data.get("deletions", [])
-
-        if not guest_id or not preview_file_id:
-            return {"error": "Missing required fields"}, 400
+        body = validation.validate_request_body(UpdateGuestAnnotationsSchema)
+        guest_id = str(body.guest_id)
+        preview_file_id = str(body.preview_file_id)
+        additions = body.additions or []
+        updates = body.updates or []
+        deletions = body.deletions or []
 
         playlist_sharing_service.get_guest(guest_id)
 
@@ -523,6 +527,20 @@ def _is_preview_file_in_shared_playlist(token, preview_file_id):
         for sub in shot.get("preview_file_previews", []) or []:
             if str(sub.get("id") or "") == pid:
                 return True
+    return False
+
+
+def _is_task_in_shared_playlist(token, task_id):
+    """
+    Ensure the given task id is the preview task of one of the playlist's
+    shots. Used to scope guest mutations (comments, status changes) to the
+    playlist exposed by the share token.
+    """
+    playlist = playlist_sharing_service.get_shared_playlist(token)
+    tid = str(task_id)
+    for shot in playlist.get("shots", []) or []:
+        if str(shot.get("preview_file_task_id") or "") == tid:
+            return True
     return False
 
 
