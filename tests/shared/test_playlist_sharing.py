@@ -56,6 +56,54 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         result = self.get(f"/data/playlists/{self.playlist['id']}/share")
         self.assertEqual(len(result), 1)
 
+    def test_share_link_routes_check_project_access(self):
+        """A manager who is not on the playlist's project must not be
+        able to list, create, or revoke share links for that playlist
+        (cross-project IDOR)."""
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        self.generate_fixture_user_manager()
+        self.log_out()
+        self.log_in_manager()
+
+        self.get(f"/data/playlists/{self.playlist['id']}/share", 403)
+        self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            403,
+        )
+        self.delete(
+            f"/data/playlists/{self.playlist['id']}/share/{link['token']}",
+            403,
+        )
+
+    def test_revoke_share_link_rejects_mismatched_playlist(self):
+        """A token must only be revocable through the URL of the playlist
+        it actually belongs to. Otherwise an admin/manager who knows any
+        token could revoke it via any playlist URL they have access to."""
+        from zou.app.models.playlist import Playlist
+
+        other_playlist = Playlist.create(
+            name="Other Playlist",
+            project_id=self.project.id,
+            for_entity="shot",
+            shots=[],
+        ).serialize()
+
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.delete(
+            f"/data/playlists/{other_playlist['id']}/share/{link['token']}",
+            404,
+        )
+
     def test_share_link_password_is_hashed_and_not_serialized(self):
         """Manager-facing endpoints must never return the share link
         password, and the value stored at rest must be a bcrypt hash, not

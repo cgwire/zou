@@ -31,7 +31,10 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.services.exception import BuildJobNotFoundException
+from zou.app.services.exception import (
+    BuildJobNotFoundException,
+    PlaylistShareLinkNotFoundException,
+)
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters
@@ -948,6 +951,8 @@ class PlaylistShareLinksResource(Resource):
     @jwt_required()
     def get(self, playlist_id):
         permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
         return playlist_sharing_service.get_share_links_for_playlist(
             playlist_id
         )
@@ -955,6 +960,8 @@ class PlaylistShareLinksResource(Resource):
     @jwt_required()
     def post(self, playlist_id):
         permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
         person = persons_service.get_current_user()
         body = validation.validate_request_body(CreatePlaylistShareLinkSchema)
         share_link = playlist_sharing_service.create_share_link(
@@ -975,4 +982,14 @@ class PlaylistShareLinkResource(Resource):
     @jwt_required()
     def delete(self, playlist_id, token):
         permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
+        share_link = playlist_sharing_service.get_share_link_by_token_raw(
+            token
+        )
+        # Path playlist_id must match the share link's own playlist_id;
+        # otherwise a manager who knows any token could revoke it via any
+        # playlist URL they DO have access to.
+        if str(share_link.playlist_id) != str(playlist_id):
+            raise PlaylistShareLinkNotFoundException
         return playlist_sharing_service.revoke_share_link(token)
