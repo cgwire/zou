@@ -830,5 +830,29 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(result["asset"][project_id][1]["name"], "updated")
         self.assertEqual(result["asset"][project_id][2]["name"], "my group")
 
+    def test_context_excludes_guests(self):
+        """Guests created by the shared playlist flow must not show up
+        in /data/user/context — they are not part of the studio team."""
+        Person.create(
+            first_name="Reviewer",
+            last_name="One",
+            email="guest-1@guest.kitsu",
+            role="client",
+            is_guest=True,
+        )
+        regular_count_before = len(persons_service.get_persons())
+
+        context = self.get("/data/user/context")
+        person_ids = [p["id"] for p in context["persons"]]
+        self.assertEqual(len(person_ids), regular_count_before)
+        self.assertFalse(
+            any(
+                p.get("is_guest")
+                for p in context["persons"]
+                if "is_guest" in p
+            ),
+            "context.persons leaked an is_guest=True person",
+        )
+
     def create_test_folder(self):
         return super().create_test_folder()
