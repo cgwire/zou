@@ -47,12 +47,19 @@ def clear_organisation_cache():
 
 
 @cache.memoize_function(120)
-def get_persons(minimal=False):
+def get_persons(minimal=False, include_guests=False):
     """
     Return all person stored in database.
+
+    Guests (created by the shared playlist flow) are excluded by
+    default — they are not part of the studio team and would otherwise
+    leak into the user context payload, the people page, and various
+    person dropdowns. Pass ``include_guests=True`` to opt in.
     """
     persons = []
     query = Person.query.options(selectinload(Person.departments))
+    if not include_guests:
+        query = query.filter(Person.is_guest.is_(False))
     for person in query.all():
         if minimal:
             persons.append(person.present_minimal(relations=True))

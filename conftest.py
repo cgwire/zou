@@ -10,7 +10,13 @@ os.environ.setdefault("CACHE_TYPE", "simple")
 os.environ.setdefault("BCRYPT_LOG_ROUNDS", "4")
 os.environ.setdefault("DB_POOL_PRE_PING", "false")
 
-_REAL_BCRYPT_FILES = {"test_auth_route.py", "test_auth_service.py"}
+_REAL_BCRYPT_FILES = {
+    "test_auth_route.py",
+    "test_auth_service.py",
+    # Share-link passwords are hashed with bcrypt; the verification
+    # path must not be patched to always-True for this file.
+    "test_playlist_sharing.py",
+}
 
 # flask_bcrypt module-level functions create a Bcrypt() instance without
 # the app, so BCRYPT_LOG_ROUNDS is ignored and rounds default to 12.

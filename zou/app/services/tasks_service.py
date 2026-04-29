@@ -4,7 +4,7 @@ import uuid
 from sqlalchemy.exc import StatementError, IntegrityError, DataError
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import case
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, selectinload
 
 from zou.app import app, db
 from zou.app.utils import events
@@ -359,7 +359,8 @@ def get_task_dicts_for_entity(entity_id, relations=True):
 
 def _get_entity_task_query():
     return (
-        Task.query.order_by(Task.name)
+        Task.query.options(selectinload(Task.assignees))
+        .order_by(Task.name)
         .join(Project, Task.project_id == Project.id)
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, TaskStatus.id == Task.task_status_id)
@@ -1708,8 +1709,10 @@ def get_tasks_for_project(
     """
     Return all tasks for given project.
     """
-    query = Task.query.filter(Task.project_id == project_id).order_by(
-        Task.updated_at.desc()
+    query = (
+        Task.query.options(selectinload(Task.assignees))
+        .filter(Task.project_id == project_id)
+        .order_by(Task.updated_at.desc())
     )
     if task_type_id is not None:
         query = query.filter(Task.task_type_id == task_type_id)

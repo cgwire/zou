@@ -16,6 +16,8 @@ from zou.app.mixin import ArgsMixin
 
 from zou.app.blueprints.playlists.schemas import (
     AddEntityToPlaylistSchema,
+    CreatePlaylistShareLinkSchema,
+    InviteShareLinkSchema,
     NotifyClientsPlaylistSchema,
     TempPlaylistCreateSchema,
 )
@@ -30,7 +32,10 @@ from zou.app.services import (
     shots_service,
     user_service,
 )
-from zou.app.services.exception import BuildJobNotFoundException
+from zou.app.services.exception import (
+    BuildJobNotFoundException,
+    PlaylistShareLinkNotFoundException,
+)
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters
@@ -947,6 +952,8 @@ class PlaylistShareLinksResource(Resource):
     @jwt_required()
     def get(self, playlist_id):
         permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
         return playlist_sharing_service.get_share_links_for_playlist(
             playlist_id
         )
@@ -954,14 +961,16 @@ class PlaylistShareLinksResource(Resource):
     @jwt_required()
     def post(self, playlist_id):
         permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
         person = persons_service.get_current_user()
-        data = request.get_json(silent=True) or {}
+        body = validation.validate_request_body(CreatePlaylistShareLinkSchema)
         share_link = playlist_sharing_service.create_share_link(
             playlist_id,
             person["id"],
-            expiration_date=data.get("expiration_date"),
-            can_comment=data.get("can_comment", True),
-            password=data.get("password"),
+            expiration_date=body.expiration_date,
+            can_comment=body.can_comment,
+            password=body.password,
         )
         return share_link, 201
 
@@ -974,4 +983,106 @@ class PlaylistShareLinkResource(Resource):
     @jwt_required()
     def delete(self, playlist_id, token):
         permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
+        share_link = playlist_sharing_service.get_share_link_by_token_raw(
+            token
+        )
+        # Path playlist_id must match the share link's own playlist_id;
+        # otherwise a manager who knows any token could revoke it via any
+        # playlist URL they DO have access to.
+        if str(share_link.playlist_id) != str(playlist_id):
+            raise PlaylistShareLinkNotFoundException
         return playlist_sharing_service.revoke_share_link(token)
+
+
+class PlaylistShareLinkInviteResource(Resource):
+    """
+    Email a share link to one or more recipients (manager+).
+
+    Recipients can be free-form emails and/or existing Person ids
+    (e.g. clients on the project) — the server resolves person ids to
+    their email server-side. The endpoint is fire-and-forget: no DB
+    record of the invitation is kept.
+    """
+
+    @jwt_required()
+    def post(self, playlist_id, token):
+        """
+        Invite reviewers to a shared playlist
+        ---
+        description: Send the share URL by email to a list of recipients
+          (raw emails and/or existing person ids).
+        tags:
+          - Playlists
+        parameters:
+          - in: path
+            name: playlist_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+          - in: path
+            name: token
+            required: true
+            schema:
+              type: string
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  emails:
+                    type: array
+                    items:
+                      type: string
+                      format: email
+                  person_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                  message:
+                    type: string
+        responses:
+          200:
+            description: Invitations dispatched
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    sent:
+                      type: array
+                      items:
+                        type: string
+          400:
+            description: One of the supplied emails is invalid
+        """
+        permissions.check_manager_permissions()
+        playlist = playlists_service.get_playlist(playlist_id)
+        user_service.check_manager_project_access(playlist["project_id"])
+        share_link = playlist_sharing_service.get_share_link_by_token_raw(
+            token
+        )
+        if str(share_link.playlist_id) != str(playlist_id):
+            raise PlaylistShareLinkNotFoundException
+
+        body = validation.validate_request_body(InviteShareLinkSchema)
+        person = persons_service.get_current_user()
+        from zou.app.utils.auth import EmailNotValidException
+
+        try:
+            sent = playlist_sharing_service.send_share_invitations(
+                playlist_id,
+                token,
+                person["id"],
+                emails=body.emails or [],
+                person_ids=[str(pid) for pid in (body.person_ids or [])],
+                message=body.message,
+            )
+        except EmailNotValidException as exc:
+            return {"error": str(exc)}, 400
+        return {"sent": sent}

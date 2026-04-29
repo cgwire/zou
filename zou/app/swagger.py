@@ -49,15 +49,7 @@ from zou.app.openapi_schemas import (
 )
 
 swagger_config = {
-    "headers": [
-        ("Access-Control-Allow-Origin", "*"),
-        ("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS"),
-        ("Access-Control-Allow-Credentials", "true"),
-        (
-            "Access-Control-Allow-Headers",
-            "Authorization, Origin, X-Requested-With, Content-Type, Accept",
-        ),
-    ],
+    "headers": [],
     "specs": [{"endpoint": "openapi", "route": "/openapi-raw.json"}],
     "static_url_path": "/docs",
     "swagger_ui": True,

@@ -59,3 +59,54 @@ class NotifyClientsPlaylistSchema(BaseSchema):
         if v == "":
             return None
         return v
+
+
+class CreatePlaylistShareLinkSchema(BaseSchema):
+    """Body for creating a playlist share link."""
+
+    expiration_date: Optional[str] = Field(
+        None,
+        description="Optional ISO 8601 date after which the link expires",
+    )
+    can_comment: bool = Field(
+        True,
+        description="Whether guests are allowed to comment / annotate",
+    )
+    password: Optional[str] = Field(
+        None,
+        description="Optional password required to access the link",
+    )
+
+    @field_validator("expiration_date", "password", mode="before")
+    @classmethod
+    def coerce_empty_to_none(cls, v):
+        if v == "":
+            return None
+        return v
+
+
+class InviteShareLinkSchema(BaseSchema):
+    """Body for emailing a share link to one or more recipients."""
+
+    emails: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Free-form email addresses to invite",
+    )
+    person_ids: Optional[List[UUID]] = Field(
+        default_factory=list,
+        description=(
+            "Existing Person identifiers — their email is looked up "
+            "server-side"
+        ),
+    )
+    message: Optional[str] = Field(
+        None,
+        description="Optional custom message included in the email body",
+    )
+
+    @field_validator("message", mode="before")
+    @classmethod
+    def coerce_empty_message(cls, v):
+        if v == "":
+            return None
+        return v

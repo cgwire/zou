@@ -3,6 +3,7 @@ import uuid
 
 from flask import Flask, jsonify, current_app, request
 from flasgger import Swagger
+from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_principal import (
     Principal,
@@ -73,6 +74,13 @@ swagger = Swagger(
     config=swagger_module.swagger_config,
 )
 configure_openapi_route(app, swagger)
+
+if config.CORS_ALLOWED_ORIGINS:
+    CORS(
+        app,
+        resources={r"/*": {"origins": config.CORS_ALLOWED_ORIGINS}},
+        supports_credentials=True,
+    )
 
 
 if config.SAML_ENABLED:

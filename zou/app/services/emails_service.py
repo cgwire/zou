@@ -493,3 +493,55 @@ def send_playlist_ready_notification(person_id, author_id, playlist):
         send_notification(
             person_id, subject, messages, title, force_email=True
         )
+
+
+def send_share_invitation(
+    recipient_email,
+    author,
+    playlist,
+    project,
+    share_url,
+    message=None,
+    locale=None,
+):
+    """
+    Send a shared-playlist review invitation by email. Recipients are
+    addressed by raw email rather than going through ``Person`` so guests
+    who do not have a Kitsu account can be invited too. Fire-and-forget:
+    no DB record is kept, no Person is created.
+    """
+    email_locale = locale or persons_service.get_default_locale()
+    title = get_email_translation(email_locale, "share_invitation_title")
+    subject = get_email_translation(
+        email_locale,
+        "share_invitation_subject",
+        author_full_name=author["full_name"],
+        playlist_name=playlist["name"],
+    )
+    email_message = get_email_translation(
+        email_locale,
+        "share_invitation_body",
+        author_full_name=author["full_name"],
+        playlist_name=playlist["name"],
+        project_name=project["name"],
+        share_url=share_url,
+    )
+    if message:
+        email_message += get_email_translation(
+            email_locale,
+            "share_invitation_message_segment",
+            message=message,
+        )
+    email_html_body = generate_html_body(
+        title, email_message, locale=email_locale
+    )
+    if config.ENABLE_JOB_QUEUE:
+        queue_store.job_queue.enqueue(
+            emails.send_email,
+            args=(subject, email_html_body, recipient_email),
+            kwargs={"locale": email_locale},
+        )
+    else:
+        emails.send_email(
+            subject, email_html_body, recipient_email, locale=email_locale
+        )

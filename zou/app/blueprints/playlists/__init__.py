@@ -11,6 +11,7 @@ from zou.app.blueprints.playlists.resources import (
     NotifyClientsResource,
     PlaylistShareLinksResource,
     PlaylistShareLinkResource,
+    PlaylistShareLinkInviteResource,
     ProjectPlaylistsResource,
     ProjectAllPlaylistsResource,
     ProjectBuildJobsResource,
@@ -60,6 +61,10 @@ routes = [
     (
         "/data/playlists/<playlist_id>/share/<token>",
         PlaylistShareLinkResource,
+    ),
+    (
+        "/data/playlists/<playlist_id>/share/<token>/invite",
+        PlaylistShareLinkInviteResource,
     ),
 ]
 

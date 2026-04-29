@@ -1,6 +1,8 @@
 import datetime
 import uuid
 
+import flask_bcrypt
+
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
@@ -18,7 +20,7 @@ from zou.app.services.exception import (
     PlaylistShareLinkNotFoundException,
     PlaylistNotFoundException,
 )
-from zou.app.utils import fields
+from zou.app.utils import auth as auth_utils, fields
 
 
 def create_share_link(
@@ -34,6 +36,17 @@ def create_share_link(
     """
     playlists_service.get_playlist(playlist_id)
     token = str(uuid.uuid4())
+    # Hash the password at rest so a DB leak (or a manager fetching the
+    # share link list) never exposes the cleartext credential. An empty
+    # or missing password is stored as NULL — the validate path then
+    # treats the link as unprotected. encrypt_password returns bytes;
+    # decode to str so it lands in the String column as a real hash
+    # rather than the literal bytes repr.
+    password_hash = (
+        auth_utils.encrypt_password(password).decode("utf-8")
+        if password
+        else None
+    )
     share_link = PlaylistShareLink.create(
         token=token,
         playlist_id=playlist_id,
@@ -44,7 +57,7 @@ def create_share_link(
             else None
         ),
         can_comment=can_comment,
-        password=password,
+        password=password_hash,
     )
     return share_link.serialize()
 
@@ -99,7 +112,15 @@ def validate_share_token(token, password=None):
             raise PlaylistShareLinkNotFoundException
 
     if share_link.password is not None and share_link.password != "":
-        if password != share_link.password:
+        # Constant-time bcrypt verify; never a plain `!=`.
+        if not password:
+            raise PlaylistShareLinkNotFoundException
+        try:
+            if not flask_bcrypt.check_password_hash(
+                share_link.password, password
+            ):
+                raise PlaylistShareLinkNotFoundException
+        except (ValueError, TypeError):
             raise PlaylistShareLinkNotFoundException
 
     return share_link.serialize()
@@ -108,11 +129,19 @@ def validate_share_token(token, password=None):
 def get_shared_playlist(token):
     """
     Return the playlist data accessible via a share token.
-    Validates the token first.
+
+    Validates the token first. Shots are returned with the same
+    preview-file enrichment used by the public GET endpoint
+    (``preview_file_task_id``, ``preview_file_previews``…), because the
+    raw ``playlist.shots`` JSON only stores ``entity_id`` /
+    ``preview_file_id`` for shots added via the playlist builder — guards
+    that compare against task or sub-revision ids would otherwise
+    always fail for those playlists.
     """
     share_link = validate_share_token(token)
-    playlist = playlists_service.get_playlist(share_link["playlist_id"])
-    return playlist
+    return playlists_service.get_playlist_with_preview_file_revisions(
+        share_link["playlist_id"]
+    )
 
 
 class GuestCommentForbidden(Exception):
@@ -123,41 +152,78 @@ class GuestCommentNotFound(Exception):
     pass
 
 
-def _load_guest_comment(comment_id, guest_id):
+def _load_guest_comment(comment_id, guest_id, token):
     """
-    Fetch a comment by id and ensure it was authored by the given guest.
+    Fetch a comment by id and ensure (a) it was authored by the given guest
+    and (b) it lives on a task that is part of the playlist exposed by the
+    share token. Without (b), a guest who has commented on tasks across
+    several playlists could mutate any of those comments through any
+    single share link they hold.
+
     Raises :class:`GuestCommentForbidden` or :class:`GuestCommentNotFound`.
     """
     if not guest_id:
         raise GuestCommentForbidden
-    # Ensure the guest actually exists.
-    get_guest(guest_id)
+    # Ensure the guest exists AND was created from this very share link;
+    # rejects replayed guest UUIDs leaked from another link.
+    share_link = validate_share_token(token)
+    try:
+        get_guest_for_share_link(guest_id, share_link)
+    except Exception:
+        raise GuestCommentForbidden
     try:
         comment = tasks_service.get_comment(comment_id)
     except Exception:
         raise GuestCommentNotFound
     if str(comment.get("person_id")) != str(guest_id):
         raise GuestCommentForbidden
+    task_id = comment.get("object_id")
+    if task_id is None:
+        raise GuestCommentForbidden
+    # Use the enriched playlist so preview_file_task_id is populated for
+    # shots added via the playlist builder, which only stores entity_id /
+    # preview_file_id at rest.
+    playlist = playlists_service.get_playlist_with_preview_file_revisions(
+        share_link["playlist_id"]
+    )
+    playlist_task_ids = {
+        str(shot.get("preview_file_task_id"))
+        for shot in playlist.get("shots", []) or []
+        if shot.get("preview_file_task_id")
+    }
+    if str(task_id) not in playlist_task_ids:
+        raise GuestCommentForbidden
     return comment
 
 
-def update_guest_comment(comment_id, guest_id, data):
+def update_guest_comment(comment_id, guest_id, data, token):
     """
     Update a comment authored by a guest. Accepts ``text``, ``checklist`` and
     ``task_status_id`` in ``data``. Triggers the same post-update side effects
     as the regular CRUD path (reset mentions, cache, events, task status
     reset when needed).
+
+    The ``token`` is used to scope the comment to the share link's playlist,
+    and also to reject ``task_status_id`` values that are not flagged as
+    client-allowed (a guest must not be able to set a manager-only status).
     """
     from zou.app.models.comment import Comment
     from zou.app.services import comments_service, notifications_service
     from zou.app.utils import events
 
-    instance = _load_guest_comment(comment_id, guest_id)
+    instance = _load_guest_comment(comment_id, guest_id, token)
 
     new_status_id = data.get("task_status_id")
     status_changed = bool(
         new_status_id and instance.get("task_status_id") != new_status_id
     )
+    if status_changed:
+        try:
+            new_status = tasks_service.get_task_status(new_status_id)
+        except Exception:
+            raise GuestCommentForbidden
+        if not new_status.get("is_client_allowed", False):
+            raise GuestCommentForbidden
     previous_status_id = instance.get("task_status_id")
 
     comment_row = Comment.get(comment_id)
@@ -205,16 +271,19 @@ def update_guest_comment(comment_id, guest_id, data):
     return _serialize_enriched_comment(comment_id)
 
 
-def delete_guest_comment(comment_id, guest_id):
+def delete_guest_comment(comment_id, guest_id, token):
     """
     Delete a comment authored by a guest. Triggers the same side effects as
     the regular CRUD delete: removal via ``deletion_service``, task data
     reset and task status event if the status changed.
+
+    Scoped to the share link via ``token`` so a guest cannot delete a
+    comment they authored on a task that is not part of this playlist.
     """
     from zou.app.services import deletion_service
     from zou.app.utils import events
 
-    instance = _load_guest_comment(comment_id, guest_id)
+    instance = _load_guest_comment(comment_id, guest_id, token)
 
     task_id = instance["object_id"]
     task_before = tasks_service.get_task(task_id)
@@ -257,14 +326,15 @@ def _serialize_enriched_comment(comment_id):
     return comment
 
 
-def add_guest_comment_attachments(comment_id, guest_id, files):
+def add_guest_comment_attachments(comment_id, guest_id, files, token):
     """
-    Attach uploaded files to a comment authored by the given guest.
+    Attach uploaded files to a comment authored by the given guest, scoped
+    to the share link's playlist via ``token``.
     Returns the updated comment dict (with relations).
     """
     from zou.app.services import comments_service
 
-    comment = _load_guest_comment(comment_id, guest_id)
+    comment = _load_guest_comment(comment_id, guest_id, token)
     comments_service.add_attachments_to_comment(comment, files)
     return _serialize_enriched_comment(comment_id)
 
@@ -317,14 +387,17 @@ def download_shared_attachment(token, attachment_id, file_name):
     )
 
 
-def remove_guest_comment_attachment(comment_id, guest_id, attachment_id):
+def remove_guest_comment_attachment(
+    comment_id, guest_id, attachment_id, token
+):
     """
-    Remove a single attachment from a comment authored by the given guest.
+    Remove a single attachment from a comment authored by the given guest,
+    scoped to the share link's playlist via ``token``.
     """
     from zou.app.models.attachment_file import AttachmentFile
     from zou.app.services import deletion_service
 
-    _load_guest_comment(comment_id, guest_id)
+    _load_guest_comment(comment_id, guest_id, token)
     attachment = AttachmentFile.get(attachment_id)
     if attachment is None or str(attachment.comment_id) != str(comment_id):
         raise GuestCommentNotFound
@@ -509,23 +582,29 @@ def enrich_shots_with_entity_info(playlist_dict):
 
 def create_guest(token, first_name, last_name=""):
     """
-    Return or create a guest Person tied to a shared playlist session.
+    Return or create a guest Person scoped to the share link of ``token``.
 
-    If a guest already exists with the same first/last name, we reuse it so
-    that a returning reviewer recovers ownership of their previous comments
-    (the UUID is otherwise volatile since the link itself is the credential
-    and no persistent account backs a guest). The guest always has
-    `is_guest=True` and `role=client`.
+    Each guest is bound to the share link that created it (via
+    ``Person.data['share_link_id']``). Reuse by first/last name only matches
+    guests created from the same share link, so a reviewer named "John
+    Smith" who has commented through link A cannot be impersonated by an
+    attacker who later creates a guest with the same name through link B.
+    The guest always has ``is_guest=True`` and ``role=client``.
     """
-    validate_share_token(token)
+    share_link = validate_share_token(token)
+    share_link_id = str(share_link["id"])
     first_name = (first_name or "Guest").strip()
     last_name = (last_name or "").strip()
 
-    existing = Person.query.filter_by(
-        is_guest=True,
-        first_name=first_name,
-        last_name=last_name,
-    ).first()
+    existing = (
+        Person.query.filter_by(
+            is_guest=True,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        .filter(Person.data["share_link_id"].astext == share_link_id)
+        .first()
+    )
     if existing is not None:
         return existing.serialize()
 
@@ -535,6 +614,7 @@ def create_guest(token, first_name, last_name=""):
         email=f"guest-{uuid.uuid4().hex[:8]}@guest.kitsu",
         role="client",
         is_guest=True,
+        data={"share_link_id": share_link_id},
     )
     return guest.serialize()
 
@@ -545,6 +625,20 @@ def get_guest(guest_id):
     """
     person = persons_service.get_person(guest_id)
     if not person.get("is_guest", False):
+        raise PlaylistShareLinkNotFoundException
+    return person
+
+
+def get_guest_for_share_link(guest_id, share_link):
+    """
+    Retrieve a guest person, but only if it was created from the supplied
+    share link. Used everywhere a ``guest_id`` is read from a request body
+    so that an attacker holding one share token cannot replay another
+    reviewer's guest UUID (leaked from a different link) to impersonate
+    them. Raises :class:`PlaylistShareLinkNotFoundException` otherwise.
+    """
+    person = get_guest(guest_id)
+    if person.get("data", {}).get("share_link_id") != str(share_link["id"]):
         raise PlaylistShareLinkNotFoundException
     return person
 
@@ -615,3 +709,83 @@ def get_shared_playlist_context(token):
         ],
         "entities": list(entity_names.values()),
     }
+
+
+def send_share_invitations(
+    playlist_id,
+    token,
+    author_id,
+    emails=None,
+    person_ids=None,
+    message=None,
+):
+    """
+    Email a shared-playlist review invitation to one or more recipients
+    (free-form emails and/or existing Persons looked up by id). Returns
+    the deduplicated, normalized list of email addresses an invitation
+    was actually dispatched to. Fire-and-forget — no DB record is kept.
+
+    The token is validated against the playlist so a manager who knows
+    *some* token cannot use a different playlist URL to invite people
+    to a link they don't own.
+    """
+    from zou.app import config
+    from zou.app.services import emails_service
+    from zou.app.utils import auth as auth_utils
+
+    share_link = get_share_link_by_token_raw(token)
+    if str(share_link.playlist_id) != str(playlist_id):
+        raise PlaylistShareLinkNotFoundException
+    if not share_link.is_active:
+        raise PlaylistShareLinkNotFoundException
+
+    playlist = playlists_service.get_playlist(playlist_id)
+    project = projects_service.get_project(playlist["project_id"])
+    author = persons_service.get_person(author_id)
+
+    # Skip DNS deliverability checks: invitations should go out even when
+    # the inviter typed a domain that hasn't published an MX record (and
+    # doing live DNS in a request handler is brittle).
+    recipients = {}
+    for raw_email in emails or []:
+        normalized = auth_utils.validate_email(
+            raw_email, check_deliverability=False
+        )
+        recipients.setdefault(
+            normalized.lower(),
+            {"email": normalized, "locale": None},
+        )
+    for person_id in person_ids or []:
+        try:
+            person = persons_service.get_person(str(person_id))
+        except Exception:
+            continue
+        person_email = person.get("email")
+        if not person_email:
+            continue
+        normalized = auth_utils.validate_email(
+            person_email, check_deliverability=False
+        )
+        recipients[normalized.lower()] = {
+            "email": normalized,
+            "locale": person.get("locale"),
+        }
+
+    share_url = (
+        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+        f"/playlists/shared/{token}"
+    )
+
+    sent = []
+    for entry in recipients.values():
+        emails_service.send_share_invitation(
+            entry["email"],
+            author,
+            playlist,
+            project,
+            share_url,
+            message=message,
+            locale=entry["locale"],
+        )
+        sent.append(entry["email"])
+    return sent
