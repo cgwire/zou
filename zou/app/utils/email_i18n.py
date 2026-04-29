@@ -253,6 +253,14 @@ L'IP de la personne ayant fait la demande est : %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "el episodio %(episode_name)s de ",
         "playlist_elements_count": "\n<p>%(count)s elementos en la playlist.</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s te invita a revisar %(playlist_name)s",
+        "share_invitation_title": "Invitación a una revisión",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> te invita a revisar la playlist <strong>%(playlist_name)s</strong> en el proyecto <strong>%(project_name)s</strong>.</p>
+
+<p>Puedes abrir la sesión de revisión aquí: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>Saludos cordiales,</p>\n\n<p>El equipo de %(organisation_name)s</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu: tu código de verificación",
         "auth_otp_title": "Tu código de verificación",
@@ -344,6 +352,14 @@ La IP de la persona que lo solicitó es: %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "エピソード %(episode_name)s の ",
         "playlist_elements_count": "\n<p>プレイリストに %(count)s 件の要素が含まれています。</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s さんが %(playlist_name)s のレビューに招待しました",
+        "share_invitation_title": "レビューへの招待",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> さんがプロジェクト <strong>%(project_name)s</strong> のプレイリスト <strong>%(playlist_name)s</strong> のレビューに招待しました。</p>
+
+<p>レビューセッションはこちらから開けます: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>よろしくお願いいたします。</p>\n\n<p>%(organisation_name)s チーム</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu: 認証コード",
         "auth_otp_title": "認証コード",
@@ -430,6 +446,14 @@ La IP de la persona que lo solicitó es: %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "der Episode %(episode_name)s von ",
         "playlist_elements_count": "\n<p>%(count)s Elemente sind in der Playlist enthalten.</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s lädt dich ein, %(playlist_name)s zu prüfen",
+        "share_invitation_title": "Einladung zur Begutachtung",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> lädt dich ein, die Playlist <strong>%(playlist_name)s</strong> im Projekt <strong>%(project_name)s</strong> zu prüfen.</p>
+
+<p>Du kannst die Begutachtung hier öffnen: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>Mit freundlichen Grüßen,</p>\n\n<p>%(organisation_name)s Team</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu: Ihr Bestätigungscode",
         "auth_otp_title": "Ihr Bestätigungscode",
@@ -516,6 +540,14 @@ Die IP der anfragenden Person ist: %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "de aflevering %(episode_name)s van ",
         "playlist_elements_count": "\n<p>%(count)s elementen staan in de playlist.</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s nodigt je uit om %(playlist_name)s te beoordelen",
+        "share_invitation_title": "Uitnodiging voor beoordeling",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> nodigt je uit om de playlist <strong>%(playlist_name)s</strong> in project <strong>%(project_name)s</strong> te beoordelen.</p>
+
+<p>Je kunt de beoordelingssessie hier openen: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>Met vriendelijke groet,</p>\n\n<p>%(organisation_name)s Team</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu: uw verificatiecode",
         "auth_otp_title": "Uw verificatiecode",
@@ -602,6 +634,14 @@ Het IP-adres van de aanvrager is: %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "第 %(episode_name)s 集 ",
         "playlist_elements_count": "\n<p>播放列表中共 %(count)s 个元素。</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s 邀请您审阅 %(playlist_name)s",
+        "share_invitation_title": "审阅邀请",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> 邀请您审阅项目 <strong>%(project_name)s</strong> 中的播放列表 <strong>%(playlist_name)s</strong>。</p>
+
+<p>您可以在此打开审阅会话: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>此致</p>\n\n<p>%(organisation_name)s 团队</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu：您的验证码",
         "auth_otp_title": "您的验证码",
@@ -688,6 +728,14 @@ Het IP-adres van de aanvrager is: %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "o episódio %(episode_name)s de ",
         "playlist_elements_count": "\n<p>%(count)s elementos na playlist.</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s convidou você para revisar %(playlist_name)s",
+        "share_invitation_title": "Convite para revisão",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> convidou você para revisar a playlist <strong>%(playlist_name)s</strong> no projeto <strong>%(project_name)s</strong>.</p>
+
+<p>Você pode abrir a sessão de revisão aqui: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>Atenciosamente,</p>\n\n<p>Equipe %(organisation_name)s</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu: seu código de verificação",
         "auth_otp_title": "Seu código de verificação",
