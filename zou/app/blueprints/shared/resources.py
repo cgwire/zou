@@ -296,7 +296,6 @@ class SharedPlaylistCommentsResource(Resource):
             task_status_id=task_status_id,
             text=body.text or "",
             checklist=body.checklist or [],
-            for_client=True,
         )
         return comment, 201
 

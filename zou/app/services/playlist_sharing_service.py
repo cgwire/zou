@@ -129,11 +129,19 @@ def validate_share_token(token, password=None):
 def get_shared_playlist(token):
     """
     Return the playlist data accessible via a share token.
-    Validates the token first.
+
+    Validates the token first. Shots are returned with the same
+    preview-file enrichment used by the public GET endpoint
+    (``preview_file_task_id``, ``preview_file_previews``…), because the
+    raw ``playlist.shots`` JSON only stores ``entity_id`` /
+    ``preview_file_id`` for shots added via the playlist builder — guards
+    that compare against task or sub-revision ids would otherwise
+    always fail for those playlists.
     """
     share_link = validate_share_token(token)
-    playlist = playlists_service.get_playlist(share_link["playlist_id"])
-    return playlist
+    return playlists_service.get_playlist_with_preview_file_revisions(
+        share_link["playlist_id"]
+    )
 
 
 class GuestCommentForbidden(Exception):
@@ -172,7 +180,12 @@ def _load_guest_comment(comment_id, guest_id, token):
     task_id = comment.get("object_id")
     if task_id is None:
         raise GuestCommentForbidden
-    playlist = playlists_service.get_playlist(share_link["playlist_id"])
+    # Use the enriched playlist so preview_file_task_id is populated for
+    # shots added via the playlist builder, which only stores entity_id /
+    # preview_file_id at rest.
+    playlist = playlists_service.get_playlist_with_preview_file_revisions(
+        share_link["playlist_id"]
+    )
     playlist_task_ids = {
         str(shot.get("preview_file_task_id"))
         for shot in playlist.get("shots", []) or []

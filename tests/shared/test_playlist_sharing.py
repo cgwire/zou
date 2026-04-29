@@ -343,6 +343,54 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             403,
         )
 
+    def test_guest_comment_ui_built_playlist(self):
+        """Shots added via the playlist builder are stored as
+        ``{entity_id, preview_file_id}`` only — no ``preview_file_task_id``.
+        The guest comment guard must still accept comments on the
+        previewed task by deriving it from the preview file."""
+        from zou.app.models.playlist import Playlist as PlaylistModel
+        from zou.app.models.preview_file import PreviewFile
+
+        preview_file = PreviewFile.create(
+            name="preview.mov",
+            revision=1,
+            extension="mp4",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "entity_id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                    }
+                ]
+            }
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+        self.log_out()
+        guest = self.post(
+            f"/shared/playlists/{link['token']}/guest",
+            {"first_name": "Reviewer"},
+            201,
+        )
+        self.post(
+            f"/shared/playlists/{link['token']}/comments",
+            {
+                "guest_id": guest["id"],
+                "task_id": str(self.task.id),
+                "task_status_id": str(self.task_status.id),
+                "text": "Looks good",
+            },
+            201,
+        )
+
     def test_guest_comment_rejects_foreign_task(self):
         """A guest cannot post a comment on a task that is not part of the
         playlist they hold a share link to."""
