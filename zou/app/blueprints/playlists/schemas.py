@@ -83,3 +83,30 @@ class CreatePlaylistShareLinkSchema(BaseSchema):
         if v == "":
             return None
         return v
+
+
+class InviteShareLinkSchema(BaseSchema):
+    """Body for emailing a share link to one or more recipients."""
+
+    emails: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Free-form email addresses to invite",
+    )
+    person_ids: Optional[List[UUID]] = Field(
+        default_factory=list,
+        description=(
+            "Existing Person identifiers — their email is looked up "
+            "server-side"
+        ),
+    )
+    message: Optional[str] = Field(
+        None,
+        description="Optional custom message included in the email body",
+    )
+
+    @field_validator("message", mode="before")
+    @classmethod
+    def coerce_empty_message(cls, v):
+        if v == "":
+            return None
+        return v

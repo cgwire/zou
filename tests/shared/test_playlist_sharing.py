@@ -479,3 +479,89 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             },
             403,
         )
+
+    # --- Share invitations ---
+
+    def test_invite_share_link(self):
+        """Manager can invite recipients by raw email and by person id;
+        the response lists the dispatched, deduplicated emails."""
+        from unittest.mock import patch
+        from zou.app.models.person import Person
+
+        invitee = Person.create(
+            first_name="Client",
+            last_name="One",
+            email="client.one@example.com",
+            role="client",
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send_mock:
+            result = self.post(
+                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
+                {
+                    "emails": [
+                        "alice@example.com",
+                        "ALICE@example.com",  # dedupe / case-fold
+                    ],
+                    "person_ids": [str(invitee.id)],
+                    "message": "Please review by Friday",
+                },
+                200,
+            )
+
+        self.assertEqual(send_mock.call_count, 2)
+        self.assertEqual(
+            sorted(result["sent"]),
+            ["alice@example.com", "client.one@example.com"],
+        )
+
+    def test_invite_share_link_rejects_mismatched_playlist(self):
+        """A token belonging to playlist A cannot be invited via playlist B."""
+        from unittest.mock import patch
+
+        # generate_fixture_playlist mutates self.playlist as a side effect,
+        # so capture the original first.
+        first_playlist = self.playlist
+        self.other_playlist = self.generate_fixture_playlist("Other Playlist")
+        link = self.post(
+            f"/data/playlists/{first_playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send_mock:
+            self.post(
+                f"/data/playlists/{self.other_playlist['id']}/share/{link['token']}/invite",
+                {"emails": ["alice@example.com"]},
+                404,
+            )
+        self.assertEqual(send_mock.call_count, 0)
+
+    def test_invite_share_link_rejects_invalid_email(self):
+        """A malformed email aborts the whole batch with a 400."""
+        from unittest.mock import patch
+
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {"can_comment": True},
+            201,
+        )
+
+        with patch(
+            "zou.app.services.emails_service.send_share_invitation"
+        ) as send_mock:
+            self.post(
+                f"/data/playlists/{self.playlist['id']}/share/{link['token']}/invite",
+                {"emails": ["not-an-email"]},
+                400,
+            )
+        self.assertEqual(send_mock.call_count, 0)

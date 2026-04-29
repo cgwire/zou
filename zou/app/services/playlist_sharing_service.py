@@ -709,3 +709,83 @@ def get_shared_playlist_context(token):
         ],
         "entities": list(entity_names.values()),
     }
+
+
+def send_share_invitations(
+    playlist_id,
+    token,
+    author_id,
+    emails=None,
+    person_ids=None,
+    message=None,
+):
+    """
+    Email a shared-playlist review invitation to one or more recipients
+    (free-form emails and/or existing Persons looked up by id). Returns
+    the deduplicated, normalized list of email addresses an invitation
+    was actually dispatched to. Fire-and-forget — no DB record is kept.
+
+    The token is validated against the playlist so a manager who knows
+    *some* token cannot use a different playlist URL to invite people
+    to a link they don't own.
+    """
+    from zou.app import config
+    from zou.app.services import emails_service
+    from zou.app.utils import auth as auth_utils
+
+    share_link = get_share_link_by_token_raw(token)
+    if str(share_link.playlist_id) != str(playlist_id):
+        raise PlaylistShareLinkNotFoundException
+    if not share_link.is_active:
+        raise PlaylistShareLinkNotFoundException
+
+    playlist = playlists_service.get_playlist(playlist_id)
+    project = projects_service.get_project(playlist["project_id"])
+    author = persons_service.get_person(author_id)
+
+    # Skip DNS deliverability checks: invitations should go out even when
+    # the inviter typed a domain that hasn't published an MX record (and
+    # doing live DNS in a request handler is brittle).
+    recipients = {}
+    for raw_email in emails or []:
+        normalized = auth_utils.validate_email(
+            raw_email, check_deliverability=False
+        )
+        recipients.setdefault(
+            normalized.lower(),
+            {"email": normalized, "locale": None},
+        )
+    for person_id in person_ids or []:
+        try:
+            person = persons_service.get_person(str(person_id))
+        except Exception:
+            continue
+        person_email = person.get("email")
+        if not person_email:
+            continue
+        normalized = auth_utils.validate_email(
+            person_email, check_deliverability=False
+        )
+        recipients[normalized.lower()] = {
+            "email": normalized,
+            "locale": person.get("locale"),
+        }
+
+    share_url = (
+        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+        f"/playlists/shared/{token}"
+    )
+
+    sent = []
+    for entry in recipients.values():
+        emails_service.send_share_invitation(
+            entry["email"],
+            author,
+            playlist,
+            project,
+            share_url,
+            message=message,
+            locale=entry["locale"],
+        )
+        sent.append(entry["email"])
+    return sent

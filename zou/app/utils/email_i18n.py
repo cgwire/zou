@@ -51,6 +51,14 @@ EMAIL_TRANSLATIONS = {
 """,
         "playlist_episode_segment": "the episode %(episode_name)s of ",
         "playlist_elements_count": "\n<p>%(count)s elements are listed in the playlist.</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s invited you to review %(playlist_name)s",
+        "share_invitation_title": "Review invitation",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> invited you to review the playlist <strong>%(playlist_name)s</strong> in project <strong>%(project_name)s</strong>.</p>
+
+<p>You can open the review session here: <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>Best regards,</p>\n\n<p>%(organisation_name)s Team</p>",
         # Auth: Email OTP
         "auth_otp_subject": "%(organisation_name)s - Kitsu: your verification code",
@@ -146,6 +154,14 @@ The IP of the person who requested this is: %(person_IP)s.</p>
 """,
         "playlist_episode_segment": "l'épisode %(episode_name)s du ",
         "playlist_elements_count": "\n<p>%(count)s éléments sont dans la playlist.</p>\n",
+        # Shared playlist invitation
+        "share_invitation_subject": "[Kitsu] %(author_full_name)s vous invite à relire %(playlist_name)s",
+        "share_invitation_title": "Invitation à une relecture",
+        "share_invitation_body": """<p><strong>%(author_full_name)s</strong> vous invite à relire la playlist <strong>%(playlist_name)s</strong> dans le projet <strong>%(project_name)s</strong>.</p>
+
+<p>Vous pouvez ouvrir la session de relecture ici : <a href="%(share_url)s">%(share_url)s</a></p>
+""",
+        "share_invitation_message_segment": "\n<p><em>%(message)s</em></p>\n",
         "email_signature": "\n<p>Cordialement,</p>\n\n<p>L'équipe %(organisation_name)s</p>",
         "auth_otp_subject": "%(organisation_name)s - Kitsu : votre code de vérification",
         "auth_otp_title": "Votre code de vérification",
