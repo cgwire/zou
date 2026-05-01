@@ -1,4 +1,5 @@
 from sqlalchemy.exc import StatementError
+from sqlalchemy.orm import selectinload
 
 from zou.app.utils import (
     cache,
@@ -138,7 +139,7 @@ def get_concepts(criterions=None):
     if is_only_assignation:
         del criterions["assigned_to"]
 
-    query = Entity.query
+    query = Entity.query.options(selectinload(Entity.entity_concept_links))
     query = query_utils.apply_criterions_to_db_query(Entity, query, criterions)
     query = (
         query.join(Project, Project.id == Entity.project_id)
