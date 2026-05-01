@@ -119,6 +119,25 @@ class PersonTestCase(ApiDBTestCase):
             set(departments),
         )
 
+    def test_create_person_with_duplicate_email(self):
+        data = {
+            "first_name": "John2",
+            "last_name": "Doe",
+            "email": "ema.doe@gmail.com",
+        }
+        response = self.post("data/persons", data, 400)
+        self.assertIn("Email already in use", response["message"])
+
+    def test_create_bot_can_share_email_with_person(self):
+        data = {
+            "first_name": "Bot",
+            "last_name": "Bot",
+            "email": "ema.doe@gmail.com",
+            "is_bot": True,
+        }
+        person = self.post("data/persons", data)
+        self.assertIsNotNone(person["id"])
+
     def test_update_person(self):
         person = self.get_first("data/persons")
         data = {
@@ -128,6 +147,27 @@ class PersonTestCase(ApiDBTestCase):
         person_again = self.get("data/persons/%s" % person["id"])
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404("data/persons/%s" % fields.gen_uuid(), data)
+
+    def test_update_person_with_duplicate_email(self):
+        persons = sorted(self.get("data/persons"), key=itemgetter("email"))
+        target = persons[0]
+        other = next(p for p in persons if p["id"] != target["id"])
+        response = self.put(
+            "data/persons/%s" % target["id"],
+            {"email": other["email"]},
+            400,
+        )
+        self.assertIn("Email already in use", response["message"])
+
+    def test_update_person_keep_own_email(self):
+        person = self.get_first("data/persons")
+        self.put(
+            "data/persons/%s" % person["id"],
+            {"email": person["email"], "first_name": "Johnny"},
+        )
+        person_again = self.get("data/persons/%s" % person["id"])
+        self.assertEqual(person_again["first_name"], "Johnny")
+        self.assertEqual(person_again["email"], person["email"])
 
     def test_update_person_with_departments(self):
         self.generate_fixture_department()

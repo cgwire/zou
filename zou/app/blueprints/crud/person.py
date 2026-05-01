@@ -300,6 +300,14 @@ class PersonsResource(BaseModelsResource):
             except auth.EmailNotValidException as e:
                 raise WrongParameterException(str(e))
 
+            if not data.get("is_bot", False):
+                existing = Person.query.filter(
+                    Person.email == data["email"],
+                    Person.is_bot.isnot(True),
+                ).first()
+                if existing is not None:
+                    raise WrongParameterException("Email already in use.")
+
         return data
 
     def update_data(self, data):
@@ -585,6 +593,14 @@ class PersonResource(BaseModelResource, ArgsMixin):
                 data["email"] = auth.validate_email(data["email"])
             except auth.EmailNotValidException as e:
                 raise WrongParameterException(str(e))
+
+            existing = Person.query.filter(
+                Person.email == data["email"],
+                Person.id != instance_id,
+                Person.is_bot.isnot(True),
+            ).first()
+            if existing is not None:
+                raise WrongParameterException("Email already in use.")
 
         return data
 
