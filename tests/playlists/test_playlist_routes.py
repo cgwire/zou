@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.playlist import Playlist
 from zou.app.services import projects_service
 
 
@@ -79,3 +80,85 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         )
         shot_ids = [s["entity_id"] for s in playlist.get("shots", [])]
         self.assertIn(str(self.shot.id), shot_ids)
+
+    def _create_playlist(self, name, creator_id=None):
+        return Playlist.create(
+            name=name,
+            project_id=self.project.id,
+            for_entity="shot",
+            is_for_all=False,
+            for_client=False,
+            shots=[],
+            created_by=creator_id,
+        ).serialize()
+
+    def test_add_entity_as_supervisor_creator(self):
+        self.generate_fixture_user_supervisor()
+        playlist = self._create_playlist(
+            "Supervisor Playlist", creator_id=self.user_supervisor["id"]
+        )
+        self.log_in_supervisor()
+        self.post(
+            f"/actions/playlists/{playlist['id']}/add-entity",
+            {"entity_id": str(self.shot.id)},
+            200,
+        )
+
+    def test_add_entity_as_supervisor_non_creator_is_forbidden(self):
+        self.generate_fixture_user_supervisor()
+        self.generate_fixture_user_supervisor_2()
+        playlist = self._create_playlist(
+            "Other Supervisor Playlist",
+            creator_id=self.user_supervisor_2["id"],
+        )
+        self.log_in_supervisor()
+        self.post(
+            f"/actions/playlists/{playlist['id']}/add-entity",
+            {"entity_id": str(self.shot.id)},
+            403,
+        )
+
+    def test_add_entity_as_artist_is_forbidden(self):
+        self.generate_fixture_user_cg_artist()
+        playlist = self._create_playlist(
+            "Artist Playlist", creator_id=self.user_cg_artist["id"]
+        )
+        self.log_in_cg_artist()
+        self.post(
+            f"/actions/playlists/{playlist['id']}/add-entity",
+            {"entity_id": str(self.shot.id)},
+            403,
+        )
+
+    def test_update_playlist_as_supervisor_creator(self):
+        self.generate_fixture_user_supervisor()
+        playlist = self._create_playlist(
+            "Supervisor Playlist", creator_id=self.user_supervisor["id"]
+        )
+        self.log_in_supervisor()
+        self.put(
+            f"/data/playlists/{playlist['id']}",
+            {"name": "Renamed by supervisor"},
+            200,
+        )
+
+    def test_update_playlist_as_supervisor_non_creator_is_forbidden(self):
+        self.generate_fixture_user_supervisor()
+        self.generate_fixture_user_supervisor_2()
+        playlist = self._create_playlist(
+            "Other Playlist", creator_id=self.user_supervisor_2["id"]
+        )
+        self.log_in_supervisor()
+        self.put(
+            f"/data/playlists/{playlist['id']}",
+            {"name": "Should fail"},
+            403,
+        )
+
+    def test_delete_playlist_as_supervisor_creator(self):
+        self.generate_fixture_user_supervisor()
+        playlist = self._create_playlist(
+            "Supervisor Playlist", creator_id=self.user_supervisor["id"]
+        )
+        self.log_in_supervisor()
+        self.delete(f"/data/playlists/{playlist['id']}")

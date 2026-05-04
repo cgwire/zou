@@ -118,6 +118,9 @@ class ApiTestCase(unittest.TestCase):
     def log_in_vendor(self):
         self.log_in(self.user_vendor["email"])
 
+    def log_in_supervisor(self):
+        self.log_in(self.user_supervisor["email"])
+
     def log_out(self):
         try:
             self.get("auth/logout")
@@ -650,6 +653,30 @@ class ApiDBTestCase(ApiTestCase):
             password=_CACHED_PASSWORD_HASH,
         ).serialize()
         return self.user_vendor
+
+    def generate_fixture_user_supervisor(self):
+        if hasattr(self, "user_supervisor"):
+            return self.user_supervisor
+        self.user_supervisor = Person.create(
+            first_name="John",
+            last_name="Did6",
+            role="supervisor",
+            email="john.did.supervisor@gmail.com",
+            password=_CACHED_PASSWORD_HASH,
+        ).serialize()
+        return self.user_supervisor
+
+    def generate_fixture_user_supervisor_2(self):
+        if hasattr(self, "user_supervisor_2"):
+            return self.user_supervisor_2
+        self.user_supervisor_2 = Person.create(
+            first_name="John",
+            last_name="Did7",
+            role="supervisor",
+            email="john.did.supervisor2@gmail.com",
+            password=_CACHED_PASSWORD_HASH,
+        ).serialize()
+        return self.user_supervisor_2
 
     def generate_fixture_person(
         self,

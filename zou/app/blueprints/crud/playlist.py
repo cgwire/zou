@@ -6,7 +6,7 @@ from zou.app.models.notification import Notification
 from zou.app.services import user_service, playlists_service, persons_service
 
 from zou.app.blueprints.crud.base import BaseModelResource, BaseModelsResource
-from zou.app.utils import fields, permissions
+from zou.app.utils import fields
 
 
 class PlaylistsResource(BaseModelsResource):
@@ -372,15 +372,7 @@ class PlaylistResource(BaseModelResource):
             playlists_service.remove_build_job(playlist, job.id)
 
     def check_update_permissions(self, playlist, data):
-        if user_service.has_manager_project_access(playlist["project_id"]):
-            return True
-        elif permissions.has_supervisor_permissions() and (
-            playlist["created_by"]
-            in [None, persons_service.get_current_user()["id"]]
-        ):
-            return True
-        else:
-            raise permissions.PermissionDenied()
+        return user_service.check_playlist_update_access(playlist)
 
     def pre_update(self, instance_dict, data):
         if "shots" in data:
@@ -396,12 +388,4 @@ class PlaylistResource(BaseModelResource):
         return data
 
     def check_delete_permissions(self, playlist):
-        if user_service.has_manager_project_access(playlist["project_id"]):
-            return True
-        elif permissions.has_supervisor_permissions() and (
-            playlist["created_by"]
-            in [None, persons_service.get_current_user()["id"]]
-        ):
-            return True
-        else:
-            raise permissions.PermissionDenied()
+        return user_service.check_playlist_update_access(playlist)

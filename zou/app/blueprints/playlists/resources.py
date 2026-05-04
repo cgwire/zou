@@ -351,7 +351,7 @@ class PlaylistAddEntityResource(Resource, ArgsMixin):
                   type: object
         """
         playlist = playlists_service.get_playlist(playlist_id)
-        user_service.check_manager_project_access(playlist["project_id"])
+        user_service.check_playlist_update_access(playlist)
 
         body = validation.validate_request_body(AddEntityToPlaylistSchema)
         updated_playlist = playlists_service.add_entity_to_playlist(
