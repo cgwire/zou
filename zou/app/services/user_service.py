@@ -914,6 +914,23 @@ def check_playlist_access(playlist, supervisor_access=False):
     return True
 
 
+def check_playlist_update_access(playlist):
+    """
+    Allow manager with project access, or supervisor who created the
+    playlist (or playlist with no creator).
+    """
+    is_manager = has_manager_project_access(playlist["project_id"])
+    is_creator_supervisor = (
+        permissions.has_supervisor_permissions()
+        and playlist["created_by"]
+        in [None, persons_service.get_current_user()["id"]]
+    )
+    is_allowed = is_manager or is_creator_supervisor
+    if not is_allowed:
+        raise permissions.PermissionDenied
+    return True
+
+
 def check_day_off_access(day_off):
     """
     Return true if current user is admin or day_off is for itself
