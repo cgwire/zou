@@ -708,6 +708,7 @@ def get_shared_playlist_context(token):
             for ts in task_statuses
         ],
         "entities": list(entity_names.values()),
+        "team": [],  # required by Kitsu
     }
 
 
