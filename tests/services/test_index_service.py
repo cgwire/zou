@@ -1,6 +1,9 @@
+from unittest.mock import patch
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import assets_service, index_service
+from zou.app.services.exception import SequenceNotFoundException
 
 
 class IndexServiceTestCase(ApiDBTestCase):
@@ -65,3 +68,11 @@ class IndexServiceTestCase(ApiDBTestCase):
         assets_service.remove_asset(asset["id"])
         assets = index_service.search_assets("girafe")
         self.assertEqual(len(assets), 0)
+
+    def test_reset_index_with_orphan_shot(self):
+        with patch.object(
+            index_service.shots_service,
+            "get_sequence",
+            side_effect=SequenceNotFoundException,
+        ):
+            index_service.reset_index()
