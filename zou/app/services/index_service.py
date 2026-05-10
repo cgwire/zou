@@ -13,6 +13,10 @@ from zou.app.services import (
     projects_service,
     shots_service,
 )
+from zou.app.services.exception import (
+    EpisodeNotFoundException,
+    SequenceNotFoundException,
+)
 
 
 def get_index(index_name):
@@ -414,18 +418,26 @@ def prepare_shot(shot, index=None):
 
     episode_id = ""
     episode = None
+    sequence = None
     sequence_id = shot_serialized.get("parent_id", "")
     if sequence_id != "":
-        sequence = shots_service.get_sequence(sequence_id)
-        episode_id = sequence.get("parent_id", "")
-        if episode_id not in ["", "None", None]:
-            episode = shots_service.get_episode(episode_id)
+        try:
+            sequence = shots_service.get_sequence(sequence_id)
+        except SequenceNotFoundException:
+            sequence_id = ""
+        else:
+            episode_id = sequence.get("parent_id", "") or ""
+            if episode_id not in ["", "None", None]:
+                try:
+                    episode = shots_service.get_episode(episode_id)
+                except EpisodeNotFoundException:
+                    episode_id = ""
 
     shot_name = shot_serialized["name"]
     name = shot_name + " " + shot_name.replace("_", " ").replace("-", " ")
     if episode is not None:
         shot_name = f'{episode["name"]} {sequence["name"]} {name}'
-    else:
+    elif sequence is not None:
         shot_name = f'{sequence["name"]} {name}'
 
     metadatas = {}
