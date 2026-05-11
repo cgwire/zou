@@ -205,6 +205,8 @@ def get_movie_duration(movie_path=None, video_track=None):
 def normalize_encoding(
     movie_path, task, file_target_path, fps, b, width, height, keyframes=1
 ):
+    # ffmpeg's color_primaries/trc/colorspace output flags only tag the
+    # metadata; they shift perceived colors on untagged sources.
     logger.info(task)
     stream = ffmpeg.input(movie_path)
     stream = ffmpeg.output(
@@ -217,9 +219,6 @@ def normalize_encoding(
         b=b,
         preset="slow",
         vcodec="libx264",
-        color_primaries=1,
-        color_trc=1,
-        colorspace=1,
         movflags="+faststart",
         x264opts=f"keyint={keyframes}:scenecut=0",
         s="%sx%s" % (width, height),
@@ -382,9 +381,6 @@ def add_empty_soundtrack(file_path, try_count=1):
                 format="mp4",
                 preset="slow",
                 vcodec="libx264",
-                color_primaries=1,
-                color_trc=1,
-                colorspace=1,
                 movflags="+faststart",
                 s="%sx%s" % (width, height),
             )
