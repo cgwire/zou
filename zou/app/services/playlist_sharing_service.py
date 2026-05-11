@@ -681,6 +681,7 @@ def get_shared_playlist_context(token):
             "fps": project.get("fps"),
             "ratio": project.get("ratio"),
             "resolution": project.get("resolution"),
+            "team": [],  # required by Kitsu
         },
         # Task types are sent without `department_id` on purpose: the shared
         # client never populates the department map, and several widgets
@@ -708,7 +709,6 @@ def get_shared_playlist_context(token):
             for ts in task_statuses
         ],
         "entities": list(entity_names.values()),
-        "team": [],  # required by Kitsu
     }
 
 
