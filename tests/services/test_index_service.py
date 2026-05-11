@@ -3,7 +3,10 @@ from unittest.mock import patch
 from tests.base import ApiDBTestCase
 
 from zou.app.services import assets_service, index_service
-from zou.app.services.exception import SequenceNotFoundException
+from zou.app.services.exception import (
+    EpisodeNotFoundException,
+    SequenceNotFoundException,
+)
 
 
 class IndexServiceTestCase(ApiDBTestCase):
@@ -69,10 +72,27 @@ class IndexServiceTestCase(ApiDBTestCase):
         assets = index_service.search_assets("girafe")
         self.assertEqual(len(assets), 0)
 
-    def test_reset_index_with_orphan_shot(self):
+    def test_prepare_shot_with_missing_sequence(self):
         with patch.object(
             index_service.shots_service,
             "get_sequence",
             side_effect=SequenceNotFoundException,
         ):
-            index_service.reset_index()
+            data = index_service.prepare_shot(self.shot, index="dummy")
+        self.assertEqual(data["sequence_id"], "")
+        self.assertEqual(data["episode_id"], "")
+
+    def test_prepare_shot_with_missing_episode(self):
+        fake_sequence = {"name": "S01", "parent_id": "missing-episode-id"}
+        with patch.object(
+            index_service.shots_service,
+            "get_sequence",
+            return_value=fake_sequence,
+        ), patch.object(
+            index_service.shots_service,
+            "get_episode",
+            side_effect=EpisodeNotFoundException,
+        ):
+            data = index_service.prepare_shot(self.shot, index="dummy")
+        self.assertEqual(data["sequence_id"], str(self.shot.parent_id))
+        self.assertEqual(data["episode_id"], "")
