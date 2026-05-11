@@ -20,6 +20,16 @@ class AssetServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(assets), 1)
         self.assertEqual(assets[0]["name"], "Tree")
 
+    def test_get_assets_with_episode_and_project_filters(self):
+        self.generate_fixture_episode()
+        assets = assets_service.get_assets(
+            criterions={
+                "episode_id": str(self.episode.id),
+                "project_id": str(self.project.id),
+            }
+        )
+        self.assertIsInstance(assets, list)
+
     def test_get_full_assets(self):
         assets = assets_service.get_full_assets()
         self.assertEqual(len(assets), 1)
