@@ -53,9 +53,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(self.get("/data/project-templates"), [])
 
     def test_create_template_duplicate_name_returns_400(self):
-        self.post(
-            "/data/project-templates", {"name": "Series Setup"}
-        )
+        self.post("/data/project-templates", {"name": "Series Setup"})
         self.post(
             "/data/project-templates",
             {"name": "Series Setup"},
@@ -142,11 +140,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         template = self._create_template()
         self.post(
             "/data/project-templates/%s/status-automations" % template["id"],
-            {
-                "status_automation_id": str(
-                    self.status_automation_to_status.id
-                )
-            },
+            {"status_automation_id": str(self.status_automation_to_status.id)},
         )
         items = self.get(
             "/data/project-templates/%s/status-automations" % template["id"]
@@ -175,8 +169,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             }
         ]
         result = self.put(
-            "/data/project-templates/%s/metadata-descriptors"
-            % template["id"],
+            "/data/project-templates/%s/metadata-descriptors" % template["id"],
             {"metadata_descriptors": descriptors},
         )
         self.assertEqual(len(result["metadata_descriptors"]), 1)
@@ -226,9 +219,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(result["id"], target["id"])
         # Verify task type link materialized on the project
-        links = self.get(
-            "/data/projects/%s" % target["id"]
-        )
+        links = self.get("/data/projects/%s" % target["id"])
         self.assertIn(
             str(self.task_type_modeling.id), links.get("task_types", [])
         )
@@ -288,8 +279,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             {"name": "Template With Metadata"},
         )
         self.put(
-            "/data/project-templates/%s/metadata-descriptors"
-            % template["id"],
+            "/data/project-templates/%s/metadata-descriptors" % template["id"],
             {
                 "metadata_descriptors": [
                     {

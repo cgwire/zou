@@ -13,9 +13,7 @@ class ProjectTemplateTestCase(ApiDBTestCase):
         ProjectTemplate.create(
             name="TV Show", description="Episodic show setup"
         )
-        ProjectTemplate.create(
-            name="VFX Bid", description="Bidding template"
-        )
+        ProjectTemplate.create(name="VFX Bid", description="Bidding template")
 
     def test_get_project_templates(self):
         templates = self.get("data/project-templates")
@@ -23,9 +21,7 @@ class ProjectTemplateTestCase(ApiDBTestCase):
 
     def test_get_project_template(self):
         template = self.get_first("data/project-templates")
-        again = self.get(
-            "data/project-templates/%s" % template["id"]
-        )
+        again = self.get("data/project-templates/%s" % template["id"])
         self.assertEqual(template["id"], again["id"])
         self.get_404("data/project-templates/%s" % fields.gen_uuid())
 
@@ -60,9 +56,7 @@ class ProjectTemplateTestCase(ApiDBTestCase):
             "data/project-templates/%s" % template["id"],
             {"description": "Updated description"},
         )
-        again = self.get(
-            "data/project-templates/%s" % template["id"]
-        )
+        again = self.get("data/project-templates/%s" % template["id"])
         self.assertEqual(again["description"], "Updated description")
 
     def test_delete_project_template(self):

@@ -442,10 +442,9 @@ class CommentResource(BaseModelResource):
                 "checklist" in data.keys()
                 and data["checklist"] != instance["checklist"]
             )
-            change_for_client = (
-                "for_client" in data.keys()
-                and data["for_client"] != instance.get("for_client", False)
-            )
+            change_for_client = "for_client" in data.keys() and data[
+                "for_client"
+            ] != instance.get("for_client", False)
             if change_for_client:
                 # Only managers (handled above) may toggle for_client.
                 raise permissions.PermissionDenied

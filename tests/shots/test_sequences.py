@@ -114,19 +114,13 @@ class SequenceTestCase(ApiDBTestCase):
 
     def test_get_sequences_vendor_unassigned(self):
         self._setup_vendor()
-        sequences = self.get(
-            "data/sequences?project_id=%s" % self.project_id
-        )
+        sequences = self.get("data/sequences?project_id=%s" % self.project_id)
         self.assertEqual(len(sequences), 0)
 
     def test_get_sequences_vendor_assigned(self):
         self._setup_vendor()
-        tasks_service.assign_task(
-            self.shot_task.id, self.user_vendor["id"]
-        )
-        sequences = self.get(
-            "data/sequences?project_id=%s" % self.project_id
-        )
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        sequences = self.get("data/sequences?project_id=%s" % self.project_id)
         self.assertEqual(len(sequences), 1)
 
     def test_get_sequence_vendor_no_task(self):

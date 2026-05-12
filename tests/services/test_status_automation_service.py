@@ -148,9 +148,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
 
         # Verify the target task status was changed
         task_seq_review = Task.get(task_seq_review.id)
-        self.assertEqual(
-            str(task_seq_review.task_status_id), wip_status["id"]
-        )
+        self.assertEqual(str(task_seq_review.task_status_id), wip_status["id"])
 
     def test_status_automation_episode(self):
         """Test that a status automation fires for episode tasks."""
@@ -222,9 +220,7 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
 
         # Verify the target task status was changed
         task_ep_final = Task.get(task_ep_final.id)
-        self.assertEqual(
-            str(task_ep_final.task_status_id), wip_status["id"]
-        )
+        self.assertEqual(str(task_ep_final.task_status_id), wip_status["id"])
 
     def test_status_automation_entity_type_mismatch(self):
         """Test that an asset automation does NOT fire on a sequence task."""
@@ -281,4 +277,3 @@ class StatusAutomationServiceTestCase(ApiDBTestCase):
         self.assertEqual(
             str(self.task_modeling.task_status_id), initial_status
         )
-

@@ -220,9 +220,7 @@ class ProjectsResource(BaseModelsResource):
         self._template_id_to_apply = data.pop("project_template_id", None)
         if self._template_id_to_apply:
             self._template_overrides = {
-                key: value
-                for key, value in data.items()
-                if value is not None
+                key: value for key, value in data.items() if value is not None
             }
 
         if "project_status_id" not in data:

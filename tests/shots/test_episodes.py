@@ -142,16 +142,10 @@ class EpisodeTestCase(ApiDBTestCase):
 
     def test_get_episodes_vendor_filters(self):
         self._setup_vendor()
-        episodes = self.get(
-            "data/episodes?project_id=%s" % self.project_id
-        )
+        episodes = self.get("data/episodes?project_id=%s" % self.project_id)
         self.assertEqual(len(episodes), 0)
-        tasks_service.assign_task(
-            self.shot_task.id, self.user_vendor["id"]
-        )
-        episodes = self.get(
-            "data/episodes?project_id=%s" % self.project_id
-        )
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        episodes = self.get("data/episodes?project_id=%s" % self.project_id)
         self.assertEqual(len(episodes), 1)
 
     def test_get_episode_vendor_no_task(self):

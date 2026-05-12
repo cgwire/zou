@@ -156,9 +156,7 @@ class CommentsServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(self.fired_events), 1)
         payload = self.fired_events[0]
         self.assertEqual(payload["task_id"], str(self.task.id))
-        self.assertEqual(
-            payload["new_task_status_id"], self.wfa_status["id"]
-        )
+        self.assertEqual(payload["new_task_status_id"], self.wfa_status["id"])
         self.assertEqual(payload["comment_id"], comment["id"])
 
     def test_manage_subscriptions(self):

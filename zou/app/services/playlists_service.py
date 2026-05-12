@@ -58,9 +58,9 @@ PLAYLISTS_PAGE_SIZE = 20
 
 # First entry's preview_file_id for list rows (PostgreSQL jsonb path), avoids
 # loading the full `shots` column when paired with defer(Playlist.shots).
-_FIRST_SHOT_PREVIEW_FILE_ID_SQL = Playlist.shots[0]["preview_file_id"].astext.label(
-    "first_preview_file_id"
-)
+_FIRST_SHOT_PREVIEW_FILE_ID_SQL = Playlist.shots[0][
+    "preview_file_id"
+].astext.label("first_preview_file_id")
 
 # Sentinel: build_playlist_dict() should read shots on the model (tests / legacy).
 _FIRST_PREVIEW_FILE_ID_FROM_QUERY_UNSET = object()
@@ -114,7 +114,9 @@ def all_playlists_for_project(
     )
     for playlist, first_preview_file_id in query.all():
         result.append(
-            build_playlist_dict(playlist, first_preview_file_id=first_preview_file_id)
+            build_playlist_dict(
+                playlist, first_preview_file_id=first_preview_file_id
+            )
         )
     return result
 
@@ -161,7 +163,9 @@ def all_playlists_for_episode(
     )
     for playlist, first_preview_file_id in query.all():
         result.append(
-            build_playlist_dict(playlist, first_preview_file_id=first_preview_file_id)
+            build_playlist_dict(
+                playlist, first_preview_file_id=first_preview_file_id
+            )
         )
     return result
 

@@ -49,9 +49,7 @@ already_loaded = any(
 if not already_loaded:
     models_path = plugin_path / "models.py"
     if models_path.exists():
-        spec = importlib.util.spec_from_file_location(
-            module_name, models_path
-        )
+        spec = importlib.util.spec_from_file_location(module_name, models_path)
         module = importlib.util.module_from_spec(spec)
         sys.modules[module_name] = module
         spec.loader.exec_module(module)

@@ -15,9 +15,7 @@ class PlaylistShareLink(db.Model, BaseMixin, SerializerMixin):
     never reflect the credential back to callers.
     """
 
-    token = db.Column(
-        db.String(64), unique=True, nullable=False, index=True
-    )
+    token = db.Column(db.String(64), unique=True, nullable=False, index=True)
     playlist_id = db.Column(
         UUIDType(binary=False),
         db.ForeignKey("playlist.id"),

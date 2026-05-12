@@ -191,9 +191,7 @@ def get_template_task_types(template_id):
     links = ProjectTemplateTaskTypeLink.get_all_by(
         project_template_id=template_id
     )
-    link_map = {
-        str(link.task_type_id): link for link in links
-    }
+    link_map = {str(link.task_type_id): link for link in links}
     result = []
     for task_type in template.task_types:
         data = task_type.serialize()
@@ -254,9 +252,7 @@ def get_template_task_statuses(template_id):
     links = ProjectTemplateTaskStatusLink.get_all_by(
         project_template_id=template_id
     )
-    link_map = {
-        str(link.task_status_id): link for link in links
-    }
+    link_map = {str(link.task_status_id): link for link in links}
     result = []
     for task_status in template.task_statuses:
         data = task_status.serialize()
@@ -268,9 +264,7 @@ def get_template_task_statuses(template_id):
                 for role in (link.roles_for_board or [])
             ]
         result.append(data)
-    result.sort(
-        key=lambda s: (s.get("priority") or 0, s.get("name", ""))
-    )
+    result.sort(key=lambda s: (s.get("priority") or 0, s.get("name", "")))
     return result
 
 
@@ -516,9 +510,7 @@ def set_template_metadata_descriptors(template_id, descriptors):
     if descriptors is None:
         descriptors = []
     if not isinstance(descriptors, list):
-        raise WrongParameterException(
-            "metadata_descriptors must be a list"
-        )
+        raise WrongParameterException("metadata_descriptors must be a list")
     cleaned = []
     for entry in descriptors:
         if not isinstance(entry, dict):
@@ -609,9 +601,7 @@ def create_template_from_project(project_id, name, description=None):
             priority=link.priority,
         )
 
-    task_status_links = ProjectTaskStatusLink.get_all_by(
-        project_id=project_id
-    )
+    task_status_links = ProjectTaskStatusLink.get_all_by(project_id=project_id)
     for link in task_status_links:
         ProjectTemplateTaskStatusLink.create(
             project_template_id=template.id,
@@ -681,9 +671,7 @@ def _snapshot_descriptors(project_id):
                 ),
                 "choices": descriptor.choices or [],
                 "for_client": bool(descriptor.for_client),
-                "departments": [
-                    str(dep.id) for dep in descriptor.departments
-                ],
+                "departments": [str(dep.id) for dep in descriptor.departments],
                 "position": descriptor.position,
             }
         )
@@ -695,9 +683,7 @@ def _snapshot_descriptors(project_id):
 # ---------------------------------------------------------------------------
 
 
-def apply_template_to_project(
-    project_id, template_id, override_settings=None
-):
+def apply_template_to_project(project_id, template_id, override_settings=None):
     """
     Apply a template's configuration to a project. Existing links are kept;
     duplicates are skipped (additive strategy). Production settings are
@@ -837,9 +823,7 @@ def apply_template_to_project(
         _create_descriptor_from_snapshot(project.id, descriptor)
 
     projects_service.clear_project_cache(str(project.id))
-    events.emit(
-        "project:update", {}, project_id=str(project.id)
-    )
+    events.emit("project:update", {}, project_id=str(project.id))
     return project.serialize()
 
 

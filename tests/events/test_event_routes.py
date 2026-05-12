@@ -88,9 +88,7 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
                 created_at=now - timedelta(seconds=3 - i),
             )
         before = (now - timedelta(seconds=1)).isoformat()
-        logs = self.get(
-            "/data/events/login-logs/last?before=%s" % before
-        )
+        logs = self.get("/data/events/login-logs/last?before=%s" % before)
         self.assertEqual(len(logs), 2)
 
     def test_get_last_login_logs_after(self):
@@ -103,9 +101,7 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
                 created_at=now - timedelta(seconds=3 - i),
             )
         after = (now - timedelta(seconds=2)).isoformat()
-        logs = self.get(
-            "/data/events/login-logs/last?after=%s" % after
-        )
+        logs = self.get("/data/events/login-logs/last?after=%s" % after)
         self.assertEqual(len(logs), 1)
 
     def test_get_last_login_logs_cursor(self):

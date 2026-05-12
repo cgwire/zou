@@ -178,7 +178,9 @@ class BreakdownServiceTestCase(ApiDBTestCase):
 
         events.unregister_all()
         handler = _Handler(captured)
-        events.register("shot:casting-update", "casting_update_handler", handler)
+        events.register(
+            "shot:casting-update", "casting_update_handler", handler
+        )
 
         shot_id = str(self.shot.id)
         asset_id = str(self.asset.id)

@@ -210,18 +210,14 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
                 "departments": [str(self.department.id)],
             },
         ]
-        updated = (
-            project_templates_service.set_template_metadata_descriptors(
-                template["id"], descriptors
-            )
+        updated = project_templates_service.set_template_metadata_descriptors(
+            template["id"], descriptors
         )
         snapshot = updated["metadata_descriptors"]
         self.assertEqual(len(snapshot), 2)
         self.assertEqual(snapshot[0]["field_name"], "difficulty")
         self.assertEqual(snapshot[1]["field_name"], "approval_status")
-        self.assertEqual(
-            snapshot[1]["departments"], [str(self.department.id)]
-        )
+        self.assertEqual(snapshot[1]["departments"], [str(self.department.id)])
 
     # ----- Snapshot from project ------------------------------------------
 
@@ -277,10 +273,10 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
             project_template_id=template["id"]
         )
         self.assertEqual(len(task_type_links), 2)
-        priorities = {link.task_type_id: link.priority for link in task_type_links}
-        self.assertEqual(
-            priorities[self.task_type_modeling.id], 3
-        )
+        priorities = {
+            link.task_type_id: link.priority for link in task_type_links
+        }
+        self.assertEqual(priorities[self.task_type_modeling.id], 3)
 
         task_status_links = ProjectTemplateTaskStatusLink.get_all_by(
             project_template_id=template["id"]
@@ -288,11 +284,9 @@ class ProjectTemplateServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(task_status_links), 1)
         self.assertEqual(task_status_links[0].priority, 1)
 
-        asset_type_links = (
-            ProjectTemplateAssetTypeLink.query.filter_by(
-                project_template_id=template["id"]
-            ).all()
-        )
+        asset_type_links = ProjectTemplateAssetTypeLink.query.filter_by(
+            project_template_id=template["id"]
+        ).all()
         self.assertEqual(len(asset_type_links), 1)
 
         # Metadata descriptor snapshot
