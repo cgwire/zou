@@ -125,8 +125,7 @@ PK_UC_SPLIT = [
 
 def upgrade():
     # 1. Ensure import_source_enum exists, then convert the column.
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -136,10 +135,8 @@ def upgrade():
             END IF;
         END
         $$;
-        """
-    )
-    op.execute(
-        """
+        """)
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -156,8 +153,7 @@ def upgrade():
             END IF;
         END
         $$;
-        """
-    )
+        """)
 
     # 2. Restore TEXT column types.
     for table, column in TEXT_COLUMNS:
@@ -176,8 +172,7 @@ def upgrade():
 
     # 5. Add missing CHECK constraints (idempotent via pg_constraint check).
     for cname, table, expr in CHECK_CONSTRAINTS:
-        op.execute(
-            f"""
+        op.execute(f"""
             DO $$
             BEGIN
                 IF NOT EXISTS (
@@ -188,8 +183,7 @@ def upgrade():
                 END IF;
             END
             $$;
-            """
-        )
+            """)
 
     # 6. Add missing indexes.
     for idx_name, table, columns in MISSING_INDEXES:
@@ -198,8 +192,7 @@ def upgrade():
         )
 
     # 7. Replace only_one_email_by_person with its partial version.
-    op.execute(
-        """
+    op.execute("""
         DO $$
         BEGIN
             IF EXISTS (
@@ -215,13 +208,11 @@ def upgrade():
             END IF;
         END
         $$;
-        """
-    )
+        """)
 
     # 8. Rename constraints that fresh DBs got with auto-generated names.
     for old, new, table in CONSTRAINT_RENAMES:
-        op.execute(
-            f"""
+        op.execute(f"""
             DO $$
             BEGIN
                 IF EXISTS (
@@ -233,15 +224,13 @@ def upgrade():
                 END IF;
             END
             $$;
-            """
-        )
+            """)
 
     # 9. Split collapsed PK+UC constraints on link tables.
     # On fresh DBs, the constraint named <table>_uc is actually the PK; in
     # prod, <table>_pkey is the PK and <table>_uc is a separate UNIQUE.
     for table, cols in PK_UC_SPLIT:
-        op.execute(
-            f"""
+        op.execute(f"""
             DO $$
             BEGIN
                 IF EXISTS (
@@ -258,8 +247,7 @@ def upgrade():
                 END IF;
             END
             $$;
-            """
-        )
+            """)
 
 
 def downgrade():

@@ -43,5 +43,5 @@ class TaskTypesCsvExport(BaseCsvExport):
         return query
 
     def build_row(self, task_type_row):
-        (task_type, department_name) = task_type_row
+        task_type, department_name = task_type_row
         return [department_name, task_type.name]

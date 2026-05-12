@@ -15,7 +15,6 @@ from zou.app.blueprints.comments.resources import (
     DeleteReplyCommentResource,
 )
 
-
 routes = [
     ("/data/tasks/<task_id>/comments/<comment_id>/ack", AckCommentResource),
     (

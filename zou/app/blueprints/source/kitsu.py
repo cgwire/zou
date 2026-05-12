@@ -92,9 +92,7 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         for entry in kitsu_entries:
             if self.check_access(entry):
                 try:
-                    (instance, is_updated) = self.model.create_from_import(
-                        entry
-                    )
+                    instance, is_updated = self.model.create_from_import(entry)
                     if is_updated:
                         self.emit_event("update", entry)
                     else:

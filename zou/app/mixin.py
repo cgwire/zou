@@ -27,15 +27,15 @@ class ArgsMixin(object):
 
             if isinstance(descriptor, (list, tuple)):
                 if len(descriptor) == 5:
-                    (name, default, required, data_type, action) = descriptor
+                    name, default, required, data_type, action = descriptor
                 elif len(descriptor) == 4:
-                    (name, default, required, data_type) = descriptor
+                    name, default, required, data_type = descriptor
                 elif len(descriptor) == 3:
-                    (name, default, required) = descriptor
+                    name, default, required = descriptor
                 elif len(descriptor) == 2:
-                    (name, default) = descriptor
+                    name, default = descriptor
                 elif len(descriptor) == 1:
-                    (name) = descriptor
+                    name = descriptor
                 else:
                     raise ValueError
             elif isinstance(descriptor, str):

@@ -22,7 +22,6 @@ from sqlalchemy import create_engine, pool
 from zou.app import db
 from zou.app.utils.plugins import PluginManifest
 
-
 config = context.config
 
 # The plugin path is injected by zou.app.utils.plugins.run_plugin_migrations.

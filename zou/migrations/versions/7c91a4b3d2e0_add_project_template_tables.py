@@ -14,7 +14,6 @@ import uuid
 from zou.app.models.person import ROLE_TYPES
 from zou.app.models.project import PROJECT_STYLES
 
-
 # revision identifiers, used by Alembic.
 revision = "7c91a4b3d2e0"
 down_revision = "68bae7fcd569"

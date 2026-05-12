@@ -7,7 +7,6 @@ from zou.app.blueprints.news.resources import (
     ProjectSingleNewsResource,
 )
 
-
 routes = [
     ("/data/projects/news", NewsResource),
     ("/data/projects/<project_id>/news", ProjectNewsResource),

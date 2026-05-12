@@ -32,7 +32,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
         self.assertIn("Saludos cordiales", signature_es)
 
     def test_get_task_descriptors(self):
-        (author, task_name, task_url) = emails_service.get_task_descriptors(
+        author, task_name, task_url = emails_service.get_task_descriptors(
             self.person.id, self.task.serialize()
         )
         self.assertEqual(
@@ -44,7 +44,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
             % (self.project.id, self.task.id),
         )
         self.generate_fixture_shot_task()
-        (author, task_name, task_url) = emails_service.get_task_descriptors(
+        author, task_name, task_url = emails_service.get_task_descriptors(
             self.person.id, self.shot_task.serialize()
         )
         self.assertEqual(

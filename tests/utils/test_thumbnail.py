@@ -39,13 +39,13 @@ class ThumbnailTestCase(unittest.TestCase):
 
         thumbnail.turn_into_thumbnail(full_path)
         im = Image.open(full_path)
-        (width, height) = im.size
+        width, height = im.size
         self.assertEqual(width, 180)
         self.assertEqual(height, 101)
 
         thumbnail.turn_into_thumbnail(full_path, thumbnail.RECTANGLE_SIZE)
         im = Image.open(full_path)
-        (width, height) = im.size
+        width, height = im.size
         self.assertEqual(width, 150)
         self.assertEqual(height, 100)
 
@@ -71,7 +71,7 @@ class ThumbnailTestCase(unittest.TestCase):
 
         thumbnail.turn_into_thumbnail(full_path, thumbnail.RECTANGLE_SIZE)
         im = Image.open(full_path)
-        (width, height) = im.size
+        width, height = im.size
         self.assertEqual(width, 150)
         self.assertEqual(height, 100)
 
@@ -142,6 +142,6 @@ class ThumbnailTestCase(unittest.TestCase):
 
         thumbnail_path = thumbnail.turn_hdr_into_thumbnail(full_path)
         im = Image.open(thumbnail_path)
-        (width, height) = im.size
+        width, height = im.size
         self.assertEqual(width, 300)
         self.assertEqual(height, 200)

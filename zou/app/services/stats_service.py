@@ -12,7 +12,6 @@ from zou.app.models.task_status import TaskStatus
 
 from zou.app.services import user_service
 
-
 DEFAULT_RETAKE_STATS = {
     "max_retake_count": 0,
     "evolution": {},

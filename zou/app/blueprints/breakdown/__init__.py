@@ -16,7 +16,6 @@ from zou.app.blueprints.breakdown.resources import (
     SequenceAllCastingResource,
 )
 
-
 routes = [
     (
         "/data/projects/<project_id>/entities/<entity_id>/casting",

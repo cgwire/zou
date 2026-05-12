@@ -21,7 +21,6 @@ from zou.app.blueprints.playlists.resources import (
     TempPlaylistResource,
 )
 
-
 routes = [
     ("/data/projects/<project_id>/playlists", ProjectPlaylistsResource),
     ("/data/projects/<project_id>/playlists/all", ProjectAllPlaylistsResource),

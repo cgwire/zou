@@ -198,7 +198,7 @@ class Entity(db.Model, BaseMixin, SerializerMixin):
     def create_from_import(cls, data):
         is_update = False
         previous_entity = cls.get(data["id"])
-        (data, entity_ids) = cls.sanitize_import_data(data)
+        data, entity_ids = cls.sanitize_import_data(data)
 
         if previous_entity is None:
             previous_entity = cls.create(**data)

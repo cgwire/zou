@@ -11,7 +11,6 @@ from zou.app.services.exception import (
 )
 from zou.app.utils import permissions
 
-
 # ---------------------------------------------------------------------------
 # Link management
 # ---------------------------------------------------------------------------

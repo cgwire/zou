@@ -116,13 +116,11 @@ def index_missing(name: str) -> Callable:
 
 def email_index_not_partial(conn) -> bool:
     with conn.cursor() as cur:
-        cur.execute(
-            """
+        cur.execute("""
             SELECT indexdef FROM pg_indexes
             WHERE schemaname = 'public'
               AND indexname = 'only_one_email_by_person'
-            """
-        )
+            """)
         row = cur.fetchone()
         return row is not None and "WHERE" not in row[0]
 
@@ -168,12 +166,10 @@ def pk_uc_collapsed(table: str) -> Callable:
 
 def asset_types_present(conn) -> bool:
     with conn.cursor() as cur:
-        cur.execute(
-            """
+        cur.execute("""
             SELECT 1 FROM information_schema.tables
             WHERE table_schema = 'public' AND table_name = 'asset_types'
-            """
-        )
+            """)
         return cur.fetchone() is not None
 
 

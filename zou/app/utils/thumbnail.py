@@ -10,7 +10,6 @@ from PIL import Image, ImageFile
 
 from zou.app.utils import fs
 
-
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 Image.MAX_IMAGE_PIXELS = 20000 * 20000
@@ -111,7 +110,7 @@ def turn_into_thumbnail(file_path, size=None):
     im = Image.open(file_path)
 
     if size is not None:
-        (width, height) = size
+        width, height = size
         if height == 0:
             size = get_full_size_from_width(im, width)
     else:
@@ -191,7 +190,7 @@ def generate_preview_variants(original_path, instance_id):
 
     result = []
     for picture_data in variants:
-        (picture_type, size) = picture_data
+        picture_type, size = picture_data
         folder_path = os.path.dirname(original_path)
         picture_path = os.path.join(
             folder_path, "%s-%s" % (picture_type, file_name)

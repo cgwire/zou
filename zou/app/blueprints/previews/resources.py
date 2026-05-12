@@ -46,7 +46,6 @@ from zou.app.services.exception import (
     WrongParameterException,
 )
 
-
 ALLOWED_PICTURE_EXTENSION = {"jpe", "jpeg", "jpg", "png"}
 ALLOWED_MOVIE_EXTENSION = {
     "avi",

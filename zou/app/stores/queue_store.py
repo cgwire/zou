@@ -4,7 +4,6 @@ import sys
 from rq import Queue
 from zou.app import config
 
-
 try:
     if config.ENABLE_JOB_QUEUE:
         queue_store = redis.StrictRedis(

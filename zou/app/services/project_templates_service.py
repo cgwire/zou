@@ -26,7 +26,6 @@ from zou.app.services.exception import (
 
 from zou.app.utils import events, fields
 
-
 # Production-setting fields that are copied between Project and
 # ProjectTemplate. Excluded on purpose: name, description (set explicitly),
 # any team / dates / production-data fields, and the JSONB columns

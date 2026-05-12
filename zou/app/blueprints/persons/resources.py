@@ -862,7 +862,7 @@ class PersonQuotaMixin(ArgsMixin):
     @jwt_required()
     def get(self, person_id, *args, **kwargs):
         user_service.check_person_is_not_bot(person_id)
-        (project_id, task_type_id, feedback, weighted) = (
+        project_id, task_type_id, feedback, weighted = (
             self.get_quota_arguments()
         )
         self.check_permissions(person_id, project_id)

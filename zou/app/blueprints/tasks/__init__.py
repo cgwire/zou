@@ -38,7 +38,6 @@ from zou.app.blueprints.tasks.resources import (
     OpenTasksStatsResource,
 )
 
-
 routes = [
     ("/data/tasks/open-tasks", OpenTasksResource),
     ("/data/tasks/open-tasks/stats", OpenTasksStatsResource),

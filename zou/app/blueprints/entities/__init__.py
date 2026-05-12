@@ -8,7 +8,6 @@ from zou.app.blueprints.entities.resources import (
     EntitiesLinkedWithTasksResource,
 )
 
-
 routes = [
     ("/data/entities/<entity_id>/news", EntityNewsResource),
     ("/data/entities/<entity_id>/preview-files", EntityPreviewFilesResource),

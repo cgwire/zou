@@ -505,7 +505,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
         user_service.check_manager_project_access(playlist["project_id"])
 
         project = projects_service.get_project(playlist["project_id"])
-        (width, height) = preview_files_service.get_preview_file_dimensions(
+        width, height = preview_files_service.get_preview_file_dimensions(
             project
         )
         fps = preview_files_service.get_preview_file_fps(project)

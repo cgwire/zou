@@ -10,7 +10,6 @@ import tempfile
 import ffmpeg
 import opentimelineio as otio
 
-
 logger = logging.getLogger(__name__)
 loghandler = logging.StreamHandler()
 loghandler.setLevel(logging.INFO)
@@ -244,7 +243,7 @@ def normalize_movie(movie_path, fps, width, height):
         tempfile.gettempdir(), low_file_target_name
     )
 
-    (w, h) = get_movie_size(movie_path)
+    w, h = get_movie_size(movie_path)
     resize_factor = w / h
 
     if width is None:
@@ -370,7 +369,7 @@ def add_empty_soundtrack(file_path, try_count=1):
         logger.error(f"Err in soundtrack: {err}")
         logger.error(f"Err code: {sp.returncode}")
         if try_count <= 1:
-            (width, height) = get_movie_size(file_path)
+            width, height = get_movie_size(file_path)
             if height % 2 == 1:
                 height = height + 1
             stream = ffmpeg.input(file_path)
@@ -420,9 +419,9 @@ def build_playlist_movie(
     result = {"message": "", "success": False}
     if len(tmp_file_paths) > 0:
         # Get movie dimensions
-        (first_movie_file_path, _) = tmp_file_paths[0]
+        first_movie_file_path, _ = tmp_file_paths[0]
         if width is None:
-            (width, height) = get_movie_size(first_movie_file_path)
+            width, height = get_movie_size(first_movie_file_path)
 
         # Clean empty audio tracks
         for tmp_file_path, file_name in tmp_file_paths:

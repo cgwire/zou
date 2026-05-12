@@ -50,7 +50,6 @@ from zou.app.stores import file_store
 from zou.app.utils import events, date_helpers
 from zou.app import app, config
 
-
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
 console_handler = logging.StreamHandler(sys.stdout)

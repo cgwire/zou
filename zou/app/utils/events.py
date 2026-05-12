@@ -6,7 +6,6 @@ from zou.app.stores import publisher_store
 from zou.app.models.event import ApiEvent
 from zou.app.utils import fields
 
-
 handlers = {}
 
 publisher_store.init()

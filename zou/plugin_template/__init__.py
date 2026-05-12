@@ -1,6 +1,5 @@
 from . import resources
 
-
 routes = [(f"/hello-world", resources.HelloWorld)]
 
 

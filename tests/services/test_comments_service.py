@@ -95,12 +95,12 @@ class CommentsServiceTestCase(ApiDBTestCase):
         retake_status = self.generate_fixture_task_status_retake().serialize()
         task = self.task.serialize()
         comment = self.comment
-        (task, status_changed) = comments_service._manage_status_change(
+        task, status_changed = comments_service._manage_status_change(
             task_status, task, comment
         )
         self.assertFalse(status_changed)
         self.assertEqual(task["retake_count"], 0)
-        (task, status_changed) = comments_service._manage_status_change(
+        task, status_changed = comments_service._manage_status_change(
             retake_status, task, comment
         )
         self.assertTrue(status_changed)
@@ -113,14 +113,14 @@ class CommentsServiceTestCase(ApiDBTestCase):
             "old comment",
             created_at="1999-12-23 10:00:00",
         )
-        (task, status_changed) = comments_service._manage_status_change(
+        task, status_changed = comments_service._manage_status_change(
             retake_status, task, old_comment
         )
 
         self.assertFalse(status_changed)
         self.assertEqual(task["retake_count"], 1)
 
-        (task, status_changed) = comments_service._manage_status_change(
+        task, status_changed = comments_service._manage_status_change(
             self.wfa_status, task, comment
         )
         self.assertTrue(task["end_date"] is not None)

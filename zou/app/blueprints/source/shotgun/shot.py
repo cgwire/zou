@@ -144,7 +144,7 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
         return {x["sg_status"] for x in sg_projects}
 
     def extract_data(self, sg_shot):
-        (frame_in, frame_out) = self.extract_frame_range(sg_shot)
+        frame_in, frame_out = self.extract_frame_range(sg_shot)
         custom_fields = self.extract_custom_data(sg_shot)
         project_id = self.get_project(sg_shot, self.project_map)
         sequence_id = self.get_sequence(sg_shot)

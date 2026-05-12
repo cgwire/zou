@@ -3,7 +3,6 @@ import redis
 
 from zou.app import config
 
-
 try:
     revoked_tokens_store = redis.StrictRedis(
         host=config.KEY_VALUE_STORE["host"],

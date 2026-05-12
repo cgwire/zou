@@ -8,7 +8,6 @@ from zou.app.blueprints.chats.resources import (
     ChatMessageResource,
 )
 
-
 routes = [
     ("/data/entities/<entity_id>/chat", ChatResource),
     ("/data/entities/<entity_id>/chat/messages", ChatMessagesResource),

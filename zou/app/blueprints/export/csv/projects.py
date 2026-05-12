@@ -43,5 +43,5 @@ class ProjectsCsvExport(BaseCsvExport):
         return query
 
     def build_row(self, project_data):
-        (project, project_status_name) = project_data
+        project, project_status_name = project_data
         return [project.name, project_status_name]
