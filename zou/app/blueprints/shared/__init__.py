@@ -16,6 +16,7 @@ from zou.app.blueprints.shared.resources import (
     SharedPlaylistPreviewFileThumbnailResource,
     SharedPlaylistPreviewFileOriginalResource,
     SharedPlaylistPreviewFileTileResource,
+    SharedPlaylistPreviewFileDownloadResource,
     SharedPlaylistContextResource,
 )
 
@@ -77,6 +78,11 @@ routes = [
         "/shared/playlists/<token>/movies/tiles/"
         "preview-files/<preview_file_id>.png",
         SharedPlaylistPreviewFileTileResource,
+    ),
+    (
+        "/shared/playlists/<token>/preview-files/"
+        "<preview_file_id>/download",
+        SharedPlaylistPreviewFileDownloadResource,
     ),
     (
         "/shared/playlists/<token>/context",
