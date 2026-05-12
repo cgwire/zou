@@ -1,4 +1,10 @@
-from werkzeug.exceptions import NotFound, Forbidden, BadRequest, Unauthorized
+from werkzeug.exceptions import (
+    NotFound,
+    Forbidden,
+    BadRequest,
+    Unauthorized,
+    ServiceUnavailable,
+)
 
 
 class EpisodeNotFoundException(NotFound):
@@ -106,6 +112,10 @@ class PreviewFileNotFoundException(NotFound):
 
 
 class PreviewFileReuploadNotAllowedException(BadRequest):
+    pass
+
+
+class AnnotationLockTimeoutException(ServiceUnavailable):
     pass
 
 

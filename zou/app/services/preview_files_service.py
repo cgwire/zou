@@ -36,6 +36,7 @@ from zou.app.utils import (
     thumbnail as thumbnail_utils,
 )
 from zou.app.services.exception import (
+    AnnotationLockTimeoutException,
     WrongParameterException,
     PreviewFileNotFoundException,
     ProjectNotFoundException,
@@ -100,9 +101,7 @@ def _is_valid_partial_resolution(resolution):
     """
     Return true if the dimension follows the x1080 pattern.
     """
-    return resolution is not None and bool(
-        re.match(r"^x\d{3,4}$", resolution)
-    )
+    return resolution is not None and bool(re.match(r"^x\d{3,4}$", resolution))
 
 
 def validate_resolution(resolution):
@@ -553,7 +552,13 @@ def update_preview_file_annotations(
         updates = []
     if deletions is None:
         deletions = []
-    with with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
+    with with_preview_file_lock(
+        preview_file_id, timeout=30, wait_timeout=35
+    ) as acquired:
+        if not acquired:
+            raise AnnotationLockTimeoutException(
+                "Could not acquire annotation lock for preview file"
+            )
         preview_file = files_service.get_preview_file_raw(preview_file_id)
         previous_annotations = copy.deepcopy(preview_file.annotations or [])
         annotations = _clean_annotations(previous_annotations)

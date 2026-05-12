@@ -223,6 +223,48 @@ class PlaylistTestCase(ApiDBTestCase):
             persisted_preview_file["annotations"],
         )
 
+    def test_update_annotations_aborts_when_lock_unavailable(self):
+        """When the Redis lock can't be acquired (Redis down or wait
+        timeout exceeded), the service must surface a 503 instead of
+        silently racing through the read-modify-write without
+        serialization."""
+        from contextlib import contextmanager
+
+        from zou.app.services.exception import AnnotationLockTimeoutException
+
+        preview_file = self.generate_fixture_preview_file().serialize()
+        preview_files_service.update_preview_file_annotations(
+            self.user_id,
+            self.project_id,
+            preview_file["id"],
+            additions=self.annotations_1,
+        )
+
+        @contextmanager
+        def unavailable_lock(*args, **kwargs):
+            yield False
+
+        with patch(
+            "zou.app.services.preview_files_service." "with_preview_file_lock",
+            side_effect=unavailable_lock,
+        ):
+            self.assertRaises(
+                AnnotationLockTimeoutException,
+                preview_files_service.update_preview_file_annotations,
+                self.user_id,
+                self.project_id,
+                preview_file["id"],
+                additions=self.annotations_2,
+            )
+
+        persisted_preview_file = files_service.get_preview_file(
+            preview_file["id"]
+        )
+        self.assertEqual(
+            self.annotations_1,
+            persisted_preview_file["annotations"],
+        )
+
     def test_get_preview_file_dimensions(self):
         self.assertFalse(_is_valid_resolution(""))
         self.assertFalse(_is_valid_resolution(None))
@@ -290,9 +332,7 @@ class PlaylistTestCase(ApiDBTestCase):
         mock_save_variants,
         mock_gen_tile,
     ):
-        preview_file = self.generate_fixture_preview_file(
-            status="processing"
-        )
+        preview_file = self.generate_fixture_preview_file(status="processing")
         preview_file_id = str(preview_file.id)
 
         # Create a small temp file to act as the uploaded movie
@@ -364,9 +404,7 @@ class PlaylistTestCase(ApiDBTestCase):
         # The data field preserves the original metadata
         self.assertIsNotNone(persisted["data"])
         self.assertEqual(persisted["data"]["original_width"], original_width)
-        self.assertEqual(
-            persisted["data"]["original_height"], original_height
-        )
+        self.assertEqual(persisted["data"]["original_height"], original_height)
         self.assertEqual(
             persisted["data"]["original_duration"], original_duration
         )
