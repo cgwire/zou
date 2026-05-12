@@ -36,6 +36,7 @@ from zou.app.services.exception import (
     BuildJobNotFoundException,
     PlaylistShareLinkNotFoundException,
 )
+from rq.exceptions import DuplicateJobError
 from zou.app.stores import file_store, queue_store
 from zou.app.utils import fs, permissions, validation
 from zou.utils.movie import EncodingParameters
@@ -528,19 +529,30 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                 }, 400
 
             current_user = persons_service.get_current_user()
-            queue_store.job_queue.enqueue(
-                playlists_service.build_playlist_job,
-                args=(
-                    playlist,
-                    job,
-                    shots,
-                    params,
-                    current_user["email"],
-                    full,
-                    remote,
-                ),
-                job_timeout=int(config.JOB_QUEUE_TIMEOUT),
-            )
+            try:
+                queue_store.job_queue.enqueue(
+                    playlists_service.build_playlist_job,
+                    args=(
+                        playlist,
+                        job,
+                        shots,
+                        params,
+                        current_user["email"],
+                        full,
+                        remote,
+                    ),
+                    job_timeout=int(config.JOB_QUEUE_TIMEOUT),
+                    unique=True,
+                    job_id=f"build_playlist:{playlist['id']}",
+                    result_ttl=60,
+                    failure_ttl=60,
+                )
+            except DuplicateJobError:
+                playlists_service.remove_build_job(playlist, job["id"])
+                return {
+                    "error": True,
+                    "message": "A build is already in progress for this playlist",
+                }, 409
             return job
         else:
             job = playlists_service.build_playlist_movie_file(
