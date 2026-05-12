@@ -565,8 +565,11 @@ class PersonTasksResource(Resource):
         """
         user_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
-        if person_id != current_user["id"]:
-            permissions.check_admin_permissions()
+        if (
+            person_id != current_user["id"]
+            and permissions.has_vendor_permissions()
+        ):
+            raise permissions.PermissionDenied
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
@@ -647,9 +650,12 @@ class PersonRelatedTasksResource(Resource):
                           example: ["f24a6ea4-ce75-4665-a070-57453082c25"]
         """
         user_service.check_person_is_not_bot(person_id)
-        user = persons_service.get_current_user()
-        if person_id != user["id"]:
-            permissions.check_admin_permissions()
+        current_user = persons_service.get_current_user()
+        if (
+            person_id != current_user["id"]
+            and permissions.has_vendor_permissions()
+        ):
+            raise permissions.PermissionDenied
         return tasks_service.get_person_related_tasks(person_id, task_type_id)
 
 
@@ -714,8 +720,11 @@ class PersonDoneTasksResource(Resource):
         """
         user_service.check_person_is_not_bot(person_id)
         current_user = persons_service.get_current_user()
-        if person_id != current_user["id"]:
-            permissions.check_admin_permissions()
+        if (
+            person_id != current_user["id"]
+            and permissions.has_vendor_permissions()
+        ):
+            raise permissions.PermissionDenied
         if not permissions.has_admin_permissions():
             projects = user_service.related_projects()
         else:
