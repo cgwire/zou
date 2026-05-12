@@ -318,7 +318,7 @@ def get_shot_tasks_for_sequence(sequence_id, relations=False):
     """
     Get all shot tasks for given sequence.
     """
-    query = _get_entity_task_query()
+    query = _get_entity_task_query(relations=relations)
     query = query.filter(Entity.parent_id == sequence_id)
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
@@ -327,7 +327,7 @@ def get_shot_tasks_for_episode(episode_id, relations=False):
     """
     Get all shots tasks for given episode.
     """
-    query = _get_entity_task_query()
+    query = _get_entity_task_query(relations=relations)
     Sequence = aliased(Entity, name="sequence")
     query = query.join(Sequence, Entity.parent_id == Sequence.id).filter(
         Sequence.parent_id == episode_id
@@ -340,7 +340,7 @@ def get_asset_tasks_for_episode(episode_id, relations=False):
     Get all assets tasks for given episode.
     """
     query = (
-        _get_entity_task_query()
+        _get_entity_task_query(relations=relations)
         .filter(assets_service.build_asset_type_filter())
         .filter(Entity.source_id == episode_id)
     )
@@ -352,15 +352,17 @@ def get_task_dicts_for_entity(entity_id, relations=True):
     Return all tasks related to given entity. Add extra information like
     project name, task type name, etc.
     """
-    query = _get_entity_task_query()
+    query = _get_entity_task_query(relations=relations)
     query = query.filter(Task.entity_id == entity_id)
     return _convert_rows_to_detailed_tasks(query.all(), relations)
 
 
-def _get_entity_task_query():
+def _get_entity_task_query(relations=False):
+    query = Task.query
+    if relations:
+        query = query.options(selectinload(Task.assignees))
     return (
-        Task.query.options(selectinload(Task.assignees))
-        .order_by(Task.name)
+        query.order_by(Task.name)
         .join(Project, Task.project_id == Project.id)
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, TaskStatus.id == Task.task_status_id)

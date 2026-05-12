@@ -426,7 +426,7 @@ def prepare_shot(shot, index=None):
         except SequenceNotFoundException:
             sequence_id = ""
         else:
-            episode_id = sequence.get("parent_id", "") or ""
+            episode_id = sequence.get("parent_id", "")
             if episode_id not in ["", "None", None]:
                 try:
                     episode = shots_service.get_episode(episode_id)

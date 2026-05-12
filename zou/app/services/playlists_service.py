@@ -22,6 +22,7 @@ from zou.app.stores import config_store, file_store
 from zou.app.models.build_job import BuildJob
 from zou.app.models.notification import Notification
 from zou.app.models.playlist import Playlist
+from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_type import TaskType
@@ -920,6 +921,11 @@ def remove_playlist(playlist_id):
     jobs = BuildJob.query.filter_by(playlist_id=playlist_id).all()
     for job in jobs:
         _remove_build_job_impl(playlist_dict, job.serialize())
+    share_links = PlaylistShareLink.query.filter_by(
+        playlist_id=playlist_id
+    ).all()
+    for share_link in share_links:
+        share_link.delete()
     playlist.delete()
     events.emit(
         "playlist:delete",

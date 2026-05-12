@@ -1,9 +1,17 @@
+from babel.core import UnknownLocaleError
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from jwt import ExpiredSignatureError
 from werkzeug.exceptions import Forbidden, NotFound
 from flask_fs.errors import FileNotFound
 
 from zou.app import config
+from zou.app.services.exception import (
+    ModelWithRelationsDeletionException,
+    TwoFactorAuthenticationRequiredException,
+    WrongIdFormatException,
+    WrongParameterException,
+    WrongTaskTypeForEntityException,
+)
 from zou.app.utils import permissions
 from zou import __version__ as zou_version
 
@@ -40,6 +48,12 @@ def init_monitoring(app):
                 Forbidden,
                 ExpiredSignatureError,
                 FileNotFound,
+                ModelWithRelationsDeletionException,
+                TwoFactorAuthenticationRequiredException,
+                UnknownLocaleError,
+                WrongIdFormatException,
+                WrongParameterException,
+                WrongTaskTypeForEntityException,
             ],
         )
 

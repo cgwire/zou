@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from zou.app.services import (
     assets_service,
     base_service,
@@ -116,7 +118,10 @@ def update_entity_preview(entity_id, preview_file_id):
     if preview_file is None:
         raise PreviewFileNotFoundException
 
-    entity.update({"preview_file_id": preview_file.id})
+    try:
+        entity.update({"preview_file_id": preview_file.id})
+    except IntegrityError:
+        raise PreviewFileNotFoundException
     clear_entity_cache(entity_id)
     events.emit(
         "preview-file:set-main",

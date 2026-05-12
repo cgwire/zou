@@ -5,6 +5,7 @@ from flask_restful import Resource
 from zou.app.blueprints.previews.resources import (
     send_movie_file,
     send_picture_file,
+    send_standard_file,
 )
 from zou.app.blueprints.shared.decorators import (
     require_valid_playlist_share_link,
@@ -24,7 +25,8 @@ from zou.app.services import (
     preview_files_service,
     tasks_service,
 )
-from zou.app.utils import validation
+from zou.app.services.exception import PreviewFileNotFoundException
+from zou.app.utils import permissions, validation
 
 
 class SharedPlaylistResource(Resource):
@@ -824,6 +826,71 @@ class SharedPlaylistPreviewFileTileResource(Resource):
             return send_picture_file("tiles", preview_file_id)
         except FileNotFound:
             return {"error": "Tile not found"}, 404
+
+
+class SharedPlaylistPreviewFileDownloadResource(Resource):
+    @require_valid_playlist_share_link()
+    def get(self, token, preview_file_id):
+        """
+        Download shared preview file
+        ---
+        description: Download a preview file (any extension) attached to
+          the shared playlist as an attachment. Mirrors the authenticated
+          ``/pictures/originals/preview-files/<id>/download`` route but
+          gated by the playlist share token instead of JWT.
+        tags:
+          - Playlists
+        parameters:
+          - in: path
+            name: token
+            required: true
+            schema:
+              type: string
+            description: Share link token
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+        responses:
+          200:
+            description: Preview file downloaded as attachment
+            content:
+              application/octet-stream:
+                schema:
+                  type: string
+                  format: binary
+          403:
+            description: Preview file is not part of this shared playlist
+          404:
+            description: Preview file not on disk
+        """
+        if not _is_preview_file_in_shared_playlist(token, preview_file_id):
+            raise permissions.PermissionDenied
+        preview_file = files_service.get_preview_file(preview_file_id)
+        extension = preview_file["extension"]
+        try:
+            if extension == "png":
+                return send_picture_file(
+                    "original", preview_file_id, as_attachment=True
+                )
+            elif extension == "pdf":
+                return send_standard_file(
+                    preview_file_id,
+                    extension,
+                    "application/pdf",
+                    as_attachment=True,
+                )
+            elif extension == "mp4":
+                return send_movie_file(preview_file_id, as_attachment=True)
+            else:
+                return send_standard_file(
+                    preview_file_id, extension, as_attachment=True
+                )
+        except FileNotFound:
+            raise PreviewFileNotFoundException
 
 
 class SharedPlaylistContextResource(Resource):

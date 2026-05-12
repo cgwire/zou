@@ -31,7 +31,7 @@ def apply_criterions_to_db_query(model, db_query, criterions):
     many_join_filter = []
     in_filter = []
     name_filter = []
-    filters = {}
+    eq_filter = []
 
     column_names = inspect(model).all_orm_descriptors.keys()
     for key, value in criterions.items():
@@ -63,10 +63,10 @@ def apply_criterions_to_db_query(model, db_query, criterions):
                     )
                 )
             else:
-                filters[key] = cast_value(value, field_key)
+                eq_filter.append(field_key == cast_value(value, field_key))
 
-    if filters:
-        db_query = db_query.filter_by(**filters)
+    for filter_clause in eq_filter:
+        db_query = db_query.filter(filter_clause)
 
     for value in name_filter:
         db_query = db_query.filter(model.name.ilike(value))

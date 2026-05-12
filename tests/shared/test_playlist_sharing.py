@@ -565,3 +565,98 @@ class PlaylistSharingTestCase(ApiDBTestCase):
                 400,
             )
         self.assertEqual(send_mock.call_count, 0)
+
+    # --- Shared preview file downloads ---
+
+    def _attach_zip_preview_to_playlist(self):
+        """Create a non-mp4 preview file with real bytes on disk and wire
+        it into the playlist's shots so that the shared preview-file
+        guard recognises it."""
+        import tempfile
+
+        from zou.app.models.playlist import Playlist as PlaylistModel
+        from zou.app.models.preview_file import PreviewFile
+        from zou.app.stores import file_store
+
+        preview_file = PreviewFile.create(
+            name="assets.zip",
+            revision=1,
+            extension="zip",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        payload = b"PK\x03\x04fake-zip-payload"
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(payload)
+            tmp_path = tmp.name
+        file_store.add_file("previews", str(preview_file.id), tmp_path)
+        self.addCleanup(
+            file_store.remove_file, "previews", str(preview_file.id)
+        )
+
+        PlaylistModel.get(self.playlist["id"]).update(
+            {
+                "shots": [
+                    {
+                        "id": str(self.asset.id),
+                        "preview_file_id": str(preview_file.id),
+                        "preview_file_task_id": str(self.task.id),
+                    }
+                ]
+            }
+        )
+        return preview_file, payload
+
+    def test_shared_preview_file_download(self):
+        """Any non-mp4 preview file in a shared playlist must be
+        downloadable through the share link. Before this endpoint
+        existed, Kitsu built the download URL on the movies/originals
+        streaming path with the file's actual extension, which only
+        matched ``.mp4`` and 404'd for every other extension."""
+        preview_file, payload = self._attach_zip_preview_to_playlist()
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/preview-files/{preview_file.id}/download"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, payload)
+
+    def test_shared_preview_file_download_invalid_token(self):
+        preview_file, _ = self._attach_zip_preview_to_playlist()
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/invalid-token"
+            f"/preview-files/{preview_file.id}/download"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_shared_preview_file_download_not_in_playlist(self):
+        """A preview file that is not exposed by the shared playlist
+        cannot be fetched through its share link, even when the token
+        is valid."""
+        from zou.app.models.preview_file import PreviewFile
+
+        foreign = PreviewFile.create(
+            name="foreign.zip",
+            revision=1,
+            extension="zip",
+            task_id=self.task.id,
+            person_id=self.person.id,
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/preview-files/{foreign.id}/download"
+        )
+        self.assertEqual(response.status_code, 403)
