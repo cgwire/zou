@@ -660,3 +660,67 @@ class PlaylistSharingTestCase(ApiDBTestCase):
             f"/preview-files/{foreign.id}/download"
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_shared_preview_file_download_sibling_position(self):
+        """A revision can carry multiple PreviewFile rows (different
+        positions). The shared share link exposes all positions of the
+        positioned revision, not only the one stored on the shot."""
+        import tempfile
+
+        from zou.app.models.playlist import Playlist as PlaylistModel
+        from zou.app.models.preview_file import PreviewFile
+        from zou.app.stores import file_store
+
+        positioned, payload = self._attach_zip_preview_to_playlist()
+        sibling = PreviewFile.create(
+            name="sibling.zip",
+            revision=positioned.revision,
+            position=positioned.position + 1,
+            extension="zip",
+            task_id=positioned.task_id,
+            person_id=self.person.id,
+        )
+        sibling_payload = b"PK\x03\x04sibling-position"
+        with tempfile.NamedTemporaryFile(suffix=".zip", delete=False) as tmp:
+            tmp.write(sibling_payload)
+            tmp_path = tmp.name
+        file_store.add_file("previews", str(sibling.id), tmp_path)
+        self.addCleanup(file_store.remove_file, "previews", str(sibling.id))
+
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/preview-files/{sibling.id}/download"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, sibling_payload)
+
+    def test_shared_preview_file_download_other_revision_rejected(self):
+        """A different revision of the same task is *not* exposed,
+        only the positioned revision and its sibling positions."""
+        from zou.app.models.preview_file import PreviewFile
+
+        positioned, _ = self._attach_zip_preview_to_playlist()
+        other_revision = PreviewFile.create(
+            name="other.zip",
+            revision=positioned.revision + 1,
+            extension="zip",
+            task_id=positioned.task_id,
+            person_id=self.person.id,
+        )
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        response = self.app.get(
+            f"/shared/playlists/{link['token']}"
+            f"/preview-files/{other_revision.id}/download"
+        )
+        self.assertEqual(response.status_code, 403)

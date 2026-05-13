@@ -6,11 +6,14 @@ import flask_bcrypt
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
 from zou.app.models.person import Person
+from zou.app.models.playlist import Playlist
 from zou.app.models.playlist_share_link import PlaylistShareLink
+from zou.app.models.preview_file import PreviewFile
 from zou.app.models.task import Task
 from zou.app.models.task_status import TaskStatus
 from zou.app.models.task_type import TaskType
 from zou.app.services import (
+    files_service,
     persons_service,
     playlists_service,
     tasks_service,
@@ -142,6 +145,41 @@ def get_shared_playlist(token):
     return playlists_service.get_playlist_with_preview_file_revisions(
         share_link["playlist_id"]
     )
+
+
+def is_preview_file_in_shared_playlist(token, preview_file_id):
+    """
+    Membership check used by every shared-playlist file-serving
+    endpoint (thumbnail, original, movie, download…).
+
+    A shared playlist is read-only for the viewer, so the only previews
+    legitimately served through the share link are those tied to the
+    positioned revision of each shot. We accept either the exact
+    preview_file_id stored on a shot, or another preview file that
+    shares its (task, revision) with the positioned one — a single
+    revision may carry several previews (different positions).
+    """
+    share_link = validate_share_token(token)
+    playlist = Playlist.get(share_link["playlist_id"])
+    if playlist is None or not playlist.shots:
+        return False
+    preview_file = files_service.get_preview_file(preview_file_id)
+    task = tasks_service.get_task(preview_file["task_id"])
+    entity_id_map = {
+        str(shot.get("entity_id") or shot.get("id")): shot.get(
+            "preview_file_id"
+        )
+        for shot in playlist.shots
+    }
+
+    main_preview_file_id = entity_id_map.get(str(task["entity_id"]))
+    if main_preview_file_id is None:
+        return False
+    if main_preview_file_id == preview_file_id:
+        return True
+
+    main_preview_file = files_service.get_preview_file(main_preview_file_id)
+    return main_preview_file["revision"] == preview_file["revision"]
 
 
 class GuestCommentForbidden(Exception):
