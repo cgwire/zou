@@ -2,13 +2,16 @@ from flask_restful import Resource
 
 from flask_jwt_extended import jwt_required
 
+from zou.app.blueprints.entities.schemas import CreateEntityTasksSchema
 from zou.app.services import (
     entities_service,
     news_service,
     preview_files_service,
+    tasks_service,
     time_spents_service,
     user_service,
 )
+from zou.app.utils import permissions, validation
 
 
 class EntityNewsResource(Resource):
@@ -292,3 +295,65 @@ class EntitiesLinkedWithTasksResource(Resource):
         user_service.check_project_access(entity["project_id"])
         user_service.check_entity_access(entity_id)
         return entities_service.get_linked_entities_with_tasks(entity_id)
+
+
+class EntityTaskCreationResource(Resource):
+    @jwt_required()
+    def post(self, entity_id):
+        """
+        Create tasks for an entity
+        ---
+        description: Create one task per provided task type for the given
+          entity. Each task type is validated against the entity's project
+          and (for assets) the entity's asset type workflow. Existing tasks
+          for the same (entity, task_type) pair are skipped.
+        tags:
+          - Entities
+        parameters:
+          - in: path
+            name: entity_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Unique identifier of the entity
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_type_ids:
+                    type: array
+                    items:
+                      type: string
+                      format: uuid
+                    description: List of task type IDs to create on the entity
+                example:
+                  task_type_ids:
+                    - b24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          201:
+            description: Created tasks
+          400:
+            description: A task type is not enabled in the project, not in
+              the asset type workflow, or does not target this kind of
+              entity
+        """
+        entity = entities_service.get_entity(entity_id)
+        user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
+        if (
+            permissions.has_vendor_permissions()
+            or permissions.has_client_permissions()
+        ):
+            raise permissions.PermissionDenied
+        body = validation.validate_request_body(CreateEntityTasksSchema)
+        task_types = [
+            tasks_service.get_task_type(task_type_id)
+            for task_type_id in body.task_type_ids
+        ]
+        tasks = tasks_service.create_tasks_for_entity(entity, task_types)
+        return tasks, 201

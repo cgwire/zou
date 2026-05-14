@@ -19,11 +19,11 @@ from zou.app.models.comment import (
 )
 from zou.app.models.department import Department
 from zou.app.models.entity import Entity, EntityLink
-from zou.app.models.entity_type import EntityType
+from zou.app.models.entity_type import EntityType, TaskTypeAssetTypeLink
 from zou.app.models.news import News
 from zou.app.models.person import Person
 from zou.app.models.preview_file import PreviewFile
-from zou.app.models.project import Project
+from zou.app.models.project import Project, ProjectTaskTypeLink
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.task import Task, TaskPersonLink
 from zou.app.models.task_type import TaskType
@@ -48,6 +48,7 @@ from zou.app.services.exception import (
     TaskNotFoundException,
     TaskStatusNotFoundException,
     TaskTypeNotFoundException,
+    WrongParameterException,
     DepartmentNotFoundException,
     StudioNotFoundException,
     WrongDateFormatException,
@@ -1212,6 +1213,71 @@ def create_tasks(task_type, entities):
         task_dicts.append(task_dict)
 
     return task_dicts
+
+
+def check_task_type_compatible_with_entity(task_type, entity):
+    """
+    Verify a task type can be applied to a given entity:
+    - task_type.for_entity matches the entity kind (Asset / Shot / ...).
+    - task_type is enabled in the entity's project.
+    - if the entity is an asset, task_type belongs to the entity's
+      asset type workflow.
+    Raises WrongParameterException on any failure.
+    """
+    is_asset = assets_service.is_asset_dict(entity)
+    expected = task_type.get("for_entity")
+    if expected:
+        if is_asset:
+            entity_kind = "Asset"
+        else:
+            entity_type = entities_service.get_entity_type(
+                entity["entity_type_id"]
+            )
+            entity_kind = entity_type["name"]
+        if expected != entity_kind:
+            raise WrongParameterException(
+                "Task type %s is for %s entities, got %s."
+                % (task_type["id"], expected, entity_kind)
+            )
+
+    project_link = ProjectTaskTypeLink.query.filter_by(
+        project_id=entity["project_id"],
+        task_type_id=task_type["id"],
+    ).first()
+    if project_link is None:
+        raise WrongParameterException(
+            "Task type %s is not enabled in project %s."
+            % (task_type["id"], entity["project_id"])
+        )
+
+    if is_asset:
+        asset_link = TaskTypeAssetTypeLink.query.filter_by(
+            asset_type_id=entity["entity_type_id"],
+            task_type_id=task_type["id"],
+        ).first()
+        if asset_link is None:
+            raise WrongParameterException(
+                "Task type %s is not in the workflow of asset type %s."
+                % (task_type["id"], entity["entity_type_id"])
+            )
+
+
+def create_tasks_for_entity(entity, task_types):
+    """
+    Create tasks of multiple types for a single entity.
+    Each task type is validated against the entity (project link, asset
+    workflow link, for_entity) before any creation.
+    Existing tasks for the same (entity, task_type, name="main") are
+    skipped, mirroring create_tasks behaviour.
+    """
+    if not task_types:
+        return []
+    for task_type in task_types:
+        check_task_type_compatible_with_entity(task_type, entity)
+    created = []
+    for task_type in task_types:
+        created.extend(create_tasks(task_type, [entity]))
+    return created
 
 
 def create_task(task_type, entity, name="main"):

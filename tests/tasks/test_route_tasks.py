@@ -90,6 +90,78 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(task["task_type_id"], self.task_type_id)
         self.assertEqual(task["entity_id"], self.shot_id)
 
+    def test_create_entity_tasks_for_shot(self):
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type_animation.id,
+        )
+        path = "/data/entities/%s/tasks" % self.shot_id
+        tasks = self.post(
+            path,
+            {"task_type_ids": [str(self.task_type_animation.id)]},
+            code=201,
+        )
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(
+            tasks[0]["task_type_id"], str(self.task_type_animation.id)
+        )
+        self.assertEqual(tasks[0]["entity_id"], self.shot_id)
+
+    def test_create_entity_tasks_rejects_task_type_not_in_project(self):
+        # task_type_animation is for_entity=Shot, never linked to project
+        path = "/data/entities/%s/tasks" % self.shot_id
+        self.post(
+            path,
+            {"task_type_ids": [str(self.task_type_animation.id)]},
+            code=400,
+        )
+
+    def test_create_entity_tasks_rejects_wrong_for_entity(self):
+        # task_type has for_entity="Asset", shot has wrong kind
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+        path = "/data/entities/%s/tasks" % self.shot_id
+        self.post(
+            path,
+            {"task_type_ids": [self.task_type_id]},
+            code=400,
+        )
+
+    def test_create_entity_tasks_rejects_task_type_not_in_asset_workflow(
+        self,
+    ):
+        # task_type is in project, but asset_type workflow is empty
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+        path = "/data/entities/%s/tasks" % self.asset_id
+        self.post(
+            path,
+            {"task_type_ids": [self.task_type_id]},
+            code=400,
+        )
+
+    def test_create_entity_tasks_for_asset(self):
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+        )
+        self.asset_type.task_types = [self.task_type]
+        self.asset_type.save()
+
+        path = "/data/entities/%s/tasks" % self.asset_id
+        tasks = self.post(
+            path,
+            {"task_type_ids": [self.task_type_id]},
+            code=201,
+        )
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["task_type_id"], self.task_type_id)
+        self.assertEqual(tasks[0]["entity_id"], self.asset_id)
+
     def test_task_assign(self):
         self.generate_fixture_task()
         person_id = str(self.person.id)
