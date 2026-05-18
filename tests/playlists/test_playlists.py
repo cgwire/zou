@@ -112,9 +112,9 @@ class PlaylistTestCase(ApiDBTestCase):
     def test_create_playlist_for_each_entity_type(self):
         """`for_entity` round-trips for every supported entity type.
 
-        The column is `String(10)` with no whitelist; this test pins the
-        contract so widening the set (e.g. adding `edit`) stays a one-line
-        change in consumers.
+        The column is permissive `String(10)` but the CRUD whitelists the
+        set so a stray value cannot land in storage; this test pins the
+        contract for each accepted value.
         """
         for for_entity in ("shot", "asset", "sequence", "edit"):
             created = self.post(
@@ -129,6 +129,25 @@ class PlaylistTestCase(ApiDBTestCase):
             self.assertEqual(created["for_entity"], for_entity)
             fetched = self.get("data/playlists/%s" % created["id"])
             self.assertEqual(fetched["for_entity"], for_entity)
+
+    def test_create_playlist_rejects_unknown_for_entity(self):
+        self.post(
+            "data/playlists/",
+            {
+                "name": "Bad playlist",
+                "project_id": self.project_id,
+                "for_entity": "banana",
+            },
+            400,
+        )
+
+    def test_update_playlist_rejects_unknown_for_entity(self):
+        self.generate_fixture_playlist("Playlist 1")
+        self.put(
+            "data/playlists/%s" % self.playlist.id,
+            {"for_entity": "banana"},
+            400,
+        )
 
     def test_download_playlist(self):
         self.generate_fixture_playlist("Playlist 1", for_client=False)

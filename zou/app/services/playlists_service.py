@@ -56,6 +56,12 @@ logger = logging.getLogger(__name__)
 # Page size for playlist list endpoints
 PLAYLISTS_PAGE_SIZE = 20
 
+# Whitelist of accepted Playlist.for_entity values. The column itself is a
+# permissive String(10) for historical reasons; this set is what consumers
+# (gazu Literal, kitsu UI branches, docs) actually handle. Validate at the
+# CRUD boundary so a stray value cannot land in storage.
+VALID_FOR_ENTITY_VALUES = ("shot", "asset", "sequence", "edit")
+
 # First entry's preview_file_id for list rows (PostgreSQL jsonb path), avoids
 # loading the full `shots` column when paired with defer(Playlist.shots).
 _FIRST_SHOT_PREVIEW_FILE_ID_SQL = Playlist.shots[0][
