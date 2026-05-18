@@ -60,7 +60,7 @@ PLAYLISTS_PAGE_SIZE = 20
 # permissive String(10) for historical reasons; this set is what consumers
 # (gazu Literal, kitsu UI branches, docs) actually handle. Validate at the
 # CRUD boundary so a stray value cannot land in storage.
-VALID_FOR_ENTITY_VALUES = ("shot", "asset", "sequence", "edit")
+VALID_FOR_ENTITY_VALUES = ("shot", "asset", "sequence", "edit", "episode")
 
 # First entry's preview_file_id for list rows (PostgreSQL jsonb path), avoids
 # loading the full `shots` column when paired with defer(Playlist.shots).

@@ -116,7 +116,7 @@ class PlaylistTestCase(ApiDBTestCase):
         set so a stray value cannot land in storage; this test pins the
         contract for each accepted value.
         """
-        for for_entity in ("shot", "asset", "sequence", "edit"):
+        for for_entity in ("shot", "asset", "sequence", "edit", "episode"):
             created = self.post(
                 "data/playlists/",
                 {
