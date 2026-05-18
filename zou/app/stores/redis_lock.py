@@ -28,12 +28,14 @@ def get_redis_client():
 def with_lock(lock_key, timeout=30, wait_timeout=35):
     """
     Context manager: acquire a Redis lock by key, yield, then release.
-    Yields True if lock was acquired, False if Redis unavailable or lock
-    not acquired in time.
+    Yields True if the lock was acquired or Redis is unavailable
+    (degraded mode: the operation proceeds without distributed
+    serialization). Yields False only when Redis is reachable but
+    the lock acquisition timed out (genuine contention).
     """
     client = get_redis_client()
     if client is None:
-        yield False
+        yield True
         return
     lock = client.lock(lock_key, timeout=timeout, blocking_timeout=wait_timeout)
     acquired = lock.acquire()
@@ -51,7 +53,7 @@ def with_lock(lock_key, timeout=30, wait_timeout=35):
 def with_playlist_lock(playlist_id, timeout=30, wait_timeout=35):
     """
     Context manager: acquire playlist lock, yield, then release.
-    Yields True if lock was acquired, False if Redis unavailable or lock not acquired in time.
+    See `with_lock` for the True/False contract.
     """
     with with_lock(
         f"playlist_lock:{playlist_id}", timeout, wait_timeout
@@ -62,8 +64,9 @@ def with_playlist_lock(playlist_id, timeout=30, wait_timeout=35):
 @contextmanager
 def with_preview_file_lock(preview_file_id, timeout=30, wait_timeout=35):
     """
-    Context manager: acquire lock for preview file (e.g. annotation changes), yield, then release.
-    Yields True if lock was acquired, False if Redis unavailable or lock not acquired in time.
+    Context manager: acquire lock for preview file (e.g. annotation
+    changes), yield, then release. See `with_lock` for the True/False
+    contract.
     """
     with with_lock(
         f"preview_file_annotations_lock:{preview_file_id}",
