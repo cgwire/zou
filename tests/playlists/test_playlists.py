@@ -109,6 +109,27 @@ class PlaylistTestCase(ApiDBTestCase):
         ).all()
         self.assertEqual(len(share_links), 0)
 
+    def test_create_playlist_for_each_entity_type(self):
+        """`for_entity` round-trips for every supported entity type.
+
+        The column is `String(10)` with no whitelist; this test pins the
+        contract so widening the set (e.g. adding `edit`) stays a one-line
+        change in consumers.
+        """
+        for for_entity in ("shot", "asset", "sequence", "edit"):
+            created = self.post(
+                "data/playlists/",
+                {
+                    "name": "Playlist %s" % for_entity,
+                    "project_id": self.project_id,
+                    "for_entity": for_entity,
+                },
+                201,
+            )
+            self.assertEqual(created["for_entity"], for_entity)
+            fetched = self.get("data/playlists/%s" % created["id"])
+            self.assertEqual(fetched["for_entity"], for_entity)
+
     def test_download_playlist(self):
         self.generate_fixture_playlist("Playlist 1", for_client=False)
         result_file_path = self.get_file_path("playlist.zip")
