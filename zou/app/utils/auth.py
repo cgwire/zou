@@ -27,6 +27,18 @@ def encrypt_password(password):
     return flask_bcrypt.generate_password_hash(password[:72])
 
 
+def check_password(password_hash, password):
+    """
+    Check a password against a bcrypt hash. Mirrors `encrypt_password`
+    truncation so that users whose password exceeds 72 bytes can still
+    log in (bcrypt 5+ raises ValueError on overlong input instead of
+    silently truncating).
+    """
+    if isinstance(password, str):
+        password = password.encode("utf-8")
+    return flask_bcrypt.check_password_hash(password_hash, password[:72])
+
+
 def validate_email(
     email, check_deliverability=config.MAIL_CHECK_DELIVERABILITY
 ):

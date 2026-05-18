@@ -1,7 +1,6 @@
 import pyotp
 import random
 import string
-import flask_bcrypt
 
 from datetime import timedelta
 
@@ -36,7 +35,7 @@ from zou.app.services.exception import (
 )
 from zou.app import config
 from zou.app.stores import auth_tokens_store
-from zou.app.utils import date_helpers, emails
+from zou.app.utils import auth, date_helpers, emails
 from zou.app.utils.email_i18n import get_email_translation
 
 from fido2.webauthn import (
@@ -148,9 +147,7 @@ def local_auth_strategy(person, password, app=None):
     """
     try:
         password_hash = person["password"] or ""
-        if password_hash and flask_bcrypt.check_password_hash(
-            password_hash, password
-        ):
+        if password_hash and auth.check_password(password_hash, password):
             return person
         else:
             raise WrongPasswordException()
@@ -325,7 +322,7 @@ def check_recovery_code(person, recovery_code):
     Check recovery code for a person.
     """
     for recovery_hash in person["otp_recovery_codes"]:
-        if flask_bcrypt.check_password_hash(recovery_hash, recovery_code):
+        if auth.check_password(recovery_hash, recovery_code):
             remove_otp_revovery_code(person["id"], recovery_hash)
             return True
     return False

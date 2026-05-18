@@ -45,11 +45,12 @@ class AuthTestCase(ApiDBTestCase):
         self.assertTrue(bcrypt.check_password_hash(pass_hash, password))
 
     def test_encrypt_password_long(self):
-        """Ensure passwords longer than 72 bytes don't raise ValueError."""
+        """Ensure passwords longer than 72 bytes don't raise ValueError
+        and can still be verified end-to-end."""
         long_password = "password " * 10  # 100 chars
         self.assertGreater(len(long_password), 72)
         pass_hash = auth.encrypt_password(long_password)
-        self.assertTrue(bcrypt.check_password_hash(pass_hash, long_password))
+        self.assertTrue(auth.check_password(pass_hash, long_password))
 
     def test_validate_email(self):
         self.assertEqual(

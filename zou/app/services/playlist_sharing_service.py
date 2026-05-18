@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-import flask_bcrypt
+from zou.app.utils import auth
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -119,9 +119,7 @@ def validate_share_token(token, password=None):
         if not password:
             raise PlaylistShareLinkNotFoundException
         try:
-            if not flask_bcrypt.check_password_hash(
-                share_link.password, password
-            ):
+            if not auth.check_password(share_link.password, password):
                 raise PlaylistShareLinkNotFoundException
         except (ValueError, TypeError):
             raise PlaylistShareLinkNotFoundException
