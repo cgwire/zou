@@ -165,6 +165,23 @@ class PersonServiceTestCase(ApiDBTestCase):
         for person in persons:
             self.assertTrue(person.active)
 
+    def test_active_persons_exclude_guests(self):
+        from zou.app.models.person import Person
+
+        Person.create(
+            first_name="Guest",
+            last_name="Reviewer",
+            email="guest-reviewer@guest.kitsu",
+            role="client",
+            is_guest=True,
+        )
+        raw_persons = persons_service.get_all_raw_active_persons()
+        self.assertGreater(len(raw_persons), 0)
+        self.assertFalse(any(p.is_guest for p in raw_persons))
+        persons = persons_service.get_active_persons()
+        self.assertGreater(len(persons), 0)
+        self.assertFalse(any(p.get("is_guest") for p in persons))
+
     def test_get_person_raw(self):
         person = persons_service.get_person_raw(self.person_id)
         self.assertEqual(str(person.id), self.person_id)

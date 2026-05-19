@@ -70,18 +70,20 @@ def get_persons(minimal=False, include_guests=False):
 
 def get_all_raw_active_persons():
     """
-    Return all person stored in database without serialization.
+    Return all active persons without serialization. Guests are excluded.
     """
-    return Person.get_all_by(active=True)
+    return Person.query.filter(
+        Person.active, Person.is_guest.isnot(True)
+    ).all()
 
 
 @cache.memoize_function(120)
 def get_active_persons():
     """
-    Return all persons with flag active set to True.
+    Return all persons with flag active set to True. Guests are excluded.
     """
     persons = (
-        Person.query.filter_by(active=True)
+        Person.query.filter(Person.active, Person.is_guest.isnot(True))
         .order_by(Person.first_name)
         .order_by(Person.last_name)
         .all()
