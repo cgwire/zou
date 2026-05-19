@@ -5,6 +5,7 @@ from tests.base import ApiDBTestCase
 from zou.app import app
 from zou.app.services import files_service, preview_files_service
 from zou.app.models.software import Software
+from zou.app.utils import fields
 from zou.app.services.exception import (
     EntryAlreadyExistsException,
     OutputFileNotFoundException,
@@ -510,6 +511,23 @@ class FileServiceTestCase(ApiDBTestCase):
             PreviewFileNotFoundException,
             files_service.get_preview_file,
             preview_file_id,
+        )
+
+    def test_get_preview_file_for_access(self):
+        self.generate_fixture_preview_file()
+        preview_file_id = self.preview_file.id
+        result = files_service.get_preview_file_for_access(preview_file_id)
+        self.assertEqual(
+            set(result.keys()), {"id", "task_id", "updated_at", "extension"}
+        )
+        self.assertEqual(result["id"], str(preview_file_id))
+        self.assertEqual(result["task_id"], str(self.preview_file.task_id))
+
+    def test_get_preview_file_for_access_missing(self):
+        self.assertRaises(
+            PreviewFileNotFoundException,
+            files_service.get_preview_file_for_access,
+            fields.gen_uuid(),
         )
 
     def test_get_preview_files_for_project(self):

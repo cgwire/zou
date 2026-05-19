@@ -40,6 +40,7 @@ from sqlalchemy.sql.expression import and_
 
 def clear_preview_file_cache(preview_file_id):
     cache.cache.delete_memoized(get_preview_file, preview_file_id)
+    cache.cache.delete_memoized(get_preview_file_for_access, preview_file_id)
 
 
 def clear_output_file_cache(output_file_id):
@@ -758,6 +759,38 @@ def get_preview_file(preview_file_id):
     """
     preview_file = get_preview_file_raw(preview_file_id)
     return preview_file.serialize()
+
+
+@cache.memoize_function(240)
+def get_preview_file_for_access(preview_file_id):
+    """
+    Lightweight lookup used by picture/movie download endpoints that only
+    need to check permissions and emit a Last-Modified header. Avoids
+    loading the JSONB annotations and data columns, which can weigh
+    several MB on long shots and dominate query time when the response
+    is a static file served from disk.
+    """
+    try:
+        row = (
+            PreviewFile.query.with_entities(
+                PreviewFile.id,
+                PreviewFile.task_id,
+                PreviewFile.updated_at,
+                PreviewFile.extension,
+            )
+            .filter_by(id=preview_file_id)
+            .first()
+        )
+    except StatementError:
+        raise PreviewFileNotFoundException()
+    if row is None:
+        raise PreviewFileNotFoundException()
+    return {
+        "id": str(row.id),
+        "task_id": str(row.task_id) if row.task_id else None,
+        "updated_at": fields.serialize_value(row.updated_at),
+        "extension": row.extension,
+    }
 
 
 def get_preview_files_for_task(task_id):
