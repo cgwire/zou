@@ -96,6 +96,20 @@ class PlaylistTestCase(ApiDBTestCase):
         ).all()
         self.assertEqual(len(notifications), 0)
 
+    def test_delete_playlist_with_share_links(self):
+        self.generate_fixture_playlist("Playlist 1")
+        playlist_sharing_service.create_share_link(
+            str(self.playlist.id), self.user["id"]
+        )
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.delete("data/playlists/%s" % playlists[0]["id"])
+        playlists = self.get("data/projects/%s/playlists" % self.project_id)
+        self.assertEqual(len(playlists), 0)
+        share_links = PlaylistShareLink.query.filter_by(
+            playlist_id=self.playlist.id
+        ).all()
+        self.assertEqual(len(share_links), 0)
+
     def test_remove_playlist_with_share_links(self):
         self.generate_fixture_playlist("Playlist 1")
         playlist_sharing_service.create_share_link(
