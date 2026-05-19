@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from zou.app.utils import auth
+from zou.app.utils import auth, events
 
 from zou.app.models.entity import Entity
 from zou.app.models.entity_type import EntityType
@@ -652,6 +652,8 @@ def create_guest(token, first_name, last_name=""):
         is_guest=True,
         data={"share_link_id": share_link_id},
     )
+    persons_service.clear_person_cache()
+    events.emit("person:new", {"person_id": str(guest.id)})
     return guest.serialize()
 
 
