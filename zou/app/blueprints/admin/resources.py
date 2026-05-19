@@ -15,6 +15,8 @@ class ConfigCheckResource(Resource):
 
         comparison = config_store.get_config_comparison()
         comparison["active_users"] = Person.query.filter(
-            Person.active, Person.is_bot.isnot(True)
+            Person.active,
+            Person.is_bot.isnot(True),
+            Person.is_guest.isnot(True),
         ).count()
         return comparison
