@@ -1160,19 +1160,43 @@ def get_last_comment_map(task_ids):
     return task_comment_map
 
 
+def _build_task_no_commit(
+    task_type, task_status, entity, current_user_id
+):
+    """
+    Insert a new task (without committing) using the zou defaults for
+    name, durations, dates and assignees.
+    """
+    return Task.create_no_commit(
+        name="main",
+        duration=0,
+        estimation=0,
+        completion_rate=0,
+        start_date=None,
+        end_date=None,
+        due_date=None,
+        real_start_date=None,
+        project_id=entity["project_id"],
+        task_type_id=task_type["id"],
+        task_status_id=task_status["id"],
+        entity_id=entity["id"],
+        assigner_id=current_user_id,
+        assignees=[],
+    )
+
+
 def create_tasks(task_type, entities):
     """
     Create a new task for given task type and for each entity.
     """
+    if not entities:
+        return []
+
     current_user_id = None
     try:
         current_user_id = persons_service.get_current_user()["id"]
     except RuntimeError:
         pass
-
-    # Batch query existing tasks to avoid N+1 query problem
-    if not entities:
-        return []
 
     entity_ids = [entity["id"] for entity in entities]
     existing_tasks = Task.query.filter(
@@ -1188,48 +1212,30 @@ def create_tasks(task_type, entities):
     tasks = []
     for entity in entities:
         if str(entity["id"]) not in existing_entity_ids:
-            task = Task.create_no_commit(
-                name="main",
-                duration=0,
-                estimation=0,
-                completion_rate=0,
-                start_date=None,
-                end_date=None,
-                due_date=None,
-                real_start_date=None,
-                project_id=entity["project_id"],
-                task_type_id=task_type["id"],
-                task_status_id=task_status["id"],
-                entity_id=entity["id"],
-                assigner_id=current_user_id,
-                assignees=[],
+            tasks.append(
+                _build_task_no_commit(
+                    task_type, task_status, entity, current_user_id
+                )
             )
-            tasks.append(task)
     Task.commit()
 
-    task_dicts = []
-    for task in tasks:
-        task_dict = _finalize_task_creation(task_type, task_status, task)
-        task_dicts.append(task_dict)
-
-    return task_dicts
+    return [
+        _finalize_task_creation(task_type, task_status, task) for task in tasks
+    ]
 
 
-def create_tasks_for_entity(entity, task_types):
+def create_tasks_for_entity(entity, task_types=None):
     """
     Create tasks of multiple types for a single entity in one batch.
-    Each task type is validated against the entity (for_entity match,
-    project workflow membership, and asset-type workflow membership when
-    relevant) before any creation. Existing tasks for the same
-    (entity, task_type, name="main") are skipped.
+    When task_types is empty or None, default to every task type valid
+    for the entity: enabled in the project, in the asset-type workflow
+    (for assets), and whose for_entity matches the entity kind. When a
+    list is provided, each task type is validated against those same
+    constraints. Existing tasks for the same (entity, task_type,
+    name="main") are skipped.
     """
-    if not task_types:
-        return []
-
-    type_ids = [task_type["id"] for task_type in task_types]
     project_id = entity["project_id"]
     is_asset = assets_service.is_asset_dict(entity)
-
     if is_asset:
         entity_kind = "Asset"
     else:
@@ -1241,8 +1247,7 @@ def create_tasks_for_entity(entity, task_types):
     enabled_in_project = {
         str(link.task_type_id)
         for link in ProjectTaskTypeLink.query.filter(
-            ProjectTaskTypeLink.project_id == project_id,
-            ProjectTaskTypeLink.task_type_id.in_(type_ids),
+            ProjectTaskTypeLink.project_id == project_id
         ).all()
     }
     enabled_in_workflow = None
@@ -1251,30 +1256,47 @@ def create_tasks_for_entity(entity, task_types):
             str(link.task_type_id)
             for link in TaskTypeAssetTypeLink.query.filter(
                 TaskTypeAssetTypeLink.asset_type_id
-                == entity["entity_type_id"],
-                TaskTypeAssetTypeLink.task_type_id.in_(type_ids),
+                == entity["entity_type_id"]
             ).all()
         }
 
-    for task_type in task_types:
-        type_id = task_type["id"]
-        expected = task_type.get("for_entity")
-        if expected and expected != entity_kind:
-            raise WrongParameterException(
-                f"Task type {type_id} is for {expected} entities, "
-                f"got {entity_kind}."
-            )
-        if str(type_id) not in enabled_in_project:
-            raise WrongParameterException(
-                f"Task type {type_id} is not enabled in project "
-                f"{project_id}."
-            )
-        if is_asset and str(type_id) not in enabled_in_workflow:
-            raise WrongParameterException(
-                f"Task type {type_id} is not in the workflow of asset "
-                f"type {entity['entity_type_id']}."
-            )
+    if not task_types:
+        candidate_ids = enabled_in_project
+        if is_asset:
+            candidate_ids = candidate_ids & enabled_in_workflow
+        if not candidate_ids:
+            return []
+        task_types = [
+            task_type.serialize()
+            for task_type in TaskType.query.filter(
+                TaskType.id.in_(candidate_ids)
+            ).all()
+            if not task_type.for_entity
+            or task_type.for_entity == entity_kind
+        ]
+        if not task_types:
+            return []
+    else:
+        for task_type in task_types:
+            type_id = task_type["id"]
+            expected = task_type.get("for_entity")
+            if expected and expected != entity_kind:
+                raise WrongParameterException(
+                    f"Task type {type_id} is for {expected} entities, "
+                    f"got {entity_kind}."
+                )
+            if str(type_id) not in enabled_in_project:
+                raise WrongParameterException(
+                    f"Task type {type_id} is not enabled in project "
+                    f"{project_id}."
+                )
+            if is_asset and str(type_id) not in enabled_in_workflow:
+                raise WrongParameterException(
+                    f"Task type {type_id} is not in the workflow of "
+                    f"asset type {entity['entity_type_id']}."
+                )
 
+    type_ids = [task_type["id"] for task_type in task_types]
     existing_type_ids = {
         str(task.task_type_id)
         for task in Task.query.filter(
@@ -1284,7 +1306,10 @@ def create_tasks_for_entity(entity, task_types):
         ).all()
     }
 
-    task_status = get_default_status(for_concept=False)
+    task_status = get_default_status(
+        for_concept=entity["entity_type_id"]
+        == concepts_service.get_concept_type()["id"]
+    )
     current_user_id = None
     try:
         current_user_id = persons_service.get_current_user()["id"]
@@ -1295,21 +1320,8 @@ def create_tasks_for_entity(entity, task_types):
     for task_type in task_types:
         if str(task_type["id"]) in existing_type_ids:
             continue
-        task = Task.create_no_commit(
-            name="main",
-            duration=0,
-            estimation=0,
-            completion_rate=0,
-            start_date=None,
-            end_date=None,
-            due_date=None,
-            real_start_date=None,
-            project_id=project_id,
-            task_type_id=task_type["id"],
-            task_status_id=task_status["id"],
-            entity_id=entity["id"],
-            assigner_id=current_user_id,
-            assignees=[],
+        task = _build_task_no_commit(
+            task_type, task_status, entity, current_user_id
         )
         new_tasks.append((task_type, task))
     Task.commit()

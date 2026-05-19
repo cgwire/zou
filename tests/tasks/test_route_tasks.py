@@ -162,6 +162,53 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(tasks[0]["task_type_id"], self.task_type_id)
         self.assertEqual(tasks[0]["entity_id"], self.asset_id)
 
+    def test_create_entity_tasks_defaults_to_project_task_types_on_shot(
+        self,
+    ):
+        # Link two shot task types + one asset task type to the project.
+        # An empty body should default to the project's shot task types
+        # only (filtered by for_entity).
+        for task_type_id in (
+            self.task_type_animation.id,
+            self.task_type_layout.id,
+            self.task_type.id,
+        ):
+            ProjectTaskTypeLink.create(
+                project_id=self.project.id, task_type_id=task_type_id
+            )
+
+        path = f"/data/entities/{self.shot_id}/tasks"
+        tasks = self.post(path, {}, code=201)
+
+        created_type_ids = {task["task_type_id"] for task in tasks}
+        self.assertEqual(
+            created_type_ids,
+            {
+                str(self.task_type_animation.id),
+                str(self.task_type_layout.id),
+            },
+        )
+
+    def test_create_entity_tasks_defaults_to_asset_workflow_on_asset(self):
+        # Link two asset task types to the project but only one is in
+        # the asset type's workflow. An empty body should create just
+        # that one.
+        for task_type_id in (
+            self.task_type.id,
+            self.task_type_modeling.id,
+        ):
+            ProjectTaskTypeLink.create(
+                project_id=self.project.id, task_type_id=task_type_id
+            )
+        self.asset_type.task_types = [self.task_type]
+        self.asset_type.save()
+
+        path = f"/data/entities/{self.asset_id}/tasks"
+        tasks = self.post(path, {}, code=201)
+
+        self.assertEqual(len(tasks), 1)
+        self.assertEqual(tasks[0]["task_type_id"], self.task_type_id)
+
     def test_task_assign(self):
         self.generate_fixture_task()
         person_id = str(self.person.id)

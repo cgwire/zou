@@ -305,8 +305,11 @@ class EntityTaskCreationResource(Resource):
         ---
         description: Create one task per provided task type for the given
           entity. Each task type is validated against the entity's project
-          and (for assets) the entity's asset type workflow. Existing tasks
-          for the same (entity, task_type) pair are skipped.
+          and (for assets) the entity's asset type workflow. When
+          task_type_ids is omitted or empty, default to every task type
+          valid for the entity (project workflow, asset-type workflow if
+          asset, and matching for_entity). Existing tasks for the same
+          (entity, task_type) pair are skipped.
         tags:
           - Entities
         parameters:
@@ -319,7 +322,7 @@ class EntityTaskCreationResource(Resource):
             description: Unique identifier of the entity
             example: a24a6ea4-ce75-4665-a070-57453082c25
         requestBody:
-          required: true
+          required: false
           content:
             application/json:
               schema:
@@ -330,7 +333,9 @@ class EntityTaskCreationResource(Resource):
                     items:
                       type: string
                       format: uuid
-                    description: List of task type IDs to create on the entity
+                    description: Optional list of task type IDs to create.
+                      Omit or pass an empty list to default to every task
+                      type valid for the entity.
                 example:
                   task_type_ids:
                     - b24a6ea4-ce75-4665-a070-57453082c25
