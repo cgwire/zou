@@ -656,7 +656,9 @@ class BasePreviewFileResource(Resource):
         self.last_modified = None
 
     def is_allowed(self, preview_file_id):
-        self.preview_file = files_service.get_preview_file(preview_file_id)
+        self.preview_file = files_service.get_preview_file_for_access(
+            preview_file_id
+        )
         user_service.check_task_access(self.preview_file["task_id"])
         self.last_modified = date_helpers.get_datetime_from_string(
             self.preview_file["updated_at"]
@@ -1082,7 +1084,9 @@ class BasePreviewFileThumbnailResource(BasePreviewPictureResource):
     """
 
     def is_allowed(self, preview_file_id):
-        self.preview_file = files_service.get_preview_file(preview_file_id)
+        self.preview_file = files_service.get_preview_file_for_access(
+            preview_file_id
+        )
         task = tasks_service.get_task(self.preview_file["task_id"])
         entity = entities_service.get_entity(task["entity_id"])
         if (

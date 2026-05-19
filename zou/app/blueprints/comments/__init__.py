@@ -9,6 +9,7 @@ from zou.app.blueprints.comments.resources import (
     CommentTaskResource,
     CommentManyTasksResource,
     DownloadAttachmentResource,
+    MoveCommentResource,
     ProjectAttachmentFiles,
     TaskAttachmentFiles,
     ReplyCommentResource,
@@ -36,6 +37,10 @@ routes = [
     (
         "/actions/tasks/<task_id>/comments/<comment_id>/add-attachment",
         AddAttachmentToCommentResource,
+    ),
+    (
+        "/actions/tasks/<task_id>/comments/<comment_id>/move",
+        MoveCommentResource,
     ),
     ("/data/projects/<project_id>/attachment-files", ProjectAttachmentFiles),
     ("/data/tasks/<task_id>/attachment-files", TaskAttachmentFiles),

@@ -1,4 +1,7 @@
+from unittest.mock import patch
+
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from tests.base import ApiDBTestCase
 
@@ -205,6 +208,46 @@ class ShotUtilsTestCase(ApiDBTestCase):
         shot = shots_service.create_shot(self.project.id, parent_id, shot_name)
         self.assertEqual(shot["name"], shot_name)
         self.assertEqual(shot["parent_id"], parent_id)
+
+    def test_create_shot_recovers_from_concurrent_duplicate(self):
+        shot_name = "RACE_SHOT"
+        parent_id = str(self.sequence.id)
+        shot_type = shots_service.get_shot_type()
+        existing = Entity.create(
+            entity_type_id=shot_type["id"],
+            project_id=self.project.id,
+            parent_id=self.sequence.id,
+            name=shot_name,
+        )
+        existing_id = str(existing.id)
+
+        real_get_by = Entity.get_by
+        state = {"first_shot_lookup": True, "create_called": False}
+
+        def fake_get_by(**kw):
+            if (
+                kw.get("name") == shot_name
+                and kw.get("entity_type_id") == shot_type["id"]
+                and state["first_shot_lookup"]
+            ):
+                state["first_shot_lookup"] = False
+                return None
+            return real_get_by(**kw)
+
+        def fake_create(**kw):
+            state["create_called"] = True
+            raise IntegrityError("INSERT", {}, Exception("duplicate"))
+
+        with (
+            patch.object(Entity, "get_by", side_effect=fake_get_by),
+            patch.object(Entity, "create", side_effect=fake_create),
+        ):
+            shot = shots_service.create_shot(
+                self.project.id, parent_id, shot_name
+            )
+
+        self.assertTrue(state["create_called"])
+        self.assertEqual(shot["id"], existing_id)
 
     def test_create_scene(self):
         scene_name = "NSC01"

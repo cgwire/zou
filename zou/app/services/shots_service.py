@@ -1022,33 +1022,36 @@ def create_shot(
         # raises SequenceNotFound if it fails.
         sequence = get_sequence(sequence_id)
 
-    shot = Entity.get_by(
-        entity_type_id=shot_type["id"],
-        parent_id=sequence_id,
-        project_id=project_id,
-        name=name,
-    )
+    lookup = {
+        "entity_type_id": shot_type["id"],
+        "parent_id": sequence_id,
+        "project_id": project_id,
+        "name": name,
+    }
+    shot = Entity.get_by(**lookup)
     if shot is None:
-        shot = Entity.create(
-            entity_type_id=shot_type["id"],
-            project_id=project_id,
-            parent_id=sequence_id,
-            name=name,
-            data=data,
-            nb_frames=nb_frames,
-            description=description,
-            created_by=created_by,
-        )
-
-        index_service.index_shot(shot)
-        events.emit(
-            "shot:new",
-            {
-                "shot_id": shot.id,
-                "episode_id": sequence["parent_id"],
-            },
-            project_id=project_id,
-        )
+        try:
+            shot = Entity.create(
+                data=data,
+                nb_frames=nb_frames,
+                description=description,
+                created_by=created_by,
+                **lookup,
+            )
+        except IntegrityError:
+            shot = Entity.get_by(**lookup)
+            if shot is None:
+                raise
+        else:
+            index_service.index_shot(shot)
+            events.emit(
+                "shot:new",
+                {
+                    "shot_id": shot.id,
+                    "episode_id": sequence["parent_id"],
+                },
+                project_id=project_id,
+            )
 
     return shot.serialize(obj_type="Shot")
 
