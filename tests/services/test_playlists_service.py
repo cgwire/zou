@@ -159,3 +159,20 @@ class PlaylistsServiceTestCase(ApiDBTestCase):
         playlist_dict = playlists_service.build_playlist_dict(playlist)
         self.assertTrue("shots" not in playlist_dict)
         self.assertEqual(playlist_dict["for_entity"], "shot")
+
+    def test_set_preview_files_skips_empty_entity_ids(self):
+        self.generate_fixture_preview_files()
+        playlist_dict = {
+            "shots": [
+                {"id": ""},
+                {"shot_id": ""},
+                {"entity_id": None},
+                {},
+                {"id": str(self.shot.id)},
+            ]
+        }
+        result, _ = playlists_service.set_preview_files_for_entities(
+            playlist_dict
+        )
+        self.assertEqual(len(result["shots"]), 5)
+        self.assertEqual(result["shots"][-1]["id"], str(self.shot.id))
