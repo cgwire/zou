@@ -1,4 +1,7 @@
 import orjson as json
+from unittest.mock import patch
+
+from sqlalchemy.exc import ProgrammingError
 
 from tests.base import ApiDBTestCase
 from zou.app import config
@@ -116,3 +119,20 @@ class ConfigCheckTestCase(ApiDBTestCase):
 
         self.assertIsInstance(data["active_users"], int)
         self.assertGreaterEqual(data["active_users"], 1)
+
+    def test_active_users_unavailable_when_db_schema_broken(self):
+        error = ProgrammingError(
+            "stmt", {}, Exception('relation "person" does not exist')
+        )
+        with patch(
+            "zou.app.blueprints.admin.resources.Person"
+        ) as mock_person:
+            mock_person.query.filter.return_value.count.side_effect = error
+            response = self.app.get(
+                "admin/config/check",
+                headers={"Authorization": f"Bearer {TEST_TOKEN}"},
+            )
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.data)
+        self.assertIn("active_users", data)
+        self.assertIsNone(data["active_users"])
