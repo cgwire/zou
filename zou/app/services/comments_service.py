@@ -458,8 +458,9 @@ def move_comment_to_task(comment_id, target_task_id):
 
     comment.update({"object_id": target_task["id"]})
     tasks_service.clear_comment_cache(str(comment.id))
-    tasks_service.clear_task_cache(str(source_task["id"]))
-    tasks_service.clear_task_cache(str(target_task["id"]))
+
+    tasks_service.reset_task_data(str(source_task["id"]))
+    target_task = tasks_service.reset_task_data(str(target_task["id"]))
 
     comment_dict = comment.serialize(relations=True)
 

@@ -282,6 +282,31 @@ class CommentRoutesTestCase(ApiDBTestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_move_comment_resets_task_status_on_both_tasks(self):
+        self.generate_fixture_task_status_wip()
+        sibling = self._make_sibling_task()
+        source_initial_status = self.task.task_status_id
+        wip_comment = comments_service.new_comment(
+            self.task.id,
+            self.task_status_wip.id,
+            self.user["id"],
+            "wip note posted on the wrong task",
+        )
+        self.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{wip_comment['id']}/move",
+            {"target_task_id": str(sibling.id)},
+            200,
+        )
+        source_after = tasks_service.get_task(str(self.task.id))
+        target_after = tasks_service.get_task(str(sibling.id))
+        self.assertEqual(
+            source_after["task_status_id"], str(source_initial_status)
+        )
+        self.assertEqual(
+            target_after["task_status_id"], str(self.task_status_wip.id)
+        )
+
     def test_move_comment_rejects_non_manager(self):
         self.generate_fixture_user_cg_artist()
         sibling = self._make_sibling_task()
