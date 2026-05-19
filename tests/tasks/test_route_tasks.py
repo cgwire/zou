@@ -95,7 +95,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             project_id=self.project.id,
             task_type_id=self.task_type_animation.id,
         )
-        path = "/data/entities/%s/tasks" % self.shot_id
+        path = f"/data/entities/{self.shot_id}/tasks"
         tasks = self.post(
             path,
             {"task_type_ids": [str(self.task_type_animation.id)]},
@@ -109,7 +109,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
 
     def test_create_entity_tasks_rejects_task_type_not_in_project(self):
         # task_type_animation is for_entity=Shot, never linked to project
-        path = "/data/entities/%s/tasks" % self.shot_id
+        path = f"/data/entities/{self.shot_id}/tasks"
         self.post(
             path,
             {"task_type_ids": [str(self.task_type_animation.id)]},
@@ -122,7 +122,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             project_id=self.project.id,
             task_type_id=self.task_type.id,
         )
-        path = "/data/entities/%s/tasks" % self.shot_id
+        path = f"/data/entities/{self.shot_id}/tasks"
         self.post(
             path,
             {"task_type_ids": [self.task_type_id]},
@@ -137,7 +137,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             project_id=self.project.id,
             task_type_id=self.task_type.id,
         )
-        path = "/data/entities/%s/tasks" % self.asset_id
+        path = f"/data/entities/{self.asset_id}/tasks"
         self.post(
             path,
             {"task_type_ids": [self.task_type_id]},
@@ -152,7 +152,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.asset_type.task_types = [self.task_type]
         self.asset_type.save()
 
-        path = "/data/entities/%s/tasks" % self.asset_id
+        path = f"/data/entities/{self.asset_id}/tasks"
         tasks = self.post(
             path,
             {"task_type_ids": [self.task_type_id]},

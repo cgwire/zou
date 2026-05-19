@@ -78,6 +78,7 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - Services are **module-level functions**, not classes
 - Models inherit `db.Model, BaseMixin, SerializerMixin`
 - UUIDs everywhere for primary keys (`UUIDType(binary=False)`)
+- **String formatting: f-strings only** for any new or edited code. Do not introduce `"... %s" % x` or `.format(...)`. Pre-existing `%`-formatted lines in a file you're editing can stay — don't scope-creep — but every new line you add should use f-strings.
 
 ### Naming
 - Model class: `PascalCase` (e.g., `TaskStatus`)

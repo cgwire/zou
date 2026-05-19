@@ -1257,21 +1257,22 @@ def create_tasks_for_entity(entity, task_types):
         }
 
     for task_type in task_types:
+        type_id = task_type["id"]
         expected = task_type.get("for_entity")
         if expected and expected != entity_kind:
             raise WrongParameterException(
-                "Task type %s is for %s entities, got %s."
-                % (task_type["id"], expected, entity_kind)
+                f"Task type {type_id} is for {expected} entities, "
+                f"got {entity_kind}."
             )
-        if str(task_type["id"]) not in enabled_in_project:
+        if str(type_id) not in enabled_in_project:
             raise WrongParameterException(
-                "Task type %s is not enabled in project %s."
-                % (task_type["id"], project_id)
+                f"Task type {type_id} is not enabled in project "
+                f"{project_id}."
             )
-        if is_asset and str(task_type["id"]) not in enabled_in_workflow:
+        if is_asset and str(type_id) not in enabled_in_workflow:
             raise WrongParameterException(
-                "Task type %s is not in the workflow of asset type %s."
-                % (task_type["id"], entity["entity_type_id"])
+                f"Task type {type_id} is not in the workflow of asset "
+                f"type {entity['entity_type_id']}."
             )
 
     existing_type_ids = {
@@ -1283,10 +1284,7 @@ def create_tasks_for_entity(entity, task_types):
         ).all()
     }
 
-    task_status = get_default_status(
-        for_concept=entity["entity_type_id"]
-        == concepts_service.get_concept_type()["id"]
-    )
+    task_status = get_default_status(for_concept=False)
     current_user_id = None
     try:
         current_user_id = persons_service.get_current_user()["id"]
