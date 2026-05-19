@@ -1,6 +1,9 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.notification import Notification
 from zou.app.models.person import Person
+from zou.app.models.task import Task
 from zou.app.services import comments_service, tasks_service
 
 
@@ -153,3 +156,140 @@ class CommentRoutesTestCase(ApiDBTestCase):
             },
         )
         self.assertFalse(result["for_client"])
+
+    def _make_sibling_task(self):
+        """Create a second task on the same asset with a different task type."""
+        return Task.create(
+            name="Modeling task",
+            project_id=self.project.id,
+            task_type_id=self.task_type_modeling.id,
+            task_status_id=self.task_status.id,
+            entity_id=self.asset.id,
+            assignees=[self.person],
+            assigner_id=self.assigner.id,
+        )
+
+    def test_move_comment_between_tasks(self):
+        sibling = self._make_sibling_task()
+        original_created_at = self.comment["created_at"]
+        original_status_id = self.comment["task_status_id"]
+        result = self.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/move",
+            {"target_task_id": str(sibling.id)},
+            200,
+        )
+        self.assertEqual(result["object_id"], str(sibling.id))
+        self.assertEqual(result["created_at"], original_created_at)
+        self.assertEqual(result["task_status_id"], original_status_id)
+
+        source_comments = tasks_service.get_comments(str(self.task.id))
+        target_comments = tasks_service.get_comments(str(sibling.id))
+        self.assertNotIn(
+            self.comment["id"], [c["id"] for c in source_comments]
+        )
+        self.assertIn(self.comment["id"], [c["id"] for c in target_comments])
+
+    def test_move_comment_preserves_attachment(self):
+        sibling = self._make_sibling_task()
+        AttachmentFile.create(
+            name="brief.pdf",
+            size=0,
+            extension="pdf",
+            mimetype="application/pdf",
+            comment_id=self.comment["id"],
+        )
+        self.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/move",
+            {"target_task_id": str(sibling.id)},
+            200,
+        )
+        attachments = AttachmentFile.get_all_by(comment_id=self.comment["id"])
+        self.assertEqual(len(attachments), 1)
+        self.assertEqual(attachments[0].name, "brief.pdf")
+
+    def test_move_comment_rebuilds_notifications(self):
+        self.generate_fixture_user_manager()
+        self.generate_fixture_user_cg_artist()
+        cg_person = Person.get(self.user_cg_artist["id"])
+        self.project.team = [
+            cg_person,
+            self.person,
+            Person.get(self.user["id"]),
+        ]
+        self.project.save()
+        sibling = self._make_sibling_task()
+        sibling.assignees = [cg_person]
+        sibling.save()
+
+        Notification.delete_all_by(comment_id=self.comment["id"])
+        Notification.create(
+            person_id=self.person.id,
+            author_id=self.user["id"],
+            comment_id=self.comment["id"],
+            task_id=self.task.id,
+            type="comment",
+        )
+        self.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/move",
+            {"target_task_id": str(sibling.id)},
+            200,
+        )
+        notifications = Notification.get_all_by(comment_id=self.comment["id"])
+        recipient_ids = {str(n.person_id) for n in notifications}
+        task_ids = {str(n.task_id) for n in notifications}
+        self.assertIn(self.user_cg_artist["id"], recipient_ids)
+        self.assertEqual(task_ids, {str(sibling.id)})
+
+    def test_move_comment_rejects_cross_entity(self):
+        self.generate_fixture_asset(name="Tree2")
+        other_asset_id = self.asset.id
+        other_task = Task.create(
+            name="Other entity task",
+            project_id=self.project.id,
+            task_type_id=self.task_type.id,
+            task_status_id=self.task_status.id,
+            entity_id=other_asset_id,
+            assignees=[self.person],
+            assigner_id=self.assigner.id,
+        )
+        response = self.app.post(
+            f"/actions/tasks/{self.task_id}"
+            f"/comments/{self.comment['id']}/move",
+            data='{"target_task_id": "%s"}' % str(other_task.id),
+            headers=self.post_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_move_comment_rejects_same_task(self):
+        response = self.app.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/move",
+            data='{"target_task_id": "%s"}' % str(self.task.id),
+            headers=self.post_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_move_comment_rejects_mismatched_source_task(self):
+        sibling = self._make_sibling_task()
+        response = self.app.post(
+            f"/actions/tasks/{sibling.id}"
+            f"/comments/{self.comment['id']}/move",
+            data='{"target_task_id": "%s"}' % str(sibling.id),
+            headers=self.post_headers,
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_move_comment_rejects_non_manager(self):
+        self.generate_fixture_user_cg_artist()
+        sibling = self._make_sibling_task()
+        self.log_in_cg_artist()
+        response = self.app.post(
+            f"/actions/tasks/{self.task.id}"
+            f"/comments/{self.comment['id']}/move",
+            data='{"target_task_id": "%s"}' % str(sibling.id),
+            headers=self.post_headers,
+        )
+        self.assertEqual(response.status_code, 403)

@@ -421,6 +421,79 @@ def new_comment(
     return comment
 
 
+def move_comment_to_task(comment_id, target_task_id):
+    """
+    Move a comment from its current task to another task that belongs to the
+    same entity. The original creation date, text, attachments, mentions and
+    status change carried by the comment are preserved. Notifications and
+    news linked to the comment on the source task are removed and recreated
+    against the target task so the target task's watchers are notified as if
+    they received a new comment.
+
+    Comments tied to a preview revision (preview_file_id set or previews
+    populated) cannot be moved: previews stay attached to the task that
+    owns the revision.
+    """
+    comment = tasks_service.get_comment_raw(comment_id)
+    source_task = tasks_service.get_task(str(comment.object_id))
+    target_task = tasks_service.get_task(target_task_id, relations=True)
+
+    if str(source_task["id"]) == str(target_task["id"]):
+        raise WrongParameterException(
+            "Source and target tasks must be different."
+        )
+    if source_task["entity_id"] != target_task["entity_id"]:
+        raise WrongParameterException(
+            "A comment can only be moved between tasks of the same entity."
+        )
+    if comment.preview_file_id is not None or (
+        comment.previews is not None and len(comment.previews) > 0
+    ):
+        raise WrongParameterException(
+            "A comment attached to a preview revision cannot be moved."
+        )
+
+    Notification.delete_all_by(comment_id=comment.id)
+    news_service.delete_news_for_comment(comment.id)
+
+    comment.update({"object_id": target_task["id"]})
+    tasks_service.clear_comment_cache(str(comment.id))
+    tasks_service.clear_task_cache(str(source_task["id"]))
+    tasks_service.clear_task_cache(str(target_task["id"]))
+
+    comment_dict = comment.serialize(relations=True)
+
+    events.emit(
+        "comment:delete",
+        {"comment_id": str(comment.id)},
+        project_id=source_task["project_id"],
+    )
+    events.emit(
+        "comment:new",
+        {
+            "comment_id": str(comment.id),
+            "task_id": str(target_task["id"]),
+            "task_status_id": comment_dict["task_status_id"],
+        },
+        project_id=target_task["project_id"],
+    )
+
+    notifications_service.create_notifications_for_task_and_comment(
+        target_task, comment_dict, change=False
+    )
+    if (
+        entities_service.get_entity(target_task["entity_id"])["entity_type_id"]
+        != concepts_service.get_concept_type()["id"]
+    ):
+        news_service.create_news_for_task_and_comment(
+            target_task,
+            comment_dict,
+            created_at=comment_dict["created_at"],
+        )
+
+    return comment_dict
+
+
 def reset_mentions(comment):
     task = tasks_service.get_task(comment["object_id"])
     mentions = get_comment_mentions(task["project_id"], comment["text"])
