@@ -1215,69 +1215,111 @@ def create_tasks(task_type, entities):
     return task_dicts
 
 
-def check_task_type_compatible_with_entity(task_type, entity):
+def create_tasks_for_entity(entity, task_types):
     """
-    Verify a task type can be applied to a given entity:
-    - task_type.for_entity matches the entity kind (Asset / Shot / ...).
-    - task_type is enabled in the entity's project.
-    - if the entity is an asset, task_type belongs to the entity's
-      asset type workflow.
-    Raises WrongParameterException on any failure.
+    Create tasks of multiple types for a single entity in one batch.
+    Each task type is validated against the entity (for_entity match,
+    project workflow membership, and asset-type workflow membership when
+    relevant) before any creation. Existing tasks for the same
+    (entity, task_type, name="main") are skipped.
     """
+    if not task_types:
+        return []
+
+    type_ids = [task_type["id"] for task_type in task_types]
+    project_id = entity["project_id"]
     is_asset = assets_service.is_asset_dict(entity)
-    expected = task_type.get("for_entity")
-    if expected:
-        if is_asset:
-            entity_kind = "Asset"
-        else:
-            entity_type = entities_service.get_entity_type(
-                entity["entity_type_id"]
-            )
-            entity_kind = entity_type["name"]
-        if expected != entity_kind:
+
+    if is_asset:
+        entity_kind = "Asset"
+    else:
+        entity_type = entities_service.get_entity_type(
+            entity["entity_type_id"]
+        )
+        entity_kind = entity_type["name"]
+
+    enabled_in_project = {
+        str(link.task_type_id)
+        for link in ProjectTaskTypeLink.query.filter(
+            ProjectTaskTypeLink.project_id == project_id,
+            ProjectTaskTypeLink.task_type_id.in_(type_ids),
+        ).all()
+    }
+    enabled_in_workflow = None
+    if is_asset:
+        enabled_in_workflow = {
+            str(link.task_type_id)
+            for link in TaskTypeAssetTypeLink.query.filter(
+                TaskTypeAssetTypeLink.asset_type_id
+                == entity["entity_type_id"],
+                TaskTypeAssetTypeLink.task_type_id.in_(type_ids),
+            ).all()
+        }
+
+    for task_type in task_types:
+        expected = task_type.get("for_entity")
+        if expected and expected != entity_kind:
             raise WrongParameterException(
                 "Task type %s is for %s entities, got %s."
                 % (task_type["id"], expected, entity_kind)
             )
-
-    project_link = ProjectTaskTypeLink.query.filter_by(
-        project_id=entity["project_id"],
-        task_type_id=task_type["id"],
-    ).first()
-    if project_link is None:
-        raise WrongParameterException(
-            "Task type %s is not enabled in project %s."
-            % (task_type["id"], entity["project_id"])
-        )
-
-    if is_asset:
-        asset_link = TaskTypeAssetTypeLink.query.filter_by(
-            asset_type_id=entity["entity_type_id"],
-            task_type_id=task_type["id"],
-        ).first()
-        if asset_link is None:
+        if str(task_type["id"]) not in enabled_in_project:
+            raise WrongParameterException(
+                "Task type %s is not enabled in project %s."
+                % (task_type["id"], project_id)
+            )
+        if is_asset and str(task_type["id"]) not in enabled_in_workflow:
             raise WrongParameterException(
                 "Task type %s is not in the workflow of asset type %s."
                 % (task_type["id"], entity["entity_type_id"])
             )
 
+    existing_type_ids = {
+        str(task.task_type_id)
+        for task in Task.query.filter(
+            Task.entity_id == entity["id"],
+            Task.task_type_id.in_(type_ids),
+            Task.name == "main",
+        ).all()
+    }
 
-def create_tasks_for_entity(entity, task_types):
-    """
-    Create tasks of multiple types for a single entity.
-    Each task type is validated against the entity (project link, asset
-    workflow link, for_entity) before any creation.
-    Existing tasks for the same (entity, task_type, name="main") are
-    skipped, mirroring create_tasks behaviour.
-    """
-    if not task_types:
-        return []
+    task_status = get_default_status(
+        for_concept=entity["entity_type_id"]
+        == concepts_service.get_concept_type()["id"]
+    )
+    current_user_id = None
+    try:
+        current_user_id = persons_service.get_current_user()["id"]
+    except RuntimeError:
+        pass
+
+    new_tasks = []
     for task_type in task_types:
-        check_task_type_compatible_with_entity(task_type, entity)
-    created = []
-    for task_type in task_types:
-        created.extend(create_tasks(task_type, [entity]))
-    return created
+        if str(task_type["id"]) in existing_type_ids:
+            continue
+        task = Task.create_no_commit(
+            name="main",
+            duration=0,
+            estimation=0,
+            completion_rate=0,
+            start_date=None,
+            end_date=None,
+            due_date=None,
+            real_start_date=None,
+            project_id=project_id,
+            task_type_id=task_type["id"],
+            task_status_id=task_status["id"],
+            entity_id=entity["id"],
+            assigner_id=current_user_id,
+            assignees=[],
+        )
+        new_tasks.append((task_type, task))
+    Task.commit()
+
+    return [
+        _finalize_task_creation(task_type, task_status, task)
+        for task_type, task in new_tasks
+    ]
 
 
 def create_task(task_type, entity, name="main"):
