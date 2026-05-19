@@ -714,10 +714,12 @@ def get_default_locale():
 def is_user_limit_reached():
     """
     Returns true if the number of active users is equal and superior to the
-    user limit set in the configuration.
+    user limit set in the configuration. Guests are excluded.
     """
     nb_active_users = Person.query.filter(
-        Person.active, Person.is_bot.isnot(True)
+        Person.active,
+        Person.is_bot.isnot(True),
+        Person.is_guest.isnot(True),
     ).count()
     return nb_active_users >= get_user_limit()
 
