@@ -718,7 +718,7 @@ def hash_recovery_codes(recovery_codes):
     Hash recovery codes given as argument and return them.
     """
     return [
-        flask_bcrypt.generate_password_hash(recovery_code)
+        auth.encrypt_password(recovery_code)
         for recovery_code in recovery_codes
     ]
 
