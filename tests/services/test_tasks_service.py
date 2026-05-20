@@ -223,6 +223,51 @@ class TaskServiceTestCase(ApiDBTestCase):
         self.assertEqual(len(task_types), 1)
         self.assertEqual(task_types[0]["id"], str(self.task_type.id))
 
+    def test_get_task_dicts_for_entity_with_relations_attaches_assignees(
+        self,
+    ):
+        self.generate_fixture_task(name="Secondary")
+        person_id = str(self.person.id)
+        tasks = tasks_service.get_task_dicts_for_entity(
+            self.asset.id, relations=True
+        )
+        self.assertEqual(len(tasks), 2)
+        for task in tasks:
+            self.assertEqual(task["assignees"], [person_id])
+            self.assertTrue(all(isinstance(a, str) for a in task["assignees"]))
+
+    def test_get_task_dicts_for_entity_relations_avoids_n_plus_one(self):
+        from sqlalchemy import event
+        from zou.app import db
+
+        self.generate_fixture_task(name="Secondary")
+        self.generate_fixture_task(name="Tertiary")
+
+        statements = []
+
+        def collect(conn, cursor, statement, *args, **kwargs):
+            statements.append(statement)
+
+        engine = db.session.get_bind()
+        event.listen(engine, "before_cursor_execute", collect)
+        try:
+            tasks = tasks_service.get_task_dicts_for_entity(
+                self.asset.id, relations=True
+            )
+        finally:
+            event.remove(engine, "before_cursor_execute", collect)
+
+        self.assertEqual(len(tasks), 3)
+        link_statements = [
+            s for s in statements if "task_person_link" in s.lower()
+        ]
+        self.assertLessEqual(
+            len(link_statements),
+            1,
+            f"Expected at most 1 task_person_link query, got "
+            f"{len(link_statements)}: {link_statements}",
+        )
+
     def test_get_task_dicts_for_entity_utf8(self):
         start_date = fields.get_date_object("2017-02-20")
         due_date = fields.get_date_object("2017-02-28")
