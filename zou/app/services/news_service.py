@@ -11,7 +11,7 @@ from zou.app.models.project import Project
 from zou.app.models.task import Task
 
 from zou.app.utils import cache, events, fields
-from zou.app.services import names_service, tasks_service
+from zou.app.services import names_service, persons_service, tasks_service
 
 
 def create_news(
@@ -227,6 +227,14 @@ def get_last_news_for_project(
                 }
             )
         )
+
+    # Embed the author so guest authors render directly.
+    author_ids = list(
+        {news["author_id"] for news in result if news.get("author_id")}
+    )
+    author_map = persons_service.get_short_persons_map(author_ids)
+    for news in result:
+        news["person"] = author_map.get(news["author_id"])
 
     if only_preview:
         task_ids = [

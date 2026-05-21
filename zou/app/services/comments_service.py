@@ -673,6 +673,8 @@ def reply_comment(comment_id, text, person_id=None, files=None):
     notifications_service.create_notifications_for_task_and_reply(
         task, comment_dict, reply
     )
+    # Embed the author so the just-posted reply renders with name and avatar.
+    reply["person"] = persons_service.get_short_person(reply["person_id"])
     return reply
 
 

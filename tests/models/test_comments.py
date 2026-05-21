@@ -31,6 +31,10 @@ class CommentTestCase(ApiDBTestCase):
     def test_get_comment(self):
         comment = self.get_first("data/comments?relations=true")
         comment_again = self.get("data/comments/%s" % comment["id"])
+        # The single-comment endpoint embeds the author so guest commenters
+        # render with a name and avatar; the list endpoint does not.
+        person = comment_again.pop("person")
+        self.assertEqual(person["id"], comment["person_id"])
         self.assertEqual(comment, comment_again)
         self.get_404("data/comments/%s/" % fields.gen_uuid())
 

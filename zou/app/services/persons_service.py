@@ -181,6 +181,35 @@ def get_persons_by_ids(person_ids):
     return [person.serialize_safe() for person in persons]
 
 
+def build_short_person(person):
+    """Return minimal author data to embed a comment or news author, including guests."""
+    return {
+        "id": str(person.id),
+        "first_name": person.first_name,
+        "last_name": person.last_name,
+        "full_name": person.full_name,
+        "has_avatar": person.has_avatar,
+        "role": getattr(person.role, "code", person.role),
+    }
+
+
+def get_short_person(person_id):
+    """
+    Return the minimal author dict for the person matching given id.
+    """
+    return build_short_person(get_person_raw(person_id))
+
+
+def get_short_persons_map(person_ids):
+    """
+    Return a {id: minimal author dict} map for given ids in a single query.
+    """
+    if not person_ids:
+        return {}
+    persons = Person.query.filter(Person.id.in_(person_ids)).all()
+    return {str(person.id): build_short_person(person) for person in persons}
+
+
 def get_person_by_email_raw(email):
     """
     Return person that matches given email as an active record.
