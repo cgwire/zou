@@ -307,11 +307,7 @@ def _run_status_automation(automation, task, person_id):
                 person_id,
                 task_to_update["id"],
                 automation["out_task_status_id"],
-                "Change triggered by %s set to %s"
-                % (
-                    task_type["name"],
-                    task_status["name"],
-                ),
+                f"Change triggered by {task_type['name']} set to {task_status['name']}",
                 [],
                 {},
                 None,
@@ -614,7 +610,7 @@ def _unack_comment(project_id, comment, user):
 
 def _send_ack_event(project_id, comment, user_id, name="acknowledge"):
     events.emit(
-        "comment:%s" % name,
+        f"comment:{name}",
         {"comment_id": str(comment.id), "person_id": user_id},
         project_id=project_id,
         persist=False,
@@ -726,7 +722,7 @@ def get_comment_mentions(project_id, text):
     project = Project.get(project_id)
     mentions = []
     for person in project.team:
-        if re.search("@%s( |$)" % person.full_name, text) is not None:
+        if re.search(f"@{person.full_name}( |$)", text) is not None:
             mentions.append(person)
     return mentions
 
@@ -745,7 +741,7 @@ def get_comment_department_mentions(project_id, text):
     departments = Department.query.all()
     mentions = []
     for department in departments:
-        if re.search("@%s( |$)" % department.name, text) is not None:
+        if re.search(f"@{department.name}( |$)", text) is not None:
             mentions.append(department)
     return mentions
 

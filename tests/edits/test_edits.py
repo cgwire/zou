@@ -14,7 +14,7 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(edits[0]["name"], self.edit_dict["name"])
 
     def test_get_edit(self):
-        edit = self.get("data/edits/%s" % self.edit.id)
+        edit = self.get(f"data/edits/{self.edit.id}")
 
         self.assertEqual(edit["id"], str(self.edit.id))
         self.assertEqual(edit["type"], "Edit")
@@ -26,7 +26,7 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(len(edit["tasks"]), 2)
 
     def test_get_edit_by_name(self):
-        edits = self.get("data/edits/all?name=%s" % self.edit.name.lower())
+        edits = self.get(f"data/edits/all?name={self.edit.name.lower()}")
 
         self.assertEqual(edits[0]["id"], str(self.edit.id))
         self.assertEqual(edits[0]["type"], "Edit")
@@ -34,7 +34,7 @@ class EditsTestCase(BaseEditTestCase):
         self.assertEqual(edits[0]["parent_id"], self.episode_id)
 
     def test_get_project_edits(self):
-        edits = self.get("data/projects/%s/edits" % self.project.id)
+        edits = self.get(f"data/projects/{self.project.id}/edits")
         self.assertEqual(len(edits), 1)
         self.assertEqual(edits[0]["type"], "Edit")
         self.assertEqual(edits[0]["name"], "Edit")
@@ -47,7 +47,7 @@ class EditsTestCase(BaseEditTestCase):
             "description": "Test Edit description",
             "data": {"extra": "test extra"},
         }
-        path = "data/projects/%s/edits" % (self.project.id,)
+        path = f"data/projects/{self.project.id}/edits"
 
         edit = self.post(path, new_edit_data)
 
@@ -68,7 +68,7 @@ class EditsTestCase(BaseEditTestCase):
         edit = self.generate_fixture_edit()
         edits = edits_service.get_edits()
         self.assertEqual(len(edits), 2)
-        path = "data/edits/%s" % edit.id
+        path = f"data/edits/{edit.id}"
 
         self.delete(path)
 
@@ -79,7 +79,7 @@ class EditsTestCase(BaseEditTestCase):
     def test_remove_edit_force(self):
         edit = self.generate_fixture_edit()
         self.assertEqual(len(edits_service.get_edits()), 2)
-        path = "data/edits/%s?force=true" % edit.id
+        path = f"data/edits/{edit.id}?force=true"
 
         self.delete(path)
 
@@ -89,7 +89,7 @@ class EditsTestCase(BaseEditTestCase):
     def test_remove_edit_with_tasks(self):
         edits = edits_service.get_edits()
         self.assertEqual(len(edits), 1)
-        path = "data/edits/%s" % self.edit_dict["id"]
+        path = f"data/edits/{self.edit_dict['id']}"
 
         self.delete(path)
 
@@ -101,7 +101,7 @@ class EditsTestCase(BaseEditTestCase):
     def test_remove_edit_with_tasks_force(self):
         edits = edits_service.get_edits()
         self.assertEqual(len(edits), 1)
-        path = "data/edits/%s?force=true" % self.edit_dict["id"]
+        path = f"data/edits/{self.edit_dict['id']}?force=true"
 
         self.delete(path)
 

@@ -36,9 +36,9 @@ class TimeSpentTestCase(ApiDBTestCase):
 
     def test_get_time_spent(self):
         time_spent = self.get_first("data/time-spents")
-        time_spent_again = self.get("data/time-spents/%s" % time_spent["id"])
+        time_spent_again = self.get(f"data/time-spents/{time_spent['id']}")
         self.assertEqual(time_spent, time_spent_again)
-        self.get_404("data/time-spents/%s" % fields.gen_uuid())
+        self.get_404(f"data/time-spents/{fields.gen_uuid()}")
 
     def test_create_time_spent(self):
         data = {
@@ -53,26 +53,24 @@ class TimeSpentTestCase(ApiDBTestCase):
         time_spents = self.get("data/time-spents")
         self.assertEqual(len(time_spents), 4)
 
-        time_spents = self.get(
-            "data/time-spents?person_id=%s" % self.person.id
-        )
+        time_spents = self.get(f"data/time-spents?person_id={self.person.id}")
         self.assertEqual(len(time_spents), 4)
 
     def test_update_time_spent(self):
         time_spent = self.get_first("data/time-spents")
         data = {"duration": 7200}
-        self.put("data/time-spents/%s" % time_spent["id"], data)
-        time_spent_again = self.get("data/time-spents/%s" % time_spent["id"])
+        self.put(f"data/time-spents/{time_spent['id']}", data)
+        time_spent_again = self.get(f"data/time-spents/{time_spent['id']}")
         self.assertEqual(data["duration"], time_spent_again["duration"])
-        self.put_404("data/time-spents/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/time-spents/{fields.gen_uuid()}", data)
 
     def test_delete_time_spent(self):
         time_spents = self.get("data/time-spents")
         self.assertEqual(len(time_spents), 3)
 
         time_spent = time_spents[0]
-        self.delete("data/time-spents/%s" % time_spent["id"])
+        self.delete(f"data/time-spents/{time_spent['id']}")
 
         time_spents = self.get("data/time-spents")
         self.assertEqual(len(time_spents), 2)
-        self.delete_404("data/time-spents/%s" % fields.gen_uuid())
+        self.delete_404(f"data/time-spents/{fields.gen_uuid()}")

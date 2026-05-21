@@ -26,18 +26,18 @@ class SceneTestCase(ApiDBTestCase):
         self.generate_fixture_sequence("S04")
 
     def test_get_project_scenes(self):
-        scenes = self.get("data/projects/%s/scenes" % self.project.id)
+        scenes = self.get(f"data/projects/{self.project.id}/scenes")
         self.assertEqual(len(scenes), 4)
         self.assertDictEqual(scenes[0], self.serialized_scene)
         self.get("data/projects/123/scenes", 404)
 
     def test_get_sequence_scenes(self):
-        scenes = self.get("data/sequences/%s/scenes" % self.sequence_id)
+        scenes = self.get(f"data/sequences/{self.sequence_id}/scenes")
         self.assertEqual(len(scenes), 4)
         self.assertDictEqual(scenes[0], self.serialized_scene)
 
     def test_get_scene(self):
-        scene = self.get("data/scenes/%s" % self.scene.id)
+        scene = self.get(f"data/scenes/{self.scene.id}")
         self.assertEqual(scene["id"], str(self.scene.id))
         self.assertEqual(scene["name"], self.scene.name)
         self.assertEqual(
@@ -51,7 +51,7 @@ class SceneTestCase(ApiDBTestCase):
         self.assertEqual(scene["project_name"], self.project.name)
 
     def test_get_scene_by_name(self):
-        scenes = self.get("data/scenes/all?name=%s" % self.scene.name)
+        scenes = self.get(f"data/scenes/all?name={self.scene.name}")
         self.assertEqual(scenes[0]["id"], str(self.scene.id))
 
     def test_create_scene(self):
@@ -59,26 +59,26 @@ class SceneTestCase(ApiDBTestCase):
         project_id = str(self.project.id)
         sequence_id = str(self.sequence.id)
         data = {"name": scene_name, "sequence_id": sequence_id}
-        scene = self.post("data/projects/%s/scenes" % project_id, data)
-        scene = self.get("data/scenes/%s" % scene["id"])
+        scene = self.post(f"data/projects/{project_id}/scenes", data)
+        scene = self.get(f"data/scenes/{scene['id']}")
         self.assertEqual(scene["name"], scene_name)
         self.assertEqual(scene["parent_id"], sequence_id)
 
     def test_get_remove_scene(self):
-        self.get("data/scenes/%s" % self.scene.id, 200)
-        self.delete("data/scenes/%s" % self.scene.id)
-        self.get("data/scenes/%s" % self.scene.id, 404)
+        self.get(f"data/scenes/{self.scene.id}", 200)
+        self.delete(f"data/scenes/{self.scene.id}")
+        self.get(f"data/scenes/{self.scene.id}", 404)
 
     def test_get_scene_tasks(self):
         self.generate_fixture_scene_task()
-        tasks = self.get("data/scenes/%s/tasks" % self.scene.id)
+        tasks = self.get(f"data/scenes/{self.scene.id}/tasks")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.scene_task.id))
 
     def test_get_scene_task_types(self):
         self.generate_fixture_scene_task()
         task_type_id = str(self.scene_task.task_type_id)
-        task_types = self.get("data/scenes/%s/task-types" % self.scene.id)
+        task_types = self.get(f"data/scenes/{self.scene.id}/task-types")
         self.assertEqual(len(task_types), 1)
         self.assertEqual(task_types[0]["id"], task_type_id)
 
@@ -89,13 +89,13 @@ class SceneTestCase(ApiDBTestCase):
         scenes_service.add_shot_to_scene(
             self.serialized_scene, self.serialized_shot_02
         )
-        shots = self.get("data/scenes/%s/shots" % self.serialized_scene["id"])
+        shots = self.get(f"data/scenes/{self.serialized_scene['id']}/shots")
         self.assertEqual(len(shots), 2)
         self.assertEqual(shots[0]["id"], self.serialized_shot["id"])
         self.assertEqual(shots[1]["id"], self.serialized_shot_02["id"])
 
     def test_add_shot_to_scene(self):
-        path = "data/scenes/%s/shots" % self.serialized_scene["id"]
+        path = f"data/scenes/{self.serialized_scene['id']}/shots"
         self.post(path, {"shot_id": self.serialized_shot["id"]})
         self.post(path, {"shot_id": self.serialized_shot_02["id"]})
         shots = self.get(path)
@@ -111,22 +111,21 @@ class SceneTestCase(ApiDBTestCase):
             self.serialized_scene, self.serialized_shot_02
         )
         self.delete(
-            "data/scenes/%s/shots/%s"
-            % (self.serialized_scene["id"], self.serialized_shot["id"])
+            f'data/scenes/{self.serialized_scene["id"]}/shots/{self.serialized_shot["id"]}'
         )
-        shots = self.get("data/scenes/%s/shots" % self.serialized_scene["id"])
+        shots = self.get(f"data/scenes/{self.serialized_scene['id']}/shots")
         self.assertEqual(len(shots), 1)
         self.assertEqual(shots[0]["id"], self.serialized_shot_02["id"])
 
     def test_get_scenes_by_project_and_name(self):
         self.get("data/scenes/all?project_id=undefined&name=SC01", 400)
         scenes = self.get(
-            "data/scenes/all?project_id=%s&name=SC02" % self.project_id
+            f"data/scenes/all?project_id={self.project_id}&name=SC02"
         )
         self.assertEqual(scenes[0]["id"], str(self.scene_02_id))
 
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         scenes = self.get(
-            "data/scenes/all?project_id=%s&name=SC01" % self.project_id, 403
+            f"data/scenes/all?project_id={self.project_id}&name=SC01", 403
         )

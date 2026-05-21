@@ -127,47 +127,25 @@ def send_comment_notification(person_id, author_id, comment, task):
                 comment_text=comment["text"],
                 **email_params,
             )
-            slack_message = """*%s* wrote a comment on <%s|%s> and set the status to *%s*.
+            slack_message = f"""*{author["full_name"]}* wrote a comment on <{task_url}|{task_name}> and set the status to *{task_status_name}*.
 
-_%s_
-""" % (
-                author["full_name"],
-                task_url,
-                task_name,
-                task_status_name,
-                comment["text"],
-            )
+_{comment["text"]}_
+"""
 
-            discord_message = """*%s* wrote a comment on [%s](%s)> and set the status to *%s*.
+            discord_message = f"""*{author["full_name"]}* wrote a comment on [{task_name}]({task_url})> and set the status to *{task_status_name}*.
 
-_%s_
-""" % (
-                author["full_name"],
-                task_name,
-                task_url,
-                task_status_name,
-                comment["text"],
-            )
+_{comment["text"]}_
+"""
 
         else:
             email_message = get_email_translation(
                 locale, "comment_body_status_only", **email_params
             )
-            slack_message = """*%s* changed status of <%s|%s> to *%s*.
-""" % (
-                author["full_name"],
-                task_url,
-                task_name,
-                task_status_name,
-            )
+            slack_message = f"""*{author["full_name"]}* changed status of <{task_url}|{task_name}> to *{task_status_name}*.
+"""
 
-            discord_message = """*%s* changed status of [%s](%s) to *%s*.
-""" % (
-                author["full_name"],
-                task_name,
-                task_url,
-                task_status_name,
-            )
+            discord_message = f"""*{author["full_name"]}* changed status of [{task_name}]({task_url}) to *{task_status_name}*.
+"""
 
         title = get_email_translation(locale, "comment_title")
         messages = {
@@ -214,25 +192,15 @@ def send_mention_notification(person_id, author_id, comment, task):
             task_name=task_name,
             comment_text=comment["text"],
         )
-        slack_message = """*%s* mentioned you in a comment on <%s|%s>.
+        slack_message = f"""*{author["full_name"]}* mentioned you in a comment on <{task_url}|{task_name}>.
 
-_%s_
-""" % (
-            author["full_name"],
-            task_url,
-            task_name,
-            comment["text"],
-        )
+_{comment["text"]}_
+"""
 
-        discord_message = """*%s* mentioned you in a comment on [%s](%s).
+        discord_message = f"""*{author["full_name"]}* mentioned you in a comment on [{task_name}]({task_url}).
 
-_%s_
-""" % (
-            author["full_name"],
-            task_name,
-            task_url,
-            comment["text"],
-        )
+_{comment["text"]}_
+"""
         title = get_email_translation(locale, "mention_title")
         messages = {
             "email_message": email_message,
@@ -274,18 +242,10 @@ def send_assignation_notification(person_id, author_id, task):
             task_url=task_url,
             task_name=task_name,
         )
-        slack_message = """*%s* assigned you to <%s|%s>.
-""" % (
-            author["full_name"],
-            task_url,
-            task_name,
-        )
-        discord_message = """*%s* assigned you to [%s](%s).
-""" % (
-            author["full_name"],
-            task_name,
-            task_url,
-        )
+        slack_message = f"""*{author["full_name"]}* assigned you to <{task_url}|{task_name}>.
+"""
+        discord_message = f"""*{author["full_name"]}* assigned you to [{task_name}]({task_url}).
+"""
 
         title = get_email_translation(locale, "assignation_title")
         messages = {
@@ -321,20 +281,12 @@ def get_task_descriptors(person_id, task):
     if task_type["for_entity"] == "Edit":
         entity_type = "edits"
     if project["production_type"] == "tvshow":
-        episode_segment = "/episodes/%s" % episode_id
+        episode_segment = f"/episodes/{episode_id}"
 
-    task_name = "%s / %s / %s" % (
-        project["name"],
-        entity_name,
-        task_type["name"],
-    )
-    task_url = "%s://%s/productions/%s%s/%s/tasks/%s" % (
-        config.DOMAIN_PROTOCOL,
-        config.DOMAIN_NAME,
-        task["project_id"],
-        episode_segment,
-        entity_type,
-        task["id"],
+    task_name = f"{project['name']} / {entity_name} / {task_type['name']}"
+    task_url = (
+        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}/productions/"
+        f"{task['project_id']}{episode_segment}/{entity_type}/tasks/{task['id']}"
     )
     return (author, task_name, task_url)
 
@@ -370,25 +322,15 @@ def send_reply_notification(person_id, author_id, comment, task, reply):
             task_name=task_name,
             reply_text=reply["text"],
         )
-        slack_message = """*%s* wrote a reply on <%s|%s>.
+        slack_message = f"""*{author["full_name"]}* wrote a reply on <{task_url}|{task_name}>.
 
-_%s_
-""" % (
-            author["full_name"],
-            task_url,
-            task_name,
-            reply["text"],
-        )
+_{reply["text"]}_
+"""
 
-        discord_message = """*%s* wrote a reply on [%s](%s).
+        discord_message = f"""*{author["full_name"]}* wrote a reply on [{task_name}]({task_url}).
 
-_%s_
-""" % (
-            author["full_name"],
-            task_name,
-            task_url,
-            reply["text"],
-        )
+_{reply["text"]}_
+"""
 
         title = get_email_translation(locale, "reply_title")
         messages = {

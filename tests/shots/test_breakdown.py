@@ -27,24 +27,21 @@ class BreakdownTestCase(ApiDBTestCase):
         self.episode_name = self.episode.name
 
         casting = self.get(
-            "/data/projects/%s/entities/%s/casting"
-            % (self.project_id, self.shot_id)
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
         )
         self.assertListEqual(casting, [])
         newCasting = [
             {"asset_id": self.asset_id, "nb_occurences": 1},
             {"asset_id": self.asset_character_id, "nb_occurences": 3},
         ]
-        path = "/data/shots/%s/casting" % str(self.shot_id)
-        path = "/data/projects/%s/entities/%s/casting" % (
-            self.project_id,
-            self.shot_id,
+        path = f"/data/shots/{self.shot_id!s}/casting"
+        path = (
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
         )
         self.put(path, newCasting, 200)
 
         casting = self.get(
-            "/data/projects/%s/entities/%s/casting"
-            % (self.project_id, self.shot_id)
+            f"/data/projects/{self.project_id}/entities/{self.shot_id}/casting"
         )
         casting = sorted(casting, key=lambda x: x["nb_occurences"])
         self.assertEqual(casting[0]["asset_id"], newCasting[0]["asset_id"])
@@ -60,7 +57,7 @@ class BreakdownTestCase(ApiDBTestCase):
             casting[1]["asset_type_name"], self.asset_type_character.name
         )
 
-        cast_in = self.get("/data/assets/%s/cast-in" % self.asset_id)
+        cast_in = self.get(f"/data/assets/{self.asset_id}/cast-in")
         self.assertEqual(cast_in[0]["shot_name"], self.shot.name)
         self.assertEqual(cast_in[0]["sequence_name"], self.sequence.name)
         self.assertEqual(cast_in[0]["episode_name"], self.episode.name)
@@ -78,7 +75,7 @@ class BreakdownTestCase(ApiDBTestCase):
         self.shot.entities_out = self.entities
         self.shot.save()
 
-        assets = self.get("data/shots/%s/assets" % self.shot.id)
+        assets = self.get(f"data/shots/{self.shot.id}/assets")
         self.assertEqual(len(assets), 3)
         self.assertTrue(
             assets[0]["id"] in [str(entity.id) for entity in self.entities]
@@ -89,15 +86,15 @@ class BreakdownTestCase(ApiDBTestCase):
         self.asset_character_id = str(self.asset_character.id)
         self.asset_type_character_id = str(self.asset_type_character.id)
 
-        casting = self.get("/data/assets/%s/casting" % self.asset_id)
+        casting = self.get(f"/data/assets/{self.asset_id}/casting")
         self.assertListEqual(casting, [])
         newCasting = [
             {"asset_id": self.asset_character_id, "nb_occurences": 3}
         ]
-        path = "/data/assets/%s/casting" % str(self.asset_id)
+        path = f"/data/assets/{self.asset_id!s}/casting"
         self.put(path, newCasting, 200)
 
-        casting = self.get("/data/assets/%s/casting" % self.asset_id)
+        casting = self.get(f"/data/assets/{self.asset_id}/casting")
         casting = sorted(casting, key=lambda x: x["nb_occurences"])
         self.assertEqual(casting[0]["asset_id"], newCasting[0]["asset_id"])
         self.assertEqual(
@@ -105,7 +102,7 @@ class BreakdownTestCase(ApiDBTestCase):
         )
         self.assertEqual(casting[0]["asset_name"], self.asset_character.name)
 
-        cast_in = self.get("/data/assets/%s/cast-in" % self.asset_character_id)
+        cast_in = self.get(f"/data/assets/{self.asset_character_id}/cast-in")
         self.assertEqual(len(cast_in), 1)
         self.assertEqual(cast_in[0]["asset_name"], self.asset.name)
 
@@ -122,7 +119,7 @@ class BreakdownTestCase(ApiDBTestCase):
         self.asset.entities_out = self.entities
         self.asset.save()
 
-        assets = self.get("data/assets/%s/assets" % self.asset.id)
+        assets = self.get(f"data/assets/{self.asset.id}/assets")
         self.assertEqual(len(assets), 3)
         self.assertTrue(
             assets[0]["id"] in [str(entity.id) for entity in self.entities]

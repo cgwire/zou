@@ -25,15 +25,11 @@ def get_full_entity_name(entity_id):
     if shots_service.is_shot(entity):
         sequence = entities_service.get_entity(entity["parent_id"])
         if sequence["parent_id"] is None:
-            name = "%s / %s" % (sequence["name"], entity["name"])
+            name = f"{sequence['name']} / {entity['name']}"
         else:
             episode = entities_service.get_entity(sequence["parent_id"])
             episode_id = episode["id"]
-            name = "%s / %s / %s" % (
-                episode["name"],
-                sequence["name"],
-                entity["name"],
-            )
+            name = f"{episode['name']} / {sequence['name']} / {entity['name']}"
     elif shots_service.is_episode(entity):
         name = entity["name"]
     elif shots_service.is_sequence(entity):
@@ -43,14 +39,11 @@ def get_full_entity_name(entity_id):
         else:
             episode = entities_service.get_entity(entity["parent_id"])
             episode_id = episode["id"]
-            name = "%s / %s" % (
-                episode["name"],
-                entity["name"],
-            )
+            name = f"{episode['name']} / {entity['name']}"
     else:
         asset_type = entities_service.get_entity_type(entity["entity_type_id"])
         episode_id = entity["source_id"]
-        name = "%s / %s" % (asset_type["name"], entity["name"])
+        name = f"{asset_type['name']} / {entity['name']}"
     return (name, episode_id, entity["preview_file_id"])
 
 
@@ -165,21 +158,17 @@ def get_full_entity_names(entity_ids):
             if parent is None:
                 name = entity["name"]
             elif parent["parent_id"] is None:
-                name = "%s / %s" % (parent["name"], entity["name"])
+                name = f"{parent['name']} / {entity['name']}"
             else:
                 grandparent = all_entities.get(str(parent["parent_id"]))
                 if grandparent:
                     episode_id = grandparent["id"]
-                    name = "%s / %s / %s" % (
-                        grandparent["name"],
-                        parent["name"],
-                        entity["name"],
+                    name = (
+                        f"{grandparent['name']} / {parent['name']} / "
+                        f"{entity['name']}"
                     )
                 else:
-                    name = "%s / %s" % (
-                        parent["name"],
-                        entity["name"],
-                    )
+                    name = f"{parent['name']} / {entity['name']}"
         elif etype == episode_type["id"]:
             name = entity["name"]
         elif etype == sequence_type["id"]:
@@ -189,20 +178,14 @@ def get_full_entity_names(entity_ids):
                 parent = all_entities.get(str(entity["parent_id"]))
                 if parent:
                     episode_id = parent["id"]
-                    name = "%s / %s" % (
-                        parent["name"],
-                        entity["name"],
-                    )
+                    name = f"{parent['name']} / {entity['name']}"
                 else:
                     name = entity["name"]
         else:
             asset_type = asset_types_map.get(str(entity["entity_type_id"]))
             episode_id = entity["source_id"]
             if asset_type:
-                name = "%s / %s" % (
-                    asset_type["name"],
-                    entity["name"],
-                )
+                name = f"{asset_type['name']} / {entity['name']}"
             else:
                 name = entity["name"]
 
@@ -234,13 +217,11 @@ def get_preview_file_name(preview_file_id):
     ):
         name = preview_file["original_name"]
     else:
-        name = "%s_%s_%s_v%s" % (
-            project["name"],
-            entity_name,
-            task_type["name"],
-            preview_file["revision"],
+        name = (
+            f"{project['name']}_{entity_name}_{task_type['name']}_v"
+            f"{preview_file['revision']}"
         )
         name = slugify.slugify(name, separator="_")
     if (preview_file.get("position", 0) or 0) > 1:
-        name = "%s-%s" % (name, preview_file["position"])
-    return "%s.%s" % (name, preview_file["extension"])
+        name = f"{name}-{preview_file['position']}"
+    return f"{name}.{preview_file['extension']}"

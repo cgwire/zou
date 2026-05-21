@@ -29,8 +29,7 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def create_girafe_asset(self):
         return self.post(
-            "data/projects/%s/asset-types/%s/assets/new"
-            % (self.project_id, self.asset_type_id),
+            f"data/projects/{self.project_id}/asset-types/{self.asset_type_id}/assets/new",
             {"name": "Girafe", "description": ""},
         )
 
@@ -47,7 +46,7 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def create_shot_pl004(self):
         return self.post(
-            "data/projects/%s/shots" % self.project_id,
+            f"data/projects/{self.project_id}/shots",
             {"name": "pl004", "sequence_id": str(self.sequence.id)},
         )
 
@@ -78,7 +77,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         asset = self.create_girafe_asset()
         assets = index_service.search_assets("girafe")
         self.assertEqual(len(assets), 1)
-        self.put("data/entities/%s" % asset["id"], {"name": "Elephant"})
+        self.put(f"data/entities/{asset['id']}", {"name": "Elephant"})
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
         self.assertEqual(len(assets), 0)
         assets = self.post("data/search", {"query": "elephant"}, 200)["assets"]
@@ -88,11 +87,11 @@ class AssetSearchTestCase(ApiDBTestCase):
         asset = self.create_girafe_asset()
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
         self.assertEqual(len(assets), 1)
-        self.delete("data/entities/%s" % asset["id"])
+        self.delete(f"data/entities/{asset['id']}")
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
         self.assertEqual(len(assets), 0)
         asset = self.create_girafe_asset()
-        self.delete("data/assets/%s" % asset["id"])
+        self.delete(f"data/assets/{asset['id']}")
         assets = self.post("data/search", {"query": "girafe"}, 200)["assets"]
         self.assertEqual(len(assets), 0)
 
@@ -111,7 +110,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         person = self.create_person_alicia()
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
         self.assertEqual(len(persons), 1)
-        self.put("data/persons/%s" % person["id"], {"first_name": "Ann"})
+        self.put(f"data/persons/{person['id']}", {"first_name": "Ann"})
         persons = self.post("data/search", {"query": "ann"}, 200)["persons"]
         self.assertEqual(len(persons), 1)
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
@@ -121,7 +120,7 @@ class AssetSearchTestCase(ApiDBTestCase):
         person = self.create_person_alicia()
         persons = self.post("data/search", {"query": "alicia"}, 200)["persons"]
         self.assertEqual(len(persons), 1)
-        self.delete("data/persons/%s" % person["id"])
+        self.delete(f"data/persons/{person['id']}")
         persons = self.post("data/search", {"query": "girafe"}, 200)["persons"]
         self.assertEqual(len(persons), 0)
 
@@ -146,7 +145,7 @@ class AssetSearchTestCase(ApiDBTestCase):
 
     def test_search_offset(self):
         for i in range(1, 11):
-            self.generate_fixture_asset_character("Offset%s" % i)
+            self.generate_fixture_asset_character(f"Offset{i}")
         index_service.reset_index()
         assets = self.post(
             "data/search",

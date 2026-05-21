@@ -681,7 +681,7 @@ def build_asset_instance_name(asset_id, number):
     asset = Entity.get(asset_id)
     asset_name = slugify(asset.name, separator="_", lowercase=False)
     number = str(number).zfill(4)
-    return "%s_%s" % (asset_name, number)
+    return f"{asset_name}_{number}"
 
 
 def get_asset_instances_for_asset(asset_id, asset_type_id=None):

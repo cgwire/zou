@@ -31,7 +31,7 @@ class ShotTasksTestCase(ApiDBTestCase):
         self.department_id = self.department.id
 
     def test_get_tasks_for_shot(self):
-        tasks = self.get("data/shots/%s/tasks" % self.shot_id)
+        tasks = self.get(f"data/shots/{self.shot_id}/tasks")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.shot_task.id))
 
@@ -51,14 +51,12 @@ class ShotTasksTestCase(ApiDBTestCase):
         project_id = self.project.id
         person_id = self.user_vendor["id"]
         self.log_in_vendor()
-        shots = self.get(
-            "data/shots/with-tasks?project_id=%s" % project_id, 403
-        )
+        shots = self.get(f"data/shots/with-tasks?project_id={project_id}", 403)
         projects_service.add_team_member(project_id, person_id)
-        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
+        shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(len(shots), 0)
         tasks_service.assign_task(task_id, person_id)
-        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
+        shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(len(shots), 1)
         self.assertEqual(len(shots[0]["tasks"]), 1)
         self.assertTrue(str(person_id) in shots[0]["tasks"][0]["assignees"])
@@ -66,24 +64,24 @@ class ShotTasksTestCase(ApiDBTestCase):
         shots_service.update_shot(
             self.shot_id, {"data": {"contractor": "test"}}
         )
-        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
+        shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(shots[0]["data"]["contractor"], "test")
 
         projects_service.update_metadata_descriptor(
             self.meta_descriptor_id, {"departments": [self.department_id]}
         )
         persons_service.add_to_department(str(self.department_id), person_id)
-        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
+        shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertEqual(shots[0]["data"]["contractor"], "test")
 
         persons_service.remove_from_department(
             str(self.department_id), person_id
         )
-        shots = self.get("data/shots/with-tasks?project_id=%s" % project_id)
+        shots = self.get(f"data/shots/with-tasks?project_id={project_id}")
         self.assertTrue("contractor" not in shots[0]["data"])
 
     def test_get_task_types_for_shot(self):
-        task_types = self.get("/data/shots/%s/task-types" % self.shot_id)
+        task_types = self.get(f"/data/shots/{self.shot_id}/task-types")
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
             task_types[0], self.task_type_animation.serialize()

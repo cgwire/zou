@@ -589,14 +589,13 @@ def invite_person(person_id):
     organisation = get_organisation()
     token = auth_service.generate_reset_token()
     auth_tokens_store.add(
-        "reset-token-%s" % person["email"], token, ttl=3600 * 24 * 7
+        f"reset-token-{person['email']}", token, ttl=3600 * 24 * 7
     )
     params = {"email": person["email"], "token": token, "type": "new"}
     query = urllib.parse.urlencode(params)
-    reset_url = "%s://%s/reset-change-password?%s" % (
-        config.DOMAIN_PROTOCOL,
-        config.DOMAIN_NAME,
-        query,
+    reset_url = (
+        f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+        f"/reset-change-password?{query}"
     )
 
     locale = person.get("locale") or getattr(config, "DEFAULT_LOCALE", "en_US")

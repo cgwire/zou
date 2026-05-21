@@ -176,7 +176,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
             if person is None:
                 data["password"] = None
                 person = Person.create(**data)
-                current_app.logger.info("Person created: %s" % person)
+                current_app.logger.info(f"Person created: {person}")
             # create or update a department/person link if needed
             if imported_department:
                 department_person_link = (
@@ -189,8 +189,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                 if department_person_link is None:
                     person.departments.append(department)
                     current_app.logger.info(
-                        "Department Person Link created: %s-%s"
-                        % (department.name, person.full_name)
+                        f"Department Person Link created: {department.name}-{person.full_name}"
                     )
                 elif person.departments != [
                     department,
@@ -199,8 +198,7 @@ class ImportShotgunPersonsResource(BaseImportShotgunResource):
                         department,
                     ]
                     current_app.logger.info(
-                        "Department Person Link updated: %s-%s"
-                        % (department.name, person.full_name)
+                        f"Department Person Link updated: {department.name}-{person.full_name}"
                     )
 
                 person.save()

@@ -124,12 +124,12 @@ class ImportShotgunEpisodesResource(BaseImportShotgunResource):
 
         if episode is None:
             episode = Entity.create(**data, created_by=self.current_user_id)
-            current_app.logger.info("Episode created: %s" % episode)
+            current_app.logger.info(f"Episode created: {episode}")
 
         else:
             episode.update(data)
             episode.save()
-            current_app.logger.info("Episode updated: %s" % episode)
+            current_app.logger.info(f"Episode updated: {episode}")
 
         return episode
 

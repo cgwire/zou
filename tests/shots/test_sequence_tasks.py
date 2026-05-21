@@ -19,7 +19,7 @@ class SequenceTasksTestCase(ApiDBTestCase):
         self.person_id = str(self.person.id)
 
     def test_get_tasks_for_sequence(self):
-        tasks = self.get("data/sequences/%s/tasks" % self.sequence.id)
+        tasks = self.get(f"data/sequences/{self.sequence.id}/tasks")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.sequence_task.id))
 
@@ -36,9 +36,7 @@ class SequenceTasksTestCase(ApiDBTestCase):
     def test_get_task_types_for_sequence(self):
         self.generate_fixture_shot()
         self.generate_fixture_shot_task()
-        task_types = self.get(
-            "/data/sequences/%s/task-types" % self.sequence.id
-        )
+        task_types = self.get(f"/data/sequences/{self.sequence.id}/task-types")
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
             task_types[0], self.task_type_animation.serialize()

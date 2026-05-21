@@ -51,7 +51,7 @@ def generate_thumbnail(movie_path):
     takes a picture at the first frame of the movie.
     """
     file_source_name = os.path.basename(movie_path)
-    file_target_name = "%s.png" % file_source_name[:-4]
+    file_target_name = f"{file_source_name[:-4]}.png"
     file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
 
     try:
@@ -220,7 +220,7 @@ def normalize_encoding(
         vcodec="libx264",
         movflags="+faststart",
         x264opts=f"keyint={keyframes}:scenecut=0",
-        s="%sx%s" % (width, height),
+        s=f"{width}x{height}",
     )
     try:
         logger.info(f"ffmpeg {' '.join(stream.get_args())}")
@@ -236,9 +236,9 @@ def normalize_movie(movie_path, fps, width, height):
     Generates a high def movie and a low def movie.
     """
     file_source_name = os.path.basename(movie_path)
-    file_target_name = "%s.mp4" % file_source_name[:-8]
+    file_target_name = f"{file_source_name[:-8]}.mp4"
     file_target_path = os.path.join(tempfile.gettempdir(), file_target_name)
-    low_file_target_name = "%s_low.mp4" % file_source_name[:-8]
+    low_file_target_name = f"{file_source_name[:-8]}_low.mp4"
     low_file_target_path = os.path.join(
         tempfile.gettempdir(), low_file_target_name
     )
@@ -381,7 +381,7 @@ def add_empty_soundtrack(file_path, try_count=1):
                 preset="slow",
                 vcodec="libx264",
                 movflags="+faststart",
-                s="%sx%s" % (width, height),
+                s=f"{width}x{height}",
             )
             try:
                 logger.info(f"ffmpeg {' '.join(stream.get_args())}")
@@ -428,7 +428,7 @@ def build_playlist_movie(
             if not has_soundtrack(tmp_file_path):
                 ret, _, err = add_empty_soundtrack(tmp_file_path)
                 if err:
-                    result["message"] += "%s\n" % err
+                    result["message"] += f"{err}\n"
                 if ret != 0:
                     return result
             in_files.append(tmp_file_path)
@@ -459,18 +459,18 @@ def concat_demuxer(in_files, output_path, *args):
         if len(streams) != 2:
             return {
                 "success": False,
-                "message": "%s has an unexpected stream number (%s)"
-                % (input_path, len(streams)),
+                "message": (
+                    f"{input_path} has an unexpected stream number "
+                    f"({len(streams)})"
+                ),
             }
 
         stream_infos = {streams[0]["codec_type"], streams[1]["codec_type"]}
         if stream_infos != {"video", "audio"}:
             return {
                 "success": False,
-                "message": "%s has unexpected stream type (%s)"
-                % (
-                    input_path,
-                    {streams[0]["codec_type"], streams[1]["codec_type"]},
+                "message": (
+                    f"{input_path} has unexpected stream type ({stream_infos})"
                 ),
             }
 
@@ -480,12 +480,12 @@ def concat_demuxer(in_files, output_path, *args):
         if video_index != 0:
             return {
                 "success": False,
-                "message": "%s has an unexpected stream order" % input_path,
+                "message": f"{input_path} has an unexpected stream order",
             }
 
     with tempfile.NamedTemporaryFile(mode="w") as temp:
         for input_path in in_files:
-            temp.write("file '%s'\n" % input_path)
+            temp.write(f"file '{input_path}'\n")
         temp.flush()
 
         stream = ffmpeg.input(temp.name, format="concat", safe=0)

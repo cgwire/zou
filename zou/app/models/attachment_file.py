@@ -33,7 +33,7 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<AttachmentFile %s>" % self.id
+        return f"<AttachmentFile {self.id}>"
 
     def present(self):
         return fields.serialize_dict(

@@ -142,7 +142,7 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
             }
             department = Department(**department_data)
             department.save()
-            current_app.logger.info("Department created: %s" % department)
+            current_app.logger.info(f"Department created: {department}")
         del data["department_name"]
         return department
 
@@ -157,7 +157,7 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
         if task_type is None:
             task_type = TaskType(**data)
             task_type.save()
-            current_app.logger.info("Task Type created: %s" % task_type)
+            current_app.logger.info(f"Task Type created: {task_type}")
         else:
             existing_task_type = TaskType.get_by(
                 name=data["name"],
@@ -170,7 +170,7 @@ class ImportShotgunStepsResource(BaseImportShotgunResource):
                 data.pop("department_id", None)
             task_type.update(data)
             tasks_service.clear_task_type_cache(str(task_type.id))
-            current_app.logger.info("Task Type updated: %s" % task_type)
+            current_app.logger.info(f"Task Type updated: {task_type}")
         return task_type
 
 

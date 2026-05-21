@@ -37,7 +37,9 @@ def with_lock(lock_key, timeout=30, wait_timeout=35):
     if client is None:
         yield True
         return
-    lock = client.lock(lock_key, timeout=timeout, blocking_timeout=wait_timeout)
+    lock = client.lock(
+        lock_key, timeout=timeout, blocking_timeout=wait_timeout
+    )
     acquired = lock.acquire()
     try:
         yield acquired

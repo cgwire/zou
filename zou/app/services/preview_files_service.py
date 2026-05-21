@@ -120,8 +120,7 @@ def validate_resolution(resolution):
         or _is_valid_partial_resolution(resolution)
     ):
         raise WrongParameterException(
-            "Invalid resolution %r. Expected format: '1920x1080' or "
-            "'x1080'." % resolution
+            f"Invalid resolution {resolution}. Expected format: '1920x1080' or 'x1080'."
         )
 
 
@@ -139,7 +138,7 @@ def get_preview_file_fps(project, entity=None):
         if entity_data.get("fps", None):
             fps = str(entity_data["fps"]).replace(",", ".")
 
-    return "%.3f" % float(fps)
+    return f"{float(fps):.3f}"
 
 
 def get_project_from_preview_file(preview_file_id):
@@ -359,12 +358,12 @@ def prepare_and_store_movie(
                     )
                 if err:
                     current_app.logger.error(
-                        "Fail to normalize: %s" % uploaded_movie_path
+                        f"Fail to normalize: {uploaded_movie_path}"
                     )
                     current_app.logger.error(err)
 
                 current_app.logger.info(
-                    "file normalized %s" % normalized_movie_path
+                    f"file normalized {normalized_movie_path}"
                 )
                 current_app.logger.info("file stored")
             except Exception as exc:
@@ -406,7 +405,7 @@ def prepare_and_store_movie(
                     preview_file_id, "thumbnail variants upload", exc
                 )
             current_app.logger.info(
-                "thumbnail created %s" % original_picture_path
+                f"thumbnail created {original_picture_path}"
             )
 
             # Build tiles
@@ -414,7 +413,7 @@ def prepare_and_store_movie(
                 tile_path = movie.generate_tile(normalized_movie_path)
                 file_store.add_picture("tiles", preview_file_id, tile_path)
                 os.remove(tile_path)
-                current_app.logger.info("tile created %s" % tile_path)
+                current_app.logger.info(f"tile created {tile_path}")
             except Exception:
                 current_app.logger.error("Failed to create tile", exc_info=1)
 
@@ -495,7 +494,7 @@ def clear_variant_from_cache(preview_file_id, prefix, extension="png"):
     if config.FS_BACKEND != "local":
         file_path = os.path.join(
             config.TMP_DIR,
-            "cache-%s-%s.%s" % (prefix, preview_file_id, extension),
+            f"cache-{prefix}-{preview_file_id}.{extension}",
         )
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -1005,8 +1004,7 @@ def generate_preview_extra(
             preview_file_already_in_cache = os.path.isfile(
                 os.path.join(
                     config.TMP_DIR,
-                    "cache-%s-%s.%s"
-                    % (prefix, preview_file_id, preview_file.extension),
+                    f"cache-{prefix}-{preview_file_id}.{preview_file.extension}",
                 )
             )
         try:

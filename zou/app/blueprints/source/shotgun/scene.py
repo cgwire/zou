@@ -133,12 +133,12 @@ class ImportShotgunScenesResource(BaseImportShotgunResource):
 
         if scene is None:
             scene = Entity.create(**data, created_by=self.current_user_id)
-            current_app.logger.info("Scene created: %s" % scene)
+            current_app.logger.info(f"Scene created: {scene}")
 
         else:
             scene.update(data)
             scene.save()
-            current_app.logger.info("Scene updated: %s" % scene)
+            current_app.logger.info(f"Scene updated: {scene}")
 
         return scene
 

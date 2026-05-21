@@ -80,7 +80,7 @@ def reset_entry_index(
     if documents:
         indexing.index_documents(index, documents)
         total += len(documents)
-    print(total, "%s indexed" % index_name)
+    print(total, f"{index_name} indexed")
     return entries
 
 

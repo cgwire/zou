@@ -1728,8 +1728,7 @@ class ChangePasswordForPersonResource(Resource, ArgsMixin):
             password = auth.encrypt_password(password)
             persons_service.update_password(person["email"], password)
             current_app.logger.warning(
-                "User %s has changed the password of %s"
-                % (current_user["email"], person["email"])
+                f'User {current_user["email"]} has changed the password of {person["email"]}'
             )
             person_IP = request.headers.get("X-Forwarded-For", None)
             if person_IP:
@@ -1829,8 +1828,7 @@ class DisableTwoFactorAuthenticationPersonResource(Resource, ArgsMixin):
                 }, 400
             disable_two_factor_authentication_for_person(person["id"])
             current_app.logger.warning(
-                "User %s has disabled the two factor authentication of %s"
-                % (current_user["email"], person["email"])
+                f'User {current_user["email"]} has disabled the two factor authentication of {person["email"]}'
             )
             person_IP = request.headers.get("X-Forwarded-For", None)
             if person_IP:

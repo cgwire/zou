@@ -114,18 +114,18 @@ class PreviewFileTestCase(ApiDBTestCase):
     def test_get_preview_file(self):
         preview_file = self.get_first("data/preview-files?relations=true")
         preview_file_again = self.get(
-            "data/preview-files/%s" % preview_file["id"]
+            f"data/preview-files/{preview_file['id']}"
         )
         self.assertEqual(preview_file, preview_file_again)
-        self.get_404("data/preview-files/%s" % fields.gen_uuid())
+        self.get_404(f"data/preview-files/{fields.gen_uuid()}")
 
     def test_get_preview_file_for_artist(self):
         """
         Test route data/preview-files/<preview_file_id> for artist.
         Artists can only access previews linked to projects he works on.
         """
-        route1_1 = "data/preview-files/%s" % str(self.preview_file1_1.id)
-        route2_1 = "data/preview-files/%s" % str(self.preview_file2_1.id)
+        route1_1 = f"data/preview-files/{self.preview_file1_1.id!s}"
+        route2_1 = f"data/preview-files/{self.preview_file2_1.id!s}"
         project1_id = str(self.project1.id)
 
         self.log_in_cg_artist()
@@ -141,8 +141,8 @@ class PreviewFileTestCase(ApiDBTestCase):
         Test route data/preview-files/<preview_file_id> for vendor.
         The vendor can only access the tasks he's working on.
         """
-        route2_1 = "data/preview-files/%s" % str(self.preview_file2_1.id)
-        route2_2 = "data/preview-files/%s" % str(self.preview_file2_2.id)
+        route2_1 = f"data/preview-files/{self.preview_file2_1.id!s}"
+        route2_2 = f"data/preview-files/{self.preview_file2_2.id!s}"
 
         self.log_in_vendor()
         preview_file_vendor = self.get(route2_2)
@@ -157,9 +157,9 @@ class PreviewFileTestCase(ApiDBTestCase):
         """
         Test route data/preview-files/<preview_file_id> for admin.
         """
-        route1_1 = "data/preview-files/%s" % str(self.preview_file1_1.id)
-        route2_1 = "data/preview-files/%s" % str(self.preview_file2_1.id)
-        route2_2 = "data/preview-files/%s" % str(self.preview_file2_2.id)
+        route1_1 = f"data/preview-files/{self.preview_file1_1.id!s}"
+        route2_1 = f"data/preview-files/{self.preview_file2_1.id!s}"
+        route2_2 = f"data/preview-files/{self.preview_file2_2.id!s}"
 
         self.log_in_admin()
         preview_file_admin1_1 = self.get(route1_1)
@@ -186,18 +186,18 @@ class PreviewFileTestCase(ApiDBTestCase):
     def test_update_preview_file(self):
         preview_file = self.get_first("data/preview-files")
         data = {"name": "Super modeling preview_file 2"}
-        self.put("data/preview-files/%s" % preview_file["id"], data)
+        self.put(f"data/preview-files/{preview_file['id']}", data)
         preview_file_again = self.get(
-            "data/preview-files/%s" % preview_file["id"]
+            f"data/preview-files/{preview_file['id']}"
         )
         self.assertEqual(data["name"], preview_file_again["name"])
-        self.put_404("data/preview-files/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/preview-files/{fields.gen_uuid()}", data)
 
     def test_delete_preview_file(self):
         preview_files = self.get("data/preview-files")
         self.assertEqual(len(preview_files), 6)
         preview_file = preview_files[0]
-        self.delete("data/preview-files/%s" % preview_file["id"])
+        self.delete(f"data/preview-files/{preview_file['id']}")
         preview_files = self.get("data/preview-files")
         self.assertEqual(len(preview_files), 5)
-        self.delete_404("data/preview-files/%s" % fields.gen_uuid())
+        self.delete_404(f"data/preview-files/{fields.gen_uuid()}")

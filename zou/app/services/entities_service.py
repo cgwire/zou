@@ -133,8 +133,8 @@ def update_entity_preview(entity_id, preview_file_id):
     if entity_type.name in ["Shot", "Scene", "Sequence", "Episode", "Concept"]:
         entity_type_name = entity_type.name.lower()
     events.emit(
-        "%s:update" % entity_type_name,
-        {"%s_id" % entity_type_name: entity_id},
+        f"{entity_type_name}:update",
+        {f"{entity_type_name}_id": entity_id},
         project_id=str(entity.project_id),
     )
     assets_service.clear_asset_cache(entity_id)

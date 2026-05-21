@@ -52,4 +52,4 @@ class AssetInstance(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<AssetInstance %s>" % self.id
+        return f"<AssetInstance {self.id}>"

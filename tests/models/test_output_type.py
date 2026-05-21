@@ -16,11 +16,9 @@ class OutputTypeTestCase(ApiDBTestCase):
 
     def test_get_output_type(self):
         output_type = self.get_first("data/output-types")
-        output_type_again = self.get(
-            "data/output-types/%s" % output_type["id"]
-        )
+        output_type_again = self.get(f"data/output-types/{output_type['id']}")
         self.assertEqual(output_type, output_type_again)
-        self.get_404("data/output-types/%s" % fields.gen_uuid())
+        self.get_404(f"data/output-types/{fields.gen_uuid()}")
 
     def test_create_output_type(self):
         data = {"name": "geometry", "short_name": "geo"}
@@ -33,18 +31,16 @@ class OutputTypeTestCase(ApiDBTestCase):
     def test_update_output_type(self):
         output_type = self.get_first("data/output-types")
         data = {"name": "point cache"}
-        self.put("data/output-types/%s" % output_type["id"], data)
-        output_type_again = self.get(
-            "data/output-types/%s" % output_type["id"]
-        )
+        self.put(f"data/output-types/{output_type['id']}", data)
+        output_type_again = self.get(f"data/output-types/{output_type['id']}")
         self.assertEqual(data["name"], output_type_again["name"])
-        self.put_404("data/output-types/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/output-types/{fields.gen_uuid()}", data)
 
     def test_delete_output_type(self):
         output_types = self.get("data/output-types")
         self.assertEqual(len(output_types), 3)
         output_type = output_types[0]
-        self.delete("data/output-types/%s" % output_type["id"])
+        self.delete(f"data/output-types/{output_type['id']}")
         output_types = self.get("data/output-types")
         self.assertEqual(len(output_types), 2)
-        self.delete_404("data/output-types/%s" % fields.gen_uuid())
+        self.delete_404(f"data/output-types/{fields.gen_uuid()}")

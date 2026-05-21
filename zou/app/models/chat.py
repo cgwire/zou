@@ -35,7 +35,7 @@ class Chat(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<Message of %s>" % self.object_id
+        return f"<Message of {self.object_id}>"
 
     def present(self):
         return fields.serialize_dict(

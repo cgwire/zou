@@ -259,8 +259,7 @@ class BaseModelsResource(Resource, ArgsMixin):
                 return (
                     {
                         "error": True,
-                        "message": "One of the value of the filter has not the"
-                        " proper format: %s" % exception.message,
+                        "message": f"One of the value of the filter has not the proper format: {exception.message}",
                     },
                     400,
                 )
@@ -341,8 +340,8 @@ class BaseModelsResource(Resource, ArgsMixin):
 
     def emit_create_event(self, instance_dict):
         return events.emit(
-            "%s:new" % self.model.__tablename__.replace("_", "-"),
-            {"%s_id" % self.model.__tablename__: instance_dict["id"]},
+            f"{self.model.__tablename__.replace('_', '-')}:new",
+            {f"{self.model.__tablename__}_id": instance_dict["id"]},
             project_id=instance_dict.get("project_id", None),
         )
 
@@ -415,9 +414,7 @@ class BaseModelResource(Resource, ArgsMixin):
                         continue
                 else:
                     raise WrongParameterException(
-                        "Invalid date format for '%s': '%s'. "
-                        "Expected YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS."
-                        % (key, value)
+                        f"Invalid date format for '{key}': '{value}'. Expected YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS."
                     )
 
     def serialize_instance(self, data, relations=True):
@@ -631,14 +628,14 @@ class BaseModelResource(Resource, ArgsMixin):
 
     def emit_update_event(self, instance_dict):
         return events.emit(
-            "%s:update" % self.model.__tablename__.replace("_", "-"),
-            {"%s_id" % self.model.__tablename__: instance_dict["id"]},
+            f"{self.model.__tablename__.replace('_', '-')}:update",
+            {f"{self.model.__tablename__}_id": instance_dict["id"]},
             project_id=instance_dict.get("project_id", None),
         )
 
     def emit_delete_event(self, instance_dict):
         return events.emit(
-            "%s:delete" % self.model.__tablename__.replace("_", "-"),
-            {"%s_id" % self.model.__tablename__: instance_dict["id"]},
+            f"{self.model.__tablename__.replace('_', '-')}:delete",
+            {f"{self.model.__tablename__}_id": instance_dict["id"]},
             project_id=instance_dict.get("project_id", None),
         )

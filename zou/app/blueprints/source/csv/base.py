@@ -36,7 +36,7 @@ class BaseCsvImportResource(Resource, ArgsMixin):
     @jwt_required()
     def post(self, *args):
         uploaded_file = request.files["file"]
-        file_name = "%s.csv" % uuid.uuid4()
+        file_name = f"{uuid.uuid4()}.csv"
 
         file_path = os.path.join(app.config["TMP_DIR"], file_name)
         uploaded_file.save(file_path)
@@ -47,11 +47,11 @@ class BaseCsvImportResource(Resource, ArgsMixin):
             return result, 201
         except ImportRowException as e:
             current_app.logger.error(
-                "Import row %s failed: %s" % (e.line_number, e.message)
+                f"Import row {e.line_number} failed: {e.message}"
             )
             return self.format_row_error(e), 400
         except csv.Error as e:
-            current_app.logger.error("Import failed: %s" % e)
+            current_app.logger.error(f"Import failed: {e}")
             return self.format_error(e), 400
 
     def format_row_error(self, exception):

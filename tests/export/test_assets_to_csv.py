@@ -20,7 +20,7 @@ class AssetsCsvExportTestCase(ApiDBTestCase):
 
     def test_get_asset_csv(self):
         csv_assets = self.get_raw(
-            "/export/csv/projects/%s/assets.csv" % self.project.id
+            f"/export/csv/projects/{self.project.id}/assets.csv"
         )
         expected_result = """Project;Type;Name;Description;Time Spent;Shaders;Assignations\r
 Cosmos Landromat;Props;Tree;Description Tree;0.10;opn;John Doe\r\n"""
@@ -30,7 +30,7 @@ Cosmos Landromat;Props;Tree;Description Tree;0.10;opn;John Doe\r\n"""
         self.generate_fixture_metadata_descriptor()
         self.asset.update({"data": {"contractor": "Contractor 1"}})
         csv_assets = self.get_raw(
-            "/export/csv/projects/%s/assets.csv" % self.project.id
+            f"/export/csv/projects/{self.project.id}/assets.csv"
         )
         expected_result = """Project;Type;Name;Description;Time Spent;Contractor;Shaders;Assignations\r
 Cosmos Landromat;Props;Tree;Description Tree;0.10;Contractor 1;opn;John Doe\r\n"""

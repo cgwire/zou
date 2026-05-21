@@ -32,7 +32,7 @@ def send_to_slack(token, userid, message):
                     }
                 ]
                 client.chat_postMessage(
-                    channel="@%s" % userid,
+                    channel=f"@{userid}",
                     blocks=blocks,
                     as_user=True,
                 )
@@ -54,19 +54,19 @@ def send_to_mattermost(webhook, userid, message):
         if userid:
             try:
                 arg = webhook.split("/")
-                server = "%s%s//%s" % (arg[0], arg[1], arg[2])
+                server = f"{arg[0]}{arg[1]}//{arg[2]}"
                 hook = arg[4]
 
                 # mandatory parameters are url and your webhook API key
                 mwh = Webhook(server, hook)
-                mwh.username = "Kitsu - %s" % (message["project_name"])
-                mwh.icon_url = "%s://%s/img/kitsu.b07d6464.png" % (
-                    config.DOMAIN_PROTOCOL,
-                    config.DOMAIN_NAME,
+                mwh.username = f"Kitsu - {message['project_name']}"
+                mwh.icon_url = (
+                    f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+                    f"/img/kitsu.b07d6464.png"
                 )
 
                 # send a message to the API_KEY's channel
-                mwh.send(message["message"], channel="@%s" % userid)
+                mwh.send(message["message"], channel=f"@{userid}")
 
             except Exception:
                 logger.error(
@@ -101,7 +101,7 @@ def send_to_discord(token, userid, message):
                     user_found = True
                     break
             if not user_found:
-                logger.info("User %s not found by Discord bot" % userid)
+                logger.info(f"User {userid} not found by Discord bot")
 
             await client.close()
 

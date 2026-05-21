@@ -155,7 +155,7 @@ def _update_room_playing_status(data, room):
 
 @app.route("/", methods=["GET"])
 def index():
-    return jsonify({"name": "%s Event stream" % config.APP_NAME})
+    return jsonify({"name": f"{config.APP_NAME} Event stream"})
 
 
 @app.route("/stats", methods=["GET"])
@@ -203,7 +203,7 @@ def on_error(error):
 @app.route("/rooms", methods=["GET", "POST"])
 @jwt_required()
 def rooms():
-    return jsonify({"name": "%s Review rooms" % config.APP_NAME})
+    return jsonify({"name": f"{config.APP_NAME} Review rooms"})
 
 
 @socketio.on("preview-room:open-playlist", namespace="/events")

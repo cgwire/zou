@@ -20,6 +20,6 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
 
     def test_get_project_by_name(self):
         project = self.get_first(
-            "data/projects/all?name=%s" % self.project.name.lower()
+            f"data/projects/all?name={self.project.name.lower()}"
         )
         self.assertEqual(project["id"], str(self.project.id))

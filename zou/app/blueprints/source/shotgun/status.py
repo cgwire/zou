@@ -98,11 +98,11 @@ class ImportShotgunStatusResource(BaseImportShotgunResource):
         if task_status is None:
             task_status = TaskStatus(**data)
             task_status.save()
-            current_app.logger.info("TaskStatus created: %s" % task_status)
+            current_app.logger.info(f"TaskStatus created: {task_status}")
         else:
             task_status.update(data)
             tasks_service.clear_task_status_cache(str(task_status.id))
-            current_app.logger.info("TaskStatus updated: %s" % task_status)
+            current_app.logger.info(f"TaskStatus updated: {task_status}")
         return task_status
 
     def extract_data(self, sg_status):

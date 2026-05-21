@@ -127,11 +127,11 @@ class ImportShotgunProjectConnectionsResource(BaseImportShotgunResource):
                 project.team.append(person)
                 project.save()
                 current_app.logger.info(
-                    "Project Person Link created: %s" % project
+                    f"Project Person Link created: {project}"
                 )
         else:
             project.update(data)
-            current_app.logger.info("Project updated: %s" % project)
+            current_app.logger.info(f"Project updated: {project}")
 
         return project
 

@@ -204,7 +204,7 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
         task = tasks_service.get_task(str(entry.object_id))
         project_id = task["project_id"]
         events.emit(
-            "comment:%s" % event_type,
+            f"comment:{event_type}",
             {"comment_id": entry.id},
             project_id=project_id,
         )
@@ -303,8 +303,8 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
         project_id = entry["project_id"]
         name = shots_service.get_base_entity_type_name(entry)
         events.emit(
-            "%s:%s" % (name.lower(), event_type),
-            {"%s_id" % name: entry["id"]},
+            f"{name.lower()}:{event_type}",
+            {f"{name}_id": entry["id"]},
             project_id=project_id,
         )
 
@@ -383,7 +383,7 @@ class ImportKitsuProjectsResource(BaseImportKitsuResource):
         return super().post()
 
     def emit_event(self, event_type, entry):
-        events.emit("project:%s" % event_type, project_id=entry["id"])
+        events.emit(f"project:{event_type}", project_id=entry["id"])
 
 
 class ImportKitsuTasksResource(BaseImportKitsuResource):
@@ -481,7 +481,7 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         return True
 
     def emit_event(self, event_type, entry):
-        events.emit("task:%s" % event_type, project_id=entry["project_id"])
+        events.emit(f"task:{event_type}", project_id=entry["project_id"])
 
 
 class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
@@ -578,4 +578,4 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
     def emit_event(self, event_type, entry):
         entity = entities_service.get_entity(entry["entity_in_id"])
         project_id = entity["project_id"]
-        events.emit("entity-link:%s" % event_type, project_id=project_id)
+        events.emit(f"entity-link:{event_type}", project_id=project_id)

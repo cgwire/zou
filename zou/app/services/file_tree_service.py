@@ -121,7 +121,7 @@ def get_working_file_name(
         revision=revision,
     )
 
-    return "%s" % file_name
+    return f"{file_name}"
 
 
 def get_output_file_name(
@@ -149,9 +149,9 @@ def get_output_file_name(
     )
 
     if nb_elements > 1:
-        file_name += "_[1-%s]" % nb_elements
+        file_name += f"_[1-{nb_elements}]"
 
-    return "%s" % file_name
+    return f"{file_name}"
 
 
 def get_instance_file_name(
@@ -181,9 +181,9 @@ def get_instance_file_name(
     )
 
     if nb_elements > 1:
-        file_name += "_[1-%s]" % nb_elements
+        file_name += f"_[1-{nb_elements}]"
 
-    return "%s" % file_name
+    return f"{file_name}"
 
 
 def get_working_folder_path(
@@ -302,12 +302,12 @@ def get_tree_from_file(tree_name):
         return _file_tree_cache[tree_name]
     try:
         tree_path = os.path.join(
-            os.path.join(app.root_path, "file_trees"), "%s.json" % tree_name
+            os.path.join(app.root_path, "file_trees"), f"{tree_name}.json"
         )
         tree_string = open(tree_path).read()
     except IOError:
         raise WrongFileTreeFileException(
-            "File Tree file not found: %s." % tree_path
+            f"File Tree file not found: {tree_path}."
         )
     tree = json.loads(tree_string)
     _file_tree_cache[tree_name] = tree
@@ -407,7 +407,7 @@ def get_root_path(tree, mode, sep):
 
     if mode not in tree:
         raise MalformedFileTreeException(
-            "Mode %s cannot be found on given tree." % mode
+            f"Mode {mode} cannot be found on given tree."
         )
 
     try:
@@ -415,12 +415,12 @@ def get_root_path(tree, mode, sep):
         root = tree[mode]["root"]
     except KeyError:
         raise MalformedFileTreeException(
-            "Can't find given mode (%s) in given tree." % mode
+            f"Can't find given mode ({mode}) in given tree."
         )
     if root:
-        return "%s%s%s%s" % (mountpoint, sep, root, sep)
+        return f"{mountpoint}{sep}{root}{sep}"
     else:
-        return "%s%s" % (mountpoint, sep)
+        return f"{mountpoint}{sep}"
 
 
 def update_variable(
@@ -530,7 +530,7 @@ def get_folder_from_datatype(
     elif datatype == "Version" or datatype == "Revision":
         folder = get_folder_from_revision(revision)
     else:
-        raise MalformedFileTreeException("Unknown data type: %s." % datatype)
+        raise MalformedFileTreeException(f"Unknown data type: {datatype}.")
 
     return folder
 
@@ -597,7 +597,7 @@ def get_folder_from_sequence(entity, field="name"):
 
     if "Seq" in sequence_name:
         sequence_number = sequence_name[3:]
-        sequence_name = "S%s" % sequence_number.zfill(3)
+        sequence_name = f"S{sequence_number.zfill(3)}"
     return sequence_name
 
 
@@ -693,7 +693,7 @@ def join_path(left, right, sep=os.sep):
     elif right == "":
         return left
     else:
-        return "%s%s%s" % (left, sep, right)
+        return f"{left}{sep}{right}"
 
 
 def apply_style(file_name, style):
@@ -734,9 +734,7 @@ def get_shot_task_from_path(file_path, project, mode="working", sep="/"):
     if len(elements) != len(template_elements):
         tree = get_tree_from_project(project)
         template = get_shot_path_template(tree, mode)
-        raise WrongPathFormatException(
-            "%s doesn't match %s" % (file_path, template)
-        )
+        raise WrongPathFormatException(f"{file_path} doesn't match {template}")
 
     data_names = extract_variable_values_from_path(elements, template_elements)
 
@@ -762,9 +760,7 @@ def get_asset_task_from_path(file_path, project, mode="working", sep="/"):
     if len(elements) != len(template_elements):
         tree = get_tree_from_project(project)
         template = get_asset_path_template(tree, mode)
-        raise WrongPathFormatException(
-            "%s doesn't match %s" % (file_path, template)
-        )
+        raise WrongPathFormatException(f"{file_path} doesn't match {template}")
 
     data_names = extract_variable_values_from_path(elements, template_elements)
 

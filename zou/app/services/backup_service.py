@@ -84,14 +84,14 @@ def upload_entity_thumbnail(entity):
     file_path = local.path("thumbnails-" + str(entity.id))
     if entity.has_avatar:
         file_store.add_picture("thumbnails", str(entity.id), file_path)
-        print("%s uploaded" % file_path)
+        print(f"{file_path} uploaded")
 
 
 def upload_preview(preview_file):
     """
     Upload all files link to preview file entry: orginal file and variants.
     """
-    print("upload preview %s (%s)" % (preview_file.id, preview_file.extension))
+    print(f"upload preview {preview_file.id} ({preview_file.extension})")
 
     local_picture = LocalBackend(
         "local", {"root": os.path.join(preview_folder, "pictures")}
@@ -108,7 +108,7 @@ def upload_preview(preview_file):
     is_file = not is_movie and not is_picture
 
     preview_file_id = str(preview_file.id)
-    file_key = "previews-%s" % preview_file_id
+    file_key = f"previews-{preview_file_id}"
     if is_picture:
         file_path = local_picture.path(file_key)
         ul_func = file_store.add_picture
@@ -124,9 +124,7 @@ def upload_preview(preview_file):
 
     if is_movie or is_picture:
         for prefix in ["thumbnails", "thumbnails-square", "original"]:
-            pic_file_path = local_picture.path(
-                "%s-%s" % (prefix, str(preview_file.id))
-            )
+            pic_file_path = local_picture.path(f"{prefix}-{preview_file.id!s}")
             if os.path.exists(pic_file_path) and not file_store.exists_picture(
                 prefix, preview_file_id
             ):
@@ -135,7 +133,7 @@ def upload_preview(preview_file):
     prefix = "previews"
     if os.path.exists(file_path) and not exists_func(prefix, preview_file_id):
         ul_func(prefix, preview_file_id, file_path)
-    print("%s uploaded" % file_path)
+    print(f"{file_path} uploaded")
 
 
 def upload_entity_thumbnails_to_storage(days=None):

@@ -22,7 +22,7 @@ def send_email(subject, html, recipient_email, body=None, locale=None):
             try:
                 mail_default_sender = app.config["MAIL_DEFAULT_SENDER"]
                 message = Message(
-                    sender="Kitsu Bot <%s>" % mail_default_sender,
+                    sender=f"Kitsu Bot <{mail_default_sender}>",
                     body=body,
                     html=html,
                     subject=subject,
@@ -65,7 +65,7 @@ class HTMLStripper(HTMLParser):
     def handle_endtag(self, tag):
         if tag == "a" and self.in_link:
             if self.link_url:
-                self.text.write(" (%s)" % self.link_url)
+                self.text.write(f" ({self.link_url})")
             self.in_link = False
             self.link_url = ""
         elif tag in ("p", "div"):

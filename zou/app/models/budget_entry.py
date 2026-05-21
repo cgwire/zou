@@ -44,12 +44,7 @@ class BudgetEntry(db.Model, BaseMixin, SerializerMixin):
     exceptions = db.Column(JSONB)
 
     def __repr__(self):
-        return "<BudgetEntry of %s - %d %s %s>" % (
-            self.budget_id,
-            self.department_id,
-            self.person_id,
-            self.start_date,
-        )
+        return f"<BudgetEntry of {self.budget_id} - {self.department_id} {self.person_id} {self.start_date}>"
 
     def present(self):
         return fields.serialize_dict(

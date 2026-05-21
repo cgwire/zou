@@ -250,7 +250,7 @@ def make_read_generator(bucket, key, bucket_name=None):
 
 def make_storage(bucket):
     return flask_fs.Storage(
-        "%s%s" % (config.FS_BUCKET_PREFIX, bucket),
+        f"{config.FS_BUCKET_PREFIX}{bucket}",
         overwrite=True,
     )
 

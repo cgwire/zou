@@ -450,7 +450,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
         response = self.app.post(
             f"/actions/tasks/{self.task_id}"
             f"/comments/{self.comment['id']}/move",
-            data='{"target_task_id": "%s"}' % str(other_task.id),
+            data=f'{{"target_task_id": "{str(other_task.id)}"}}',
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 400)
@@ -459,7 +459,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
         response = self.app.post(
             f"/actions/tasks/{self.task.id}"
             f"/comments/{self.comment['id']}/move",
-            data='{"target_task_id": "%s"}' % str(self.task.id),
+            data=f'{{"target_task_id": "{str(self.task.id)}"}}',
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 400)
@@ -469,7 +469,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
         response = self.app.post(
             f"/actions/tasks/{sibling.id}"
             f"/comments/{self.comment['id']}/move",
-            data='{"target_task_id": "%s"}' % str(sibling.id),
+            data=f'{{"target_task_id": "{str(sibling.id)}"}}',
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 400)
@@ -506,7 +506,7 @@ class CommentRoutesTestCase(ApiDBTestCase):
         response = self.app.post(
             f"/actions/tasks/{self.task.id}"
             f"/comments/{self.comment['id']}/move",
-            data='{"target_task_id": "%s"}' % str(sibling.id),
+            data=f'{{"target_task_id": "{str(sibling.id)}"}}',
             headers=self.post_headers,
         )
         self.assertEqual(response.status_code, 403)

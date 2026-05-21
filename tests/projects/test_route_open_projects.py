@@ -21,7 +21,7 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
     def test_add_team_member(self):
         self.person_id = str(self.generate_fixture_person().id)
         self.post(
-            "data/projects/%s/team" % self.project_id,
+            f"data/projects/{self.project_id}/team",
             {"person_id": self.person_id},
         )
         project = projects_service.get_project(self.project_id, relations=True)
@@ -30,8 +30,6 @@ class OpenProjectRouteTestCase(ApiDBTestCase):
     def test_remove_team_member(self):
         self.person_id = str(self.generate_fixture_person().id)
         projects_service.add_team_member(self.project_id, self.person_id)
-        self.delete(
-            "data/projects/%s/team/%s" % (self.project_id, self.person_id)
-        )
+        self.delete(f"data/projects/{self.project_id}/team/{self.person_id}")
         project = projects_service.get_project(self.project_id, relations=True)
         self.assertEqual(project["team"], [])

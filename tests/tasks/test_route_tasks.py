@@ -46,10 +46,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
     def test_create_asset_tasks(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
-        path = "/actions/projects/%s/task-types/%s/assets/create-tasks" % (
-            self.project.id,
-            self.task_type_id,
-        )
+        path = f"/actions/projects/{self.project.id}/task-types/{self.task_type_id}/assets/create-tasks"
         tasks = self.post(path, {})
         self.assertEqual(len(tasks), 2)
 
@@ -62,10 +59,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
     def test_create_asset_tasks_from_list(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
-        path = "/actions/projects/%s/task-types/%s/assets/create-tasks" % (
-            self.project.id,
-            self.task_type_id,
-        )
+        path = f"/actions/projects/{self.project.id}/task-types/{self.task_type_id}/assets/create-tasks"
         tasks = self.post(path, [self.asset_id])
         self.assertEqual(len(tasks), 1)
         tasks = self.get("/data/tasks")
@@ -76,10 +70,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(task["entity_id"], self.asset_id)
 
     def test_create_shot_tasks(self):
-        path = "/actions/projects/%s/task-types/%s/shots/create-tasks" % (
-            self.project.id,
-            self.task_type_id,
-        )
+        path = f"/actions/projects/{self.project.id}/task-types/{self.task_type_id}/shots/create-tasks"
         tasks = self.post(path, {})
         self.assertEqual(len(tasks), 1)
 
@@ -214,8 +205,8 @@ class TaskRoutesTestCase(ApiDBTestCase):
         person_id = str(self.person.id)
         task_id = str(self.task.id)
         data = {"person_id": person_id}
-        self.put("/actions/tasks/%s/assign" % task_id, data, 200)
-        task = self.get("data/tasks/%s" % task_id)
+        self.put(f"/actions/tasks/{task_id}/assign", data, 200)
+        task = self.get(f"data/tasks/{task_id}")
         self.assertEqual(task["assignees"][0], person_id)
         notifications = notifications_service.get_last_notifications(
             "assignation"
@@ -226,13 +217,13 @@ class TaskRoutesTestCase(ApiDBTestCase):
     def test_task_assign_404(self):
         person_id = str(self.person.id)
         data = {"person_id": person_id}
-        self.put("/actions/tasks/%s/assign" % "wrong-id", data, 404)
+        self.put(f"/actions/tasks/wrong-id/assign", data, 404)
 
     def test_task_assign_400(self):
         self.generate_fixture_task()
         person_id = "wrong-id"
         data = {"person_id": person_id}
-        self.put("/actions/tasks/%s/assign" % self.task.id, data, 400)
+        self.put(f"/actions/tasks/{self.task.id}/assign", data, 400)
 
     def test_multiple_task_assign(self):
         self.generate_fixture_task()
@@ -241,7 +232,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         shot_task_id = str(self.shot_task.id)
         person_id = str(self.person.id)
         data = {"task_ids": [task_id, shot_task_id]}
-        self.put("/actions/persons/%s/assign" % person_id, data)
+        self.put(f"/actions/persons/{person_id}/assign", data)
 
         task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 1)
@@ -261,13 +252,13 @@ class TaskRoutesTestCase(ApiDBTestCase):
         data = {"task_ids": [task_id, shot_task_id]}
         self.put("/actions/tasks/clear-assignation", data)
         self.log_in_cg_artist()
-        self.put("/actions/persons/%s/assign" % person_id, data)
+        self.put(f"/actions/persons/{person_id}/assign", data)
         task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
         task = tasks_service.get_task(shot_task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
         persons_service.add_to_department(department_id, person_id)
-        self.put("/actions/persons/%s/assign" % person_id, data)
+        self.put(f"/actions/persons/{person_id}/assign", data)
         task = tasks_service.get_task(task_id, relations=True)
         self.assertEqual(len(task["assignees"]), 0)
         task = tasks_service.get_task(shot_task_id, relations=True)
@@ -299,7 +290,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.project.team = [self.person, user_cg_artist, user_manager]
         self.project.save()
         self.generate_fixture_task()
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
             "comment": "comment test",
@@ -354,7 +345,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.project.team = [self.person, user, user_cg_artist, user_manager]
         self.project.save()
         self.generate_fixture_task()
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
             "comment": "comment test @John Doe",
@@ -363,7 +354,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         notifications = notifications_service.get_last_notifications("mention")
         self.assertEqual(len(notifications), 1)
 
-        path = "/data/comments/%s" % comment["id"]
+        path = f"/data/comments/{comment['id']}"
         data = {"text": "comment test @John Did2 @John Did3"}
         comment = self.put(path, data)
         notifications = notifications_service.get_last_notifications("mention")
@@ -371,7 +362,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
 
     def test_comment_task_with_retake(self):
         self.generate_fixture_task()
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {
             "task_status_id": self.retake_status_id,
             "comment": "retake test",
@@ -398,7 +389,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
     def test_comment_task_with_wip(self):
         self.generate_fixture_task()
         self.task.update({"real_start_date": None})
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {"task_status_id": self.wip_status_id, "comment": "wip test"}
         self.post(path, data)
         tasks = self.get("/data/tasks")
@@ -407,7 +398,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
     def test_comment_task_with_done(self):
         self.generate_fixture_task()
         self.task.update({"end_date": None})
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {"task_status_id": self.wfa_status_id, "comment": "wip test"}
         self.post(path, data)
         tasks = self.get("/data/tasks")
@@ -422,7 +413,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.task_id = str(self.task.id)
         self.task_2_id = str(self.task_standard.id)
 
-        path = "/actions/tasks/%s/comment/" % self.task_id
+        path = f"/actions/tasks/{self.task_id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
             "comment": "comment test",
@@ -434,10 +425,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
         }
         self.post(path, data)
 
-        path = "/actions/tasks/%s/comment/" % self.task_2_id
+        path = f"/actions/tasks/{self.task_2_id}/comment/"
         self.post(path, data)
 
-        path = "/data/tasks/%s/comments/" % self.task_id
+        path = f"/data/tasks/{self.task_id}/comments/"
         comments = self.get(path)
         self.assertEqual(len(comments), 2)
         self.assertEqual(comments[0]["text"], data["comment"])
@@ -457,7 +448,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
 
         self.task_id = str(self.task.id)
 
-        path = "/actions/tasks/%s/comment/" % self.task_id
+        path = f"/actions/tasks/{self.task_id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
             "comment": "comment test",
@@ -469,10 +460,10 @@ class TaskRoutesTestCase(ApiDBTestCase):
         }
         comment = self.post(path, comment)
 
-        path = "/data/tasks/%s/comments/%s" % (self.task_id, comment["id"])
+        path = f"/data/tasks/{self.task_id}/comments/{comment['id']}"
         comments = self.delete(path)
         self.delete(path, 404)
-        path = "/data/tasks/%s/comments/" % self.task_id
+        path = f"/data/tasks/{self.task_id}/comments/"
         comments = self.get(path)
         self.assertEqual(len(comments), 1)
 
@@ -483,14 +474,13 @@ class TaskRoutesTestCase(ApiDBTestCase):
         entity_id = self.asset.id
 
         tasks = self.get(
-            "/data/entities/%s/task-types/%s/tasks" % (entity_id, task_type_id)
+            f"/data/entities/{entity_id}/task-types/{task_type_id}/tasks"
         )
         self.assertEqual(len(tasks), 1)
         self.assertDictEqual(tasks[0], self.task.serialize())
 
         tasks = self.get(
-            "/data/entities/%s/task-types/%s/tasks"
-            % (entity_id, task_type_animation_id)
+            f"/data/entities/{entity_id}/task-types/{task_type_animation_id}/tasks"
         )
         self.assertEqual(len(tasks), 0)
 
@@ -502,7 +492,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         comments_service.new_comment(
             self.task.id, self.task_status.id, self.person.id, "last comment"
         )
-        tasks = self.get("/data/persons/%s/tasks" % self.person.id)
+        tasks = self.get(f"/data/persons/{self.person.id}/tasks")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["last_comment"]["text"], "last comment")
         self.assertEqual(
@@ -511,13 +501,13 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
         self.assertTrue(str(self.person.id) in tasks[0]["assignees"])
 
-        tasks = self.get("/data/persons/%s/tasks" % self.user["id"])
+        tasks = self.get(f"/data/persons/{self.user['id']}/tasks")
         self.assertEqual(len(tasks), 0)
 
     def test_get_done_tasks_for_person(self):
         self.generate_fixture_task()
         self.task_id = self.task.id
-        tasks = self.get("/data/persons/%s/done-tasks" % self.person.id)
+        tasks = self.get(f"/data/persons/{self.person.id}/done-tasks")
         self.assertEqual(len(tasks), 0)
 
         done_status = tasks_service.get_or_create_status(
@@ -527,7 +517,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             self.task_id, {"task_status_id": done_status["id"]}
         )
 
-        tasks = self.get("/data/persons/%s/done-tasks" % self.person.id)
+        tasks = self.get(f"/data/persons/{self.person.id}/done-tasks")
         self.assertEqual(len(tasks), 1)
 
     def test_get_related_tasks_for_person(self):
@@ -537,8 +527,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task.assignees = []
         task.save()
         tasks = self.get(
-            "/data/persons/%s/related-tasks/%s"
-            % (self.person.id, task_type_id)
+            f"/data/persons/{self.person.id}/related-tasks/{task_type_id}"
         )
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["task_type_id"], task_type_id)
@@ -551,13 +540,12 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task_3_id = str(self.generate_fixture_shot_task().id)
         task_4_id = str(self.generate_fixture_task_standard().id)
         self.delete(
-            "/actions/projects/%s/task-types/%s/delete-tasks"
-            % (self.project.id, self.task_type.id)
+            f"/actions/projects/{self.project.id}/task-types/{self.task_type.id}/delete-tasks"
         )
-        self.get("/data/tasks/%s" % task_1_id, 404)
-        self.get("/data/tasks/%s" % task_2_id, 404)
-        self.get("/data/tasks/%s" % task_3_id)
-        self.get("/data/tasks/%s" % task_4_id)
+        self.get(f"/data/tasks/{task_1_id}", 404)
+        self.get(f"/data/tasks/{task_2_id}", 404)
+        self.get(f"/data/tasks/{task_3_id}")
+        self.get(f"/data/tasks/{task_4_id}")
 
     def test_delete_tasks(self):
         self.generate_fixture_project_standard()
@@ -567,14 +555,14 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task_3_id = str(self.generate_fixture_shot_task().id)
         task_4_id = str(self.generate_fixture_task_standard().id)
         self.post(
-            "/actions/projects/%s/delete-tasks" % self.project.id,
+            f"/actions/projects/{self.project.id}/delete-tasks",
             [task_1_id, task_2_id],
             code=200,
         )
-        self.get("/data/tasks/%s" % task_1_id, 404)
-        self.get("/data/tasks/%s" % task_2_id, 404)
-        self.get("/data/tasks/%s" % task_3_id)
-        self.get("/data/tasks/%s" % task_4_id)
+        self.get(f"/data/tasks/{task_1_id}", 404)
+        self.get(f"/data/tasks/{task_2_id}", 404)
+        self.get(f"/data/tasks/{task_3_id}")
+        self.get(f"/data/tasks/{task_4_id}")
 
     def test_get_tasks_permissions(self):
         self.generate_fixture_user_vendor()
@@ -609,7 +597,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
         self.generate_fixture_shot_task("second")
         shot_id = str(self.shot.id)
-        tasks = self.get("/data/sequences/%s/shot-tasks" % self.sequence.id)
+        tasks = self.get(f"/data/sequences/{self.sequence.id}/shot-tasks")
         self.assertEqual(len(tasks), 2)
         self.assertTrue(shot_id in [task["entity_id"] for task in tasks])
 
@@ -620,7 +608,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_shot_task()
         self.generate_fixture_shot_task("second")
         shot_id = str(self.shot.id)
-        tasks = self.get("/data/episodes/%s/shot-tasks" % self.episode.id)
+        tasks = self.get(f"/data/episodes/{self.episode.id}/shot-tasks")
         self.assertEqual(len(tasks), 2)
         self.assertTrue(shot_id in [task["entity_id"] for task in tasks])
 
@@ -650,9 +638,9 @@ class TaskRoutesTestCase(ApiDBTestCase):
         task = self.generate_fixture_task().serialize()
         preview_file = self.generate_fixture_preview_file().serialize()
         self.put(
-            "/actions/tasks/%s/set-main-preview" % preview_file["task_id"], {}
+            f"/actions/tasks/{preview_file['task_id']}/set-main-preview", {}
         )
-        entity = self.get("/data/entities/%s" % task["entity_id"])
+        entity = self.get(f"/data/entities/{task['entity_id']}")
         self.assertEqual(entity["preview_file_id"], preview_file["id"])
 
     def test_open_tasks(self):
@@ -689,28 +677,25 @@ class TaskRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks["data"]), 6)
 
         tasks = self.get(
-            "/data/tasks/open-tasks?project_id=%s" % self.project.id
+            f"/data/tasks/open-tasks?project_id={self.project.id}"
         )
         self.assertEqual(len(tasks["data"]), 5)
 
         tasks = self.get(
-            "/data/tasks/open-tasks?project_id=%s&limit=3" % self.project.id
+            f"/data/tasks/open-tasks?project_id={self.project.id}&limit=3"
         )
         self.assertEqual(len(tasks["data"]), 3)
 
         tasks = self.get(
-            "/data/tasks/open-tasks?project_id=%s&limit=3&page=2"
-            % self.project.id
+            f"/data/tasks/open-tasks?project_id={self.project.id}&limit=3&page=2"
         )
         self.assertEqual(len(tasks["data"]), 2)
 
-        tasks = self.get(
-            "/data/tasks/open-tasks?task_type_id=%s" % animation_id
-        )
+        tasks = self.get(f"/data/tasks/open-tasks?task_type_id={animation_id}")
         self.assertEqual(len(tasks["data"]), 3)
 
         tasks = self.get(
-            "/data/tasks/open-tasks?task_status_id=%s" % self.wip_status_id
+            f"/data/tasks/open-tasks?task_status_id={self.wip_status_id}"
         )
         self.assertEqual(len(tasks["data"]), 1)
 
@@ -718,7 +703,7 @@ class TaskRoutesTestCase(ApiDBTestCase):
             "Jane", "Doe", "jane.doe", "jane.doe@gmail.com"
         )
         data = {"person_id": jane.id}
-        self.put("/actions/tasks/%s/assign" % task_id, data, 200)
-        self.put("/actions/tasks/%s/assign" % self.shot_task.id, data, 200)
-        tasks = self.get("/data/tasks/open-tasks?person_id=%s" % jane.id)
+        self.put(f"/actions/tasks/{task_id}/assign", data, 200)
+        self.put(f"/actions/tasks/{self.shot_task.id}/assign", data, 200)
+        tasks = self.get(f"/data/tasks/open-tasks?person_id={jane.id}")
         self.assertEqual(len(tasks["data"]), 2)

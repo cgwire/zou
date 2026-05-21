@@ -11,15 +11,14 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
             self.post(
                 "data/production-schedule-versions",
                 {
-                    "name": "Version %d" % i,
+                    "name": f"Version {i}",
                     "project_id": self.project_id,
                 },
             )
 
     def _list_url(self):
         return (
-            "data/production-schedule-versions"
-            "?project_id=%s" % self.project_id
+            f"data/production-schedule-versions?project_id={self.project_id}"
         )
 
     def test_get_production_schedule_versions(self):
@@ -29,12 +28,10 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
     def test_get_production_schedule_version(self):
         version = self.get_first(self._list_url())
         version_again = self.get(
-            "data/production-schedule-versions/%s" % version["id"]
+            f"data/production-schedule-versions/{version['id']}"
         )
         self.assertEqual(version["id"], version_again["id"])
-        self.get_404(
-            "data/production-schedule-versions/%s" % fields.gen_uuid()
-        )
+        self.get_404(f"data/production-schedule-versions/{fields.gen_uuid()}")
 
     def test_create_production_schedule_version(self):
         data = {
@@ -50,15 +47,15 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
         version = self.get_first(self._list_url())
         data = {"name": "Updated Version"}
         self.put(
-            "data/production-schedule-versions/%s" % version["id"],
+            f"data/production-schedule-versions/{version['id']}",
             data,
         )
         version_again = self.get(
-            "data/production-schedule-versions/%s" % version["id"]
+            f"data/production-schedule-versions/{version['id']}"
         )
         self.assertEqual(data["name"], version_again["name"])
         self.put_404(
-            "data/production-schedule-versions/%s" % fields.gen_uuid(),
+            f"data/production-schedule-versions/{fields.gen_uuid()}",
             data,
         )
 
@@ -66,9 +63,9 @@ class ProductionScheduleVersionTestCase(ApiDBTestCase):
         versions = self.get(self._list_url())
         self.assertEqual(len(versions), 3)
         version = versions[0]
-        self.delete("data/production-schedule-versions/%s" % version["id"])
+        self.delete(f"data/production-schedule-versions/{version['id']}")
         versions = self.get(self._list_url())
         self.assertEqual(len(versions), 2)
         self.delete_404(
-            "data/production-schedule-versions/%s" % fields.gen_uuid()
+            f"data/production-schedule-versions/{fields.gen_uuid()}"
         )

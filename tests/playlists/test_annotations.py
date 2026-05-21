@@ -34,10 +34,10 @@ class PlaylistTestCase(ApiDBTestCase):
     def test_update_annotations(self):
         preview_file = self.generate_fixture_preview_file().serialize()
         self.put(
-            "actions/preview-files/%s/update-annotations" % preview_file["id"],
+            f"actions/preview-files/{preview_file['id']}/update-annotations",
             {"additions": self.annotations, "deletions": [], "updates": []},
         )
-        preview_file = self.get("data/preview-files/%s" % preview_file["id"])
+        preview_file = self.get(f"data/preview-files/{preview_file['id']}")
         self.assertEqual(preview_file["annotations"], self.annotations)
 
     def test_update_annotations_rights(self):
@@ -52,13 +52,13 @@ class PlaylistTestCase(ApiDBTestCase):
         preview_file = self.generate_fixture_preview_file().serialize()
         self.log_in_client()
         self.put(
-            "actions/preview-files/%s/update-annotations" % preview_file["id"],
+            f"actions/preview-files/{preview_file['id']}/update-annotations",
             {"additions": self.annotations},
         )
 
         self.log_in_cg_artist()
         self.put(
-            "actions/preview-files/%s/update-annotations" % preview_file["id"],
+            f"actions/preview-files/{preview_file['id']}/update-annotations",
             {"additions": self.annotations},
             403,
         )

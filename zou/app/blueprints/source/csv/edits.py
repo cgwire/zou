@@ -127,10 +127,10 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
                         break
                 if task_status_id is None:
                     raise RowException(
-                        "Task status not found for %s" % task_status_name
+                        f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get("%s comment" % task_type.name, None)
+            task_comment_text = row.get(f"{task_type.name} comment", None)
 
             if task_status_id is not None or task_comment_text not in [
                 None,
@@ -246,7 +246,7 @@ class EditsCsvImportResource(BaseCsvProjectImportResource):
         if entity is None:
             entity = Entity.create(
                 **{**edit_values, **edit_new_values},
-                created_by=self.current_user_id
+                created_by=self.current_user_id,
             )
             events.emit(
                 "edit:new",

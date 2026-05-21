@@ -29,7 +29,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_shot(self):
         data = {"software": self.software_max.id}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.shot_task.id, data, 200
+            f"/data/tasks/{self.shot_task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -40,7 +40,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_shot(self):
         data = {"software": self.software_max.id}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.shot_task.id, data, 200
+            f"/data/tasks/{self.shot_task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -51,7 +51,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_scene(self):
         data = {"software": self.software_max.id}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.scene_task.id, data, 200
+            f"/data/tasks/{self.scene_task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -62,7 +62,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_episode(self):
         data = {"software": self.software_max.id}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.episode_task.id,
+            f"/data/tasks/{self.episode_task.id}/working-file-path",
             data,
             200,
         )
@@ -81,7 +81,7 @@ class FolderPathTestCase(ApiDBTestCase):
         task_id = str(self.task.id)
         data = {"name": "main"}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % task_id, data, 200
+            f"/data/tasks/{task_id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -94,7 +94,7 @@ class FolderPathTestCase(ApiDBTestCase):
 
         data = {"name": "hotfix"}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % task_id, data, 200
+            f"/data/tasks/{task_id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["name"], "cosmos_landromat_props_tree_shaders_hotfix_v005"
@@ -102,7 +102,7 @@ class FolderPathTestCase(ApiDBTestCase):
 
         data = {"name": "hotfix", "revision": 3}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % task_id, data, 200
+            f"/data/tasks/{task_id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["name"], "cosmos_landromat_props_tree_shaders_hotfix_v003"
@@ -111,7 +111,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_folder_path_asset(self):
         data = {}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.task.id, data, 200
+            f"/data/tasks/{self.task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -134,8 +134,7 @@ class FolderPathTestCase(ApiDBTestCase):
             "revision": 3,
         }
         result = self.post(
-            "/data/asset-instances/%s/entities/%s/output-file-path"
-            % (self.asset_instance.id, self.shot.id),
+            f"/data/asset-instances/{self.asset_instance.id}/entities/{self.shot.id}/output-file-path",
             data,
             200,
         )
@@ -161,11 +160,7 @@ class FolderPathTestCase(ApiDBTestCase):
             "revision": 3,
         }
         result = self.post(
-            "/data/asset-instances/%s/entities/%s/output-file-path"
-            % (
-                self.asset_instance.id,
-                self.scene.id,
-            ),
+            f"/data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-file-path",
             data,
             200,
         )
@@ -193,11 +188,7 @@ class FolderPathTestCase(ApiDBTestCase):
             "revision": 3,
         }
         result = self.post(
-            "/data/asset-instances/%s/entities/%s/output-file-path"
-            % (
-                self.asset_instance.id,
-                self.asset.id,
-            ),
+            f"/data/asset-instances/{self.asset_instance.id}/entities/{self.asset.id}/output-file-path",
             data,
             200,
         )
@@ -215,7 +206,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_asset_software(self):
         data = {"software_id": self.software.id}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.task.id, data, 200
+            f"/data/tasks/{self.task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -226,7 +217,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_file_path_asset_with_revision(self):
         data = {"revision": 3}
         result = self.post(
-            "/data/tasks/%s/working-file-path" % self.task.id, data, 200
+            f"/data/tasks/{self.task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -240,7 +231,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_folder_separator(self):
         data = {"sep": "\\"}
         result = self.post(
-            "data/tasks/%s/working-file-path" % self.task.id, data, 200
+            f"data/tasks/{self.task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -251,7 +242,7 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_file_separator(self):
         data = {"sep": "\\"}
         result = self.post(
-            "data/tasks/%s/working-file-path" % self.task.id, data, 200
+            f"data/tasks/{self.task.id}/working-file-path", data, 200
         )
         self.assertEqual(
             result["path"],
@@ -262,9 +253,9 @@ class FolderPathTestCase(ApiDBTestCase):
     def test_get_path_wrong_task_id(self):
         data = {}
         self.post(
-            "/data/tasks/%s/working-file-path" % self.task_type.id, data, 404
+            f"/data/tasks/{self.task_type.id}/working-file-path", data, 404
         )
 
     def test_get_path_wrong_mode(self):
         data = {"mode": "unknown"}
-        self.post("/data/tasks/%s/working-file-path" % self.task.id, data, 400)
+        self.post(f"/data/tasks/{self.task.id}/working-file-path", data, 400)

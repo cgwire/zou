@@ -16,10 +16,10 @@ class ProjectStatusTestCase(ApiDBTestCase):
     def test_get_project_status(self):
         project_status = self.get_first("data/project-status")
         project_status_again = self.get(
-            "data/project-status/%s" % project_status["id"]
+            f"data/project-status/{project_status['id']}"
         )
         self.assertEqual(project_status, project_status_again)
-        self.get_404("data/project-status/%s" % fields.gen_uuid())
+        self.get_404(f"data/project-status/{fields.gen_uuid()}")
 
     def test_create_project_status(self):
         data = {"name": "open", "color": "#000000"}
@@ -32,18 +32,18 @@ class ProjectStatusTestCase(ApiDBTestCase):
     def test_update_project_status(self):
         project_status = self.get_first("data/project-status")
         data = {"color": "#FFFFFF"}
-        self.put("data/project-status/%s" % project_status["id"], data)
+        self.put(f"data/project-status/{project_status['id']}", data)
         project_status_again = self.get(
-            "data/project-status/%s" % project_status["id"]
+            f"data/project-status/{project_status['id']}"
         )
         self.assertEqual(data["color"], project_status_again["color"])
-        self.put_404("data/project-status/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/project-status/{fields.gen_uuid()}", data)
 
     def test_delete_project_status(self):
         project_statuss = self.get("data/project-status")
         self.assertEqual(len(project_statuss), 3)
         project_status = project_statuss[0]
-        self.delete("data/project-status/%s" % project_status["id"])
+        self.delete(f"data/project-status/{project_status['id']}")
         project_statuss = self.get("data/project-status")
         self.assertEqual(len(project_statuss), 2)
-        self.delete_404("data/project-status/%s" % fields.gen_uuid())
+        self.delete_404(f"data/project-status/{fields.gen_uuid()}")

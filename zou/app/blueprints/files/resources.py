@@ -81,7 +81,7 @@ def send_storage_file(
         return (
             {
                 "error": True,
-                "message": "Working file not found for: %s" % working_file_id,
+                "message": f"Working file not found for: {working_file_id}",
             },
             404,
         )
@@ -89,7 +89,7 @@ def send_storage_file(
         return (
             {
                 "error": True,
-                "message": "Working file not found for: %s" % working_file_id,
+                "message": f"Working file not found for: {working_file_id}",
             },
             404,
         )
@@ -105,7 +105,7 @@ class WorkingFileFileResource(Resource):
     def save_uploaded_file_in_temporary_folder(self, working_file_id):
         uploaded_file = request.files["file"]
         tmp_folder = current_app.config["TMP_DIR"]
-        file_name = "working-file-%s" % working_file_id
+        file_name = f"working-file-{working_file_id}"
         file_path = os.path.join(tmp_folder, file_name)
         uploaded_file.save(file_path)
         return file_path
@@ -933,7 +933,7 @@ class NewWorkingFileResource(Resource, ArgsMixin):
         file_name = file_tree_service.get_working_file_name(
             task, name=name, software=software, revision=revision, mode=mode
         )
-        return "%s%s%s" % (folder_path, sep, file_name)
+        return f"{folder_path}{sep}{file_name}"
 
     def get_arguments(self):
         person = persons_service.get_current_user()
@@ -1313,10 +1313,7 @@ class NewEntityOutputFileResource(Resource, ArgsMixin):
 
         output_file = files_service.update_output_file(
             output_file["id"],
-            {
-                "path": "%s%s%s%s"
-                % (folder_path, separator, file_name, extension)
-            },
+            {"path": f"{folder_path}{separator}{file_name}{extension}"},
         )
 
         output_file.update(
@@ -1584,10 +1581,7 @@ class NewInstanceOutputFileResource(Resource, ArgsMixin):
 
         output_file = files_service.update_output_file(
             output_file["id"],
-            {
-                "path": "%s%s%s%s"
-                % (folder_path, separator, file_name, extension)
-            },
+            {"path": f"{folder_path}{separator}{file_name}{extension}"},
         )
 
         output_file.update(

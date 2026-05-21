@@ -36,9 +36,9 @@ class TaskTestCase(ApiDBTestCase):
 
     def test_get_task(self):
         task = self.get_first("data/tasks?relations=true")
-        task_again = self.get("data/tasks/%s" % task["id"])
+        task_again = self.get(f"data/tasks/{task['id']}")
         self.assertEqual(task, task_again)
-        self.get_404("data/tasks/%s" % fields.gen_uuid())
+        self.get_404(f"data/tasks/{fields.gen_uuid()}")
 
     def test_create_task(self):
         data = {
@@ -66,26 +66,26 @@ class TaskTestCase(ApiDBTestCase):
     def test_update_task(self):
         task = self.get_first("data/tasks")
         data = {"name": "Modeling arbre 2"}
-        self.put("data/tasks/%s" % task["id"], data)
-        task_again = self.get("data/tasks/%s" % task["id"])
+        self.put(f"data/tasks/{task['id']}", data)
+        task_again = self.get(f"data/tasks/{task['id']}")
         self.assertEqual(data["name"], task_again["name"])
-        self.put_404("data/tasks/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/tasks/{fields.gen_uuid()}", data)
 
     def test_delete_task(self):
         tasks = self.get("data/tasks")
         self.assertEqual(len(tasks), 3)
         task = tasks[0]
-        self.delete("data/tasks/%s" % task["id"])
+        self.delete(f"data/tasks/{task['id']}")
         tasks = self.get("data/tasks")
         self.assertEqual(len(tasks), 2)
-        self.delete_404("data/tasks/%s" % fields.gen_uuid())
+        self.delete_404(f"data/tasks/{fields.gen_uuid()}")
 
     def test_filter_by_assignee(self):
-        tasks = self.get("data/tasks?assignees=%s" % self.person.id)
+        tasks = self.get(f"data/tasks?assignees={self.person.id}")
         self.assertEqual(len(tasks), 3)
 
     def test_full_task(self):
-        task = self.get("data/tasks/%s/full" % (self.tasks[0].id))
+        task = self.get(f"data/tasks/{self.tasks[0].id}/full")
         self.assertEqual(task["task_type"]["name"], "Shaders")
         self.assertEqual(task["persons"][0]["first_name"], "John")
         self.assertEqual(task["task_status"]["name"], "Open")

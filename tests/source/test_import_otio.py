@@ -13,7 +13,7 @@ class ImportOTIOEdlTestCase(ApiDBTestCase):
         self.project.update({"fps": "25"})
 
     def import_edl(self, edl_filename):
-        path = "/import/otio/projects/%s" % self.project.id
+        path = f"/import/otio/projects/{self.project.id}"
         file_path = self.get_fixture_file_path(
             os.path.join("edl", edl_filename)
         )

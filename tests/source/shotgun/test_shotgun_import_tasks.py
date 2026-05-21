@@ -141,23 +141,23 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
     def test_import_sequence_task(self):
         self.load_sequence_task()
         sequences = shots_service.get_sequences({"shotgun_id": 1})
-        self.tasks = self.get("data/tasks?entity_id=%s" % sequences[0]["id"])
+        self.tasks = self.get(f"data/tasks?entity_id={sequences[0]['id']}")
         self.assertEqual(len(self.tasks), 1)
 
     def test_import_scene_task(self):
         self.load_scene_task()
         scenes = shots_service.get_scenes({"shotgun_id": 1})
-        self.tasks = self.get("data/tasks?entity_id=%s" % scenes[0]["id"])
+        self.tasks = self.get(f"data/tasks?entity_id={scenes[0]['id']}")
         self.assertEqual(len(self.tasks), 1)
 
     def test_import_remove_task(self):
         self.load_task()
         api_path = "/import/shotgun/remove/task"
         sg_task = {"id": self.sg_task["id"]}
-        self.tasks = self.get("data/tasks?shotgun_id=%s" % self.sg_task["id"])
+        self.tasks = self.get(f"data/tasks?shotgun_id={self.sg_task['id']}")
         task = self.tasks[0]
 
         response = self.post(api_path, sg_task, 200)
         self.assertEqual(response["removed_instance_id"], task["id"])
-        self.tasks = self.get("data/tasks?shotgun_id=%s" % self.sg_task["id"])
+        self.tasks = self.get(f"data/tasks?shotgun_id={self.sg_task['id']}")
         self.assertEqual(len(self.tasks), 0)

@@ -16,9 +16,9 @@ class DepartmentTestCase(ApiDBTestCase):
 
     def test_get_department(self):
         department = self.get_first("data/departments")
-        department_again = self.get("data/departments/%s" % department["id"])
+        department_again = self.get(f"data/departments/{department['id']}")
         self.assertEqual(department, department_again)
-        self.get_404("data/departments/%s" % fields.gen_uuid())
+        self.get_404(f"data/departments/{fields.gen_uuid()}")
 
     def test_create_department(self):
         data = {"name": "open", "color": "#000000"}
@@ -31,16 +31,16 @@ class DepartmentTestCase(ApiDBTestCase):
     def test_update_department(self):
         department = self.get_first("data/departments")
         data = {"color": "#FFFFFF"}
-        self.put("data/departments/%s" % department["id"], data)
-        department_again = self.get("data/departments/%s" % department["id"])
+        self.put(f"data/departments/{department['id']}", data)
+        department_again = self.get(f"data/departments/{department['id']}")
         self.assertEqual(data["color"], department_again["color"])
-        self.put_404("data/departments/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/departments/{fields.gen_uuid()}", data)
 
     def test_delete_department(self):
         departments = self.get("data/departments")
         self.assertEqual(len(departments), 3)
         department = departments[0]
-        self.delete("data/departments/%s" % department["id"])
+        self.delete(f"data/departments/{department['id']}")
         departments = self.get("data/departments")
         self.assertEqual(len(departments), 2)
-        self.delete_404("data/departments/%s" % fields.gen_uuid())
+        self.delete_404(f"data/departments/{fields.gen_uuid()}")

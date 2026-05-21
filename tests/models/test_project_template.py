@@ -21,9 +21,9 @@ class ProjectTemplateTestCase(ApiDBTestCase):
 
     def test_get_project_template(self):
         template = self.get_first("data/project-templates")
-        again = self.get("data/project-templates/%s" % template["id"])
+        again = self.get(f"data/project-templates/{template['id']}")
         self.assertEqual(template["id"], again["id"])
-        self.get_404("data/project-templates/%s" % fields.gen_uuid())
+        self.get_404(f"data/project-templates/{fields.gen_uuid()}")
 
     def test_create_project_template(self):
         data = {
@@ -53,15 +53,15 @@ class ProjectTemplateTestCase(ApiDBTestCase):
     def test_update_project_template(self):
         template = self.get_first("data/project-templates")
         self.put(
-            "data/project-templates/%s" % template["id"],
+            f"data/project-templates/{template['id']}",
             {"description": "Updated description"},
         )
-        again = self.get("data/project-templates/%s" % template["id"])
+        again = self.get(f"data/project-templates/{template['id']}")
         self.assertEqual(again["description"], "Updated description")
 
     def test_delete_project_template(self):
         template = self.get_first("data/project-templates")
-        self.delete("data/project-templates/%s" % template["id"])
+        self.delete(f"data/project-templates/{template['id']}")
         self.assertIsNone(ProjectTemplate.get(template["id"]))
         templates = self.get("data/project-templates")
         self.assertEqual(len(templates), 2)

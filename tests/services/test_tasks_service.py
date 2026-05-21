@@ -358,7 +358,7 @@ class TaskServiceTestCase(ApiDBTestCase):
             duration=7200
         )
         time_spents = self.get(
-            "/data/time-spents?task_id=%s" % task_id
+            f"/data/time-spents?task_id={task_id}"
         )
         self.assertEqual(
             time_spents["total"],

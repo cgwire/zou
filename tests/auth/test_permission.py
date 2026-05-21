@@ -37,7 +37,7 @@ class PermissionTestCase(ApiDBTestCase):
     def test_cg_artist_cannot_edit_project(self):
         self.log_in_cg_artist()
         data = {"name": "Cosmos Landromat 2 edited"}
-        self.put("data/projects/%s" % self.project_id, data, 403)
+        self.put(f"data/projects/{self.project_id}", data, 403)
 
     def test_cg_artist_can_read_open_projects(self):
         self.log_in_cg_artist()
@@ -53,7 +53,7 @@ class PermissionTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         user_id = str(self.user_cg_artist["id"])
         projects_service.add_team_member(self.project_id, user_id)
-        result = self.get("data/projects/%s/task-types" % self.project_id, 200)
+        result = self.get(f"data/projects/{self.project_id}/task-types", 200)
 
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 1)
@@ -63,9 +63,7 @@ class PermissionTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         user_id = str(self.user_cg_artist["id"])
         projects_service.add_team_member(self.project_id, user_id)
-        self.get(
-            "data/projects/%s/settings/task-status" % self.project_id, 200
-        )
+        self.get(f"data/projects/{self.project_id}/settings/task-status", 200)
 
     def test_manager_cannot_create_person(self):
         self.log_in_manager()
@@ -88,22 +86,22 @@ class PermissionTestCase(ApiDBTestCase):
     def test_manager_cannot_update_admin(self):
         self.log_in_manager()
         data = {"email": "john.doe2@gmail.com"}
-        self.put("data/persons/%s" % self.user["id"], data, 403)
+        self.put(f"data/persons/{self.user['id']}", data, 403)
 
     def test_manager_cannot_update_person(self):
         self.log_in_manager()
         data = {"role": "admin"}
-        self.put("data/persons/%s" % self.user_cg_artist_id, data, 403)
-        self.get("data/persons/%s" % self.user_cg_artist_id)
+        self.put(f"data/persons/{self.user_cg_artist_id}", data, 403)
+        self.get(f"data/persons/{self.user_cg_artist_id}")
 
     def test_admin_can_update_admin(self):
         self.log_in_admin()
         data = {"first_name": "Super admin"}
-        self.put("data/persons/%s" % self.user["id"], data, 200)
+        self.put(f"data/persons/{self.user['id']}", data, 200)
 
     def test_manager_cannot_delete_admin(self):
         self.log_in_manager()
-        self.delete("data/persons/%s" % self.user["id"], 403)
+        self.delete(f"data/persons/{self.user['id']}", 403)
 
     def test_user_projects(self):
         self.generate_fixture_project_standard()
@@ -129,8 +127,8 @@ class PermissionTestCase(ApiDBTestCase):
         self.generate_fixture_asset()
         asset_id = self.asset.id
         self.log_in_cg_artist()
-        self.get("data/assets/%s" % asset_id, 403)
+        self.get(f"data/assets/{asset_id}", 403)
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
         )
-        self.get("data/assets/%s" % asset_id, 200)
+        self.get(f"data/assets/{asset_id}", 200)

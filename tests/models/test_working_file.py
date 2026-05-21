@@ -40,18 +40,18 @@ class WorkingFileTestCase(ApiDBTestCase):
         working_file = self.get_first("data/working-files")
         working_file["outputs"] = []
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"]
+            f"data/working-files/{working_file['id']}"
         )
         self.assertEqual(working_file, working_file_again)
-        self.get_404("data/working-files/%s" % fields.gen_uuid())
+        self.get_404(f"data/working-files/{fields.gen_uuid()}")
 
         self.log_in_cg_artist()
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"], 403
+            f"data/working-files/{working_file['id']}", 403
         )
         projects_service.add_team_member(self.project_id, user_cg_artist_id)
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"]
+            f"data/working-files/{working_file['id']}"
         )
 
     def test_create_working_file(self):
@@ -73,21 +73,21 @@ class WorkingFileTestCase(ApiDBTestCase):
     def test_update_working_file(self):
         working_file = self.get_first("data/working-files")
         data = {"name": "Super modeling working_file 2"}
-        self.put("data/working-files/%s" % working_file["id"], data)
+        self.put(f"data/working-files/{working_file['id']}", data)
         working_file_again = self.get(
-            "data/working-files/%s" % working_file["id"]
+            f"data/working-files/{working_file['id']}"
         )
         self.assertEqual(data["name"], working_file_again["name"])
-        self.put_404("data/working-files/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/working-files/{fields.gen_uuid()}", data)
 
     def test_delete_working_file(self):
         working_files = self.get("data/working-files")
         self.assertEqual(len(working_files), 3)
         working_file = working_files[0]
-        self.delete("data/working-files/%s" % working_file["id"])
+        self.delete(f"data/working-files/{working_file['id']}")
         working_files = self.get("data/working-files")
         self.assertEqual(len(working_files), 2)
-        self.delete_404("data/working-files/%s" % fields.gen_uuid())
+        self.delete_404(f"data/working-files/{fields.gen_uuid()}")
 
     def test_serialize_outputs(self):
         self.generate_fixture_software()

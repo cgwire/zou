@@ -167,8 +167,7 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
             entity = self.save_entity(data)
         except IntegrityError:
             current_app.logger.error(
-                "Similar asset already exists "
-                "or project is missing: %s" % data
+                f"Similar asset already exists or project is missing: {data}"
             )
 
         if entity is not None:
@@ -188,14 +187,14 @@ class ImportShotgunAssetsResource(BaseImportShotgunResource):
             )
             entity.update(data)
             assets_service.clear_asset_cache(str(entity.id))
-            current_app.logger.info("Entity updated: %s" % entity)
+            current_app.logger.info(f"Entity updated: {entity}")
         except AssetNotFoundException:
             if data.get("entity_type_id", None) is not None:
                 entity = Entity.create(**data, created_by=self.current_user_id)
                 entity.save()
-                current_app.logger.info("Entity created: %s" % entity)
+                current_app.logger.info(f"Entity created: {entity}")
             else:
-                current_app.logger.info("Entity ignored: %s" % data["name"])
+                current_app.logger.info(f"Entity ignored: {data['name']}")
         return entity
 
     def post_processing(self):

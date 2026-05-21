@@ -36,7 +36,7 @@ def build_csv_stream_response(row_generator, file_name="export"):
         mimetype="text/csv",
     )
     response.headers["Content-Disposition"] = (
-        "attachment; filename=%s.csv" % file_name
+        f"attachment; filename={file_name}.csv"
     )
     return response
 
@@ -45,7 +45,7 @@ def build_csv_file_name(file_name):
     """
     Add application name as prefix of the file name.
     """
-    return "kitsu_%s" % slugify(file_name, separator="_")
+    return f"kitsu_{slugify(file_name, separator='_')}"
 
 
 def build_csv_string(csv_content):
@@ -63,7 +63,7 @@ def build_csv_headers(csv_response, file_name):
     Build HTTP response headers needed to return CSV content as a file.
     """
     csv_response.headers["Content-Disposition"] = (
-        "attachment; filename=%s.csv" % file_name
+        f"attachment; filename={file_name}.csv"
     )
     csv_response.headers["Content-type"] = "text/csv"
     return csv_response

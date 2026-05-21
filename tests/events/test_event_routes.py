@@ -33,11 +33,9 @@ class EventsRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(events), 4)
         events = self.get("/data/events/last?limit=2")
         self.assertEqual(len(events), 2)
-        events = self.get("/data/events/last?before=%s" % before)
+        events = self.get(f"/data/events/last?before={before}")
         self.assertEqual(len(events), 2)
-        events = self.get(
-            "/data/events/last?before=%s&after=%s" % (before, after)
-        )
+        events = self.get(f"/data/events/last?before={before}&after={after}")
         self.assertEqual(len(events), 2)
 
         ApiEvent.create(name="preview-file:add-file")
@@ -58,7 +56,7 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
         for i in range(count):
             LoginLog.create(
                 person_id=self.user["id"],
-                ip_address="192.168.1.%d" % i,
+                ip_address=f"192.168.1.{i}",
                 origin="web",
                 created_at=base + timedelta(seconds=i),
             )
@@ -83,12 +81,12 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
         for i in range(3):
             LoginLog.create(
                 person_id=self.user["id"],
-                ip_address="192.168.1.%d" % i,
+                ip_address=f"192.168.1.{i}",
                 origin="web",
                 created_at=now - timedelta(seconds=3 - i),
             )
         before = (now - timedelta(seconds=1)).isoformat()
-        logs = self.get("/data/events/login-logs/last?before=%s" % before)
+        logs = self.get(f"/data/events/login-logs/last?before={before}")
         self.assertEqual(len(logs), 2)
 
     def test_get_last_login_logs_after(self):
@@ -96,12 +94,12 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
         for i in range(3):
             LoginLog.create(
                 person_id=self.user["id"],
-                ip_address="192.168.1.%d" % i,
+                ip_address=f"192.168.1.{i}",
                 origin="web",
                 created_at=now - timedelta(seconds=3 - i),
             )
         after = (now - timedelta(seconds=2)).isoformat()
-        logs = self.get("/data/events/login-logs/last?after=%s" % after)
+        logs = self.get(f"/data/events/login-logs/last?after={after}")
         self.assertEqual(len(logs), 1)
 
     def test_get_last_login_logs_cursor(self):
@@ -109,7 +107,7 @@ class LoginLogsRoutesTestCase(ApiDBTestCase):
         logs = self.get("/data/events/login-logs/last?limit=2")
         cursor = logs[-1]["id"]
         logs = self.get(
-            "/data/events/login-logs/last?cursor_login_log_id=%s" % cursor
+            f"/data/events/login-logs/last?cursor_login_log_id={cursor}"
         )
         self.assertEqual(len(logs), 1)
 

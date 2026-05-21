@@ -100,7 +100,7 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.assets = self.get("data/assets/all")
         self.assertEqual(len(self.assets), 2)
 
-        self.get("data/assets/%s" % asset["id"], 404)
+        self.get(f"data/assets/{asset['id']}", 404)
 
     def test_remove_asset_with_working_files(self):
         self.load_fixture("projects")
@@ -145,7 +145,7 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.assets = self.get("data/assets/all")
         self.assertEqual(len(self.assets), 3)
 
-        asset = self.get("data/assets/%s" % asset["id"], 200)
+        asset = self.get(f"data/assets/{asset['id']}", 200)
         self.assertTrue(asset["canceled"])
 
     def test_remove_subasset(self):
@@ -178,4 +178,4 @@ class ImportShotgunAssetTestCase(ShotgunTestCase):
         self.assets = self.get("data/assets/all")
         self.assertEqual(len(self.assets), 2)
 
-        self.get("data/assets/%s" % asset["id"], 404)
+        self.get(f"data/assets/{asset['id']}", 404)

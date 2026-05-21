@@ -37,7 +37,7 @@ class AssetsTestCase(ApiDBTestCase):
         self.assertEqual(assets[0]["name"], self.asset_dict["name"])
 
     def test_get_asset(self):
-        asset = self.get("data/assets/%s" % self.asset.id)
+        asset = self.get(f"data/assets/{self.asset.id}")
         self.assertEqual(asset["id"], str(self.asset.id))
         self.assertEqual(asset["project_name"], self.project.name)
         self.assertEqual(asset["asset_type_id"], str(self.asset_type.id))
@@ -45,21 +45,21 @@ class AssetsTestCase(ApiDBTestCase):
         self.assertEqual(len(asset["tasks"]), 2)
 
     def test_get_asset_by_name(self):
-        assets = self.get("data/assets/all?name=%s" % self.asset.name.lower())
+        assets = self.get(f"data/assets/all?name={self.asset.name.lower()}")
         self.assertEqual(assets[0]["id"], str(self.asset.id))
 
     def test_get_project_assets(self):
-        assets = self.get("data/projects/%s/assets" % self.project.id)
+        assets = self.get(f"data/projects/{self.project.id}/assets")
         self.assertEqual(len(assets), 1)
         self.assertEqual(assets[0]["type"], "Asset")
 
     def test_get_shot_assets(self):
-        assets = self.get("data/shots/%s/assets" % self.shot.id)
+        assets = self.get(f"data/shots/{self.shot.id}/assets")
         self.assertEqual(len(assets), 0)
 
         self.shot.entities_out = [self.asset]
         self.shot.save()
-        assets = self.get("data/shots/%s/assets" % self.shot.id)
+        assets = self.get(f"data/shots/{self.shot.id}/assets")
         self.assertEqual(len(assets), 1)
         self.assertEqual(assets[0]["type"], "Asset")
 
@@ -71,7 +71,10 @@ class AssetsTestCase(ApiDBTestCase):
             project_id=self.project.id,
         )
         path_ids = (self.project.id, self.asset_type.id)
-        path = "data/projects/%s/asset-types/%s/assets" % path_ids
+        path = (
+            f"data/projects/{self.project.id}/asset-types/"
+            f"{self.asset_type.id}/assets"
+        )
         assets = self.get(path)
         self.assertEqual(len(assets), 1)
         self.assertDictEqual(assets[0], self.asset_dict)
@@ -83,10 +86,7 @@ class AssetsTestCase(ApiDBTestCase):
             "description": "Test description",
             "data": {"extra": "test extra"},
         }
-        path = "data/projects/%s/asset-types/%s/assets/new" % (
-            self.project.id,
-            self.asset_type.id,
-        )
+        path = f"data/projects/{self.project.id}/asset-types/{self.asset_type.id}/assets/new"
         asset = self.post(path, self.asset_data)
         assets = assets_service.get_assets()
         self.assertIsNotNone(asset.get("id", None))
@@ -100,7 +100,7 @@ class AssetsTestCase(ApiDBTestCase):
     def test_remove_asset(self):
         self.generate_fixture_asset_types()
         self.generate_fixture_asset_character()
-        path = "data/assets/%s" % self.asset_character.id
+        path = f"data/assets/{self.asset_character.id}"
         self.delete(path)
         assets = assets_service.get_assets()
         self.assertEqual(len(assets), 1)
@@ -115,13 +115,13 @@ class AssetsTestCase(ApiDBTestCase):
             project_id=self.project.id,
             parent_id=self.asset_character.id,
         )
-        path = "data/assets/%s" % self.asset_character.id
+        path = f"data/assets/{self.asset_character.id}"
         self.delete(path)
         child_again = Entity.get(child.id)
         self.assertIsNone(child_again.parent_id)
 
     def test_remove_asset_with_tasks(self):
-        path = "data/assets/%s" % self.asset_dict["id"]
+        path = f"data/assets/{self.asset_dict['id']}"
         self.delete(path)
         assets = assets_service.get_assets()
         self.assertEqual(len(assets), 1)

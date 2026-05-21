@@ -31,12 +31,12 @@ class EpisodeTestCase(ApiDBTestCase):
         self.generate_fixture_episode("E03")
 
     def test_get_sequences_for_episode(self):
-        sequences = self.get("data/episodes/%s/sequences" % self.episode_id)
+        sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
         self.assertEqual(len(sequences), 4)
         self.assertDictEqual(sequences[0], self.serialized_sequence)
 
     def test_get_shots_for_episode(self):
-        shots = self.get("data/episodes/%s/shots" % self.episode_id)
+        shots = self.get(f"data/episodes/{self.episode_id}/shots")
         self.assertEqual(len(shots), 3)
         self.assertEqual(shots[0]["type"], "Shot")
 
@@ -54,10 +54,10 @@ class EpisodeTestCase(ApiDBTestCase):
         projects_service.add_team_member(project_id, person_id)
         projects_service.clear_project_cache(str(project_id))
         self.log_in_vendor()
-        sequences = self.get("data/episodes/%s/sequences" % self.episode_id)
+        sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
         self.assertEqual(len(sequences), 0)
         tasks_service.assign_task(task_id, person_id)
-        sequences = self.get("data/episodes/%s/sequences" % self.episode_id)
+        sequences = self.get(f"data/episodes/{self.episode_id}/sequences")
         self.assertEqual(len(sequences), 1)
 
     def test_get_episodes(self):
@@ -66,28 +66,24 @@ class EpisodeTestCase(ApiDBTestCase):
         self.assertDictEqual(episodes[0], self.serialized_episode)
 
     def test_get_episode(self):
-        episode = self.get("data/episodes/%s" % self.episode.id)
+        episode = self.get(f"data/episodes/{self.episode.id}")
         self.assertEqual(episode["id"], str(self.episode.id))
         self.assertEqual(episode["name"], self.episode.name)
         self.assertEqual(episode["project_name"], self.project.name)
 
     def test_get_episode_by_name(self):
-        episodes = self.get(
-            "data/episodes?name=%s" % self.episode.name.lower()
-        )
+        episodes = self.get(f"data/episodes?name={self.episode.name.lower()}")
         self.assertEqual(episodes[0]["id"], str(self.episode.id))
 
     def test_create_episode(self):
         episode_name = "NE01"
         data = {"name": episode_name}
-        episode = self.post(
-            "data/projects/%s/episodes" % self.project.id, data
-        )
-        episode = self.get("data/episodes/%s" % episode["id"])
+        episode = self.post(f"data/projects/{self.project.id}/episodes", data)
+        episode = self.get(f"data/episodes/{episode['id']}")
         self.assertEqual(episode["name"], episode_name)
 
     def test_get_episodes_for_project(self):
-        episodes = self.get("data/projects/%s/episodes" % self.project.id)
+        episodes = self.get(f"data/projects/{self.project.id}/episodes")
         self.assertEqual(len(episodes), 3)
         self.assertEqual(episodes[0], self.serialized_episode)
 
@@ -104,10 +100,10 @@ class EpisodeTestCase(ApiDBTestCase):
         person_id = self.user_vendor["id"]
         projects_service.add_team_member(project_id, person_id)
         self.log_in_vendor()
-        episodes = self.get("data/projects/%s/episodes" % project_id)
+        episodes = self.get(f"data/projects/{project_id}/episodes")
         self.assertEqual(len(episodes), 0)
         tasks_service.assign_task(task_id, person_id)
-        episodes = self.get("data/projects/%s/episodes" % project_id)
+        episodes = self.get(f"data/projects/{project_id}/episodes")
         self.assertEqual(len(episodes), 1)
 
     def test_get_episodes_for_project_404(self):
@@ -116,14 +112,14 @@ class EpisodeTestCase(ApiDBTestCase):
     def test_get_episodes_by_project_and_name(self):
         self.get("data/episodes?project_id=undefined&name=E01", 400)
         episodes = self.get(
-            "data/episodes?project_id=%s&name=E02" % self.project_id
+            f"data/episodes?project_id={self.project_id}&name=E02"
         )
         self.assertEqual(episodes[0]["id"], str(self.episode_02_id))
 
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
         episodes = self.get(
-            "data/episodes?project_id=%s&name=E01" % self.project_id, 403
+            f"data/episodes?project_id={self.project_id}&name=E01", 403
         )
 
     def _setup_vendor(self):
@@ -142,35 +138,35 @@ class EpisodeTestCase(ApiDBTestCase):
 
     def test_get_episodes_vendor_filters(self):
         self._setup_vendor()
-        episodes = self.get("data/episodes?project_id=%s" % self.project_id)
+        episodes = self.get(f"data/episodes?project_id={self.project_id}")
         self.assertEqual(len(episodes), 0)
         tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
-        episodes = self.get("data/episodes?project_id=%s" % self.project_id)
+        episodes = self.get(f"data/episodes?project_id={self.project_id}")
         self.assertEqual(len(episodes), 1)
 
     def test_get_episode_vendor_no_task(self):
         self._setup_vendor()
-        self.get("data/episodes/%s" % self.episode_02_id, 403)
+        self.get(f"data/episodes/{self.episode_02_id}", 403)
 
     def test_get_episode_tasks_vendor_blocked_no_task(self):
         self._setup_vendor()
-        self.get("data/episodes/%s/tasks" % self.episode_id, 403)
+        self.get(f"data/episodes/{self.episode_id}/tasks", 403)
 
     def test_get_episodes_with_tasks_vendor_blocked(self):
         self._setup_vendor()
         self.get(
-            "data/episodes/with-tasks?project_id=%s" % self.project_id,
+            f"data/episodes/with-tasks?project_id={self.project_id}",
             403,
         )
 
     def test_force_delete_episode(self):
-        self.get("data/episodes/%s" % self.episode_id)
-        self.delete("data/episodes/%s?force=true" % self.episode_id)
-        self.get("data/episodes/%s" % self.episode_id, 404)
+        self.get(f"data/episodes/{self.episode_id}")
+        self.delete(f"data/episodes/{self.episode_id}?force=true")
+        self.get(f"data/episodes/{self.episode_id}", 404)
 
     def test_cant_delete_episode(self):
-        self.get("data/episodes/%s" % self.episode_id)
-        self.delete("data/episodes/%s" % self.episode_id, 400)
+        self.get(f"data/episodes/{self.episode_id}")
+        self.delete(f"data/episodes/{self.episode_id}", 400)
 
     def test_episode_stats(self):
         pass

@@ -101,18 +101,18 @@ class BaseImportShotgunResource(Resource):
             except KeyError as exception:
                 current_app.logger.warning(exception)
                 current_app.logger.error(
-                    "Your data is not properly formatted: %s" % sg_entry
+                    f"Your data is not properly formatted: {sg_entry}"
                 )
             except IntegrityError as exception:
                 current_app.logger.error(exception)
                 current_app.logger.error(
-                    "Data information are duplicated or wrong: %s" % sg_entry
+                    f"Data information are duplicated or wrong: {sg_entry}"
                 )
                 raise
             except DataError as exception:
                 current_app.logger.error(exception)
                 current_app.logger.error(
-                    "Data cannot be stored (schema error)" % sg_entry
+                    f"Data cannot be stored (schema error): {sg_entry}"
                 )
                 raise
 
@@ -281,7 +281,7 @@ class ImportRemoveShotgunBaseResource(Resource):
             sg_id = instance.shotgun_id
             current_app.logger.error(str(exception))
             current_app.logger.error(
-                "An error occured while deleting model %s." % sg_id
+                f"An error occured while deleting model {sg_id}."
             )
             is_success = False
         return is_success

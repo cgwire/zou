@@ -46,4 +46,4 @@ class WorkingFile(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<WorkingFile %s>" % self.id
+        return f"<WorkingFile {self.id}>"

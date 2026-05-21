@@ -129,10 +129,10 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         break
                 if task_status_id is None:
                     raise RowException(
-                        "Task status not found for %s" % task_status_name
+                        f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get("%s comment" % task_type.name, None)
+            task_comment_text = row.get(f"{task_type.name} comment", None)
 
             if task_status_id is not None or task_comment_text not in [
                 None,
@@ -272,9 +272,7 @@ class AssetsCsvImportResource(BaseCsvProjectImportResource):
                         self.task_types_for_ready_for_map[ready_for]
                     )
                 except KeyError:
-                    raise RowException(
-                        "Task type not found for %s" % ready_for
-                    )
+                    raise RowException(f"Task type not found for {ready_for}")
 
         tasks_update = self.get_tasks_update(row)
 

@@ -7,7 +7,7 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
     def setUp(self):
         super(DesktopLoginLogsTestCase, self).setUp()
         self.person = self.generate_fixture_person().serialize()
-        self.path = "/data/persons/%s/desktop-login-logs" % self.person["id"]
+        self.path = f"/data/persons/{self.person['id']}/desktop-login-logs"
 
     def test_add_logs(self):
         date_1 = self.now()
@@ -26,11 +26,11 @@ class DesktopLoginLogsTestCase(ApiDBTestCase):
 
     def test_get_csv(self):
         data = {"date": datetime.datetime(2018, 4, 1, 0, 0, 0).isoformat()}
-        self.path = "/data/persons/%s/desktop-login-logs" % self.person["id"]
+        self.path = f"/data/persons/{self.person['id']}/desktop-login-logs"
         self.post(self.path, data)
 
         data = {"date": datetime.datetime(2018, 4, 10, 0, 0, 0).isoformat()}
-        self.path = "/data/persons/%s/desktop-login-logs" % self.person["id"]
+        self.path = f"/data/persons/{self.person['id']}/desktop-login-logs"
         self.post(self.path, data)
 
         csv = self.get_raw("/data/persons/presence-logs/2018-04")

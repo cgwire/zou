@@ -298,16 +298,16 @@ def run_project_data_sync(project=None):
     else:
         projects = gazu.project.all_open_projects()
     for project in projects:
-        logger.info("Syncing %s..." % project["name"])
+        logger.info(f"Syncing {project['name']}...")
         for event in project_events:
-            logger.info("Syncing %ss..." % event)
+            logger.info(f"Syncing {event}s...")
             path = event_name_model_path_map[event]
             model = event_name_model_map[event]
             sync_project_entries(project, path, model)
         sync_entity_thumbnails(project, "assets")
         sync_entity_thumbnails(project, "shots")
         sync_entity_thumbnails(project, "concepts")
-        logger.info("Sync of %s complete." % project["name"])
+        logger.info(f"Sync of {project['name']} complete.")
 
 
 def run_other_sync(project=None, with_events=False):
@@ -330,13 +330,13 @@ def run_last_events_sync(minutes=0, limit=300):
     Retrieve last events from source instance and import related data and
     action.
     """
-    path = "events/last?limit=%s" % limit
+    path = f"events/last?limit={limit}"
     if minutes > 0:
         now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
         after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&after=%s" % after
+        path += f'&before={now.strftime("%Y-%m-%dT%H:%M:%S")}'
+        path += f"&after={after}"
     events = gazu.client.fetch_all(path)
     events.reverse()
     for event in events:
@@ -353,13 +353,13 @@ def run_last_events_files(minutes=0, limit=50):
     Retrieve last events from source instance and import related data and
     action.
     """
-    path = "events/last?only_files=true&limit=%s" % limit
+    path = f"events/last?only_files=true&limit={limit}"
     if minutes > 0:
         now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
         after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&after=%s" % after
+        path += f'&before={now.strftime("%Y-%m-%dT%H:%M:%S")}'
+        path += f"&after={after}"
     events = gazu.client.fetch_all(path)
     events.reverse()
     for event in events:
@@ -378,7 +378,7 @@ def run_last_events_files(minutes=0, limit=50):
                 )
         else:
             download_thumbnail_from_another_instance(
-                event_name, event["data"]["%s_id" % event_name]
+                event_name, event["data"][f"{event_name}_id"]
             )
 
 
@@ -395,7 +395,7 @@ def sync_event(event):
     if event_name == "metadata-descriptor":  # Backward compatibility
         if "metadata_descriptor_id" not in event["data"]:
             event_name = "descriptor"
-    instance_id = event["data"]["%s_id" % event_name.replace("-", "_")]
+    instance_id = event["data"][f"{event_name.replace('-', '_')}_id"]
 
     if action in ["update", "new"]:
         instance = gazu.client.fetch_one(path, instance_id)
@@ -440,7 +440,7 @@ def sync_entries(model_name, model, project=None):
         init = False
         model.create_from_import_list(results["data"])
 
-    logger.info("%s %s synced." % (len(instances), model_name))
+    logger.info(f"{len(instances)} {model_name} synced.")
 
 
 def sync_project_entries(project, model_name, model):
@@ -460,7 +460,7 @@ def sync_project_entries(project, model_name, model):
         "playlists",
         "preview-files",
     ]:  # not much data we retrieve all in a single request.
-        path = "projects/%s/%s" % (project["id"], model_name)
+        path = f"projects/{project['id']}/{model_name}"
         results = gazu.client.fetch_all(path)
         instances += results
         try:
@@ -470,7 +470,7 @@ def sync_project_entries(project, model_name, model):
 
     elif model_name == "news":
         while init or result_length > 0:
-            path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
+            path = f'projects/{project["id"]}/{model_name}?page={page}'
             results = gazu.client.fetch_all(path)["data"]
             instances += results
             try:
@@ -483,12 +483,9 @@ def sync_project_entries(project, model_name, model):
 
     else:  # Lot of data, we retrieve all through paginated requests.
         while init or results["nb_pages"] >= page:
-            path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
+            path = f'projects/{project["id"]}/{model_name}?page={page}'
             if model_name == "playlists":
-                path = "projects/%s/playlists/all?page=%d" % (
-                    project["id"],
-                    page,
-                )
+                path = f'projects/{project["id"]}/playlists/all?page={page}'
             results = gazu.client.fetch_all(path)
             instances += results["data"]
             try:
@@ -497,7 +494,7 @@ def sync_project_entries(project, model_name, model):
                 logger.error("An error occured", exc_info=1)
             page += 1
             init = False
-    logger.info("    %s %s synced." % (len(instances), model_name))
+    logger.info(f"    {len(instances)} {model_name} synced.")
 
 
 def sync_entity_thumbnails(project, model_name):
@@ -506,9 +503,7 @@ def sync_entity_thumbnails(project, model_name):
     allows you to import project entities again to set thumbnails id (link to
     a preview file) for all entities.
     """
-    results = gazu.client.fetch_all(
-        "projects/%s/%s" % (project["id"], model_name)
-    )
+    results = gazu.client.fetch_all(f"projects/{project['id']}/{model_name}")
     total = 0
     for result in results:
         if result.get("preview_file_id") is not None:
@@ -523,7 +518,7 @@ def sync_entity_thumbnails(project, model_name):
                 total += 1
             except sqlalchemy.exc.IntegrityError:
                 logger.error("An error occured", exc_info=1)
-    logger.info("    %s %s thumbnails synced." % (total, model_name))
+    logger.info(f"    {total} {model_name} thumbnails synced.")
 
 
 def add_main_sync_listeners(event_client):
@@ -561,17 +556,17 @@ def add_sync_listeners(event_client, model_name, event_name, model):
     """
     gazu.events.add_listener(
         event_client,
-        "%s:new" % event_name,
+        f"{event_name}:new",
         create_entry(model_name, event_name, model, "new"),
     )
     gazu.events.add_listener(
         event_client,
-        "%s:update" % event_name,
+        f"{event_name}:update",
         create_entry(model_name, event_name, model, "update"),
     )
     gazu.events.add_listener(
         event_client,
-        "%s:delete" % event_name,
+        f"{event_name}:delete",
         delete_entry(model_name, event_name, model),
     )
 
@@ -594,12 +589,12 @@ def create_entry(model_name, event_name, model, event_type):
             model.create_from_import(instance)
             forward_base_event(event_name, event_type, data)
             if event_type == "new":
-                logger.info("Creation: %s %s" % (event_name, model_id))
+                logger.info(f"Creation: {event_name} {model_id}")
             else:
-                logger.info("Update: %s %s" % (event_name, model_id))
+                logger.info(f"Update: {event_name} {model_id}")
         except gazu.exception.RouteNotFoundException as e:
-            logger.error("Route not found: %s" % e)
-            logger.error("Fail %s created/updated %s" % (event_name, model_id))
+            logger.error(f"Route not found: {e}")
+            logger.error(f"Fail {event_name} created/updated {model_id}")
 
     return create
 
@@ -621,7 +616,7 @@ def delete_entry(model_name, event_name, model):
         else:
             model.delete_all_by(id=model_id)
         forward_base_event(event_name, "delete", data)
-        logger.info("Deletion: %s %s" % (model_name, model_id))
+        logger.info(f"Deletion: {model_name} {model_id}")
 
     return delete
 
@@ -636,7 +631,7 @@ def forward_event(event_name):
     def forward(data):
         if not data.get("sync", False):
             data["sync"] = True
-            logger.info("Forward event: %s" % event_name)
+            logger.info(f"Forward event: {event_name}")
             project_id = data.get("project_id", None)
             events.emit(event_name, data, persist=False, project_id=project_id)
 
@@ -647,9 +642,9 @@ def forward_base_event(event_name, event_type, data):
     """
     Forward given event to current instance event queue.
     """
-    full_event_name = "%s:%s" % (event_name, event_type)
+    full_event_name = f"{event_name}:{event_type}"
     data["sync"] = True
-    logger.info("Forward event: %s" % full_event_name)
+    logger.info(f"Forward event: {full_event_name}")
     project_id = data.get("project_id", None)
     events.emit(full_event_name, data, project_id=project_id)
 
@@ -669,7 +664,7 @@ def add_file_listeners(event_client):
     for model_name in thumbnail_events:
         gazu.events.add_listener(
             event_client,
-            "%s:set-thumbnail" % model_name,
+            f"{model_name}:set-thumbnail",
             get_retrieve_thumbnail(model_name),
         )
 
@@ -682,12 +677,10 @@ def retrieve_preview_file(data):
         preview_file = PreviewFile.get(preview_file_id)
         download_preview_from_another_instance(preview_file)
         forward_event({"name": "preview-file:add-file", "data": data})
-        logger.info(
-            "Preview file and related downloaded: %s" % preview_file_id
-        )
+        logger.info(f"Preview file and related downloaded: {preview_file_id}")
     except gazu.exception.RouteNotFoundException as e:
-        logger.error("Route not found: %s" % e)
-        logger.error("Fail to dowonload preview file: %s" % (preview_file_id))
+        logger.error(f"Route not found: {e}")
+        logger.error(f"Fail to dowonload preview file: {preview_file_id}")
 
 
 def retrieve_preview_background_file(data):
@@ -705,14 +698,12 @@ def retrieve_preview_background_file(data):
             {"name": "preview-background-file:add-file", "data": data}
         )
         logger.info(
-            "Preview background file and related downloaded: %s"
-            % preview_background_file_id
+            f"Preview background file and related downloaded: {preview_background_file_id}"
         )
     except gazu.exception.RouteNotFoundException as e:
-        logger.error("Route not found: %s" % e)
+        logger.error(f"Route not found: {e}")
         logger.error(
-            "Fail to dowonload preview background file: %s"
-            % (preview_background_file_id)
+            f"Fail to dowonload preview background file: {preview_background_file_id}"
         )
 
 
@@ -724,16 +715,13 @@ def get_retrieve_thumbnail(model_name):
             instance_id = data["preview_file_id"]
             download_thumbnail_from_another_instance(model_name, instance_id)
             forward_event(
-                {"name": "%s:set-thumbnail" % model_name, "data": data}
+                {"name": f"{model_name}:set-thumbnail", "data": data}
             )
-            logger.info(
-                "Thumbnail downloaded: %s %s" % (model_name, instance_id)
-            )
+            logger.info(f"Thumbnail downloaded: {model_name} {instance_id}")
         except gazu.exception.RouteNotFoundException as e:
-            logger.error("Route not found: %s" % e)
+            logger.error(f"Route not found: {e}")
             logger.error(
-                "Fail to dowonload thunbnail: %s %s"
-                % (model_name, instance_id)
+                f"Fail to dowonload thunbnail: {model_name} {instance_id}"
             )
 
     return retrieve_thumbnail
@@ -792,7 +780,7 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
         with open(file_path, "wb") as tmp_file:
             for chunk in dl_func(prefix, preview_file_id):
                 tmp_file.write(chunk)
-        logger.info("%s downloaded" % file_path)
+        logger.info(f"{file_path} downloaded")
     except Exception:
         pass
 
@@ -802,14 +790,14 @@ def download_preview(preview_file):
     Download all files link to preview file entry: orginal file and variants.
     """
     logger.info(
-        "download preview %s (%s)" % (preview_file.id, preview_file.extension)
+        f"download preview {preview_file.id} ({preview_file.extension})"
     )
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"
     is_file = not is_movie and not is_picture
 
     preview_file_id = str(preview_file.id)
-    file_key = "previews-%s" % preview_file_id
+    file_key = f"previews-{preview_file_id}"
     if is_file:
         file_path = local_file.path(file_key)
         dl_func = file_store.open_file
@@ -823,9 +811,7 @@ def download_preview(preview_file):
     if is_movie or is_picture:
         for prefix in ["thumbnails", "thumbnails-square", "original"]:
             pic_dl_func = file_store.open_picture
-            pic_file_path = local_picture.path(
-                "%s-%s" % (prefix, str(preview_file.id))
-            )
+            pic_file_path = local_picture.path(f"{prefix}-{preview_file.id!s}")
             download_file(pic_file_path, prefix, pic_dl_func, preview_file_id)
 
     download_file(file_path, "previews", dl_func, preview_file_id)
@@ -1225,11 +1211,8 @@ def download_attachment_file_from_another_instance(
 ):
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
-    path = "/data/attachment-files/%s/file/%s" % (
-        attachment_file_id,
-        attachment_file["name"],
-    )
-    file_path = "/tmp/%s.%s" % (attachment_file_id, extension)
+    path = f"/data/attachment-files/{attachment_file_id}/file/{attachment_file['name']}"
+    file_path = f"/tmp/{attachment_file_id}.{extension}"
     download_file_from_another_instance(
         path,
         file_path,

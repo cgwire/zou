@@ -49,7 +49,7 @@ class DataImportErrorTestCase(ShotgunTestCase):
         )
 
     def test_delete_event_error(self):
-        errors = self.delete("/import/shotgun/errors/%s" % self.error.id)
+        errors = self.delete(f"/import/shotgun/errors/{self.error.id}")
         errors = self.get("/import/shotgun/errors")
         self.assertEqual(len(errors), 0)
 
@@ -59,6 +59,6 @@ class DataImportErrorTestCase(ShotgunTestCase):
         self.assertEqual(len(errors), 1)
 
     def test_delete_event_error_404(self):
-        errors = self.delete("/import/shotgun/errors/%s" % uuid.uuid4(), 404)
+        errors = self.delete(f"/import/shotgun/errors/{uuid.uuid4()}", 404)
         errors = self.get("/import/shotgun/errors")
         self.assertEqual(len(errors), 1)

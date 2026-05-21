@@ -25,7 +25,7 @@ class BaseMixin(object):
         """
         String representation based on type and name by default.
         """
-        return "<%s %s>" % (type(self).__name__, self.name)
+        return f"<{type(self).__name__} {self.name}>"
 
     @classmethod
     def query(cls):

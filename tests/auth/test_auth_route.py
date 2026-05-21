@@ -32,9 +32,7 @@ class AuthTestCase(ApiDBTestCase):
         super(AuthTestCase, self).tearDown()
 
     def get_auth_headers(self, tokens):
-        return {
-            "Authorization": "Bearer %s" % tokens.get("access_token", None)
-        }
+        return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}
 
     def logout(self, tokens):
         headers = self.get_auth_headers(tokens)
@@ -192,11 +190,11 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsAuthenticated(tokens)
 
         headers = {
-            "Authorization": "Bearer %s" % tokens.get("refresh_token", None)
+            "Authorization": f"Bearer {tokens.get('refresh_token', None)}"
         }
         result = self.app.get("auth/refresh-token", headers=headers)
         tokens_string = result.data.decode("utf-8")
-        tokens = json.loads("%s" % tokens_string)
+        tokens = json.loads(f"{tokens_string}")
         self.assertIsAuthenticated(tokens)
 
         self.logout(tokens)
@@ -234,7 +232,7 @@ class AuthTestCase(ApiDBTestCase):
 
         token = "token-test"
         new_password = "newpassword"
-        auth_tokens_store.add("reset-token-%s" % email, token)
+        auth_tokens_store.add(f"reset-token-{email}", token)
         data = {
             "email": email,
             "token": token,
@@ -260,7 +258,7 @@ class AuthTestCase(ApiDBTestCase):
         self.assertIsAuthenticated(tokens)
         self.app.get("data/persons/", headers=headers)
         self.app.put(
-            "data/persons/%s" % self.person_dict["id"],
+            f"data/persons/{self.person_dict['id']}",
             data=json.dumps({"active": False}),
             headers=headers,
         )
@@ -327,9 +325,7 @@ class Enforce2FATestCase(ApiDBTestCase):
         super().tearDown()
 
     def get_auth_headers(self, tokens):
-        return {
-            "Authorization": "Bearer %s" % tokens.get("access_token", None)
-        }
+        return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}
 
     def test_login_returns_restricted_tokens(self):
         """Login with ENFORCE_2FA=True, no 2FA configured returns
@@ -420,7 +416,7 @@ class Enforce2FATestCase(ApiDBTestCase):
 
         # Refresh token - should no longer be restricted
         refresh_headers = {
-            "Authorization": "Bearer %s" % tokens.get("refresh_token", None)
+            "Authorization": f"Bearer {tokens.get('refresh_token', None)}"
         }
         response = self.app.get("auth/refresh-token", headers=refresh_headers)
         self.assertEqual(response.status_code, 200)
@@ -511,9 +507,7 @@ class EmailOTPTestCase(ApiDBTestCase):
         }
 
     def get_auth_headers(self, tokens):
-        return {
-            "Authorization": "Bearer %s" % tokens.get("access_token", None)
-        }
+        return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}
 
     def login(self):
         tokens = self.post("auth/login", self.credentials, 200)
@@ -534,7 +528,7 @@ class EmailOTPTestCase(ApiDBTestCase):
         # Retrieve the secret and OTP counter from store
         person = self.get_person().serialize()
         secret = person["email_otp_secret"]
-        count = auth_tokens_store.get("email-otp-count-%s" % person["email"])
+        count = auth_tokens_store.get(f"email-otp-count-{person['email']}")
         otp = pyotp.HOTP(secret).at(int(count))
 
         # Enable with the OTP code
@@ -602,7 +596,7 @@ class EmailOTPTestCase(ApiDBTestCase):
         # Manually store a counter and generate OTP for verification
         email = self.person_dict["email"]
         count = 42
-        auth_tokens_store.add("email-otp-count-%s" % email, count, ttl=300)
+        auth_tokens_store.add(f"email-otp-count-{email}", count, ttl=300)
         otp = pyotp.HOTP(secret).at(count)
 
         response = self.app.delete(
@@ -654,11 +648,11 @@ class EmailOTPTestCase(ApiDBTestCase):
 
         # Request OTP via GET
         email = self.credentials["email"]
-        response = self.app.get("auth/email-otp?email=%s" % email)
+        response = self.app.get(f"auth/email-otp?email={email}")
         self.assertEqual(response.status_code, 200)
 
         # Retrieve the counter from store and generate OTP
-        count = auth_tokens_store.get("email-otp-count-%s" % email)
+        count = auth_tokens_store.get(f"email-otp-count-{email}")
         otp = pyotp.HOTP(secret).at(int(count))
 
         # Login with OTP
@@ -676,7 +670,7 @@ class EmailOTPTestCase(ApiDBTestCase):
     def test_send_email_otp_not_enabled(self):
         """GET /auth/email-otp returns 400 if email OTP not enabled."""
         response = self.app.get(
-            "auth/email-otp?email=%s" % self.credentials["email"]
+            f"auth/email-otp?email={self.credentials['email']}"
         )
         self.assertEqual(response.status_code, 400)
 
@@ -703,9 +697,7 @@ class TOTPTestCase(ApiDBTestCase):
         }
 
     def get_auth_headers(self, tokens):
-        return {
-            "Authorization": "Bearer %s" % tokens.get("access_token", None)
-        }
+        return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}
 
     def login(self):
         tokens = self.post("auth/login", self.credentials, 200)
@@ -923,9 +915,7 @@ class ChangePasswordErrorsTestCase(ApiDBTestCase):
         }
 
     def get_auth_headers(self, tokens):
-        return {
-            "Authorization": "Bearer %s" % tokens.get("access_token", None)
-        }
+        return {"Authorization": f"Bearer {tokens.get('access_token', None)}"}
 
     def login(self):
         tokens = self.post("auth/login", self.credentials, 200)

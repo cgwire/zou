@@ -18,10 +18,10 @@ class CustomActionTestCase(ApiDBTestCase):
     def test_get_custom_action(self):
         custom_action = self.get_first("data/custom-actions")
         custom_action_again = self.get(
-            "data/custom-actions/%s" % custom_action["id"]
+            f"data/custom-actions/{custom_action['id']}"
         )
         self.assertEqual(custom_action, custom_action_again)
-        self.get_404("data/custom-actions/%s" % fields.gen_uuid())
+        self.get_404(f"data/custom-actions/{fields.gen_uuid()}")
 
     def test_create_custom_action(self):
         data = {
@@ -47,22 +47,22 @@ class CustomActionTestCase(ApiDBTestCase):
         data = {
             "name": "run_render_2",
         }
-        self.put("data/custom-actions/%s" % custom_action["id"], data)
+        self.put(f"data/custom-actions/{custom_action['id']}", data)
         custom_action_again = self.get(
-            "data/custom-actions/%s" % custom_action["id"]
+            f"data/custom-actions/{custom_action['id']}"
         )
         self.assertEqual(data["name"], custom_action_again["name"])
-        self.put_404("data/custom-actions/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/custom-actions/{fields.gen_uuid()}", data)
 
     def test_delete_custom_action(self):
         custom_actions = self.get("data/custom-actions")
         self.assertEqual(len(custom_actions), 3)
 
         custom_action = custom_actions[1]
-        self.delete("data/custom-actions/%s" % custom_action["id"])
+        self.delete(f"data/custom-actions/{custom_action['id']}")
         custom_actions = self.get("data/custom-actions")
         self.assertEqual(len(custom_actions), 2)
 
-        self.delete_404("data/custom-actions/%s" % fields.gen_uuid())
+        self.delete_404(f"data/custom-actions/{fields.gen_uuid()}")
         custom_actions = self.get("data/custom-actions")
         self.assertEqual(len(custom_actions), 2)

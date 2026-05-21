@@ -16,9 +16,9 @@ class SoftwareTestCase(ApiDBTestCase):
 
     def test_get_software(self):
         software = self.get_first("data/softwares")
-        software_again = self.get("data/softwares/%s" % software["id"])
+        software_again = self.get(f"data/softwares/{software['id']}")
         self.assertEqual(software, software_again)
-        self.get_404("data/softwares/%s" % fields.gen_uuid())
+        self.get_404(f"data/softwares/{fields.gen_uuid()}")
 
     def test_create_software(self):
         data = {
@@ -38,16 +38,16 @@ class SoftwareTestCase(ApiDBTestCase):
             "name": "Maya",
             "file_extension": ".ma",
         }
-        self.put("data/softwares/%s" % software["id"], data)
-        software_again = self.get("data/softwares/%s" % software["id"])
+        self.put(f"data/softwares/{software['id']}", data)
+        software_again = self.get(f"data/softwares/{software['id']}")
         self.assertEqual(data["name"], software_again["name"])
-        self.put_404("data/softwares/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/softwares/{fields.gen_uuid()}", data)
 
     def test_delete_software(self):
         softwares = self.get("data/softwares")
         self.assertEqual(len(softwares), 3)
         software = softwares[0]
-        self.delete("data/softwares/%s" % software["id"])
+        self.delete(f"data/softwares/{software['id']}")
         softwares = self.get("data/softwares")
         self.assertEqual(len(softwares), 2)
-        self.delete_404("data/softwares/%s" % fields.gen_uuid())
+        self.delete_404(f"data/softwares/{fields.gen_uuid()}")

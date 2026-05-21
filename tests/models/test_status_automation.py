@@ -38,10 +38,10 @@ class StatusAutomationTestCase(ApiDBTestCase):
     def test_get_status_automation(self):
         status_automation = self.get_first("data/status-automations")
         status_automation_again = self.get(
-            "data/status-automations/%s" % status_automation["id"]
+            f"data/status-automations/{status_automation['id']}"
         )
         self.assertEqual(status_automation, status_automation_again)
-        self.get_404("data/status-automations/%s" % fields.gen_uuid())
+        self.get_404(f"data/status-automations/{fields.gen_uuid()}")
 
     def test_create_status_automation(self):
         data = {
@@ -61,20 +61,20 @@ class StatusAutomationTestCase(ApiDBTestCase):
     def test_update_status_automation(self):
         status_automation = self.get_first("data/status-automations")
         data = {"out_field_type": "ready_for"}
-        self.put("data/status-automations/%s" % status_automation["id"], data)
+        self.put(f"data/status-automations/{status_automation['id']}", data)
         status_automation_again = self.get(
-            "data/status-automations/%s" % status_automation["id"]
+            f"data/status-automations/{status_automation['id']}"
         )
         self.assertEqual(
             data["out_field_type"], status_automation_again["out_field_type"]
         )
-        self.put_404("data/status-automations/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/status-automations/{fields.gen_uuid()}", data)
 
     def test_delete_status_automation(self):
         status_automations = self.get("data/status-automations")
         self.assertEqual(len(status_automations), 2)
         status_automation = status_automations[0]
-        self.delete("data/status-automations/%s" % status_automation["id"])
+        self.delete(f"data/status-automations/{status_automation['id']}")
         status_automations = self.get("data/status-automations")
         self.assertEqual(len(status_automations), 1)
-        self.delete_404("data/status-automations/%s" % fields.gen_uuid())
+        self.delete_404(f"data/status-automations/{fields.gen_uuid()}")

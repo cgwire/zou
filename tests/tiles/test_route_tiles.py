@@ -44,18 +44,18 @@ class RouteTileTestCase(ApiDBTestCase):
         fs.rm_rf(TEST_FOLDER)
 
     def test_extract_tile(self):
-        path = "/pictures/preview-files/%s" % self.preview_file_id
+        path = f"/pictures/preview-files/{self.preview_file_id}"
         file_path_fixture = self.get_fixture_file_path(
             "videos/test_preview_tiles.mp4"
         )
         self.upload_file(path, file_path_fixture)
 
-        path = "/actions/preview-files/%s/extract-tile" % self.preview_file_id
+        path = f"/actions/preview-files/{self.preview_file_id}/extract-tile"
         try:
             self.get(path)
         except Exception:
             pass
-        path = "/movies/tiles/preview-files/%s.png" % self.preview_file_id
+        path = f"/movies/tiles/preview-files/{self.preview_file_id}.png"
         result_file_path = self.get_file_path("tile01.png")
         self.download_file(path, result_file_path)
 

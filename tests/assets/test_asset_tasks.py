@@ -32,7 +32,7 @@ class AssetTasksTestCase(ApiDBTestCase):
         self.task_type_dict = self.task_type.serialize()
 
     def test_get_tasks_for_asset(self):
-        tasks = self.get("data/assets/%s/tasks" % self.asset.id)
+        tasks = self.get(f"data/assets/{self.asset.id}/tasks")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.task.id))
 
@@ -53,14 +53,14 @@ class AssetTasksTestCase(ApiDBTestCase):
         person_id = self.user_vendor["id"]
         self.log_in_vendor()
         assets = self.get(
-            "data/assets/with-tasks?project_id=%s" % project_id, 403
+            f"data/assets/with-tasks?project_id={project_id}", 403
         )
         projects_service.add_team_member(project_id, person_id)
         projects_service.clear_project_cache(str(project_id))
-        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(len(assets), 0)
         tasks_service.assign_task(task_id, person_id)
-        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(len(assets), 1)
         self.assertEqual(len(assets[0]["tasks"]), 1)
         self.assertTrue(str(person_id) in assets[0]["tasks"][0]["assignees"])
@@ -68,24 +68,24 @@ class AssetTasksTestCase(ApiDBTestCase):
         assets_service.update_asset(
             self.asset_id, {"data": {"contractor": "test"}}
         )
-        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(assets[0]["data"]["contractor"], "test")
 
         projects_service.update_metadata_descriptor(
             self.meta_descriptor_id, {"departments": [self.department_id]}
         )
         persons_service.add_to_department(str(self.department_id), person_id)
-        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertEqual(assets[0]["data"]["contractor"], "test")
 
         persons_service.remove_from_department(
             str(self.department_id), person_id
         )
-        assets = self.get("data/assets/with-tasks?project_id=%s" % project_id)
+        assets = self.get(f"data/assets/with-tasks?project_id={project_id}")
         self.assertTrue("contractor" not in assets[0]["data"])
 
     def test_get_task_types_for_asset(self):
-        task_types = self.get("data/assets/%s/task-types" % self.asset_id)
+        task_types = self.get(f"data/assets/{self.asset_id}/task-types")
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(task_types[0], self.task_type_dict)
 

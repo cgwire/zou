@@ -416,7 +416,7 @@ def change_password(email, password):
             auth.validate_password(password)
             password = auth.encrypt_password(password)
             persons_service.update_password(email, password)
-            print("Password changed for %s" % email)
+            print(f"Password changed for {email}")
         except auth.PasswordTooShortException:
             print("The password is too short.")
             sys.exit(1)

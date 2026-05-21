@@ -33,8 +33,8 @@ def get_or_create_instance_by_name(model, **kwargs):
         if hasattr(instance, "project_id"):
             project_id = instance.project_id
         events.emit(
-            "%s:new" % model.__tablename__,
-            {"%s_id" % model.__tablename__: instance.id},
+            f"{model.__tablename__}:new",
+            {f"{model.__tablename__}_id": instance.id},
             project_id=str(project_id),
         )
     return instance.serialize()

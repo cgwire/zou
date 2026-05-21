@@ -249,7 +249,7 @@ class ImportShotgunTasksResource(BaseImportShotgunResource):
         if task is None:
             task = Task(**data)
             task.save()
-            current_app.logger.info("Task created: %s" % task)
+            current_app.logger.info(f"Task created: {task}")
         else:
             existing_task = Task.get_by(
                 name=data["name"],
@@ -266,7 +266,7 @@ class ImportShotgunTasksResource(BaseImportShotgunResource):
 
             task.update(data)
             tasks_service.clear_task_cache(str(task.id))
-            current_app.logger.info("Task updated: %s" % task)
+            current_app.logger.info(f"Task updated: {task}")
 
         return task
 

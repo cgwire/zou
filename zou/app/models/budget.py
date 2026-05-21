@@ -20,12 +20,7 @@ class Budget(db.Model, BaseMixin, SerializerMixin):
     currency = db.Column(db.String(3))
 
     def __repr__(self):
-        return "<Budget of %s - %d %s %s>" % (
-            self.project_id,
-            self.revision,
-            self.name,
-            self.id,
-        )
+        return f"<Budget of {self.project_id} - {self.revision} {self.name} {self.id}>"
 
     def present(self):
         return fields.serialize_dict(

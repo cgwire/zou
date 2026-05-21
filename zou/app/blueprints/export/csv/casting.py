@@ -85,7 +85,7 @@ class CastingCsvExport(Resource, ArgsMixin):
                 )
             )
 
-        file_name = "%s casting" % project["name"]
+        file_name = f"{project['name']} casting"
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
 
     def check_permissions(self, project_id):

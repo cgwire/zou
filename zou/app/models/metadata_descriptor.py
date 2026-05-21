@@ -77,4 +77,4 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<MetadataDescriptor %s>" % self.id
+        return f"<MetadataDescriptor {self.id}>"

@@ -478,7 +478,7 @@ def sync_with_ldap_server():
 
                 emails = entry.mail.values
                 if len(emails) == 0:
-                    emails = ["%s@%s" % (desktop_login, EMAIL_DOMAIN)]
+                    emails = [f"{desktop_login}@{EMAIL_DOMAIN}"]
                 else:
 
                     def sort_mails(email):
@@ -577,9 +577,7 @@ def sync_with_ldap_server():
             persons_service.update_person(
                 person.id, {"active": False}, bypass_protected_accounts=True
             )
-            print(
-                "User %s disabled (not found in LDAP)." % person.desktop_login
-            )
+            print(f"User {person.desktop_login} disabled (not found in LDAP).")
 
         for person, user in persons_to_update:
             try:
@@ -837,7 +835,7 @@ def reset_tasks_data(project_id):
 
 def remove_old_data(days_old=90):
     with app.app_context():
-        print("Start removing non critical data older than %s." % days_old)
+        print(f"Start removing non critical data older than {days_old}.")
         print("Removing old events...")
         deletion_service.remove_old_events(days_old)
         print("Removing old login logs...")

@@ -17,10 +17,10 @@ class ScheduleItemTestCase(ApiDBTestCase):
     def test_get_schedule_item(self):
         schedule_items = self.get_first("data/schedule-items")
         schedule_items_again = self.get(
-            "data/schedule-items/%s" % schedule_items["id"]
+            f"data/schedule-items/{schedule_items['id']}"
         )
         self.assertEqual(schedule_items, schedule_items_again)
-        self.get_404("data/schedule-items/%s" % fields.gen_uuid())
+        self.get_404(f"data/schedule-items/{fields.gen_uuid()}")
 
     def test_create_schedule_items(self):
         self.generate_fixture_sequence()
@@ -41,18 +41,18 @@ class ScheduleItemTestCase(ApiDBTestCase):
     def test_update_schedule_items(self):
         schedule_items = self.get_first("data/schedule-items")
         data = {"man_days": 3}
-        self.put("data/schedule-items/%s" % schedule_items["id"], data)
+        self.put(f"data/schedule-items/{schedule_items['id']}", data)
         schedule_items_again = self.get(
-            "data/schedule-items/%s" % schedule_items["id"]
+            f"data/schedule-items/{schedule_items['id']}"
         )
         self.assertEqual(data["man_days"], schedule_items_again["man_days"])
-        self.put_404("data/schedule-items/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/schedule-items/{fields.gen_uuid()}", data)
 
     def test_delete_schedule_items(self):
         schedule_items = self.get("data/schedule-items")
         self.assertEqual(len(schedule_items), 3)
         schedule_items = schedule_items[0]
-        self.delete("data/schedule-items/%s" % schedule_items["id"])
+        self.delete(f"data/schedule-items/{schedule_items['id']}")
         schedule_items = self.get("data/schedule-items")
         self.assertEqual(len(schedule_items), 2)
-        self.delete_404("data/schedule-items/%s" % fields.gen_uuid())
+        self.delete_404(f"data/schedule-items/{fields.gen_uuid()}")

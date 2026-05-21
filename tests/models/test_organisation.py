@@ -16,10 +16,10 @@ class OrganisationTestCase(ApiDBTestCase):
     def test_get_organisation(self):
         organisation = self.get_first("data/organisations")
         organisation_again = self.get(
-            "data/organisations/%s" % organisation["id"]
+            f"data/organisations/{organisation['id']}"
         )
         self.assertEqual(organisation, organisation_again)
-        self.get_404("data/organisations/%s" % fields.gen_uuid())
+        self.get_404(f"data/organisations/{fields.gen_uuid()}")
 
     def test_create_organisation(self):
         data = {"name": "Test Org", "hours_by_day": 7.5}
@@ -31,20 +31,20 @@ class OrganisationTestCase(ApiDBTestCase):
     def test_update_organisation(self):
         organisation = self.get_first("data/organisations")
         data = {"hours_by_day": 6.0}
-        self.put("data/organisations/%s" % organisation["id"], data)
+        self.put(f"data/organisations/{organisation['id']}", data)
         organisation_again = self.get(
-            "data/organisations/%s" % organisation["id"]
+            f"data/organisations/{organisation['id']}"
         )
         self.assertEqual(
             data["hours_by_day"], organisation_again["hours_by_day"]
         )
-        self.put_404("data/organisations/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/organisations/{fields.gen_uuid()}", data)
 
     def test_delete_organisation(self):
         organisations = self.get("data/organisations")
         self.assertEqual(len(organisations), self.initial_count + 3)
         organisation = organisations[0]
-        self.delete("data/organisations/%s" % organisation["id"])
+        self.delete(f"data/organisations/{organisation['id']}")
         organisations = self.get("data/organisations")
         self.assertEqual(len(organisations), self.initial_count + 2)
-        self.delete_404("data/organisations/%s" % fields.gen_uuid())
+        self.delete_404(f"data/organisations/{fields.gen_uuid()}")

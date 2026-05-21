@@ -378,7 +378,7 @@ class BaseNewPreviewFilePicture:
             deletion_service.remove_preview_file_by_id(instance_id)
             if abort_on_failed:
                 raise WrongParameterException(
-                    "Wrong file format, extension: %s" % extension
+                    f"Wrong file format, extension: {extension}"
                 )
         else:
             self.emit_app_preview_event(instance_id)
@@ -705,7 +705,7 @@ class PreviewFileMovieResource(BasePreviewFileResource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Movie file was not found for: %s" % instance_id
+                    f"Movie file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
 
@@ -756,7 +756,7 @@ class PreviewFileLowMovieResource(BasePreviewFileResource):
             except FileNotFound:
                 if config.LOG_FILE_NOT_FOUND:
                     current_app.logger.error(
-                        "Movie file was not found for: %s" % instance_id
+                        f"Movie file was not found for: {instance_id}"
                     )
                 raise PreviewFileNotFoundException
 
@@ -803,7 +803,7 @@ class PreviewFileMovieDownloadResource(BasePreviewFileResource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Movie file was not found for: %s" % instance_id
+                    f"Movie file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
 
@@ -855,7 +855,7 @@ class PreviewFileResource(BasePreviewFileResource):
                 not in ALLOWED_PICTURE_EXTENSION | ALLOWED_FILE_EXTENSION
             ):
                 raise WrongParameterException(
-                    "Extension not allowed: %s" % extension
+                    f"Extension not allowed: {extension}"
                 )
             if extension == "png":
                 return send_picture_file(
@@ -877,7 +877,7 @@ class PreviewFileResource(BasePreviewFileResource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Non-movie file was not found for: %s" % instance_id
+                    f"Non-movie file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
 
@@ -950,7 +950,7 @@ class PreviewFileDownloadResource(BasePreviewFileResource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Standard file was not found for: %s" % instance_id
+                    f"Standard file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
 
@@ -1021,8 +1021,7 @@ class AttachmentThumbnailResource(Resource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Picture file was not found for attachment: %s"
-                    % (attachment_file_id)
+                    f"Picture file was not found for attachment: {attachment_file_id}"
                 )
             raise PreviewFileNotFoundException
 
@@ -1073,7 +1072,7 @@ class BasePreviewPictureResource(BasePreviewFileResource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Picture file was not found for: %s" % instance_id
+                    f"Picture file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
 
@@ -1167,8 +1166,8 @@ class BaseThumbnailResource(Resource):
     def emit_event(self, instance_id):
         model_name = self.data_type[:-1]
         events.emit(
-            "%s:set-thumbnail" % model_name,
-            {"%s_id" % model_name: instance_id},
+            f"{model_name}:set-thumbnail",
+            {f"{model_name}_id": instance_id},
         )
 
     @jwt_required()
@@ -1274,7 +1273,7 @@ class BaseThumbnailResource(Resource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Thumbnail file was not found for: %s" % instance_id
+                    f"Thumbnail file was not found for: {instance_id}"
                 )
             raise PreviewFileNotFoundException
         except IOError as e:
@@ -1999,8 +1998,7 @@ class PreviewBackgroundFileResource(Resource):
         except FileNotFound:
             if config.LOG_FILE_NOT_FOUND:
                 current_app.logger.error(
-                    "Preview background file was not found for: %s"
-                    % instance_id
+                    f"Preview background file was not found for: {instance_id}"
                 )
             raise PreviewBackgroundFileNotFoundException
 

@@ -173,7 +173,7 @@ class Comment(db.Model, BaseMixin, SerializerMixin):
         return obj_dict
 
     def __repr__(self):
-        return "<Comment of %s>" % self.object_id
+        return f"<Comment of {self.object_id}>"
 
     def set_preview_files(self, preview_file_ids):
         from zou.app.models.preview_file import PreviewFile
