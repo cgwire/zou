@@ -48,7 +48,7 @@ from zou.app.models.status_automation import StatusAutomation
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
 from zou.app.utils import events, date_helpers
-from zou.app import app, config
+from zou.app import app
 
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOGLEVEL", "INFO").upper())
@@ -223,23 +223,6 @@ def init(source, login, password, multithreaded=False, number_workers=30):
             source,
             adapter,
         )
-
-        if config.FS_BACKEND == "swift":
-            for fs in [
-                file_store.movies,
-                file_store.pictures,
-                file_store.files,
-            ]:
-                try:
-                    fs.backend.conn.head_container(fs.backend.name)
-                except Exception:
-                    pass
-                http_con = fs.backend.conn.http_conn[1]
-                url = http_con.parsed_url
-                http_con.request_session.mount(
-                    f"{url.scheme}://{url.netloc}",
-                    adapter,
-                )
 
     gazu.set_host(source)
     gazu.log_in(login, password)
