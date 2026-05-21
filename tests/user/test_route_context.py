@@ -1,3 +1,5 @@
+import orjson as json
+
 from tests.base import ApiDBTestCase
 
 from zou.app.services import (
@@ -257,6 +259,21 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         path = "data/user/tasks/"
         tasks = self.get(path)
         self.assertEqual(len(tasks), 1)
+
+    def test_get_todos_bearer_only(self):
+        # Regression for issue #1059: /data/user/tasks must work with a
+        # bare JWT Bearer header, without any Flask-Principal session
+        # cookie. Reproduces a script-style call (curl / gazu) where the
+        # decorator ordering used to make permissions.require_person
+        # raise 403 before jwt_required() had loaded the identity.
+        self.assign_user(self.task.id)
+
+        bearer_client = self.flask_app.test_client()
+        headers = dict(self.base_headers)
+        response = bearer_client.get("data/user/tasks", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(json.loads(response.data.decode("utf-8"))), 1)
 
     def test_get_done_tasks(self):
         task_id = self.task.id

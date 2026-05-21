@@ -1,5 +1,7 @@
 from tests.base import ApiDBTestCase
 
+from zou.app.utils import events
+
 
 class PlaylistSharingTestCase(ApiDBTestCase):
     def setUp(self):
@@ -214,6 +216,38 @@ class PlaylistSharingTestCase(ApiDBTestCase):
         )
         self.assertEqual(guest["first_name"], "John")
         self.assertTrue(guest["is_guest"])
+
+    def test_create_guest_emits_person_new(self):
+        """Connected clients (e.g. a reviewing manager) rely on the
+        ``person:new`` event to learn about a freshly minted guest, so
+        their personMap can resolve the person_id carried by the guest's
+        first comment. Without this the comment renders blank."""
+        link = self.post(
+            f"/data/playlists/{self.playlist['id']}/share",
+            {},
+            201,
+        )
+        self.log_out()
+        events.unregister_all()
+        received = []
+
+        class _Sink:
+            __name__ = "guest_person_new_sink"
+
+            def handle_event(self_sink, data):
+                received.append(data)
+
+        events.register("person:new", "guest_person_new_sink", _Sink())
+        try:
+            guest = self.post(
+                f"/shared/playlists/{link['token']}/guest",
+                {"first_name": "Lena"},
+                201,
+            )
+            self.assertEqual(len(received), 1)
+            self.assertEqual(received[0]["person_id"], guest["id"])
+        finally:
+            events.unregister("person:new", "guest_person_new_sink")
 
     def test_reuse_guest(self):
         link = self.post(

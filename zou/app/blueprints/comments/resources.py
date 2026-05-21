@@ -10,7 +10,10 @@ from zou.app.services.exception import (
     WrongParameterException,
 )
 from zou.app.utils import permissions, date_helpers, validation
-from zou.app.blueprints.comments.schemas import CommentReplySchema
+from zou.app.blueprints.comments.schemas import (
+    CommentReplySchema,
+    MoveCommentSchema,
+)
 
 from zou.app.services import (
     chats_service,
@@ -884,3 +887,77 @@ class TaskAttachmentFiles(Resource):
         """
         permissions.check_admin_permissions()
         return comments_service.get_all_attachment_files_for_task(task_id)
+
+
+class MoveCommentResource(Resource):
+
+    @jwt_required()
+    def post(self, task_id, comment_id):
+        """
+        Move a comment to another task of the same entity
+        ---
+        description: Move an existing comment from its current task to
+          another task that belongs to the same entity (shot, asset,
+          sequence, episode or edit). The comment text, attachments,
+          mentions, original creation date and the task status change it
+          carries are preserved. Notifications and news linked to the
+          comment on the source task are removed and recreated against the
+          target task, so the target task's watchers get notified as if a
+          new comment was posted. Reserved to production managers and
+          studio admins. Comments tied to a preview revision cannot be
+          moved.
+        tags:
+          - Comments
+        parameters:
+          - in: path
+            name: task_id
+            required: true
+            type: string
+            format: uuid
+            description: Unique identifier of the comment's current task
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: path
+            name: comment_id
+            required: true
+            type: string
+            format: uuid
+            description: Unique identifier of the comment to move
+            example: b35b7fb5-df86-5776-b181-68564193d36
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - target_task_id
+                properties:
+                  target_task_id:
+                    type: string
+                    format: uuid
+                    description: Unique identifier of the task to move the
+                      comment to. Must belong to the same entity as the
+                      current task.
+                    example: c46c8gc6-eg97-6887-c292-79675204e47
+        responses:
+          200:
+            description: Comment successfully moved to the target task. The
+              returned payload is the comment with its updated object_id.
+          400:
+            description: Source and target tasks differ in entity, are the
+              same task, or the comment is tied to a preview revision.
+          403:
+            description: Caller is not a manager or admin.
+        """
+        permissions.check_manager_permissions()
+        body = validation.validate_request_body(MoveCommentSchema)
+        user_service.check_task_access(task_id)
+        user_service.check_task_access(body.target_task_id)
+        comment = tasks_service.get_comment(comment_id)
+        if str(comment["object_id"]) != str(task_id):
+            raise WrongParameterException(
+                "Comment does not belong to the given task."
+            )
+        return comments_service.move_comment_to_task(
+            comment_id, body.target_task_id
+        )

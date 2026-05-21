@@ -276,13 +276,14 @@ def set_preview_files_for_entities(playlist_dict):
     """
     entity_ids = []
     for entity in playlist_dict["shots"]:
-        if "id" not in entity:
-            entity_id = entity.get("shot_id", entity.get("entity_id", None))
-            if entity_id is not None:
-                entity_ids.append(entity_id)
-                entity["id"] = entity_id
-        else:
-            entity_ids.append(entity["id"])
+        entity_id = (
+            entity.get("id")
+            or entity.get("shot_id")
+            or entity.get("entity_id")
+        )
+        if entity_id:
+            entity_ids.append(entity_id)
+            entity.setdefault("id", entity_id)
     previews = {}
     preview_file_map = {}
 
@@ -334,8 +335,9 @@ def set_preview_files_for_entities(playlist_dict):
             )
 
     for entity in playlist_dict["shots"]:
-        if str(entity["id"]) in previews:
-            entity["preview_files"] = previews[str(entity["id"])]
+        entity_id = entity.get("id")
+        if entity_id and str(entity_id) in previews:
+            entity["preview_files"] = previews[str(entity_id)]
         else:
             entity["preview_files"] = []
 

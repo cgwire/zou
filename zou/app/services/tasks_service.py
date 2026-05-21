@@ -359,11 +359,8 @@ def get_task_dicts_for_entity(entity_id, relations=True):
 
 
 def _get_entity_task_query(relations=False):
-    query = Task.query
-    if relations:
-        query = query.options(selectinload(Task.assignees))
     return (
-        query.order_by(Task.name)
+        Task.query.order_by(Task.name)
         .join(Project, Task.project_id == Project.id)
         .join(TaskType, Task.task_type_id == TaskType.id)
         .join(TaskStatus, TaskStatus.id == Task.task_status_id)
@@ -379,9 +376,9 @@ def _get_entity_task_query(relations=False):
 
 
 def _convert_rows_to_detailed_tasks(rows, relations=False):
-    return [
+    task_dicts = [
         {
-            **task_object.serialize(relations=relations),
+            **task_object.serialize(relations=False),
             "project_name": project_name,
             "task_type_name": task_type_name,
             "task_status_name": task_status_name,
@@ -390,6 +387,30 @@ def _convert_rows_to_detailed_tasks(rows, relations=False):
         }
         for task_object, project_name, task_type_name, task_status_name, entity_type_name, entity_name in rows
     ]
+    if relations and task_dicts:
+        _attach_assignee_ids(task_dicts)
+    return task_dicts
+
+
+def _attach_assignee_ids(task_dicts):
+    """
+    Fetch all assignees for the given tasks in a single query and inject the
+    list of person ids into each dict. Avoids the N+1 that occurs when each
+    Task row triggers a separate lazy load of its assignees relationship.
+    """
+    task_ids = [task["id"] for task in task_dicts]
+    links = (
+        db.session.query(
+            TaskPersonLink.task_id, TaskPersonLink.person_id
+        )
+        .filter(TaskPersonLink.task_id.in_(task_ids))
+        .all()
+    )
+    assignees_by_task = collections.defaultdict(list)
+    for task_id, person_id in links:
+        assignees_by_task[str(task_id)].append(str(person_id))
+    for task in task_dicts:
+        task["assignees"] = assignees_by_task.get(task["id"], [])
 
 
 def _resolve_episode_and_build_task_dict(
