@@ -52,7 +52,7 @@ class AttachmentFile(db.Model, BaseMixin, SerializerMixin):
         data.pop("chat_message", None)
         previous_data = cls.get(data["id"])
         if previous_data is None:
-            return cls.create(**data)
+            return cls.create(**data), False
         else:
             previous_data.update(data)
-            return previous_data
+            return previous_data, True
