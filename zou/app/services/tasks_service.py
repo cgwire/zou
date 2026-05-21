@@ -673,6 +673,7 @@ def get_comments(task_id, is_client=False, is_manager=False):
             comment["attachment_files"] = attachment_file_map.get(
                 comment["id"], []
             )
+        embed_reply_authors(comments, is_client=is_client)
 
     if is_client:
         tmp_comments = []
@@ -690,6 +691,14 @@ def get_comments(task_id, is_client=False, is_manager=False):
             person = persons_map.get(comment["person_id"], {})
             is_author = comment["person_id"] == current_user["id"]
             is_author_client = person.get("role") == "client"
+            # Hide studio members' identities from clients, like replies.
+            if not is_author_client:
+                comment["person"] = None
+            # Hide the editor identity too when a studio member edited it.
+            editor = comment.get("editor")
+            if editor and editor.get("role") != "client":
+                comment["editor"] = None
+                comment["editor_id"] = None
             is_for_client = comment.get("for_client", False)
             is_allowed = (
                 is_for_client
@@ -726,15 +735,41 @@ def _prepare_query(task_id, is_client, is_manager):
             TaskStatus.color,
             Person.first_name,
             Person.last_name,
+            Person.full_name,
             Person.has_avatar,
+            Person.role,
             Editor.first_name,
             Editor.last_name,
             Editor.has_avatar,
+            Editor.role,
         )
     )
     if not is_manager and not is_client:
         query = query.filter(Person.role != "client")
     return query
+
+
+def embed_reply_authors(comments, is_client=False):
+    """Attach a minimal author to each reply so guest repliers render too.
+
+    For clients, only client authors are embedded to keep studio members'
+    identities hidden, matching the comment author behavior.
+    """
+    reply_person_ids = {
+        reply.get("person_id")
+        for comment in comments
+        for reply in (comment.get("replies") or [])
+        if reply.get("person_id")
+    }
+    if not reply_person_ids:
+        return
+    persons_map = persons_service.get_short_persons_map(list(reply_person_ids))
+    for comment in comments:
+        for reply in comment.get("replies") or []:
+            author = persons_map.get(reply.get("person_id"))
+            if is_client and author and author.get("role") != "client":
+                author = None
+            reply["person"] = author
 
 
 def _run_task_comments_query(query):
@@ -748,17 +783,22 @@ def _run_task_comments_query(query):
             task_status_color,
             person_first_name,
             person_last_name,
+            person_full_name,
             person_has_avatar,
+            person_role,
             editor_first_name,
             editor_last_name,
             editor_has_avatar,
+            editor_role,
         ) = result
 
         comment_dict = comment.serialize()
         comment_dict["person"] = {
             "first_name": person_first_name,
             "last_name": person_last_name,
+            "full_name": person_full_name,
             "has_avatar": person_has_avatar,
+            "role": getattr(person_role, "code", person_role),
             "id": str(comment.person_id),
         }
         if comment.editor_id is not None:
@@ -766,6 +806,7 @@ def _run_task_comments_query(query):
                 "first_name": editor_first_name,
                 "last_name": editor_last_name,
                 "has_avatar": editor_has_avatar,
+                "role": getattr(editor_role, "code", editor_role),
                 "id": str(comment.editor_id),
             }
         comment_dict["task_status"] = {
@@ -1181,9 +1222,7 @@ def get_last_comment_map(task_ids):
     return task_comment_map
 
 
-def _build_task_no_commit(
-    task_type, task_status, entity, current_user_id
-):
+def _build_task_no_commit(task_type, task_status, entity, current_user_id):
     """
     Insert a new task (without committing) using the zou defaults for
     name, durations, dates and assignees.
@@ -1276,8 +1315,7 @@ def create_tasks_for_entity(entity, task_types=None):
         enabled_in_workflow = {
             str(link.task_type_id)
             for link in TaskTypeAssetTypeLink.query.filter(
-                TaskTypeAssetTypeLink.asset_type_id
-                == entity["entity_type_id"]
+                TaskTypeAssetTypeLink.asset_type_id == entity["entity_type_id"]
             ).all()
         }
 
@@ -1292,8 +1330,7 @@ def create_tasks_for_entity(entity, task_types=None):
             for task_type in TaskType.query.filter(
                 TaskType.id.in_(candidate_ids)
             ).all()
-            if not task_type.for_entity
-            or task_type.for_entity == entity_kind
+            if not task_type.for_entity or task_type.for_entity == entity_kind
         ]
         if not task_types:
             return []
