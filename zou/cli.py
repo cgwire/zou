@@ -621,6 +621,23 @@ def sync_full(
 
 @cli.command()
 @click.option("--source", default="http://localhost:5000", show_default=True)
+@click.option("--project", required=True)
+def sync_verify(source, project):
+    """
+    Compare project-scoped row counts between source and current instance.
+    Useful after `sync-full --only-projects --project ...` to spot silently
+    dropped batches and tables missing from the sync. Reads SYNC_LOGIN and
+    SYNC_PASSWORD from the environment.
+    """
+    from zou.app.utils import commands
+
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.verify_project_against_source(source, login, password, project)
+
+
+@cli.command()
+@click.option("--source", default="http://localhost:5000", show_default=True)
 @click.option("--project", default=None, show_default=True)
 @click.option(
     "--multithreaded", is_flag=True, show_default=True, default=False

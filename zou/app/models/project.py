@@ -267,7 +267,6 @@ class Project(db.Model, BaseMixin, SerializerMixin):
     def create_from_import(cls, data):
         is_update = False
         previous_project = cls.get(data["id"])
-        data.pop("team", None)
         data.pop("type", None)
         data.pop("project_status_name", None)
         person_ids = data.pop("team", None)

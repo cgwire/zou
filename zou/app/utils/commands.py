@@ -694,6 +694,17 @@ def import_data_from_another_instance(
             )
 
 
+def verify_project_against_source(source, login, password, project_name):
+    """
+    Connect to the source instance and compare row counts for every
+    project-scoped model. Prints a side-by-side report and a non-zero
+    exit code is not used — the report is informational.
+    """
+    with app.app_context():
+        sync_service.init(source, login, password)
+        sync_service.verify_project_sync(project_name)
+
+
 def run_sync_change_daemon(event_source, source, login, password, logs_dir):
     """
     Listen to event websocket. Each time a change occurs, it retrieves the

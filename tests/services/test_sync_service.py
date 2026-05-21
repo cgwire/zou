@@ -98,3 +98,33 @@ class SyncServiceTestCase(ApiDBTestCase):
         events.register("task:update", "handle_event", self)
         sync_service.forward_base_event("task", "update", {"task_id": "test"})
         self.assertTrue("task_id" in self.last_event_data)
+
+    def test_verify_target_counters_compile(self):
+        """Every target-side count helper for sync-verify must produce valid
+        SQL on the current schema. Run them all against a project that has
+        no scoped data; each must return 0 instead of raising."""
+        pid = str(self.project.id)
+        counters = [
+            sync_service._tgt_entity_type(pid, "Shot"),
+            sync_service._tgt_entity_type(pid, "Sequence"),
+            sync_service._tgt_entity_type(pid, "Episode"),
+            sync_service._tgt_entity_type(pid, "Concept"),
+            sync_service._tgt_asset(pid),
+            sync_service._tgt_entity_link(pid),
+            sync_service._tgt_comment(pid),
+            sync_service._tgt_time_spent(pid),
+            sync_service._tgt_preview_file(pid),
+            sync_service._tgt_build_job(pid),
+            sync_service._tgt_attachment_file(pid),
+            sync_service._tgt_subscription(pid),
+            sync_service._tgt_notification(pid),
+            sync_service._tgt_news(pid),
+            sync_service._tgt_output_file(pid),
+            sync_service._tgt_working_file(pid),
+            sync_service._tgt_asset_instance(pid),
+            sync_service._tgt_chat(pid),
+            sync_service._tgt_budget_entry(pid),
+            sync_service._tgt_share_link(pid),
+        ]
+        for counter in counters:
+            self.assertIsInstance(counter(), int)

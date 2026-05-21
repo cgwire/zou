@@ -14,8 +14,12 @@ from http.client import responses as http_responses
 from threading import RLock
 from multiprocessing.pool import ThreadPool as Pool
 
+from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.budget import Budget
+from zou.app.models.budget_entry import BudgetEntry
 from zou.app.models.build_job import BuildJob
+from zou.app.models.chat import Chat
 from zou.app.models.custom_action import CustomAction
 from zou.app.models.comment import Comment
 from zou.app.models.day_off import DayOff
@@ -28,10 +32,15 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.milestone import Milestone
 from zou.app.models.news import News
 from zou.app.models.notification import Notification
+from zou.app.models.output_file import OutputFile
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
+from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+)
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.schedule_item import ScheduleItem
@@ -44,6 +53,7 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.studio import Studio
 from zou.app.models.status_automation import StatusAutomation
+from zou.app.models.working_file import WorkingFile
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
@@ -306,7 +316,11 @@ def run_other_sync(project=None, with_events=False):
     """
     sync_entries("search-filter-groups", SearchFilterGroup, project=project)
     sync_entries("search-filters", SearchFilter, project=project)
-    sync_entries("day-offs", DayOff, project=project)
+    # Day-offs are not scoped per project on the source side; only pull them
+    # for full-instance syncs, otherwise a single-project sync would import
+    # day-offs from every other project on the source.
+    if project is None:
+        sync_entries("day-offs", DayOff, project=project)
     if with_events:
         sync_entries("events", ApiEvent, project=project)
 
@@ -1294,3 +1308,498 @@ def download_file_from_another_instance(
                 finally:
                     os.remove(file_path)
     return path, file_path
+
+
+def verify_project_sync(project_name):
+    """
+    Compare source and target row counts for every project-scoped model.
+
+    Used after `sync-full --only-projects --project <name>` to detect:
+      - batches dropped silently by `sync_entries` when an `IntegrityError`
+        was caught and only logged (sync_service.py:471/481/499),
+      - tables that exist in the data model but were never wired into
+        `project_events`, so sync_full does not migrate them at all.
+
+    Assumes `init(...)` has been called for the source side. Reads the
+    target side directly from the local database. Pure read-only.
+    """
+    try:
+        source_project = gazu.project.get_project_by_name(project_name)
+    except gazu.exception.ProjectNotFoundException:
+        source_project = None
+
+    if source_project is None:
+        print(f"Project '{project_name}' not found on source.")
+        return
+
+    pid = source_project["id"]
+    local_project = Project.get(pid)
+    if local_project is None:
+        print(
+            f"Project '{project_name}' ({pid}) is not present on the target."
+            f" Run `zou sync-full --only-projects --project '{project_name}'`"
+            " first."
+        )
+        return
+
+    # (label, source counter, target counter, synced_by_sync_full)
+    # synced=False rows flag tables present in the schema that sync_full
+    # doesn't migrate today — surface them so the operator knows to handle
+    # them out-of-band.
+    specs = [
+        (
+            "Episode",
+            _src_count(f"projects/{pid}/episodes"),
+            _tgt_entity_type(pid, "Episode"),
+            True,
+        ),
+        (
+            "Sequence",
+            _src_count(f"projects/{pid}/sequences"),
+            _tgt_entity_type(pid, "Sequence"),
+            True,
+        ),
+        ("Asset", _src_count(f"projects/{pid}/assets"), _tgt_asset(pid), True),
+        (
+            "Shot",
+            _src_count(f"projects/{pid}/shots"),
+            _tgt_entity_type(pid, "Shot"),
+            True,
+        ),
+        (
+            "Concept",
+            _src_count(f"projects/{pid}/concepts"),
+            _tgt_entity_type(pid, "Concept"),
+            True,
+        ),
+        (
+            "EntityLink",
+            _src_count(f"projects/{pid}/entity-links"),
+            _tgt_entity_link(pid),
+            True,
+        ),
+        (
+            "Task",
+            _src_count(f"projects/{pid}/tasks"),
+            _tgt(Task, project_id=pid),
+            True,
+        ),
+        (
+            "Comment",
+            _src_count(f"projects/{pid}/comments"),
+            _tgt_comment(pid),
+            True,
+        ),
+        (
+            "TimeSpent",
+            _src_count(f"projects/{pid}/time-spents"),
+            _tgt_time_spent(pid),
+            True,
+        ),
+        (
+            "PreviewFile",
+            _src_count(f"projects/{pid}/preview-files"),
+            _tgt_preview_file(pid),
+            True,
+        ),
+        (
+            "Playlist",
+            _src_count(f"projects/{pid}/playlists/all"),
+            _tgt(Playlist, project_id=pid),
+            True,
+        ),
+        (
+            "BuildJob",
+            _src_count(f"projects/{pid}/build-jobs"),
+            _tgt_build_job(pid),
+            True,
+        ),
+        (
+            "AttachmentFile",
+            _src_count(f"projects/{pid}/attachment-files"),
+            _tgt_attachment_file(pid),
+            True,
+        ),
+        (
+            "MetadataDescriptor",
+            _src_count(f"projects/{pid}/metadata-descriptors"),
+            _tgt(MetadataDescriptor, project_id=pid),
+            True,
+        ),
+        (
+            "ScheduleItem",
+            _src_count(f"projects/{pid}/schedule-items"),
+            _tgt(ScheduleItem, project_id=pid),
+            True,
+        ),
+        (
+            "Subscription",
+            _src_count(f"projects/{pid}/subscriptions"),
+            _tgt_subscription(pid),
+            True,
+        ),
+        (
+            "Notification",
+            _src_count(f"projects/{pid}/notifications"),
+            _tgt_notification(pid),
+            True,
+        ),
+        ("News", _src_count(f"projects/{pid}/news"), _tgt_news(pid), True),
+        (
+            "Milestone",
+            _src_count(f"projects/{pid}/milestones"),
+            _tgt(Milestone, project_id=pid),
+            True,
+        ),
+        (
+            "SearchFilter",
+            _src_count_params("search-filters", {"project_id": pid}),
+            _tgt(SearchFilter, project_id=pid),
+            True,
+        ),
+        (
+            "SearchFilterGroup",
+            _src_count_params("search-filter-groups", {"project_id": pid}),
+            _tgt(SearchFilterGroup, project_id=pid),
+            True,
+        ),
+        # Below: tables sync_full does not migrate today.
+        (
+            "Budget",
+            _src_count(f"projects/{pid}/budgets"),
+            _tgt(Budget, project_id=pid),
+            False,
+        ),
+        ("BudgetEntry", None, _tgt_budget_entry(pid), False),
+        (
+            "OutputFile",
+            _src_count(f"projects/{pid}/output-files"),
+            _tgt_output_file(pid),
+            False,
+        ),
+        ("WorkingFile", None, _tgt_working_file(pid), False),
+        ("AssetInstance", None, _tgt_asset_instance(pid), False),
+        ("Chat", None, _tgt_chat(pid), False),
+        (
+            "ProductionSchedule",
+            None,
+            _tgt(ProductionScheduleVersion, project_id=pid),
+            False,
+        ),
+        ("PlaylistShareLink", None, _tgt_share_link(pid), False),
+    ]
+
+    print(f"\nVerifying project '{project_name}' ({pid}):\n")
+    header = (
+        f"{'Model':22s}  {'Source':>8s}  {'Target':>8s}  "
+        f"{'Delta':>8s}  Status"
+    )
+    print(header)
+    print("-" * (len(header) + 4))
+
+    diffs = 0
+    missing_with_data = 0
+    for label, src_fn, tgt_fn, synced in specs:
+        src = _safe(src_fn)
+        tgt = _safe(tgt_fn)
+
+        src_str = f"{src:>8d}" if isinstance(src, int) else "     N/A"
+        tgt_str = f"{tgt:>8d}" if isinstance(tgt, int) else "     N/A"
+
+        if isinstance(src, int) and isinstance(tgt, int):
+            delta = tgt - src
+            delta_str = f"{delta:+d}"
+            if synced:
+                status = "OK" if delta == 0 else "DIFF"
+                if delta != 0:
+                    diffs += 1
+            else:
+                status = "NOT SYNCED"
+                if src > 0:
+                    missing_with_data += 1
+        else:
+            delta_str = "    -"
+            status = "ok" if synced else "NOT SYNCED"
+
+        print(f"{label:22s}  {src_str}  {tgt_str}  {delta_str:>8s}  {status}")
+
+    print()
+    if diffs:
+        print(
+            f"{diffs} synced model(s) show a row-count delta — likely due to "
+            "IntegrityError batches caught silently by sync_entries. Re-run "
+            "the sync with LOGLEVEL=DEBUG and grep for 'An error occured'."
+        )
+    if missing_with_data:
+        print(
+            f"{missing_with_data} non-synced model(s) hold data on source — "
+            "sync_full does not migrate them. Plan a manual transfer."
+        )
+    if not diffs and not missing_with_data:
+        print("All comparable models match and no unsynced tables hold data.")
+
+
+def _safe(fn):
+    if fn is None:
+        return None
+    try:
+        return fn()
+    except Exception as e:
+        logger.warning("Verify count failed: %s", e)
+        return None
+
+
+def _src_count(path):
+    """Return a callable counting rows on the source instance for a path.
+
+    Handles list-returning routes (e.g. /projects/X/assets) and paginated
+    routes (which return {"data": ..., "total": N, "nb_pages": M}).
+    """
+
+    def fetch():
+        response = gazu.client.fetch_all(path)
+        if isinstance(response, list):
+            return len(response)
+        if isinstance(response, dict):
+            if "total" in response:
+                return response["total"]
+            count = len(response.get("data", []))
+            nb_pages = response.get("nb_pages", 1)
+            for page in range(2, nb_pages + 1):
+                sep = "&" if "?" in path else "?"
+                more = gazu.client.fetch_all(f"{path}{sep}page={page}")
+                if isinstance(more, dict):
+                    count += len(more.get("data", []))
+            return count
+        return None
+
+    return fetch
+
+
+def _src_count_params(path, params):
+    def fetch():
+        response = gazu.client.fetch_all(path, params=params)
+        if isinstance(response, list):
+            return len(response)
+        if isinstance(response, dict):
+            return response.get("total", len(response.get("data", [])))
+        return None
+
+    return fetch
+
+
+def _tgt(model, **filters):
+    return lambda: model.query.filter_by(**filters).count()
+
+
+def _tgt_entity_type(project_id, type_name):
+    def count():
+        et = EntityType.get_by(name=type_name)
+        if et is None:
+            return 0
+        return Entity.query.filter_by(
+            project_id=project_id, entity_type_id=et.id
+        ).count()
+
+    return count
+
+
+def _tgt_asset(project_id):
+    """Assets are entities whose type is not one of the structural types."""
+    structural = ["Episode", "Sequence", "Shot", "Concept", "Edit", "Scene"]
+
+    def count():
+        structural_ids = [
+            et.id
+            for et in EntityType.query.filter(
+                EntityType.name.in_(structural)
+            ).all()
+        ]
+        q = Entity.query.filter_by(project_id=project_id)
+        if structural_ids:
+            q = q.filter(~Entity.entity_type_id.in_(structural_ids))
+        return q.count()
+
+    return count
+
+
+def _tgt_entity_link(project_id):
+    """Entity links whose source entity lives in the project."""
+
+    def count():
+        return (
+            EntityLink.query.join(Entity, Entity.id == EntityLink.entity_in_id)
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_comment(project_id):
+    """Comments attached to tasks of the project (matches the source route)."""
+
+    def count():
+        return (
+            Comment.query.join(Task, Task.id == Comment.object_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_time_spent(project_id):
+    def count():
+        return (
+            TimeSpent.query.join(Task, Task.id == TimeSpent.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_preview_file(project_id):
+    def count():
+        return (
+            PreviewFile.query.join(Task, Task.id == PreviewFile.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_build_job(project_id):
+    def count():
+        return (
+            BuildJob.query.join(Playlist, Playlist.id == BuildJob.playlist_id)
+            .filter(Playlist.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_attachment_file(project_id):
+    def count():
+        return (
+            AttachmentFile.query.join(
+                Comment, Comment.id == AttachmentFile.comment_id
+            )
+            .join(Task, Task.id == Comment.object_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_subscription(project_id):
+    def count():
+        return (
+            Subscription.query.join(Task, Task.id == Subscription.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_notification(project_id):
+    """Notifications attached to tasks of the project."""
+
+    def count():
+        return (
+            Notification.query.join(Task, Task.id == Notification.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_news(project_id):
+    """News tied to tasks of the project."""
+
+    def count():
+        return (
+            News.query.join(Task, Task.id == News.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_output_file(project_id):
+    def count():
+        return (
+            OutputFile.query.join(Entity, Entity.id == OutputFile.entity_id)
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_working_file(project_id):
+    def count():
+        return (
+            WorkingFile.query.join(Task, Task.id == WorkingFile.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_asset_instance(project_id):
+    def count():
+        return (
+            AssetInstance.query.join(
+                Entity, Entity.id == AssetInstance.asset_id
+            )
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_chat(project_id):
+    """Chats attached to entities of the project."""
+
+    def count():
+        return (
+            Chat.query.join(Entity, Entity.id == Chat.object_id)
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_budget_entry(project_id):
+    def count():
+        return (
+            BudgetEntry.query.join(Budget, Budget.id == BudgetEntry.budget_id)
+            .filter(Budget.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_share_link(project_id):
+    def count():
+        return (
+            PlaylistShareLink.query.join(
+                Playlist, Playlist.id == PlaylistShareLink.playlist_id
+            )
+            .filter(Playlist.project_id == project_id)
+            .count()
+        )
+
+    return count
