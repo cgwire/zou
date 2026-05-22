@@ -128,3 +128,21 @@ class SyncServiceTestCase(ApiDBTestCase):
         ]
         for counter in counters:
             self.assertIsInstance(counter(), int)
+
+    def test_verify_project_sync_accepts_push_direction(self):
+        """sync-push-verify reuses verify_project_sync with direction="push".
+        Smoke test: the call should not raise on a project that exists both
+        on the (mocked) remote and locally."""
+        project_name = self.project.name
+
+        real_get = gazu.project.get_project_by_name
+
+        def fake_get(name):
+            return {"id": str(self.project.id), "name": name}
+
+        gazu.project.get_project_by_name = fake_get
+        try:
+            sync_service.verify_project_sync(project_name, direction="push")
+            sync_service.verify_project_sync(project_name, direction="pull")
+        finally:
+            gazu.project.get_project_by_name = real_get

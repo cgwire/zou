@@ -658,6 +658,23 @@ def sync_push(target, project, batch_size):
 
 
 @cli.command()
+@click.option("--target", required=True)
+@click.option("--project", required=True)
+def sync_push_verify(target, project):
+    """
+    Compare project-scoped row counts between the current instance and a
+    target instance. Run after ``sync-push --target ... --project ...`` to
+    spot rows that did not reach the target. Reads SYNC_LOGIN and
+    SYNC_PASSWORD from the environment.
+    """
+    from zou.app.utils import commands
+
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.verify_project_against_target(target, login, password, project)
+
+
+@cli.command()
 @click.option("--source", default="http://localhost:5000", show_default=True)
 @click.option("--project", default=None, show_default=True)
 @click.option(
