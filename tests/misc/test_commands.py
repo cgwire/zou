@@ -36,8 +36,14 @@ class CommandsTestCase(ApiDBTestCase):
         commands.init_data()
         task_types = TaskType.get_all()
         entity_types = EntityType.get_all()
-        self.assertEqual(len(task_types), 12)
+        self.assertEqual(len(task_types), 13)
         self.assertEqual(len(entity_types), 8)
+
+    def test_init_data_creates_concept_task_type(self):
+        commands.init_data()
+        concept_task_types = TaskType.get_all_by(for_entity="Concept")
+        self.assertEqual(len(concept_task_types), 1)
+        self.assertEqual(concept_task_types[0].name, "Concept")
 
 
 class DisableTwoFactorAuthenticationCommandTestCase(ApiDBTestCase):

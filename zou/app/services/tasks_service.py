@@ -1549,7 +1549,7 @@ def get_or_create_task_type(
     Create a new task type if it doesn't exist. If it exists, it returns the
     type from database.
     """
-    task_type = TaskType.get_by(name=name)
+    task_type = TaskType.get_by(name=name, for_entity=for_entity)
     if task_type is None:
         task_type = TaskType.create(
             name=name,
