@@ -377,6 +377,7 @@ def push_project_data(target, login, password, project_name, batch_size=200):
                 project_id=project_id, entity_type_id=entity_type.id
             ),
             batch_size=batch_size,
+            label=f"/import/kitsu/entities ({entity_type_name})",
         )
 
     _push_query(
@@ -457,24 +458,26 @@ def push_project_data(target, login, password, project_name, batch_size=200):
     logger.info(f"Push of {project.name} complete.")
 
 
-def _push_query(path, query, batch_size=200, relations=False):
+def _push_query(path, query, batch_size=200, relations=False, label=None):
     instances = query.all()
+    display = label or path
     if not instances:
-        logger.info(f"  {path}: nothing to push")
+        logger.info(f"  {display}: nothing to push")
         return
     payload = [i.serialize(relations=relations) for i in instances]
-    _push_batch(path, payload, batch_size)
+    _push_batch(path, payload, batch_size, label=display)
 
 
-def _push_batch(path, payload, batch_size=200):
+def _push_batch(path, payload, batch_size=200, label=None):
+    display = label or path
     total = len(payload)
     for offset in range(0, total, batch_size):
         chunk = payload[offset : offset + batch_size]
         try:
             gazu.client.post(path, chunk)
         except Exception:
-            logger.error(f"  {path}: batch {offset} failed", exc_info=1)
-    logger.info(f"  {path}: pushed {total} rows")
+            logger.error(f"  {display}: batch {offset} failed", exc_info=1)
+    logger.info(f"  {display}: pushed {total} rows")
 
 
 def run_last_events_sync(minutes=0, limit=300):
