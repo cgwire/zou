@@ -100,6 +100,49 @@ class UserServiceTestCase(ApiDBTestCase):
         tasks_service.assign_task(self.task_id, person_id)
         self.assertTrue(user_service.check_entity_access(str(self.asset_id)))
 
+    def _log_in_cg_artist_as_current_user(self, team_member=True):
+        """
+        Log in an unassigned CG artist and make get_current_user return it.
+        Returns the artist id. The artist is added to the project team unless
+        team_member is False.
+        """
+        self.generate_fixture_user_cg_artist()
+        artist_id = self.user_cg_artist["id"]
+        if team_member:
+            projects_service.add_team_member(self.project_id, artist_id)
+        self.log_in_cg_artist()
+        persons_service.get_current_user = (
+            lambda relations=False: self.user_cg_artist
+        )
+        return artist_id
+
+    def test_check_task_action_access_granted_for_entity_creator(self):
+        artist_id = self._log_in_cg_artist_as_current_user()
+        self.asset.update({"created_by": artist_id})
+        self.assertTrue(
+            user_service.check_task_action_access(str(self.task_id))
+        )
+
+    def test_check_task_action_access_denied_for_non_creator(self):
+        self._log_in_cg_artist_as_current_user()
+        # Created by someone else, not assigned -> no access.
+        self.asset.update({"created_by": self.user["id"]})
+        with self.assertRaises(permissions.PermissionDenied):
+            user_service.check_task_action_access(str(self.task_id))
+
+    def test_check_task_action_access_denied_without_creator(self):
+        self._log_in_cg_artist_as_current_user()
+        # Entity has no creator (created_by is None) -> no access.
+        with self.assertRaises(permissions.PermissionDenied):
+            user_service.check_task_action_access(str(self.task_id))
+
+    def test_check_task_action_access_denied_for_creator_not_in_team(self):
+        # The creator must still belong to the project team to act on a task.
+        artist_id = self._log_in_cg_artist_as_current_user(team_member=False)
+        self.asset.update({"created_by": artist_id})
+        with self.assertRaises(permissions.PermissionDenied):
+            user_service.check_task_action_access(str(self.task_id))
+
     def test_get_last_notifications(self):
         persons_service.get_current_user = self.get_current_user_artist
         self.generate_fixture_user_cg_artist()
