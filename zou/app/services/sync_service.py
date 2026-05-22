@@ -426,6 +426,10 @@ def push_project_data(target, login, password, project_name, batch_size=200):
         "/import/kitsu/preview-files",
         PreviewFile.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        # source_file_id -> OutputFile.id, and OutputFile is out of scope
+        # for sync-push (see the verify "NOT SYNCED" rows). Strip it so the
+        # FK doesn't blow up the whole batch on the target side.
+        strip_fields=["source_file_id"],
     )
 
     _push_query(
@@ -458,26 +462,45 @@ def push_project_data(target, login, password, project_name, batch_size=200):
     logger.info(f"Push of {project.name} complete.")
 
 
-def _push_query(path, query, batch_size=200, relations=False, label=None):
+def _push_query(
+    path,
+    query,
+    batch_size=200,
+    relations=False,
+    label=None,
+    strip_fields=None,
+):
     instances = query.all()
     display = label or path
     if not instances:
         logger.info(f"  {display}: nothing to push")
         return
     payload = [i.serialize(relations=relations) for i in instances]
+    if strip_fields:
+        for item in payload:
+            for field in strip_fields:
+                item.pop(field, None)
     _push_batch(path, payload, batch_size, label=display)
 
 
 def _push_batch(path, payload, batch_size=200, label=None):
     display = label or path
     total = len(payload)
+    failed = 0
     for offset in range(0, total, batch_size):
         chunk = payload[offset : offset + batch_size]
         try:
             gazu.client.post(path, chunk)
         except Exception:
             logger.error(f"  {display}: batch {offset} failed", exc_info=1)
-    logger.info(f"  {display}: pushed {total} rows")
+            failed += len(chunk)
+    if failed:
+        logger.warning(
+            f"  {display}: pushed {total - failed}/{total} rows "
+            f"({failed} failed)"
+        )
+    else:
+        logger.info(f"  {display}: pushed {total} rows")
 
 
 def run_last_events_sync(minutes=0, limit=300):
