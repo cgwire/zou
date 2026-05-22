@@ -26,7 +26,6 @@ from zou.app.services import (
     entities_service,
     shots_service,
     tasks_service,
-    user_service,
 )
 
 
@@ -225,14 +224,6 @@ class ImportKitsuCommentsResource(BaseImportKitsuResource):
         """
         return super().post()
 
-    def check_access(self, entry):
-        try:
-            task = tasks_service.get_task(str(entry["object_id"]))
-            user_service.check_project_access(task["project_id"])
-        except Exception:
-            return False
-        return True
-
     def emit_event(self, event_type, entry):
         task = tasks_service.get_task(str(entry["object_id"]))
         events.emit(
@@ -322,14 +313,6 @@ class ImportKitsuEntitiesResource(BaseImportKitsuResource):
             description: Invalid request body or missing required fields
         """
         return super().post()
-
-    def check_access(self, entry):
-        try:
-            project_id = entry["project_id"]
-            user_service.check_project_access(project_id)
-        except Exception:
-            return False
-        return True
 
     def emit_event(self, event_type, entry):
         project_id = entry["project_id"]
@@ -504,14 +487,6 @@ class ImportKitsuTasksResource(BaseImportKitsuResource):
         """
         return super().post()
 
-    def check_access(self, entry):
-        try:
-            project_id = entry["project_id"]
-            user_service.check_project_access(project_id)
-        except Exception:
-            return False
-        return True
-
     def emit_event(self, event_type, entry):
         events.emit(f"task:{event_type}", project_id=entry["project_id"])
 
@@ -598,15 +573,6 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
         """
         return super().post()
 
-    def check_access(self, entry):
-        try:
-            entity = entities_service.get_entity(entry["entity_in_id"])
-            project_id = entity["project_id"]
-            user_service.check_project_access(project_id)
-        except Exception:
-            return False
-        return True
-
     def emit_event(self, event_type, entry):
         entity = entities_service.get_entity(entry["entity_in_id"])
         project_id = entity["project_id"]
@@ -614,7 +580,10 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
 
 
 class _ProjectScopedImportResource(BaseImportKitsuResource):
-    """Import resource whose entries carry a ``project_id`` directly."""
+    """Import resource whose entries carry a ``project_id`` directly.
+
+    Admin-only by inheritance (BaseImportKitsuResource.check_access).
+    """
 
     event_name = ""
     id_field = ""
@@ -622,13 +591,6 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
     @jwt_required()
     def post(self):
         return super().post()
-
-    def check_access(self, entry):
-        try:
-            user_service.check_project_access(entry["project_id"])
-        except Exception:
-            return False
-        return True
 
     def emit_event(self, event_type, entry):
         events.emit(
@@ -639,7 +601,10 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
 
 
 class _TaskScopedImportResource(BaseImportKitsuResource):
-    """Import resource whose entries derive their project via ``task_id``."""
+    """Import resource whose entries derive their project via ``task_id``.
+
+    Admin-only by inheritance (BaseImportKitsuResource.check_access).
+    """
 
     event_name = ""
     id_field = ""
@@ -647,14 +612,6 @@ class _TaskScopedImportResource(BaseImportKitsuResource):
     @jwt_required()
     def post(self):
         return super().post()
-
-    def check_access(self, entry):
-        try:
-            project_id = _project_id_from_task(entry)
-            user_service.check_project_access(project_id)
-        except Exception:
-            return False
-        return True
 
     def emit_event(self, event_type, entry):
         events.emit(
@@ -737,20 +694,14 @@ class ImportKitsuMilestonesResource(_ProjectScopedImportResource):
 
 
 class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
+    """Admin-only by inheritance."""
+
     def __init__(self):
         BaseImportKitsuResource.__init__(self, BuildJob)
 
     @jwt_required()
     def post(self):
         return super().post()
-
-    def check_access(self, entry):
-        try:
-            project_id = _project_id_from_playlist(entry)
-            user_service.check_project_access(project_id)
-        except Exception:
-            return False
-        return True
 
     def emit_event(self, event_type, entry):
         events.emit(
@@ -761,20 +712,14 @@ class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
 
 
 class ImportKitsuAttachmentFilesResource(BaseImportKitsuResource):
+    """Admin-only by inheritance."""
+
     def __init__(self):
         BaseImportKitsuResource.__init__(self, AttachmentFile)
 
     @jwt_required()
     def post(self):
         return super().post()
-
-    def check_access(self, entry):
-        try:
-            project_id = _project_id_from_attachment(entry)
-            user_service.check_project_access(project_id)
-        except Exception:
-            return False
-        return True
 
     def emit_event(self, event_type, entry):
         events.emit(

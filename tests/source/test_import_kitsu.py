@@ -244,3 +244,26 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         ]
         self._post_kitsu("/import/kitsu/comments", payload)
         self.assertIsNotNone(Comment.get(new_id))
+
+    def test_non_admin_is_denied(self):
+        """
+        check_access falls back to has_admin_permissions on every
+        /import/kitsu/* route: a non-admin caller can POST but no row
+        gets created.
+        """
+        self.generate_fixture_user_cg_artist()
+        self.log_in_cg_artist()
+
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "project_id": self.project_id,
+                "task_type_id": str(self.task_type.id),
+                "name": "Should not import",
+                "date": "2026-06-01",
+            }
+        ]
+        response = self._post_kitsu("/import/kitsu/milestones", payload)
+        self.assertEqual(response, [])
+        self.assertIsNone(Milestone.get(new_id))
