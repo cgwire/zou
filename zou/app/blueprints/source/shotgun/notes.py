@@ -133,11 +133,11 @@ class ImportShotgunNotesResource(BaseImportShotgunResource):
         if comment is None:
             comment = Comment(**data)
             comment.save()
-            current_app.logger.info("Comment created: %s" % comment)
+            current_app.logger.info(f"Comment created: {comment}")
 
         else:
             comment.update(data)
-            current_app.logger.info("Comment updated: %s" % comment)
+            current_app.logger.info(f"Comment updated: {comment}")
         return comment
 
 

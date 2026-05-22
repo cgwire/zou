@@ -52,7 +52,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
     def test_add_preview_to_comment(self):
         # Comment
         self.project_id = self.project.id
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
             "comment": "comment test",
@@ -75,7 +75,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("thumbnails", "th01.png")
         )
-        path = "/pictures/preview-files/%s" % preview_file["id"]
+        path = f"/pictures/preview-files/{preview_file['id']}"
         self.upload_file(path, file_path_fixture)
         task = tasks_service.get_task(task_id)
         asset = assets_service.get_asset(self.task.entity_id)
@@ -89,7 +89,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         )
 
         # Add a new comment
-        path = "/actions/tasks/%s/comment/" % self.task.id
+        path = f"/actions/tasks/{self.task.id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
             "comment": "comment test 2",
@@ -106,7 +106,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("thumbnails", "th01.png")
         )
-        path = "/pictures/preview-files/%s" % preview_file["id"]
+        path = f"/pictures/preview-files/{preview_file['id']}"
         self.upload_file(path, file_path_fixture)
         task = tasks_service.get_task(task_id)
         asset = assets_service.get_asset(str(self.task.entity_id))
@@ -114,7 +114,7 @@ class RouteTaskChangeTestCase(ApiDBTestCase):
         self.assertEqual(task["last_preview_file_id"], preview_file["id"])
 
         # Delete preview
-        path = "/data/preview-files/%s" % preview_file["id"]
+        path = f"/data/preview-files/{preview_file['id']}"
         self.delete(path)
         task = tasks_service.get_task(task_id)
         asset = assets_service.get_asset(str(self.task.entity_id))

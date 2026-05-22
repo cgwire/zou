@@ -73,7 +73,7 @@ class NewsServiceTestCase(ApiDBTestCase):
                 self.task.id,
                 self.task_status.id,
                 self.user["id"],
-                "comment %s" % i,
+                f"comment {i}",
             )
             news = news_service.create_news_for_task_and_comment(
                 self.task_dict, comment
@@ -104,7 +104,7 @@ class NewsServiceTestCase(ApiDBTestCase):
                 self.task.id,
                 self.task_status.id,
                 self.user["id"],
-                "comment %s" % i,
+                f"comment {i}",
             )
             news_service.create_news_for_task_and_comment(
                 self.task_dict,

@@ -21,9 +21,9 @@ def register(event, name, handler, app=None):
         handlers[event] = OrderedDict()
 
     if app is None:
-        print("Handler [%s -> %s registered]" % (event, name))
+        print(f"Handler [{event} -> {name} registered]")
     else:
-        app.logger.info("Handler [%s -> %s registered]" % (event, name))
+        app.logger.info(f"Handler [{event} -> {name} registered]")
     handlers[event][name] = handler
 
 

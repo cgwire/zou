@@ -103,4 +103,4 @@ class ImportShotgunShotTestCase(ShotgunTestCase):
         self.shots = self.get("data/shots/all")
         self.assertEqual(len(self.shots), 0)
 
-        self.get("data/shots/%s" % shot["id"], 404)
+        self.get(f"data/shots/{shot['id']}", 404)

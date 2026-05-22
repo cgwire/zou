@@ -61,21 +61,19 @@ class UserContextRoutesTestCase(ApiDBTestCase):
 
     def test_get_project_sequences(self):
         self.assign_user(self.shot_task.id)
-        sequences = self.get(
-            "data/user/projects/%s/sequences" % self.project.id
-        )
+        sequences = self.get(f"data/user/projects/{self.project.id}/sequences")
         self.assertEqual(len(sequences), 1)
 
     def test_get_project_episodes(self):
         self.assign_user(self.shot_task.id)
-        episodes = self.get("data/user/projects/%s/episodes" % self.project.id)
+        episodes = self.get(f"data/user/projects/{self.project.id}/episodes")
         self.assertEqual(len(episodes), 1)
         self.assertEqual(episodes[0]["name"], "E01")
         self.assertEqual(episodes[0]["type"], "Episode")
 
     def test_get_sequence_shots(self):
         self.assign_user(self.shot_task.id)
-        shots = self.get("data/user/sequences/%s/shots" % self.sequence.id)
+        shots = self.get(f"data/user/sequences/{self.sequence.id}/shots")
         self.assertEqual(len(shots), 1)
         self.assertEqual(shots[0]["type"], "Shot")
         self.assertEqual(shots[0]["name"], "P01")
@@ -84,7 +82,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_scene()
         self.generate_fixture_scene_task()
         self.assign_user(self.scene_task.id)
-        scenes = self.get("data/user/sequences/%s/scenes" % self.sequence.id)
+        scenes = self.get(f"data/user/sequences/{self.sequence.id}/scenes")
         self.assertEqual(len(scenes), 1)
         self.assertEqual(scenes[0]["type"], "Scene")
         self.assertEqual(scenes[0]["name"], "SC01")
@@ -100,7 +98,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         task3_id = self.task.id
 
         asset_types = self.get(
-            "data/user/projects/%s/asset-types" % self.project.id
+            f"data/user/projects/{self.project.id}/asset-types"
         )
         self.assertEqual(len(asset_types), 0)
 
@@ -109,27 +107,25 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assign_user(task3_id)
         self.assign_user(shot_task_id)
         asset_types = self.get(
-            "data/user/projects/%s/asset-types" % self.project.id
+            f"data/user/projects/{self.project.id}/asset-types"
         )
         self.assertEqual(len(asset_types), 2)
 
     def test_get_project_asset_types_assets(self):
         task_id = self.task.id
         assets = self.get(
-            "data/user/projects/%s/asset-types/%s/assets"
-            % (self.project.id, self.asset_type.id)
+            f"data/user/projects/{self.project.id}/asset-types/{self.asset_type.id}/assets"
         )
         self.assertEqual(len(assets), 0)
         self.assign_user(task_id)
 
         assets = self.get(
-            "data/user/projects/%s/asset-types/%s/assets"
-            % (self.project.id, self.asset_type.id)
+            f"data/user/projects/{self.project.id}/asset-types/{self.asset_type.id}/assets"
         )
         self.assertEqual(len(assets), 1)
 
     def test_get_asset_tasks(self):
-        path = "data/user/assets/%s/tasks" % self.asset.id
+        path = f"data/user/assets/{self.asset.id}/tasks"
         task_id = self.task.id
 
         tasks = self.get(path)
@@ -140,7 +136,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
 
     def test_get_shot_tasks(self):
-        path = "data/user/shots/%s/tasks" % self.shot.id
+        path = f"data/user/shots/{self.shot.id}/tasks"
         shot_task_id = self.shot_task.id
 
         tasks = self.get(path)
@@ -154,7 +150,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.generate_fixture_scene()
         self.generate_fixture_scene_task()
         scene_task_id = self.scene_task.id
-        path = "data/user/scenes/%s/tasks" % self.scene.id
+        path = f"data/user/scenes/{self.scene.id}/tasks"
 
         tasks = self.get(path)
         self.assertEqual(len(tasks), 0)
@@ -164,7 +160,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(tasks), 1)
 
     def test_get_asset_task_types(self):
-        path = "data/user/assets/%s/task-types" % self.asset.id
+        path = f"data/user/assets/{self.asset.id}/task-types"
         task_id = self.task.id
         task_type_id = self.task_type.id
 
@@ -177,7 +173,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertEqual(task_types[0]["id"], str(task_type_id))
 
     def test_get_shot_task_types(self):
-        path = "data/user/shots/%s/task-types" % self.shot.id
+        path = f"data/user/shots/{self.shot.id}/task-types"
         shot_task_id = self.shot_task.id
 
         task_types = self.get(path)
@@ -190,7 +186,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
     def test_get_scene_task_types(self):
         self.generate_fixture_scene()
         self.generate_fixture_scene_task()
-        path = "data/user/scenes/%s/task-types" % self.scene.id
+        path = f"data/user/scenes/{self.scene.id}/task-types"
         scene_task_id = self.scene_task.id
 
         task_types = self.get(path)
@@ -347,11 +343,9 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         search_filter_group = self.post(path, filter_group_1)
         result = self.get(path)
         self.assertTrue("asset" in result)
-        self.put(
-            "%s/%s" % (path, search_filter_group["id"]), {"name": "updated"}
-        )
+        self.put(f"{path}/{search_filter_group['id']}", {"name": "updated"})
         result = self.get(
-            "data/search-filter-groups/%s" % search_filter_group["id"]
+            f"data/search-filter-groups/{search_filter_group['id']}"
         )
         self.assertEqual(result["name"], "updated")
 
@@ -368,7 +362,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         result = self.get(path)
         self.assertTrue("asset" in result)
 
-        self.delete("%s/%s" % (path, search_filter_group["id"]))
+        self.delete(f"{path}/{search_filter_group['id']}")
         result = self.get(path)
         self.assertFalse("asset" in result)
 
@@ -422,8 +416,8 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         search_filter = self.post(path, filter_1)
         result = self.get(path)
         self.assertTrue("asset" in result)
-        self.put("%s/%s" % (path, search_filter["id"]), {"name": "updated"})
-        result = self.get("data/search-filters/%s" % search_filter["id"])
+        self.put(f"{path}/{search_filter['id']}", {"name": "updated"})
+        result = self.get(f"data/search-filters/{search_filter['id']}")
         self.assertEqual(result["name"], "updated")
 
     def test_remove_filter(self):
@@ -439,7 +433,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         result = self.get(path)
         self.assertTrue("asset" in result)
 
-        self.delete("%s/%s" % (path, search_filter["id"]))
+        self.delete(f"{path}/{search_filter['id']}")
 
         result = self.get(path)
         self.assertFalse("asset" in result)
@@ -485,7 +479,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         path = "/data/user/notifications"
         notifications = self.get(path)
         notification = notifications[0]
-        path = "/data/user/notifications/%s" % notification["id"]
+        path = f"/data/user/notifications/{notification['id']}"
         notification_again = self.get(path)
         self.assertEqual(notification_again["id"], notification["id"])
         self.assertEqual(
@@ -498,21 +492,15 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         )
         self.assertFalse(self.user_id in recipients)
 
-        self.post(
-            "/actions/user/tasks/%s/subscribe" % self.task_dict["id"], {}
-        )
+        self.post(f"/actions/user/tasks/{self.task_dict['id']}/subscribe", {})
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
         self.assertTrue(self.user_id in recipients)
 
     def test_unsubscribe_task(self):
-        self.post(
-            "/actions/user/tasks/%s/subscribe" % self.task_dict["id"], {}
-        )
-        self.delete(
-            "/actions/user/tasks/%s/unsubscribe" % self.task_dict["id"]
-        )
+        self.post(f"/actions/user/tasks/{self.task_dict['id']}/subscribe", {})
+        self.delete(f"/actions/user/tasks/{self.task_dict['id']}/unsubscribe")
         recipients = notifications_service.get_notification_recipients(
             self.task_dict
         )
@@ -524,10 +512,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         )
         self.assertFalse(self.user_id in recipients)
 
-        path = "/actions/user/sequences/%s/task-types/%s/subscribe" % (
-            self.sequence_dict["id"],
-            self.task_type_dict["id"],
-        )
+        path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/subscribe'
         self.post(path, {})
 
         recipients = notifications_service.get_notification_recipients(
@@ -536,10 +521,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         self.assertTrue(self.user_id in recipients)
 
     def test_unsubscribe_sequence(self):
-        path = "/actions/user/sequences/%s/task-types/%s/" % (
-            self.sequence_dict["id"],
-            self.task_type_dict["id"],
-        )
+        path = f'/actions/user/sequences/{self.sequence_dict["id"]}/task-types/{self.task_type_dict["id"]}/'
         self.post(path + "subscribe", {})
         self.delete(path + "unsubscribe")
         recipients = notifications_service.get_notification_recipients(
@@ -640,7 +622,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Admin can update filter
         self.log_in_admin()
         self.put(
-            "data/user/filters/%s" % filter_2["id"],
+            f"data/user/filters/{filter_2['id']}",
             {"name": "team updated"},
         )
         result = self.get(path)
@@ -653,7 +635,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Artist cannot update admin's filter
         self.log_in_cg_artist()
         self.put(
-            "data/user/filters/%s" % result["asset"][project_id][0]["id"],
+            f"data/user/filters/{result['asset'][project_id][0]['id']}",
             {"name": "updated", "is_shared": True},
             404,
         )
@@ -688,7 +670,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Filter is shared with the artist's department
         self.log_in_admin()
         self.put(
-            "data/user/filters/%s" % filter_3["id"],
+            f"data/user/filters/{filter_3['id']}",
             {
                 "name": "department updated",
                 "is_shared": True,
@@ -776,8 +758,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Admin can update filter group
         self.log_in_admin()
         self.put(
-            "data/user/filter-groups/%s"
-            % result["asset"][project_id][0]["id"],
+            f"data/user/filter-groups/{result['asset'][project_id][0]['id']}",
             {"name": "updated"},
         )
         result = self.get(path)
@@ -788,8 +769,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Artist cannot update admin's filter group
         self.log_in_cg_artist()
         self.put(
-            "data/user/filter-groups/%s"
-            % result["asset"][project_id][0]["id"],
+            f"data/user/filter-groups/{result['asset'][project_id][0]['id']}",
             {"name": "updated", "is_shared": True},
             404,
         )
@@ -821,7 +801,7 @@ class UserContextRoutesTestCase(ApiDBTestCase):
         # Filter group is shared with the artist's department
         self.log_in_admin()
         self.put(
-            "data/user/filter-groups/%s" % filter_group_3["id"],
+            f"data/user/filter-groups/{filter_group_3['id']}",
             {
                 "name": "department updated",
                 "is_shared": True,

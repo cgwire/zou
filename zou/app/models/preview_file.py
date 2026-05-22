@@ -68,13 +68,12 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
     uploaded_movie_name = db.Column(db.String(150))  # deprecated
 
     def __repr__(self):
-        return "<PreviewFile %s>" % self.id
+        return f"<PreviewFile {self.id}>"
 
     @classmethod
     def create_from_import(cls, data):
-        del data["type"]
-        if "comments" in data:
-            del data["comments"]
+        data.pop("type", None)
+        data.pop("comments", None)
         previous_data = cls.get(data["id"])
         if "status" not in data or data["status"] is None:
             data["status"] = "ready"

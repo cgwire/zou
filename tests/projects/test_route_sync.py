@@ -45,36 +45,36 @@ class ProjectSyncRouteTestCase(ApiDBTestCase):
         )
 
     def test_get_build_jobs(self):
-        jobs = self.get("/data/projects/%s/build-jobs" % self.project_id)
+        jobs = self.get(f"/data/projects/{self.project_id}/build-jobs")
         self.assertEqual(len(jobs), 1)
 
     def test_get_subscriptions(self):
         subscriptions = self.get(
-            "/data/projects/%s/subscriptions" % self.project_id
+            f"/data/projects/{self.project_id}/subscriptions"
         )
         self.assertEqual(len(subscriptions), 1)
 
     def test_get_comments(self):
-        comments = self.get("/data/projects/%s/comments" % self.project_id)
+        comments = self.get(f"/data/projects/{self.project_id}/comments")
         print(comments)
         self.assertEqual(len(comments), 1)
 
     def test_get_notifications(self):
         notitfications = self.get(
-            "/data/projects/%s/notifications" % self.project_id
+            f"/data/projects/{self.project_id}/notifications"
         )
         self.assertEqual(len(notitfications), 1)
 
     def test_get_preview_files(self):
         preview_files = self.get(
-            "/data/projects/%s/preview-files" % self.project_id
+            f"/data/projects/{self.project_id}/preview-files"
         )
         self.assertEqual(len(preview_files), 1)
 
     def test_get_entity_links(self):
-        links = self.get("/data/projects/%s/entity-links" % self.project_id)
+        links = self.get(f"/data/projects/{self.project_id}/entity-links")
         self.assertEqual(len(links), 2)
 
     def test_get_milestones(self):
-        milestones = self.get("/data/projects/%s/milestones" % self.project_id)
+        milestones = self.get(f"/data/projects/{self.project_id}/milestones")
         self.assertEqual(len(milestones), 1)

@@ -106,10 +106,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
                 criterions_assets["source_id"] = episode_id
             assets = assets_service.get_assets(criterions_assets)
             for asset in assets:
-                key = "%s%s" % (
-                    asset_types_map[asset["entity_type_id"]],
-                    slugify(asset["name"]),
-                )
+                key = f'asset_types_map[asset["entity_type_id"]]{slugify(asset["name"])}'
                 self.assets_map[key] = asset["id"]
         elif task_type["for_entity"] == "Shot":
             sequences_map = {}
@@ -124,7 +121,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             for shot in shots:
                 sequence_key = sequences_map.get(shot["parent_id"])
                 if sequence_key is not None:
-                    key = "%s%s" % (sequence_key, slugify(shot["name"]))
+                    key = f"{sequence_key}{slugify(shot['name'])}"
                     self.shots_map[key] = shot["id"]
 
         for task in tasks_service.get_tasks_for_project_and_task_type(
@@ -133,7 +130,7 @@ class TaskTypeEstimationsCsvImportResource(BaseCsvProjectImportResource):
             self.tasks_map[task["entity_id"]] = task["id"]
 
     def import_row(self, row, project_id, task_type, episode_id=None):
-        key = slugify("%s%s" % (row["Parent"], row["Entity"]))
+        key = slugify(f"{row['Parent']}{row['Entity']}")
 
         if task_type["for_entity"] == "Asset" and self.assets_map.get(key):
             entity_id = self.assets_map[key]

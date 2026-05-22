@@ -69,7 +69,7 @@ class PlaylistCsvExport(Resource):
         for shot in playlist["shots"]:
             csv_content.append(self.build_row(shot))
 
-        file_name = "%s playlist %s" % (project["name"], playlist["name"])
+        file_name = f"{project['name']} playlist {playlist['name']}"
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
 
     def build_headers(self, playlist, project, episode=None):
@@ -78,8 +78,8 @@ class PlaylistCsvExport(Resource):
             entity_type = "for shots"
         context_name = project["name"]
         if episode:
-            context_name += " - %s" % episode["name"]
-        context_name += " | %s" % entity_type
+            context_name += f" - {episode['name']}"
+        context_name += f" | {entity_type}"
         timezone = persons_service.get_current_user()["timezone"]
         created_at = date_helpers.get_date_string_with_timezone(
             playlist["created_at"], timezone

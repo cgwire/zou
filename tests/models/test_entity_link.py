@@ -32,11 +32,9 @@ class EntityLinkTestCase(ApiDBTestCase):
                 "entity_out_id": self.entity_out_id,
             },
         )
-        entity_link_again = self.get(
-            "data/entity-links/%s" % entity_link["id"]
-        )
+        entity_link_again = self.get(f"data/entity-links/{entity_link['id']}")
         self.assertEqual(entity_link["id"], entity_link_again["id"])
-        self.get_404("data/entity-links/%s" % fields.gen_uuid())
+        self.get_404(f"data/entity-links/{fields.gen_uuid()}")
 
     def test_create_entity_link(self):
         data = {
@@ -57,14 +55,12 @@ class EntityLinkTestCase(ApiDBTestCase):
             },
         )
         data = {"nb_occurences": 5}
-        self.put("data/entity-links/%s" % entity_link["id"], data)
-        entity_link_again = self.get(
-            "data/entity-links/%s" % entity_link["id"]
-        )
+        self.put(f"data/entity-links/{entity_link['id']}", data)
+        entity_link_again = self.get(f"data/entity-links/{entity_link['id']}")
         self.assertEqual(
             data["nb_occurences"], entity_link_again["nb_occurences"]
         )
-        self.put_404("data/entity-links/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/entity-links/{fields.gen_uuid()}", data)
 
     def test_delete_entity_link(self):
         entity_link = self.post(
@@ -74,7 +70,7 @@ class EntityLinkTestCase(ApiDBTestCase):
                 "entity_out_id": self.entity_out_id,
             },
         )
-        self.delete("data/entity-links/%s" % entity_link["id"])
+        self.delete(f"data/entity-links/{entity_link['id']}")
         entity_links = self.get("data/entity-links")
         self.assertEqual(len(entity_links), 0)
-        self.delete_404("data/entity-links/%s" % fields.gen_uuid())
+        self.delete_404(f"data/entity-links/{fields.gen_uuid()}")

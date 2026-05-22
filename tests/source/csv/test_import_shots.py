@@ -32,7 +32,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
                 task_type_id=self.task_type_layout.id,
             )
         )
-        path = "/import/csv/projects/%s/shots" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/shots"
         self.project.update({"production_type": "tvshow"})
 
         file_path_fixture = self.get_fixture_file_path(
@@ -65,7 +65,7 @@ class ImportCsvShotsTestCase(ApiDBTestCase):
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "shots_no_metadata.csv")
         )
-        self.upload_file("%s?update=true" % path, file_path_fixture)
+        self.upload_file(f"{path}?update=true", file_path_fixture)
 
         shots = shots_service.get_shots()
         self.assertEqual(len(shots), 4)

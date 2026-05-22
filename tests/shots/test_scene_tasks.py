@@ -20,7 +20,7 @@ class SceneTasksTestCase(ApiDBTestCase):
         self.person_id = str(self.person.id)
 
     def test_get_tasks_for_scene(self):
-        tasks = self.get("data/scenes/%s/tasks" % self.scene.id)
+        tasks = self.get(f"data/scenes/{self.scene.id}/tasks")
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["id"], str(self.scene_task.id))
 
@@ -33,7 +33,7 @@ class SceneTasksTestCase(ApiDBTestCase):
         self.assertEqual(scenes[0]["name"], "SC01")
 
     def test_get_task_types_for_scene(self):
-        task_types = self.get("/data/scenes/%s/task-types" % self.scene.id)
+        task_types = self.get(f"/data/scenes/{self.scene.id}/task-types")
         self.assertEqual(len(task_types), 1)
         self.assertDictEqual(
             task_types[0], self.task_type_animation.serialize()

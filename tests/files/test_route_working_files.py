@@ -51,7 +51,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
 
         working_files = self.get(
-            "/data/tasks/%s/working-files/last-revisions" % self.task.id
+            f"/data/tasks/{self.task.id}/working-files/last-revisions"
         )
         self.assertEqual(working_files["main"], working_file_main.serialize())
         self.assertEqual(
@@ -64,7 +64,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(len(task.assignees), 1)
         self.assertNotEqual(self.user["id"], str(task.assignees[0].id))
 
-        path = "/data/tasks/%s/working-files/new" % self.task_id
+        path = f"/data/tasks/{self.task_id}/working-files/new"
         working_file = self.post(
             path,
             {
@@ -82,7 +82,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.assertEqual(self.user["id"], assignees[0]["id"])
 
         task = Task.get(self.task_id)
-        path = "/data/tasks/%s/working-files/new" % self.task_id
+        path = f"/data/tasks/{self.task_id}/working-files/new"
         working_file = self.post(
             path,
             {
@@ -125,7 +125,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
 
     def test_create_same_working_file(self):
-        path = "/data/tasks/%s/working-files/new" % self.task_id
+        path = f"/data/tasks/{self.task_id}/working-files/new"
         self.post(
             path,
             {
@@ -147,7 +147,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         )
 
     def test_update_modification_date(self):
-        path = "/actions/working-files/%s/modified" % self.working_file.id
+        path = f"/actions/working-files/{self.working_file.id}/modified"
         past = datetime.datetime.now(tz=datetime.timezone.utc).replace(
             microsecond=0, tzinfo=None
         ) - datetime.timedelta(seconds=2)
@@ -164,22 +164,22 @@ class WorkingFilesTestCase(ApiDBTestCase):
         working_file_id = str(self.working_file.id)
         output_file_id = str(self.output_file.id)
 
-        path = "/data/files/%s" % working_file_id
+        path = f"/data/files/{working_file_id}"
         remote_file = self.get(path)
         self.assertEqual(remote_file["id"], working_file_id)
         self.assertEqual(remote_file["type"], "WorkingFile")
 
-        path = "/data/files/%s" % output_file_id
+        path = f"/data/files/{output_file_id}"
         remote_file = self.get(path)
         self.assertEqual(remote_file["id"], output_file_id)
         self.assertEqual(remote_file["type"], "OutputFile")
 
-        path = "/data/files/%s" % self.task_id
+        path = f"/data/files/{self.task_id}"
         self.get(path, 404)
 
         self.generate_fixture_user_cg_artist()
         self.log_in_cg_artist()
-        path = "/data/files/%s" % output_file_id
+        path = f"/data/files/{output_file_id}"
         self.get(path, 403)
         projects_service.add_team_member(
             self.project_id, self.user_cg_artist["id"]
@@ -189,10 +189,10 @@ class WorkingFilesTestCase(ApiDBTestCase):
     def test_comment_working_file(self):
         comment_data = {"comment": "test working file comment"}
         self.put(
-            "/actions/working-files/%s/comment" % self.working_file.id,
+            f"/actions/working-files/{self.working_file.id}/comment",
             comment_data,
         )
-        working_file = self.get("data/working-files/%s" % self.working_file.id)
+        working_file = self.get(f"data/working-files/{self.working_file.id}")
         self.assertEqual(working_file["comment"], comment_data["comment"])
 
     def test_update_working_file_permission(self):
@@ -203,23 +203,23 @@ class WorkingFilesTestCase(ApiDBTestCase):
         comment_data = {"comment": "test working file comment"}
 
         self.put(
-            "/actions/working-files/%s/comment" % working_file["id"],
+            f"/actions/working-files/{working_file['id']}/comment",
             comment_data,
             403,
         )
         projects_service.add_team_member(self.project_id, user["id"])
         self.assign_task(working_file["task_id"], user["id"])
         self.put(
-            "/actions/working-files/%s/comment" % working_file["id"],
+            f"/actions/working-files/{working_file['id']}/comment",
             comment_data,
         )
-        working_file = self.get("data/working-files/%s" % working_file["id"])
+        working_file = self.get(f"data/working-files/{working_file['id']}")
         self.assertEqual(working_file["comment"], comment_data["comment"])
 
     def test_comment_working_wrong_data(self):
         comment_data = {"comment_wrong": "test working file comment"}
         self.put(
-            "/actions/working-files/%s/comment" % self.working_file.id,
+            f"/actions/working-files/{self.working_file.id}/comment",
             comment_data,
             400,
         )
@@ -234,7 +234,7 @@ class WorkingFilesTestCase(ApiDBTestCase):
         self.generate_fixture_task()
         self.generate_fixture_working_file(name="test_file_for_character")
 
-        new_files = self.get("/data/entities/%s/working-files" % entity_id)
+        new_files = self.get(f"/data/entities/{entity_id}/working-files")
 
         self.assertEqual(len(new_files), 2)
         for new_file in new_files:

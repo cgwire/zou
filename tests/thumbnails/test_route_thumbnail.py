@@ -52,14 +52,14 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         fs.rm_rf(TEST_FOLDER)
 
     def test_add_thumbnail(self):
-        path = "/pictures/thumbnails/persons/%s" % self.person_id
+        path = f"/pictures/thumbnails/persons/{self.person_id}"
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("thumbnails", "th01.png")
         )
         self.upload_file(path, file_path_fixture)
 
-        path = "/pictures/thumbnails/persons/%s.png" % self.person_id
+        path = f"/pictures/thumbnails/persons/{self.person_id}.png"
         result_file_path = self.get_file_path("th01.png")
 
         self.create_test_folder()
@@ -69,7 +69,7 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         self.assertEqual(result_image.size, thumbnail.BIG_SQUARE_SIZE)
 
     def test_add_preview(self):
-        path = "/pictures/preview-files/%s" % self.preview_file_id
+        path = f"/pictures/preview-files/{self.preview_file_id}"
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("thumbnails", "th01.png")
@@ -83,28 +83,23 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         )
         os.mkdir(TEST_FOLDER)
 
-        path = "/pictures/previews/preview-files/%s.png" % self.preview_file_id
+        path = f"/pictures/previews/preview-files/{self.preview_file_id}.png"
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (1200, 674))
 
-        path = (
-            "/pictures/thumbnails/preview-files/%s.png" % self.preview_file_id
-        )
+        path = f"/pictures/thumbnails/preview-files/{self.preview_file_id}.png"
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (150, 100))
 
-        path = (
-            "/pictures/thumbnails-square/preview-files/%s.png"
-            % self.preview_file_id
-        )
+        path = f"/pictures/thumbnails-square/preview-files/{self.preview_file_id}.png"
         self.download_file(path, result_file_path)
         result_image = Image.open(result_file_path)
         self.assertEqual(result_image.size, (100, 100))
 
     def test_set_main_preview(self):
-        path = "/pictures/preview-files/%s" % self.preview_file_id
+        path = f"/pictures/preview-files/{self.preview_file_id}"
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("thumbnails", "th01.png")
@@ -112,7 +107,7 @@ class RouteThumbnailTestCase(ApiDBTestCase):
         self.upload_file(path, file_path_fixture)
 
         path = (
-            "/actions/preview-files/%s/set-main-preview" % self.preview_file_id
+            f"/actions/preview-files/{self.preview_file_id}/set-main-preview"
         )
         self.put(path, {})
 

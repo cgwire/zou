@@ -12,9 +12,9 @@ class SearchFilterTestCase(ApiDBTestCase):
             self.post(
                 "data/search-filters",
                 {
-                    "name": "Filter %d" % i,
+                    "name": f"Filter {i}",
                     "list_type": "assets",
-                    "search_query": "query%d" % i,
+                    "search_query": f"query{i}",
                     "person_id": self.person_id,
                     "project_id": self.project_id,
                 },
@@ -27,10 +27,10 @@ class SearchFilterTestCase(ApiDBTestCase):
     def test_get_search_filter(self):
         search_filter = self.get_first("data/search-filters")
         search_filter_again = self.get(
-            "data/search-filters/%s" % search_filter["id"]
+            f"data/search-filters/{search_filter['id']}"
         )
         self.assertEqual(search_filter, search_filter_again)
-        self.get_404("data/search-filters/%s" % fields.gen_uuid())
+        self.get_404(f"data/search-filters/{fields.gen_uuid()}")
 
     def test_create_search_filter(self):
         data = {
@@ -48,18 +48,18 @@ class SearchFilterTestCase(ApiDBTestCase):
     def test_update_search_filter(self):
         search_filter = self.get_first("data/search-filters")
         data = {"name": "Updated Filter"}
-        self.put("data/search-filters/%s" % search_filter["id"], data)
+        self.put(f"data/search-filters/{search_filter['id']}", data)
         search_filter_again = self.get(
-            "data/search-filters/%s" % search_filter["id"]
+            f"data/search-filters/{search_filter['id']}"
         )
         self.assertEqual(data["name"], search_filter_again["name"])
-        self.put_404("data/search-filters/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/search-filters/{fields.gen_uuid()}", data)
 
     def test_delete_search_filter(self):
         filters = self.get("data/search-filters")
         self.assertEqual(len(filters), 3)
         search_filter = filters[0]
-        self.delete("data/search-filters/%s" % search_filter["id"])
+        self.delete(f"data/search-filters/{search_filter['id']}")
         filters = self.get("data/search-filters")
         self.assertEqual(len(filters), 2)
-        self.delete_404("data/search-filters/%s" % fields.gen_uuid())
+        self.delete_404(f"data/search-filters/{fields.gen_uuid()}")

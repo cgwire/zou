@@ -44,29 +44,29 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
         self.project_id = str(self.project.id)
 
     def test_import_casting(self):
-        path = "/import/csv/projects/%s/casting" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/casting"
         self.upload_csv(path, "casting")
 
-        assets = self.get("data/shots/%s/assets" % self.e01seq01sh01_id)
+        assets = self.get(f"data/shots/{self.e01seq01sh01_id}/assets")
         self.assertEqual(len(assets), 2)
         self.assertTrue("Victor" in [assets[0]["name"], assets[1]["name"]])
 
-        assets = self.get("data/shots/%s/assets" % self.e01seq01sh02_id)
+        assets = self.get(f"data/shots/{self.e01seq01sh02_id}/assets")
         self.assertEqual(len(assets), 2)
 
-        assets = self.get("data/shots/%s/assets" % self.e01seq02sh01_id)
+        assets = self.get(f"data/shots/{self.e01seq02sh01_id}/assets")
         self.assertEqual(len(assets), 1)
 
-        assets = self.get("data/shots/%s/assets" % self.e02seq01sh01_id)
+        assets = self.get(f"data/shots/{self.e02seq01sh01_id}/assets")
         self.assertEqual(len(assets), 2)
 
-        assets = self.get("data/assets/%s/assets" % self.asset_lake_id)
+        assets = self.get(f"data/assets/{self.asset_lake_id}/assets")
         self.assertEqual(len(assets), 3)
         self.assertTrue(
             "Boat" in [assets[0]["name"], assets[1]["name"], assets[2]["name"]]
         )
 
-        assets = self.get("data/assets/%s/assets" % self.asset_mine_id)
+        assets = self.get(f"data/assets/{self.asset_mine_id}/assets")
         self.assertEqual(len(assets), 2)
         self.assertTrue("Wagon" in [assets[0]["name"], assets[1]["name"]])
 
@@ -74,15 +74,15 @@ class ImportCsvCastingTestCase(ApiDBTestCase):
         self.assertEqual(len(links), 18)
 
     def test_import_casting_twice(self):
-        path = "/import/csv/projects/%s/casting" % self.project_id
+        path = f"/import/csv/projects/{self.project_id}/casting"
         self.upload_csv(path, "casting")
-        path = "/import/csv/projects/%s/casting" % self.project_id
+        path = f"/import/csv/projects/{self.project_id}/casting"
         self.upload_csv(path, "casting")
         links = EntityLink.query.all()
         self.assertEqual(len(links), 18)
         self.assertEqual(get_shot(self.e01seq01sh01_id)["nb_entities_out"], 2)
 
-        path = "/import/csv/projects/%s/casting" % self.project_id
+        path = f"/import/csv/projects/{self.project_id}/casting"
         self.upload_csv(path, "casting_02")
         links = EntityLink.query.all()
         self.assertEqual(len(links), 18)

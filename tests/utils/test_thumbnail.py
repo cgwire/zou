@@ -121,16 +121,16 @@ class ThumbnailTestCase(unittest.TestCase):
         fs.copyfile(file_path_fixture, original_path)
         thumbnail.generate_preview_variants(original_path, preview_id)
 
-        file_path = os.path.join(TEST_FOLDER, "previews-%s.png" % preview_id)
+        file_path = os.path.join(TEST_FOLDER, f"previews-{preview_id}.png")
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.PREVIEW_SIZE)
 
-        file_path = os.path.join(TEST_FOLDER, "thumbnails-%s.png" % preview_id)
+        file_path = os.path.join(TEST_FOLDER, f"thumbnails-{preview_id}.png")
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.RECTANGLE_SIZE)
 
         file_path = os.path.join(
-            TEST_FOLDER, "thumbnails-square-%s.png" % preview_id
+            TEST_FOLDER, f"thumbnails-square-{preview_id}.png"
         )
         self.assertTrue(os.path.exists(file_path))
         self.assertTrue(Image.open(file_path).size, thumbnail.SQUARE_SIZE)

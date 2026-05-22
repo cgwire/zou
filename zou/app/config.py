@@ -11,7 +11,7 @@ DEBUG_HOST = os.getenv("DEBUG_HOST", "127.0.0.1")
 DEBUG_PORT = int(os.getenv("DEBUG_PORT", 5000))
 
 APP_NAME = "Zou"
-APP_SYSTEM_ERROR_SUBJECT_LINE = "%s system error" % APP_NAME
+APP_SYSTEM_ERROR_SUBJECT_LINE = f"{APP_NAME} system error"
 SECRET_KEY = os.getenv("SECRET_KEY", "mysecretkey")
 
 AUTH_STRATEGY = os.getenv("AUTH_STRATEGY", "auth_local_classic")

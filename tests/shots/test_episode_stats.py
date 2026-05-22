@@ -72,7 +72,7 @@ class EpisodeStatsTestCase(ApiDBTestCase):
         ep3_id = self.episode_ids["E03"]
         layout_id = str(self.task_type_layout.id)
         animation_id = str(self.task_type_animation.id)
-        path = "/data/projects/%s/episodes/retake-stats" % self.project_id
+        path = f"/data/projects/{self.project_id}/episodes/retake-stats"
         retake_stats = self.get(path)
         self.assertEqual(
             retake_stats["all"][animation_id]["max_retake_count"], 2

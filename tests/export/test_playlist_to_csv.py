@@ -20,7 +20,7 @@ class PlaylistCsvExportTestCase(ApiDBTestCase):
 
     def test_get_playlist(self):
         csv_playlist = self.get_raw(
-            "/export/csv/playlists/%s" % self.playlist.id
+            f"/export/csv/playlists/{self.playlist.id}"
         )
         expected_result = "Playlist;Cosmos Landromat | for shots;Playlist 1;"
         self.assertTrue(csv_playlist.startswith(expected_result))

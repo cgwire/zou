@@ -478,7 +478,7 @@ def sync_with_ldap_server():
 
                 emails = entry.mail.values
                 if len(emails) == 0:
-                    emails = ["%s@%s" % (desktop_login, EMAIL_DOMAIN)]
+                    emails = [f"{desktop_login}@{EMAIL_DOMAIN}"]
                 else:
 
                     def sort_mails(email):
@@ -577,9 +577,7 @@ def sync_with_ldap_server():
             persons_service.update_person(
                 person.id, {"active": False}, bypass_protected_accounts=True
             )
-            print(
-                "User %s disabled (not found in LDAP)." % person.desktop_login
-            )
+            print(f"User {person.desktop_login} disabled (not found in LDAP).")
 
         for person, user in persons_to_update:
             try:
@@ -692,6 +690,30 @@ def import_data_from_another_instance(
             sync_service.run_other_sync(
                 project=project, with_events=with_events
             )
+
+
+def verify_project_against_source(source, login, password, project_name):
+    """
+    Connect to the source instance and compare row counts for every
+    project-scoped model. Prints a side-by-side report and a non-zero
+    exit code is not used — the report is informational.
+    """
+    with app.app_context():
+        sync_service.init(source, login, password)
+        sync_service.verify_project_sync(project_name)
+
+
+def push_project_to_target(
+    target, login, password, project_name, batch_size=200
+):
+    """
+    Push the project named ``project_name`` from the local instance to
+    ``target`` via /import/kitsu/* routes.
+    """
+    with app.app_context():
+        sync_service.push_project_data(
+            target, login, password, project_name, batch_size=batch_size
+        )
 
 
 def run_sync_change_daemon(event_source, source, login, password, logs_dir):
@@ -826,7 +848,7 @@ def reset_tasks_data(project_id):
 
 def remove_old_data(days_old=90):
     with app.app_context():
-        print("Start removing non critical data older than %s." % days_old)
+        print(f"Start removing non critical data older than {days_old}.")
         print("Removing old events...")
         deletion_service.remove_old_events(days_old)
         print("Removing old login logs...")

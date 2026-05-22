@@ -21,7 +21,7 @@ class CommentTestCase(ApiDBTestCase):
     def test_repr(self):
         self.assertEqual(
             str(Comment.get(self.comments[0]["id"])),
-            "<Comment of %s>" % self.comments[0]["object_id"],
+            f"<Comment of {self.comments[0]['object_id']}>",
         )
 
     def test_get_comments(self):
@@ -30,13 +30,13 @@ class CommentTestCase(ApiDBTestCase):
 
     def test_get_comment(self):
         comment = self.get_first("data/comments?relations=true")
-        comment_again = self.get("data/comments/%s" % comment["id"])
+        comment_again = self.get(f"data/comments/{comment['id']}")
         # The single-comment endpoint embeds the author so guest commenters
         # render with a name and avatar; the list endpoint does not.
         person = comment_again.pop("person")
         self.assertEqual(person["id"], comment["person_id"])
         self.assertEqual(comment, comment_again)
-        self.get_404("data/comments/%s/" % fields.gen_uuid())
+        self.get_404(f"data/comments/{fields.gen_uuid()}/")
 
     def test_create_comment(self):
         data = {
@@ -54,17 +54,17 @@ class CommentTestCase(ApiDBTestCase):
     def test_update_comment(self):
         comment = self.get_first("data/comments")
         data = {"text": "Edited comment"}
-        self.put("data/comments/%s" % comment["id"], data)
-        comment_again = self.get("data/comments/%s" % comment["id"])
+        self.put(f"data/comments/{comment['id']}", data)
+        comment_again = self.get(f"data/comments/{comment['id']}")
         self.assertEqual(data["text"], comment_again["text"])
         comment_id = fields.gen_uuid()
-        self.put_404("data/comments/%s" % comment_id, data)
+        self.put_404(f"data/comments/{comment_id}", data)
 
     def test_delete_comment(self):
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 3)
         comment = comments[0]
-        self.delete("data/comments/%s" % comment["id"])
+        self.delete(f"data/comments/{comment['id']}")
         comments = self.get("data/comments")
         self.assertEqual(len(comments), 2)
-        self.delete_404("data/comments/%s" % fields.gen_uuid())
+        self.delete_404(f"data/comments/{fields.gen_uuid()}")

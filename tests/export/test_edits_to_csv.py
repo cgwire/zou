@@ -6,7 +6,7 @@ from tests.edits.base import BaseEditTestCase
 class EditCsvExportTestCase(BaseEditTestCase):
     def test_export(self):
         csv_edits = self.get_raw(
-            "/export/csv/projects/%s/edits.csv" % self.project.id
+            f"/export/csv/projects/{self.project.id}/edits.csv"
         )
         expected_result = """Project;Episode;Name;Description;Time Spent;Contractor;Edit;Assignations\r
 Cosmos Landromat;E01;Edit;Description of the Edit;0.21;;opn;John Doe\r\n"""
@@ -29,7 +29,7 @@ Cosmos Landromat;E01;Edit;Description of the Edit;0.21;;opn;John Doe\r\n"""
             }
         )
         csv_edits = self.get_raw(
-            "/export/csv/projects/%s/edits.csv" % self.project.id
+            f"/export/csv/projects/{self.project.id}/edits.csv"
         )
         expected_result = """Project;Episode;Name;Description;Time Spent;Contractor;Start frame;Edit;Assignations\r
 Cosmos Landromat;E01;Edit;Description of the Edit;0.21;;100;opn;John Doe\r\n"""

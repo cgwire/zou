@@ -49,18 +49,18 @@ class PreviewBackgroundFileTestCase(ApiDBTestCase):
         )
         data = {"name": "test4"}
         self.put(
-            "data/preview-background-files/%s" % preview_background_file["id"],
+            f"data/preview-background-files/{preview_background_file['id']}",
             data,
         )
         preview_background_file_again = self.get(
-            "data/preview-background-files/%s" % preview_background_file["id"]
+            f"data/preview-background-files/{preview_background_file['id']}"
         )
         self.assertEqual(
             data["name"],
             preview_background_file_again["name"],
         )
         self.put_404(
-            "data/preview-background-files/%s" % fields.gen_uuid(), data
+            f"data/preview-background-files/{fields.gen_uuid()}", data
         )
 
     def test_delete_preview_background_file(self):
@@ -68,11 +68,11 @@ class PreviewBackgroundFileTestCase(ApiDBTestCase):
         self.assertEqual(len(preview_background_files), 2)
         preview_background_file = preview_background_files[0]
         self.delete(
-            "data/preview-background-files/%s" % preview_background_file["id"]
+            f"data/preview-background-files/{preview_background_file['id']}"
         )
         preview_background_files = self.get("data/preview-background-files")
         self.assertEqual(len(preview_background_files), 1)
-        self.delete_404("data/preview-background-files/%s" % fields.gen_uuid())
+        self.delete_404(f"data/preview-background-files/{fields.gen_uuid()}")
 
     def test_add_preview_background_to_project(self):
         data = {

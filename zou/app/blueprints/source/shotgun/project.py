@@ -139,11 +139,11 @@ class ImportShotgunProjectsResource(BaseImportShotgunResource):
                 project.file_tree = {}
 
             project.save()
-            current_app.logger.info("Project created: %s" % project)
+            current_app.logger.info(f"Project created: {project}")
 
         else:
             project.update(data)
-            current_app.logger.info("Project updated: %s" % project)
+            current_app.logger.info(f"Project updated: {project}")
 
         return project
 

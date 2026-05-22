@@ -54,7 +54,7 @@ def get_file_name(instance_id):
     """
     Build thumbnail file name for given id.
     """
-    return "%s.png" % instance_id
+    return f"{instance_id}.png"
 
 
 def get_full_size_from_width(im, width):
@@ -192,9 +192,7 @@ def generate_preview_variants(original_path, instance_id):
     for picture_data in variants:
         picture_type, size = picture_data
         folder_path = os.path.dirname(original_path)
-        picture_path = os.path.join(
-            folder_path, "%s-%s" % (picture_type, file_name)
-        )
+        picture_path = os.path.join(folder_path, f"{picture_type}-{file_name}")
         shutil.copyfile(original_path, picture_path)
         turn_into_thumbnail(picture_path, size)
         result.append((picture_type, picture_path))
@@ -206,7 +204,7 @@ def url_path(data_type, instance_id):
     Build thumbnail download path for given data type and instance ID.
     """
     data_type = data_type.replace("_", "-")
-    return "pictures/thumbnails/%s/%s.png" % (data_type, instance_id)
+    return f"pictures/thumbnails/{data_type}/{instance_id}.png"
 
 
 def flat(*nums):

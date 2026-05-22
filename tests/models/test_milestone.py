@@ -12,8 +12,8 @@ class MilestoneTestCase(ApiDBTestCase):
             self.post(
                 "data/milestones",
                 {
-                    "name": "MS%d" % i,
-                    "date": "2024-0%d-15" % (i + 1),
+                    "name": f"MS{i}",
+                    "date": f"2024-0{i + 1}-15",
                     "project_id": self.project_id,
                     "task_type_id": self.task_type_id,
                 },
@@ -25,9 +25,9 @@ class MilestoneTestCase(ApiDBTestCase):
 
     def test_get_milestone(self):
         milestone = self.get_first("data/milestones")
-        milestone_again = self.get("data/milestones/%s" % milestone["id"])
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
         self.assertEqual(milestone, milestone_again)
-        self.get_404("data/milestones/%s" % fields.gen_uuid())
+        self.get_404(f"data/milestones/{fields.gen_uuid()}")
 
     def test_create_milestone(self):
         data = {
@@ -44,16 +44,16 @@ class MilestoneTestCase(ApiDBTestCase):
     def test_update_milestone(self):
         milestone = self.get_first("data/milestones")
         data = {"name": "Updated Milestone"}
-        self.put("data/milestones/%s" % milestone["id"], data)
-        milestone_again = self.get("data/milestones/%s" % milestone["id"])
+        self.put(f"data/milestones/{milestone['id']}", data)
+        milestone_again = self.get(f"data/milestones/{milestone['id']}")
         self.assertEqual(data["name"], milestone_again["name"])
-        self.put_404("data/milestones/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/milestones/{fields.gen_uuid()}", data)
 
     def test_delete_milestone(self):
         milestones = self.get("data/milestones")
         self.assertEqual(len(milestones), 3)
         milestone = milestones[0]
-        self.delete("data/milestones/%s" % milestone["id"])
+        self.delete(f"data/milestones/{milestone['id']}")
         milestones = self.get("data/milestones")
         self.assertEqual(len(milestones), 2)
-        self.delete_404("data/milestones/%s" % fields.gen_uuid())
+        self.delete_404(f"data/milestones/{fields.gen_uuid()}")

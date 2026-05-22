@@ -45,15 +45,13 @@ class PersonTestCase(ApiDBTestCase):
 
     def test_get_person(self):
         person = self.get_first("data/persons")
-        person_again = self.get(
-            "data/persons/%s?relations=false" % person["id"]
-        )
+        person_again = self.get(f"data/persons/{person['id']}?relations=false")
         self.assertEqual(person, person_again)
         person_with_relations = self.get(
-            "data/persons/%s?relations=true" % person["id"]
+            f"data/persons/{person['id']}?relations=true"
         )
         self.assertTrue("departments" in person_with_relations)
-        self.get_404("data/persons/%s" % fields.gen_uuid())
+        self.get_404(f"data/persons/{fields.gen_uuid()}")
 
     def test_create_person(self):
         data = {
@@ -143,17 +141,17 @@ class PersonTestCase(ApiDBTestCase):
         data = {
             "first_name": "Johnny",
         }
-        self.put("data/persons/%s" % person["id"], data)
-        person_again = self.get("data/persons/%s" % person["id"])
+        self.put(f"data/persons/{person['id']}", data)
+        person_again = self.get(f"data/persons/{person['id']}")
         self.assertEqual(data["first_name"], person_again["first_name"])
-        self.put_404("data/persons/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/persons/{fields.gen_uuid()}", data)
 
     def test_update_person_with_duplicate_email(self):
         persons = sorted(self.get("data/persons"), key=itemgetter("email"))
         target = persons[0]
         other = next(p for p in persons if p["id"] != target["id"])
         response = self.put(
-            "data/persons/%s" % target["id"],
+            f"data/persons/{target['id']}",
             {"email": other["email"]},
             400,
         )
@@ -162,10 +160,10 @@ class PersonTestCase(ApiDBTestCase):
     def test_update_person_keep_own_email(self):
         person = self.get_first("data/persons")
         self.put(
-            "data/persons/%s" % person["id"],
+            f"data/persons/{person['id']}",
             {"email": person["email"], "first_name": "Johnny"},
         )
-        person_again = self.get("data/persons/%s" % person["id"])
+        person_again = self.get(f"data/persons/{person['id']}")
         self.assertEqual(person_again["first_name"], "Johnny")
         self.assertEqual(person_again["email"], person["email"])
 
@@ -179,7 +177,7 @@ class PersonTestCase(ApiDBTestCase):
             "first_name": "Johnny",
             "departments": departments,
         }
-        self.put("data/persons/%s" % person["id"], data)
+        self.put(f"data/persons/{person['id']}", data)
         person_again = Person.get(person["id"])
         self.assertEqual(
             set(str(department.id) for department in person_again.departments),
@@ -195,23 +193,23 @@ class PersonTestCase(ApiDBTestCase):
             person for person in persons if person["id"] != self.user["id"]
         ][0]
         data = {"active": False}
-        self.put("data/persons/%s" % person["id"], data, 200)
+        self.put(f"data/persons/{person['id']}", data, 200)
         data = {"active": True}
-        self.put("data/persons/%s" % person["id"], data, 400)
+        self.put(f"data/persons/{person['id']}", data, 400)
         config.USER_LIMIT = 100
         data = {"active": True}
-        self.put("data/persons/%s" % person["id"], data)
+        self.put(f"data/persons/{person['id']}", data)
 
     def test_delete_person(self):
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 4)
         persons = sorted(persons, key=itemgetter("email"))
         person = persons[1]
-        self.delete("data/persons/%s" % person["id"])
+        self.delete(f"data/persons/{person['id']}")
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 3)
 
-        self.delete_404("data/persons/%s" % fields.gen_uuid())
+        self.delete_404(f"data/persons/{fields.gen_uuid()}")
         persons = self.get("data/persons")
         self.assertEqual(len(persons), 3)
 
@@ -221,8 +219,8 @@ class PersonTestCase(ApiDBTestCase):
         self.generate_assigned_task()
         self.generate_fixture_comment()
         self.person_id = str(self.person.id)
-        self.get("data/persons/%s" % self.person_id)
-        self.delete("data/persons/%s" % self.person_id, 400)
+        self.get(f"data/persons/{self.person_id}")
+        self.delete(f"data/persons/{self.person_id}", 400)
 
     def test_force_delete(self):
         self.generate_fixture_task_status_todo()
@@ -230,6 +228,6 @@ class PersonTestCase(ApiDBTestCase):
         self.generate_assigned_task()
         self.generate_fixture_comment()
         self.person_id = str(self.person.id)
-        self.get("data/persons/%s" % self.person_id)
-        self.delete("data/persons/%s?force=true" % self.person_id)
-        self.get("data/persons/%s" % self.person_id, 404)
+        self.get(f"data/persons/{self.person_id}")
+        self.delete(f"data/persons/{self.person_id}?force=true")
+        self.get(f"data/persons/{self.person_id}", 404)

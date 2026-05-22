@@ -77,4 +77,28 @@ class MetadataDescriptor(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<MetadataDescriptor %s>" % self.id
+        return f"<MetadataDescriptor {self.id}>"
+
+    def set_departments(self, department_ids):
+        return self.set_links(
+            department_ids,
+            DepartmentMetadataDescriptorLink,
+            "metadata_descriptor_id",
+            "department_id",
+        )
+
+    @classmethod
+    def create_from_import(cls, data):
+        data.pop("type", None)
+        department_ids = data.pop("departments", None)
+        previous_data = cls.get(data["id"])
+        if previous_data is None:
+            instance = cls.create(**data)
+            is_update = False
+        else:
+            previous_data.update(data)
+            instance = previous_data
+            is_update = True
+        if department_ids is not None:
+            instance.set_departments(department_ids)
+        return instance, is_update

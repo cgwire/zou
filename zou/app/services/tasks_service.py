@@ -400,9 +400,7 @@ def _attach_assignee_ids(task_dicts):
     """
     task_ids = [task["id"] for task in task_dicts]
     links = (
-        db.session.query(
-            TaskPersonLink.task_id, TaskPersonLink.person_id
-        )
+        db.session.query(TaskPersonLink.task_id, TaskPersonLink.person_id)
         .filter(TaskPersonLink.task_id.in_(task_ids))
         .all()
     )

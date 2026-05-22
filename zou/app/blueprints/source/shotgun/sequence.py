@@ -150,7 +150,7 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
 
         if sequence is None and similar_sequence is None:
             sequence = Entity.create(**data, created_by=self.current_user_id)
-            current_app.logger.info("Sequence created: %s" % sequence)
+            current_app.logger.info(f"Sequence created: {sequence}")
 
         elif sequence is not None:
             if similar_sequence is None:
@@ -164,7 +164,7 @@ class ImportShotgunSequencesResource(BaseImportShotgunResource):
                     }
                 )
                 sequence.save()
-            current_app.logger.info("Sequence updated: %s" % sequence)
+            current_app.logger.info(f"Sequence updated: {sequence}")
 
         return sequence
 

@@ -94,7 +94,7 @@ def _build_2fa_registration_response(response_data, user_id):
         set_refresh_cookies(response, refresh_token)
 
     current_app.logger.info(
-        "2FA setup completed, JWT refreshed for user %s." % user_id
+        f"2FA setup completed, JWT refreshed for user {user_id}."
     )
     return response
 
@@ -238,10 +238,10 @@ class LoginResource(Resource, ArgsMixin):
             if auth_service.is_default_password(app, password):
                 token = auth_service.generate_reset_token()
                 auth_tokens_store.add(
-                    "reset-token-%s" % email, token, ttl=3600 * 2
+                    f"reset-token-{email}", token, ttl=3600 * 2
                 )
                 current_app.logger.info(
-                    "User %s must change his password." % email
+                    f"User {email} must change his password."
                 )
                 return (
                     {
@@ -587,7 +587,7 @@ class ChangePasswordResource(Resource, ArgsMixin):
             password = auth.encrypt_password(body.password)
             persons_service.update_password(user["email"], password)
             current_app.logger.info(
-                "User %s has changed his password" % user["email"]
+                f"User {user['email']} has changed his password"
             )
             organisation = persons_service.get_organisation()
             locale = user.get("locale") or getattr(
@@ -696,7 +696,7 @@ class ResetPasswordResource(Resource, ArgsMixin):
 
         try:
             token_from_store = auth_tokens_store.get(
-                "reset-token-%s" % body.email
+                f"reset-token-{body.email}"
             )
             if token_from_store and hmac.compare_digest(
                 token_from_store, body.token
@@ -704,9 +704,9 @@ class ResetPasswordResource(Resource, ArgsMixin):
                 auth.validate_password(body.password, body.password2)
                 password = auth.encrypt_password(body.password)
                 persons_service.update_password(body.email, password)
-                auth_tokens_store.delete("reset-token-%s" % body.email)
+                auth_tokens_store.delete(f"reset-token-{body.email}")
                 current_app.logger.info(
-                    "User %s has reset his password" % body.email
+                    f"User {body.email} has reset his password"
                 )
                 return {"success": True}
             else:
@@ -772,15 +772,12 @@ class ResetPasswordResource(Resource, ArgsMixin):
             )
 
         token = auth_service.generate_reset_token()
-        auth_tokens_store.add(
-            "reset-token-%s" % body.email, token, ttl=3600 * 2
-        )
+        auth_tokens_store.add(f"reset-token-{body.email}", token, ttl=3600 * 2)
         params = {"email": body.email, "token": token}
         query = urllib.parse.urlencode(params)
-        reset_url = "%s://%s/reset-change-password?%s" % (
-            config.DOMAIN_PROTOCOL,
-            config.DOMAIN_NAME,
-            query,
+        reset_url = (
+            f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+            f"/reset-change-password?{query}"
         )
         locale = user.get("locale") or getattr(
             config, "DEFAULT_LOCALE", "en_US"

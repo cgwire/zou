@@ -125,10 +125,10 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                         break
                 if task_status_id is None:
                     raise RowException(
-                        "Task status not found for %s" % task_status_name
+                        f"Task status not found for {task_status_name}"
                     )
 
-            task_comment_text = row.get("%s comment" % task_type.name, None)
+            task_comment_text = row.get(f"{task_type.name} comment", None)
 
             if task_status_id is not None or task_comment_text not in [
                 None,
@@ -195,7 +195,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         shot_name = row["Name"]
 
         if self.is_tv_show:
-            episode_key = "%s-%s" % (project_id, episode_name)
+            episode_key = f"{project_id}-{episode_name}"
             if episode_key not in self.episodes:
                 self.episodes[episode_key] = shots_service.create_episode(
                     project_id,
@@ -204,13 +204,9 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                     created_by=self.current_user_id,
                 )
 
-            sequence_key = "%s-%s-%s" % (
-                project_id,
-                episode_name,
-                sequence_name,
-            )
+            sequence_key = f"{project_id}-{episode_name}-{sequence_name}"
         else:
-            sequence_key = "%s-%s" % (project_id, sequence_name)
+            sequence_key = f"{project_id}-{sequence_name}"
 
         if sequence_key not in self.sequences:
             if self.is_tv_show:
@@ -253,7 +249,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
                 shot_new_values["nb_frames"] = int(nb_frames)
             except (ValueError, TypeError):
                 raise RowException(
-                    "nb_frames must be an integer, got '%s'" % nb_frames
+                    f"nb_frames must be an integer, got '{nb_frames}'"
                 )
 
         if entity is None or not entity.data:
@@ -293,7 +289,7 @@ class ShotsCsvImportResource(BaseCsvProjectImportResource):
         if entity is None:
             entity = Entity.create(
                 **{**shot_values, **shot_new_values},
-                created_by=self.current_user_id
+                created_by=self.current_user_id,
             )
 
             index_service.index_shot(entity)

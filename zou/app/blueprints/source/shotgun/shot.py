@@ -214,7 +214,7 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
 
         if shot is None:
             shot = Entity.create(**data, created_by=self.current_user_id)
-            current_app.logger.info("Shot created: %s" % shot)
+            current_app.logger.info(f"Shot created: {shot}")
 
         else:
             if shot.data is None:
@@ -223,7 +223,7 @@ class ImportShotgunShotsResource(BaseImportShotgunResource):
             shot.data.update(data["data"])
             shot.save()
             shots_service.clear_shot_cache(str(shot.id))
-            current_app.logger.info("Shot updated: %s" % shot)
+            current_app.logger.info(f"Shot updated: {shot}")
 
         return shot
 

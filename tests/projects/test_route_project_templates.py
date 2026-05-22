@@ -38,18 +38,18 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(len(templates), 1)
 
         # Get
-        again = self.get("/data/project-templates/%s" % template["id"])
+        again = self.get(f"/data/project-templates/{template['id']}")
         self.assertEqual(again["id"], template["id"])
 
         # Update
         updated = self.put(
-            "/data/project-templates/%s" % template["id"],
+            f"/data/project-templates/{template['id']}",
             {"description": "updated"},
         )
         self.assertEqual(updated["description"], "updated")
 
         # Delete
-        self.delete("/data/project-templates/%s" % template["id"])
+        self.delete(f"/data/project-templates/{template['id']}")
         self.assertEqual(self.get("/data/project-templates"), [])
 
     def test_create_template_duplicate_name_returns_400(self):
@@ -68,7 +68,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
     def test_task_type_link_routes(self):
         template = self._create_template()
         link = self.post(
-            "/data/project-templates/%s/task-types" % template["id"],
+            f"/data/project-templates/{template['id']}/task-types",
             {
                 "task_type_id": str(self.task_type_modeling.id),
                 "priority": 3,
@@ -77,23 +77,22 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(link["priority"], 3)
 
         types = self.get(
-            "/data/project-templates/%s/task-types" % template["id"]
+            f"/data/project-templates/{template['id']}/task-types"
         )
         self.assertEqual(len(types), 1)
 
         self.delete(
-            "/data/project-templates/%s/task-types/%s"
-            % (template["id"], self.task_type_modeling.id)
+            f'/data/project-templates/{template["id"]}/task-types/{self.task_type_modeling.id}'
         )
         types = self.get(
-            "/data/project-templates/%s/task-types" % template["id"]
+            f"/data/project-templates/{template['id']}/task-types"
         )
         self.assertEqual(len(types), 0)
 
     def test_task_status_link_routes(self):
         template = self._create_template()
         link = self.post(
-            "/data/project-templates/%s/task-statuses" % template["id"],
+            f"/data/project-templates/{template['id']}/task-statuses",
             {
                 "task_status_id": str(self.task_status.id),
                 "priority": 1,
@@ -103,56 +102,53 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(link["priority"], 1)
 
         statuses = self.get(
-            "/data/project-templates/%s/task-statuses" % template["id"]
+            f"/data/project-templates/{template['id']}/task-statuses"
         )
         self.assertEqual(len(statuses), 1)
 
         self.delete(
-            "/data/project-templates/%s/task-statuses/%s"
-            % (template["id"], self.task_status.id)
+            f'/data/project-templates/{template["id"]}/task-statuses/{self.task_status.id}'
         )
         statuses = self.get(
-            "/data/project-templates/%s/task-statuses" % template["id"]
+            f"/data/project-templates/{template['id']}/task-statuses"
         )
         self.assertEqual(len(statuses), 0)
 
     def test_asset_type_link_routes(self):
         template = self._create_template()
         self.post(
-            "/data/project-templates/%s/asset-types" % template["id"],
+            f"/data/project-templates/{template['id']}/asset-types",
             {"asset_type_id": str(self.asset_type.id)},
         )
         items = self.get(
-            "/data/project-templates/%s/asset-types" % template["id"]
+            f"/data/project-templates/{template['id']}/asset-types"
         )
         self.assertEqual(len(items), 1)
 
         self.delete(
-            "/data/project-templates/%s/asset-types/%s"
-            % (template["id"], self.asset_type.id)
+            f"/data/project-templates/{template['id']}/asset-types/{self.asset_type.id}"
         )
         items = self.get(
-            "/data/project-templates/%s/asset-types" % template["id"]
+            f"/data/project-templates/{template['id']}/asset-types"
         )
         self.assertEqual(len(items), 0)
 
     def test_status_automation_link_routes(self):
         template = self._create_template()
         self.post(
-            "/data/project-templates/%s/status-automations" % template["id"],
+            f"/data/project-templates/{template['id']}/status-automations",
             {"status_automation_id": str(self.status_automation_to_status.id)},
         )
         items = self.get(
-            "/data/project-templates/%s/status-automations" % template["id"]
+            f"/data/project-templates/{template['id']}/status-automations"
         )
         self.assertEqual(len(items), 1)
 
         self.delete(
-            "/data/project-templates/%s/status-automations/%s"
-            % (template["id"], self.status_automation_to_status.id)
+            f'/data/project-templates/{template["id"]}/status-automations/{self.status_automation_to_status.id}'
         )
         items = self.get(
-            "/data/project-templates/%s/status-automations" % template["id"]
+            f"/data/project-templates/{template['id']}/status-automations"
         )
         self.assertEqual(len(items), 0)
 
@@ -169,7 +165,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             }
         ]
         result = self.put(
-            "/data/project-templates/%s/metadata-descriptors" % template["id"],
+            f"/data/project-templates/{template['id']}/metadata-descriptors",
             {"metadata_descriptors": descriptors},
         )
         self.assertEqual(len(result["metadata_descriptors"]), 1)
@@ -182,16 +178,16 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
     def test_create_template_from_project_route(self):
         # Configure the source project a bit
         self.post(
-            "/data/projects/%s/settings/task-types" % self.project_id,
+            f"/data/projects/{self.project_id}/settings/task-types",
             {"task_type_id": str(self.task_type_modeling.id)},
         )
         template = self.post(
-            "/data/project-templates/from-project/%s" % self.project_id,
+            f"/data/project-templates/from-project/{self.project_id}",
             {"name": "Snapshot of Cosmos", "description": "snapshot"},
         )
         self.assertEqual(template["name"], "Snapshot of Cosmos")
         types = self.get(
-            "/data/project-templates/%s/task-types" % template["id"]
+            f"/data/project-templates/{template['id']}/task-types"
         )
         self.assertEqual(len(types), 1)
 
@@ -200,7 +196,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
     def test_apply_template_to_project_route(self):
         template = self._create_template()
         self.post(
-            "/data/project-templates/%s/task-types" % template["id"],
+            f"/data/project-templates/{template['id']}/task-types",
             {
                 "task_type_id": str(self.task_type_modeling.id),
                 "priority": 5,
@@ -212,14 +208,13 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             {"name": "Target Project"},
         )
         result = self.post(
-            "/data/projects/%s/apply-template/%s"
-            % (target["id"], template["id"]),
+            f"/data/projects/{target['id']}/apply-template/{template['id']}",
             {},
             code=200,
         )
         self.assertEqual(result["id"], target["id"])
         # Verify task type link materialized on the project
-        links = self.get("/data/projects/%s" % target["id"])
+        links = self.get(f"/data/projects/{target['id']}")
         self.assertIn(
             str(self.task_type_modeling.id), links.get("task_types", [])
         )
@@ -237,7 +232,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             },
         )
         self.post(
-            "/data/project-templates/%s/task-types" % template["id"],
+            f"/data/project-templates/{template['id']}/task-types",
             {"task_type_id": str(self.task_type_modeling.id)},
         )
 
@@ -252,7 +247,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
         self.assertEqual(project["ratio"], "2.39:1")
         self.assertEqual(project["max_retakes"], 5)
         # Task type link materialized
-        full = self.get("/data/projects/%s" % project["id"])
+        full = self.get(f"/data/projects/{project['id']}")
         self.assertIn(
             str(self.task_type_modeling.id), full.get("task_types", [])
         )
@@ -279,7 +274,7 @@ class ProjectTemplatesRoutesTestCase(ApiDBTestCase):
             {"name": "Template With Metadata"},
         )
         self.put(
-            "/data/project-templates/%s/metadata-descriptors" % template["id"],
+            f"/data/project-templates/{template['id']}/metadata-descriptors",
             {
                 "metadata_descriptors": [
                     {

@@ -629,8 +629,7 @@ def retrieve_playlist_tmp_file(preview_file):
     else:
         file_path = os.path.join(
             config.TMP_DIR,
-            "cache-previews-%s.%s"
-            % (preview_file["id"], preview_file["extension"]),
+            f"cache-previews-{preview_file['id']}.{preview_file['extension']}",
         )
         if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
             if exists_func(prefix, preview_file["id"]):
@@ -717,7 +716,7 @@ def build_playlist_movie_file(playlist, job, shots, params, full, remote):
             job = end_build_job(playlist, job, success)
 
     if not success:
-        raise Exception("Failure while building playlist %r" % playlist["id"])
+        raise Exception(f"Failure while building playlist {playlist['id']!r}")
 
     return job
 
@@ -838,11 +837,9 @@ def build_playlist_job(playlist, job, shots, params, email, full, remote):
     if job["status"] == "succeeded":
         person = persons_service.get_person_by_email_raw(email)
         organisation = persons_service.get_organisation()
-        playlist_url = "%s://%s/api/data/playlists/%s/jobs/%s/build/mp4" % (
-            config.DOMAIN_PROTOCOL,
-            config.DOMAIN_NAME,
-            playlist["id"],
-            job["id"],
+        playlist_url = (
+            f"{config.DOMAIN_PROTOCOL}://{config.DOMAIN_NAME}"
+            f"/api/data/playlists/{playlist['id']}/jobs/{job['id']}/build/mp4"
         )
         html = f"""<p>Hello {person.first_name},</p>
 <p>Your playlist {playlist["name"]} build is available:
@@ -873,7 +870,7 @@ def get_playlist_download_context_name(project, playlist):
             episode_name = "all assets"
         else:
             episode_name = "main pack"
-        context_name += "_%s" % slugify(episode_name, separator="_")
+        context_name += f"_{slugify(episode_name, separator='_')}"
     return context_name
 
 
@@ -882,10 +879,7 @@ def get_playlist_file_name(playlist):
     Build file name for the movie file matching given playlist.
     """
     project = projects_service.get_project(playlist["project_id"])
-    download_name = "%s_%s" % (
-        slugify(project["name"]),
-        slugify(playlist["name"]),
-    )
+    download_name = f"{slugify(project['name'])}_{slugify(playlist['name'])}"
     return slugify(download_name)
 
 
@@ -893,7 +887,7 @@ def get_playlist_movie_file_path(build_job):
     """
     Build file path for the movie file matching given playlist.
     """
-    movie_file_name = "cache-playlists-%s.mp4" % build_job["id"]
+    movie_file_name = f"cache-playlists-{build_job['id']}.mp4"
     return os.path.join(config.TMP_DIR, movie_file_name)
 
 
@@ -901,7 +895,7 @@ def get_playlist_zip_file_path(playlist):
     """
     Build file path for the archive file matching given playlist.
     """
-    zip_file_name = "%s.zip" % playlist["id"]
+    zip_file_name = f"{playlist['id']}.zip"
     return os.path.join(config.TMP_DIR, zip_file_name)
 
 
@@ -961,7 +955,7 @@ def _remove_build_job_impl(playlist, job_dict):
             file_store.remove_movie("playlists", build_job_id)
         except Exception:
             current_app.logger.error(
-                "Playlist file can't be deleted: %s" % build_job_id
+                f"Playlist file can't be deleted: {build_job_id}"
             )
     job = BuildJob.get(build_job_id)
     if job is not None:

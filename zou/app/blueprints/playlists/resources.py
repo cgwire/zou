@@ -436,12 +436,10 @@ class PlaylistDownloadResource(Resource):
         context_name = playlists_service.get_playlist_download_context_name(
             project, playlist
         )
-        download_name = "%s_%s_%s.mp4" % (
-            slugify.slugify(build_job["created_at"], separator="").replace(
-                "t", "_"
-            ),
-            context_name,
-            slugify.slugify(playlist["name"], separator="_"),
+        download_name = (
+            f"{slugify.slugify(build_job['created_at'], separator='').replace('t', '_')}"
+            f"_{context_name}_"
+            f"{slugify.slugify(playlist['name'], separator='_')}.mp4"
         )
         return flask_send_file(
             movie_file_path,
@@ -598,9 +596,9 @@ class PlaylistZipDownloadResource(Resource):
         context_name = playlists_service.get_playlist_download_context_name(
             project, playlist
         )
-        download_name = "%s_%s.zip" % (
-            context_name,
-            slugify.slugify(playlist["name"], separator="_"),
+        download_name = (
+            f"{context_name}_"
+            f"{slugify.slugify(playlist['name'], separator='_')}.zip"
         )
 
         @after_this_request

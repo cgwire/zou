@@ -57,7 +57,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         )
         db.session.commit()
         self.assertEqual(number_of_task_per_entity_to_create, 3)
-        path = "/import/csv/projects/%s/assets" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/assets"
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets.csv")
@@ -85,7 +85,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_no_metadata.csv")
         )
-        self.upload_file("%s?update=true" % path, file_path_fixture)
+        self.upload_file(f"{path}?update=true", file_path_fixture)
 
         entities = Entity.query.all()
         self.assertEqual(len(entities), 3)
@@ -94,7 +94,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(asset.data.get("contractor", None), "contractor 1")
 
     def test_import_assets_duplicates(self):
-        path = "/import/csv/projects/%s/assets" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/assets"
 
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets.csv")
@@ -106,7 +106,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
         self.assertEqual(len(entities), 3)
 
     def test_import_assets_with_non_comma_delimiter(self):
-        path = "/import/csv/projects/%s/assets" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_other_delimiter.csv")
         )
@@ -116,7 +116,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
     def test_import_assets_empty_lines(self):
         # With empty lines. It should work
-        path = "/import/csv/projects/%s/assets" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_broken_01.csv")
         )
@@ -126,7 +126,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
     def test_import_assets_missing_columns(self):
         # With missing columns on a given line. It should not work.
-        path = "/import/csv/projects/%s/assets" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_broken_02.csv")
         )
@@ -137,7 +137,7 @@ class ImportCsvAssetsTestCase(ApiDBTestCase):
 
     def test_import_assets_missing_header(self):
         # With missing columns on a given line. It should not work.
-        path = "/import/csv/projects/%s/assets" % self.project.id
+        path = f"/import/csv/projects/{self.project.id}/assets"
         file_path_fixture = self.get_fixture_file_path(
             os.path.join("csv", "assets_broken_03.csv")
         )

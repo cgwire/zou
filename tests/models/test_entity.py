@@ -20,9 +20,9 @@ class EntityTestCase(ApiDBTestCase):
 
     def test_get_entity(self):
         entity = self.get_first("data/entities?relations=true")
-        entity_again = self.get("data/entities/%s" % entity["id"])
+        entity_again = self.get(f"data/entities/{entity['id']}")
         self.assertEqual(entity, entity_again)
-        self.get_404("data/entities/%s" % fields.gen_uuid())
+        self.get_404(f"data/entities/{fields.gen_uuid()}")
 
     def test_create_entity(self):
         data = {
@@ -40,28 +40,28 @@ class EntityTestCase(ApiDBTestCase):
     def test_update_entity(self):
         entity = self.get_first("data/entities")
         data = {"name": "Cosmos Landromat 2", "data": {"extra_work": True}}
-        self.put("data/entities/%s" % entity["id"], data)
-        entity_again = self.get("data/entities/%s" % entity["id"])
+        self.put(f"data/entities/{entity['id']}", data)
+        entity_again = self.get(f"data/entities/{entity['id']}")
         self.assertEqual(entity_again["name"], data["name"])
         self.assertEqual(entity_again["data"], data["data"])
 
         data = {"data": {"extra_field": True}}
-        self.put("data/entities/%s" % entity["id"], data)
-        entity_again = self.get("data/entities/%s" % entity["id"])
+        self.put(f"data/entities/{entity['id']}", data)
+        entity_again = self.get(f"data/entities/{entity['id']}")
         self.assertEqual(
             entity_again["data"], {"extra_work": True, "extra_field": True}
         )
 
-        self.put_404("data/entities/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/entities/{fields.gen_uuid()}", data)
 
     def test_delete_entity(self):
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 3)
         entity = entities[0]
-        self.delete("data/entities/%s" % entity["id"])
+        self.delete(f"data/entities/{entity['id']}")
         entities = self.get("data/entities")
         self.assertEqual(len(entities), 2)
-        self.delete_404("data/entities/%s" % fields.gen_uuid())
+        self.delete_404(f"data/entities/{fields.gen_uuid()}")
 
     def test_delete_entity_link(self):
         entity_link = {
@@ -71,6 +71,6 @@ class EntityTestCase(ApiDBTestCase):
         entity_link = self.post("data/entity-links", entity_link)
         entity_links = self.get("data/entity-links")
         self.assertEqual(len(entity_links), 1)
-        self.delete("data/entity-links/%s" % entity_link["id"])
+        self.delete(f"data/entity-links/{entity_link['id']}")
         entity_links = self.get("data/entity-links")
         self.assertEqual(len(entity_links), 0)

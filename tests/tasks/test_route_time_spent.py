@@ -53,8 +53,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
     def test_set_time_spent(self):
         data = {"duration": 3600}
         self.post(
-            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s"
-            % (self.task.id, self.person.id),
+            f"/actions/tasks/{self.task.id}/time-spents/2017-09-23/persons/{self.person.id}",
             data,
         )
         time_spents = self.get("data/time-spents")
@@ -65,8 +64,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
     def test_set_time_spent_wrong_date(self):
         data = {"duration": 3600}
         self.post(
-            "/actions/tasks/%s/time-spents/wrong-date/persons/%s"
-            % (self.task.id, self.person.id),
+            f"/actions/tasks/{self.task.id}/time-spents/wrong-date/persons/{self.person.id}",
             data,
             400,
         )
@@ -76,10 +74,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
         task_id = str(self.task.id)
 
         data = {"duration": 7200}
-        path = "/actions/tasks/%s/time-spents/2017-09-27/persons/%s" % (
-            task_id,
-            user_id,
-        )
+        path = f"/actions/tasks/{task_id}/time-spents/2017-09-27/persons/{user_id}"
         self.post(path, data, 403)
 
     def test_get_time_spent(self):
@@ -108,15 +103,13 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
 
         data = {"duration": 3600}
         self.post(
-            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s"
-            % (task_id, person_id),
+            f"/actions/tasks/{task_id}/time-spents/2017-09-23/persons/{person_id}",
             data,
         )
 
         data = {"duration": 10800}
         self.post(
-            "/actions/tasks/%s/time-spents/2017-09-23/persons/%s/add"
-            % (task_id, person_id),
+            f"/actions/tasks/{task_id}/time-spents/2017-09-23/persons/{person_id}/add",
             data,
         )
         time_spents = self.get("data/time-spents")
@@ -151,7 +144,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
     def test_get_month_time_spents(self):
         self.create_time_spents()
         tasks = self.get(
-            "/data/persons/%s/time-spents/month/2018/5" % self.person_id
+            f"/data/persons/{self.person_id}/time-spents/month/2018/5"
         )
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["entity_name"], "Tree")
@@ -160,7 +153,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
     def test_get_week_time_spents(self):
         self.create_time_spents()
         tasks = self.get(
-            "/data/persons/%s/time-spents/week/2018/18" % self.person_id
+            f"/data/persons/{self.person_id}/time-spents/week/2018/18"
         )
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["entity_name"], "Tree")
@@ -169,7 +162,7 @@ class RouteTimeSpentTestCase(ApiDBTestCase):
     def test_get_day_time_spents(self):
         self.create_time_spents()
         tasks = self.get(
-            "/data/persons/%s/time-spents/day/2018/5/3" % self.person_id
+            f"/data/persons/{self.person_id}/time-spents/day/2018/5/3"
         )
         self.assertEqual(len(tasks), 1)
         self.assertEqual(tasks[0]["entity_name"], "Tree")

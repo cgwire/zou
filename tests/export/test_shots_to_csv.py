@@ -21,7 +21,7 @@ class ShotCsvExportTestCase(ApiDBTestCase):
 
     def test_export(self):
         csv_shots = self.get_raw(
-            "/export/csv/projects/%s/shots.csv" % self.project.id
+            f"/export/csv/projects/{self.project.id}/shots.csv"
         )
         expected_result = """Project;Episode;Sequence;Name;Description;Time Spent;Frames;Frame In;Frame Out;FPS;Animation;Assignations\r
 Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;opn;John Doe\r\n"""
@@ -40,7 +40,7 @@ Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;opn;John Doe\r\
             }
         )
         csv_shots = self.get_raw(
-            "/export/csv/projects/%s/shots.csv" % self.project.id
+            f"/export/csv/projects/{self.project.id}/shots.csv"
         )
         expected_result = """Project;Episode;Sequence;Name;Description;Time Spent;Frames;Frame In;Frame Out;FPS;Contractor;Animation;Assignations\r
 Cosmos Landromat;E01;S01;P01;Description Shot 01;0.00;0;0;100;25;Contractor 1;opn;John Doe\r\n"""

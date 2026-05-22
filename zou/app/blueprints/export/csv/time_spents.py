@@ -44,7 +44,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
     def prepare_import(self):
         user = persons_service.get_current_user()
         date = date_helpers.get_today_string_with_timezone(user["timezone"])
-        self.file_name = "%s_open_projects_time_spents_export" % date
+        self.file_name = f"{date}_open_projects_time_spents_export"
 
     def build_headers(self):
         return [
@@ -102,7 +102,7 @@ class TimeSpentsCsvExport(BaseCsvExport):
         if time_spent.date is not None:
             date = time_spent.date.strftime("%Y-%m-%d")
 
-        person_name = "%s %s" % (person_first_name, person_last_name)
+        person_name = f"{person_first_name} {person_last_name}"
 
         return [
             project_name,

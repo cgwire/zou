@@ -18,10 +18,10 @@ class EntityTypeTestCase(ApiDBTestCase):
     def test_get_entity_types_again(self):
         entity_types = self.get_first("data/entity-types?relations=true")
         entity_types_again = self.get(
-            "data/entity-types/%s" % entity_types["id"]
+            f"data/entity-types/{entity_types['id']}"
         )
         self.assertEqual(entity_types, entity_types_again)
-        self.get_404("data/entity-types/%s" % fields.gen_uuid())
+        self.get_404(f"data/entity-types/{fields.gen_uuid()}")
 
     def test_create_entity_types(self):
         data = {"name": "shot"}
@@ -65,12 +65,12 @@ class EntityTypeTestCase(ApiDBTestCase):
     def test_update_entity_types(self):
         entity_types = self.get_first("data/entity-types")
         data = {"name": "sequence"}
-        self.put("data/entity-types/%s" % entity_types["id"], data)
+        self.put(f"data/entity-types/{entity_types['id']}", data)
         entity_types_again = self.get(
-            "data/entity-types/%s" % entity_types["id"]
+            f"data/entity-types/{entity_types['id']}"
         )
         self.assertEqual(data["name"], entity_types_again["name"])
-        self.put_404("data/entity-types/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/entity-types/{fields.gen_uuid()}", data)
 
     def test_update_asset_type_with_task_types(self):
         self.generate_fixture_department()
@@ -80,8 +80,8 @@ class EntityTypeTestCase(ApiDBTestCase):
         asset_type = self.get_first("data/entity-types")
         task_types = [str(task_type.id) for task_type in TaskType.query.all()]
         data = {"name": "FX", "task_types": task_types}
-        self.put("data/entity-types/%s" % asset_type["id"], data)
-        asset_type_again = self.get("data/entity-types/%s" % asset_type["id"])
+        self.put(f"data/entity-types/{asset_type['id']}", data)
+        asset_type_again = self.get(f"data/entity-types/{asset_type['id']}")
         self.assertEqual(
             set(task_type for task_type in asset_type_again["task_types"]),
             set(task_types),
@@ -91,7 +91,7 @@ class EntityTypeTestCase(ApiDBTestCase):
         entity_types = self.get("data/entity-types")
         self.assertEqual(len(entity_types), 3)
         entity_types = entity_types[0]
-        self.delete("data/entity-types/%s" % entity_types["id"])
+        self.delete(f"data/entity-types/{entity_types['id']}")
         entity_types = self.get("data/entity-types")
         self.assertEqual(len(entity_types), 2)
-        self.delete_404("data/entity-types/%s" % fields.gen_uuid())
+        self.delete_404(f"data/entity-types/{fields.gen_uuid()}")

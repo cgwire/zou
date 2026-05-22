@@ -47,11 +47,9 @@ class OutputFileTestCase(ApiDBTestCase):
 
     def test_get_output_file(self):
         output_file = self.get_first("data/output-files")
-        output_file_again = self.get(
-            "data/output-files/%s" % output_file["id"]
-        )
+        output_file_again = self.get(f"data/output-files/{output_file['id']}")
         self.assertEqual(output_file, output_file_again)
-        self.get_404("data/output-files/%s" % fields.gen_uuid())
+        self.get_404(f"data/output-files/{fields.gen_uuid()}")
 
     def test_create_output_file(self):
         data = {
@@ -77,23 +75,21 @@ class OutputFileTestCase(ApiDBTestCase):
     def test_update_output_file(self):
         output_file = self.get_first("data/output-files")
         data = {"name": "Super modeling output_file 2"}
-        self.put("data/output-files/%s" % output_file["id"], data)
-        output_file_again = self.get(
-            "data/output-files/%s" % output_file["id"]
-        )
+        self.put(f"data/output-files/{output_file['id']}", data)
+        output_file_again = self.get(f"data/output-files/{output_file['id']}")
         self.assertEqual(data["name"], output_file_again["name"])
         self.assertEqual(
             self.last_event_data["output_file_id"], output_file["id"]
         )
         self.assertEqual(self.last_event_data["project_id"], self.project_id)
 
-        self.put_404("data/output-files/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/output-files/{fields.gen_uuid()}", data)
 
     def test_delete_output_file(self):
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 3)
         output_file = output_files[0]
-        self.delete("data/output-files/%s" % output_file["id"])
+        self.delete(f"data/output-files/{output_file['id']}")
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 2)
         self.assertEqual(
@@ -101,7 +97,7 @@ class OutputFileTestCase(ApiDBTestCase):
         )
         self.assertEqual(self.last_event_data["project_id"], self.project_id)
 
-        self.delete_404("data/output-files/%s" % fields.gen_uuid())
+        self.delete_404(f"data/output-files/{fields.gen_uuid()}")
 
     def test_get_output_file_permission(self):
         output_file_id = self.get_first("data/output-files")["id"]
@@ -110,9 +106,9 @@ class OutputFileTestCase(ApiDBTestCase):
         self.log_in_cg_artist()
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 0)
-        self.get("data/output-files/%s" % output_file_id, 403)
+        self.get(f"data/output-files/{output_file_id}", 403)
 
         projects_service.add_team_member(self.project_id, cg_artist_id)
-        self.get("data/output-files/%s" % output_file_id)
+        self.get(f"data/output-files/{output_file_id}")
         output_files = self.get("data/output-files")
         self.assertEqual(len(output_files), 3)

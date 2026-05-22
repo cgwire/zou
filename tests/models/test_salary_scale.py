@@ -19,10 +19,10 @@ class SalaryScaleTestCase(ApiDBTestCase):
     def test_get_salary_scale(self):
         salary_scale = self.get_first("data/salary-scales")
         salary_scale_again = self.get(
-            "data/salary-scales/%s" % salary_scale["id"]
+            f"data/salary-scales/{salary_scale['id']}"
         )
         self.assertEqual(salary_scale, salary_scale_again)
-        self.get_404("data/salary-scales/%s" % fields.gen_uuid())
+        self.get_404(f"data/salary-scales/{fields.gen_uuid()}")
 
     def test_create_salary_scale(self):
         data = {"position": "artist", "seniority": "junior", "daily_salary": 500}
@@ -35,19 +35,19 @@ class SalaryScaleTestCase(ApiDBTestCase):
     def test_update_salary_scale(self):
         salary_scale = self.get_first("data/salary-scales")
         data = {"position": "lead", "seniority": "senior", "daily_salary": 600}
-        self.put("data/salary-scales/%s" % salary_scale["id"], data)
+        self.put(f"data/salary-scales/{salary_scale['id']}", data)
         salary_scale_again = self.get(
-            "data/salary-scales/%s" % salary_scale["id"]
+            f"data/salary-scales/{salary_scale['id']}"
         )
         self.assertEqual(data["position"], salary_scale_again["position"])
-        self.put_404("data/salary-scales/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/salary-scales/{fields.gen_uuid()}", data)
 
     def test_delete_salary_scale(self):
         salary_scales = self.get("data/salary-scales")
         self.assertEqual(len(salary_scales), 3)
         salary_scale = salary_scales[0]
-        self.delete("data/salary-scales/%s" % salary_scale["id"])
+        self.delete(f"data/salary-scales/{salary_scale['id']}")
         salary_scales = self.get("data/salary-scales")
         self.assertEqual(len(salary_scales), 2)
-        self.delete_404("data/salary-scales/%s" % fields.gen_uuid())
+        self.delete_404(f"data/salary-scales/{fields.gen_uuid()}")
     """

@@ -166,7 +166,7 @@ def cast_value(value, field_key):
             and not isinstance(value, uuid.UUID)
             and not fields.is_valid_id(value)
         ):
-            raise WrongParameterException("Invalid UUID value: %s" % value)
+            raise WrongParameterException(f"Invalid UUID value: {value}")
         return func.cast(value, field_key.type)
     else:
         return func.cast(value, field_key.type)

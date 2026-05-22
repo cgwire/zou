@@ -25,7 +25,7 @@ class BaseMixin(object):
         """
         String representation based on type and name by default.
         """
-        return "<%s %s>" % (type(self).__name__, self.name)
+        return f"<{type(self).__name__} {self.name}>"
 
     @classmethod
     def query(cls):
@@ -161,16 +161,17 @@ class BaseMixin(object):
     def create_from_import(cls, data):
         """
         Create a new instance of the model based on data that comes from the Zou
-        API.
+        API. Returns ``(instance, is_update)`` where ``is_update`` is True when
+        an existing row was updated and False when a new row was created.
         """
         if "type" in data:
             del data["type"]
         previous_data = cls.get(data["id"])
         if previous_data is None:
-            return cls.create(**data)
+            return cls.create(**data), False
         else:
             previous_data.update(data)
-            return previous_data
+            return previous_data, True
 
     @classmethod
     def create_from_import_list(cls, data_list):

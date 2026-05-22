@@ -416,7 +416,7 @@ def change_password(email, password):
             auth.validate_password(password)
             password = auth.encrypt_password(password)
             persons_service.update_password(email, password)
-            print("Password changed for %s" % email)
+            print(f"Password changed for {email}")
         except auth.PasswordTooShortException:
             print("The password is too short.")
             sys.exit(1)
@@ -617,6 +617,44 @@ def sync_full(
         only_projects=only_projects,
     )
     print("Syncing ended.")
+
+
+@cli.command()
+@click.option("--source", default="http://localhost:5000", show_default=True)
+@click.option("--project", required=True)
+def sync_verify(source, project):
+    """
+    Compare project-scoped row counts between source and current instance.
+    Useful after `sync-full --only-projects --project ...` to spot silently
+    dropped batches and tables missing from the sync. Reads SYNC_LOGIN and
+    SYNC_PASSWORD from the environment.
+    """
+    from zou.app.utils import commands
+
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.verify_project_against_source(source, login, password, project)
+
+
+@cli.command()
+@click.option("--target", required=True)
+@click.option("--project", required=True)
+@click.option("--batch-size", default=200, show_default=True, type=int)
+def sync_push(target, project, batch_size):
+    """
+    Push a project from the current instance to a target zou instance via
+    /import/kitsu/* routes. Reference data (persons, departments, task
+    types/statuses, asset types, studios) must already exist on the target
+    with matching UUIDs. Reads SYNC_LOGIN and SYNC_PASSWORD from the
+    environment.
+    """
+    from zou.app.utils import commands
+
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.push_project_to_target(
+        target, login, password, project, batch_size=batch_size
+    )
 
 
 @cli.command()

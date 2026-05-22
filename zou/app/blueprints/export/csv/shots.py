@@ -65,7 +65,7 @@ class ShotsCsvExport(Resource):
                 self.build_row(result, metadata_infos, validation_columns)
             )
 
-        file_name = "%s shots" % project["name"]
+        file_name = f"{project['name']} shots"
         return csv_utils.build_csv_response(csv_content, slugify(file_name))
 
     def check_permissions(self, project_id):
@@ -206,4 +206,4 @@ class ShotsCsvExport(Resource):
         if time_spent > 0:
             time_spent = time_spent / 8.0 / 60.0
 
-        return "%.2f" % time_spent
+        return f"{time_spent:.2f}"

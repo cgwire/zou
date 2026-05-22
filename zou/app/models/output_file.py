@@ -79,4 +79,4 @@ class OutputFile(db.Model, BaseMixin, SerializerMixin):
     )
 
     def __repr__(self):
-        return "<OutputFile %s>" % self.id
+        return f"<OutputFile {self.id}>"

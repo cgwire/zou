@@ -107,14 +107,14 @@ class MovieTestCase(unittest.TestCase):
         videos = []
         width, height = movie.get_movie_size(self.video_only_path)
         for i in range(0, 2):
-            filename = "%s-%s.m4v" % (i, test_name)
+            filename = f"{i}-{test_name}.m4v"
             video = str(Path(self.tmpdir) / filename)
             shutil.copyfile(self.video_only_path, video)
             normalized, _, _ = movie.normalize_movie(video, 5, width, height)
             # 2nd item isn't used by build_playlist_movie
             videos.append((normalized, None))
 
-        out = "out-%s.mp4" % test_name
+        out = f"out-{test_name}.mp4"
         out = str(Path(self.tmpdir) / out)
 
         result = movie.build_playlist_movie(

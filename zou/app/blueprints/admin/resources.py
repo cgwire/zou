@@ -17,9 +17,9 @@ class ConfigCheckResource(Resource):
         comparison = config_store.get_config_comparison()
         try:
             comparison["active_users"] = Person.query.filter(
-              Person.active,
-              Person.is_bot.isnot(True),
-              Person.is_guest.isnot(True),
+                Person.active,
+                Person.is_bot.isnot(True),
+                Person.is_guest.isnot(True),
             ).count()
         except (ProgrammingError, OperationalError) as exc:
             current_app.logger.warning(

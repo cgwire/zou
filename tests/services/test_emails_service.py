@@ -40,8 +40,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             task_url,
-            "https://localhost:8080/productions/%s/assets/tasks/%s"
-            % (self.project.id, self.task.id),
+            f"https://localhost:8080/productions/{self.project.id}/assets/tasks/{self.task.id}",
         )
         self.generate_fixture_shot_task()
         author, task_name, task_url = emails_service.get_task_descriptors(
@@ -52,8 +51,7 @@ class EmailsServiceTestCase(ApiDBTestCase):
         )
         self.assertEqual(
             task_url,
-            "https://localhost:8080/productions/%s/shots/tasks/%s"
-            % (self.project.id, self.shot_task.id),
+            f"https://localhost:8080/productions/{self.project.id}/shots/tasks/{self.shot_task.id}",
         )
 
     def test_send_notification_uses_user_locale(self):

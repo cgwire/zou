@@ -168,10 +168,10 @@ class ImportShotgunVersionsResource(BaseImportShotgunResource):
         if preview_file is None:
             preview_file = PreviewFile(**data)
             preview_file.save()
-            current_app.logger.info("PreviewFile created: %s" % preview_file)
+            current_app.logger.info(f"PreviewFile created: {preview_file}")
         else:
             preview_file.update(data)
-            current_app.logger.info("PreviewFile updated: %s" % preview_file)
+            current_app.logger.info(f"PreviewFile updated: {preview_file}")
         return preview_file
 
 

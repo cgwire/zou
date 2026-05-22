@@ -8,7 +8,7 @@ class PersonDepartmentTestCase(ApiDBTestCase):
         super(PersonDepartmentTestCase, self).setUp()
         self.person = self.generate_fixture_person().serialize()
         self.department = self.generate_fixture_department().serialize()
-        self.path = "/actions/persons/%s/departments" % self.person["id"]
+        self.path = f"/actions/persons/{self.person['id']}/departments"
 
     def test_add_to_department(self):
         person = self.person

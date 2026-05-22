@@ -67,14 +67,10 @@ class ImportShotgunTaskTestCase(ShotgunTestCase):
         self.load_note()
         api_path = "/import/shotgun/remove/note"
         sg_note = {"id": self.sg_note["id"]}
-        self.notes = self.get(
-            "data/comments?shotgun_id=%s" % self.sg_note["id"]
-        )
+        self.notes = self.get(f"data/comments?shotgun_id={self.sg_note['id']}")
         note = self.notes[0]
 
         response = self.post(api_path, sg_note, 200)
         self.assertEqual(response["removed_instance_id"], note["id"])
-        self.notes = self.get(
-            "data/comments?shotgun_id=%s" % self.sg_note["id"]
-        )
+        self.notes = self.get(f"data/comments?shotgun_id={self.sg_note['id']}")
         self.assertEqual(len(self.notes), 0)

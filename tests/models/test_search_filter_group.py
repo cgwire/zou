@@ -14,9 +14,9 @@ class SearchFilterGroupTestCase(ApiDBTestCase):
 
     def test_get_search_filter_group(self):
         group = self.get_first("data/search-filter-groups")
-        group_again = self.get("data/search-filter-groups/%s" % group["id"])
+        group_again = self.get(f"data/search-filter-groups/{group['id']}")
         self.assertEqual(group, group_again)
-        self.get_404("data/search-filter-groups/%s" % fields.gen_uuid())
+        self.get_404(f"data/search-filter-groups/{fields.gen_uuid()}")
 
     def test_create_search_filter_group(self):
         data = {
@@ -32,16 +32,16 @@ class SearchFilterGroupTestCase(ApiDBTestCase):
     def test_update_search_filter_group(self):
         group = self.get_first("data/search-filter-groups")
         data = {"name": "Updated Group"}
-        self.put("data/search-filter-groups/%s" % group["id"], data)
-        group_again = self.get("data/search-filter-groups/%s" % group["id"])
+        self.put(f"data/search-filter-groups/{group['id']}", data)
+        group_again = self.get(f"data/search-filter-groups/{group['id']}")
         self.assertEqual(data["name"], group_again["name"])
-        self.put_404("data/search-filter-groups/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/search-filter-groups/{fields.gen_uuid()}", data)
 
     def test_delete_search_filter_group(self):
         groups = self.get("data/search-filter-groups")
         self.assertEqual(len(groups), 3)
         group = groups[0]
-        self.delete("data/search-filter-groups/%s" % group["id"])
+        self.delete(f"data/search-filter-groups/{group['id']}")
         groups = self.get("data/search-filter-groups")
         self.assertEqual(len(groups), 2)
-        self.delete_404("data/search-filter-groups/%s" % fields.gen_uuid())
+        self.delete_404(f"data/search-filter-groups/{fields.gen_uuid()}")

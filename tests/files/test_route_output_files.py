@@ -46,7 +46,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
 
     def new_output(self, data, code=201):
         return self.post(
-            "data/entities/%s/output-files/new" % self.asset_id, data, code
+            f"data/entities/{self.asset_id}/output-files/new", data, code
         )
 
     def generate_output_files(self):
@@ -81,7 +81,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
     def test_get_last_output_files(self):
         self.generate_output_files()
         output_files = self.get(
-            "/data/entities/%s/output-files/last-revisions" % self.asset.id
+            f"/data/entities/{self.asset.id}/output-files/last-revisions"
         )
 
         self.assertIn(self.output_file_geometry.serialize(), output_files)
@@ -94,17 +94,14 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         self.generate_output_files()
         alembic = self.generate_fixture_output_type("Alembic", "ab")
         self.generate_fixture_output_file(alembic, 1, task=self.shot_task)
-        output_types = self.get(
-            "/data/entities/%s/output-types" % self.asset.id
-        )
+        output_types = self.get(f"/data/entities/{self.asset.id}/output-types")
         self.assertEqual(len(output_types), 4)
         self.assertEqual(output_types[0]["name"], "Cache")
 
     def test_get_entity_output_type_output_files(self):
         self.generate_output_files()
         output_files = self.get(
-            "/data/entities/%s/output-types/%s/output-files"
-            % (self.asset.id, self.cache_type_id)
+            f"/data/entities/{self.asset.id}/output-types/{self.cache_type_id}/output-files"
         )
         self.assertEqual(len(output_files), 3)
         self.assertEqual(output_files[0]["output_type_id"], self.cache_type_id)
@@ -130,7 +127,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
 
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["comment"], data["comment"])
         self.assertEqual(output_file["revision"], 1)
@@ -147,7 +144,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         }
         result = self.new_output(data)
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["extension"], ".tx")
         self.assertEqual(
@@ -167,7 +164,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         }
         result = self.new_output(data)
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["extension"], ".tx")
         self.assertEqual(
@@ -189,7 +186,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         }
         result = self.new_output(data)
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["extension"], ".tx")
         self.assertEqual(
@@ -212,7 +209,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         }
         result = self.new_output(data)
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["extension"], ".jpg")
         self.assertEqual(output_file["nb_elements"], 50)
@@ -246,7 +243,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
 
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["comment"], data["comment"])
         self.assertEqual(output_file["revision"], 2)
@@ -269,7 +266,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
 
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
         self.assertEqual(output_file["revision"], 66)
 
     def test_new_output_wrong_data(self):
@@ -291,15 +288,15 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
     def test_to_review(self):
         data = {"person_id": str(self.person_id)}
         status_id = str(tasks_service.get_to_review_status()["id"])
-        self.put("/actions/tasks/%s/to-review" % self.task_id, data)
-        task = self.get("data/tasks/%s" % self.task_id)
+        self.put(f"/actions/tasks/{self.task_id}/to-review", data)
+        task = self.get(f"data/tasks/{self.task_id}")
         self.assertEqual(task["task_status_id"], status_id)
 
     def test_get_next_revision(self):
         self.generate_fixture_output_type()
         self.generate_fixture_output_file()
         result = self.post(
-            "/data/entities/%s/output-files/next-revision" % self.asset.id,
+            f"/data/entities/{self.asset.id}/output-files/next-revision",
             {
                 "output_type_id": self.output_type.id,
                 "task_type_id": self.task_type_id,
@@ -312,7 +309,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         self.generate_fixture_output_type()
         self.generate_fixture_output_file(revision=5, name="other-output")
         result = self.post(
-            "/data/entities/%s/output-files/next-revision" % self.asset.id,
+            f"/data/entities/{self.asset.id}/output-files/next-revision",
             {
                 "name": "other-output",
                 "output_type_id": self.output_type.id,
@@ -337,7 +334,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
     def test_get_next_revision_with_empty_revision(self):
         self.generate_fixture_output_type()
         result = self.post(
-            "/data/entities/%s/output-files/next-revision" % self.asset.id,
+            f"/data/entities/{self.asset.id}/output-files/next-revision",
             {
                 "name": "main",
                 "output_type_id": self.output_type.id,
@@ -362,8 +359,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "representation": "abc",
         }
         result = self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (self.asset_instance.id, self.shot.id),
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.shot.id}/output-files/new",
             data,
         )
 
@@ -384,7 +380,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
 
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["comment"], data["comment"])
         self.assertEqual(output_file["revision"], 1)
@@ -408,8 +404,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "working_file_id": self.working_file_id,
         }
         self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (asset_instance_id, shot_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/new",
             data,
         )
 
@@ -419,8 +414,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "name": "main",
         }
         result = self.post(
-            "data/asset-instances/%s/entities/%s/output-files/next-revision"
-            % (asset_instance_id, shot_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/next-revision",
             data,
             200,
         )
@@ -444,14 +438,12 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "working_file_id": self.working_file_id,
         }
         output_file = self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (asset_instance_id, shot_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/new",
             data,
         )
 
         result = self.get(
-            "data/asset-instances/%s/entities/%s/output-files/last-revisions"
-            % (asset_instance_id, shot_id)
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/last-revisions"
         )
         self.assertIn(output_file["id"], [f["id"] for f in result])
 
@@ -468,8 +460,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "representation": ".tx",
         }
         result = self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (self.asset_instance.id, self.asset.id),
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.asset.id}/output-files/new",
             data,
         )
 
@@ -492,7 +483,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
 
         output_file_id = result["id"]
-        output_file = self.get("/data/output-files/%s" % output_file_id)
+        output_file = self.get(f"/data/output-files/{output_file_id}")
 
         self.assertEqual(output_file["comment"], data["comment"])
         self.assertEqual(output_file["revision"], 1)
@@ -515,8 +506,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "working_file_id": self.working_file_id,
         }
         self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (asset_instance_id, asset_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/new",
             data,
         )
 
@@ -526,8 +516,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "name": "main",
         }
         result = self.post(
-            "data/asset-instances/%s/entities/%s/output-files/next-revision"
-            % (asset_instance_id, asset_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/next-revision",
             data,
             200,
         )
@@ -550,14 +539,12 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "working_file_id": self.working_file_id,
         }
         output_file = self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (asset_instance_id, asset_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/new",
             data,
         )
 
         result = self.get(
-            "data/asset-instances/%s/entities/%s/output-files/"
-            "last-revisions" % (asset_instance_id, asset_id)
+            f"data/asset-instances/{asset_instance_id}/entities/{asset_id}/output-files/last-revisions"
         )
         assert output_file["id"] in [f["id"] for f in result]
 
@@ -580,14 +567,12 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
             "working_file_id": self.working_file_id,
         }
         self.post(
-            "data/asset-instances/%s/entities/%s/output-files/new"
-            % (asset_instance_id, shot_id),
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-files/new",
             data,
         )
 
         result = self.get(
-            "data/asset-instances/%s/entities/%s/output-types"
-            % (asset_instance_id, shot_id)
+            f"data/asset-instances/{asset_instance_id}/entities/{shot_id}/output-types"
         )
         self.assertEqual(result[0]["id"], self.cache_type_id)
 
@@ -600,7 +585,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         self.generate_fixture_output_file(geometry, 3, representation="obj")
         self.generate_fixture_output_file(geometry, 4, representation="obj")
         output_files = self.get(
-            "data/projects/%s/output-files" % self.project.id
+            f"data/projects/{self.project.id}/output-files"
         )
         self.assertEqual(len(output_files), 4)
 
@@ -611,7 +596,7 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         self.generate_fixture_output_file(geometry, 3, representation="max")
 
         output_files = self.get(
-            "data/projects/%s/output-files" % self.project.id
+            f"data/projects/{self.project.id}/output-files"
         )
         self.assertEqual(len(output_files), 3)
 
@@ -628,20 +613,17 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         self.generate_fixture_output_file(geometry, 3, representation="max")
 
         output_files = self.get(
-            "data/entities/%s/output-types/%s/output-files"
-            % (self.asset.id, geometry.id)
+            f"data/entities/{self.asset.id}/output-types/{geometry.id}/output-files"
         )
         self.assertEqual(len(output_files), 7)
 
         output_files = self.get(
-            "data/entities/%s/output-types/%s/"
-            "output-files?representation=obj" % (self.asset.id, geometry.id)
+            f"data/entities/{self.asset.id}/output-types/{geometry.id}/output-files?representation=obj"
         )
         self.assertEqual(len(output_files), 4)
 
         output_files = self.get(
-            "data/entities/%s/output-types/%s/"
-            "output-files?representation=max" % (self.asset.id, geometry.id)
+            f"data/entities/{self.asset.id}/output-types/{geometry.id}/output-files?representation=max"
         )
         self.assertEqual(len(output_files), 3)
 
@@ -698,22 +680,16 @@ class RouteOutputFilesTestCase(ApiDBTestCase):
         )
 
         output_files = self.get(
-            "data/asset-instances/%s/entities/%s/"
-            "output-types/%s/output-files"
-            % (self.asset_instance.id, self.scene.id, geometry.id)
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files"
         )
         self.assertEqual(len(output_files), 7)
 
         output_files = self.get(
-            "data/asset-instances/%s/entities/%s/output-types/%s/"
-            "output-files?representation=obj"
-            % (self.asset_instance.id, self.scene.id, geometry.id)
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files?representation=obj"
         )
         self.assertEqual(len(output_files), 4)
 
         output_files = self.get(
-            "data/asset-instances/%s/entities/%s/output-types/%s/"
-            "output-files?representation=max"
-            % (self.asset_instance.id, self.scene.id, geometry.id)
+            f"data/asset-instances/{self.asset_instance.id}/entities/{self.scene.id}/output-types/{geometry.id}/output-files?representation=max"
         )
         self.assertEqual(len(output_files), 3)

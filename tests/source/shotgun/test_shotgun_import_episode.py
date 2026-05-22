@@ -62,4 +62,4 @@ class ImportShotgunEpisode(ShotgunTestCase):
         self.episodes = self.get("data/episodes")
         self.assertEqual(len(self.episodes), 2)
 
-        self.get("data/episodes/%s" % episode["id"], 404)
+        self.get(f"data/episodes/{episode['id']}", 404)

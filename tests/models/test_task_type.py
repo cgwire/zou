@@ -17,9 +17,9 @@ class TaskTypeTestCase(ApiDBTestCase):
 
     def test_get_task_type(self):
         task_type = self.get_first("data/task-types")
-        task_type_again = self.get("data/task-types/%s" % task_type["id"])
+        task_type_again = self.get(f"data/task-types/{task_type['id']}")
         self.assertEqual(task_type, task_type_again)
-        self.get_404("data/task-types/%s" % fields.gen_uuid())
+        self.get_404(f"data/task-types/{fields.gen_uuid()}")
 
     def test_create_task_type(self):
         data = {
@@ -37,16 +37,16 @@ class TaskTypeTestCase(ApiDBTestCase):
     def test_update_task_type(self):
         task_type = self.get_first("data/task-types")
         data = {"color": "#FFFFFF"}
-        self.put("data/task-types/%s" % task_type["id"], data)
-        task_type_again = self.get("data/task-types/%s" % task_type["id"])
+        self.put(f"data/task-types/{task_type['id']}", data)
+        task_type_again = self.get(f"data/task-types/{task_type['id']}")
         self.assertEqual(data["color"], task_type_again["color"])
-        self.put_404("data/task-types/%s" % fields.gen_uuid(), data)
+        self.put_404(f"data/task-types/{fields.gen_uuid()}", data)
 
     def test_delete_task_type(self):
         task_types = self.get("data/task-types")
         self.assertEqual(len(task_types), 3)
         task_type = task_types[0]
-        self.delete("data/task-types/%s" % task_type["id"])
+        self.delete(f"data/task-types/{task_type['id']}")
         task_types = self.get("data/task-types")
         self.assertEqual(len(task_types), 2)
-        self.delete_404("data/task-types/%s" % fields.gen_uuid())
+        self.delete_404(f"data/task-types/{fields.gen_uuid()}")

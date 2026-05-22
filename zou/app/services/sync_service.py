@@ -14,8 +14,12 @@ from http.client import responses as http_responses
 from threading import RLock
 from multiprocessing.pool import ThreadPool as Pool
 
+from zou.app.models.asset_instance import AssetInstance
 from zou.app.models.attachment_file import AttachmentFile
+from zou.app.models.budget import Budget
+from zou.app.models.budget_entry import BudgetEntry
 from zou.app.models.build_job import BuildJob
+from zou.app.models.chat import Chat
 from zou.app.models.custom_action import CustomAction
 from zou.app.models.comment import Comment
 from zou.app.models.day_off import DayOff
@@ -28,10 +32,15 @@ from zou.app.models.metadata_descriptor import MetadataDescriptor
 from zou.app.models.milestone import Milestone
 from zou.app.models.news import News
 from zou.app.models.notification import Notification
+from zou.app.models.output_file import OutputFile
 from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
+from zou.app.models.playlist_share_link import PlaylistShareLink
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+)
 from zou.app.models.project import Project
 from zou.app.models.project_status import ProjectStatus
 from zou.app.models.schedule_item import ScheduleItem
@@ -44,6 +53,7 @@ from zou.app.models.task_type import TaskType
 from zou.app.models.time_spent import TimeSpent
 from zou.app.models.studio import Studio
 from zou.app.models.status_automation import StatusAutomation
+from zou.app.models.working_file import WorkingFile
 
 from zou.app.services import deletion_service, tasks_service, projects_service
 from zou.app.stores import file_store
@@ -288,16 +298,16 @@ def run_project_data_sync(project=None):
     else:
         projects = gazu.project.all_open_projects()
     for project in projects:
-        logger.info("Syncing %s..." % project["name"])
+        logger.info(f"Syncing {project['name']}...")
         for event in project_events:
-            logger.info("Syncing %ss..." % event)
+            logger.info(f"Syncing {event}s...")
             path = event_name_model_path_map[event]
             model = event_name_model_map[event]
             sync_project_entries(project, path, model)
         sync_entity_thumbnails(project, "assets")
         sync_entity_thumbnails(project, "shots")
         sync_entity_thumbnails(project, "concepts")
-        logger.info("Sync of %s complete." % project["name"])
+        logger.info(f"Sync of {project['name']} complete.")
 
 
 def run_other_sync(project=None, with_events=False):
@@ -306,9 +316,165 @@ def run_other_sync(project=None, with_events=False):
     """
     sync_entries("search-filter-groups", SearchFilterGroup, project=project)
     sync_entries("search-filters", SearchFilter, project=project)
-    sync_entries("day-offs", DayOff, project=project)
+    # Day-offs are not scoped per project on the source side; only pull them
+    # for full-instance syncs, otherwise a single-project sync would import
+    # day-offs from every other project on the source.
+    if project is None:
+        sync_entries("day-offs", DayOff, project=project)
     if with_events:
         sync_entries("events", ApiEvent, project=project)
+
+
+def push_project_data(target, login, password, project_name, batch_size=200):
+    """
+    Push a single project's data to a target zou instance via the
+    /import/kitsu/* routes. Reference data (persons, departments, task
+    types/statuses, asset types, studios) is assumed to already exist on
+    the target with matching UUIDs — the routes will fail on foreign-key
+    violation if it doesn't.
+    """
+    gazu.set_host(target)
+    gazu.log_in(login, password)
+
+    project = Project.get_by(name=project_name)
+    if project is None:
+        raise Exception(f"Project '{project_name}' not found locally.")
+    project_id = str(project.id)
+    logger.info(f"Pushing {project.name} ({project_id}) to {target}...")
+
+    _push_batch(
+        "/import/kitsu/projects",
+        [project.serialize(relations=True)],
+        batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/metadata-descriptors",
+        MetadataDescriptor.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+        relations=True,
+    )
+    _push_query(
+        "/import/kitsu/milestones",
+        Milestone.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+    )
+
+    # Entities in hierarchy order so FKs (parent_id) resolve as we go.
+    for entity_type_name in (
+        "Episode",
+        "Sequence",
+        "Asset",
+        "Shot",
+        "Concept",
+    ):
+        entity_type = EntityType.get_by(name=entity_type_name)
+        if entity_type is None:
+            continue
+        _push_query(
+            "/import/kitsu/entities",
+            Entity.query.filter_by(
+                project_id=project_id, entity_type_id=entity_type.id
+            ),
+            batch_size=batch_size,
+        )
+
+    _push_query(
+        "/import/kitsu/schedule-items",
+        ScheduleItem.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/entity-links",
+        EntityLink.query.join(
+            Entity, EntityLink.entity_in_id == Entity.id
+        ).filter(Entity.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/tasks",
+        Task.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/subscriptions",
+        Subscription.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/notifications",
+        Notification.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/time-spents",
+        TimeSpent.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/comments",
+        Comment.query.join(Task, Comment.object_id == Task.id).filter(
+            Task.project_id == project_id
+        ),
+        batch_size=batch_size,
+        relations=True,
+    )
+    _push_query(
+        "/import/kitsu/preview-files",
+        PreviewFile.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/attachment-files",
+        AttachmentFile.query.join(Comment)
+        .join(Task, Comment.object_id == Task.id)
+        .filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/news",
+        News.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/playlists",
+        Playlist.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+        relations=True,
+    )
+    _push_query(
+        "/import/kitsu/build-jobs",
+        BuildJob.query.join(Playlist).filter(
+            Playlist.project_id == project_id
+        ),
+        batch_size=batch_size,
+    )
+
+    logger.info(f"Push of {project.name} complete.")
+
+
+def _push_query(path, query, batch_size=200, relations=False):
+    instances = query.all()
+    if not instances:
+        logger.info(f"  {path}: nothing to push")
+        return
+    payload = [i.serialize(relations=relations) for i in instances]
+    _push_batch(path, payload, batch_size)
+
+
+def _push_batch(path, payload, batch_size=200):
+    total = len(payload)
+    for offset in range(0, total, batch_size):
+        chunk = payload[offset : offset + batch_size]
+        try:
+            gazu.client.post(path, chunk)
+        except Exception:
+            logger.error(f"  {path}: batch {offset} failed", exc_info=1)
+    logger.info(f"  {path}: pushed {total} rows")
 
 
 def run_last_events_sync(minutes=0, limit=300):
@@ -316,13 +482,13 @@ def run_last_events_sync(minutes=0, limit=300):
     Retrieve last events from source instance and import related data and
     action.
     """
-    path = "events/last?limit=%s" % limit
+    path = f"events/last?limit={limit}"
     if minutes > 0:
         now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
         after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&after=%s" % after
+        path += f'&before={now.strftime("%Y-%m-%dT%H:%M:%S")}'
+        path += f"&after={after}"
     events = gazu.client.fetch_all(path)
     events.reverse()
     for event in events:
@@ -339,13 +505,13 @@ def run_last_events_files(minutes=0, limit=50):
     Retrieve last events from source instance and import related data and
     action.
     """
-    path = "events/last?only_files=true&limit=%s" % limit
+    path = f"events/last?only_files=true&limit={limit}"
     if minutes > 0:
         now = date_helpers.get_utc_now_datetime()
         min_before = now - datetime.timedelta(minutes=minutes)
         after = min_before.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&before=%s" % now.strftime("%Y-%m-%dT%H:%M:%S")
-        path += "&after=%s" % after
+        path += f'&before={now.strftime("%Y-%m-%dT%H:%M:%S")}'
+        path += f"&after={after}"
     events = gazu.client.fetch_all(path)
     events.reverse()
     for event in events:
@@ -364,7 +530,7 @@ def run_last_events_files(minutes=0, limit=50):
                 )
         else:
             download_thumbnail_from_another_instance(
-                event_name, event["data"]["%s_id" % event_name]
+                event_name, event["data"][f"{event_name}_id"]
             )
 
 
@@ -381,7 +547,7 @@ def sync_event(event):
     if event_name == "metadata-descriptor":  # Backward compatibility
         if "metadata_descriptor_id" not in event["data"]:
             event_name = "descriptor"
-    instance_id = event["data"]["%s_id" % event_name.replace("-", "_")]
+    instance_id = event["data"][f"{event_name.replace('-', '_')}_id"]
 
     if action in ["update", "new"]:
         instance = gazu.client.fetch_one(path, instance_id)
@@ -426,7 +592,7 @@ def sync_entries(model_name, model, project=None):
         init = False
         model.create_from_import_list(results["data"])
 
-    logger.info("%s %s synced." % (len(instances), model_name))
+    logger.info(f"{len(instances)} {model_name} synced.")
 
 
 def sync_project_entries(project, model_name, model):
@@ -446,7 +612,7 @@ def sync_project_entries(project, model_name, model):
         "playlists",
         "preview-files",
     ]:  # not much data we retrieve all in a single request.
-        path = "projects/%s/%s" % (project["id"], model_name)
+        path = f"projects/{project['id']}/{model_name}"
         results = gazu.client.fetch_all(path)
         instances += results
         try:
@@ -456,7 +622,7 @@ def sync_project_entries(project, model_name, model):
 
     elif model_name == "news":
         while init or result_length > 0:
-            path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
+            path = f'projects/{project["id"]}/{model_name}?page={page}'
             results = gazu.client.fetch_all(path)["data"]
             instances += results
             try:
@@ -469,12 +635,9 @@ def sync_project_entries(project, model_name, model):
 
     else:  # Lot of data, we retrieve all through paginated requests.
         while init or results["nb_pages"] >= page:
-            path = "projects/%s/%s?page=%d" % (project["id"], model_name, page)
+            path = f'projects/{project["id"]}/{model_name}?page={page}'
             if model_name == "playlists":
-                path = "projects/%s/playlists/all?page=%d" % (
-                    project["id"],
-                    page,
-                )
+                path = f'projects/{project["id"]}/playlists/all?page={page}'
             results = gazu.client.fetch_all(path)
             instances += results["data"]
             try:
@@ -483,7 +646,7 @@ def sync_project_entries(project, model_name, model):
                 logger.error("An error occured", exc_info=1)
             page += 1
             init = False
-    logger.info("    %s %s synced." % (len(instances), model_name))
+    logger.info(f"    {len(instances)} {model_name} synced.")
 
 
 def sync_entity_thumbnails(project, model_name):
@@ -492,9 +655,7 @@ def sync_entity_thumbnails(project, model_name):
     allows you to import project entities again to set thumbnails id (link to
     a preview file) for all entities.
     """
-    results = gazu.client.fetch_all(
-        "projects/%s/%s" % (project["id"], model_name)
-    )
+    results = gazu.client.fetch_all(f"projects/{project['id']}/{model_name}")
     total = 0
     for result in results:
         if result.get("preview_file_id") is not None:
@@ -509,7 +670,7 @@ def sync_entity_thumbnails(project, model_name):
                 total += 1
             except sqlalchemy.exc.IntegrityError:
                 logger.error("An error occured", exc_info=1)
-    logger.info("    %s %s thumbnails synced." % (total, model_name))
+    logger.info(f"    {total} {model_name} thumbnails synced.")
 
 
 def add_main_sync_listeners(event_client):
@@ -547,17 +708,17 @@ def add_sync_listeners(event_client, model_name, event_name, model):
     """
     gazu.events.add_listener(
         event_client,
-        "%s:new" % event_name,
+        f"{event_name}:new",
         create_entry(model_name, event_name, model, "new"),
     )
     gazu.events.add_listener(
         event_client,
-        "%s:update" % event_name,
+        f"{event_name}:update",
         create_entry(model_name, event_name, model, "update"),
     )
     gazu.events.add_listener(
         event_client,
-        "%s:delete" % event_name,
+        f"{event_name}:delete",
         delete_entry(model_name, event_name, model),
     )
 
@@ -580,12 +741,12 @@ def create_entry(model_name, event_name, model, event_type):
             model.create_from_import(instance)
             forward_base_event(event_name, event_type, data)
             if event_type == "new":
-                logger.info("Creation: %s %s" % (event_name, model_id))
+                logger.info(f"Creation: {event_name} {model_id}")
             else:
-                logger.info("Update: %s %s" % (event_name, model_id))
+                logger.info(f"Update: {event_name} {model_id}")
         except gazu.exception.RouteNotFoundException as e:
-            logger.error("Route not found: %s" % e)
-            logger.error("Fail %s created/updated %s" % (event_name, model_id))
+            logger.error(f"Route not found: {e}")
+            logger.error(f"Fail {event_name} created/updated {model_id}")
 
     return create
 
@@ -607,7 +768,7 @@ def delete_entry(model_name, event_name, model):
         else:
             model.delete_all_by(id=model_id)
         forward_base_event(event_name, "delete", data)
-        logger.info("Deletion: %s %s" % (model_name, model_id))
+        logger.info(f"Deletion: {model_name} {model_id}")
 
     return delete
 
@@ -622,7 +783,7 @@ def forward_event(event_name):
     def forward(data):
         if not data.get("sync", False):
             data["sync"] = True
-            logger.info("Forward event: %s" % event_name)
+            logger.info(f"Forward event: {event_name}")
             project_id = data.get("project_id", None)
             events.emit(event_name, data, persist=False, project_id=project_id)
 
@@ -633,9 +794,9 @@ def forward_base_event(event_name, event_type, data):
     """
     Forward given event to current instance event queue.
     """
-    full_event_name = "%s:%s" % (event_name, event_type)
+    full_event_name = f"{event_name}:{event_type}"
     data["sync"] = True
-    logger.info("Forward event: %s" % full_event_name)
+    logger.info(f"Forward event: {full_event_name}")
     project_id = data.get("project_id", None)
     events.emit(full_event_name, data, project_id=project_id)
 
@@ -655,7 +816,7 @@ def add_file_listeners(event_client):
     for model_name in thumbnail_events:
         gazu.events.add_listener(
             event_client,
-            "%s:set-thumbnail" % model_name,
+            f"{model_name}:set-thumbnail",
             get_retrieve_thumbnail(model_name),
         )
 
@@ -668,12 +829,10 @@ def retrieve_preview_file(data):
         preview_file = PreviewFile.get(preview_file_id)
         download_preview_from_another_instance(preview_file)
         forward_event({"name": "preview-file:add-file", "data": data})
-        logger.info(
-            "Preview file and related downloaded: %s" % preview_file_id
-        )
+        logger.info(f"Preview file and related downloaded: {preview_file_id}")
     except gazu.exception.RouteNotFoundException as e:
-        logger.error("Route not found: %s" % e)
-        logger.error("Fail to dowonload preview file: %s" % (preview_file_id))
+        logger.error(f"Route not found: {e}")
+        logger.error(f"Fail to dowonload preview file: {preview_file_id}")
 
 
 def retrieve_preview_background_file(data):
@@ -691,14 +850,12 @@ def retrieve_preview_background_file(data):
             {"name": "preview-background-file:add-file", "data": data}
         )
         logger.info(
-            "Preview background file and related downloaded: %s"
-            % preview_background_file_id
+            f"Preview background file and related downloaded: {preview_background_file_id}"
         )
     except gazu.exception.RouteNotFoundException as e:
-        logger.error("Route not found: %s" % e)
+        logger.error(f"Route not found: {e}")
         logger.error(
-            "Fail to dowonload preview background file: %s"
-            % (preview_background_file_id)
+            f"Fail to dowonload preview background file: {preview_background_file_id}"
         )
 
 
@@ -710,16 +867,13 @@ def get_retrieve_thumbnail(model_name):
             instance_id = data["preview_file_id"]
             download_thumbnail_from_another_instance(model_name, instance_id)
             forward_event(
-                {"name": "%s:set-thumbnail" % model_name, "data": data}
+                {"name": f"{model_name}:set-thumbnail", "data": data}
             )
-            logger.info(
-                "Thumbnail downloaded: %s %s" % (model_name, instance_id)
-            )
+            logger.info(f"Thumbnail downloaded: {model_name} {instance_id}")
         except gazu.exception.RouteNotFoundException as e:
-            logger.error("Route not found: %s" % e)
+            logger.error(f"Route not found: {e}")
             logger.error(
-                "Fail to dowonload thunbnail: %s %s"
-                % (model_name, instance_id)
+                f"Fail to dowonload thunbnail: {model_name} {instance_id}"
             )
 
     return retrieve_thumbnail
@@ -778,7 +932,7 @@ def download_file(file_path, prefix, dl_func, preview_file_id):
         with open(file_path, "wb") as tmp_file:
             for chunk in dl_func(prefix, preview_file_id):
                 tmp_file.write(chunk)
-        logger.info("%s downloaded" % file_path)
+        logger.info(f"{file_path} downloaded")
     except Exception:
         pass
 
@@ -788,14 +942,14 @@ def download_preview(preview_file):
     Download all files link to preview file entry: orginal file and variants.
     """
     logger.info(
-        "download preview %s (%s)" % (preview_file.id, preview_file.extension)
+        f"download preview {preview_file.id} ({preview_file.extension})"
     )
     is_movie = preview_file.extension == "mp4"
     is_picture = preview_file.extension == "png"
     is_file = not is_movie and not is_picture
 
     preview_file_id = str(preview_file.id)
-    file_key = "previews-%s" % preview_file_id
+    file_key = f"previews-{preview_file_id}"
     if is_file:
         file_path = local_file.path(file_key)
         dl_func = file_store.open_file
@@ -809,9 +963,7 @@ def download_preview(preview_file):
     if is_movie or is_picture:
         for prefix in ["thumbnails", "thumbnails-square", "original"]:
             pic_dl_func = file_store.open_picture
-            pic_file_path = local_picture.path(
-                "%s-%s" % (prefix, str(preview_file.id))
-            )
+            pic_file_path = local_picture.path(f"{prefix}-{preview_file.id!s}")
             download_file(pic_file_path, prefix, pic_dl_func, preview_file_id)
 
     download_file(file_path, "previews", dl_func, preview_file_id)
@@ -1211,11 +1363,8 @@ def download_attachment_file_from_another_instance(
 ):
     attachment_file_id = attachment_file["id"]
     extension = attachment_file["extension"]
-    path = "/data/attachment-files/%s/file/%s" % (
-        attachment_file_id,
-        attachment_file["name"],
-    )
-    file_path = "/tmp/%s.%s" % (attachment_file_id, extension)
+    path = f"/data/attachment-files/{attachment_file_id}/file/{attachment_file['name']}"
+    file_path = f"/tmp/{attachment_file_id}.{extension}"
     download_file_from_another_instance(
         path,
         file_path,
@@ -1294,3 +1443,498 @@ def download_file_from_another_instance(
                 finally:
                     os.remove(file_path)
     return path, file_path
+
+
+def verify_project_sync(project_name):
+    """
+    Compare source and target row counts for every project-scoped model.
+
+    Used after `sync-full --only-projects --project <name>` to detect:
+      - batches dropped silently by `sync_entries` when an `IntegrityError`
+        was caught and only logged (sync_service.py:471/481/499),
+      - tables that exist in the data model but were never wired into
+        `project_events`, so sync_full does not migrate them at all.
+
+    Assumes `init(...)` has been called for the source side. Reads the
+    target side directly from the local database. Pure read-only.
+    """
+    try:
+        source_project = gazu.project.get_project_by_name(project_name)
+    except gazu.exception.ProjectNotFoundException:
+        source_project = None
+
+    if source_project is None:
+        print(f"Project '{project_name}' not found on source.")
+        return
+
+    pid = source_project["id"]
+    local_project = Project.get(pid)
+    if local_project is None:
+        print(
+            f"Project '{project_name}' ({pid}) is not present on the target."
+            f" Run `zou sync-full --only-projects --project '{project_name}'`"
+            " first."
+        )
+        return
+
+    # (label, source counter, target counter, synced_by_sync_full)
+    # synced=False rows flag tables present in the schema that sync_full
+    # doesn't migrate today — surface them so the operator knows to handle
+    # them out-of-band.
+    specs = [
+        (
+            "Episode",
+            _src_count(f"projects/{pid}/episodes"),
+            _tgt_entity_type(pid, "Episode"),
+            True,
+        ),
+        (
+            "Sequence",
+            _src_count(f"projects/{pid}/sequences"),
+            _tgt_entity_type(pid, "Sequence"),
+            True,
+        ),
+        ("Asset", _src_count(f"projects/{pid}/assets"), _tgt_asset(pid), True),
+        (
+            "Shot",
+            _src_count(f"projects/{pid}/shots"),
+            _tgt_entity_type(pid, "Shot"),
+            True,
+        ),
+        (
+            "Concept",
+            _src_count(f"projects/{pid}/concepts"),
+            _tgt_entity_type(pid, "Concept"),
+            True,
+        ),
+        (
+            "EntityLink",
+            _src_count(f"projects/{pid}/entity-links"),
+            _tgt_entity_link(pid),
+            True,
+        ),
+        (
+            "Task",
+            _src_count(f"projects/{pid}/tasks"),
+            _tgt(Task, project_id=pid),
+            True,
+        ),
+        (
+            "Comment",
+            _src_count(f"projects/{pid}/comments"),
+            _tgt_comment(pid),
+            True,
+        ),
+        (
+            "TimeSpent",
+            _src_count(f"projects/{pid}/time-spents"),
+            _tgt_time_spent(pid),
+            True,
+        ),
+        (
+            "PreviewFile",
+            _src_count(f"projects/{pid}/preview-files"),
+            _tgt_preview_file(pid),
+            True,
+        ),
+        (
+            "Playlist",
+            _src_count(f"projects/{pid}/playlists/all"),
+            _tgt(Playlist, project_id=pid),
+            True,
+        ),
+        (
+            "BuildJob",
+            _src_count(f"projects/{pid}/build-jobs"),
+            _tgt_build_job(pid),
+            True,
+        ),
+        (
+            "AttachmentFile",
+            _src_count(f"projects/{pid}/attachment-files"),
+            _tgt_attachment_file(pid),
+            True,
+        ),
+        (
+            "MetadataDescriptor",
+            _src_count(f"projects/{pid}/metadata-descriptors"),
+            _tgt(MetadataDescriptor, project_id=pid),
+            True,
+        ),
+        (
+            "ScheduleItem",
+            _src_count(f"projects/{pid}/schedule-items"),
+            _tgt(ScheduleItem, project_id=pid),
+            True,
+        ),
+        (
+            "Subscription",
+            _src_count(f"projects/{pid}/subscriptions"),
+            _tgt_subscription(pid),
+            True,
+        ),
+        (
+            "Notification",
+            _src_count(f"projects/{pid}/notifications"),
+            _tgt_notification(pid),
+            True,
+        ),
+        ("News", _src_count(f"projects/{pid}/news"), _tgt_news(pid), True),
+        (
+            "Milestone",
+            _src_count(f"projects/{pid}/milestones"),
+            _tgt(Milestone, project_id=pid),
+            True,
+        ),
+        (
+            "SearchFilter",
+            _src_count_params("search-filters", {"project_id": pid}),
+            _tgt(SearchFilter, project_id=pid),
+            True,
+        ),
+        (
+            "SearchFilterGroup",
+            _src_count_params("search-filter-groups", {"project_id": pid}),
+            _tgt(SearchFilterGroup, project_id=pid),
+            True,
+        ),
+        # Below: tables sync_full does not migrate today.
+        (
+            "Budget",
+            _src_count(f"projects/{pid}/budgets"),
+            _tgt(Budget, project_id=pid),
+            False,
+        ),
+        ("BudgetEntry", None, _tgt_budget_entry(pid), False),
+        (
+            "OutputFile",
+            _src_count(f"projects/{pid}/output-files"),
+            _tgt_output_file(pid),
+            False,
+        ),
+        ("WorkingFile", None, _tgt_working_file(pid), False),
+        ("AssetInstance", None, _tgt_asset_instance(pid), False),
+        ("Chat", None, _tgt_chat(pid), False),
+        (
+            "ProductionSchedule",
+            None,
+            _tgt(ProductionScheduleVersion, project_id=pid),
+            False,
+        ),
+        ("PlaylistShareLink", None, _tgt_share_link(pid), False),
+    ]
+
+    print(f"\nVerifying project '{project_name}' ({pid}):\n")
+    header = (
+        f"{'Model':22s}  {'Source':>8s}  {'Target':>8s}  "
+        f"{'Delta':>8s}  Status"
+    )
+    print(header)
+    print("-" * (len(header) + 4))
+
+    diffs = 0
+    missing_with_data = 0
+    for label, src_fn, tgt_fn, synced in specs:
+        src = _safe(src_fn)
+        tgt = _safe(tgt_fn)
+
+        src_str = f"{src:>8d}" if isinstance(src, int) else "     N/A"
+        tgt_str = f"{tgt:>8d}" if isinstance(tgt, int) else "     N/A"
+
+        if isinstance(src, int) and isinstance(tgt, int):
+            delta = tgt - src
+            delta_str = f"{delta:+d}"
+            if synced:
+                status = "OK" if delta == 0 else "DIFF"
+                if delta != 0:
+                    diffs += 1
+            else:
+                status = "NOT SYNCED"
+                if src > 0:
+                    missing_with_data += 1
+        else:
+            delta_str = "    -"
+            status = "ok" if synced else "NOT SYNCED"
+
+        print(f"{label:22s}  {src_str}  {tgt_str}  {delta_str:>8s}  {status}")
+
+    print()
+    if diffs:
+        print(
+            f"{diffs} synced model(s) show a row-count delta — likely due to "
+            "IntegrityError batches caught silently by sync_entries. Re-run "
+            "the sync with LOGLEVEL=DEBUG and grep for 'An error occured'."
+        )
+    if missing_with_data:
+        print(
+            f"{missing_with_data} non-synced model(s) hold data on source — "
+            "sync_full does not migrate them. Plan a manual transfer."
+        )
+    if not diffs and not missing_with_data:
+        print("All comparable models match and no unsynced tables hold data.")
+
+
+def _safe(fn):
+    if fn is None:
+        return None
+    try:
+        return fn()
+    except Exception as e:
+        logger.warning("Verify count failed: %s", e)
+        return None
+
+
+def _src_count(path):
+    """Return a callable counting rows on the source instance for a path.
+
+    Handles list-returning routes (e.g. /projects/X/assets) and paginated
+    routes (which return {"data": ..., "total": N, "nb_pages": M}).
+    """
+
+    def fetch():
+        response = gazu.client.fetch_all(path)
+        if isinstance(response, list):
+            return len(response)
+        if isinstance(response, dict):
+            if "total" in response:
+                return response["total"]
+            count = len(response.get("data", []))
+            nb_pages = response.get("nb_pages", 1)
+            for page in range(2, nb_pages + 1):
+                sep = "&" if "?" in path else "?"
+                more = gazu.client.fetch_all(f"{path}{sep}page={page}")
+                if isinstance(more, dict):
+                    count += len(more.get("data", []))
+            return count
+        return None
+
+    return fetch
+
+
+def _src_count_params(path, params):
+    def fetch():
+        response = gazu.client.fetch_all(path, params=params)
+        if isinstance(response, list):
+            return len(response)
+        if isinstance(response, dict):
+            return response.get("total", len(response.get("data", [])))
+        return None
+
+    return fetch
+
+
+def _tgt(model, **filters):
+    return lambda: model.query.filter_by(**filters).count()
+
+
+def _tgt_entity_type(project_id, type_name):
+    def count():
+        et = EntityType.get_by(name=type_name)
+        if et is None:
+            return 0
+        return Entity.query.filter_by(
+            project_id=project_id, entity_type_id=et.id
+        ).count()
+
+    return count
+
+
+def _tgt_asset(project_id):
+    """Assets are entities whose type is not one of the structural types."""
+    structural = ["Episode", "Sequence", "Shot", "Concept", "Edit", "Scene"]
+
+    def count():
+        structural_ids = [
+            et.id
+            for et in EntityType.query.filter(
+                EntityType.name.in_(structural)
+            ).all()
+        ]
+        q = Entity.query.filter_by(project_id=project_id)
+        if structural_ids:
+            q = q.filter(~Entity.entity_type_id.in_(structural_ids))
+        return q.count()
+
+    return count
+
+
+def _tgt_entity_link(project_id):
+    """Entity links whose source entity lives in the project."""
+
+    def count():
+        return (
+            EntityLink.query.join(Entity, Entity.id == EntityLink.entity_in_id)
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_comment(project_id):
+    """Comments attached to tasks of the project (matches the source route)."""
+
+    def count():
+        return (
+            Comment.query.join(Task, Task.id == Comment.object_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_time_spent(project_id):
+    def count():
+        return (
+            TimeSpent.query.join(Task, Task.id == TimeSpent.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_preview_file(project_id):
+    def count():
+        return (
+            PreviewFile.query.join(Task, Task.id == PreviewFile.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_build_job(project_id):
+    def count():
+        return (
+            BuildJob.query.join(Playlist, Playlist.id == BuildJob.playlist_id)
+            .filter(Playlist.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_attachment_file(project_id):
+    def count():
+        return (
+            AttachmentFile.query.join(
+                Comment, Comment.id == AttachmentFile.comment_id
+            )
+            .join(Task, Task.id == Comment.object_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_subscription(project_id):
+    def count():
+        return (
+            Subscription.query.join(Task, Task.id == Subscription.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_notification(project_id):
+    """Notifications attached to tasks of the project."""
+
+    def count():
+        return (
+            Notification.query.join(Task, Task.id == Notification.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_news(project_id):
+    """News tied to tasks of the project."""
+
+    def count():
+        return (
+            News.query.join(Task, Task.id == News.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_output_file(project_id):
+    def count():
+        return (
+            OutputFile.query.join(Entity, Entity.id == OutputFile.entity_id)
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_working_file(project_id):
+    def count():
+        return (
+            WorkingFile.query.join(Task, Task.id == WorkingFile.task_id)
+            .filter(Task.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_asset_instance(project_id):
+    def count():
+        return (
+            AssetInstance.query.join(
+                Entity, Entity.id == AssetInstance.asset_id
+            )
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_chat(project_id):
+    """Chats attached to entities of the project."""
+
+    def count():
+        return (
+            Chat.query.join(Entity, Entity.id == Chat.object_id)
+            .filter(Entity.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_budget_entry(project_id):
+    def count():
+        return (
+            BudgetEntry.query.join(Budget, Budget.id == BudgetEntry.budget_id)
+            .filter(Budget.project_id == project_id)
+            .count()
+        )
+
+    return count
+
+
+def _tgt_share_link(project_id):
+    def count():
+        return (
+            PlaylistShareLink.query.join(
+                Playlist, Playlist.id == PlaylistShareLink.playlist_id
+            )
+            .filter(Playlist.project_id == project_id)
+            .count()
+        )
+
+    return count

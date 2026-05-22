@@ -16,8 +16,7 @@ def _check_for_entity(data):
     if "for_entity" in data and data["for_entity"] is not None:
         if data["for_entity"] not in playlists_service.VALID_FOR_ENTITY_VALUES:
             raise WrongParameterException(
-                "for_entity must be one of %s"
-                % ", ".join(playlists_service.VALID_FOR_ENTITY_VALUES)
+                f'for_entity must be one of {", ".join(playlists_service.VALID_FOR_ENTITY_VALUES)}'
             )
 
 
