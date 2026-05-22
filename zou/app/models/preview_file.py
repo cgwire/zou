@@ -72,9 +72,8 @@ class PreviewFile(db.Model, BaseMixin, SerializerMixin):
 
     @classmethod
     def create_from_import(cls, data):
-        del data["type"]
-        if "comments" in data:
-            del data["comments"]
+        data.pop("type", None)
+        data.pop("comments", None)
         previous_data = cls.get(data["id"])
         if "status" not in data or data["status"] is None:
             data["status"] = "ready"

@@ -637,6 +637,27 @@ def sync_verify(source, project):
 
 
 @cli.command()
+@click.option("--target", required=True)
+@click.option("--project", required=True)
+@click.option("--batch-size", default=200, show_default=True, type=int)
+def sync_push(target, project, batch_size):
+    """
+    Push a project from the current instance to a target zou instance via
+    /import/kitsu/* routes. Reference data (persons, departments, task
+    types/statuses, asset types, studios) must already exist on the target
+    with matching UUIDs. Reads SYNC_LOGIN and SYNC_PASSWORD from the
+    environment.
+    """
+    from zou.app.utils import commands
+
+    login = os.getenv("SYNC_LOGIN")
+    password = os.getenv("SYNC_PASSWORD")
+    commands.push_project_to_target(
+        target, login, password, project, batch_size=batch_size
+    )
+
+
+@cli.command()
 @click.option("--source", default="http://localhost:5000", show_default=True)
 @click.option("--project", default=None, show_default=True)
 @click.option(

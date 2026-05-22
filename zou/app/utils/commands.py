@@ -703,6 +703,19 @@ def verify_project_against_source(source, login, password, project_name):
         sync_service.verify_project_sync(project_name)
 
 
+def push_project_to_target(
+    target, login, password, project_name, batch_size=200
+):
+    """
+    Push the project named ``project_name`` from the local instance to
+    ``target`` via /import/kitsu/* routes.
+    """
+    with app.app_context():
+        sync_service.push_project_data(
+            target, login, password, project_name, batch_size=batch_size
+        )
+
+
 def run_sync_change_daemon(event_source, source, login, password, logs_dir):
     """
     Listen to event websocket. Each time a change occurs, it retrieves the

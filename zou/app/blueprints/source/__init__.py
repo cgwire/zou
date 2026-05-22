@@ -73,11 +73,22 @@ from zou.app.blueprints.source.csv.task_type_estimations import (
     TaskTypeEstimationsEpisodeCsvImportResource,
 )
 from zou.app.blueprints.source.kitsu import (
+    ImportKitsuAttachmentFilesResource,
+    ImportKitsuBuildJobsResource,
     ImportKitsuCommentsResource,
     ImportKitsuEntitiesResource,
     ImportKitsuEntityLinksResource,
+    ImportKitsuMetadataDescriptorsResource,
+    ImportKitsuMilestonesResource,
+    ImportKitsuNewsResource,
+    ImportKitsuNotificationsResource,
+    ImportKitsuPlaylistsResource,
+    ImportKitsuPreviewFilesResource,
     ImportKitsuProjectsResource,
+    ImportKitsuScheduleItemsResource,
+    ImportKitsuSubscriptionsResource,
     ImportKitsuTasksResource,
+    ImportKitsuTimeSpentsResource,
 )
 
 from zou.app.blueprints.source.otio import (
@@ -143,6 +154,20 @@ routes = [
     ("/import/kitsu/entity-links", ImportKitsuEntityLinksResource),
     ("/import/kitsu/projects", ImportKitsuProjectsResource),
     ("/import/kitsu/tasks", ImportKitsuTasksResource),
+    ("/import/kitsu/attachment-files", ImportKitsuAttachmentFilesResource),
+    ("/import/kitsu/build-jobs", ImportKitsuBuildJobsResource),
+    (
+        "/import/kitsu/metadata-descriptors",
+        ImportKitsuMetadataDescriptorsResource,
+    ),
+    ("/import/kitsu/milestones", ImportKitsuMilestonesResource),
+    ("/import/kitsu/news", ImportKitsuNewsResource),
+    ("/import/kitsu/notifications", ImportKitsuNotificationsResource),
+    ("/import/kitsu/playlists", ImportKitsuPlaylistsResource),
+    ("/import/kitsu/preview-files", ImportKitsuPreviewFilesResource),
+    ("/import/kitsu/schedule-items", ImportKitsuScheduleItemsResource),
+    ("/import/kitsu/subscriptions", ImportKitsuSubscriptionsResource),
+    ("/import/kitsu/time-spents", ImportKitsuTimeSpentsResource),
 ]
 
 blueprint = Blueprint("/import", "import")

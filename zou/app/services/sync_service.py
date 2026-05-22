@@ -325,6 +325,158 @@ def run_other_sync(project=None, with_events=False):
         sync_entries("events", ApiEvent, project=project)
 
 
+def push_project_data(target, login, password, project_name, batch_size=200):
+    """
+    Push a single project's data to a target zou instance via the
+    /import/kitsu/* routes. Reference data (persons, departments, task
+    types/statuses, asset types, studios) is assumed to already exist on
+    the target with matching UUIDs — the routes will fail on foreign-key
+    violation if it doesn't.
+    """
+    gazu.set_host(target)
+    gazu.log_in(login, password)
+
+    project = Project.get_by(name=project_name)
+    if project is None:
+        raise Exception(f"Project '{project_name}' not found locally.")
+    project_id = str(project.id)
+    logger.info(f"Pushing {project.name} ({project_id}) to {target}...")
+
+    _push_batch(
+        "/import/kitsu/projects",
+        [project.serialize(relations=True)],
+        batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/metadata-descriptors",
+        MetadataDescriptor.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+        relations=True,
+    )
+    _push_query(
+        "/import/kitsu/milestones",
+        Milestone.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+    )
+
+    # Entities in hierarchy order so FKs (parent_id) resolve as we go.
+    for entity_type_name in (
+        "Episode",
+        "Sequence",
+        "Asset",
+        "Shot",
+        "Concept",
+    ):
+        entity_type = EntityType.get_by(name=entity_type_name)
+        if entity_type is None:
+            continue
+        _push_query(
+            "/import/kitsu/entities",
+            Entity.query.filter_by(
+                project_id=project_id, entity_type_id=entity_type.id
+            ),
+            batch_size=batch_size,
+        )
+
+    _push_query(
+        "/import/kitsu/schedule-items",
+        ScheduleItem.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/entity-links",
+        EntityLink.query.join(
+            Entity, EntityLink.entity_in_id == Entity.id
+        ).filter(Entity.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/tasks",
+        Task.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/subscriptions",
+        Subscription.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/notifications",
+        Notification.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/time-spents",
+        TimeSpent.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/comments",
+        Comment.query.join(Task, Comment.object_id == Task.id).filter(
+            Task.project_id == project_id
+        ),
+        batch_size=batch_size,
+        relations=True,
+    )
+    _push_query(
+        "/import/kitsu/preview-files",
+        PreviewFile.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/attachment-files",
+        AttachmentFile.query.join(Comment)
+        .join(Task, Comment.object_id == Task.id)
+        .filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+    _push_query(
+        "/import/kitsu/news",
+        News.query.join(Task).filter(Task.project_id == project_id),
+        batch_size=batch_size,
+    )
+
+    _push_query(
+        "/import/kitsu/playlists",
+        Playlist.query.filter_by(project_id=project_id),
+        batch_size=batch_size,
+        relations=True,
+    )
+    _push_query(
+        "/import/kitsu/build-jobs",
+        BuildJob.query.join(Playlist).filter(
+            Playlist.project_id == project_id
+        ),
+        batch_size=batch_size,
+    )
+
+    logger.info(f"Push of {project.name} complete.")
+
+
+def _push_query(path, query, batch_size=200, relations=False):
+    instances = query.all()
+    if not instances:
+        logger.info(f"  {path}: nothing to push")
+        return
+    payload = [i.serialize(relations=relations) for i in instances]
+    _push_batch(path, payload, batch_size)
+
+
+def _push_batch(path, payload, batch_size=200):
+    total = len(payload)
+    for offset in range(0, total, batch_size):
+        chunk = payload[offset : offset + batch_size]
+        try:
+            gazu.client.post(path, chunk)
+        except Exception:
+            logger.error(f"  {path}: batch {offset} failed", exc_info=1)
+    logger.info(f"  {path}: pushed {total} rows")
+
+
 def run_last_events_sync(minutes=0, limit=300):
     """
     Retrieve last events from source instance and import related data and
