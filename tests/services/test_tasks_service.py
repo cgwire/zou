@@ -557,3 +557,40 @@ class TaskServiceTestCase(ApiDBTestCase):
         for i, preview_file in enumerate(preview_files):
             self.assertEqual(preview_file.position, i + 1)
         self.assertEqual(str(preview_files[2].id), preview_file_id)
+
+
+class GetOrCreateTaskTypeTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.department = tasks_service.get_or_create_department(
+            "Concept", "#8D6E63"
+        )
+
+    def test_create_when_missing(self):
+        task_type = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        self.assertIsNotNone(task_type["id"])
+        self.assertEqual(task_type["for_entity"], "Asset")
+
+    def test_return_existing_with_same_name_and_entity(self):
+        first = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        second = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        self.assertEqual(first["id"], second["id"])
+        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 1)
+
+    def test_same_name_different_for_entity_coexist(self):
+        asset_type = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1
+        )
+        concept_type = tasks_service.get_or_create_task_type(
+            self.department, "Concept", "#8D6E63", 1, for_entity="Concept"
+        )
+        self.assertNotEqual(asset_type["id"], concept_type["id"])
+        self.assertEqual(asset_type["for_entity"], "Asset")
+        self.assertEqual(concept_type["for_entity"], "Concept")
+        self.assertEqual(len(TaskType.get_all_by(name="Concept")), 2)

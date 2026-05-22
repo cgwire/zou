@@ -536,6 +536,10 @@ def check_task_action_access(task_id):
                     ]
                     in user["departments"]
                 )
+            if not is_allowed:
+                # The entity creator keeps task action access (e.g. an artist's concept).
+                entity = entities_service.get_entity(task["entity_id"])
+                is_allowed = entity["created_by"] == user["id"]
 
     if not is_allowed:
         raise permissions.PermissionDenied
