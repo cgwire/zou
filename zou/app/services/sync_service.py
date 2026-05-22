@@ -377,6 +377,7 @@ def push_project_data(target, login, password, project_name, batch_size=200):
                 project_id=project_id, entity_type_id=entity_type.id
             ),
             batch_size=batch_size,
+            label=f"/import/kitsu/entities ({entity_type_name})",
         )
 
     _push_query(
@@ -425,6 +426,10 @@ def push_project_data(target, login, password, project_name, batch_size=200):
         "/import/kitsu/preview-files",
         PreviewFile.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        # source_file_id -> OutputFile.id, and OutputFile is out of scope
+        # for sync-push (see the verify "NOT SYNCED" rows). Strip it so the
+        # FK doesn't blow up the whole batch on the target side.
+        strip_fields=["source_file_id"],
     )
 
     _push_query(
@@ -457,24 +462,45 @@ def push_project_data(target, login, password, project_name, batch_size=200):
     logger.info(f"Push of {project.name} complete.")
 
 
-def _push_query(path, query, batch_size=200, relations=False):
+def _push_query(
+    path,
+    query,
+    batch_size=200,
+    relations=False,
+    label=None,
+    strip_fields=None,
+):
     instances = query.all()
+    display = label or path
     if not instances:
-        logger.info(f"  {path}: nothing to push")
+        logger.info(f"  {display}: nothing to push")
         return
     payload = [i.serialize(relations=relations) for i in instances]
-    _push_batch(path, payload, batch_size)
+    if strip_fields:
+        for item in payload:
+            for field in strip_fields:
+                item.pop(field, None)
+    _push_batch(path, payload, batch_size, label=display)
 
 
-def _push_batch(path, payload, batch_size=200):
+def _push_batch(path, payload, batch_size=200, label=None):
+    display = label or path
     total = len(payload)
+    failed = 0
     for offset in range(0, total, batch_size):
         chunk = payload[offset : offset + batch_size]
         try:
             gazu.client.post(path, chunk)
         except Exception:
-            logger.error(f"  {path}: batch {offset} failed", exc_info=1)
-    logger.info(f"  {path}: pushed {total} rows")
+            logger.error(f"  {display}: batch {offset} failed", exc_info=1)
+            failed += len(chunk)
+    if failed:
+        logger.warning(
+            f"  {display}: pushed {total - failed}/{total} rows "
+            f"({failed} failed)"
+        )
+    else:
+        logger.info(f"  {display}: pushed {total} rows")
 
 
 def run_last_events_sync(minutes=0, limit=300):
@@ -1445,36 +1471,47 @@ def download_file_from_another_instance(
     return path, file_path
 
 
-def verify_project_sync(project_name):
+def verify_project_sync(project_name, direction="pull"):
     """
-    Compare source and target row counts for every project-scoped model.
+    Compare row counts for every project-scoped model between the local
+    instance and a remote one (configured via ``init(...)``).
 
-    Used after `sync-full --only-projects --project <name>` to detect:
-      - batches dropped silently by `sync_entries` when an `IntegrityError`
-        was caught and only logged (sync_service.py:471/481/499),
-      - tables that exist in the data model but were never wired into
-        `project_events`, so sync_full does not migrate them at all.
+    ``direction="pull"`` (default): the remote is the source of a sync-full;
+    column ``Source``=remote, ``Target``=local. Used to detect batches
+    dropped silently by ``sync_entries`` and tables not yet wired into
+    ``project_events``.
 
-    Assumes `init(...)` has been called for the source side. Reads the
-    target side directly from the local database. Pure read-only.
+    ``direction="push"``: the remote is the target of a sync-push;
+    column ``Source``=local, ``Target``=remote. Used to detect rows that
+    didn't reach the target after a sync-push.
+
+    Pure read-only.
     """
+    remote_role = "source" if direction == "pull" else "target"
+
     try:
-        source_project = gazu.project.get_project_by_name(project_name)
+        remote_project = gazu.project.get_project_by_name(project_name)
     except gazu.exception.ProjectNotFoundException:
-        source_project = None
+        remote_project = None
 
-    if source_project is None:
-        print(f"Project '{project_name}' not found on source.")
+    if remote_project is None:
+        print(f"Project '{project_name}' not found on {remote_role}.")
         return
 
-    pid = source_project["id"]
+    pid = remote_project["id"]
     local_project = Project.get(pid)
     if local_project is None:
-        print(
-            f"Project '{project_name}' ({pid}) is not present on the target."
-            f" Run `zou sync-full --only-projects --project '{project_name}'`"
-            " first."
-        )
+        if direction == "pull":
+            print(
+                f"Project '{project_name}' ({pid}) is not present locally."
+                f" Run `zou sync-full --only-projects --project "
+                f"'{project_name}'` first."
+            )
+        else:
+            print(
+                f"Project '{project_name}' ({pid}) is not present locally."
+                " Nothing to push-verify against."
+            )
         return
 
     # (label, source counter, target counter, synced_by_sync_full)
@@ -1634,9 +1671,13 @@ def verify_project_sync(project_name):
 
     diffs = 0
     missing_with_data = 0
-    for label, src_fn, tgt_fn, synced in specs:
-        src = _safe(src_fn)
-        tgt = _safe(tgt_fn)
+    for label, remote_fn, local_fn, synced in specs:
+        remote = _safe(remote_fn)
+        local = _safe(local_fn)
+        if direction == "push":
+            src, tgt = local, remote
+        else:
+            src, tgt = remote, local
 
         src_str = f"{src:>8d}" if isinstance(src, int) else "     N/A"
         tgt_str = f"{tgt:>8d}" if isinstance(tgt, int) else "     N/A"
@@ -1660,15 +1701,24 @@ def verify_project_sync(project_name):
 
     print()
     if diffs:
-        print(
-            f"{diffs} synced model(s) show a row-count delta — likely due to "
-            "IntegrityError batches caught silently by sync_entries. Re-run "
-            "the sync with LOGLEVEL=DEBUG and grep for 'An error occured'."
-        )
+        if direction == "pull":
+            print(
+                f"{diffs} synced model(s) show a row-count delta — likely due "
+                "to IntegrityError batches caught silently by sync_entries. "
+                "Re-run with LOGLEVEL=DEBUG and grep for 'An error occured'."
+            )
+        else:
+            print(
+                f"{diffs} synced model(s) show a row-count delta — some "
+                "rows did not reach the target. Inspect the sync-push logs "
+                "for failed batches."
+            )
     if missing_with_data:
+        held_on = "source" if direction == "pull" else "the local instance"
         print(
-            f"{missing_with_data} non-synced model(s) hold data on source — "
-            "sync_full does not migrate them. Plan a manual transfer."
+            f"{missing_with_data} non-synced model(s) hold data on "
+            f"{held_on} — they are out of scope for sync. Plan a manual "
+            "transfer."
         )
     if not diffs and not missing_with_data:
         print("All comparable models match and no unsynced tables hold data.")

@@ -700,7 +700,18 @@ def verify_project_against_source(source, login, password, project_name):
     """
     with app.app_context():
         sync_service.init(source, login, password)
-        sync_service.verify_project_sync(project_name)
+        sync_service.verify_project_sync(project_name, direction="pull")
+
+
+def verify_project_against_target(target, login, password, project_name):
+    """
+    Mirror of :func:`verify_project_against_source` for the sync-push
+    direction. Connect to the target instance we pushed to and compare
+    its row counts against the local ones.
+    """
+    with app.app_context():
+        sync_service.init(target, login, password)
+        sync_service.verify_project_sync(project_name, direction="push")
 
 
 def push_project_to_target(
