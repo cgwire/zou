@@ -481,6 +481,13 @@ def _push_query(
     which yield_per refuses to combine with.
     """
     display = label or path
+    total_expected = query.count()
+    if total_expected == 0:
+        logger.info(f"  {display}: nothing to push")
+        return
+
+    logger.info(f"  {display}: pushing {total_expected} rows...")
+
     offset = 0
     total = 0
     failed = 0
@@ -504,11 +511,14 @@ def _push_query(
             )
             failed += len(items)
         total += len(items)
+        percent = 100.0 * total / total_expected
+        suffix = f" [{failed} failed]" if failed else ""
+        logger.info(
+            f"  {display}: {total}/{total_expected} ({percent:.1f}%){suffix}"
+        )
         offset += batch_size
 
-    if total == 0:
-        logger.info(f"  {display}: nothing to push")
-    elif failed:
+    if failed:
         logger.warning(
             f"  {display}: pushed {total - failed}/{total} rows "
             f"({failed} failed)"
