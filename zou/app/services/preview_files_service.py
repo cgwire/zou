@@ -788,6 +788,11 @@ def get_last_preview_file_for_task(task_id):
 
 
 def extract_frame_from_preview_file(preview_file, frame_number):
+    if (preview_file.get("data") or {}).get("imported_only"):
+        raise WrongParameterException(
+            "Preview file is metadata-only (imported via sync-push). "
+            "Transfer the binary before extracting frames."
+        )
     try:
         project = get_project_from_preview_file(preview_file["id"])
     except PreviewFileNotFoundException:
@@ -826,6 +831,11 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
 
 
 def extract_tile_from_preview_file(preview_file):
+    if (preview_file.get("data") or {}).get("imported_only"):
+        raise WrongParameterException(
+            "Preview file is metadata-only (imported via sync-push). "
+            "Transfer the binary before extracting tiles."
+        )
     if preview_file["extension"] == "mp4":
         preview_file_path = fs.get_file_path_and_file(
             config,

@@ -628,6 +628,21 @@ class ImportKitsuPreviewFilesResource(_TaskScopedImportResource):
     def __init__(self):
         BaseImportKitsuResource.__init__(self, PreviewFile)
 
+    @jwt_required()
+    def post(self):
+        # Flag every imported entry as binary-not-available so downstream
+        # services (thumbnail regen, frame extraction) know not to touch
+        # the local filesystem. The push only transfers metadata.
+        entries = request.json
+        if isinstance(entries, list):
+            for entry in entries:
+                if not isinstance(entry, dict):
+                    continue
+                data = entry.get("data") or {}
+                data["imported_only"] = True
+                entry["data"] = data
+        return super().post()
+
 
 class ImportKitsuTimeSpentsResource(_TaskScopedImportResource):
     event_name = "time-spent"

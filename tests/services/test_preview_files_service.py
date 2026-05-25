@@ -6,9 +6,12 @@ from tests.base import ApiDBTestCase
 
 
 from zou.app.services import files_service, preview_files_service
+from zou.app.services.exception import WrongParameterException
 from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
+    extract_frame_from_preview_file,
+    extract_tile_from_preview_file,
     get_preview_file_dimensions,
     get_preview_file_fps,
 )
@@ -414,3 +417,17 @@ class PlaylistTestCase(ApiDBTestCase):
         for p in (uploaded_path, norm_path, norm_low_path):
             if os.path.exists(p):
                 os.remove(p)
+
+    def test_extract_frame_refuses_metadata_only(self):
+        """Imported-only previews have no local binary — extracting a
+        frame must short-circuit with a clear 400 rather than crash on
+        FileNotFoundError."""
+        preview_file = {
+            "id": "some-uuid",
+            "extension": "mp4",
+            "data": {"imported_only": True},
+        }
+        with self.assertRaises(WrongParameterException):
+            extract_frame_from_preview_file(preview_file, 1)
+        with self.assertRaises(WrongParameterException):
+            extract_tile_from_preview_file(preview_file)
