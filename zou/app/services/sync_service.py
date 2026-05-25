@@ -470,20 +470,55 @@ def _push_query(
     label=None,
     strip_fields=None,
 ):
-    instances = query.all()
+    """
+    Stream a query and POST it batch by batch. Avoids loading the whole
+    project into memory and serializing it up-front, which is critical
+    for high-volume tables (comments, preview-files) where ``relations=True``
+    also triggers N joined lookups per row.
+    """
     display = label or path
-    if not instances:
-        logger.info(f"  {display}: nothing to push")
-        return
-    payload = [i.serialize(relations=relations) for i in instances]
-    if strip_fields:
-        for item in payload:
+    pending = []
+    total = 0
+    failed = 0
+
+    def flush():
+        nonlocal pending, total, failed
+        if not pending:
+            return
+        try:
+            gazu.client.post(path, pending)
+        except Exception:
+            logger.error(
+                f"  {display}: batch at offset {total} failed", exc_info=1
+            )
+            failed += len(pending)
+        total += len(pending)
+        pending = []
+
+    for instance in query.yield_per(batch_size):
+        item = instance.serialize(relations=relations)
+        if strip_fields:
             for field in strip_fields:
                 item.pop(field, None)
-    _push_batch(path, payload, batch_size, label=display)
+        pending.append(item)
+        if len(pending) >= batch_size:
+            flush()
+    flush()
+
+    if total == 0:
+        logger.info(f"  {display}: nothing to push")
+    elif failed:
+        logger.warning(
+            f"  {display}: pushed {total - failed}/{total} rows "
+            f"({failed} failed)"
+        )
+    else:
+        logger.info(f"  {display}: pushed {total} rows")
 
 
 def _push_batch(path, payload, batch_size=200, label=None):
+    """One-shot POST helper for the small pre-built lists (e.g. the
+    project itself). For query-driven pushes, use _push_query."""
     display = label or path
     total = len(payload)
     failed = 0
