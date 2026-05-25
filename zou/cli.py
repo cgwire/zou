@@ -640,7 +640,14 @@ def sync_verify(source, project):
 @click.option("--target", required=True)
 @click.option("--project", required=True)
 @click.option("--batch-size", default=200, show_default=True, type=int)
-def sync_push(target, project, batch_size):
+@click.option(
+    "--throttle",
+    default=0.0,
+    show_default=True,
+    type=float,
+    help="Seconds to sleep between batch POSTs (e.g. 0.5).",
+)
+def sync_push(target, project, batch_size, throttle):
     """
     Push a project from the current instance to a target zou instance via
     /import/kitsu/* routes. Reference data (persons, departments, task
@@ -653,7 +660,12 @@ def sync_push(target, project, batch_size):
     login = os.getenv("SYNC_LOGIN")
     password = os.getenv("SYNC_PASSWORD")
     commands.push_project_to_target(
-        target, login, password, project, batch_size=batch_size
+        target,
+        login,
+        password,
+        project,
+        batch_size=batch_size,
+        throttle=throttle,
     )
 
 

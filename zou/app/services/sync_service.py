@@ -325,13 +325,24 @@ def run_other_sync(project=None, with_events=False):
         sync_entries("events", ApiEvent, project=project)
 
 
-def push_project_data(target, login, password, project_name, batch_size=200):
+def push_project_data(
+    target,
+    login,
+    password,
+    project_name,
+    batch_size=200,
+    throttle=0.0,
+):
     """
     Push a single project's data to a target zou instance via the
     /import/kitsu/* routes. Reference data (persons, departments, task
     types/statuses, asset types, studios) is assumed to already exist on
     the target with matching UUIDs — the routes will fail on foreign-key
     violation if it doesn't.
+
+    ``throttle`` is a pause (in seconds) between every batch POST. Useful
+    to spare the target instance under load — set to 0.5 or 1.0 if the
+    default rate causes timeouts or saturates request workers.
     """
     gazu.set_host(target)
     gazu.log_in(login, password)
@@ -352,12 +363,14 @@ def push_project_data(target, login, password, project_name, batch_size=200):
         "/import/kitsu/metadata-descriptors",
         MetadataDescriptor.query.filter_by(project_id=project_id),
         batch_size=batch_size,
+        throttle=throttle,
         relations=True,
     )
     _push_query(
         "/import/kitsu/milestones",
         Milestone.query.filter_by(project_id=project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
 
     # Entities in hierarchy order so FKs (parent_id) resolve as we go.
@@ -377,6 +390,7 @@ def push_project_data(target, login, password, project_name, batch_size=200):
                 project_id=project_id, entity_type_id=entity_type.id
             ),
             batch_size=batch_size,
+            throttle=throttle,
             label=f"/import/kitsu/entities ({entity_type_name})",
         )
 
@@ -384,6 +398,7 @@ def push_project_data(target, login, password, project_name, batch_size=200):
         "/import/kitsu/schedule-items",
         ScheduleItem.query.filter_by(project_id=project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
     _push_query(
         "/import/kitsu/entity-links",
@@ -391,27 +406,32 @@ def push_project_data(target, login, password, project_name, batch_size=200):
             Entity, EntityLink.entity_in_id == Entity.id
         ).filter(Entity.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
 
     _push_query(
         "/import/kitsu/tasks",
         Task.query.filter_by(project_id=project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
     _push_query(
         "/import/kitsu/subscriptions",
         Subscription.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
     _push_query(
         "/import/kitsu/notifications",
         Notification.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
     _push_query(
         "/import/kitsu/time-spents",
         TimeSpent.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
 
     _push_query(
@@ -420,12 +440,14 @@ def push_project_data(target, login, password, project_name, batch_size=200):
             Task.project_id == project_id
         ),
         batch_size=batch_size,
+        throttle=throttle,
         relations=True,
     )
     _push_query(
         "/import/kitsu/preview-files",
         PreviewFile.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
         # source_file_id -> OutputFile.id, and OutputFile is out of scope
         # for sync-push (see the verify "NOT SYNCED" rows). Strip it so the
         # FK doesn't blow up the whole batch on the target side.
@@ -438,17 +460,20 @@ def push_project_data(target, login, password, project_name, batch_size=200):
         .join(Task, Comment.object_id == Task.id)
         .filter(Task.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
     _push_query(
         "/import/kitsu/news",
         News.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
+        throttle=throttle,
     )
 
     _push_query(
         "/import/kitsu/playlists",
         Playlist.query.filter_by(project_id=project_id),
         batch_size=batch_size,
+        throttle=throttle,
         relations=True,
     )
     _push_query(
@@ -457,6 +482,7 @@ def push_project_data(target, login, password, project_name, batch_size=200):
             Playlist.project_id == project_id
         ),
         batch_size=batch_size,
+        throttle=throttle,
     )
 
     logger.info(f"Push of {project.name} complete.")
@@ -469,6 +495,7 @@ def _push_query(
     relations=False,
     label=None,
     strip_fields=None,
+    throttle=0.0,
 ):
     """
     Page through a query (offset+limit) and POST one batch at a time.
@@ -517,6 +544,8 @@ def _push_query(
             f"  {display}: {total}/{total_expected} ({percent:.1f}%){suffix}"
         )
         offset += batch_size
+        if throttle > 0 and total < total_expected:
+            time.sleep(throttle)
 
     if failed:
         logger.warning(

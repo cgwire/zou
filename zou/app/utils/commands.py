@@ -715,7 +715,12 @@ def verify_project_against_target(target, login, password, project_name):
 
 
 def push_project_to_target(
-    target, login, password, project_name, batch_size=200
+    target,
+    login,
+    password,
+    project_name,
+    batch_size=200,
+    throttle=0.0,
 ):
     """
     Push the project named ``project_name`` from the local instance to
@@ -723,7 +728,12 @@ def push_project_to_target(
     """
     with app.app_context():
         sync_service.push_project_data(
-            target, login, password, project_name, batch_size=batch_size
+            target,
+            login,
+            password,
+            project_name,
+            batch_size=batch_size,
+            throttle=throttle,
         )
 
 
