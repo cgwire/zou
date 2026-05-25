@@ -471,39 +471,40 @@ def _push_query(
     strip_fields=None,
 ):
     """
-    Stream a query and POST it batch by batch. Avoids loading the whole
-    project into memory and serializing it up-front, which is critical
-    for high-volume tables (comments, preview-files) where ``relations=True``
-    also triggers N joined lookups per row.
+    Page through a query (offset+limit) and POST one batch at a time.
+    Avoids loading the whole table into memory before the first POST,
+    which matters on high-volume tables (comments, preview-files)
+    especially with ``relations=True`` triggering joined lookups per row.
+
+    offset+limit is used rather than ``yield_per`` because several models
+    define eager loaders on their collections (joinedload/subqueryload),
+    which yield_per refuses to combine with.
     """
     display = label or path
-    pending = []
+    offset = 0
     total = 0
     failed = 0
 
-    def flush():
-        nonlocal pending, total, failed
-        if not pending:
-            return
+    while True:
+        instances = query.offset(offset).limit(batch_size).all()
+        if not instances:
+            break
+        items = []
+        for instance in instances:
+            item = instance.serialize(relations=relations)
+            if strip_fields:
+                for field in strip_fields:
+                    item.pop(field, None)
+            items.append(item)
         try:
-            gazu.client.post(path, pending)
+            gazu.client.post(path, items)
         except Exception:
             logger.error(
-                f"  {display}: batch at offset {total} failed", exc_info=1
+                f"  {display}: batch at offset {offset} failed", exc_info=1
             )
-            failed += len(pending)
-        total += len(pending)
-        pending = []
-
-    for instance in query.yield_per(batch_size):
-        item = instance.serialize(relations=relations)
-        if strip_fields:
-            for field in strip_fields:
-                item.pop(field, None)
-        pending.append(item)
-        if len(pending) >= batch_size:
-            flush()
-    flush()
+            failed += len(items)
+        total += len(items)
+        offset += batch_size
 
     if total == 0:
         logger.info(f"  {display}: nothing to push")
