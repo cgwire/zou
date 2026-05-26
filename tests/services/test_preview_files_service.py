@@ -14,6 +14,7 @@ from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
     extract_all_annotation_frames_from_preview_file,
+    extract_all_annotation_frames_pdf_from_preview_file,
     extract_annotation_frame_from_preview_file,
     extract_frame_from_preview_file,
     extract_tile_from_preview_file,
@@ -559,6 +560,39 @@ def _make_white_png(size=(200, 200)):
     return path
 
 
+def _patch_movie_extraction(
+    test_case, frame_factory, file_name="proj_asset_anim_v1.mp4"
+):
+    """Patch the project/entity/fps lookups and the frame extractor used
+    by the bulk-annotation builders so service tests can assert on file
+    names and frame numbers without going through ffmpeg."""
+    patches = [
+        patch(
+            "zou.app.services.preview_files_service.get_project_from_preview_file",
+            return_value={"id": "p", "fps": "24"},
+        ),
+        patch(
+            "zou.app.services.preview_files_service.get_entity_from_preview_file",
+            return_value=None,
+        ),
+        patch(
+            "zou.app.services.preview_files_service.get_preview_file_fps",
+            return_value="24",
+        ),
+        patch(
+            "zou.app.services.preview_files_service.extract_frame_from_preview_file",
+            side_effect=lambda pf, fn: frame_factory(),
+        ),
+        patch(
+            "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+            return_value=file_name,
+        ),
+    ]
+    for p in patches:
+        p.start()
+        test_case.addCleanup(p.stop)
+
+
 class ExtractAnnotationFramePictureTestCase(ApiDBTestCase):
     def setUp(self):
         super().setUp()
@@ -641,40 +675,13 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
             {**_make_red_rect_annotation(), "time": 1},
         ]
 
-    def _patch_movie_deps(self, frame_path_factory):
-        patches = [
-            patch(
-                "zou.app.services.preview_files_service.get_project_from_preview_file",
-                return_value={"id": "p", "fps": "24"},
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_entity_from_preview_file",
-                return_value=None,
-            ),
-            patch(
-                "zou.app.services.preview_files_service.get_preview_file_fps",
-                return_value="24",
-            ),
-            patch(
-                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
-                side_effect=lambda pf, fn: frame_path_factory(),
-            ),
-            patch(
-                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
-                return_value="proj_asset_anim_v1.mp4",
-            ),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-
     def test_movie_zip_contains_one_png_per_annotation(self):
         import zipfile
 
         def factory():
             return _make_white_png()
 
-        self._patch_movie_deps(factory)
+        _patch_movie_extraction(self, factory)
         zip_path = extract_all_annotation_frames_from_preview_file(
             self.preview_file
         )
@@ -698,7 +705,7 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
             extract_all_annotation_frames_from_preview_file(self.preview_file)
 
     def test_returns_none_when_movie_binary_missing(self):
-        self._patch_movie_deps(lambda: None)
+        _patch_movie_extraction(self, lambda: None)
         result = extract_all_annotation_frames_from_preview_file(
             self.preview_file
         )
@@ -747,3 +754,187 @@ class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
         self.preview_file["extension"] = "psd"
         with self.assertRaises(WrongParameterException):
             extract_all_annotation_frames_from_preview_file(self.preview_file)
+
+    def test_entries_own_unique_temp_files_not_shared_with_extract(self):
+        """`extract_frame_from_movie` writes to a deterministic /tmp slot
+        per (movie, frame). A concurrent caller extracting the same frame
+        (e.g. the single-frame route's `os.remove` finally) can delete
+        the file from under us. The bundler must claim each extracted
+        frame as its own private temp file before rendering."""
+        shared_path = _make_white_png()
+
+        def fake_extract(pf, fn):
+            # Always returns the same shared path — simulates ffmpeg
+            # overwriting the same /tmp slot.
+            return shared_path
+
+        patches = [
+            patch(
+                "zou.app.services.preview_files_service.get_project_from_preview_file",
+                return_value={"id": "p", "fps": "24"},
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_entity_from_preview_file",
+                return_value=None,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_preview_file_fps",
+                return_value="24",
+            ),
+            patch(
+                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
+                side_effect=fake_extract,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                return_value="proj_asset_anim_v1.mp4",
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        # After build, the shared slot is gone (a concurrent caller
+        # cleaning up would do this). We simulate by deleting it before
+        # the bundling phase happens — but since build runs synchronously
+        # and bundle happens right after, we test the invariant
+        # differently: each entry path must be unique and NOT the shared
+        # path. That alone guarantees concurrent shared-path operations
+        # can't corrupt the bundle.
+        from zou.app.services.preview_files_service import (
+            _build_annotated_frame_entries,
+        )
+
+        entries = _build_annotated_frame_entries(self.preview_file)
+        try:
+            paths = [p for _, p in entries]
+            self.assertEqual(
+                len(set(paths)), len(paths), "entries share a temp path"
+            )
+            self.assertNotIn(shared_path, paths)
+        finally:
+            for _, p in entries:
+                if os.path.exists(p):
+                    os.remove(p)
+            if os.path.exists(shared_path):
+                os.remove(shared_path)
+
+    def test_skips_annotation_when_ffmpeg_produces_no_file(self):
+        """`extract_frame_from_movie` can return a path to a file ffmpeg
+        never actually wrote (e.g. when frame_number is past EOF: ffmpeg
+        exits 0 with no output). The bundler must NOT crash with
+        FileNotFoundError — it skips the annotation and keeps going."""
+        import zipfile
+
+        good_path = _make_white_png()
+        call_count = {"n": 0}
+
+        def fake_extract(pf, fn):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                # First annotation succeeds.
+                return good_path
+            # Second annotation: ffmpeg-silent-fail — returns a path
+            # whose file doesn't exist.
+            return "/tmp/this-file-does-not-exist-zzzzz.png"
+
+        patches = [
+            patch(
+                "zou.app.services.preview_files_service.get_project_from_preview_file",
+                return_value={"id": "p", "fps": "24"},
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_entity_from_preview_file",
+                return_value=None,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_preview_file_fps",
+                return_value="24",
+            ),
+            patch(
+                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
+                side_effect=fake_extract,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                return_value="proj_asset_anim_v1.mp4",
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        zip_path = extract_all_annotation_frames_from_preview_file(
+            self.preview_file
+        )
+        self.addCleanup(
+            lambda: os.path.exists(zip_path) and os.remove(zip_path)
+        )
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+        # Only the first annotation's frame should be in the archive.
+        self.assertEqual(len(names), 1)
+
+
+class ExtractAllAnnotationFramesPdfTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file().serialize()
+        self.preview_file["annotations"] = [
+            {**_make_red_rect_annotation(), "time": 0},
+            {**_make_red_rect_annotation(), "time": 1},
+        ]
+
+    def test_pdf_starts_with_pdf_magic(self):
+        _patch_movie_extraction(self, _make_white_png)
+        pdf_path = extract_all_annotation_frames_pdf_from_preview_file(
+            self.preview_file
+        )
+        self.addCleanup(
+            lambda: os.path.exists(pdf_path) and os.remove(pdf_path)
+        )
+        with open(pdf_path, "rb") as f:
+            magic = f.read(5)
+        self.assertEqual(magic, b"%PDF-")
+        self.assertGreater(os.path.getsize(pdf_path), 1024)
+
+    def test_pdf_has_one_page_per_annotation(self):
+        import re
+
+        _patch_movie_extraction(self, _make_white_png)
+        pdf_path = extract_all_annotation_frames_pdf_from_preview_file(
+            self.preview_file
+        )
+        self.addCleanup(
+            lambda: os.path.exists(pdf_path) and os.remove(pdf_path)
+        )
+        # Read /Count from the PDF catalog — set by Pillow to the page
+        # count when saving with save_all. Avoids depending on a PDF lib.
+        with open(pdf_path, "rb") as f:
+            data = f.read()
+        counts = re.findall(rb"/Count\s+(\d+)", data)
+        self.assertIn(b"2", counts)
+
+    def test_raises_when_no_annotations(self):
+        self.preview_file["annotations"] = []
+        with self.assertRaises(AnnotationNotFoundException):
+            extract_all_annotation_frames_pdf_from_preview_file(
+                self.preview_file
+            )
+
+    def test_returns_none_when_binary_missing(self):
+        _patch_movie_extraction(self, lambda: None)
+        result = extract_all_annotation_frames_pdf_from_preview_file(
+            self.preview_file
+        )
+        self.assertIsNone(result)
+
+    def test_unsupported_extension_raises(self):
+        self.preview_file["extension"] = "psd"
+        with self.assertRaises(WrongParameterException):
+            extract_all_annotation_frames_pdf_from_preview_file(
+                self.preview_file
+            )

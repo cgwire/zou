@@ -947,27 +947,52 @@ def extract_all_annotation_frames_from_preview_file(preview_file):
     annotations. Returns the path to a temp zip file (caller must delete
     it), or None when the preview binary is not available.
     """
+    entries = _build_annotated_frame_entries(preview_file)
+    if entries is None:
+        return None
+    return _bundle_annotated_frames_into_zip(entries)
+
+
+def extract_all_annotation_frames_pdf_from_preview_file(preview_file):
+    """
+    Build a multi-page PDF with one page per annotated frame (movie) or
+    per annotated copy of the picture (picture preview).
+
+    Raises AnnotationNotFoundException when the preview has no
+    annotations. Returns the path to a temp pdf file (caller must delete
+    it), or None when the preview binary is not available.
+    """
+    entries = _build_annotated_frame_entries(preview_file)
+    if entries is None:
+        return None
+    return _bundle_annotated_frames_into_pdf(entries)
+
+
+def _build_annotated_frame_entries(preview_file):
+    """
+    Common entry-point for the zip and pdf bundlers: render every
+    annotated frame of the preview to a temp PNG and return the list of
+    (arcname, path) tuples. Returns None when the binary is unavailable;
+    raises AnnotationNotFoundException when there is nothing to render
+    and WrongParameterException for unsupported extensions.
+    """
     annotations = preview_file.get("annotations") or []
     if not annotations:
         raise AnnotationNotFoundException("Preview file has no annotations")
     extension = (preview_file.get("extension") or "").lower()
     base_name = _annotated_frame_base_name(preview_file)
     if extension == "mp4":
-        entries = _build_movie_annotation_entries(
+        return _build_movie_annotation_entries(
             preview_file, annotations, base_name
         )
-    elif extension in ANNOTATED_PICTURE_EXTENSIONS:
-        entries = _build_picture_annotation_entries(
+    if extension in ANNOTATED_PICTURE_EXTENSIONS:
+        return _build_picture_annotation_entries(
             preview_file, annotations, base_name
         )
-    else:
-        raise WrongParameterException(
-            f"Cannot extract annotated frames from preview with extension "
-            f"{extension!r}"
-        )
-    if entries is None:
-        return None
-    return _bundle_annotated_frames_into_zip(entries)
+    raise WrongParameterException(
+        f"Cannot extract annotated frames from preview with extension "
+        f"{extension!r}"
+    )
 
 
 def _annotated_frame_base_name(preview_file):
@@ -975,11 +1000,21 @@ def _annotated_frame_base_name(preview_file):
     return os.path.splitext(full_name)[0]
 
 
+_NO_FRAME_EXTRACTED_MSG = (
+    "No annotated frame could be extracted from this preview"
+)
+
+
 def _build_movie_annotation_entries(preview_file, annotations, base_name):
     """
     Returns a list of (arcname, temp_png_path) tuples ready to be zipped,
     or None if the movie binary is unavailable. Cleans up partial work on
     failure.
+
+    Individual annotations whose frame ffmpeg fails to extract (returns
+    a path to a non-existent file, e.g. when the annotation's time falls
+    past the movie's EOF) are skipped rather than aborting the whole
+    bundle.
     """
     project = get_project_from_preview_file(preview_file["id"])
     entity = get_entity_from_preview_file(preview_file["id"])
@@ -999,8 +1034,11 @@ def _build_movie_annotation_entries(preview_file, annotations, base_name):
             if frame_path is None:
                 _cleanup_entries(entries)
                 return None
+            if not os.path.exists(frame_path):
+                continue
+            owned_path = _claim_extracted_frame(frame_path)
             rendered = annotations_renderer.render_annotation_on_image(
-                frame_path, annotation
+                owned_path, annotation
             )
             entries.append((f"{base_name}_frame_{frame_number}.png", rendered))
     except Exception:
@@ -1027,6 +1065,18 @@ def _build_picture_annotation_entries(preview_file, annotations, base_name):
     return entries
 
 
+def _claim_extracted_frame(extracted_path):
+    """Move the frame ffmpeg wrote at a deterministic
+    `tmp/<movie>_<frame>.png` slot to a fresh mkstemp path. Required
+    because that deterministic slot is shared with other callers (e.g.
+    the single-frame extract route which `os.remove`s it in a finally),
+    and concurrent calls could yank the file from under the bundler."""
+    fd, owned_path = tempfile.mkstemp(suffix=".png")
+    os.close(fd)
+    shutil.move(extracted_path, owned_path)
+    return owned_path
+
+
 def _cleanup_entries(entries):
     for _, path in entries:
         if path and os.path.exists(path):
@@ -1034,6 +1084,8 @@ def _cleanup_entries(entries):
 
 
 def _bundle_annotated_frames_into_zip(entries):
+    if not entries:
+        raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
     fd, zip_path = tempfile.mkstemp(suffix=".zip")
     os.close(fd)
     try:
@@ -1043,6 +1095,33 @@ def _bundle_annotated_frames_into_zip(entries):
     finally:
         _cleanup_entries(entries)
     return zip_path
+
+
+def _bundle_annotated_frames_into_pdf(entries):
+    """Stitch every PNG into a multi-page PDF via Pillow. PDF doesn't
+    support alpha, so each frame is flattened to RGB. 150 DPI keeps page
+    sizes reasonable for HD frames without blowing up the file."""
+    if not entries:
+        raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
+    fd, pdf_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
+    images = []
+    try:
+        for _, src_path in entries:
+            images.append(Image.open(src_path).convert("RGB"))
+        head, tail = images[0], images[1:]
+        head.save(
+            pdf_path,
+            "PDF",
+            save_all=True,
+            append_images=tail,
+            resolution=150.0,
+        )
+    finally:
+        for img in images:
+            img.close()
+        _cleanup_entries(entries)
+    return pdf_path
 
 
 def extract_tile_from_preview_file(preview_file):

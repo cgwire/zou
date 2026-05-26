@@ -1792,6 +1792,34 @@ class ExtractAnnotatedFrameFromPreview(Resource):
             os.remove(extracted_frame_path)
 
 
+def _serve_annotated_frames_bundle(
+    preview_file_id, build_bundle, mimetype, file_extension
+):
+    """Common flow for the zip and pdf bulk-download resources: check
+    permissions, build the bundle via the service, send it as an
+    attachment named `{preview_base_name}_annotated_frames.{ext}`."""
+    preview_file = files_service.get_preview_file(preview_file_id)
+    task = tasks_service.get_task(preview_file["task_id"])
+    user_service.check_manager_project_access(task["project_id"])
+    bundle_path = build_bundle(preview_file)
+    if bundle_path is None:
+        return {"error": "preview file binary is not available"}, 404
+    base_name = os.path.splitext(
+        names_service.get_preview_file_name(preview_file_id)
+    )[0]
+    download_name = f"{base_name}_annotated_frames.{file_extension}"
+    try:
+        return flask_send_file(
+            bundle_path,
+            conditional=True,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=download_name,
+        )
+    finally:
+        os.remove(bundle_path)
+
+
 class ExtractAllAnnotatedFramesFromPreview(Resource):
     """
     Build a zip archive containing every annotated frame (movie) or
@@ -1832,28 +1860,60 @@ class ExtractAllAnnotatedFramesFromPreview(Resource):
           404:
             description: Preview file binary is not available
         """
-        preview_file = files_service.get_preview_file(preview_file_id)
-        task = tasks_service.get_task(preview_file["task_id"])
-        user_service.check_manager_project_access(task["project_id"])
-        zip_path = preview_files_service.extract_all_annotation_frames_from_preview_file(
-            preview_file
+        return _serve_annotated_frames_bundle(
+            preview_file_id,
+            preview_files_service.extract_all_annotation_frames_from_preview_file,
+            mimetype="application/zip",
+            file_extension="zip",
         )
-        if zip_path is None:
-            return {"error": "preview file binary is not available"}, 404
-        base_name = os.path.splitext(
-            names_service.get_preview_file_name(preview_file_id)
-        )[0]
-        download_name = f"{base_name}_annotated_frames.zip"
-        try:
-            return flask_send_file(
-                zip_path,
-                conditional=True,
-                mimetype="application/zip",
-                as_attachment=True,
-                download_name=download_name,
-            )
-        finally:
-            os.remove(zip_path)
+
+
+class ExtractAllAnnotatedFramesAsPdfFromPreview(Resource):
+    """
+    Build a multi-page PDF containing every annotated frame (movie) or
+    every annotated copy of the picture preview.
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        """
+        Extract all annotated frames from preview as a PDF
+        ---
+        description: Build a multi-page PDF with one page per annotation
+          — for movies, the extracted frame at the annotation's time; for
+          pictures, a copy of the picture with the annotation rendered.
+          Returns 400 if the preview has no annotations.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: PDF document with annotated frames as pages
+            content:
+              application/pdf:
+                schema:
+                  type: string
+                  format: binary
+          400:
+            description: Preview has no annotations or unsupported
+              extension
+          404:
+            description: Preview file binary is not available
+        """
+        return _serve_annotated_frames_bundle(
+            preview_file_id,
+            preview_files_service.extract_all_annotation_frames_pdf_from_preview_file,
+            mimetype="application/pdf",
+            file_extension="pdf",
+        )
 
 
 class ExtractTileFromPreview(Resource):
