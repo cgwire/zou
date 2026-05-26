@@ -45,7 +45,7 @@ def render_annotation_on_image(image_path, annotation):
     draw = ImageDraw.Draw(overlay)
 
     for obj in objects:
-        _draw_object(draw, obj, ss_size)
+        _draw_object(overlay, draw, obj, ss_size)
 
     if SUPERSAMPLE != 1:
         overlay = overlay.resize(image.size, Image.LANCZOS)
@@ -54,7 +54,7 @@ def render_annotation_on_image(image_path, annotation):
     return image_path
 
 
-def _draw_object(draw, obj, image_size):
+def _draw_object(overlay, draw, obj, image_size):
     if not isinstance(obj, dict):
         return
     obj_type = (obj.get("type") or "").lower()
@@ -75,12 +75,12 @@ def _draw_object(draw, obj, image_size):
         elif obj_type == "polygon":
             _draw_polygon(draw, obj, scale_x, scale_y)
         elif obj_type in ("i-text", "text", "textbox"):
-            _draw_text(draw, obj, scale_x, scale_y)
+            _draw_text(overlay, obj, scale_x, scale_y)
         elif obj_type == "arrow":
             _draw_arrow(draw, obj, scale_x, scale_y)
         elif obj_type == "group":
             for child in obj.get("objects", []) or []:
-                _draw_object(draw, child, image_size)
+                _draw_object(overlay, draw, child, image_size)
         else:
             logger.debug("Unsupported annotation type: %s", obj_type)
     except Exception:
@@ -165,92 +165,297 @@ def _size(obj, scale_x, scale_y):
     return width, height
 
 
-def _outline_kwargs(obj, scale_x):
-    """Common outline/width pair for fillable shapes (rect, ellipse,
-    polygon). When `stroke` is absent we pass `outline=None, width=0` so
-    Pillow draws no outline — that's the whiteboard sticker case (a
-    fill-only fabric.Rect)."""
-    stroke = _stroke_color(obj)
-    if stroke is None:
-        return {"outline": None, "width": 0}
-    return {"outline": stroke, "width": _stroke_width(obj, scale_x)}
+def _make_object_transform(obj, pivot_x, pivot_y):
+    """Build the affine transform fabric applies to a shape's local
+    coords:  T(center) ∘ R(angle) ∘ S(scaleX, scaleY) ∘ T(-pivot).
+
+    Returns a function (px, py) → (wx, wy) in CANVAS coordinates.
+
+    The translate target matches fabric's `getRelativeCenterPoint()`:
+    the un-rotated bbox centre `(left + w/2 · scaleX, top + h/2 · scaleY)`
+    is itself rotated around `(left, top)` by `angle`. When a fabric UI
+    rotation happens, fabric updates `left`/`top` so the bbox centre
+    stays put visually — which means at render time, the rendering
+    centre is no longer `left + w/2` for rotated shapes. Without this
+    extra rotation the rendered position is off by an amount that
+    looks like the shape's own translation, which is why side-by-side
+    annotations appeared to inherit each other's drag.
+    """
+    angle_rad = math.radians(obj.get("angle", 0) or 0)
+    cos_a = math.cos(angle_rad)
+    sin_a = math.sin(angle_rad)
+    scale_x = obj.get("scaleX", 1) or 1
+    scale_y = obj.get("scaleY", 1) or 1
+    left = obj.get("left", 0) or 0
+    top = obj.get("top", 0) or 0
+    width = obj.get("width", 0) or 0
+    height = obj.get("height", 0) or 0
+    naive_cx = left + width / 2 * scale_x
+    naive_cy = top + height / 2 * scale_y
+    cx = left + (naive_cx - left) * cos_a - (naive_cy - top) * sin_a
+    cy = top + (naive_cx - left) * sin_a + (naive_cy - top) * cos_a
+
+    def transform(px, py):
+        dx = px - pivot_x
+        dy = py - pivot_y
+        sx = dx * scale_x
+        sy = dy * scale_y
+        return (
+            sx * cos_a - sy * sin_a + cx,
+            sx * sin_a + sy * cos_a + cy,
+        )
+
+    return transform
+
+
+def _bbox_transform(obj):
+    """Transform for shapes whose local coords are in the (0,0)–(w,h)
+    bbox: rect, ellipse, text."""
+    width = obj.get("width", 0) or 0
+    height = obj.get("height", 0) or 0
+    return _make_object_transform(obj, width / 2, height / 2)
+
+
+def _centered_transform(obj, fallback_pivot=None):
+    """Transform for shapes whose local coords are in fabric's centered
+    system (path commands, polyline points, line endpoints, PSBrush
+    strokePoints).
+
+    Pivot resolution:
+      1. `pathOffset` from the JSON if present (Path serialises it).
+      2. `fallback_pivot` if the caller provides one — typically the
+         bbox centre of the shape's own anchor points, which is what
+         fabric would recompute on deserialisation as `calcDim.left +
+         w/2, calcDim.top + h/2`.
+      3. Otherwise `(left + w/2, top + h/2)`. That assumes the shape
+         was never translated — fine for rect-like data without a
+         pathOffset, broken for moved path/psstroke without an explicit
+         offset (use option 2 there).
+    """
+    path_offset = obj.get("pathOffset")
+    if path_offset:
+        pivot_x = path_offset.get("x", 0) or 0
+        pivot_y = path_offset.get("y", 0) or 0
+    elif fallback_pivot is not None:
+        pivot_x, pivot_y = fallback_pivot
+    else:
+        width = obj.get("width", 0) or 0
+        height = obj.get("height", 0) or 0
+        left = obj.get("left", 0) or 0
+        top = obj.get("top", 0) or 0
+        pivot_x = left + width / 2
+        pivot_y = top + height / 2
+    return _make_object_transform(obj, pivot_x, pivot_y)
+
+
+def _bbox_centre(points):
+    """Mid-point of the bbox of a list of (x, y) tuples."""
+    if not points:
+        return 0, 0
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    return (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+
+
+def _with_default_bbox(obj, anchor_points):
+    """Return a copy of `obj` with `left`/`top`/`width`/`height` filled
+    in from the anchor points' bbox when missing — fabric would compute
+    those from `calcDim` on deserialisation. Required so that the
+    transform's centre and pivot align when the JSON only stores the
+    shape's own points (typical of test data and some external
+    integrations)."""
+    if not anchor_points:
+        return obj
+    if (
+        obj.get("width") is not None
+        and obj.get("height") is not None
+        and obj.get("left") is not None
+        and obj.get("top") is not None
+    ):
+        return obj
+    xs = [p[0] for p in anchor_points]
+    ys = [p[1] for p in anchor_points]
+    bbox_left = min(xs)
+    bbox_top = min(ys)
+    out = dict(obj)
+    out.setdefault("left", bbox_left)
+    out.setdefault("top", bbox_top)
+    out.setdefault("width", max(xs) - bbox_left)
+    out.setdefault("height", max(ys) - bbox_top)
+    return out
+
+
+def _to_image(point, scale_x, scale_y):
+    return point[0] * scale_x, point[1] * scale_y
+
+
+def _stroke_outline_width(obj, scale_x):
+    """Outline width to pass to Pillow's `width` kwarg. Returns 0 (no
+    outline) when the shape has no stroke — this is what makes the
+    whiteboard sticker (a fill-only fabric.Rect) render correctly."""
+    if _stroke_color(obj) is None:
+        return 0
+    return _stroke_width(obj, scale_x)
+
+
+def _stroke_polygon(draw, points, color, width):
+    """Pillow's draw.polygon doesn't accept an outline-width kwarg, so
+    we draw each edge as a thick line. This is also what lets rotated
+    rects and ellipses keep their outline intact under transforms."""
+    if color is None or width <= 0 or len(points) < 2:
+        return
+    for i in range(len(points)):
+        draw.line(
+            [points[i], points[(i + 1) % len(points)]],
+            fill=color,
+            width=width,
+        )
 
 
 def _draw_rect(draw, obj, scale_x, scale_y):
-    x, y = _origin(obj, scale_x, scale_y)
-    w, h = _size(obj, scale_x, scale_y)
-    if w <= 0 or h <= 0:
+    width = obj.get("width", 0) or 0
+    height = obj.get("height", 0) or 0
+    if width <= 0 or height <= 0:
         return
-    draw.rectangle(
-        [x, y, x + w, y + h],
-        fill=_fill_color(obj),
-        **_outline_kwargs(obj, scale_x),
+    transform = _bbox_transform(obj)
+    corners = [(0, 0), (width, 0), (width, height), (0, height)]
+    image_corners = [
+        _to_image(transform(*c), scale_x, scale_y) for c in corners
+    ]
+    fill = _fill_color(obj)
+    if fill is not None:
+        draw.polygon(image_corners, fill=fill)
+    _stroke_polygon(
+        draw,
+        image_corners,
+        _stroke_color(obj),
+        _stroke_outline_width(obj, scale_x),
     )
 
 
+_ELLIPSE_SAMPLES = 64
+
+
 def _draw_ellipse(draw, obj, scale_x, scale_y):
-    x, y = _origin(obj, scale_x, scale_y)
     if obj.get("rx") is not None or obj.get("ry") is not None:
-        rx = (obj.get("rx", 0) or 0) * (obj.get("scaleX", 1) or 1) * scale_x
-        ry = (obj.get("ry", 0) or 0) * (obj.get("scaleY", 1) or 1) * scale_y
-        w, h = rx * 2, ry * 2
+        width = (obj.get("rx", 0) or 0) * 2
+        height = (obj.get("ry", 0) or 0) * 2
     elif obj.get("radius") is not None:
-        r = (obj.get("radius", 0) or 0) * scale_x
-        w = h = r * 2
+        width = height = (obj.get("radius", 0) or 0) * 2
     else:
-        w, h = _size(obj, scale_x, scale_y)
-    if w <= 0 or h <= 0:
+        width = obj.get("width", 0) or 0
+        height = obj.get("height", 0) or 0
+    if width <= 0 or height <= 0:
         return
-    draw.ellipse(
-        [x, y, x + w, y + h],
-        fill=_fill_color(obj),
-        **_outline_kwargs(obj, scale_x),
+    # Build the transform with the resolved width/height so the pivot
+    # and centre line up for rx/ry-style ellipses too.
+    sized = dict(obj)
+    sized["width"] = width
+    sized["height"] = height
+    transform = _bbox_transform(sized)
+    local = [
+        (
+            width / 2
+            + width / 2 * math.cos(2 * math.pi * i / _ELLIPSE_SAMPLES),
+            height / 2
+            + height / 2 * math.sin(2 * math.pi * i / _ELLIPSE_SAMPLES),
+        )
+        for i in range(_ELLIPSE_SAMPLES)
+    ]
+    image_points = [_to_image(transform(*p), scale_x, scale_y) for p in local]
+    fill = _fill_color(obj)
+    if fill is not None:
+        draw.polygon(image_points, fill=fill)
+    _stroke_polygon(
+        draw,
+        image_points,
+        _stroke_color(obj),
+        _stroke_outline_width(obj, scale_x),
     )
 
 
 def _draw_line(draw, obj, scale_x, scale_y):
-    # x1, y1, x2, y2 are already in canvas-absolute coords. left/top are
-    # bbox metadata fabric uses for selection — don't add them.
-    x1 = (obj.get("x1", 0) or 0) * scale_x
-    y1 = (obj.get("y1", 0) or 0) * scale_y
-    x2 = (obj.get("x2", 0) or 0) * scale_x
-    y2 = (obj.get("y2", 0) or 0) * scale_y
+    x1 = obj.get("x1", 0) or 0
+    y1 = obj.get("y1", 0) or 0
+    x2 = obj.get("x2", 0) or 0
+    y2 = obj.get("y2", 0) or 0
+    anchors = [(x1, y1), (x2, y2)]
+    transform = _centered_transform(
+        _with_default_bbox(obj, anchors),
+        fallback_pivot=_bbox_centre(anchors),
+    )
     draw.line(
-        [(x1, y1), (x2, y2)],
+        [
+            _to_image(transform(x1, y1), scale_x, scale_y),
+            _to_image(transform(x2, y2), scale_x, scale_y),
+        ],
         fill=_line_color(obj),
         width=_stroke_width(obj, scale_x),
     )
 
 
-def _flatten_points(points, scale_x, scale_y):
+def _flatten_points(points, transform, scale_x, scale_y):
     return [
-        ((p.get("x", 0) or 0) * scale_x, (p.get("y", 0) or 0) * scale_y)
+        _to_image(
+            transform(p.get("x", 0) or 0, p.get("y", 0) or 0),
+            scale_x,
+            scale_y,
+        )
         for p in points or []
     ]
 
 
+def _polyline_anchors(obj):
+    raw = obj.get("points") or []
+    return [(p.get("x", 0) or 0, p.get("y", 0) or 0) for p in raw]
+
+
 def _draw_polyline(draw, obj, scale_x, scale_y):
-    points = _flatten_points(obj.get("points"), scale_x, scale_y)
+    anchors = _polyline_anchors(obj)
+    transform = _centered_transform(
+        _with_default_bbox(obj, anchors),
+        fallback_pivot=_bbox_centre(anchors),
+    )
+    points = _flatten_points(obj.get("points"), transform, scale_x, scale_y)
     if len(points) < 2:
         return
     draw.line(points, fill=_line_color(obj), width=_stroke_width(obj, scale_x))
 
 
 def _draw_polygon(draw, obj, scale_x, scale_y):
-    points = _flatten_points(obj.get("points"), scale_x, scale_y)
+    anchors = _polyline_anchors(obj)
+    transform = _centered_transform(
+        _with_default_bbox(obj, anchors),
+        fallback_pivot=_bbox_centre(anchors),
+    )
+    points = _flatten_points(obj.get("points"), transform, scale_x, scale_y)
     if len(points) < 3:
         return
-    draw.polygon(
-        points, fill=_fill_color(obj), **_outline_kwargs(obj, scale_x)
+    fill = _fill_color(obj)
+    if fill is not None:
+        draw.polygon(points, fill=fill)
+    _stroke_polygon(
+        draw,
+        points,
+        _stroke_color(obj),
+        _stroke_outline_width(obj, scale_x),
     )
 
 
 def _draw_arrow(draw, obj, scale_x, scale_y):
-    # Same convention as line: x1/y1/x2/y2 are canvas-absolute coords.
-    x1 = (obj.get("x1", 0) or 0) * scale_x
-    y1 = (obj.get("y1", 0) or 0) * scale_y
-    x2 = (obj.get("x2", 0) or 0) * scale_x
-    y2 = (obj.get("y2", 0) or 0) * scale_y
+    raw_x1 = obj.get("x1", 0) or 0
+    raw_y1 = obj.get("y1", 0) or 0
+    raw_x2 = obj.get("x2", 0) or 0
+    raw_y2 = obj.get("y2", 0) or 0
+    anchors = [(raw_x1, raw_y1), (raw_x2, raw_y2)]
+    transform = _centered_transform(
+        _with_default_bbox(obj, anchors),
+        fallback_pivot=_bbox_centre(anchors),
+    )
+    x1_c, y1_c = transform(raw_x1, raw_y1)
+    x2_c, y2_c = transform(raw_x2, raw_y2)
+    x1, y1 = _to_image((x1_c, y1_c), scale_x, scale_y)
+    x2, y2 = _to_image((x2_c, y2_c), scale_x, scale_y)
     color = _line_color(obj)
     width = _stroke_width(obj, scale_x)
     head_size = (obj.get("arrowHeadSize", 15) or 15) * scale_x
@@ -281,11 +486,10 @@ def _draw_arrow(draw, obj, scale_x, scale_y):
     draw.polygon([(x2, y2), left, right], fill=color, outline=color)
 
 
-def _draw_text(draw, obj, scale_x, scale_y):
+def _draw_text(overlay, obj, scale_x, scale_y):
     text = obj.get("text") or ""
     if not text:
         return
-    x, y = _origin(obj, scale_x, scale_y)
     font_size = int(
         round(
             (obj.get("fontSize", 16) or 16)
@@ -294,17 +498,48 @@ def _draw_text(draw, obj, scale_x, scale_y):
         )
     )
     font = _load_font(max(1, font_size))
-    background = _parse_color(obj.get("backgroundColor"), default=None)
-    if background is not None:
-        try:
-            bbox = draw.textbbox((x, y), text, font=font)
-            draw.rectangle(bbox, fill=background)
-        except AttributeError:
-            pass
-    # Fabric Text uses `fill` for the glyph colour; fall back to stroke
-    # then to opaque black so text is never invisible.
     color = _fill_color(obj) or _stroke_color(obj) or (0, 0, 0, 255)
-    draw.text((x, y), text, fill=color, font=font)
+    background = _parse_color(obj.get("backgroundColor"), default=None)
+
+    # Render the text + optional background onto a transparent
+    # sub-image sized to the glyph bbox, then rotate/paste onto the
+    # overlay. Going through a sub-image is the only way Pillow can
+    # rotate text — `ImageDraw.text` has no rotation kwarg.
+    measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    try:
+        bbox = measure_draw.textbbox((0, 0), text, font=font)
+    except AttributeError:
+        # Pillow < 9.2 — getsize fallback (length-only).
+        w, h = measure_draw.textsize(text, font=font)
+        bbox = (0, 0, w, h)
+    text_w = max(1, bbox[2] - bbox[0])
+    text_h = max(1, bbox[3] - bbox[1])
+    text_img = Image.new("RGBA", (text_w, text_h), (0, 0, 0, 0))
+    text_draw = ImageDraw.Draw(text_img)
+    if background is not None:
+        text_draw.rectangle([0, 0, text_w, text_h], fill=background)
+    # textbbox can return a non-zero top — shift the draw origin so the
+    # glyph sits flush against the sub-image's top-left.
+    text_draw.text((-bbox[0], -bbox[1]), text, fill=color, font=font)
+
+    angle = obj.get("angle", 0) or 0
+    if angle:
+        text_img = text_img.rotate(-angle, expand=True, resample=Image.BICUBIC)
+
+    # Position: fabric anchors the text at (left, top) and rotates
+    # around the bbox centre. Compute that centre in image coords and
+    # paste so the rotated sub-image is centred on it.
+    obj_w = obj.get("width", 0) or text_w / scale_x
+    obj_h = obj.get("height", 0) or text_h / scale_y
+    obj_scale_x = obj.get("scaleX", 1) or 1
+    obj_scale_y = obj.get("scaleY", 1) or 1
+    left = obj.get("left", 0) or 0
+    top = obj.get("top", 0) or 0
+    centre_x = (left + obj_w / 2 * obj_scale_x) * scale_x
+    centre_y = (top + obj_h / 2 * obj_scale_y) * scale_y
+    paste_x = int(round(centre_x - text_img.size[0] / 2))
+    paste_y = int(round(centre_y - text_img.size[1] / 2))
+    overlay.alpha_composite(text_img, (paste_x, paste_y))
 
 
 def _load_font(size):
@@ -327,12 +562,33 @@ def _draw_psstroke(draw, obj, scale_x, scale_y):
     if len(points) < 2:
         return
     color = _line_color(obj)
+    # PSBrush stores its own strokeOffset (analogous to pathOffset) but
+    # it's not always serialised. Both the pivot and the bbox metadata
+    # fall back to what we can derive from strokePoints — fabric does
+    # the same in `_setPositionDimensions` on deserialisation, and that
+    # keeps the pivot fixed when the user drags the stroke so
+    # translations actually move the rendering.
+    anchors = [(p.get("x", 0) or 0, p.get("y", 0) or 0) for p in points]
+    normalised = _with_default_bbox(obj, anchors)
+    stroke_offset = obj.get("strokeOffset")
+    if stroke_offset:
+        normalised = dict(normalised)
+        normalised["pathOffset"] = {
+            "x": stroke_offset.get("x", 0) or 0,
+            "y": stroke_offset.get("y", 0) or 0,
+        }
+        transform = _centered_transform(normalised)
+    else:
+        transform = _centered_transform(
+            normalised, fallback_pivot=_bbox_centre(anchors)
+        )
     base_width = (obj.get("strokeWidth", 1) or 1) * scale_x
 
     def to_screen(p):
-        return (
-            (p.get("x", 0) or 0) * scale_x,
-            (p.get("y", 0) or 0) * scale_y,
+        return _to_image(
+            transform(p.get("x", 0) or 0, p.get("y", 0) or 0),
+            scale_x,
+            scale_y,
         )
 
     def segment_width(point):
@@ -367,15 +623,22 @@ def _draw_path(draw, obj, scale_x, scale_y):
     commands = _parse_path_commands(raw)
     if not commands:
         return
-    # Path commands are stored in canvas-absolute coords: fabric
-    # normalises left=calcDim.left and pathOffset=(calcDim.left+w/2,
-    # calcDim.top+h/2) on Path construction, so the two render-time
-    # translations cancel out and world coord = path coord.
+    # Apply fabric's full affine transform (T·R·S·T(-pathOffset)) so the
+    # path is positioned/scaled/rotated correctly even when the user
+    # transformed it. When pathOffset is absent from the JSON, fall
+    # back to the bbox centre of the path commands themselves — that's
+    # what fabric computes from `calcDim` and what makes translation
+    # `left` actually move the rendering.
     color = _line_color(obj)
     width = _stroke_width(obj, scale_x)
+    anchors = _extract_path_anchor_points(commands)
+    transform = _centered_transform(
+        _with_default_bbox(obj, anchors),
+        fallback_pivot=_bbox_centre(anchors),
+    )
 
     def to_screen(px, py):
-        return (px * scale_x, py * scale_y)
+        return _to_image(transform(px, py), scale_x, scale_y)
 
     segments = []
     current = None
@@ -433,6 +696,22 @@ def _parse_path_commands(raw):
     if isinstance(raw, list):
         return [list(cmd) for cmd in raw if cmd]
     return []
+
+
+def _extract_path_anchor_points(commands):
+    """Pick the destination point of each M/L/Q/C command — enough to
+    bracket the path's bbox without flattening every Bezier."""
+    points = []
+    for cmd in commands:
+        op = cmd[0].upper()
+        params = cmd[1:]
+        if op in ("M", "L") and len(params) >= 2:
+            points.append((params[0], params[1]))
+        elif op == "Q" and len(params) >= 4:
+            points.append((params[2], params[3]))
+        elif op == "C" and len(params) >= 6:
+            points.append((params[4], params[5]))
+    return points
 
 
 def _parse_path_string(text):

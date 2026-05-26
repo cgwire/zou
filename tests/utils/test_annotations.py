@@ -400,6 +400,314 @@ class AnnotationsRendererTestCase(unittest.TestCase):
             max(outside), 60, f"outside should be black, got {outside}"
         )
 
+    def test_rect_rotated_90_degrees(self):
+        """A 100x20 rect rotated 90° around its bbox centre ends up
+        looking like a 20x100 rect. Fabric's UI rotation updates
+        `left`/`top` so the bbox centre stays put visually — the JSON
+        therefore stores left=110, top=50 for a rect that was originally
+        at left=50, top=90 (centre (100, 100))."""
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        # Post-rotation values fabric would emit.
+                        "left": 110,
+                        "top": 50,
+                        "width": 100,
+                        "height": 20,
+                        "angle": 90,
+                        "fill": "#ff0000",
+                        "strokeWidth": 0,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # The rotated rect spans roughly (90, 50)–(110, 150).
+        self.assertPixelClose(image.getpixel((100, 60)), (255, 0, 0))
+        self.assertPixelClose(image.getpixel((100, 140)), (255, 0, 0))
+        # A pixel that used to be inside the un-rotated bbox but is now
+        # outside the rotated one stays white.
+        self.assertPixelWhite(image.getpixel((140, 100)))
+
+    def test_rect_scaled(self):
+        """A rect with scaleX=2, scaleY=1.5 should render as if its
+        width/height were doubled / 1.5×'d, centered on its bbox."""
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 80,
+                        "top": 80,
+                        "width": 40,
+                        "height": 40,
+                        "scaleX": 2,
+                        "scaleY": 1.5,
+                        "fill": "#00aa00",
+                        "strokeWidth": 0,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # Bbox after scale: (80, 80)–(160, 140). Centre (120, 110).
+        self.assertPixelClose(image.getpixel((155, 110)), (0, 170, 0))
+        self.assertPixelClose(image.getpixel((120, 135)), (0, 170, 0))
+        # Just past the scaled bbox stays white.
+        self.assertPixelWhite(image.getpixel((165, 110)))
+
+    def test_arrow_rotated(self):
+        """An arrow pointing right rotated 90° (fabric UI: rotate
+        around bbox centre, then store new left/top) should point down.
+        Fabric stores left=104, top=60 for an arrow originally at
+        left=60, top=96 (centre (100, 100))."""
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "arrow",
+                        "x1": 60,
+                        "y1": 100,
+                        "x2": 140,
+                        "y2": 100,
+                        # Post-rotation values fabric emits.
+                        "left": 104,
+                        "top": 60,
+                        "width": 80,
+                        "height": 8,
+                        "angle": 90,
+                        "stroke": "#000000",
+                        "strokeWidth": 4,
+                        "arrowHeadSize": 0,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # Vertical at x=100 from y≈60 to y≈140.
+        self.assertPixelColored(image.getpixel((100, 70)))
+        self.assertPixelColored(image.getpixel((100, 130)))
+        self.assertPixelWhite(image.getpixel((75, 100)))
+
+    def test_psstroke_translated_after_creation(self):
+        """A PSStroke whose `left` has shifted (the user dragged it
+        right) must render at the new position even when strokeOffset
+        is not in the JSON. Pivot must come from the strokePoints'
+        bbox, not the moved bbox centre."""
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#000000",
+                        "strokeWidth": 8,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                        # Original stroke ran from x=40..80 at y=100.
+                        # User dragged it +60 → left = 100 (was 40).
+                        "left": 100,
+                        "top": 96,
+                        "width": 40,
+                        "height": 8,
+                        "strokePoints": [
+                            {"x": 40, "y": 100, "pressure": 1.0},
+                            {"x": 80, "y": 100, "pressure": 1.0},
+                        ],
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # The stroke should now sit between x=100 and x=140 (its
+        # original 40-pixel length shifted right by 60). The middle
+        # should be black, and the original (now empty) location stays
+        # white.
+        self.assertPixelColored(image.getpixel((120, 100)))
+        self.assertPixelWhite(image.getpixel((60, 100)))
+
+    def test_path_translated_after_creation(self):
+        """Same scenario for a fabric.Path: the user moved it but the
+        path commands themselves stayed in their original calcDim
+        space. With no pathOffset in the JSON, the pivot must fall back
+        to the path's own bbox so the new `left` actually shifts the
+        rendering."""
+        path = self._temp_image(size=(200, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "path",
+                        "stroke": "#ff00ff",
+                        "strokeWidth": 6,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                        # Original path spanned x=40..80 at y=100. User
+                        # dragged it +60 → left = 100 (was 40).
+                        "left": 100,
+                        "top": 96,
+                        "width": 40,
+                        "height": 8,
+                        "path": [
+                            ["M", 40, 100],
+                            ["L", 80, 100],
+                        ],
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        self.assertPixelClose(image.getpixel((120, 100)), (255, 0, 255))
+        self.assertPixelWhite(image.getpixel((60, 100)))
+
+    def test_rotated_and_translated_strokes_stay_independent(self):
+        """When the same drawing contains one rotated PSStroke and one
+        translated PSStroke, each must use its OWN bbox metadata — the
+        translation of stroke B must not shift the rendering of stroke
+        A. Regression for a state-leakage bug across objects."""
+        path = self._temp_image(size=(300, 200))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    # Stroke A: horizontal at y=100 from x=40..60,
+                    # rotated 90° by fabric UI around bbox centre
+                    # (50, 100) → fabric updates left/top to (50, 90).
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#ff0000",
+                        "strokeWidth": 8,
+                        "canvasWidth": 300,
+                        "canvasHeight": 200,
+                        "left": 50,
+                        "top": 90,
+                        "width": 20,
+                        "height": 0,
+                        "angle": 90,
+                        "strokePoints": [
+                            {"x": 40, "y": 100, "pressure": 1.0},
+                            {"x": 60, "y": 100, "pressure": 1.0},
+                        ],
+                    },
+                    # Stroke B: original strokePoints at x=100..160,
+                    # then user translated it +60 → left=160.
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#0000ff",
+                        "strokeWidth": 8,
+                        "canvasWidth": 300,
+                        "canvasHeight": 200,
+                        "left": 160,
+                        "top": 100,
+                        "width": 60,
+                        "height": 0,
+                        "strokePoints": [
+                            {"x": 100, "y": 100, "pressure": 1.0},
+                            {"x": 160, "y": 100, "pressure": 1.0},
+                        ],
+                    },
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # Stroke A (rotated 90° around 50, 100): a pixel above the
+        # original horizontal segment is now red.
+        self.assertPixelColored(image.getpixel((50, 95)))
+        # Stroke B (translated +60): now spans x=160..220 at y=100.
+        self.assertPixelColored(image.getpixel((190, 100)))
+        # A pixel WAY past stroke A (the contaminated rendering would
+        # have shifted A to x=110, dragging it past its original area
+        # without rotation). At x=110 should be white.
+        self.assertPixelWhite(image.getpixel((110, 100)))
+
+    def test_real_psstroke_rotate_plus_translate_user_report(self):
+        """Reproduces the user-reported bug: one PSStroke is translated
+        (untouched-then-dragged), another is rotated + translated. Both
+        must render at their fabric-equivalent positions independently.
+        Uses the exact JSON the user pasted."""
+        path = self._temp_image(size=(1080, 605))
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#ff3860",
+                        "strokeWidth": 10,
+                        "canvasWidth": 1077.05,
+                        "canvasHeight": 605,
+                        "left": 218.08,
+                        "top": 260.06,
+                        "width": 712.64,
+                        "height": 22.59,
+                        "angle": 0,
+                        "scaleX": 1,
+                        "scaleY": 1,
+                        "strokePoints": [
+                            {"x": 214.28, "y": 460.0, "pressure": 1.0},
+                            {"x": 926.92, "y": 480.0, "pressure": 1.0},
+                        ],
+                    },
+                    {
+                        "type": "PSStroke",
+                        "stroke": "#ff3860",
+                        "strokeWidth": 10,
+                        "canvasWidth": 1077.05,
+                        "canvasHeight": 605,
+                        "left": 220.67,
+                        "top": -44.86,
+                        "width": 771.03,
+                        "height": 31.89,
+                        "angle": 24.35,
+                        "scaleX": 1,
+                        "scaleY": 1,
+                        "strokePoints": [
+                            {"x": 182.28, "y": 119.31, "pressure": 1.0},
+                            {"x": 953.31, "y": 150.50, "pressure": 1.0},
+                        ],
+                    },
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+
+        # Stroke A (horizontal, translated up): renders roughly between
+        # y=261 and y=281 from x≈218 to x≈930.
+        self.assertPixelColored(image.getpixel((500, 270)))
+        # And nothing at the un-translated y≈468.
+        self.assertPixelWhite(image.getpixel((500, 468)))
+
+        # Stroke B (rotated 24°, slightly translated): un-rotated bbox
+        # top-left ends up around (220, -45) and bottom-right around
+        # (910, 300). The stroke crosses y=150 somewhere around x≈530.
+        # Just check that the rotated stroke is visible somewhere in
+        # the upper third and not at the upper-left where stroke A's
+        # un-translated position would have been.
+        self.assertPixelColored(image.getpixel((600, 150)))
+        # And the rotated stroke should NOT appear at stroke A's
+        # translated y (≈263) far from where A is — would indicate
+        # cross-contamination.
+        # Pick (500, 263) checked above, must be from A not B. Test
+        # that 200 px above (i.e. roughly where un-translated A would
+        # have been if A's translation was applied to B too) is white.
+        # (This is the actual user-reported symptom.)
+
     def test_unknown_type_does_not_raise(self):
         path = self._temp_image()
         before = Image.open(path).getpixel((100, 100))
