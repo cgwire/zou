@@ -1022,23 +1022,34 @@ def renormalize_movie_preview_files(
                         config.TMP_DIR,
                         f"{preview_file_id}.{extension}.tmp",
                     )
-                    try:
-                        if config.FS_BACKEND == "local":
-                            shutil.copyfile(
-                                file_store.get_local_movie_path(
-                                    "source", preview_file_id
-                                ),
-                                uploaded_movie_path,
-                            )
-                        else:
-                            sync_service.download_file(
-                                uploaded_movie_path,
-                                "source",
-                                file_store.open_movie,
-                                str(preview_file_id),
-                            )
-                    except Exception:
-                        pass
+                    if not file_store.exists_movie("source", preview_file_id):
+                        raise RuntimeError(
+                            f"Source movie missing in storage for preview "
+                            f"{preview_file_id}; skipping renormalization."
+                        )
+                    if config.FS_BACKEND == "local":
+                        shutil.copyfile(
+                            file_store.get_local_movie_path(
+                                "source", preview_file_id
+                            ),
+                            uploaded_movie_path,
+                        )
+                    else:
+                        sync_service.download_file(
+                            uploaded_movie_path,
+                            "source",
+                            file_store.open_movie,
+                            str(preview_file_id),
+                        )
+                    if (
+                        not os.path.exists(uploaded_movie_path)
+                        or os.path.getsize(uploaded_movie_path) == 0
+                    ):
+                        raise RuntimeError(
+                            f"Local copy of source movie is missing or "
+                            f"empty at {uploaded_movie_path}; skipping "
+                            f"renormalization of {preview_file_id}."
+                        )
                     if config.ENABLE_JOB_QUEUE:
                         queue_store.job_queue.enqueue(
                             preview_files_service.prepare_and_store_movie,

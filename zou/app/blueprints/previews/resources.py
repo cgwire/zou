@@ -258,6 +258,14 @@ class BaseNewPreviewFilePicture:
         uploaded_movie_path = movie.save_file(
             tmp_folder, preview_file_id, uploaded_file
         )
+        if (
+            not os.path.exists(uploaded_movie_path)
+            or os.path.getsize(uploaded_movie_path) == 0
+        ):
+            raise WrongParameterException(
+                "Uploaded movie could not be written to temporary storage "
+                "or is empty; aborting before dispatching normalization."
+            )
         save_source_file = config.PREVIEW_SAVE_SOURCE_FILE
         if normalize and config.ENABLE_JOB_QUEUE and not no_job:
             queue_store.job_queue.enqueue(
