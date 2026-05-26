@@ -100,9 +100,11 @@ class SyncServiceTestCase(ApiDBTestCase):
         self.assertTrue("task_id" in self.last_event_data)
 
     def test_verify_target_counters_compile(self):
-        """Every target-side count helper for sync-verify must produce valid
+        """
+        Every target-side count helper for sync-verify must produce valid
         SQL on the current schema. Run them all against a project that has
-        no scoped data; each must return 0 instead of raising."""
+        no scoped data; each must return 0 instead of raising.
+        """
         pid = str(self.project.id)
         counters = [
             sync_service._tgt_entity_type(pid, "Shot"),
@@ -130,9 +132,11 @@ class SyncServiceTestCase(ApiDBTestCase):
             self.assertIsInstance(counter(), int)
 
     def test_verify_project_sync_accepts_push_direction(self):
-        """sync-push-verify reuses verify_project_sync with direction="push".
+        """
+        sync-push-verify reuses verify_project_sync with direction="push".
         Smoke test: the call should not raise on a project that exists both
-        on the (mocked) remote and locally."""
+        on the (mocked) remote and locally.
+        """
         project_name = self.project.name
 
         real_get = gazu.project.get_project_by_name

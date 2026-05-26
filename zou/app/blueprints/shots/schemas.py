@@ -11,7 +11,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class NewShotSchema(BaseSchema):
-    """Body for creating a new shot."""
+    """
+    Body for creating a new shot.
+    """
 
     name: str = Field(..., min_length=1, description="Shot name")
     sequence_id: Optional[UUID] = None
@@ -21,7 +23,9 @@ class NewShotSchema(BaseSchema):
 
 
 class NewSequenceSchema(BaseSchema):
-    """Body for creating a new sequence."""
+    """
+    Body for creating a new sequence.
+    """
 
     name: str = Field(..., min_length=1, description="Sequence name")
     episode_id: Optional[UUID] = None
@@ -30,7 +34,9 @@ class NewSequenceSchema(BaseSchema):
 
 
 class NewEpisodeSchema(BaseSchema):
-    """Body for creating a new episode."""
+    """
+    Body for creating a new episode.
+    """
 
     name: str = Field(..., min_length=1, description="Episode name")
     status: Optional[str] = "running"
@@ -39,13 +45,17 @@ class NewEpisodeSchema(BaseSchema):
 
 
 class NewSceneSchema(BaseSchema):
-    """Body for creating a new scene."""
+    """
+    Body for creating a new scene.
+    """
 
     name: str = Field(..., min_length=1, description="Scene name")
     sequence_id: Optional[UUID] = None
 
 
 class AddShotToSceneSchema(BaseSchema):
-    """Body for adding a shot to a scene."""
+    """
+    Body for adding a shot to a scene.
+    """
 
     shot_id: UUID = Field(..., description="Shot unique identifier")

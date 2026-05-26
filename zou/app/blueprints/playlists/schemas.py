@@ -15,7 +15,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class AddEntityToPlaylistSchema(BaseSchema):
-    """Body for adding an entity to a playlist."""
+    """
+    Body for adding an entity to a playlist.
+    """
 
     entity_id: UUID = Field(..., description="Entity unique identifier to add")
     preview_file_id: Optional[UUID] = Field(
@@ -32,7 +34,9 @@ class AddEntityToPlaylistSchema(BaseSchema):
 
 
 class TempPlaylistCreateSchema(BaseSchema):
-    """Body for generating a temporary playlist from task IDs."""
+    """
+    Body for generating a temporary playlist from task IDs.
+    """
 
     task_ids: List[UUID] = Field(
         ...,
@@ -42,7 +46,9 @@ class TempPlaylistCreateSchema(BaseSchema):
 
 
 class NotifyClientsPlaylistSchema(BaseSchema):
-    """Optional body for notifying clients that a playlist is ready."""
+    """
+    Optional body for notifying clients that a playlist is ready.
+    """
 
     studio_id: Optional[UUID] = Field(
         None,
@@ -62,7 +68,9 @@ class NotifyClientsPlaylistSchema(BaseSchema):
 
 
 class CreatePlaylistShareLinkSchema(BaseSchema):
-    """Body for creating a playlist share link."""
+    """
+    Body for creating a playlist share link.
+    """
 
     expiration_date: Optional[str] = Field(
         None,
@@ -86,7 +94,9 @@ class CreatePlaylistShareLinkSchema(BaseSchema):
 
 
 class InviteShareLinkSchema(BaseSchema):
-    """Body for emailing a share link to one or more recipients."""
+    """
+    Body for emailing a share link to one or more recipients.
+    """
 
     emails: Optional[List[str]] = Field(
         default_factory=list,

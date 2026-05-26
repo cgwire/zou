@@ -11,7 +11,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class AddAssetInstanceSchema(BaseSchema):
-    """Body for adding an asset instance to a shot."""
+    """
+    Body for adding an asset instance to a shot.
+    """
 
     asset_instance_id: UUID = Field(
         ..., description="Asset instance unique identifier"
@@ -19,7 +21,9 @@ class AddAssetInstanceSchema(BaseSchema):
 
 
 class AddSceneAssetInstanceSchema(BaseSchema):
-    """Body for adding an asset instance to a scene."""
+    """
+    Body for adding an asset instance to a scene.
+    """
 
     asset_id: UUID = Field(..., description="Asset unique identifier")
     description: Optional[str] = None

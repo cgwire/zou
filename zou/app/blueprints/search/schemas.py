@@ -11,7 +11,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class SearchSchema(BaseSchema):
-    """Body for searching entities across the project."""
+    """
+    Body for searching entities across the project.
+    """
 
     query: str = Field(..., description="Search query string")
     project_id: Optional[UUID] = None

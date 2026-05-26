@@ -11,7 +11,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class NewEditSchema(BaseSchema):
-    """Body for creating a new edit."""
+    """
+    Body for creating a new edit.
+    """
 
     name: str = Field(..., min_length=1, description="The edit name")
     description: Optional[str] = ""

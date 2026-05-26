@@ -491,7 +491,9 @@ def _enrich_shared_playlist_project_line(playlist_dict):
 
 
 def _load_task_styling_by_task_id(task_ids):
-    """Return (task_type_by_task_id, task_status_color_by_task_id) dicts."""
+    """
+    Return (task_type_by_task_id, task_status_color_by_task_id) dicts.
+    """
     if not task_ids:
         return {}, {}
 

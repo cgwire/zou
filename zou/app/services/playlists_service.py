@@ -88,7 +88,9 @@ _PLAYLIST_LIST_ATTRS = (
 
 
 def _apply_playlist_pagination(query, page, sort_by, model=Playlist):
-    """Apply sort, normalize page, and apply limit/offset to the query."""
+    """
+    Apply sort, normalize page, and apply limit/offset to the query.
+    """
     query = query_utils.apply_sort_by(model, query, sort_by)
     if page < 1:
         page = 1
@@ -204,7 +206,9 @@ def build_playlist_dict(
 
 
 def get_first_shot_preview_file_id(playlist):
-    """Return the first shot's preview_file_id if any, else None."""
+    """
+    Return the first shot's preview_file_id if any, else None.
+    """
     if not playlist.shots or not isinstance(playlist.shots, list):
         return None
     first = playlist.shots[0]

@@ -182,7 +182,9 @@ def get_persons_by_ids(person_ids):
 
 
 def build_short_person(person):
-    """Return minimal author data to embed a comment or news author, including guests."""
+    """
+    Return minimal author data to embed a comment or news author, including guests.
+    """
     return {
         "id": str(person.id),
         "first_name": person.first_name,

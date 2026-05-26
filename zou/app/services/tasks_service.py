@@ -748,10 +748,12 @@ def _prepare_query(task_id, is_client, is_manager):
 
 
 def embed_reply_authors(comments, is_client=False):
-    """Attach a minimal author to each reply so guest repliers render too.
+    """
+    Attach a minimal author to each reply so guest repliers render too.
 
     For clients, only client authors are embedded to keep studio members'
     identities hidden, matching the comment author behavior.
+
     """
     reply_person_ids = {
         reply.get("person_id")

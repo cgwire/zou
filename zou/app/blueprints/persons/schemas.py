@@ -16,7 +16,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 def _parse_datetime(v):
-    """Parse date string (YYYY-MM-DD or ISO datetime) to datetime."""
+    """
+    Parse date string (YYYY-MM-DD or ISO datetime) to datetime.
+    """
     if v is None or isinstance(v, datetime):
         return v
     try:
@@ -31,7 +33,9 @@ def _parse_datetime(v):
 
 
 class DesktopLoginCreateSchema(BaseSchema):
-    """Body for creating a desktop login log. Date is optional (default: now)."""
+    """
+    Body for creating a desktop login log. Date is optional (default: now).
+    """
 
     date: Optional[datetime] = None
 
@@ -42,7 +46,9 @@ class DesktopLoginCreateSchema(BaseSchema):
 
 
 class AddToDepartmentSchema(BaseSchema):
-    """Body for adding a person to a department."""
+    """
+    Body for adding a person to a department.
+    """
 
     department_id: UUID = Field(
         ..., description="Department unique identifier"
@@ -50,7 +56,9 @@ class AddToDepartmentSchema(BaseSchema):
 
 
 class ChangePasswordSchema(BaseSchema):
-    """Body for changing a person's password (admin)."""
+    """
+    Body for changing a person's password (admin).
+    """
 
     password: str = Field(..., min_length=1, description="New password")
     password_2: str = Field(

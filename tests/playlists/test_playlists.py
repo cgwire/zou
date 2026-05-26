@@ -123,11 +123,13 @@ class PlaylistTestCase(ApiDBTestCase):
         self.assertEqual(len(share_links), 0)
 
     def test_create_playlist_for_each_entity_type(self):
-        """`for_entity` round-trips for every supported entity type.
+        """
+        `for_entity` round-trips for every supported entity type.
 
         The column is permissive `String(10)` but the CRUD whitelists the
         set so a stray value cannot land in storage; this test pins the
         contract for each accepted value.
+
         """
         for for_entity in ("shot", "asset", "sequence", "edit", "episode"):
             created = self.post(

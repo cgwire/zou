@@ -67,6 +67,23 @@ HTTP → Flask routing → Resource method → @jwt_required()
 - Models inherit `db.Model, BaseMixin, SerializerMixin`
 - UUIDs everywhere for primary keys (`UUIDType(binary=False)`)
 - **String formatting: f-strings only** for any new or edited code. Do not introduce `"... %s" % x` or `.format(...)`. Pre-existing `%`-formatted lines in a file you're editing can stay — don't scope-creep — but every new line you add should use f-strings.
+- **Docstrings: opening and closing `"""` each on their own line.** Always put a newline immediately after the opening `"""` and immediately before the closing `"""`, even for one-liners. Do not write `"""Summary on the same line."""` or `"""First line\n    second line."""`.
+
+  ```python
+  # Wrong
+  """Return the task or None."""
+  """Common flow for bulk download: check permissions,
+  build the bundle, send it as attachment."""
+
+  # Right
+  """
+  Return the task or None.
+  """
+  """
+  Common flow for bulk download: check permissions,
+  build the bundle, send it as attachment.
+  """
+  ```
 
 ### Naming
 - Model class: `PascalCase` (e.g., `TaskStatus`)

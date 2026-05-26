@@ -27,7 +27,9 @@ logger = setup_logging()
 
 
 def _fetch_inputs(storage, outdir, preview_file_ids):
-    """Fetch inputs from object storage, return a list of local paths"""
+    """
+    Fetch inputs from object storage, return a list of local paths
+    """
     input_paths = []
     for input_id in preview_file_ids:
         filename = f"cache-previews-{input_id}.mp4"

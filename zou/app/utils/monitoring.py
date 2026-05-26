@@ -86,11 +86,13 @@ def init_monitoring(app):
 
 
 def _register_inflight_gauge(app):
-    """Expose an in-progress HTTP request gauge per URL rule.
+    """
+    Expose an in-progress HTTP request gauge per URL rule.
 
     Consumed by the ``zou_top`` dashboard to show which endpoints are
     currently being served. Uses ``multiprocess_mode='livesum'`` so that
     concurrent gunicorn workers aggregate correctly.
+
     """
     from flask import request
     from prometheus_client import Gauge

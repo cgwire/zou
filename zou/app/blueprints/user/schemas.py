@@ -10,7 +10,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class CreateSearchFilterSchema(BaseSchema):
-    """Body for creating a search filter."""
+    """
+    Body for creating a search filter.
+    """
 
     name: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
@@ -23,7 +25,9 @@ class CreateSearchFilterSchema(BaseSchema):
 
 
 class UpdateSearchFilterSchema(BaseSchema):
-    """Body for updating a search filter."""
+    """
+    Body for updating a search filter.
+    """
 
     name: Optional[str] = None
     search_query: Optional[str] = None
@@ -34,7 +38,9 @@ class UpdateSearchFilterSchema(BaseSchema):
 
 
 class CreateSearchFilterGroupSchema(BaseSchema):
-    """Body for creating a search filter group."""
+    """
+    Body for creating a search filter group.
+    """
 
     name: str = Field(..., min_length=1)
     color: Optional[str] = ""
@@ -46,7 +52,9 @@ class CreateSearchFilterGroupSchema(BaseSchema):
 
 
 class UpdateSearchFilterGroupSchema(BaseSchema):
-    """Body for updating a search filter group."""
+    """
+    Body for updating a search filter group.
+    """
 
     name: Optional[str] = None
     color: Optional[str] = None
@@ -56,6 +64,8 @@ class UpdateSearchFilterGroupSchema(BaseSchema):
 
 
 class NotificationUpdateSchema(BaseSchema):
-    """Body for updating a notification."""
+    """
+    Body for updating a notification.
+    """
 
     read: Optional[bool] = None

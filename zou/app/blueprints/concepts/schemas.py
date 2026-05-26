@@ -10,7 +10,9 @@ from zou.app.utils.validation import BaseSchema
 
 
 class NewConceptSchema(BaseSchema):
-    """Body for creating a new concept."""
+    """
+    Body for creating a new concept.
+    """
 
     name: str = Field(..., min_length=1, description="The concept name")
     data: Optional[dict] = None

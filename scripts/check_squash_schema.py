@@ -1,4 +1,5 @@
-"""Detect and optionally repair schemas affected by the buggy pre-1.0.0 squash.
+"""
+Detect and optionally repair schemas affected by the buggy pre-1.0.0 squash.
 
 The pre-1.0.0 squash migration (revision a1b2c3d4e5f6) was generated from a
 live model snapshot and lost several DDL details (TEXT vs VARCHAR, server
@@ -11,8 +12,8 @@ or repairs them. The repair logic mirrors the reconciliation Alembic
 migration (2b8f88aa610f) and is idempotent — safe to re-run.
 
 Usage:
-    python scripts/check_squash_schema.py            # detect only
-    python scripts/check_squash_schema.py --fix      # detect and repair
+python scripts/check_squash_schema.py            # detect only
+python scripts/check_squash_schema.py --fix      # detect and repair
 
 Connection settings are read from the same env vars as zou itself
 (DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE).

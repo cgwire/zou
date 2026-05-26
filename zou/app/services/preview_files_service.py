@@ -1066,11 +1066,13 @@ def _build_picture_annotation_entries(preview_file, annotations, base_name):
 
 
 def _claim_extracted_frame(extracted_path):
-    """Move the frame ffmpeg wrote at a deterministic
+    """
+    Move the frame ffmpeg wrote at a deterministic
     `tmp/<movie>_<frame>.png` slot to a fresh mkstemp path. Required
     because that deterministic slot is shared with other callers (e.g.
     the single-frame extract route which `os.remove`s it in a finally),
-    and concurrent calls could yank the file from under the bundler."""
+    and concurrent calls could yank the file from under the bundler.
+    """
     fd, owned_path = tempfile.mkstemp(suffix=".png")
     os.close(fd)
     shutil.move(extracted_path, owned_path)
@@ -1098,9 +1100,11 @@ def _bundle_annotated_frames_into_zip(entries):
 
 
 def _bundle_annotated_frames_into_pdf(entries):
-    """Stitch every PNG into a multi-page PDF via Pillow. PDF doesn't
+    """
+    Stitch every PNG into a multi-page PDF via Pillow. PDF doesn't
     support alpha, so each frame is flattened to RGB. 150 DPI keeps page
-    sizes reasonable for HD frames without blowing up the file."""
+    sizes reasonable for HD frames without blowing up the file.
+    """
     if not entries:
         raise AnnotationNotFoundException(_NO_FRAME_EXTRACTED_MSG)
     fd, pdf_path = tempfile.mkstemp(suffix=".pdf")

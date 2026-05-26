@@ -30,7 +30,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.wip_status_id = str(self.task_status_wip.id)
 
     def create_comment(self):
-        """Create a comment on the task and return it."""
+        """
+        Create a comment on the task and return it.
+        """
         path = f"/actions/tasks/{self.task_id}/comment/"
         data = {
             "task_status_id": self.wip_status_id,
@@ -39,7 +41,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         return self.post(path, data)
 
     def add_preview(self, comment_id, revision=None):
-        """Add a preview to comment. Returns preview_file dict."""
+        """
+        Add a preview to comment. Returns preview_file dict.
+        """
         path = (
             f"/actions/tasks/{self.task_id}/comments/{comment_id}/add-preview"
         )
@@ -47,12 +51,16 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         return self.post(path, data)
 
     def add_extra_preview(self, comment_id, preview_file_id):
-        """Add an extra preview to comment."""
+        """
+        Add an extra preview to comment.
+        """
         path = f"/actions/tasks/{self.task_id}/comments/{comment_id}/preview-files/{preview_file_id}"
         return self.post(path, {})
 
     def test_duplicate_revision_rejected(self):
-        """Creating a new main preview with existing revision should fail."""
+        """
+        Creating a new main preview with existing revision should fail.
+        """
         # Create first comment with revision 1
         comment1 = self.create_comment()
         preview1 = self.add_preview(comment1["id"], revision=1)
@@ -65,7 +73,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.assertIn("already exists", response.get("message", ""))
 
     def test_extra_preview_same_revision_allowed(self):
-        """Extra previews should be allowed to share the same revision."""
+        """
+        Extra previews should be allowed to share the same revision.
+        """
         comment = self.create_comment()
 
         # Create main preview with revision 1
@@ -79,7 +89,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.assertEqual(preview2["position"], 2)
 
     def test_update_revision_to_existing_rejected(self):
-        """Updating a main preview to an existing revision should fail."""
+        """
+        Updating a main preview to an existing revision should fail.
+        """
         # Create two comments with different revisions
         comment1 = self.create_comment()
         preview1 = self.add_preview(comment1["id"], revision=1)
@@ -93,7 +105,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.assertIn("already exists", response.get("message", ""))
 
     def test_update_revision_propagates_to_extras(self):
-        """Updating main preview revision should propagate to extra previews."""
+        """
+        Updating main preview revision should propagate to extra previews.
+        """
         comment = self.create_comment()
 
         # Create main preview with revision 1
@@ -116,7 +130,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         self.assertEqual(extra_preview.revision, 5)
 
     def test_check_revision_is_unique_service(self):
-        """Direct test of check_revision_is_unique_for_task service function."""
+        """
+        Direct test of check_revision_is_unique_for_task service function.
+        """
         # Create a preview with revision 1
         self.generate_fixture_preview_file(revision=1, position=1)
 
@@ -132,7 +148,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         )
 
     def test_check_revision_exclude_self(self):
-        """Check should exclude the preview being updated."""
+        """
+        Check should exclude the preview being updated.
+        """
         preview = self.generate_fixture_preview_file(revision=1, position=1)
 
         # Should not raise when excluding the preview itself
@@ -143,7 +161,9 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         )
 
     def test_check_ignores_extra_previews(self):
-        """Check should only consider main previews (position 1)."""
+        """
+        Check should only consider main previews (position 1).
+        """
         # Create extra preview (position 2) with revision 1
         self.generate_fixture_preview_file(revision=1, position=2)
 

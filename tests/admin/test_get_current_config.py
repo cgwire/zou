@@ -79,7 +79,9 @@ class GetCurrentConfigCommandTestCase(unittest.TestCase):
     @patch.dict(os.environ, CLI_ENV, clear=False)
     @patch("requests.get")
     def test_exit_1_when_desync(self, mock_get):
-        """env-cli has USER_LIMIT=100 but redis has 200 → mismatch."""
+        """
+        env-cli has USER_LIMIT=100 but redis has 200 → mismatch.
+        """
         mock_get.return_value = _mock_response(API_RESPONSE_DESYNC)
 
         result = self.runner.invoke(cli, ["get-current-config"], color=True)
