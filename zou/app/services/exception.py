@@ -119,6 +119,10 @@ class AnnotationLockTimeoutException(ServiceUnavailable):
     pass
 
 
+class AnnotationNotFoundException(BadRequest):
+    pass
+
+
 class RevisionAlreadyExistsException(BadRequest):
     pass
 
@@ -273,8 +277,6 @@ class TwoFactorAuthenticationRequiredException(Exception):
     """
     Exception raised when 2FA is enforced but user has not set it up.
     """
-
-    pass
 
 
 class TooMuchLoginFailedAttemps(Exception):

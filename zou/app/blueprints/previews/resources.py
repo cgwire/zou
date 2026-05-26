@@ -12,6 +12,7 @@ from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import validation as validation_utils
 from zou.app.blueprints.previews.schemas import (
+    ExtractAnnotatedFrameSchema,
     PreviewFileUploadSchema,
     PreviewFilePositionSchema,
 )
@@ -1716,6 +1717,203 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
             )
         finally:
             os.remove(extracted_frame_path)
+
+
+class ExtractAnnotatedFrameFromPreview(Resource):
+    """
+    Extract a frame (movie) or the picture itself, with its matching
+    annotation rendered on top.
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        """
+        Extract annotated frame from preview
+        ---
+        description: Extract a frame from a movie preview, or the picture
+          itself from a picture preview, and overlay the matching
+          annotation on it. `frame_number` is required for movies and
+          ignored for pictures. Returns 400 if no annotation is recorded.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: frame_number
+            required: false
+            schema:
+              type: integer
+              minimum: 1
+            description: Frame number to extract (movies only, 1-based)
+            example: 120
+        responses:
+          200:
+            description: Composited frame as PNG image
+            content:
+              image/png:
+                schema:
+                  type: string
+                  format: binary
+          400:
+            description: No annotation, missing frame_number on movie, or
+              unsupported extension
+          404:
+            description: Preview file binary is not available
+        """
+        args = validation_utils.validate_request_body(
+            ExtractAnnotatedFrameSchema
+        )
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        extracted_frame_path = (
+            preview_files_service.extract_annotation_frame_from_preview_file(
+                preview_file, args.frame_number
+            )
+        )
+        if extracted_frame_path is None:
+            return {"error": "preview file binary is not available"}, 404
+        try:
+            return flask_send_file(
+                extracted_frame_path,
+                conditional=True,
+                mimetype="image/png",
+                as_attachment=False,
+                download_name=os.path.basename(extracted_frame_path),
+            )
+        finally:
+            os.remove(extracted_frame_path)
+
+
+def _serve_annotated_frames_bundle(
+    preview_file_id, build_bundle, mimetype, file_extension
+):
+    """Common flow for the zip and pdf bulk-download resources: check
+    permissions, build the bundle via the service, send it as an
+    attachment named `{preview_base_name}_annotated_frames.{ext}`."""
+    preview_file = files_service.get_preview_file(preview_file_id)
+    task = tasks_service.get_task(preview_file["task_id"])
+    user_service.check_manager_project_access(task["project_id"])
+    bundle_path = build_bundle(preview_file)
+    if bundle_path is None:
+        return {"error": "preview file binary is not available"}, 404
+    base_name = os.path.splitext(
+        names_service.get_preview_file_name(preview_file_id)
+    )[0]
+    download_name = f"{base_name}_annotated_frames.{file_extension}"
+    try:
+        return flask_send_file(
+            bundle_path,
+            conditional=True,
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=download_name,
+        )
+    finally:
+        os.remove(bundle_path)
+
+
+class ExtractAllAnnotatedFramesFromPreview(Resource):
+    """
+    Build a zip archive containing every annotated frame (movie) or
+    every annotated copy of the picture preview.
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        """
+        Extract all annotated frames from preview as a zip
+        ---
+        description: Build a zip archive with one PNG per annotation —
+          for movies, the extracted frame at the annotation's time; for
+          pictures, a copy of the picture with the annotation rendered.
+          Returns 400 if the preview has no annotations.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: Zip archive of annotated frames
+            content:
+              application/zip:
+                schema:
+                  type: string
+                  format: binary
+          400:
+            description: Preview has no annotations or unsupported
+              extension
+          404:
+            description: Preview file binary is not available
+        """
+        return _serve_annotated_frames_bundle(
+            preview_file_id,
+            preview_files_service.extract_all_annotation_frames_from_preview_file,
+            mimetype="application/zip",
+            file_extension="zip",
+        )
+
+
+class ExtractAllAnnotatedFramesAsPdfFromPreview(Resource):
+    """
+    Build a multi-page PDF containing every annotated frame (movie) or
+    every annotated copy of the picture preview.
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        """
+        Extract all annotated frames from preview as a PDF
+        ---
+        description: Build a multi-page PDF with one page per annotation
+          — for movies, the extracted frame at the annotation's time; for
+          pictures, a copy of the picture with the annotation rendered.
+          Returns 400 if the preview has no annotations.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+        responses:
+          200:
+            description: PDF document with annotated frames as pages
+            content:
+              application/pdf:
+                schema:
+                  type: string
+                  format: binary
+          400:
+            description: Preview has no annotations or unsupported
+              extension
+          404:
+            description: Preview file binary is not available
+        """
+        return _serve_annotated_frames_bundle(
+            preview_file_id,
+            preview_files_service.extract_all_annotation_frames_pdf_from_preview_file,
+            mimetype="application/pdf",
+            file_extension="pdf",
+        )
 
 
 class ExtractTileFromPreview(Resource):
