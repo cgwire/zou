@@ -22,6 +22,10 @@ class PreviewFilePositionSchema(BaseSchema):
 
 
 class ExtractAnnotatedFrameSchema(BaseSchema):
-    """Query args for extracting an annotated frame from a preview movie."""
+    """
+    Query args for extracting an annotated frame from a preview.
+    Required for movies (identifies the frame); ignored for pictures
+    where the first annotation entry is used.
+    """
 
-    frame_number: int = Field(..., ge=1)
+    frame_number: Optional[int] = Field(None, ge=1)

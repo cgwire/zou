@@ -6,10 +6,14 @@ from tests.base import ApiDBTestCase
 
 
 from zou.app.services import files_service, preview_files_service
-from zou.app.services.exception import AnnotationNotFoundException
+from zou.app.services.exception import (
+    AnnotationNotFoundException,
+    WrongParameterException,
+)
 from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
+    extract_all_annotation_frames_from_preview_file,
     extract_annotation_frame_from_preview_file,
     extract_frame_from_preview_file,
     extract_tile_from_preview_file,
@@ -523,3 +527,223 @@ class ExtractAnnotationFrameTestCase(ApiDBTestCase):
             self.preview_file, 10
         )
         self.assertIsNone(result)
+
+
+def _make_red_rect_annotation(canvas_size=200):
+    return {
+        "time": 0,
+        "drawing": {
+            "objects": [
+                {
+                    "type": "rect",
+                    "left": 10,
+                    "top": 10,
+                    "width": 20,
+                    "height": 20,
+                    "stroke": "#ff0000",
+                    "strokeWidth": 2,
+                    "canvasWidth": canvas_size,
+                    "canvasHeight": canvas_size,
+                }
+            ]
+        },
+    }
+
+
+def _make_white_png(size=(200, 200)):
+    from PIL import Image
+
+    fd, path = tempfile.mkstemp(suffix=".png")
+    os.close(fd)
+    Image.new("RGB", size, (255, 255, 255)).save(path, "PNG")
+    return path
+
+
+class ExtractAnnotationFramePictureTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file().serialize()
+        self.preview_file["extension"] = "png"
+        self.preview_file["annotations"] = [_make_red_rect_annotation()]
+
+    def _patch_copy(self, picture_path):
+        p = patch(
+            "zou.app.services.preview_files_service._copy_picture_preview_to_temp_png",
+            return_value=picture_path,
+        )
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_returns_composited_picture(self):
+        from PIL import Image
+
+        picture_path = _make_white_png()
+        self.addCleanup(
+            lambda: os.path.exists(picture_path) and os.remove(picture_path)
+        )
+        self._patch_copy(picture_path)
+        result = extract_annotation_frame_from_preview_file(self.preview_file)
+        self.assertEqual(result, picture_path)
+        pixel = Image.open(picture_path).getpixel((10, 20))[:3]
+        diffs = [abs(c - e) for c, e in zip(pixel, (255, 0, 0))]
+        self.assertLess(max(diffs), 100)
+
+    def test_frame_number_is_ignored_on_picture(self):
+        picture_path = _make_white_png()
+        self.addCleanup(
+            lambda: os.path.exists(picture_path) and os.remove(picture_path)
+        )
+        self._patch_copy(picture_path)
+        # Passing a frame_number with a picture must not raise.
+        result = extract_annotation_frame_from_preview_file(
+            self.preview_file, frame_number=42
+        )
+        self.assertEqual(result, picture_path)
+
+    def test_raises_when_no_annotation_on_picture(self):
+        self.preview_file["annotations"] = []
+        self._patch_copy("/tmp/unused.png")
+        with self.assertRaises(AnnotationNotFoundException):
+            extract_annotation_frame_from_preview_file(self.preview_file)
+
+    def test_returns_none_when_picture_binary_missing(self):
+        self._patch_copy(None)
+        result = extract_annotation_frame_from_preview_file(self.preview_file)
+        self.assertIsNone(result)
+
+    def test_unsupported_extension_raises(self):
+        self.preview_file["extension"] = "psd"
+        with self.assertRaises(WrongParameterException):
+            extract_annotation_frame_from_preview_file(self.preview_file)
+
+    def test_movie_without_frame_number_raises(self):
+        self.preview_file["extension"] = "mp4"
+        with self.assertRaises(WrongParameterException):
+            extract_annotation_frame_from_preview_file(self.preview_file)
+
+
+class ExtractAllAnnotationFramesTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file().serialize()
+        self.preview_file["annotations"] = [
+            {**_make_red_rect_annotation(), "time": 0},
+            {**_make_red_rect_annotation(), "time": 1},
+        ]
+
+    def _patch_movie_deps(self, frame_path_factory):
+        patches = [
+            patch(
+                "zou.app.services.preview_files_service.get_project_from_preview_file",
+                return_value={"id": "p", "fps": "24"},
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_entity_from_preview_file",
+                return_value=None,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_preview_file_fps",
+                return_value="24",
+            ),
+            patch(
+                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
+                side_effect=lambda pf, fn: frame_path_factory(),
+            ),
+            patch(
+                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                return_value="proj_asset_anim_v1.mp4",
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_movie_zip_contains_one_png_per_annotation(self):
+        import zipfile
+
+        def factory():
+            return _make_white_png()
+
+        self._patch_movie_deps(factory)
+        zip_path = extract_all_annotation_frames_from_preview_file(
+            self.preview_file
+        )
+        self.addCleanup(
+            lambda: os.path.exists(zip_path) and os.remove(zip_path)
+        )
+        with zipfile.ZipFile(zip_path) as zf:
+            names = sorted(zf.namelist())
+        # Annotation at time=0 → frame 1; time=1 with fps=24 → frame 25.
+        self.assertEqual(
+            names,
+            [
+                "proj_asset_anim_v1_frame_1.png",
+                "proj_asset_anim_v1_frame_25.png",
+            ],
+        )
+
+    def test_raises_when_no_annotations(self):
+        self.preview_file["annotations"] = []
+        with self.assertRaises(AnnotationNotFoundException):
+            extract_all_annotation_frames_from_preview_file(self.preview_file)
+
+    def test_returns_none_when_movie_binary_missing(self):
+        self._patch_movie_deps(lambda: None)
+        result = extract_all_annotation_frames_from_preview_file(
+            self.preview_file
+        )
+        self.assertIsNone(result)
+
+    def test_picture_zip_one_image_per_annotation(self):
+        import zipfile
+
+        self.preview_file["extension"] = "png"
+        self.preview_file["annotations"] = [
+            _make_red_rect_annotation(),
+            _make_red_rect_annotation(),
+            _make_red_rect_annotation(),
+        ]
+        patches = [
+            patch(
+                "zou.app.services.preview_files_service._copy_picture_preview_to_temp_png",
+                side_effect=lambda pf: _make_white_png(),
+            ),
+            patch(
+                "zou.app.services.preview_files_service.names_service.get_preview_file_name",
+                return_value="proj_asset_anim_v1.png",
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        zip_path = extract_all_annotation_frames_from_preview_file(
+            self.preview_file
+        )
+        self.addCleanup(
+            lambda: os.path.exists(zip_path) and os.remove(zip_path)
+        )
+        with zipfile.ZipFile(zip_path) as zf:
+            names = sorted(zf.namelist())
+        self.assertEqual(
+            names,
+            [
+                "proj_asset_anim_v1_frame_1.png",
+                "proj_asset_anim_v1_frame_2.png",
+                "proj_asset_anim_v1_frame_3.png",
+            ],
+        )
+
+    def test_unsupported_extension_raises(self):
+        self.preview_file["extension"] = "psd"
+        with self.assertRaises(WrongParameterException):
+            extract_all_annotation_frames_from_preview_file(self.preview_file)

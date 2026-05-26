@@ -1,11 +1,13 @@
 import copy
 import os
-
 import re
+import shutil
+import tempfile
 import time
+import zipfile
 
 import ffmpeg
-import shutil
+from PIL import Image
 
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import ObjectDeletedError, StaleDataError
@@ -833,37 +835,93 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
     save_variants(preview_file["id"], extracted_frame_path)
 
 
-def extract_annotation_frame_from_preview_file(preview_file, frame_number):
-    """
-    Extract `frame_number` from the preview video and overlay the matching
-    annotation on it.
+ANNOTATED_PICTURE_EXTENSIONS = ("jpg", "jpeg", "jpe", "png")
 
-    Raises AnnotationNotFoundException when no annotation entry maps to
-    the requested frame. Returns the path to the composited PNG (caller
-    must delete it), or None when the movie binary is not available.
+
+def extract_annotation_frame_from_preview_file(
+    preview_file, frame_number=None
+):
     """
+    Extract the requested frame of a movie preview, or the picture itself
+    for a picture preview, and overlay the matching annotation on it.
+
+    For movies, `frame_number` is required and identifies the frame. For
+    pictures, `frame_number` is ignored and the first annotation entry is
+    used.
+
+    Raises AnnotationNotFoundException when no annotation matches. Returns
+    the path to the composited PNG (caller must delete it), or None when
+    the preview binary is not available.
+    """
+    extension = (preview_file.get("extension") or "").lower()
+    annotations = preview_file.get("annotations") or []
+    if extension == "mp4":
+        if frame_number is None:
+            raise WrongParameterException(
+                "frame_number is required for movie previews"
+            )
+        return _extract_movie_annotation_frame(
+            preview_file, frame_number, annotations
+        )
+    if extension in ANNOTATED_PICTURE_EXTENSIONS:
+        return _extract_picture_annotation_frame(preview_file, annotations)
+    raise WrongParameterException(
+        f"Cannot extract annotated frame from preview with extension "
+        f"{extension!r}"
+    )
+
+
+def _extract_movie_annotation_frame(preview_file, frame_number, annotations):
     project = get_project_from_preview_file(preview_file["id"])
     entity = get_entity_from_preview_file(preview_file["id"])
     fps = float(get_preview_file_fps(project, entity))
     target_time = (frame_number - 1) / fps
     tolerance = 1 / (2 * fps)
-    annotation = _find_annotation_at_time(
-        preview_file.get("annotations") or [], target_time, tolerance
-    )
+    annotation = _find_annotation_at_time(annotations, target_time, tolerance)
     if annotation is None:
         raise AnnotationNotFoundException(
             f"No annotation found for frame {frame_number}"
         )
-
-    extracted_frame_path = extract_frame_from_preview_file(
-        preview_file, frame_number
-    )
-    if extracted_frame_path is None:
+    frame_path = extract_frame_from_preview_file(preview_file, frame_number)
+    if frame_path is None:
         return None
-
     return annotations_renderer.render_annotation_on_image(
-        extracted_frame_path, annotation
+        frame_path, annotation
     )
+
+
+def _extract_picture_annotation_frame(preview_file, annotations):
+    if not annotations:
+        raise AnnotationNotFoundException(
+            "No annotation found on picture preview"
+        )
+    picture_copy = _copy_picture_preview_to_temp_png(preview_file)
+    if picture_copy is None:
+        return None
+    return annotations_renderer.render_annotation_on_image(
+        picture_copy, annotations[0]
+    )
+
+
+def _copy_picture_preview_to_temp_png(preview_file):
+    if (preview_file.get("data") or {}).get("imported_only"):
+        return None
+    try:
+        picture_path = fs.get_file_path_and_file(
+            config,
+            file_store.get_local_picture_path,
+            file_store.open_picture,
+            "previews",
+            preview_file["id"],
+            preview_file["extension"],
+        )
+    except Exception:
+        return None
+    fd, temp_path = tempfile.mkstemp(suffix=".png")
+    os.close(fd)
+    with Image.open(picture_path) as img:
+        img.convert("RGBA").save(temp_path, "PNG")
+    return temp_path
 
 
 def _find_annotation_at_time(annotations, target_time, tolerance):
@@ -878,6 +936,113 @@ def _find_annotation_at_time(annotations, target_time, tolerance):
         if abs(annotation_time - target_time) <= tolerance:
             return annotation
     return None
+
+
+def extract_all_annotation_frames_from_preview_file(preview_file):
+    """
+    Build a zip archive containing every annotated frame of a movie
+    preview, or every annotated copy of a picture preview.
+
+    Raises AnnotationNotFoundException when the preview has no
+    annotations. Returns the path to a temp zip file (caller must delete
+    it), or None when the preview binary is not available.
+    """
+    annotations = preview_file.get("annotations") or []
+    if not annotations:
+        raise AnnotationNotFoundException("Preview file has no annotations")
+    extension = (preview_file.get("extension") or "").lower()
+    base_name = _annotated_frame_base_name(preview_file)
+    if extension == "mp4":
+        entries = _build_movie_annotation_entries(
+            preview_file, annotations, base_name
+        )
+    elif extension in ANNOTATED_PICTURE_EXTENSIONS:
+        entries = _build_picture_annotation_entries(
+            preview_file, annotations, base_name
+        )
+    else:
+        raise WrongParameterException(
+            f"Cannot extract annotated frames from preview with extension "
+            f"{extension!r}"
+        )
+    if entries is None:
+        return None
+    return _bundle_annotated_frames_into_zip(entries)
+
+
+def _annotated_frame_base_name(preview_file):
+    full_name = names_service.get_preview_file_name(preview_file["id"])
+    return os.path.splitext(full_name)[0]
+
+
+def _build_movie_annotation_entries(preview_file, annotations, base_name):
+    """
+    Returns a list of (arcname, temp_png_path) tuples ready to be zipped,
+    or None if the movie binary is unavailable. Cleans up partial work on
+    failure.
+    """
+    project = get_project_from_preview_file(preview_file["id"])
+    entity = get_entity_from_preview_file(preview_file["id"])
+    fps = float(get_preview_file_fps(project, entity))
+    entries = []
+    try:
+        for annotation in annotations:
+            raw_time = annotation.get("time")
+            try:
+                annotation_time = float(raw_time)
+            except (TypeError, ValueError):
+                continue
+            frame_number = max(1, round(annotation_time * fps) + 1)
+            frame_path = extract_frame_from_preview_file(
+                preview_file, frame_number
+            )
+            if frame_path is None:
+                _cleanup_entries(entries)
+                return None
+            rendered = annotations_renderer.render_annotation_on_image(
+                frame_path, annotation
+            )
+            entries.append((f"{base_name}_frame_{frame_number}.png", rendered))
+    except Exception:
+        _cleanup_entries(entries)
+        raise
+    return entries
+
+
+def _build_picture_annotation_entries(preview_file, annotations, base_name):
+    entries = []
+    try:
+        for index, annotation in enumerate(annotations, start=1):
+            picture_copy = _copy_picture_preview_to_temp_png(preview_file)
+            if picture_copy is None:
+                _cleanup_entries(entries)
+                return None
+            rendered = annotations_renderer.render_annotation_on_image(
+                picture_copy, annotation
+            )
+            entries.append((f"{base_name}_frame_{index}.png", rendered))
+    except Exception:
+        _cleanup_entries(entries)
+        raise
+    return entries
+
+
+def _cleanup_entries(entries):
+    for _, path in entries:
+        if path and os.path.exists(path):
+            os.remove(path)
+
+
+def _bundle_annotated_frames_into_zip(entries):
+    fd, zip_path = tempfile.mkstemp(suffix=".zip")
+    os.close(fd)
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for arcname, src_path in entries:
+                zf.write(src_path, arcname=arcname)
+    finally:
+        _cleanup_entries(entries)
+    return zip_path
 
 
 def extract_tile_from_preview_file(preview_file):

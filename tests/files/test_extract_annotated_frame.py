@@ -124,3 +124,190 @@ class ExtractAnnotatedFrameRouteTestCase(ApiDBTestCase):
             self.url + "?frame_number=10", headers=self.base_headers
         )
         self.assertEqual(response.status_code, 404)
+
+
+class ExtractAnnotatedFramePictureRouteTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file().serialize()
+        # Make the fixture preview look like a picture preview.
+        from zou.app.models.preview_file import PreviewFile
+
+        record = PreviewFile.get(self.preview_file["id"])
+        record.update({"extension": "png"})
+        self.preview_file = record.serialize()
+        annotation = {
+            "time": 0,
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 10,
+                        "top": 10,
+                        "width": 20,
+                        "height": 20,
+                        "stroke": "#ff0000",
+                        "strokeWidth": 2,
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ]
+            },
+        }
+        preview_files_service.update_preview_file_annotations(
+            self.user["id"],
+            str(self.project.id),
+            self.preview_file["id"],
+            additions=[annotation],
+        )
+        self.url = (
+            "/actions/preview-files/"
+            f"{self.preview_file['id']}/extract-annotated-frame"
+        )
+
+    def _patch_copy(self, picture_path):
+        p = patch(
+            "zou.app.services.preview_files_service._copy_picture_preview_to_temp_png",
+            return_value=picture_path,
+        )
+        p.start()
+        self.addCleanup(p.stop)
+
+    def test_returns_png_for_picture(self):
+        picture_path = _make_white_png()
+        self.addCleanup(
+            lambda: os.path.exists(picture_path) and os.remove(picture_path)
+        )
+        self._patch_copy(picture_path)
+        response = self.app.get(self.url, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        self.assertGreater(len(response.data), 0)
+
+    def test_frame_number_is_accepted_but_ignored_for_picture(self):
+        picture_path = _make_white_png()
+        self.addCleanup(
+            lambda: os.path.exists(picture_path) and os.remove(picture_path)
+        )
+        self._patch_copy(picture_path)
+        response = self.app.get(
+            self.url + "?frame_number=42", headers=self.base_headers
+        )
+        self.assertEqual(response.status_code, 200)
+
+
+class ExtractAllAnnotatedFramesRouteTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file().serialize()
+        annotations = [
+            {
+                "time": 0,
+                "drawing": {
+                    "objects": [
+                        {
+                            "type": "rect",
+                            "left": 10,
+                            "top": 10,
+                            "width": 20,
+                            "height": 20,
+                            "stroke": "#ff0000",
+                            "strokeWidth": 2,
+                            "canvasWidth": 200,
+                            "canvasHeight": 200,
+                        }
+                    ]
+                },
+            },
+            {
+                "time": 1,
+                "drawing": {
+                    "objects": [
+                        {
+                            "type": "rect",
+                            "left": 30,
+                            "top": 30,
+                            "width": 20,
+                            "height": 20,
+                            "stroke": "#00ff00",
+                            "strokeWidth": 2,
+                            "canvasWidth": 200,
+                            "canvasHeight": 200,
+                        }
+                    ]
+                },
+            },
+        ]
+        preview_files_service.update_preview_file_annotations(
+            self.user["id"],
+            str(self.project.id),
+            self.preview_file["id"],
+            additions=annotations,
+        )
+        self.url = (
+            "/actions/preview-files/"
+            f"{self.preview_file['id']}/extract-annotated-frames"
+        )
+
+    def _patch_movie_deps(self, frame_factory):
+        patches = [
+            patch(
+                "zou.app.services.preview_files_service.get_project_from_preview_file",
+                return_value={"id": "p", "fps": "24"},
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_entity_from_preview_file",
+                return_value=None,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_preview_file_fps",
+                return_value="24",
+            ),
+            patch(
+                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
+                side_effect=lambda pf, fn: frame_factory(),
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_returns_zip_for_movie(self):
+        import io
+        import zipfile
+
+        self._patch_movie_deps(_make_white_png)
+        response = self.app.get(self.url, headers=self.base_headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/zip")
+        with zipfile.ZipFile(io.BytesIO(response.data)) as zf:
+            self.assertEqual(len(zf.namelist()), 2)
+            self.assertTrue(
+                all(n.endswith(".png") for n in zf.namelist()),
+                zf.namelist(),
+            )
+
+    def test_400_when_no_annotations(self):
+        from zou.app.models.preview_file import PreviewFile
+        from zou.app.services import files_service
+
+        record = PreviewFile.get(self.preview_file["id"])
+        record.update({"annotations": []})
+        files_service.clear_preview_file_cache(self.preview_file["id"])
+        response = self.app.get(self.url, headers=self.base_headers)
+        self.assertEqual(response.status_code, 400)
+
+    def test_404_when_movie_binary_missing(self):
+        self._patch_movie_deps(lambda: None)
+        response = self.app.get(self.url, headers=self.base_headers)
+        self.assertEqual(response.status_code, 404)
