@@ -171,6 +171,27 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         self.assertIsNotNone(News.get(new_id))
         self._post_kitsu("/import/kitsu/news", payload)
 
+    def test_import_preview_files_flags_imported_only(self):
+        """Imported previews are flagged so frame/tile extraction skips them
+        — the push only sends metadata, not the binary."""
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "task_id": self.task_id,
+                "name": "v002",
+                "revision": 1,
+                "position": 1,
+                "extension": "mp4",
+                "status": "ready",
+                "validation_status": "neutral",
+            }
+        ]
+        self._post_kitsu("/import/kitsu/preview-files", payload)
+        stored = PreviewFile.get(new_id)
+        self.assertIsNotNone(stored)
+        self.assertTrue((stored.data or {}).get("imported_only"))
+
     def test_import_preview_files(self):
         new_id = str(fields.gen_uuid())
         payload = [

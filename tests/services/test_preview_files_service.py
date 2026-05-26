@@ -9,6 +9,8 @@ from zou.app.services import files_service, preview_files_service
 from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
+    extract_frame_from_preview_file,
+    extract_tile_from_preview_file,
     get_preview_file_dimensions,
     get_preview_file_fps,
 )
@@ -414,3 +416,15 @@ class PlaylistTestCase(ApiDBTestCase):
         for p in (uploaded_path, norm_path, norm_low_path):
             if os.path.exists(p):
                 os.remove(p)
+
+    def test_extract_skips_metadata_only_previews(self):
+        """Imported-only previews have no local binary — extract functions
+        must short-circuit silently (return None) so callers can no-op
+        instead of crashing on FileNotFoundError."""
+        preview_file = {
+            "id": "some-uuid",
+            "extension": "mp4",
+            "data": {"imported_only": True},
+        }
+        self.assertIsNone(extract_frame_from_preview_file(preview_file, 1))
+        self.assertIsNone(extract_tile_from_preview_file(preview_file))

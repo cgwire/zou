@@ -1,7 +1,7 @@
 import os
 import orjson as json
 
-from flask import abort, request, current_app
+from flask import request, current_app
 from flask import send_file as flask_send_file
 from flask_restful import Resource
 from flask_jwt_extended import jwt_required
@@ -1704,6 +1704,8 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
                 preview_file, args["frame_number"]
             )
         )
+        if extracted_frame_path is None:
+            return {"error": "preview file binary is not available"}, 404
         try:
             return flask_send_file(
                 extracted_frame_path,
@@ -1752,6 +1754,8 @@ class ExtractTileFromPreview(Resource):
         extracted_tile_path = (
             preview_files_service.extract_tile_from_preview_file(preview_file)
         )
+        if extracted_tile_path is None:
+            return {"error": "preview file binary is not available"}, 404
         file_store.add_picture("tiles", preview_file_id, extracted_tile_path)
         try:
             return flask_send_file(
