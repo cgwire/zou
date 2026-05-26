@@ -12,6 +12,7 @@ from zou.app import config
 from zou.app.mixin import ArgsMixin
 from zou.app.utils import validation as validation_utils
 from zou.app.blueprints.previews.schemas import (
+    ExtractAnnotatedFrameSchema,
     PreviewFileUploadSchema,
     PreviewFilePositionSchema,
 )
@@ -1702,6 +1703,76 @@ class ExtractFrameFromPreview(Resource, ArgsMixin):
         extracted_frame_path = (
             preview_files_service.extract_frame_from_preview_file(
                 preview_file, args["frame_number"]
+            )
+        )
+        if extracted_frame_path is None:
+            return {"error": "preview file binary is not available"}, 404
+        try:
+            return flask_send_file(
+                extracted_frame_path,
+                conditional=True,
+                mimetype="image/png",
+                as_attachment=False,
+                download_name=os.path.basename(extracted_frame_path),
+            )
+        finally:
+            os.remove(extracted_frame_path)
+
+
+class ExtractAnnotatedFrameFromPreview(Resource):
+    """
+    Extract a frame of the preview with its annotations rendered on top.
+    """
+
+    @jwt_required()
+    def get(self, preview_file_id):
+        """
+        Extract annotated frame from preview
+        ---
+        description: Extract a frame from a preview file movie and overlay
+          the matching annotation on it. Returns 400 if no annotation is
+          recorded at the requested frame.
+        tags:
+          - Previews
+        parameters:
+          - in: path
+            name: preview_file_id
+            required: true
+            schema:
+              type: string
+              format: uuid
+            description: Preview file unique identifier
+            example: a24a6ea4-ce75-4665-a070-57453082c25
+          - in: query
+            name: frame_number
+            required: true
+            schema:
+              type: integer
+              minimum: 1
+            description: Frame number to extract (1-based)
+            example: 120
+        responses:
+          200:
+            description: Composited frame as PNG image
+            content:
+              image/png:
+                schema:
+                  type: string
+                  format: binary
+          400:
+            description: No annotation at this frame or invalid frame_number
+          404:
+            description: Preview file binary is not available
+        """
+        args = validation_utils.validate_request_body(
+            ExtractAnnotatedFrameSchema
+        )
+        preview_file = files_service.get_preview_file(preview_file_id)
+        task = tasks_service.get_task(preview_file["task_id"])
+        user_service.check_manager_project_access(task["project_id"])
+        extracted_frame_path = (
+            preview_files_service.extract_annotation_frame_from_preview_file(
+                preview_file, args.frame_number
             )
         )
         if extracted_frame_path is None:

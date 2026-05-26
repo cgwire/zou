@@ -19,3 +19,9 @@ class PreviewFilePositionSchema(BaseSchema):
     """Body for updating preview file position."""
 
     position: int = Field(0, ge=0)
+
+
+class ExtractAnnotatedFrameSchema(BaseSchema):
+    """Query args for extracting an annotated frame from a preview movie."""
+
+    frame_number: int = Field(..., ge=1)

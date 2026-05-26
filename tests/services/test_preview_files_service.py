@@ -6,9 +6,11 @@ from tests.base import ApiDBTestCase
 
 
 from zou.app.services import files_service, preview_files_service
+from zou.app.services.exception import AnnotationNotFoundException
 from zou.app.services.preview_files_service import (
     _is_valid_resolution,
     _is_valid_partial_resolution,
+    extract_annotation_frame_from_preview_file,
     extract_frame_from_preview_file,
     extract_tile_from_preview_file,
     get_preview_file_dimensions,
@@ -428,3 +430,96 @@ class PlaylistTestCase(ApiDBTestCase):
         }
         self.assertIsNone(extract_frame_from_preview_file(preview_file, 1))
         self.assertIsNone(extract_tile_from_preview_file(preview_file))
+
+
+class ExtractAnnotationFrameTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file().serialize()
+        self.preview_file["annotations"] = [
+            {
+                "time": 9 / 24,
+                "drawing": {
+                    "objects": [
+                        {
+                            "type": "rect",
+                            "left": 10,
+                            "top": 10,
+                            "width": 20,
+                            "height": 20,
+                            "stroke": "#ff0000",
+                            "strokeWidth": 2,
+                            "canvasWidth": 200,
+                            "canvasHeight": 200,
+                        }
+                    ]
+                },
+            }
+        ]
+
+    def _patch_dependencies(self, frame_path=None):
+        patches = [
+            patch(
+                "zou.app.services.preview_files_service.get_project_from_preview_file",
+                return_value={"id": "p", "fps": "24"},
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_entity_from_preview_file",
+                return_value=None,
+            ),
+            patch(
+                "zou.app.services.preview_files_service.get_preview_file_fps",
+                return_value="24",
+            ),
+            patch(
+                "zou.app.services.preview_files_service.extract_frame_from_preview_file",
+                return_value=frame_path,
+            ),
+        ]
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+
+    def test_raises_when_no_annotation_matches(self):
+        self.preview_file["annotations"] = []
+        self._patch_dependencies(frame_path="/tmp/nope.png")
+        with self.assertRaises(AnnotationNotFoundException):
+            extract_annotation_frame_from_preview_file(self.preview_file, 10)
+
+    def test_raises_when_frame_outside_tolerance(self):
+        self._patch_dependencies(frame_path="/tmp/nope.png")
+        with self.assertRaises(AnnotationNotFoundException):
+            extract_annotation_frame_from_preview_file(self.preview_file, 99)
+
+    def test_returns_composited_path_when_match(self):
+        from PIL import Image
+
+        fd, frame_path = tempfile.mkstemp(suffix=".png")
+        os.close(fd)
+        Image.new("RGB", (200, 200), (255, 255, 255)).save(frame_path, "PNG")
+        self.addCleanup(
+            lambda: os.path.exists(frame_path) and os.remove(frame_path)
+        )
+        self._patch_dependencies(frame_path=frame_path)
+        result = extract_annotation_frame_from_preview_file(
+            self.preview_file, 10
+        )
+        self.assertEqual(result, frame_path)
+        # Renderer supersamples + LANCZOS-downsamples, so edges are AA.
+        # (10, 20) sits on the left outline of a stroke-only rect, with
+        # tolerance for the softened red.
+        pixel = Image.open(frame_path).getpixel((10, 20))[:3]
+        diffs = [abs(c - e) for c, e in zip(pixel, (255, 0, 0))]
+        self.assertLess(max(diffs), 100, f"got {pixel}")
+
+    def test_returns_none_when_binary_missing_but_annotation_present(self):
+        self._patch_dependencies(frame_path=None)
+        result = extract_annotation_frame_from_preview_file(
+            self.preview_file, 10
+        )
+        self.assertIsNone(result)

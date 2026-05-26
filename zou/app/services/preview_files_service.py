@@ -30,6 +30,7 @@ from zou.app.services import (
 )
 from zou.utils import movie
 from zou.app.utils import (
+    annotations as annotations_renderer,
     events,
     fields,
     remote_job,
@@ -37,6 +38,7 @@ from zou.app.utils import (
 )
 from zou.app.services.exception import (
     AnnotationLockTimeoutException,
+    AnnotationNotFoundException,
     WrongParameterException,
     PreviewFileNotFoundException,
     ProjectNotFoundException,
@@ -829,6 +831,53 @@ def replace_extracted_frame_for_preview_file(preview_file, frame_number):
         extracted_frame_path
     )
     save_variants(preview_file["id"], extracted_frame_path)
+
+
+def extract_annotation_frame_from_preview_file(preview_file, frame_number):
+    """
+    Extract `frame_number` from the preview video and overlay the matching
+    annotation on it.
+
+    Raises AnnotationNotFoundException when no annotation entry maps to
+    the requested frame. Returns the path to the composited PNG (caller
+    must delete it), or None when the movie binary is not available.
+    """
+    project = get_project_from_preview_file(preview_file["id"])
+    entity = get_entity_from_preview_file(preview_file["id"])
+    fps = float(get_preview_file_fps(project, entity))
+    target_time = (frame_number - 1) / fps
+    tolerance = 1 / (2 * fps)
+    annotation = _find_annotation_at_time(
+        preview_file.get("annotations") or [], target_time, tolerance
+    )
+    if annotation is None:
+        raise AnnotationNotFoundException(
+            f"No annotation found for frame {frame_number}"
+        )
+
+    extracted_frame_path = extract_frame_from_preview_file(
+        preview_file, frame_number
+    )
+    if extracted_frame_path is None:
+        return None
+
+    return annotations_renderer.render_annotation_on_image(
+        extracted_frame_path, annotation
+    )
+
+
+def _find_annotation_at_time(annotations, target_time, tolerance):
+    for annotation in annotations:
+        raw_time = annotation.get("time")
+        if raw_time is None:
+            continue
+        try:
+            annotation_time = float(raw_time)
+        except (TypeError, ValueError):
+            continue
+        if abs(annotation_time - target_time) <= tolerance:
+            return annotation
+    return None
 
 
 def extract_tile_from_preview_file(preview_file):
