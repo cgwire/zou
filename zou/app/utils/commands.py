@@ -61,7 +61,9 @@ def clear_all_auth_tokens():
 
 
 def _init_asset_types_for_domain(domain):
-    """Initialize asset types according to domain (2d, 3d, vfx, games)."""
+    """
+    Initialize asset types according to domain (2d, 3d, vfx, games).
+    """
     if domain == "2d":
         for name in ("Character", "Prop", "Background", "FX"):
             assets_service.get_or_create_asset_type(name)
@@ -78,7 +80,9 @@ def _init_asset_types_for_domain(domain):
 
 
 def _init_task_types_for_domain(domain):
-    """Initialize departments and task types according to domain."""
+    """
+    Initialize departments and task types according to domain.
+    """
     if domain == "2d":
         concept = tasks_service.get_or_create_department("Concept", "#8D6E63")
         layout = tasks_service.get_or_create_department("Layout", "#7CB342")
@@ -721,6 +725,7 @@ def push_project_to_target(
     project_name,
     batch_size=200,
     throttle=0.0,
+    silent=True,
 ):
     """
     Push the project named ``project_name`` from the local instance to
@@ -734,6 +739,7 @@ def push_project_to_target(
             project_name,
             batch_size=batch_size,
             throttle=throttle,
+            silent=silent,
         )
 
 

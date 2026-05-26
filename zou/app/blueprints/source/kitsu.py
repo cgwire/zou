@@ -122,15 +122,23 @@ class BaseImportKitsuResource(Resource, ArgsMixin):
         if not isinstance(kitsu_entries, list):
             raise WrongParameterException("A list of entities is expected.")
 
+        # Bulk imports (sync-push) pass ?silent=true to skip per-row
+        # event emission: each emit persists an api_event row and triggers
+        # a Redis PUBLISH, which adds up to thousands of writes on a
+        # project-wide import. Connected UIs miss the live updates but
+        # the target instance stays responsive.
+        silent = request.args.get("silent", "").lower() in ("1", "true", "yes")
+
         instances = []
         for entry in kitsu_entries:
             if self.check_access(entry):
                 try:
                     instance, is_updated = self.model.create_from_import(entry)
-                    if is_updated:
-                        self.emit_event("update", entry)
-                    else:
-                        self.emit_event("new", entry)
+                    if not silent:
+                        if is_updated:
+                            self.emit_event("update", entry)
+                        else:
+                            self.emit_event("new", entry)
                 except IntegrityError as exc:
                     raise WrongParameterException(exc.orig)
                 instances.append(instance)
@@ -580,9 +588,11 @@ class ImportKitsuEntityLinksResource(BaseImportKitsuResource):
 
 
 class _ProjectScopedImportResource(BaseImportKitsuResource):
-    """Import resource whose entries carry a ``project_id`` directly.
+    """
+    Import resource whose entries carry a ``project_id`` directly.
 
     Admin-only by inheritance (BaseImportKitsuResource.check_access).
+
     """
 
     event_name = ""
@@ -601,9 +611,11 @@ class _ProjectScopedImportResource(BaseImportKitsuResource):
 
 
 class _TaskScopedImportResource(BaseImportKitsuResource):
-    """Import resource whose entries derive their project via ``task_id``.
+    """
+    Import resource whose entries derive their project via ``task_id``.
 
     Admin-only by inheritance (BaseImportKitsuResource.check_access).
+
     """
 
     event_name = ""
@@ -709,7 +721,9 @@ class ImportKitsuMilestonesResource(_ProjectScopedImportResource):
 
 
 class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
-    """Admin-only by inheritance."""
+    """
+    Admin-only by inheritance.
+    """
 
     def __init__(self):
         BaseImportKitsuResource.__init__(self, BuildJob)
@@ -727,7 +741,9 @@ class ImportKitsuBuildJobsResource(BaseImportKitsuResource):
 
 
 class ImportKitsuAttachmentFilesResource(BaseImportKitsuResource):
-    """Admin-only by inheritance."""
+    """
+    Admin-only by inheritance.
+    """
 
     def __init__(self):
         BaseImportKitsuResource.__init__(self, AttachmentFile)
