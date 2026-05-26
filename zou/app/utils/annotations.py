@@ -97,16 +97,36 @@ def _get_scales(obj, image_size):
 
 
 def _stroke_width(obj, scale):
-    width = obj.get("strokeWidth", 1) or 1
-    return max(1, int(round(width * scale)))
+    raw = obj.get("strokeWidth", 1)
+    if raw is None:
+        raw = 1
+    return max(1, int(round(raw * scale)))
+
+
+# CSS rgba() with alpha as float 0..1, which PIL.ImageColor.getrgb refuses.
+_CSS_RGBA_RE = re.compile(
+    r"^\s*rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*"
+    r"(?:,\s*(\d*\.?\d+)\s*)?\)\s*$",
+    re.IGNORECASE,
+)
 
 
 def _parse_color(value, default=None):
     if value is None or value == "" or value == "transparent":
         return default
+    if isinstance(value, str):
+        match = _CSS_RGBA_RE.match(value)
+        if match:
+            r, g, b, a = match.groups()
+            alpha = float(a) if a is not None else 1.0
+            if 0 <= alpha <= 1:
+                alpha_255 = round(alpha * 255)
+            else:
+                alpha_255 = max(0, min(255, round(alpha)))
+            return (int(r), int(g), int(b), alpha_255)
     try:
         rgb = ImageColor.getrgb(value)
-    except ValueError:
+    except (ValueError, AttributeError):
         return default
     if len(rgb) == 3:
         return rgb + (255,)
@@ -114,7 +134,17 @@ def _parse_color(value, default=None):
 
 
 def _stroke_color(obj):
-    return _parse_color(obj.get("stroke"), default=(255, 0, 0, 255))
+    """Return the stroke colour or None when no stroke was set. Shapes
+    that always need a visible line (path, line, arrow…) layer their own
+    fallback on top."""
+    return _parse_color(obj.get("stroke"), default=None)
+
+
+def _line_color(obj):
+    """Stroke with a black default — for shapes whose body IS the stroke
+    (line, arrow, path, psstroke, polyline). If the JSON has no stroke
+    but a fill, use the fill; else default to opaque black."""
+    return _stroke_color(obj) or _fill_color(obj) or (0, 0, 0, 255)
 
 
 def _fill_color(obj):
@@ -135,6 +165,17 @@ def _size(obj, scale_x, scale_y):
     return width, height
 
 
+def _outline_kwargs(obj, scale_x):
+    """Common outline/width pair for fillable shapes (rect, ellipse,
+    polygon). When `stroke` is absent we pass `outline=None, width=0` so
+    Pillow draws no outline — that's the whiteboard sticker case (a
+    fill-only fabric.Rect)."""
+    stroke = _stroke_color(obj)
+    if stroke is None:
+        return {"outline": None, "width": 0}
+    return {"outline": stroke, "width": _stroke_width(obj, scale_x)}
+
+
 def _draw_rect(draw, obj, scale_x, scale_y):
     x, y = _origin(obj, scale_x, scale_y)
     w, h = _size(obj, scale_x, scale_y)
@@ -142,9 +183,8 @@ def _draw_rect(draw, obj, scale_x, scale_y):
         return
     draw.rectangle(
         [x, y, x + w, y + h],
-        outline=_stroke_color(obj),
         fill=_fill_color(obj),
-        width=_stroke_width(obj, scale_x),
+        **_outline_kwargs(obj, scale_x),
     )
 
 
@@ -163,9 +203,8 @@ def _draw_ellipse(draw, obj, scale_x, scale_y):
         return
     draw.ellipse(
         [x, y, x + w, y + h],
-        outline=_stroke_color(obj),
         fill=_fill_color(obj),
-        width=_stroke_width(obj, scale_x),
+        **_outline_kwargs(obj, scale_x),
     )
 
 
@@ -178,7 +217,7 @@ def _draw_line(draw, obj, scale_x, scale_y):
     y2 = (obj.get("y2", 0) or 0) * scale_y
     draw.line(
         [(x1, y1), (x2, y2)],
-        fill=_stroke_color(obj),
+        fill=_line_color(obj),
         width=_stroke_width(obj, scale_x),
     )
 
@@ -194,16 +233,16 @@ def _draw_polyline(draw, obj, scale_x, scale_y):
     points = _flatten_points(obj.get("points"), scale_x, scale_y)
     if len(points) < 2:
         return
-    draw.line(
-        points, fill=_stroke_color(obj), width=_stroke_width(obj, scale_x)
-    )
+    draw.line(points, fill=_line_color(obj), width=_stroke_width(obj, scale_x))
 
 
 def _draw_polygon(draw, obj, scale_x, scale_y):
     points = _flatten_points(obj.get("points"), scale_x, scale_y)
     if len(points) < 3:
         return
-    draw.polygon(points, outline=_stroke_color(obj), fill=_fill_color(obj))
+    draw.polygon(
+        points, fill=_fill_color(obj), **_outline_kwargs(obj, scale_x)
+    )
 
 
 def _draw_arrow(draw, obj, scale_x, scale_y):
@@ -212,7 +251,7 @@ def _draw_arrow(draw, obj, scale_x, scale_y):
     y1 = (obj.get("y1", 0) or 0) * scale_y
     x2 = (obj.get("x2", 0) or 0) * scale_x
     y2 = (obj.get("y2", 0) or 0) * scale_y
-    color = _stroke_color(obj)
+    color = _line_color(obj)
     width = _stroke_width(obj, scale_x)
     head_size = (obj.get("arrowHeadSize", 15) or 15) * scale_x
     angle = math.atan2((y2 - y1), (x2 - x1))
@@ -264,9 +303,7 @@ def _draw_text(draw, obj, scale_x, scale_y):
             pass
     # Fabric Text uses `fill` for the glyph colour; fall back to stroke
     # then to opaque black so text is never invisible.
-    color = (
-        _fill_color(obj) or _parse_color(obj.get("stroke")) or (0, 0, 0, 255)
-    )
+    color = _fill_color(obj) or _stroke_color(obj) or (0, 0, 0, 255)
     draw.text((x, y), text, fill=color, font=font)
 
 
@@ -289,7 +326,7 @@ def _draw_psstroke(draw, obj, scale_x, scale_y):
     points = obj.get("strokePoints") or []
     if len(points) < 2:
         return
-    color = _stroke_color(obj)
+    color = _line_color(obj)
     base_width = (obj.get("strokeWidth", 1) or 1) * scale_x
 
     def to_screen(p):
@@ -334,7 +371,7 @@ def _draw_path(draw, obj, scale_x, scale_y):
     # normalises left=calcDim.left and pathOffset=(calcDim.left+w/2,
     # calcDim.top+h/2) on Path construction, so the two render-time
     # translations cancel out and world coord = path coord.
-    color = _stroke_color(obj)
+    color = _line_color(obj)
     width = _stroke_width(obj, scale_x)
 
     def to_screen(px, py):

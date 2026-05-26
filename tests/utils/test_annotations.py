@@ -350,6 +350,56 @@ class AnnotationsRendererTestCase(unittest.TestCase):
         # The tip itself stays coloured (head's apex). AA softens it.
         self.assertPixelColored(image.getpixel((100, 100)))
 
+    def test_whiteboard_rect_renders_translucent_white_without_outline(
+        self,
+    ):
+        """Kitsu's whiteboard sticker (annotation.js:212) is a fabric.Rect
+        with `stroke: undefined`, `strokeWidth: 0`, fill=
+        `rgba(255, 255, 255, 0.7)`. The renderer must:
+        - not paint a red default outline,
+        - parse the CSS-style rgba (alpha 0..1),
+        - blend the translucent white so the underlying image still shows.
+        """
+        # Start from a black image so the white whiteboard is visible.
+        path = self._temp_image()
+        from PIL import Image as PILImage
+
+        PILImage.new("RGB", (200, 200), (0, 0, 0)).save(path, "PNG")
+        annotation = {
+            "drawing": {
+                "objects": [
+                    {
+                        "type": "rect",
+                        "left": 50,
+                        "top": 50,
+                        "width": 100,
+                        "height": 100,
+                        "strokeWidth": 0,
+                        "fill": "rgba(255, 255, 255, 0.7)",
+                        "canvasWidth": 200,
+                        "canvasHeight": 200,
+                    }
+                ]
+            }
+        }
+        annotations_renderer.render_annotation_on_image(path, annotation)
+        image = Image.open(path)
+        # A pixel inside the whiteboard must NOT be black (the fill is
+        # there) and must NOT be pure red (no default outline).
+        inside = image.getpixel((100, 100))[:3]
+        self.assertGreater(
+            inside[0],
+            100,
+            f"interior should be lit by whiteboard, got {inside}",
+        )
+        # On a black base, 70% white blends to roughly (178, 178, 178).
+        self.assertLess(abs(inside[0] - inside[1]), 30)
+        # A pixel just outside the rectangle stays black (no red outline).
+        outside = image.getpixel((30, 100))[:3]
+        self.assertLess(
+            max(outside), 60, f"outside should be black, got {outside}"
+        )
+
     def test_unknown_type_does_not_raise(self):
         path = self._temp_image()
         before = Image.open(path).getpixel((100, 100))
