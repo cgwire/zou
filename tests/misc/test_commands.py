@@ -1,12 +1,16 @@
 import datetime
+import io
+from contextlib import redirect_stdout
+from unittest.mock import patch
 
 from click.testing import CliRunner
 
 from tests.base import ApiDBTestCase
 
 from zou.app.models.person import Person
+from zou.app.services import preview_files_service
+from zou.app.stores import auth_tokens_store, file_store
 from zou.app.utils import commands
-from zou.app.stores import auth_tokens_store
 from zou.app.models.entity_type import EntityType
 from zou.app.models.task_type import TaskType
 from zou.cli import cli
@@ -105,3 +109,57 @@ class DisableTwoFactorAuthenticationCommandTestCase(ApiDBTestCase):
         )
         self.assertEqual(result.exit_code, 1)
         self.assertIn("can't be disabled", result.output)
+
+
+class RenormalizeMoviePreviewFilesTestCase(ApiDBTestCase):
+    def setUp(self):
+        super().setUp()
+        self.generate_base_context()
+        self.generate_fixture_asset()
+        self.generate_fixture_assigner()
+        self.generate_fixture_person()
+        self.generate_fixture_task()
+        self.preview_file = self.generate_fixture_preview_file(status="broken")
+        self.preview_file_id = str(self.preview_file.id)
+
+    def _run_renormalize(self):
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            commands.renormalize_movie_preview_files(
+                preview_file_id=self.preview_file_id,
+                all_broken=True,
+            )
+        return buf.getvalue()
+
+    def test_skips_when_source_missing_in_storage(self):
+        with patch.object(
+            file_store, "exists_movie", return_value=False
+        ), patch.object(
+            preview_files_service, "prepare_and_store_movie"
+        ) as mock_prepare:
+            output = self._run_renormalize()
+
+        self.assertIn("Source movie missing in storage", output)
+        mock_prepare.assert_not_called()
+
+    def test_skips_when_local_copy_missing(self):
+        missing_path = "/tmp/zou-test-source-does-not-exist.mp4"
+        with patch.object(
+            file_store, "exists_movie", return_value=True
+        ), patch.object(
+            file_store,
+            "get_local_movie_path",
+            return_value=missing_path,
+        ), patch(
+            "zou.app.utils.commands.shutil.copyfile"
+        ), patch(
+            "zou.app.utils.commands.config.FS_BACKEND", "local"
+        ), patch(
+            "zou.app.utils.commands.config.ENABLE_JOB_QUEUE", False
+        ), patch.object(
+            preview_files_service, "prepare_and_store_movie"
+        ) as mock_prepare:
+            output = self._run_renormalize()
+
+        self.assertIn("Local copy of source movie is missing or", output)
+        mock_prepare.assert_not_called()
