@@ -3,7 +3,6 @@ import slugify
 import os
 
 from flask import (
-    abort,
     after_this_request,
     request,
     send_file as flask_send_file,
@@ -541,7 +540,7 @@ class BuildPlaylistMovieResource(Resource, ArgsMixin):
                     ),
                     job_timeout=int(config.JOB_QUEUE_TIMEOUT),
                     unique=True,
-                    job_id=f"build_playlist:{playlist['id']}",
+                    job_id=f"build_playlist_{playlist['id']}",
                     result_ttl=60,
                     failure_ttl=60,
                 )
