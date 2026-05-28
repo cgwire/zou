@@ -53,6 +53,17 @@ committing:
     pip install pre-commit
     pre-commit install
 
+If you use Claude Code (or another AI assistant that reads ``CLAUDE.md``),
+copy ``CLAUDE.local.md.example`` to ``CLAUDE.local.md`` and adapt it to your
+local environment (virtualenv path, test database name, etc.). The
+``CLAUDE.local.md`` file is gitignored and holds your local-only commands
+(test execution, migrations), while ``CLAUDE.md`` only documents code
+conventions shared by the whole team.
+
+.. code:: bash
+
+    cp CLAUDE.local.md.example CLAUDE.local.md
+
 Instructions for setting up a development environment are available in
 `the documentation <https://zou.cg-wire.com/development/>`__
 
