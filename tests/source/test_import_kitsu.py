@@ -172,8 +172,10 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         self._post_kitsu("/import/kitsu/news", payload)
 
     def test_import_preview_files_flags_imported_only(self):
-        """Imported previews are flagged so frame/tile extraction skips them
-        — the push only sends metadata, not the binary."""
+        """
+        Imported previews are flagged so frame/tile extraction skips them
+        — the push only sends metadata, not the binary.
+        """
         new_id = str(fields.gen_uuid())
         payload = [
             {
@@ -288,3 +290,33 @@ class ImportKitsuRoutesTestCase(ApiDBTestCase):
         response = self._post_kitsu("/import/kitsu/milestones", payload)
         self.assertEqual(response, [])
         self.assertIsNone(Milestone.get(new_id))
+
+    def test_silent_flag_skips_event_emission(self):
+        """
+        ``?silent=true`` is what sync-push uses to dodge the per-row
+        events.emit storm: no api_event row is written and no Redis
+        publish happens. The Milestone itself still gets created.
+        """
+        from zou.app.models.event import ApiEvent
+
+        new_id = str(fields.gen_uuid())
+        payload = [
+            {
+                "id": new_id,
+                "project_id": self.project_id,
+                "task_type_id": str(self.task_type.id),
+                "name": "Silent milestone",
+                "date": "2026-06-01",
+            }
+        ]
+        events_before = ApiEvent.query.count()
+        self._post_kitsu("/import/kitsu/milestones?silent=true", payload)
+        self.assertIsNotNone(Milestone.get(new_id))
+        self.assertEqual(ApiEvent.query.count(), events_before)
+
+        # And the noisy default still does emit.
+        noisy_id = str(fields.gen_uuid())
+        payload[0]["id"] = noisy_id
+        payload[0]["name"] = "Noisy milestone"
+        self._post_kitsu("/import/kitsu/milestones", payload)
+        self.assertGreater(ApiEvent.query.count(), events_before)

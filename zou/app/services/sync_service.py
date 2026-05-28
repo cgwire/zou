@@ -332,6 +332,7 @@ def push_project_data(
     project_name,
     batch_size=200,
     throttle=0.0,
+    silent=True,
 ):
     """
     Push a single project's data to a target zou instance via the
@@ -343,6 +344,11 @@ def push_project_data(
     ``throttle`` is a pause (in seconds) between every batch POST. Useful
     to spare the target instance under load — set to 0.5 or 1.0 if the
     default rate causes timeouts or saturates request workers.
+
+    ``silent`` (default True) appends ``?silent=true`` to every POST so
+    the target skips per-row ``events.emit`` — no api_event rows written
+    and no Redis broadcast per imported entry. Bulk migration is not
+    something connected UIs need a live event storm for.
     """
     gazu.set_host(target)
     gazu.log_in(login, password)
@@ -357,6 +363,7 @@ def push_project_data(
         "/import/kitsu/projects",
         [project.serialize(relations=True)],
         batch_size,
+        silent=silent,
     )
 
     _push_query(
@@ -364,6 +371,7 @@ def push_project_data(
         MetadataDescriptor.query.filter_by(project_id=project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
         relations=True,
     )
     _push_query(
@@ -371,6 +379,7 @@ def push_project_data(
         Milestone.query.filter_by(project_id=project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
 
     # Entities in hierarchy order so FKs (parent_id) resolve as we go.
@@ -391,6 +400,7 @@ def push_project_data(
             ),
             batch_size=batch_size,
             throttle=throttle,
+            silent=silent,
             label=f"/import/kitsu/entities ({entity_type_name})",
         )
 
@@ -399,6 +409,7 @@ def push_project_data(
         ScheduleItem.query.filter_by(project_id=project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
     _push_query(
         "/import/kitsu/entity-links",
@@ -407,6 +418,7 @@ def push_project_data(
         ).filter(Entity.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
 
     _push_query(
@@ -414,24 +426,28 @@ def push_project_data(
         Task.query.filter_by(project_id=project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
     _push_query(
         "/import/kitsu/subscriptions",
         Subscription.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
     _push_query(
         "/import/kitsu/notifications",
         Notification.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
     _push_query(
         "/import/kitsu/time-spents",
         TimeSpent.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
 
     _push_query(
@@ -441,6 +457,7 @@ def push_project_data(
         ),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
         relations=True,
     )
     _push_query(
@@ -448,6 +465,7 @@ def push_project_data(
         PreviewFile.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
         # source_file_id -> OutputFile.id, and OutputFile is out of scope
         # for sync-push (see the verify "NOT SYNCED" rows). Strip it so the
         # FK doesn't blow up the whole batch on the target side.
@@ -461,12 +479,14 @@ def push_project_data(
         .filter(Task.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
     _push_query(
         "/import/kitsu/news",
         News.query.join(Task).filter(Task.project_id == project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
 
     _push_query(
@@ -474,6 +494,7 @@ def push_project_data(
         Playlist.query.filter_by(project_id=project_id),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
         relations=True,
     )
     _push_query(
@@ -483,6 +504,7 @@ def push_project_data(
         ),
         batch_size=batch_size,
         throttle=throttle,
+        silent=silent,
     )
 
     logger.info(f"Push of {project.name} complete.")
@@ -496,6 +518,7 @@ def _push_query(
     label=None,
     strip_fields=None,
     throttle=0.0,
+    silent=True,
 ):
     """
     Page through a query (offset+limit) and POST one batch at a time.
@@ -508,6 +531,7 @@ def _push_query(
     which yield_per refuses to combine with.
     """
     display = label or path
+    post_path = f"{path}?silent=true" if silent else path
     total_expected = query.count()
     if total_expected == 0:
         logger.info(f"  {display}: nothing to push")
@@ -531,7 +555,7 @@ def _push_query(
                     item.pop(field, None)
             items.append(item)
         try:
-            gazu.client.post(path, items)
+            gazu.client.post(post_path, items)
         except Exception:
             logger.error(
                 f"  {display}: batch at offset {offset} failed", exc_info=1
@@ -556,16 +580,19 @@ def _push_query(
         logger.info(f"  {display}: pushed {total} rows")
 
 
-def _push_batch(path, payload, batch_size=200, label=None):
-    """One-shot POST helper for the small pre-built lists (e.g. the
-    project itself). For query-driven pushes, use _push_query."""
+def _push_batch(path, payload, batch_size=200, label=None, silent=True):
+    """
+    One-shot POST helper for the small pre-built lists (e.g. the
+    project itself). For query-driven pushes, use _push_query.
+    """
     display = label or path
+    post_path = f"{path}?silent=true" if silent else path
     total = len(payload)
     failed = 0
     for offset in range(0, total, batch_size):
         chunk = payload[offset : offset + batch_size]
         try:
-            gazu.client.post(path, chunk)
+            gazu.client.post(post_path, chunk)
         except Exception:
             logger.error(f"  {display}: batch {offset} failed", exc_info=1)
             failed += len(chunk)
@@ -1810,10 +1837,12 @@ def _safe(fn):
 
 
 def _src_count(path):
-    """Return a callable counting rows on the source instance for a path.
+    """
+    Return a callable counting rows on the source instance for a path.
 
     Handles list-returning routes (e.g. /projects/X/assets) and paginated
     routes (which return {"data": ..., "total": N, "nb_pages": M}).
+
     """
 
     def fetch():
@@ -1865,7 +1894,9 @@ def _tgt_entity_type(project_id, type_name):
 
 
 def _tgt_asset(project_id):
-    """Assets are entities whose type is not one of the structural types."""
+    """
+    Assets are entities whose type is not one of the structural types.
+    """
     structural = ["Episode", "Sequence", "Shot", "Concept", "Edit", "Scene"]
 
     def count():
@@ -1884,7 +1915,9 @@ def _tgt_asset(project_id):
 
 
 def _tgt_entity_link(project_id):
-    """Entity links whose source entity lives in the project."""
+    """
+    Entity links whose source entity lives in the project.
+    """
 
     def count():
         return (
@@ -1897,7 +1930,9 @@ def _tgt_entity_link(project_id):
 
 
 def _tgt_comment(project_id):
-    """Comments attached to tasks of the project (matches the source route)."""
+    """
+    Comments attached to tasks of the project (matches the source route).
+    """
 
     def count():
         return (
@@ -1968,7 +2003,9 @@ def _tgt_subscription(project_id):
 
 
 def _tgt_notification(project_id):
-    """Notifications attached to tasks of the project."""
+    """
+    Notifications attached to tasks of the project.
+    """
 
     def count():
         return (
@@ -1981,7 +2018,9 @@ def _tgt_notification(project_id):
 
 
 def _tgt_news(project_id):
-    """News tied to tasks of the project."""
+    """
+    News tied to tasks of the project.
+    """
 
     def count():
         return (
@@ -2029,7 +2068,9 @@ def _tgt_asset_instance(project_id):
 
 
 def _tgt_chat(project_id):
-    """Chats attached to entities of the project."""
+    """
+    Chats attached to entities of the project.
+    """
 
     def count():
         return (

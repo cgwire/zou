@@ -28,11 +28,13 @@ def _get_db_uri():
 
 
 def _get_alembic_config():
-    """Build an Alembic config that talks directly to the DB.
+    """
+    Build an Alembic config that talks directly to the DB.
 
     Bypasses Flask/Flask-SQLAlchemy/Flask-Migrate entirely — only needs
     Alembic + the DB driver.  env.py detects the absence of a Flask app
     context and reads the URL from the Alembic config instead.
+
     """
     from alembic.config import Config
 
@@ -46,9 +48,11 @@ def _get_alembic_config():
 
 
 def _get_alembic_config_legacy():
-    """Alembic config that includes both current and legacy migrations.
+    """
+    Alembic config that includes both current and legacy migrations.
 
     Used as fallback when an instance is on a pre-squash revision.
+
     """
     from alembic.config import Config
 
@@ -647,7 +651,17 @@ def sync_verify(source, project):
     type=float,
     help="Seconds to sleep between batch POSTs (e.g. 0.5).",
 )
-def sync_push(target, project, batch_size, throttle):
+@click.option(
+    "--broadcast",
+    is_flag=True,
+    default=False,
+    help=(
+        "Let the target emit events for every imported row "
+        "(api_event + Redis publish). Off by default — bulk imports "
+        "don't need a live event storm on the target."
+    ),
+)
+def sync_push(target, project, batch_size, throttle, broadcast):
     """
     Push a project from the current instance to a target zou instance via
     /import/kitsu/* routes. Reference data (persons, departments, task
@@ -666,6 +680,7 @@ def sync_push(target, project, batch_size, throttle):
         project,
         batch_size=batch_size,
         throttle=throttle,
+        silent=not broadcast,
     )
 
 
