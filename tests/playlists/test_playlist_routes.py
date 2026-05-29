@@ -1,7 +1,7 @@
 from tests.base import ApiDBTestCase
 
 from zou.app.models.playlist import Playlist
-from zou.app.services import projects_service
+from zou.app.services import projects_service, tasks_service
 
 
 class PlaylistRoutesTestCase(ApiDBTestCase):
@@ -52,6 +52,27 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
             f"/data/playlists/entities/{self.shot.id}/preview-files"
         )
         self.assertIsInstance(result, dict)
+
+    def test_get_entity_preview_files_vendor_assigned(self):
+        self.generate_fixture_user_vendor()
+        self.log_in_vendor()
+        path = f"/data/playlists/entities/{self.shot.id}/preview-files"
+        self.get(path, 403)
+        projects_service.add_team_member(
+            self.project.id, self.user_vendor["id"]
+        )
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        result = self.get(path)
+        self.assertIsInstance(result, dict)
+
+    def test_get_entity_preview_files_vendor_not_assigned(self):
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project.id, self.user_vendor["id"]
+        )
+        self.log_in_vendor()
+        path = f"/data/playlists/entities/{self.shot.id}/preview-files"
+        self.get(path, 403)
 
     def test_get_project_build_jobs(self):
         result = self.get(f"/data/projects/{self.project_id}/build-jobs")
