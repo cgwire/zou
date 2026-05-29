@@ -1,10 +1,23 @@
 import re
 import traceback
+from email import charset as email_charset
 from io import StringIO
 from html.parser import HTMLParser
 from flask_mail import Message
 
 from zou.app import mail, app
+
+# Force quoted-printable encoding for utf-8 message bodies so that the
+# Python email module wraps lines at 76 chars. Without this, long HTML
+# lines (e.g. inline styles, long URLs) can exceed RFC 5322's 998-char
+# hard limit and SMTP servers reject the message with
+# "Maximum line length exceeded (see RFC 5322)".
+email_charset.add_charset(
+    "utf-8",
+    email_charset.QP,
+    email_charset.QP,
+    "utf-8",
+)
 
 
 def send_email(subject, html, recipient_email, body=None, locale=None):
