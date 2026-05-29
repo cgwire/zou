@@ -24,6 +24,10 @@ from zou.app.models.person import Person
 from zou.app.models.playlist import Playlist
 from zou.app.models.preview_background_file import PreviewBackgroundFile
 from zou.app.models.preview_file import PreviewFile
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+    ProductionScheduleVersionTaskLink,
+)
 from zou.app.models.project import Project
 from zou.app.models.schedule_item import ScheduleItem
 from zou.app.models.search_filter import SearchFilter
@@ -433,6 +437,7 @@ def remove_project(project_id):
     MetadataDescriptor.delete_all_by(project_id=project_id)
     Milestone.delete_all_by(project_id=project_id)
     ScheduleItem.delete_all_by(project_id=project_id)
+    remove_production_schedule_versions_for_project(project_id)
     SearchFilterGroup.delete_all_by(project_id=project_id)
     SearchFilter.delete_all_by(project_id=project_id)
     News.query.filter(
@@ -442,6 +447,37 @@ def remove_project(project_id):
     project.delete()
     events.emit("project:delete", {"project_id": project.id})
     return project_id
+
+
+def remove_production_schedule_versions_for_project(project_id):
+    """
+    Delete production schedule versions of a project together with their
+    task links. Done explicitly because the project FK on
+    production_schedule_version is not guaranteed to cascade on every
+    deployed database, and the table self-references through
+    ``production_schedule_from``.
+    """
+    version_ids = [
+        str(row[0])
+        for row in ProductionScheduleVersion.query.with_entities(
+            ProductionScheduleVersion.id
+        )
+        .filter_by(project_id=project_id)
+        .all()
+    ]
+    if not version_ids:
+        return
+
+    # Break self-references so the rows can be deleted in any order.
+    ProductionScheduleVersion.query.filter(
+        ProductionScheduleVersion.production_schedule_from.in_(version_ids)
+    ).update({"production_schedule_from": None}, synchronize_session=False)
+    ProductionScheduleVersionTaskLink.query.filter(
+        ProductionScheduleVersionTaskLink.production_schedule_version_id.in_(
+            version_ids
+        )
+    ).delete(synchronize_session=False)
+    ProductionScheduleVersion.delete_all_by(project_id=project_id)
 
 
 def remove_person(person_id, force=True):

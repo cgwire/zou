@@ -3,15 +3,17 @@ from tests.base import ApiDBTestCase
 from zou.app.models.comment import Comment
 from zou.app.models.task import Task
 from zou.app.models.notification import Notification
-from zou.app.models.news import News
 from zou.app.models.preview_file import PreviewFile
 from zou.app.models.event import ApiEvent
 from zou.app.models.login_log import LoginLog
+from zou.app.models.production_schedule_version import (
+    ProductionScheduleVersion,
+    ProductionScheduleVersionTaskLink,
+)
+from zou.app.models.project import Project
 
 from zou.app.services import (
-    comments_service,
     deletion_service,
-    tasks_service,
 )
 from zou.app.services.exception import (
     CommentNotFoundException,
@@ -126,3 +128,29 @@ class DeletionServiceTestCase(ApiDBTestCase):
             str(self.asset.id)
         )
         self.assertEqual(result, [])
+
+    def test_remove_project_with_production_schedule_version(self):
+        # Regression: deleting a project that had a production schedule
+        # version failed on the FK constraint because the version (and its
+        # task links + self-reference) were never cleaned up.
+        project_id = str(self.project.id)
+        version = ProductionScheduleVersion.create(
+            name="v1", project_id=self.project.id
+        )
+        derived = ProductionScheduleVersion.create(
+            name="v2",
+            project_id=self.project.id,
+            production_schedule_from=version.id,
+        )
+        ProductionScheduleVersionTaskLink.create(
+            production_schedule_version_id=version.id,
+            task_id=self.task.id,
+        )
+        version_id = str(version.id)
+        derived_id = str(derived.id)
+
+        deletion_service.remove_project(project_id)
+
+        self.assertIsNone(Project.get(project_id))
+        self.assertIsNone(ProductionScheduleVersion.get(version_id))
+        self.assertIsNone(ProductionScheduleVersion.get(derived_id))
