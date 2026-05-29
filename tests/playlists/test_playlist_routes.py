@@ -86,6 +86,29 @@ class PlaylistRoutesTestCase(ApiDBTestCase):
         )
         self.assertIsInstance(result, list)
 
+    def test_create_temp_playlist_vendor_assigned(self):
+        self.generate_fixture_user_vendor()
+        self.log_in_vendor()
+        path = f"/data/projects/{self.project_id}/playlists/temp"
+        data = {"task_ids": [str(self.shot_task.id)]}
+        self.post(path, data, 403)
+        projects_service.add_team_member(
+            self.project.id, self.user_vendor["id"]
+        )
+        tasks_service.assign_task(self.shot_task.id, self.user_vendor["id"])
+        result = self.post(path, data, 200)
+        self.assertIsInstance(result, list)
+
+    def test_create_temp_playlist_vendor_not_assigned(self):
+        self.generate_fixture_user_vendor()
+        projects_service.add_team_member(
+            self.project.id, self.user_vendor["id"]
+        )
+        self.log_in_vendor()
+        path = f"/data/projects/{self.project_id}/playlists/temp"
+        data = {"task_ids": [str(self.shot_task.id)]}
+        self.post(path, data, 403)
+
     def test_add_entity_to_playlist(self):
         self.generate_fixture_playlist("Add Entity Playlist")
         playlists = self.get(f"/data/projects/{self.project_id}/playlists")
