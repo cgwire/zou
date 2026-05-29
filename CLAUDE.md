@@ -5,23 +5,11 @@ Zou is the REST API backend for **Kitsu**, a production management tool for anim
 ## Quick Reference
 
 ```bash
-# Activate env
-source ~/.virtualenvs/zou/bin/activate
-
-# Run tests (requires PostgreSQL on localhost:5432)
-DB_DATABASE=zoudb-test py.test tests/path/to/test_file.py -v
-
-# Run full test suite
-DB_DATABASE=zoudb-test py.test tests/ -v
-
 # Lint / format
 pre-commit run --all-files
 
 # Generate a migration
 zou migrate-db --message "Add column X to table Y"
-
-# Apply migrations
-zou upgrade-db
 ```
 
 ## Architecture
@@ -245,14 +233,7 @@ Format: `<table_name>:<action>` — e.g., `task:new`, `comment:delete`, `person:
 
 ## Testing
 
-### Running tests
-
-```bash
-source ~/.virtualenvs/zou/bin/activate
-DB_DATABASE=zoudb-test py.test tests/services/test_my_service.py -v
-```
-
-Requires PostgreSQL running locally on port 5432. The test DB is created/dropped automatically by `conftest.py`.
+See `CLAUDE.local.md` for how to run tests locally. The test DB schema is created/dropped automatically by `conftest.py`.
 
 ### Test base class
 
@@ -326,7 +307,6 @@ class MyServiceTestCase(ApiDBTestCase):
 ```
 
 ## Migrations
-
 ```bash
 # Generate
 zou migrate-db --message "Add column X to table Y"
@@ -336,9 +316,10 @@ zou upgrade-db
 
 # Rollback one step
 zou downgrade-db --revision "-1"
-```
 
 Migrations live in `zou/migrations/versions/`. Each file has `upgrade()` and `downgrade()` functions. Use `UUIDType(binary=False)` for UUID columns.
+
+See `CLAUDE.local.md` for `zou migrate-db` / `zou upgrade-db` / `zou downgrade-db` invocations.
 
 ## Key Environment Variables
 

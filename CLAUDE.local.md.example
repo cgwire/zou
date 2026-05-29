@@ -1,0 +1,31 @@
+# Zou - Local Environment Guidelines
+
+Local-only instructions: environment activation, test execution, migration commands. Copy this file to `CLAUDE.local.md` and adapt to your setup.
+
+## Quick Reference
+
+```bash
+# Activate env
+source ~/.virtualenvs/zou/bin/activate
+
+# Run tests (requires PostgreSQL on localhost:5432)
+DB_DATABASE=zoudb-test py.test tests/path/to/test_file.py -v
+
+# Run full test suite
+DB_DATABASE=zoudb-test py.test tests/ -v
+
+# Generate a migration
+zou migrate-db --message "Add column X to table Y"
+
+# Apply migrations
+zou upgrade-db
+```
+
+## Running tests
+
+```bash
+source ~/.virtualenvs/zou/bin/activate
+DB_DATABASE=zoudb-test py.test tests/services/test_my_service.py -v
+```
+
+Requires PostgreSQL running locally on port 5432. The test DB is created/dropped automatically by `conftest.py`.

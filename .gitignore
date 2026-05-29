@@ -107,3 +107,6 @@ data.ms
 .venv
 additions
 previews-test
+
+# Local-only Claude Code instructions
+CLAUDE.local.md
