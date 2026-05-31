@@ -1491,7 +1491,8 @@ class TasksAssignResource(Resource, ArgsMixin):
         current_user = persons_service.get_current_user()
         for task_id in body.task_ids:
             try:
-                user_service.check_person_is_not_bot(person_id)
+                project_id = tasks_service.get_task(task_id)["project_id"]
+                user_service.check_person_is_not_bot(person_id, project_id)
                 user_service.check_task_department_access(task_id, person_id)
                 task = tasks_service.assign_task(
                     task_id, person_id, current_user["id"]
@@ -1586,7 +1587,8 @@ class TaskAssignResource(Resource, ArgsMixin):
         person_id = body.person_id
         current_user = persons_service.get_current_user()
         try:
-            user_service.check_person_is_not_bot(person_id)
+            project_id = tasks_service.get_task(task_id)["project_id"]
+            user_service.check_person_is_not_bot(person_id, project_id)
             user_service.check_task_department_access(task_id, person_id)
             task = tasks_service.assign_task(
                 task_id, person_id, current_user["id"]
@@ -1843,7 +1845,8 @@ class SetTimeSpentResource(Resource, ArgsMixin):
             400:
                 description: Invalid parameters
         """
-        user_service.check_person_is_not_bot(person_id)
+        project_id = tasks_service.get_task(task_id)["project_id"]
+        user_service.check_person_is_not_bot(person_id, project_id)
         body = validation.validate_request_body(TimeSpentSchema)
         try:
             user_service.check_time_spent_access(task_id, person_id)
@@ -2012,7 +2015,8 @@ class AddTimeSpentResource(Resource, ArgsMixin):
             400:
                 description: Invalid parameters
         """
-        user_service.check_person_is_not_bot(person_id)
+        project_id = tasks_service.get_task(task_id)["project_id"]
+        user_service.check_person_is_not_bot(person_id, project_id)
         body = validation.validate_request_body(TimeSpentSchema)
         try:
             user_service.check_time_spent_access(task_id, person_id)
