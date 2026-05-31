@@ -201,3 +201,31 @@ class PreviewFileTestCase(ApiDBTestCase):
         preview_files = self.get("data/preview-files")
         self.assertEqual(len(preview_files), 5)
         self.delete_404(f"data/preview-files/{fields.gen_uuid()}")
+
+    def test_token_cost_fields(self):
+        # Roundtrip through the CRUD endpoint: set token_in / token_out
+        # on creation, read them back.
+        data = {
+            "name": "AI generated preview",
+            "person_id": self.person.id,
+            "task_id": self.task.id,
+            "source_file_id": self.output_file.id,
+            "token_in": 1200,
+            "token_out": 350,
+        }
+        created = self.post("data/preview-files", data)
+        self.assertEqual(created["token_in"], 1200)
+        self.assertEqual(created["token_out"], 350)
+
+        # Default is None when the producer did not report token usage.
+        plain = self.post(
+            "data/preview-files",
+            {
+                "name": "human preview",
+                "person_id": self.person.id,
+                "task_id": self.task.id,
+                "source_file_id": self.output_file.id,
+            },
+        )
+        self.assertIsNone(plain["token_in"])
+        self.assertIsNone(plain["token_out"])
