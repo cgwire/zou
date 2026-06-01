@@ -45,6 +45,7 @@ from zou.app.services.exception import (
     EpisodeNotFoundException,
     PersonNotFoundException,
     RevisionAlreadyExistsException,
+    TooManyPreviewFilesException,
     TaskNotFoundException,
     TaskStatusNotFoundException,
     TaskTypeNotFoundException,
@@ -1822,6 +1823,13 @@ def add_preview_file_to_comment(comment_id, person_id, task_id, revision=0):
         if len(comment.previews) == 0:
             check_revision_is_unique_for_task(task_id, revision)
         position = get_next_position(task_id, revision)
+    if position > 1:
+        project = projects_service.get_project(project_id)
+        if project.get("is_single_preview_per_revision"):
+            raise TooManyPreviewFilesException(
+                "Only one preview file is allowed per revision for this "
+                "project."
+            )
     preview_file = files_service.create_preview_file_raw(
         str(uuid.uuid4())[:13], revision, task_id, person_id, position=position
     )

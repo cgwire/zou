@@ -171,3 +171,53 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         tasks_service.check_revision_is_unique_for_task(
             str(self.task.id), revision=1
         )
+
+    def enable_single_preview(self):
+        """
+        Turn on the single-preview-per-revision option on the project.
+        """
+        from zou.app.services import projects_service
+
+        projects_service.update_project(
+            str(self.project.id),
+            {"is_single_preview_per_revision": True},
+        )
+
+    def test_extra_preview_rejected_when_single_preview_enabled(self):
+        """
+        With the flag on, adding a second preview to a revision fails (400).
+        """
+        self.enable_single_preview()
+        comment = self.create_comment()
+        preview1 = self.add_preview(comment["id"], revision=1)
+        self.assertEqual(preview1["position"], 1)
+
+        path = (
+            f"/actions/tasks/{self.task_id}/comments/{comment['id']}"
+            f"/preview-files/{preview1['id']}"
+        )
+        response = self.post(path, {}, code=400)
+        self.assertIn("preview", response.get("message", "").lower())
+
+    def test_new_revision_allowed_when_single_preview_enabled(self):
+        """
+        With the flag on, a fresh revision (position 1) is still allowed.
+        """
+        self.enable_single_preview()
+        comment1 = self.create_comment()
+        preview1 = self.add_preview(comment1["id"], revision=1)
+        self.assertEqual(preview1["position"], 1)
+
+        comment2 = self.create_comment()
+        preview2 = self.add_preview(comment2["id"], revision=2)
+        self.assertEqual(preview2["position"], 1)
+        self.assertEqual(preview2["revision"], 2)
+
+    def test_extra_preview_allowed_when_flag_off(self):
+        """
+        Regression: with the flag off, extra previews still work.
+        """
+        comment = self.create_comment()
+        preview1 = self.add_preview(comment["id"], revision=1)
+        preview2 = self.add_extra_preview(comment["id"], preview1["id"])
+        self.assertEqual(preview2["position"], 2)
