@@ -1,5 +1,6 @@
 from tests.base import ApiDBTestCase
 from zou.app.models.task_type import TaskType
+from zou.app.models.project import ProjectTaskTypeLink
 
 from zou.app.utils import fields
 
@@ -50,3 +51,29 @@ class TaskTypeTestCase(ApiDBTestCase):
         task_types = self.get("data/task-types")
         self.assertEqual(len(task_types), 2)
         self.delete_404(f"data/task-types/{fields.gen_uuid()}")
+
+    def test_delete_task_type_linked_to_project(self):
+        self.generate_fixture_project()
+        task_type = TaskType.create(
+            name="Linked",
+            short_name="lnk",
+            color="#FFFFFF",
+            for_entity="Asset",
+            department_id=self.department_id,
+        )
+        ProjectTaskTypeLink.create(
+            project_id=self.project.id, task_type_id=task_type.id
+        )
+        task_type_id = str(task_type.id)
+        # Without force, the link refuses the delete with a clean 400.
+        self.delete(f"data/task-types/{task_type_id}", 400)
+        self.assertIsNotNone(TaskType.get(task_type_id))
+        # With force, the link is purged first so the deletion succeeds.
+        self.delete(f"data/task-types/{task_type_id}?force=true")
+        self.assertIsNone(TaskType.get(task_type_id))
+        self.assertEqual(
+            ProjectTaskTypeLink.query.filter_by(
+                task_type_id=task_type_id
+            ).count(),
+            0,
+        )
