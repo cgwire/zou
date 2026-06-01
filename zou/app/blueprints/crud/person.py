@@ -28,6 +28,28 @@ from zou.app.services.exception import (
 from zou.app import config
 
 
+def check_country(data):
+    """
+    Ensure the country, when provided, is an ISO 3166-1 alpha-2 code (two
+    letters). Empty values are treated as "no country" and accepted. The
+    stored value is normalized to uppercase by the Person model.
+    """
+    country = data.get("country")
+    if country is None:
+        return
+    if not isinstance(country, str):
+        raise WrongParameterException(
+            "Invalid country code, expected an ISO 3166-1 alpha-2 code."
+        )
+    country = country.strip()
+    if country != "" and (
+        len(country) != 2 or not country.isascii() or not country.isalpha()
+    ):
+        raise WrongParameterException(
+            "Invalid country code, expected an ISO 3166-1 alpha-2 code."
+        )
+
+
 class PersonsResource(BaseModelsResource):
     def __init__(self):
         BaseModelsResource.__init__(self, Person)
@@ -169,6 +191,10 @@ class PersonsResource(BaseModelsResource):
                     type: boolean
                     default: false
                     example: false
+                  country:
+                    type: string
+                    description: ISO 3166-1 alpha-2 country code (nullable)
+                    example: FR
         responses:
             201:
               description: Person created successfully
@@ -203,6 +229,10 @@ class PersonsResource(BaseModelsResource):
                       two_factor_authentication:
                         type: string
                         example: none
+                      country:
+                        type: string
+                        description: ISO 3166-1 alpha-2 country code (nullable)
+                        example: FR
                       access_token:
                         type: string
                         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
@@ -270,6 +300,7 @@ class PersonsResource(BaseModelsResource):
             contract_type for contract_type, _ in CONTRACT_TYPES
         ]:
             raise WrongParameterException("Invalid contract_type")
+        check_country(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [
@@ -404,6 +435,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                           type: string
                           format: uuid
                         example: []
+                      country:
+                        type: string
+                        description: ISO 3166-1 alpha-2 country code (nullable)
+                        example: FR
                       created_at:
                         type: string
                         format: date-time
@@ -478,6 +513,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                     format: date
                     example: "2025-12-31"
                     description: Person or admin only
+                  country:
+                    type: string
+                    description: ISO 3166-1 alpha-2 country code (nullable)
+                    example: FR
         responses:
             200:
               description: Person updated successfully
@@ -518,6 +557,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                           type: string
                           format: uuid
                         example: []
+                      country:
+                        type: string
+                        description: ISO 3166-1 alpha-2 country code (nullable)
+                        example: FR
                       access_token:
                         type: string
                         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
@@ -564,6 +607,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             contract_type for contract_type, _ in CONTRACT_TYPES
         ]:
             raise WrongParameterException("Invalid contract_type")
+        check_country(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [

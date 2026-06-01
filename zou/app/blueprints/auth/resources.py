@@ -1464,7 +1464,8 @@ class SAMLSSOResource(Resource, ArgsMixin):
         person_info = {
             k: (
                 " ".join(v)
-                if isinstance(v, list) and k in ["first_name", "last_name"]
+                if isinstance(v, list)
+                and k in ["first_name", "last_name", "country"]
                 else v
             )
             for k, v in authn_response.ava.items()
@@ -1475,8 +1476,15 @@ class SAMLSSOResource(Resource, ArgsMixin):
                 "phone",
                 "departments",
                 "studio_id",
+                "country",
             ]
         }
+        # Align the country with its stored canonical form so an unchanged
+        # value does not re-trigger an update on every login.
+        if isinstance(person_info.get("country"), str):
+            person_info["country"] = (
+                person_info["country"].strip().upper() or None
+            )
         try:
             user = persons_service.get_person_by_email(email)
             for k, v in person_info.items():

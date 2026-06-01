@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy_utils import (
     UUIDType,
     EmailType,
@@ -7,6 +9,7 @@ from sqlalchemy_utils import (
 )
 from sqlalchemy import Index
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import validates
 from sqlalchemy.dialects.postgresql import JSONB
 
 from pytz import timezone as pytz_timezone
@@ -17,6 +20,8 @@ from zou.app.models.department import Department
 from zou.app.models.base import BaseMixin
 from zou.app import db
 from zou.app.stores import config_store
+
+logger = logging.getLogger(__name__)
 
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
@@ -88,6 +93,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     last_name = db.Column(db.String(80), nullable=False)
     email = db.Column(EmailType)
     phone = db.Column(db.String(30))
+    country = db.Column(db.String(2))
     contract_type = db.Column(
         ChoiceType(CONTRACT_TYPES), default="open-ended", nullable=False
     )
@@ -164,6 +170,36 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     def __repr__(self):
         return f"<Person {self.full_name}>"
+
+    @validates("country")
+    def validate_country(self, key, value):
+        """
+        Normalize ISO 3166-1 alpha-2 country codes to their canonical
+        uppercase form. Empty or malformed values (not two ASCII letters)
+        are stored as None. API requests are rejected upstream with a clean
+        400 error; this is the last-resort guard for direct writes (SSO
+        sign-in, imports, scripts) that never raises, even on non-string
+        input (e.g. a single-element list from a SAML assertion).
+        """
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            logger.warning(
+                f"Discarded non-string country value for person: {value!r}"
+            )
+            return None
+        normalized = value.strip().upper()
+        if (
+            len(normalized) == 2
+            and normalized.isascii()
+            and normalized.isalpha()
+        ):
+            return normalized
+        if normalized != "":
+            logger.warning(
+                f"Discarded invalid country code for person: {value!r}"
+            )
+        return None
 
     @hybrid_property
     def full_name(self):

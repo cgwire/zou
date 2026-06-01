@@ -146,6 +146,103 @@ class PersonTestCase(ApiDBTestCase):
         self.assertEqual(data["first_name"], person_again["first_name"])
         self.put_404(f"data/persons/{fields.gen_uuid()}", data)
 
+    def test_person_country_round_trip(self):
+        data = {
+            "first_name": "Country",
+            "last_name": "Tester",
+            "email": "country.tester@gmail.com",
+            "country": "fr",  # lower-case input is normalized to "FR"
+        }
+        person = self.post("data/persons", data)
+        self.assertEqual(person["country"], "FR")
+
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+        person_with_relations = self.get(
+            f"data/persons/{person['id']}?relations=true"
+        )
+        self.assertEqual(person_with_relations["country"], "FR")
+        listed = next(
+            p for p in self.get("data/persons") if p["id"] == person["id"]
+        )
+        self.assertEqual(listed["country"], "FR")
+
+        self.put(f"data/persons/{person['id']}", {"country": "us"})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "US")
+
+        self.put(f"data/persons/{person['id']}", {"country": None})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["country"])
+
+        self.put(f"data/persons/{person['id']}", {"country": ""})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertIsNone(person_again["country"])
+
+    def test_create_person_without_country(self):
+        data = {
+            "first_name": "NoCountry",
+            "last_name": "Doe",
+            "email": "no.country@gmail.com",
+        }
+        person = self.post("data/persons", data)
+        self.assertIsNone(person["country"])
+
+    def test_create_person_with_invalid_country(self):
+        data = {
+            "first_name": "Bad",
+            "last_name": "Country",
+            "email": "bad.country@gmail.com",
+            "country": "France",
+        }
+        self.post("data/persons", data, 400)
+
+    def test_update_person_with_invalid_country(self):
+        person = self.get_first("data/persons")
+        self.put(f"data/persons/{person['id']}", {"country": "xyz"}, 400)
+        self.put(f"data/persons/{person['id']}", {"country": "f1"}, 400)
+
+    def test_update_person_country_is_normalized(self):
+        person = self.get_first("data/persons")
+        self.put(f"data/persons/{person['id']}", {"country": " fr "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+
+    def test_update_person_with_non_ascii_country(self):
+        person = self.get_first("data/persons")
+        # Two non-ASCII letters must be rejected (isascii guard).
+        self.put(f"data/persons/{person['id']}", {"country": "éé"}, 400)
+
+    def test_update_person_with_non_string_country(self):
+        # A non-string body (int, or a single-element list as produced by a
+        # SAML assertion) must yield a clean 400, not a 500.
+        person = self.get_first("data/persons")
+        self.put(f"data/persons/{person['id']}", {"country": 123}, 400)
+        self.put(f"data/persons/{person['id']}", {"country": ["FR"]}, 400)
+
+    def test_country_validator_never_raises_on_direct_write(self):
+        # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,
+        # so the model validator must silently discard bad input instead of
+        # raising.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"country": ["FR"]})
+        self.assertIsNone(person.country)
+        person.update({"country": 123})
+        self.assertIsNone(person.country)
+        person.update({"country": "FRA"})
+        self.assertIsNone(person.country)
+        person.update({"country": " us "})
+        self.assertEqual(person.country, "US")
+
+    def test_country_not_exposed_in_present_minimal(self):
+        # The minimal representation is served to non-managers (including
+        # external client/vendor roles), so it must not leak the country.
+        person = Person.get_by(email="ema.doe@gmail.com")
+        person.update({"country": "FR"})
+        self.assertNotIn("country", person.present_minimal())
+        safe = person.serialize_safe()
+        self.assertEqual(safe["country"], "FR")
+
     def test_update_person_with_duplicate_email(self):
         persons = sorted(self.get("data/persons"), key=itemgetter("email"))
         target = persons[0]

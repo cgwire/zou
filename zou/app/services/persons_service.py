@@ -340,6 +340,7 @@ def create_person(
     is_bot=False,
     expiration_date=None,
     studio_id=None,
+    country=None,
     active=True,
     serialize=True,
 ):
@@ -382,6 +383,7 @@ def create_person(
         is_bot=is_bot,
         expiration_date=expiration_date,
         studio_id=studio_id,
+        country=country,
         active=active,
     )
     if is_bot:

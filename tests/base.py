@@ -684,6 +684,7 @@ class ApiDBTestCase(ApiTestCase):
         last_name="Doe",
         desktop_login="john.doe",
         email="john.doe@gmail.com",
+        country=None,
     ):
         self.person = Person.get_by(email=email)
         if self.person is None:
@@ -693,6 +694,7 @@ class ApiDBTestCase(ApiTestCase):
                 desktop_login=desktop_login,
                 email=email,
                 password=_CACHED_PASSWORD_HASH,
+                country=country,
             )
         return self.person
 
