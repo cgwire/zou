@@ -127,6 +127,10 @@ class RevisionAlreadyExistsException(BadRequest):
     pass
 
 
+class TooManyPreviewFilesException(BadRequest):
+    pass
+
+
 class CommentNotFoundException(NotFound):
     pass
 
