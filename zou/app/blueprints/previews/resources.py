@@ -44,6 +44,7 @@ from zou.app.services.exception import (
     PreviewBackgroundFileNotFoundException,
     PreviewFileNotFoundException,
     PreviewFileReuploadNotAllowedException,
+    PreviewProcessingFailedException,
     WrongParameterException,
 )
 
@@ -353,17 +354,39 @@ class BaseNewPreviewFilePicture:
             )
             tasks_service.update_preview_file_info(preview_file)
         elif extension in ALLOWED_MOVIE_EXTENSION:
+            normalize = self.get_bool_parameter("normalize", "true")
             try:
-                normalize = self.get_bool_parameter("normalize", "true")
                 self.save_movie_preview(instance_id, uploaded_file, normalize)
-            except Exception as e:
-                current_app.logger.error(e, exc_info=1)
-                current_app.logger.error("Normalization failed.")
+            except WrongParameterException:
+                # Invalid upload (e.g. empty or corrupted transfer): the file
+                # itself is the problem, so keep the original 400 message.
                 deletion_service.remove_preview_file_by_id(
                     instance_id, force=True
                 )
                 if abort_on_failed:
-                    raise WrongParameterException("Normalization failed.")
+                    raise
+                return None
+            except Exception as e:
+                # Genuine server-side processing failure (ffmpeg, storage,
+                # normalization...): this is not the client's fault. Report it
+                # as a 500 and keep the underlying error so it can be
+                # diagnosed.
+                current_app.logger.error(e, exc_info=1)
+                if normalize:
+                    message = "Movie preview normalization failed."
+                else:
+                    message = (
+                        "Movie preview processing failed "
+                        "(normalization disabled)."
+                    )
+                current_app.logger.error(message)
+                deletion_service.remove_preview_file_by_id(
+                    instance_id, force=True
+                )
+                if abort_on_failed:
+                    raise PreviewProcessingFailedException(
+                        message, dict={"reason": str(e)}
+                    )
                 return None
             preview_file = preview_files_service.update_preview_file(
                 instance_id,
@@ -445,7 +468,9 @@ class CreatePreviewFilePictureResource(
                       description: File size in bytes
                       example: 1024000
           400:
-            description: Wrong file format or normalization failed
+            description: Wrong file format or invalid upload
+          500:
+            description: Movie preview processing failed (server-side)
         """
         self.is_allowed(instance_id)
 

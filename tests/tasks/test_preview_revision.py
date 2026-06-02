@@ -70,7 +70,12 @@ class PreviewRevisionTestCase(ApiDBTestCase):
         comment2 = self.create_comment()
         path = f"/actions/tasks/{self.task_id}/comments/{comment2['id']}/add-preview"
         response = self.post(path, {"revision": 1}, code=400)
-        self.assertIn("already exists", response.get("message", ""))
+        message = response.get("message", "")
+        self.assertIn("already exists", message)
+        # The message must tell the user how to resolve the conflict and
+        # must not be mislabelled as a normalization problem.
+        self.assertIn("auto-increment", message)
+        self.assertNotIn("ormaliz", message)
 
     def test_extra_preview_same_revision_allowed(self):
         """

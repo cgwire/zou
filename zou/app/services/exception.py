@@ -309,6 +309,18 @@ class WrongParameterException(Exception):
         self.dict = dict
 
 
+class PreviewProcessingFailedException(Exception):
+    """
+    Raised when a preview file could not be processed server-side
+    (e.g. ffmpeg normalization or file storage failure). This is an
+    internal failure, not a client error.
+    """
+
+    def __init__(self, message, dict=None):
+        super().__init__(message)
+        self.dict = dict
+
+
 class WrongIdFormatException(Exception):
     pass
 

@@ -32,6 +32,7 @@ from zou.app.indexer import indexing
 from zou.app.services.exception import (
     ModelWithRelationsDeletionException,
     PersonNotFoundException,
+    PreviewProcessingFailedException,
     TwoFactorAuthenticationRequiredException,
     WrongIdFormatException,
     WrongParameterException,
@@ -130,6 +131,11 @@ def id_parameter_format_error(error):
 @app.errorhandler(WrongParameterException)
 def wrong_parameter(error):
     return jsonify(error=True, message=str(error), data=error.dict), 400
+
+
+@app.errorhandler(PreviewProcessingFailedException)
+def preview_processing_failed(error):
+    return jsonify(error=True, message=str(error), data=error.dict), 500
 
 
 @app.errorhandler(ExpiredSignatureError)

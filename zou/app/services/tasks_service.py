@@ -1800,7 +1800,9 @@ def check_revision_is_unique_for_task(
     existing = query.first()
     if existing is not None:
         raise RevisionAlreadyExistsException(
-            f"Revision {revision} already exists for this task."
+            f"Revision {revision} already exists for this task. "
+            "Choose a different revision number, or omit it to let the "
+            "revision auto-increment."
         )
 
 
