@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy_utils import (
     UUIDType,
     EmailType,
@@ -7,6 +9,7 @@ from sqlalchemy_utils import (
 )
 from sqlalchemy import Index
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import validates
 from sqlalchemy.dialects.postgresql import JSONB
 
 from pytz import timezone as pytz_timezone
@@ -17,6 +20,8 @@ from zou.app.models.department import Department
 from zou.app.models.base import BaseMixin
 from zou.app import db
 from zou.app.stores import config_store
+
+logger = logging.getLogger(__name__)
 
 TWO_FACTOR_AUTHENTICATION_TYPES = [
     ("totp", "TOTP"),
@@ -55,6 +60,33 @@ SENIORITY_TYPES = [
 ]
 
 
+def normalize_country(value):
+    """
+    Normalize an ISO 3166-1 alpha-2 country code to its canonical uppercase
+    form. Returns an ``(is_valid, normalized)`` tuple:
+
+      - ``(True, "FR")`` for a valid two-letter code (any casing/whitespace);
+      - ``(True, None)`` for an empty or ``None`` value (i.e. "no country");
+      - ``(False, None)`` for a malformed value (wrong length, non-ASCII,
+        non-alphabetic, or non-string input such as a SAML single-element
+        list).
+
+    Single source of truth shared by the API guard (raises 400 on invalid),
+    the CSV import (fails the row on invalid) and the model validator
+    (silently discards invalid).
+    """
+    if value is None:
+        return True, None
+    if not isinstance(value, str):
+        return False, None
+    normalized = value.strip().upper()
+    if normalized == "":
+        return True, None
+    if len(normalized) == 2 and normalized.isascii() and normalized.isalpha():
+        return True, normalized
+    return False, None
+
+
 class DepartmentLink(db.Model):
     __tablename__ = "department_link"
     person_id = db.Column(
@@ -88,6 +120,7 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     last_name = db.Column(db.String(80), nullable=False)
     email = db.Column(EmailType)
     phone = db.Column(db.String(30))
+    country = db.Column(db.String(2))
     contract_type = db.Column(
         ChoiceType(CONTRACT_TYPES), default="open-ended", nullable=False
     )
@@ -164,6 +197,23 @@ class Person(db.Model, BaseMixin, SerializerMixin):
 
     def __repr__(self):
         return f"<Person {self.full_name}>"
+
+    @validates("country")
+    def validate_country(self, key, value):
+        """
+        Normalize ISO 3166-1 alpha-2 country codes to their canonical
+        uppercase form. Empty or malformed values are stored as None. API
+        requests and CSV imports are rejected upstream with a clean error;
+        this is the last-resort guard for direct writes (SSO sign-in,
+        scripts) that never raises, even on non-string input (e.g. a
+        single-element list from a SAML assertion).
+        """
+        is_valid, normalized = normalize_country(value)
+        if not is_valid:
+            logger.warning(
+                f"Discarded invalid country value for person: {value!r}"
+            )
+        return normalized
 
     @hybrid_property
     def full_name(self):

@@ -8,6 +8,7 @@ from zou.app.models.person import (
     ROLE_TYPES,
     CONTRACT_TYPES,
     TWO_FACTOR_AUTHENTICATION_TYPES,
+    normalize_country,
 )
 from zou.app.services import (
     deletion_service,
@@ -26,6 +27,19 @@ from zou.app.services.exception import (
 )
 
 from zou.app import config
+
+
+def check_country(data):
+    """
+    Reject an invalid country code with a clean 400. Empty or missing values
+    are treated as "no country" and accepted. The stored value is normalized
+    to uppercase by the Person model.
+    """
+    is_valid, _ = normalize_country(data.get("country"))
+    if not is_valid:
+        raise WrongParameterException(
+            "Invalid country code, expected an ISO 3166-1 alpha-2 code."
+        )
 
 
 class PersonsResource(BaseModelsResource):
@@ -169,6 +183,10 @@ class PersonsResource(BaseModelsResource):
                     type: boolean
                     default: false
                     example: false
+                  country:
+                    type: string
+                    description: ISO 3166-1 alpha-2 country code (nullable)
+                    example: FR
         responses:
             201:
               description: Person created successfully
@@ -203,6 +221,10 @@ class PersonsResource(BaseModelsResource):
                       two_factor_authentication:
                         type: string
                         example: none
+                      country:
+                        type: string
+                        description: ISO 3166-1 alpha-2 country code (nullable)
+                        example: FR
                       access_token:
                         type: string
                         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
@@ -270,6 +292,7 @@ class PersonsResource(BaseModelsResource):
             contract_type for contract_type, _ in CONTRACT_TYPES
         ]:
             raise WrongParameterException("Invalid contract_type")
+        check_country(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [
@@ -404,6 +427,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                           type: string
                           format: uuid
                         example: []
+                      country:
+                        type: string
+                        description: ISO 3166-1 alpha-2 country code (nullable)
+                        example: FR
                       created_at:
                         type: string
                         format: date-time
@@ -478,6 +505,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                     format: date
                     example: "2025-12-31"
                     description: Person or admin only
+                  country:
+                    type: string
+                    description: ISO 3166-1 alpha-2 country code (nullable)
+                    example: FR
         responses:
             200:
               description: Person updated successfully
@@ -518,6 +549,10 @@ class PersonResource(BaseModelResource, ArgsMixin):
                           type: string
                           format: uuid
                         example: []
+                      country:
+                        type: string
+                        description: ISO 3166-1 alpha-2 country code (nullable)
+                        example: FR
                       access_token:
                         type: string
                         example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9
@@ -564,6 +599,7 @@ class PersonResource(BaseModelResource, ArgsMixin):
             contract_type for contract_type, _ in CONTRACT_TYPES
         ]:
             raise WrongParameterException("Invalid contract_type")
+        check_country(data)
         if "two_factor_authentication" in data and data[
             "two_factor_authentication"
         ] not in [

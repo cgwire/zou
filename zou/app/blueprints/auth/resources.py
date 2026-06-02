@@ -40,6 +40,7 @@ from zou.app.blueprints.auth.schemas import (
     FidoUnregisterSchema,
 )
 from zou.app.utils.email_i18n import get_email_translation
+from zou.app.models.person import normalize_country
 from zou.app.services import (
     persons_service,
     auth_service,
@@ -1464,7 +1465,8 @@ class SAMLSSOResource(Resource, ArgsMixin):
         person_info = {
             k: (
                 " ".join(v)
-                if isinstance(v, list) and k in ["first_name", "last_name"]
+                if isinstance(v, list)
+                and k in ["first_name", "last_name", "country"]
                 else v
             )
             for k, v in authn_response.ava.items()
@@ -1475,8 +1477,20 @@ class SAMLSSOResource(Resource, ArgsMixin):
                 "phone",
                 "departments",
                 "studio_id",
+                "country",
             ]
         }
+        # Align the country with its stored canonical form so an unchanged
+        # value does not re-trigger an update on every login. An empty value
+        # clears the stored country (the IdP is authoritative), but a
+        # malformed value is dropped so a transient bad assertion neither
+        # wipes a previously stored valid code nor breaks the SSO sign-in.
+        if "country" in person_info:
+            is_valid, normalized = normalize_country(person_info["country"])
+            if is_valid:
+                person_info["country"] = normalized
+            else:
+                del person_info["country"]
         try:
             user = persons_service.get_person_by_email(email)
             for k, v in person_info.items():
