@@ -60,6 +60,33 @@ SENIORITY_TYPES = [
 ]
 
 
+def normalize_country(value):
+    """
+    Normalize an ISO 3166-1 alpha-2 country code to its canonical uppercase
+    form. Returns an ``(is_valid, normalized)`` tuple:
+
+      - ``(True, "FR")`` for a valid two-letter code (any casing/whitespace);
+      - ``(True, None)`` for an empty or ``None`` value (i.e. "no country");
+      - ``(False, None)`` for a malformed value (wrong length, non-ASCII,
+        non-alphabetic, or non-string input such as a SAML single-element
+        list).
+
+    Single source of truth shared by the API guard (raises 400 on invalid),
+    the CSV import (fails the row on invalid) and the model validator
+    (silently discards invalid).
+    """
+    if value is None:
+        return True, None
+    if not isinstance(value, str):
+        return False, None
+    normalized = value.strip().upper()
+    if normalized == "":
+        return True, None
+    if len(normalized) == 2 and normalized.isascii() and normalized.isalpha():
+        return True, normalized
+    return False, None
+
+
 class DepartmentLink(db.Model):
     __tablename__ = "department_link"
     person_id = db.Column(
@@ -175,31 +202,18 @@ class Person(db.Model, BaseMixin, SerializerMixin):
     def validate_country(self, key, value):
         """
         Normalize ISO 3166-1 alpha-2 country codes to their canonical
-        uppercase form. Empty or malformed values (not two ASCII letters)
-        are stored as None. API requests are rejected upstream with a clean
-        400 error; this is the last-resort guard for direct writes (SSO
-        sign-in, imports, scripts) that never raises, even on non-string
-        input (e.g. a single-element list from a SAML assertion).
+        uppercase form. Empty or malformed values are stored as None. API
+        requests and CSV imports are rejected upstream with a clean error;
+        this is the last-resort guard for direct writes (SSO sign-in,
+        scripts) that never raises, even on non-string input (e.g. a
+        single-element list from a SAML assertion).
         """
-        if value is None:
-            return None
-        if not isinstance(value, str):
+        is_valid, normalized = normalize_country(value)
+        if not is_valid:
             logger.warning(
-                f"Discarded non-string country value for person: {value!r}"
+                f"Discarded invalid country value for person: {value!r}"
             )
-            return None
-        normalized = value.strip().upper()
-        if (
-            len(normalized) == 2
-            and normalized.isascii()
-            and normalized.isalpha()
-        ):
-            return normalized
-        if normalized != "":
-            logger.warning(
-                f"Discarded invalid country code for person: {value!r}"
-            )
-        return None
+        return normalized
 
     @hybrid_property
     def full_name(self):

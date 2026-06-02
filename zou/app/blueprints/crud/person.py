@@ -8,6 +8,7 @@ from zou.app.models.person import (
     ROLE_TYPES,
     CONTRACT_TYPES,
     TWO_FACTOR_AUTHENTICATION_TYPES,
+    normalize_country,
 )
 from zou.app.services import (
     deletion_service,
@@ -30,21 +31,12 @@ from zou.app import config
 
 def check_country(data):
     """
-    Ensure the country, when provided, is an ISO 3166-1 alpha-2 code (two
-    letters). Empty values are treated as "no country" and accepted. The
-    stored value is normalized to uppercase by the Person model.
+    Reject an invalid country code with a clean 400. Empty or missing values
+    are treated as "no country" and accepted. The stored value is normalized
+    to uppercase by the Person model.
     """
-    country = data.get("country")
-    if country is None:
-        return
-    if not isinstance(country, str):
-        raise WrongParameterException(
-            "Invalid country code, expected an ISO 3166-1 alpha-2 code."
-        )
-    country = country.strip()
-    if country != "" and (
-        len(country) != 2 or not country.isascii() or not country.isalpha()
-    ):
+    is_valid, _ = normalize_country(data.get("country"))
+    if not is_valid:
         raise WrongParameterException(
             "Invalid country code, expected an ISO 3166-1 alpha-2 code."
         )

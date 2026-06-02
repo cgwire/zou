@@ -1,11 +1,32 @@
 # -*- coding: UTF-8 -*-
+import unittest
+
 from tests.base import ApiDBTestCase
 from zou.app.models.department import Department
-from zou.app.models.person import Person
+from zou.app.models.person import Person, normalize_country
 
 from zou.app.utils import fields
 
 from operator import itemgetter
+
+
+class NormalizeCountryTestCase(unittest.TestCase):
+    """
+    Unit coverage for normalize_country, the single source of truth shared
+    by the model validator, the API guard and the CSV import.
+    """
+
+    def test_valid_codes_are_trimmed_and_uppercased(self):
+        for value, expected in [("fr", "FR"), ("FR", "FR"), (" us ", "US")]:
+            self.assertEqual(normalize_country(value), (True, expected))
+
+    def test_empty_values_mean_no_country(self):
+        for value in [None, "", "   "]:
+            self.assertEqual(normalize_country(value), (True, None))
+
+    def test_malformed_values_are_rejected(self):
+        for value in ["France", "FRA", "f", "f1", "éé", 123, ["FR"], 1.5]:
+            self.assertEqual(normalize_country(value), (False, None))
 
 
 class PersonTestCase(ApiDBTestCase):
@@ -171,6 +192,11 @@ class PersonTestCase(ApiDBTestCase):
         person_again = self.get(f"data/persons/{person['id']}")
         self.assertEqual(person_again["country"], "US")
 
+        # Whitespace is trimmed and the value upper-cased on update.
+        self.put(f"data/persons/{person['id']}", {"country": " fr "})
+        person_again = self.get(f"data/persons/{person['id']}")
+        self.assertEqual(person_again["country"], "FR")
+
         self.put(f"data/persons/{person['id']}", {"country": None})
         person_again = self.get(f"data/persons/{person['id']}")
         self.assertIsNone(person_again["country"])
@@ -198,27 +224,12 @@ class PersonTestCase(ApiDBTestCase):
         self.post("data/persons", data, 400)
 
     def test_update_person_with_invalid_country(self):
+        # The PUT guard rejects every malformed category with a clean 400
+        # (never a 500), including non-ASCII and non-string bodies such as an
+        # int or a single-element list from a SAML assertion.
         person = self.get_first("data/persons")
-        self.put(f"data/persons/{person['id']}", {"country": "xyz"}, 400)
-        self.put(f"data/persons/{person['id']}", {"country": "f1"}, 400)
-
-    def test_update_person_country_is_normalized(self):
-        person = self.get_first("data/persons")
-        self.put(f"data/persons/{person['id']}", {"country": " fr "})
-        person_again = self.get(f"data/persons/{person['id']}")
-        self.assertEqual(person_again["country"], "FR")
-
-    def test_update_person_with_non_ascii_country(self):
-        person = self.get_first("data/persons")
-        # Two non-ASCII letters must be rejected (isascii guard).
-        self.put(f"data/persons/{person['id']}", {"country": "éé"}, 400)
-
-    def test_update_person_with_non_string_country(self):
-        # A non-string body (int, or a single-element list as produced by a
-        # SAML assertion) must yield a clean 400, not a 500.
-        person = self.get_first("data/persons")
-        self.put(f"data/persons/{person['id']}", {"country": 123}, 400)
-        self.put(f"data/persons/{person['id']}", {"country": ["FR"]}, 400)
+        for value in ["France", "f1", "éé", 123, ["FR"]]:
+            self.put(f"data/persons/{person['id']}", {"country": value}, 400)
 
     def test_country_validator_never_raises_on_direct_write(self):
         # Direct writes (SSO sign-in, imports, scripts) bypass the API guard,

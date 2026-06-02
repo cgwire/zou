@@ -1,3 +1,3 @@
-First Name,Last Name,Email,Phone
-John,Doe,john.doe@gmail.com,+33 6 08 08 08 08
-Ema,Doe,ema.doe@gmail.com, +33 6 08 08 08 09
+"First Name";"Last Name";"Email";"Phone";"Role";"Departments";"Studio";"Country";"Contract Type";"Position";"Seniority";"Daily Salary";"Active"
+"John";"Doe";"john.doe@gmail.com";"+33 6 08 08 08 08";"Artist";"Animation,Modeling";"Test Studio";"fr";"Open-ended";"Lead";"Senior";"320";"yes"
+"Ema";"Doe";"ema.doe@gmail.com";"+33 6 08 08 08 09";"supervisor";"Animation";"Test Studio";"US";"freelance";"artist";"junior";"450";"no"
