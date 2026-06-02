@@ -300,9 +300,9 @@ class EntityPreviewsResource(Resource):
                           description: Preview file name
                           example: "preview_v001.png"
         """
-        user_service.block_access_to_vendor()
         entity = entities_service.get_entity(entity_id)
         user_service.check_project_access(entity["project_id"])
+        user_service.check_entity_access(entity_id)
         return playlists_service.get_preview_files_for_entity(entity_id)
 
 
@@ -880,10 +880,11 @@ class TempPlaylistResource(Resource, ArgsMixin):
           400:
             description: Invalid task IDs
         """
-        user_service.block_access_to_vendor()
         user_service.check_project_access(project_id)
         body = validation.validate_request_body(TempPlaylistCreateSchema)
         task_ids = [str(t) for t in body.task_ids]
+        for task_id in task_ids:
+            user_service.check_task_access(task_id)
         sort = self.get_bool_parameter("sort")
         return (
             playlists_service.generate_temp_playlist(task_ids, sort=sort) or []
